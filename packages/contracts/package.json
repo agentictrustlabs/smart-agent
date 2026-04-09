@@ -1,0 +1,13 @@
+{
+  "name": "@smart-agent/contracts",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "build": "forge build",
+    "test": "forge test",
+    "fmt": "forge fmt",
+    "typecheck": "echo 'solidity - use forge build'",
+    "lint": "forge fmt --check",
+    "clean": "rm -rf out cache"
+  }
+}
