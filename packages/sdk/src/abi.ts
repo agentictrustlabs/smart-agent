@@ -281,3 +281,4 @@ export const agentControlAbi = [
   { type: 'event', name: 'ProposalApproved', inputs: [{ name: 'agent', type: 'address', indexed: true }, { name: 'proposalId', type: 'uint256', indexed: true }, { name: 'approver', type: 'address', indexed: true }] },
   { type: 'event', name: 'ProposalExecuted', inputs: [{ name: 'agent', type: 'address', indexed: true }, { name: 'proposalId', type: 'uint256', indexed: true }] },
 ] as const
+

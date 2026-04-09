@@ -13,6 +13,7 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
           <Link href="/templates">Templates</Link>
           <Link href="/issuers">Issuers</Link>
           <Link href="/reviews">Reviews</Link>
+          <Link href="/tee">TEE</Link>
           <Link href="/graph">Graph</Link>
         </nav>
         <NotificationBell />
