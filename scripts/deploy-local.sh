@@ -39,6 +39,12 @@ METHODS=$(echo "$OUTPUT" | grep "ALLOWED_METHODS_ENFORCER_ADDRESS=" | sed 's/.*=
 RELATIONSHIP=$(echo "$OUTPUT" | grep "AGENT_RELATIONSHIP_ADDRESS=" | sed 's/.*=//')
 ASSERTION_ADDR=$(echo "$OUTPUT" | grep "AGENT_ASSERTION_ADDRESS=" | sed 's/.*=//')
 RESOLVER=$(echo "$OUTPUT" | grep "AGENT_RESOLVER_ADDRESS=" | sed 's/.*=//')
+TEMPLATE=$(echo "$OUTPUT" | grep "AGENT_TEMPLATE_ADDRESS=" | sed 's/.*=//')
+ISSUER_ADDR=$(echo "$OUTPUT" | grep "AGENT_ISSUER_ADDRESS=" | sed 's/.*=//')
+VALIDATION_ADDR=$(echo "$OUTPUT" | grep "AGENT_VALIDATION_ADDRESS=" | sed 's/.*=//')
+REVIEW_ADDR=$(echo "$OUTPUT" | grep "AGENT_REVIEW_ADDRESS=" | sed 's/.*=//')
+DISPUTE_ADDR=$(echo "$OUTPUT" | grep "AGENT_DISPUTE_ADDRESS=" | sed 's/.*=//')
+TRUST_PROFILE_ADDR=$(echo "$OUTPUT" | grep "AGENT_TRUST_PROFILE_ADDRESS=" | sed 's/.*=//')
 
 echo ""
 echo "=== Extracted addresses ==="
@@ -48,6 +54,12 @@ echo "DelegationManager:         $DELEGATION"
 echo "AgentRelationship:         $RELATIONSHIP"
 echo "AgentAssertion:            $ASSERTION_ADDR"
 echo "AgentRelationshipResolver: $RESOLVER"
+echo "AgentRelationshipTemplate: $TEMPLATE"
+echo "AgentIssuerProfile:        $ISSUER_ADDR"
+echo "AgentValidationProfile:    $VALIDATION_ADDR"
+echo "AgentReviewRecord:         $REVIEW_ADDR"
+echo "AgentDisputeRecord:        $DISPUTE_ADDR"
+echo "AgentTrustProfile:         $TRUST_PROFILE_ADDR"
 echo "TimestampEnforcer:         $TIMESTAMP"
 echo "ValueEnforcer:             $VALUE"
 echo "AllowedTargetsEnforcer:    $TARGETS"
@@ -66,6 +78,12 @@ sed -i '/^AGENT_TRUST_GRAPH_ADDRESS=/d' "$WEB_ENV"
 sed -i '/^AGENT_RELATIONSHIP_ADDRESS=/d' "$WEB_ENV"
 sed -i '/^AGENT_ASSERTION_ADDRESS=/d' "$WEB_ENV"
 sed -i '/^AGENT_RESOLVER_ADDRESS=/d' "$WEB_ENV"
+sed -i '/^AGENT_TEMPLATE_ADDRESS=/d' "$WEB_ENV"
+sed -i '/^AGENT_ISSUER_ADDRESS=/d' "$WEB_ENV"
+sed -i '/^AGENT_VALIDATION_ADDRESS=/d' "$WEB_ENV"
+sed -i '/^AGENT_REVIEW_ADDRESS=/d' "$WEB_ENV"
+sed -i '/^AGENT_DISPUTE_ADDRESS=/d' "$WEB_ENV"
+sed -i '/^AGENT_TRUST_PROFILE_ADDRESS=/d' "$WEB_ENV"
 sed -i '/^TIMESTAMP_ENFORCER_ADDRESS=/d' "$WEB_ENV"
 sed -i '/^VALUE_ENFORCER_ADDRESS=/d' "$WEB_ENV"
 sed -i '/^ALLOWED_TARGETS_ENFORCER_ADDRESS=/d' "$WEB_ENV"
@@ -85,6 +103,12 @@ DELEGATION_MANAGER_ADDRESS=$DELEGATION
 AGENT_RELATIONSHIP_ADDRESS=$RELATIONSHIP
 AGENT_ASSERTION_ADDRESS=$ASSERTION_ADDR
 AGENT_RESOLVER_ADDRESS=$RESOLVER
+AGENT_TEMPLATE_ADDRESS=$TEMPLATE
+AGENT_ISSUER_ADDRESS=$ISSUER_ADDR
+AGENT_VALIDATION_ADDRESS=$VALIDATION_ADDR
+AGENT_REVIEW_ADDRESS=$REVIEW_ADDR
+AGENT_DISPUTE_ADDRESS=$DISPUTE_ADDR
+AGENT_TRUST_PROFILE_ADDRESS=$TRUST_PROFILE_ADDR
 TIMESTAMP_ENFORCER_ADDRESS=$TIMESTAMP
 VALUE_ENFORCER_ADDRESS=$VALUE
 ALLOWED_TARGETS_ENFORCER_ADDRESS=$TARGETS

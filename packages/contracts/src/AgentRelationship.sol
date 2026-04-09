@@ -44,11 +44,21 @@ contract AgentRelationship {
     // C. Assurance / Validation
     bytes32 public constant VALIDATION_TRUST = keccak256("ValidationTrust");
     bytes32 public constant INSURANCE_COVERAGE = keccak256("InsuranceCoverage");
+    bytes32 public constant COMPLIANCE = keccak256("Compliance");
     // D. Economic Security
     bytes32 public constant ECONOMIC_SECURITY = keccak256("EconomicSecurity");
     // E. Service / Execution
     bytes32 public constant SERVICE_AGREEMENT = keccak256("ServiceAgreement");
     bytes32 public constant DELEGATION_AUTHORITY = keccak256("DelegationAuthority");
+    // F. Runtime / TEE
+    bytes32 public constant RUNTIME_ATTESTATION = keccak256("RuntimeAttestation");
+    bytes32 public constant BUILD_PROVENANCE = keccak256("BuildProvenance");
+    // G. Organizational Control
+    bytes32 public constant ORGANIZATIONAL_CONTROL = keccak256("OrganizationalControl");
+    // H. Activity Validation
+    bytes32 public constant ACTIVITY_VALIDATION = keccak256("ActivityValidation");
+    // I. Reviews
+    bytes32 public constant REVIEW_RELATIONSHIP = keccak256("ReviewRelationship");
 
     // ─── Well-Known Roles ───────────────────────────────────────────
     // Governance
@@ -58,25 +68,56 @@ contract AgentRelationship {
     bytes32 public constant ROLE_EXECUTIVE = keccak256("executive");
     bytes32 public constant ROLE_TREASURER = keccak256("treasurer");
     bytes32 public constant ROLE_AUTHORIZED_SIGNER = keccak256("authorized-signer");
+    bytes32 public constant ROLE_OFFICER = keccak256("officer");
+    bytes32 public constant ROLE_CHAIR = keccak256("chair");
+    bytes32 public constant ROLE_ADVISOR = keccak256("advisor");
     // Membership
     bytes32 public constant ROLE_ADMIN = keccak256("admin");
     bytes32 public constant ROLE_MEMBER = keccak256("member");
     bytes32 public constant ROLE_OPERATOR = keccak256("operator");
+    bytes32 public constant ROLE_EMPLOYEE = keccak256("employee");
+    bytes32 public constant ROLE_CONTRACTOR = keccak256("contractor");
     // Assurance
     bytes32 public constant ROLE_AUDITOR = keccak256("auditor");
     bytes32 public constant ROLE_VALIDATOR = keccak256("validator");
     bytes32 public constant ROLE_INSURER = keccak256("insurer");
     bytes32 public constant ROLE_INSURED_PARTY = keccak256("insured-party");
+    bytes32 public constant ROLE_UNDERWRITER = keccak256("underwriter");
+    bytes32 public constant ROLE_CERTIFIED_BY = keccak256("certified-by");
+    bytes32 public constant ROLE_LICENSED_BY = keccak256("licensed-by");
     // Economic
     bytes32 public constant ROLE_STAKER = keccak256("staker");
     bytes32 public constant ROLE_GUARANTOR = keccak256("guarantor");
+    bytes32 public constant ROLE_BACKER = keccak256("backer");
+    bytes32 public constant ROLE_COLLATERAL_PROVIDER = keccak256("collateral-provider");
     // Alliance
     bytes32 public constant ROLE_STRATEGIC_PARTNER = keccak256("strategic-partner");
     bytes32 public constant ROLE_AFFILIATE = keccak256("affiliate");
+    bytes32 public constant ROLE_ENDORSED_BY = keccak256("endorsed-by");
+    bytes32 public constant ROLE_SUBSIDIARY = keccak256("subsidiary");
+    bytes32 public constant ROLE_PARENT_ORG = keccak256("parent-org");
     // Service
     bytes32 public constant ROLE_VENDOR = keccak256("vendor");
     bytes32 public constant ROLE_SERVICE_PROVIDER = keccak256("service-provider");
     bytes32 public constant ROLE_DELEGATED_OPERATOR = keccak256("delegated-operator");
+    // TEE / Runtime
+    bytes32 public constant ROLE_RUNS_IN_TEE = keccak256("runs-in-tee");
+    bytes32 public constant ROLE_ATTESTED_BY = keccak256("attested-by");
+    bytes32 public constant ROLE_VERIFIED_BY = keccak256("verified-by");
+    bytes32 public constant ROLE_BOUND_TO_KMS = keccak256("bound-to-kms");
+    bytes32 public constant ROLE_CONTROLS_RUNTIME = keccak256("controls-runtime");
+    bytes32 public constant ROLE_BUILT_FROM = keccak256("built-from");
+    bytes32 public constant ROLE_DEPLOYED_FROM = keccak256("deployed-from");
+    // Organizational Control
+    bytes32 public constant ROLE_OPERATED_AGENT = keccak256("operated-agent");
+    bytes32 public constant ROLE_MANAGED_AGENT = keccak256("managed-agent");
+    bytes32 public constant ROLE_ADMINISTERS = keccak256("administers");
+    // Activity Validation
+    bytes32 public constant ROLE_ACTIVITY_VALIDATOR = keccak256("activity-validator");
+    bytes32 public constant ROLE_VALIDATED_PERFORMER = keccak256("validated-performer");
+    // Reviews
+    bytes32 public constant ROLE_REVIEWER = keccak256("reviewer");
+    bytes32 public constant ROLE_REVIEWED_AGENT = keccak256("reviewed-agent");
 
     // ─── Storage ────────────────────────────────────────────────────
 

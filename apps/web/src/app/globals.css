@@ -846,3 +846,190 @@ textarea { resize: vertical; }
   text-align: center;
   color: var(--text-muted);
 }
+
+/* ─── Template Section in Edge Detail ───────────────────────────────── */
+[data-component="template-section"] {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+}
+
+[data-component="template-section"] h5 {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+}
+
+[data-component="template-card"] {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.6rem;
+  margin-bottom: 0.4rem;
+  font-size: 0.75rem;
+}
+
+[data-component="template-card"] strong {
+  display: block;
+  font-size: 0.8rem;
+  margin-bottom: 0.2rem;
+}
+
+[data-component="template-card"] p {
+  color: var(--text-muted);
+  margin-bottom: 0.3rem;
+  line-height: 1.3;
+}
+
+[data-component="template-card"] [data-component="role-badge"] {
+  font-size: 0.65rem;
+  margin-right: 0.3rem;
+}
+
+/* ─── Graph Layout (SVG + Detail Panel side by side) ────────────────── */
+[data-component="graph-layout"] {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 1rem;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  [data-component="graph-layout"] {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ─── Detail Panel ──────────────────────────────────────────────────── */
+[data-component="detail-panel"] {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem;
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+[data-component="panel-empty"] { text-align: center; padding: 2rem 1rem; }
+[data-component="panel-empty"] h3 { font-size: 1rem; margin-bottom: 0.5rem; }
+[data-component="panel-empty"] p { color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.3rem; }
+
+[data-component="panel-stats"] {
+  display: flex; gap: 1rem; justify-content: center; margin-top: 1rem;
+  font-size: 0.8rem; color: var(--text-muted);
+}
+
+[data-component="panel-stats"] span {
+  padding: 0.3rem 0.6rem; background: var(--bg); border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+[data-component="panel-hint"] { font-size: 0.75rem !important; }
+
+/* ─── Agent Detail ──────────────────────────────────────────────────── */
+[data-component="agent-detail"] h4 {
+  font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--text-muted); margin: 1rem 0 0.5rem; padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+}
+
+[data-component="agent-detail-header"] {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.3rem;
+}
+
+[data-component="agent-detail-header"] h3 { font-size: 1.1rem; }
+
+[data-component="agent-detail-header"][data-type="person"] { border-left: 3px solid #6366f1; padding-left: 0.75rem; }
+[data-component="agent-detail-header"][data-type="org"] { border-left: 3px solid #22c55e; padding-left: 0.75rem; }
+
+/* ─── Relationship Cards ────────────────────────────────────────────── */
+[data-component="rel-card"] {
+  background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 0.6rem; margin-bottom: 0.4rem; cursor: pointer; transition: border-color 0.2s;
+}
+
+[data-component="rel-card"]:hover { border-color: var(--accent); }
+
+[data-component="rel-card-header"] {
+  display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.2rem;
+  font-size: 0.85rem; font-weight: 600;
+}
+
+[data-component="rel-card-type"] {
+  font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;
+  letter-spacing: 0.03em; margin-bottom: 0.3rem;
+}
+
+[data-component="rel-card-templates"] {
+  margin-top: 0.3rem; padding-top: 0.3rem; border-top: 1px solid var(--border);
+}
+
+[data-component="template-tag"] {
+  display: inline-block; font-size: 0.65rem; padding: 0.1rem 0.4rem;
+  background: rgba(139, 92, 246, 0.15); color: #a78bfa;
+  border-radius: 4px; margin-right: 0.3rem; cursor: help;
+}
+
+/* ─── Edge Detail Inline ────────────────────────────────────────────── */
+[data-component="edge-detail-inline"] h3 { font-size: 1rem; margin-bottom: 0.75rem; }
+
+[data-component="edge-detail-inline"] dl {
+  display: grid; grid-template-columns: 60px 1fr; gap: 0.25rem 0.5rem; font-size: 0.8rem;
+}
+
+[data-component="edge-detail-inline"] dt { color: var(--text-muted); }
+
+[data-component="back-btn"] {
+  display: inline-block; font-size: 0.8rem; padding: 0.3rem 0.6rem;
+  background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  color: var(--text-muted); cursor: pointer; margin-bottom: 0.75rem;
+}
+
+[data-component="back-btn"]:hover { color: var(--text); border-color: var(--accent); }
+
+/* ─── Templates Page ────────────────────────────────────────────────── */
+[data-component="template-grid"] {
+  display: grid; gap: 1rem;
+}
+
+[data-component="template-full-card"] {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 1.5rem; transition: border-color 0.2s;
+}
+
+[data-component="template-full-card"]:hover { border-color: var(--accent); }
+
+[data-component="template-full-card"][data-active="false"] { opacity: 0.6; }
+
+[data-component="template-full-header"] {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;
+}
+
+[data-component="template-full-header"] h3 { font-size: 1.1rem; }
+
+[data-component="template-desc"] {
+  color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem; line-height: 1.5;
+}
+
+[data-component="template-meta"] dl {
+  display: grid; grid-template-columns: 140px 1fr; gap: 0.3rem 1rem; font-size: 0.85rem;
+}
+
+[data-component="template-meta"] dt { color: var(--text-muted); }
+
+[data-component="template-meaning"] {
+  margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--border);
+}
+
+[data-component="template-meaning"] h4 {
+  font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--text-muted); margin-bottom: 0.4rem;
+}
+
+[data-component="template-meaning"] p {
+  font-size: 0.85rem; color: var(--text-muted); line-height: 1.5;
+}
+
+[data-component="template-meaning"] strong { color: var(--accent); }

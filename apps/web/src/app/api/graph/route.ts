@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
-import { eq } from 'drizzle-orm'
 import { db, schema } from '@/db'
-import { getEdgesByObject, getEdge, getEdgeRoles } from '@/lib/contracts'
+import { getEdgesByObject, getEdge, getEdgeRoles, getTemplateCount, getTemplate } from '@/lib/contracts'
 import { roleName, relationshipTypeName, toDidEthr } from '@smart-agent/sdk'
 
 const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? '31337')
@@ -15,6 +14,15 @@ export interface GraphNode {
   address: string
 }
 
+export interface TemplateInfo {
+  id: number
+  name: string
+  description: string
+  forRole: string
+  forType: string
+  active: boolean
+}
+
 export interface GraphEdge {
   source: string
   target: string
@@ -22,16 +30,15 @@ export interface GraphEdge {
   relationshipType: string
   status: string
   edgeId: string
+  templates: TemplateInfo[]
 }
 
 export async function GET() {
   try {
-    // Build address → name lookup from DB
     const allUsers = await db.select().from(schema.users)
     const allPersonAgents = await db.select().from(schema.personAgents)
     const allOrgAgents = await db.select().from(schema.orgAgents)
 
-    // Map: smart account address (lowercase) → name
     const nameMap = new Map<string, string>()
     for (const p of allPersonAgents) {
       const user = allUsers.find((u) => u.id === p.userId)
@@ -59,12 +66,33 @@ export async function GET() {
       })
     }
 
-    // Add known nodes from DB
     for (const p of allPersonAgents) addNode(p.smartAccountAddress, 'person')
     for (const o of allOrgAgents) addNode(o.smartAccountAddress, 'org')
 
+    // Load all templates: (relType:role) → TemplateInfo[]
+    const templatesByKey = new Map<string, TemplateInfo[]>()
+    try {
+      const count = await getTemplateCount()
+      for (let i = 0n; i < count; i++) {
+        const t = await getTemplate(i)
+        const key = `${t.relationshipType}:${t.role}`
+        const info: TemplateInfo = {
+          id: Number(t.id),
+          name: t.name,
+          description: t.description,
+          forRole: roleName(t.role),
+          forType: relationshipTypeName(t.relationshipType),
+          active: t.active,
+        }
+        const arr = templatesByKey.get(key) ?? []
+        arr.push(info)
+        templatesByKey.set(key, arr)
+      }
+    } catch { /* templates may not be deployed */ }
+
     // Fetch on-chain edges
     const allAddresses = [...seenNodes].map((a) => a as `0x${string}`)
+    const isOrg = (a: string) => allOrgAgents.some((o) => o.smartAccountAddress.toLowerCase() === a.toLowerCase())
 
     for (const addr of allAddresses) {
       try {
@@ -76,9 +104,16 @@ export async function GET() {
           const e = await getEdge(edgeId)
           const roleHashes = await getEdgeRoles(edgeId)
 
-          // Discover nodes from edges
-          addNode(e.subject, nameMap.has(e.subject.toLowerCase()) ? (allOrgAgents.some((o) => o.smartAccountAddress.toLowerCase() === e.subject.toLowerCase()) ? 'org' : 'person') : 'person')
-          addNode(e.object_, nameMap.has(e.object_.toLowerCase()) ? (allOrgAgents.some((o) => o.smartAccountAddress.toLowerCase() === e.object_.toLowerCase()) ? 'org' : 'person') : 'org')
+          addNode(e.subject, isOrg(e.subject) ? 'org' : 'person')
+          addNode(e.object_, isOrg(e.object_) ? 'org' : 'person')
+
+          // Gather templates for this edge's role+type combos
+          const edgeTemplates: TemplateInfo[] = []
+          for (const rh of roleHashes) {
+            const key = `${e.relationshipType}:${rh}`
+            const tpls = templatesByKey.get(key)
+            if (tpls) edgeTemplates.push(...tpls)
+          }
 
           edges.push({
             source: e.subject,
@@ -87,11 +122,10 @@ export async function GET() {
             relationshipType: relationshipTypeName(e.relationshipType),
             status: STATUS_LABELS[e.status] ?? 'unknown',
             edgeId,
+            templates: edgeTemplates,
           })
         }
-      } catch {
-        // skip
-      }
+      } catch { /* skip */ }
     }
 
     return NextResponse.json({ nodes, edges })

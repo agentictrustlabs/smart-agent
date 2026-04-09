@@ -10,6 +10,9 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
           <Link href="/deploy/person">Deploy Person Agent</Link>
           <Link href="/deploy/org">Deploy Org Agent</Link>
           <Link href="/relationships">Relationships</Link>
+          <Link href="/templates">Templates</Link>
+          <Link href="/issuers">Issuers</Link>
+          <Link href="/reviews">Reviews</Link>
           <Link href="/graph">Graph</Link>
         </nav>
       </header>

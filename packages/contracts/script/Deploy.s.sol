@@ -11,6 +11,12 @@ import "../src/enforcers/AllowedMethodsEnforcer.sol";
 import "../src/AgentRelationship.sol";
 import "../src/AgentAssertion.sol";
 import "../src/AgentRelationshipResolver.sol";
+import "../src/AgentRelationshipTemplate.sol";
+import "../src/AgentIssuerProfile.sol";
+import "../src/AgentValidationProfile.sol";
+import "../src/AgentReviewRecord.sol";
+import "../src/AgentDisputeRecord.sol";
+import "../src/AgentTrustProfile.sol";
 import "account-abstraction/interfaces/IEntryPoint.sol";
 import "account-abstraction/core/EntryPoint.sol";
 
@@ -83,6 +89,32 @@ contract Deploy is Script {
         );
         console.log("AgentRelationshipResolver:", address(agentResolver));
 
+        // 6. Template contract
+        AgentRelationshipTemplate agentTemplate = new AgentRelationshipTemplate();
+        console.log("AgentRelationshipTemplate:", address(agentTemplate));
+
+        // 7. Issuer Profile
+        AgentIssuerProfile issuerProfile = new AgentIssuerProfile();
+        console.log("AgentIssuerProfile:", address(issuerProfile));
+
+        // 8. Validation Profile
+        AgentValidationProfile validationProfile = new AgentValidationProfile();
+        console.log("AgentValidationProfile:", address(validationProfile));
+
+        // 9. Review Record
+        AgentReviewRecord reviewRecord = new AgentReviewRecord();
+        console.log("AgentReviewRecord:", address(reviewRecord));
+
+        // 10. Dispute Record
+        AgentDisputeRecord disputeRecord = new AgentDisputeRecord();
+        console.log("AgentDisputeRecord:", address(disputeRecord));
+
+        // 11. Trust Profile
+        AgentTrustProfile trustProfile = new AgentTrustProfile(
+            address(agentRelationship), address(reviewRecord), address(disputeRecord)
+        );
+        console.log("AgentTrustProfile:", address(trustProfile));
+
         vm.stopBroadcast();
 
         // Print env vars for copy-paste into apps/web/.env
@@ -98,6 +130,12 @@ contract Deploy is Script {
         _logEnv("VALUE_ENFORCER_ADDRESS", address(valueEnforcer));
         _logEnv("ALLOWED_TARGETS_ENFORCER_ADDRESS", address(allowedTargetsEnforcer));
         _logEnv("ALLOWED_METHODS_ENFORCER_ADDRESS", address(allowedMethodsEnforcer));
+        _logEnv("AGENT_TEMPLATE_ADDRESS", address(agentTemplate));
+        _logEnv("AGENT_ISSUER_ADDRESS", address(issuerProfile));
+        _logEnv("AGENT_VALIDATION_ADDRESS", address(validationProfile));
+        _logEnv("AGENT_REVIEW_ADDRESS", address(reviewRecord));
+        _logEnv("AGENT_DISPUTE_ADDRESS", address(disputeRecord));
+        _logEnv("AGENT_TRUST_PROFILE_ADDRESS", address(trustProfile));
     }
 
     function _logEnv(string memory key, address addr) internal pure {

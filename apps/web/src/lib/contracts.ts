@@ -6,6 +6,7 @@ import {
   agentRelationshipAbi,
   agentAssertionAbi,
   agentResolverAbi,
+  agentTemplateAbi,
 } from '@smart-agent/sdk'
 import type { DeployedContracts } from '@smart-agent/types'
 
@@ -273,4 +274,57 @@ export async function getActiveRoles(
     functionName: 'getActiveRoles',
     args: [subject, object, relationshipType, mode],
   })) as `0x${string}`[]
+}
+
+// ─── Templates ──────────────────────────────────────────────────────
+
+function getTemplateAddress(): `0x${string}` {
+  const addr = process.env.AGENT_TEMPLATE_ADDRESS as `0x${string}`
+  if (!addr) throw new Error('AGENT_TEMPLATE_ADDRESS not set')
+  return addr
+}
+
+export async function getTemplateCount(): Promise<bigint> {
+  const client = getPublicClient()
+  return (await client.readContract({
+    address: getTemplateAddress(),
+    abi: agentTemplateAbi,
+    functionName: 'templateCount',
+  })) as bigint
+}
+
+export async function getTemplate(templateId: bigint) {
+  const client = getPublicClient()
+  const result = (await client.readContract({
+    address: getTemplateAddress(),
+    abi: agentTemplateAbi,
+    functionName: 'getTemplate',
+    args: [templateId],
+  })) as [bigint, `0x${string}`, `0x${string}`, string, string, string, string, `0x${string}`, bigint, boolean]
+
+  return {
+    id: result[0],
+    relationshipType: result[1],
+    role: result[2],
+    name: result[3],
+    description: result[4],
+    delegationSchemaURI: result[5],
+    metadataURI: result[6],
+    createdBy: result[7],
+    createdAt: result[8],
+    active: result[9],
+  }
+}
+
+export async function getTemplatesByTypeAndRole(
+  relationshipType: `0x${string}`,
+  role: `0x${string}`,
+): Promise<bigint[]> {
+  const client = getPublicClient()
+  return (await client.readContract({
+    address: getTemplateAddress(),
+    abi: agentTemplateAbi,
+    functionName: 'getTemplatesByTypeAndRole',
+    args: [relationshipType, role],
+  })) as bigint[]
 }
