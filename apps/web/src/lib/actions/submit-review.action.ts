@@ -1,11 +1,19 @@
 'use server'
 
 import { db, schema } from '@/db'
-import { eq } from 'drizzle-orm'
+import { eq, and } from 'drizzle-orm'
 import { requireSession } from '@/lib/auth/session'
-import { getPublicClient, getWalletClient, getEdgesBySubject, getEdge, getEdgeRoles } from '@/lib/contracts'
+import {
+  getPublicClient,
+  redeemReviewDelegation,
+  issueReviewDelegation,
+  getEdgesBySubject,
+  getEdge,
+  getEdgeRoles,
+} from '@/lib/contracts'
 import { agentReviewRecordAbi, REVIEW_RELATIONSHIP, ROLE_REVIEWER } from '@smart-agent/sdk'
 import { keccak256, toBytes } from 'viem'
+import type { Delegation } from '@smart-agent/types'
 
 // Review type hashes
 const REVIEW_TYPES: Record<string, `0x${string}`> = {
@@ -62,10 +70,10 @@ export async function submitReview(input: SubmitReviewInput): Promise<SubmitRevi
       .where(eq(schema.personAgents.userId, users[0].id)).limit(1)
     if (!personAgents[0]) return { success: false, error: 'Deploy a person agent first' }
 
-    // Verify reviewer has ACTIVE reviewer relationship to subject
     const myAgent = personAgents[0].smartAccountAddress as `0x${string}`
     const subjectAddr = input.subjectAddress as `0x${string}`
 
+    // Verify reviewer has ACTIVE reviewer relationship to subject
     let hasReviewerRelationship = false
     try {
       const edgeIds = await getEdgesBySubject(myAgent)
@@ -85,14 +93,79 @@ export async function submitReview(input: SubmitReviewInput): Promise<SubmitRevi
       return { success: false, error: 'You need an active reviewer relationship with this agent. Request a reviewer role first and wait for approval.' }
     }
 
-    // Submit review on-chain via DelegationManager path
-    // For now, submit directly through deployer (Sprint 3 will route through DelegationManager)
-    const reviewAddr = process.env.AGENT_REVIEW_ADDRESS as `0x${string}`
-    if (!reviewAddr) return { success: false, error: 'Review contract not deployed' }
+    // Look up the stored delegation for this reviewer→subject pair
+    const storedDelegations = await db.select().from(schema.reviewDelegations)
+      .where(and(
+        eq(schema.reviewDelegations.reviewerAgentAddress, myAgent.toLowerCase()),
+        eq(schema.reviewDelegations.subjectAgentAddress, subjectAddr.toLowerCase()),
+        eq(schema.reviewDelegations.status, 'active'),
+      ))
+      .limit(1)
 
-    const walletClient = getWalletClient()
-    const publicClient = getPublicClient()
+    let delegation: Delegation
 
+    if (storedDelegations[0]) {
+      // Check if delegation is expired
+      const expiresAt = new Date(storedDelegations[0].expiresAt)
+      if (expiresAt < new Date()) {
+        // Mark as expired and re-issue
+        await db.update(schema.reviewDelegations)
+          .set({ status: 'expired' })
+          .where(eq(schema.reviewDelegations.id, storedDelegations[0].id))
+
+        const result = await issueReviewDelegation({
+          subjectAgentAddress: subjectAddr,
+          reviewerAgentAddress: myAgent,
+        })
+        delegation = result.delegation
+
+        // Store new delegation
+        await db.insert(schema.reviewDelegations).values({
+          id: crypto.randomUUID(),
+          reviewerAgentAddress: myAgent.toLowerCase(),
+          subjectAgentAddress: subjectAddr.toLowerCase(),
+          edgeId: storedDelegations[0].edgeId,
+          delegationJson: JSON.stringify(delegation, (_, v) =>
+            typeof v === 'bigint' ? v.toString() : v
+          ),
+          salt: delegation.salt.toString(),
+          expiresAt: result.expiresAt,
+        })
+      } else {
+        // Parse stored delegation (restore bigint fields)
+        const parsed = JSON.parse(storedDelegations[0].delegationJson)
+        delegation = {
+          ...parsed,
+          salt: BigInt(parsed.salt),
+          caveats: parsed.caveats.map((c: { enforcer: string; terms: string; args?: string }) => ({
+            enforcer: c.enforcer,
+            terms: c.terms,
+            args: c.args ?? '0x',
+          })),
+        } as Delegation
+      }
+    } else {
+      // No delegation stored — issue a new one (fallback for existing relationships)
+      const result = await issueReviewDelegation({
+        subjectAgentAddress: subjectAddr,
+        reviewerAgentAddress: myAgent,
+      })
+      delegation = result.delegation
+
+      await db.insert(schema.reviewDelegations).values({
+        id: crypto.randomUUID(),
+        reviewerAgentAddress: myAgent.toLowerCase(),
+        subjectAgentAddress: subjectAddr.toLowerCase(),
+        edgeId: '',
+        delegationJson: JSON.stringify(delegation, (_, v) =>
+          typeof v === 'bigint' ? v.toString() : v
+        ),
+        salt: delegation.salt.toString(),
+        expiresAt: result.expiresAt,
+      })
+    }
+
+    // Validate inputs
     const reviewTypeHash = REVIEW_TYPES[input.reviewType]
     const recHash = RECOMMENDATIONS[input.recommendation]
     if (!reviewTypeHash || !recHash) return { success: false, error: 'Invalid review type or recommendation' }
@@ -104,21 +177,21 @@ export async function submitReview(input: SubmitReviewInput): Promise<SubmitRevi
         score: Math.min(100, Math.max(0, d.score)),
       }))
 
-    const hash = await walletClient.writeContract({
-      address: reviewAddr,
-      abi: agentReviewRecordAbi,
-      functionName: 'createReview',
-      args: [
-        subjectAddr,
-        reviewTypeHash,
-        recHash,
-        Math.min(100, Math.max(0, input.overallScore)),
-        dimensionTuples,
-        input.comment,
-        '',
-      ],
+    // Submit review via DelegationManager.redeemDelegation()
+    // The delegation proves: subject agent authorized reviewer to call createReview
+    // The DelegationManager validates caveats (time + method + target) and
+    // executes through the subject agent's smart account
+    await redeemReviewDelegation({
+      delegation,
+      reviewerAgentAddress: myAgent,
+      subjectAgentAddress: subjectAddr,
+      reviewType: reviewTypeHash,
+      recommendation: recHash,
+      overallScore: Math.min(100, Math.max(0, input.overallScore)),
+      dimensions: dimensionTuples,
+      comment: input.comment,
+      evidenceURI: '',
     })
-    await publicClient.waitForTransactionReceipt({ hash })
 
     // Notify subject agent owner
     try {

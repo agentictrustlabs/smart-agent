@@ -24,7 +24,7 @@ const DIMENSIONS = [
   'accuracy', 'reliability', 'responsiveness', 'compliance', 'safety', 'transparency', 'helpfulness',
 ]
 
-interface Agent { address: string; name: string }
+interface Agent { address: string; name: string; delegationStatus: string; delegationExpiry: string | null }
 
 export function SubmitReviewClient({ reviewableAgents }: { reviewableAgents: Agent[] }) {
   const router = useRouter()
@@ -79,7 +79,8 @@ export function SubmitReviewClient({ reviewableAgents }: { reviewableAgents: Age
     )
   }
 
-  const selectedAgentName = reviewableAgents.find((a) => a.address === selectedAgent)?.name
+  const selectedAgentData = reviewableAgents.find((a) => a.address === selectedAgent)
+  const selectedAgentName = selectedAgentData?.name
 
   return (
     <form onSubmit={handleSubmit} data-component="deploy-form">
@@ -92,6 +93,34 @@ export function SubmitReviewClient({ reviewableAgents }: { reviewableAgents: Age
           ))}
         </select>
       </div>
+
+      {/* Delegation Status */}
+      {selectedAgentData && (
+        <div data-component="protocol-info" style={{ marginBottom: '1rem' }}>
+          <h3>Delegation Status (ERC-7710)</h3>
+          <dl>
+            <dt>Status</dt>
+            <dd>
+              <span
+                data-component="role-badge"
+                data-status={selectedAgentData.delegationStatus === 'active' ? 'active' : selectedAgentData.delegationStatus === 'expired' ? 'revoked' : 'proposed'}
+              >
+                {selectedAgentData.delegationStatus === 'active' ? 'Active Delegation' : selectedAgentData.delegationStatus === 'expired' ? 'Expired' : 'Will Issue on Submit'}
+              </span>
+            </dd>
+            {selectedAgentData.delegationExpiry && (
+              <>
+                <dt>Expires</dt>
+                <dd>{new Date(selectedAgentData.delegationExpiry).toLocaleString()}</dd>
+              </>
+            )}
+            <dt>Flow</dt>
+            <dd style={{ fontSize: '0.8rem', color: '#8888a0' }}>
+              DelegationManager.redeemDelegation() → Agent Account → AgentReviewRecord.createReview()
+            </dd>
+          </dl>
+        </div>
+      )}
 
       {/* Review Type */}
       <div data-component="form-field">
@@ -163,7 +192,7 @@ export function SubmitReviewClient({ reviewableAgents }: { reviewableAgents: Age
       {error && <p role="alert" data-component="error-message">{error}</p>}
 
       <button type="submit" disabled={submitting}>
-        {submitting ? 'Submitting review on-chain...' : `Submit Review for ${selectedAgentName}`}
+        {submitting ? 'Submitting via DelegationManager...' : `Submit Review for ${selectedAgentName}`}
       </button>
     </form>
   )

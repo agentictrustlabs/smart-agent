@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1775760946175,
+      "tag": "0000_shallow_dracula",
+      "breakpoints": true
+    }
+  ]
+}

@@ -1,11 +1,11 @@
 'use server'
 
 import { requireSession } from '@/lib/auth/session'
-import { createRelationship, confirmRelationship } from '@/lib/contracts'
+import { createRelationship, confirmRelationship, issueReviewDelegation } from '@/lib/contracts'
 import { db, schema } from '@/db'
 import { eq } from 'drizzle-orm'
 import { keccak256, toBytes } from 'viem'
-import { ORGANIZATION_MEMBERSHIP } from '@smart-agent/sdk'
+import { ORGANIZATION_MEMBERSHIP, ROLE_REVIEWER } from '@smart-agent/sdk'
 
 function roleToHash(role: string): `0x${string}` {
   return keccak256(toBytes(role))
@@ -56,6 +56,30 @@ export async function assertRelationship(
       // Auto-confirm: user owns both sides, no counterparty needed
       try {
         await confirmRelationship(edgeId)
+
+        // Auto-issue review delegation if this is a reviewer relationship
+        if (roleHash === keccak256(toBytes('reviewer'))) {
+          try {
+            const { delegation, expiresAt } = await issueReviewDelegation({
+              subjectAgentAddress: input.orgAgentAddress as `0x${string}`,
+              reviewerAgentAddress: input.personAgentAddress as `0x${string}`,
+            })
+            await db.insert(schema.reviewDelegations).values({
+              id: crypto.randomUUID(),
+              reviewerAgentAddress: input.personAgentAddress.toLowerCase(),
+              subjectAgentAddress: input.orgAgentAddress.toLowerCase(),
+              edgeId,
+              delegationJson: JSON.stringify(delegation, (_, v) =>
+                typeof v === 'bigint' ? v.toString() : v
+              ),
+              salt: delegation.salt.toString(),
+              expiresAt,
+            })
+          } catch (e) {
+            console.error('Failed to auto-issue review delegation:', e)
+          }
+        }
+
         return { success: true, edgeId, autoConfirmed: true }
       } catch {
         // Confirm failed but edge was created — still success, just not confirmed
@@ -89,15 +113,17 @@ export async function assertRelationship(
 
 /** Check if user owns an agent (created it or is a person agent owner) */
 async function checkUserOwnsAgent(userId: string, agentAddress: string): Promise<boolean> {
-  // Check if user created this org
   const orgAgent = await db.select().from(schema.orgAgents)
     .where(eq(schema.orgAgents.smartAccountAddress, agentAddress)).limit(1)
   if (orgAgent[0] && orgAgent[0].createdBy === userId) return true
 
-  // Check if user's person agent is this address
   const personAgent = await db.select().from(schema.personAgents)
     .where(eq(schema.personAgents.smartAccountAddress, agentAddress)).limit(1)
   if (personAgent[0] && personAgent[0].userId === userId) return true
+
+  const aiAgent = await db.select().from(schema.aiAgents)
+    .where(eq(schema.aiAgents.smartAccountAddress, agentAddress)).limit(1)
+  if (aiAgent[0] && aiAgent[0].createdBy === userId) return true
 
   return false
 }

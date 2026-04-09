@@ -84,32 +84,46 @@ On confirmation, the system:
 
 ## Implementation Sprints
 
-### Sprint 1: Review Submission UI + Server Action
+### Sprint 1: Review Submission UI + Server Action ✅
 **Developer:**
-- [ ] Create `/reviews/submit` page with review form
-- [ ] `SubmitReviewClient.tsx` — form with agent selector, review type, scores, comment
-- [ ] Server action `submit-review.action.ts` — calls AgentReviewRecord.createReview()
-- [ ] Only show agents where user has confirmed reviewer relationship
-- [ ] Notification to agent owner on review submission
+- [x] Create `/reviews/submit` page with review form
+- [x] `SubmitReviewClient.tsx` — form with agent selector, review type, scores, comment
+- [x] Server action `submit-review.action.ts` — calls AgentReviewRecord.createReview()
+- [x] Only show agents where user has confirmed reviewer relationship
+- [x] Notification to agent owner on review submission
 
-### Sprint 2: Delegation Template for Reviewers
+### Sprint 2: Delegation Template for Reviewers ✅
 **Developer:**
-- [ ] Create "Reviewer Access" template in seed script
-- [ ] Template: ReviewRelationship + reviewer role
-- [ ] Required caveats: TimestampEnforcer, AllowedMethodsEnforcer
-- [ ] On relationship confirm, auto-create delegation if template exists
+- [x] Create "Reviewer Access" template in seed script
+- [x] Template: ReviewRelationship + reviewer role
+- [x] Required caveats: TimestampEnforcer, AllowedMethodsEnforcer
+- [x] On relationship confirm, auto-create delegation if template exists
+- [x] Store delegation in `reviewDelegations` DB table
 
-### Sprint 3: Route Review Through DelegationManager
+### Sprint 3: Route Review Through DelegationManager ✅
 **Developer + Web3:**
-- [ ] Build delegation for reviewer: delegator=agent, delegate=reviewer, caveats from template
-- [ ] Sign delegation via DelegationManager
-- [ ] Submit review via DelegationManager.redeemDelegation()
-- [ ] Verify caveats enforce correctly (time + method)
+- [x] Build delegation for reviewer: delegator=agent, delegate=reviewer, caveats from template
+- [x] Sign delegation via DelegationManager (deployer signs as ERC-1271 owner)
+- [x] Submit review via DelegationManager.redeemDelegation()
+- [x] Caveats enforce: TimestampEnforcer (7d window), AllowedMethodsEnforcer (createReview), AllowedTargetsEnforcer (AgentReviewRecord)
+- [x] DelegationManager executes through delegator account (ERC-7710 pattern)
+- [x] Auto-renew expired delegations on submit
+
+### Sprint 3.5: ERC-7710 Compliance ✅
+**Web3:**
+- [x] Updated DelegationManager to ERC-7710 / MetaMask DeleGator patterns
+- [x] Caveat struct now includes `args` field (redeemer-provided, excluded from hash)
+- [x] Enforcers use beforeHook/afterHook pattern (revert on failure, not bool return)
+- [x] Execution goes through delegator's smart account (executeFromExecutor pattern)
+- [x] Support for open delegations (delegate = address(0xa11))
+- [x] Full leaf-to-root chain validation with delegate address checking
+- [x] After-hooks run in reverse order (root-to-leaf per DeleGator convention)
+- [x] AgentRootAccount.setDelegationManager() for ERC-7710 executor authorization
 
 ### Sprint 4: Testing
 **Tester + QA:**
 - [ ] E2E: request reviewer relationship → confirm → submit review → verify on-chain
-- [ ] Test expired delegation (should fail after 24h)
+- [ ] Test expired delegation (should fail after 7d)
 - [ ] Test wrong method selector (should fail)
 - [ ] Test review without relationship (should fail)
 - [ ] Test review with unconfirmed relationship (should fail)
@@ -117,13 +131,28 @@ On confirmation, the system:
 ## Contract Interactions
 
 ```
-1. AgentRelationship.createEdge(reviewer, agent, ReviewRelationship, [reviewer])
-2. AgentRelationship.setEdgeStatus(edgeId, CONFIRMED → ACTIVE)
-3. DelegationManager.redeemDelegation(
-     delegations: [{delegator: agent, delegate: reviewer, caveats: [...]}],
-     target: AgentReviewRecord,
-     value: 0,
-     data: createReview(...)
-   )
-4. AgentReviewRecord.createReview(subject, type, rec, score, dimensions, comment, evidence)
+1. AgentRelationship.createEdge(reviewer, agent, ReviewRelationship, [reviewer]) → PROPOSED
+2. AgentRelationship.setEdgeStatus(edgeId, CONFIRMED → ACTIVE) + auto-issue delegation
+3. DelegationManager.issueDelegation():
+     - delegator = subject agent smart account
+     - delegate = reviewer's person agent
+     - caveats = [TimestampEnforcer(7d), AllowedMethodsEnforcer(createReview), AllowedTargetsEnforcer(AgentReviewRecord)]
+     - signed by deployer (ERC-1271 owner of subject agent)
+4. DelegationManager.redeemDelegation():
+     - Validates delegation chain (leaf to root)
+     - Runs beforeHook on each caveat (time, method, target)
+     - Calls subjectAgent.execute(AgentReviewRecord, 0, createReview(...))
+     - Runs afterHook in reverse order
+5. AgentReviewRecord.createReview(reviewer, subject, type, rec, score, dimensions, comment, evidence)
+     - msg.sender = subject agent (delegator account)
+     - reviewer = reviewer's person agent address
 ```
+
+## ERC-7710 Alignment
+
+The delegation flow follows ERC-7710 and MetaMask DeleGator framework patterns:
+- **Caveat struct**: `{enforcer, terms, args}` — args are redeemer-provided runtime data
+- **Enforcer interface**: `beforeHook`/`afterHook` that revert on failure
+- **Execution path**: DelegationManager → delegator.execute() → target.createReview()
+- **Signature**: EIP-712 typed data, ERC-1271 validation for smart accounts
+- **Open delegations**: `delegate = 0xa11` allows any redeemer (caveats gate access)

@@ -98,6 +98,43 @@ export const aiAgents = sqliteTable('ai_agents', {
     .$defaultFn(() => new Date().toISOString()),
 })
 
+// ─── Review Records (maps on-chain reviewId to actual reviewer) ──────
+
+export const reviewRecords = sqliteTable('review_records', {
+  id: text('id').primaryKey(),
+  onChainReviewId: integer('on_chain_review_id'),
+  reviewerUserId: text('reviewer_user_id').notNull().references(() => users.id),
+  reviewerAgentAddress: text('reviewer_agent_address').notNull(),
+  subjectAddress: text('subject_address').notNull(),
+  reviewType: text('review_type').notNull(),
+  recommendation: text('recommendation').notNull(),
+  overallScore: integer('overall_score').notNull(),
+  comment: text('comment'),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+})
+
+// ─── Review Delegations (delegation chain for reviewer→subject) ─────
+
+export const reviewDelegations = sqliteTable('review_delegations', {
+  id: text('id').primaryKey(),
+  /** Reviewer's person agent smart account address (delegate) */
+  reviewerAgentAddress: text('reviewer_agent_address').notNull(),
+  /** Subject agent smart account address (delegator) */
+  subjectAgentAddress: text('subject_agent_address').notNull(),
+  /** The relationship edge ID that authorized this delegation */
+  edgeId: text('edge_id').notNull(),
+  /** Serialized Delegation struct (JSON with signature) */
+  delegationJson: text('delegation_json').notNull(),
+  /** Salt used for this delegation */
+  salt: text('salt').notNull(),
+  /** When the delegation expires (from TimestampEnforcer) */
+  expiresAt: text('expires_at').notNull(),
+  status: text('status', { enum: ['active', 'expired', 'revoked', 'used'] })
+    .notNull()
+    .default('active'),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+})
+
 // ─── Invites ─────────────────────────────────────────────────────────
 
 export const invites = sqliteTable('invites', {

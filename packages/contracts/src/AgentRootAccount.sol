@@ -25,6 +25,9 @@ contract AgentRootAccount is BaseAccount, Initializable, IAgentAccount, IERC1271
     /// @dev The ERC-4337 EntryPoint contract
     IEntryPoint private immutable _entryPoint;
 
+    /// @dev Authorized DelegationManager (ERC-7710 executor)
+    address private _delegationManager;
+
     /// @dev Owner set
     mapping(address => bool) private _owners;
     uint256 private _ownerCount;
@@ -62,6 +65,25 @@ contract AgentRootAccount is BaseAccount, Initializable, IAgentAccount, IERC1271
         emit OwnerAdded(initialOwner);
     }
 
+    /**
+     * @notice Set the DelegationManager authorized to execute on behalf of this account.
+     *         Following ERC-7710 pattern: DelegationManager calls execute() after
+     *         validating the delegation chain and caveats.
+     *         Can be called by an owner (for initial setup) or by the account itself.
+     */
+    function setDelegationManager(address dm) external {
+        // Allow owners to set during initial setup, or the account itself
+        if (msg.sender != address(this) && !_owners[msg.sender]) {
+            revert NotFromSelf();
+        }
+        _delegationManager = dm;
+    }
+
+    /// @notice Get the currently authorized DelegationManager.
+    function delegationManager() external view returns (address) {
+        return _delegationManager;
+    }
+
     // ─── ERC-4337 ───────────────────────────────────────────────────
 
     /// @inheritdoc BaseAccount
@@ -82,9 +104,13 @@ contract AgentRootAccount is BaseAccount, Initializable, IAgentAccount, IERC1271
         return 1; // SIG_VALIDATION_FAILED
     }
 
-    /// @dev Allow execution from EntryPoint or from the account itself (self-calls via UserOp)
+    /// @dev Allow execution from EntryPoint, account itself (via UserOp), or DelegationManager (ERC-7710)
     function _requireForExecute() internal view override {
-        if (msg.sender != address(entryPoint()) && msg.sender != address(this)) {
+        if (
+            msg.sender != address(entryPoint()) &&
+            msg.sender != address(this) &&
+            msg.sender != _delegationManager
+        ) {
             revert NotFromEntryPoint(msg.sender, address(this), address(entryPoint()));
         }
     }

@@ -13,13 +13,19 @@ export default async function ReviewsPage() {
   const allUsers = await db.select().from(schema.users)
   const allPerson = await db.select().from(schema.personAgents)
   const allOrg = await db.select().from(schema.orgAgents)
+  const allAI = await db.select().from(schema.aiAgents)
   const nameMap = new Map<string, string>()
   for (const p of allPerson) {
     const u = allUsers.find((u) => u.id === p.userId)
-    nameMap.set(p.smartAccountAddress.toLowerCase(), u?.name ?? 'Agent')
+    nameMap.set(p.smartAccountAddress.toLowerCase(), (p as Record<string, unknown>).name as string || u?.name || 'Person Agent')
   }
   for (const o of allOrg) nameMap.set(o.smartAccountAddress.toLowerCase(), o.name)
-  const getName = (a: string) => nameMap.get(a.toLowerCase()) ?? `${a.slice(0, 6)}...`
+  for (const a of allAI) nameMap.set(a.smartAccountAddress.toLowerCase(), a.name)
+  // Also map EOA wallet addresses to user names (for reviewer display)
+  for (const u of allUsers) {
+    if (u.walletAddress) nameMap.set(u.walletAddress.toLowerCase(), u.name)
+  }
+  const getName = (a: string) => nameMap.get(a.toLowerCase()) ?? `${a.slice(0, 6)}...${a.slice(-4)}`
 
   type ReviewView = {
     id: number; reviewer: string; subject: string; reviewType: string
@@ -33,19 +39,22 @@ export default async function ReviewsPage() {
 
   const reviews: ReviewView[] = []
   const disputes: DisputeView[] = []
-  const recNames: Record<string, string> = { '0x': 'unknown' }
 
   try {
     const rCount = (await client.readContract({ address: reviewAddr, abi: agentReviewRecordAbi, functionName: 'reviewCount' })) as bigint
     for (let i = 0n; i < rCount; i++) {
       const r = (await client.readContract({ address: reviewAddr, abi: agentReviewRecordAbi, functionName: 'getReview', args: [i] })) as {
         reviewId: bigint; reviewer: string; subject: string; reviewType: `0x${string}`
-        recommendation: `0x${string}`; overallScore: number; comment: string; evidenceURI: string
-        createdAt: bigint; revoked: boolean
+        recommendation: `0x${string}`; overallScore: number; signedValue: bigint; valueDecimals: number
+        tag1: string; tag2: string; endpoint: string; comment: string; evidenceURI: string
+        feedbackHash: `0x${string}`; createdAt: bigint; revoked: boolean
       }
       reviews.push({
-        id: Number(r.reviewId), reviewer: getName(r.reviewer), subject: getName(r.subject),
-        reviewType: 'Review', recommendation: r.overallScore >= 70 ? 'positive' : r.overallScore >= 50 ? 'neutral' : 'negative',
+        id: Number(r.reviewId),
+        reviewer: getName(r.reviewer),  // now resolves correctly — reviewer is person agent address
+        subject: getName(r.subject),
+        reviewType: 'Review',
+        recommendation: r.overallScore >= 70 ? 'positive' : r.overallScore >= 50 ? 'neutral' : 'negative',
         score: r.overallScore, comment: r.comment, revoked: r.revoked,
       })
     }

@@ -3,12 +3,21 @@ import { privateKeyToAccount } from 'viem/accounts'
 import { foundry, sepolia } from 'viem/chains'
 import {
   agentAccountFactoryAbi,
+  agentRootAccountAbi,
   agentRelationshipAbi,
   agentAssertionAbi,
   agentResolverAbi,
   agentTemplateAbi,
+  delegationManagerAbi,
+  agentReviewRecordAbi,
+  encodeTimestampTerms,
+  encodeAllowedMethodsTerms,
+  encodeAllowedTargetsTerms,
+  buildCaveat,
 } from '@smart-agent/sdk'
-import type { DeployedContracts } from '@smart-agent/types'
+import { encodeFunctionData } from 'viem'
+import type { DeployedContracts, Delegation } from '@smart-agent/types'
+import { ROOT_AUTHORITY } from '@smart-agent/types'
 
 const RPC_URL = process.env.RPC_URL ?? 'http://127.0.0.1:8545'
 const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? '31337')
@@ -112,7 +121,34 @@ export async function deploySmartAccount(
   })
 
   await publicClient.waitForTransactionReceipt({ hash })
+
+  // Set DelegationManager on the new account (ERC-7710: authorize delegation execution)
+  try {
+    await setAgentDelegationManager(address)
+  } catch (e) {
+    console.error('Failed to set DelegationManager on account:', e)
+  }
+
   return address
+}
+
+/**
+ * Set the DelegationManager on an agent account.
+ * This authorizes the DelegationManager to call execute() on the account
+ * when redeeming delegations (ERC-7710 pattern).
+ */
+export async function setAgentDelegationManager(agentAddress: `0x${string}`): Promise<void> {
+  const walletClient = getWalletClient()
+  const publicClient = getPublicClient()
+  const contracts = getDeployedContracts()
+
+  const hash = await walletClient.writeContract({
+    address: agentAddress,
+    abi: agentRootAccountAbi,
+    functionName: 'setDelegationManager',
+    args: [contracts.delegationManager],
+  })
+  await publicClient.waitForTransactionReceipt({ hash })
 }
 
 // ─── Relationship Protocol (3 contracts) ────────────────────────────
@@ -386,4 +422,142 @@ export async function getTemplatesByTypeAndRole(
     functionName: 'getTemplatesByTypeAndRole',
     args: [relationshipType, role],
   })) as bigint[]
+}
+
+// ─── Review Delegation (DelegationManager flow) ────────────────────
+
+/** Default delegation duration: 7 days */
+const REVIEW_DELEGATION_DURATION = 7 * 24 * 60 * 60
+
+/**
+ * Issue a delegation from a subject agent to a reviewer.
+ * The delegation authorizes the reviewer to call createReview() on the AgentReviewRecord
+ * contract, constrained by:
+ *   - TimestampEnforcer: valid for REVIEW_DELEGATION_DURATION
+ *   - AllowedMethodsEnforcer: only createReview selector
+ *   - AllowedTargetsEnforcer: only the AgentReviewRecord contract
+ *
+ * The deployer signs on behalf of the subject agent (deployer is owner via ERC-1271).
+ */
+export async function issueReviewDelegation(params: {
+  subjectAgentAddress: `0x${string}`
+  reviewerAgentAddress: `0x${string}`
+}): Promise<{ delegation: Delegation; expiresAt: string }> {
+  const walletClient = getWalletClient()
+  const publicClient = getPublicClient()
+  const contracts = getDeployedContracts()
+
+  const reviewAddr = process.env.AGENT_REVIEW_ADDRESS as `0x${string}`
+  if (!reviewAddr) throw new Error('AGENT_REVIEW_ADDRESS not set')
+
+  // Build caveats
+  const now = Math.floor(Date.now() / 1000)
+  const expiresAtUnix = now + REVIEW_DELEGATION_DURATION
+  const expiresAt = new Date(expiresAtUnix * 1000).toISOString()
+
+  // 1. Time window
+  const timeCaveat = buildCaveat(
+    contracts.enforcers.timestamp,
+    encodeTimestampTerms(now, expiresAtUnix),
+  )
+
+  // 2. Only createReview function selector
+  const createReviewSelector = '0x7e653da2' as `0x${string}` // createReview(address,address,bytes32,bytes32,uint8,(bytes32,uint8)[],string,string)
+  const methodsCaveat = buildCaveat(
+    contracts.enforcers.allowedMethods,
+    encodeAllowedMethodsTerms([createReviewSelector]),
+  )
+
+  // 3. Only AgentReviewRecord contract
+  const targetsCaveat = buildCaveat(
+    contracts.enforcers.allowedTargets,
+    encodeAllowedTargetsTerms([reviewAddr]),
+  )
+
+  const caveats = [timeCaveat, methodsCaveat, targetsCaveat]
+  const salt = BigInt(Math.floor(Math.random() * Number.MAX_SAFE_INTEGER))
+
+  // Build unsigned delegation
+  const delegation: Delegation = {
+    delegator: params.subjectAgentAddress,
+    delegate: params.reviewerAgentAddress,
+    authority: ROOT_AUTHORITY as `0x${string}`,
+    caveats,
+    salt,
+    signature: '0x',
+  }
+
+  // Get the delegation hash from the contract
+  const hash = await publicClient.readContract({
+    address: contracts.delegationManager,
+    abi: delegationManagerAbi,
+    functionName: 'hashDelegation',
+    args: [delegation],
+  }) as `0x${string}`
+
+  // Sign with deployer (who is owner of the subject agent smart account → ERC-1271 validates)
+  const signature = await walletClient.signMessage({
+    account: walletClient.account!,
+    message: { raw: hash },
+  })
+
+  return {
+    delegation: { ...delegation, signature },
+    expiresAt,
+  }
+}
+
+/**
+ * Redeem a review delegation — submit a review through DelegationManager.
+ * The delegation proves the subject agent authorized the reviewer.
+ */
+export async function redeemReviewDelegation(params: {
+  delegation: Delegation
+  reviewerAgentAddress: `0x${string}`
+  subjectAgentAddress: `0x${string}`
+  reviewType: `0x${string}`
+  recommendation: `0x${string}`
+  overallScore: number
+  dimensions: Array<{ dimension: `0x${string}`; score: number }>
+  comment: string
+  evidenceURI: string
+}): Promise<`0x${string}`> {
+  const walletClient = getWalletClient()
+  const publicClient = getPublicClient()
+  const contracts = getDeployedContracts()
+
+  const reviewAddr = process.env.AGENT_REVIEW_ADDRESS as `0x${string}`
+  if (!reviewAddr) throw new Error('AGENT_REVIEW_ADDRESS not set')
+
+  // Encode the createReview calldata
+  const calldata = encodeFunctionData({
+    abi: agentReviewRecordAbi,
+    functionName: 'createReview',
+    args: [
+      params.reviewerAgentAddress,
+      params.subjectAgentAddress,
+      params.reviewType,
+      params.recommendation,
+      params.overallScore,
+      params.dimensions,
+      params.comment,
+      params.evidenceURI,
+    ],
+  })
+
+  // Redeem the delegation — DelegationManager validates caveats and executes
+  const hash = await walletClient.writeContract({
+    address: contracts.delegationManager,
+    abi: delegationManagerAbi,
+    functionName: 'redeemDelegation',
+    args: [
+      [params.delegation],  // delegation chain (single root delegation)
+      reviewAddr,            // target contract
+      0n,                    // no ETH value
+      calldata,              // createReview calldata
+    ],
+  })
+
+  await publicClient.waitForTransactionReceipt({ hash })
+  return hash
 }

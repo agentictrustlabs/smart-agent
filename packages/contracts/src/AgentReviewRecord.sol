@@ -42,10 +42,23 @@ contract AgentReviewRecord {
         bytes32 reviewType;        // REVIEW_PERFORMANCE, etc.
         bytes32 recommendation;    // REC_ENDORSES, REC_FLAGS, etc.
         uint8 overallScore;        // 0-100
+        int128 signedValue;        // ERC-8004 style: signed value with decimals
+        uint8 valueDecimals;       // decimal precision (0-18)
+        string tag1;               // free-form category tag
+        string tag2;               // free-form sub-category tag
+        string endpoint;           // specific endpoint/tool/capability being reviewed
         string comment;            // review text or URI
         string evidenceURI;        // supporting evidence
+        bytes32 feedbackHash;      // content integrity hash
         uint256 createdAt;
         bool revoked;
+    }
+
+    struct Response {
+        address responder;
+        string responseURI;
+        bytes32 responseHash;
+        uint256 createdAt;
     }
 
     // ─── Dimension Constants ────────────────────────────────────────
@@ -62,8 +75,12 @@ contract AgentReviewRecord {
 
     Review[] private _reviews;
     mapping(uint256 => DimensionScore[]) private _dimensions;
+    mapping(uint256 => Response[]) private _responses;
     mapping(address => uint256[]) private _bySubject;
     mapping(address => uint256[]) private _byReviewer;
+    /// @dev subject → unique reviewer addresses
+    mapping(address => address[]) private _reviewers;
+    mapping(address => mapping(address => bool)) private _reviewerExists;
 
     // ─── Events ─────────────────────────────────────────────────────
 
@@ -78,14 +95,29 @@ contract AgentReviewRecord {
 
     event ReviewRevoked(uint256 indexed reviewId, address indexed revoker);
 
+    event ResponseAppended(
+        uint256 indexed reviewId,
+        address indexed responder,
+        string responseURI,
+        bytes32 responseHash
+    );
+
     error ReviewNotFound();
     error NotAuthorized();
     error AlreadyRevoked();
     error InvalidScore();
+    error SelfFeedbackNotAllowed();
 
     // ─── Create ─────────────────────────────────────────────────────
 
+    /**
+     * @notice Create a review. The `reviewer` parameter is the actual reviewer's
+     *         agent address (not necessarily msg.sender, since the server may relay).
+     *         When routed through DelegationManager in the future, msg.sender
+     *         will be the DelegationManager and reviewer will be the delegator.
+     */
     function createReview(
+        address reviewer,
         address subject,
         bytes32 reviewType,
         bytes32 recommendation,
@@ -99,16 +131,25 @@ contract AgentReviewRecord {
             if (dimensions[i].score > 100) revert InvalidScore();
         }
 
+        // Anti-self-feedback: reviewer cannot be the subject
+        if (reviewer == subject) revert SelfFeedbackNotAllowed();
+
         reviewId = _reviews.length;
         _reviews.push(Review({
             reviewId: reviewId,
-            reviewer: msg.sender,
+            reviewer: reviewer,
             subject: subject,
             reviewType: reviewType,
             recommendation: recommendation,
             overallScore: overallScore,
+            signedValue: int128(int8(overallScore)), // default signed value from score
+            valueDecimals: 0,
+            tag1: "",
+            tag2: "",
+            endpoint: "",
             comment: comment,
             evidenceURI: evidenceURI,
+            feedbackHash: bytes32(0),
             createdAt: block.timestamp,
             revoked: false
         }));
@@ -118,7 +159,13 @@ contract AgentReviewRecord {
         }
 
         _bySubject[subject].push(reviewId);
-        _byReviewer[msg.sender].push(reviewId);
+        _byReviewer[reviewer].push(reviewId);
+
+        // Track unique reviewers
+        if (!_reviewerExists[subject][reviewer]) {
+            _reviewers[subject].push(reviewer);
+            _reviewerExists[subject][reviewer] = true;
+        }
 
         emit ReviewCreated(reviewId, msg.sender, subject, reviewType, recommendation, overallScore);
     }
@@ -170,5 +217,43 @@ contract AgentReviewRecord {
             }
         }
         if (count > 0) avg = total / count;
+    }
+
+    // ─── Responses (ERC-8004 inspired) ──────────────────────────────
+
+    /**
+     * @notice Append a response to a review (rebuttal, explanation, follow-up).
+     *         Anyone can respond, but typically the subject agent owner responds.
+     */
+    function appendResponse(
+        uint256 reviewId,
+        string calldata responseURI,
+        bytes32 responseHash
+    ) external {
+        if (reviewId >= _reviews.length) revert ReviewNotFound();
+        require(bytes(responseURI).length > 0, "Empty URI");
+
+        _responses[reviewId].push(Response({
+            responder: msg.sender,
+            responseURI: responseURI,
+            responseHash: responseHash,
+            createdAt: block.timestamp
+        }));
+
+        emit ResponseAppended(reviewId, msg.sender, responseURI, responseHash);
+    }
+
+    function getResponses(uint256 reviewId) external view returns (Response[] memory) {
+        return _responses[reviewId];
+    }
+
+    function getResponseCount(uint256 reviewId) external view returns (uint256) {
+        return _responses[reviewId].length;
+    }
+
+    // ─── Reviewer Tracking ──────────────────────────────────────────
+
+    function getReviewers(address subject) external view returns (address[] memory) {
+        return _reviewers[subject];
     }
 }

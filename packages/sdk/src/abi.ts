@@ -11,6 +11,8 @@ export const agentRootAccountAbi = [
   { type: 'function', name: 'execute', inputs: [{ name: 'target', type: 'address' }, { name: 'value', type: 'uint256' }, { name: 'data', type: 'bytes' }], outputs: [], stateMutability: 'nonpayable' },
   { type: 'function', name: 'executeBatch', inputs: [{ name: 'calls', type: 'tuple[]', components: [{ name: 'target', type: 'address' }, { name: 'value', type: 'uint256' }, { name: 'data', type: 'bytes' }] }], outputs: [], stateMutability: 'nonpayable' },
   { type: 'function', name: 'isValidSignature', inputs: [{ name: 'hash', type: 'bytes32' }, { name: 'signature', type: 'bytes' }], outputs: [{ name: '', type: 'bytes4' }], stateMutability: 'view' },
+  { type: 'function', name: 'setDelegationManager', inputs: [{ name: 'dm', type: 'address' }], outputs: [], stateMutability: 'nonpayable' },
+  { type: 'function', name: 'delegationManager', inputs: [], outputs: [{ name: '', type: 'address' }], stateMutability: 'view' },
   { type: 'event', name: 'OwnerAdded', inputs: [{ name: 'owner', type: 'address', indexed: true }] },
   { type: 'event', name: 'OwnerRemoved', inputs: [{ name: 'owner', type: 'address', indexed: true }] },
 ] as const
@@ -37,6 +39,7 @@ export const delegationManagerAbi = [
         { name: 'caveats', type: 'tuple[]', components: [
           { name: 'enforcer', type: 'address' },
           { name: 'terms', type: 'bytes' },
+          { name: 'args', type: 'bytes' },
         ]},
         { name: 'salt', type: 'uint256' },
         { name: 'signature', type: 'bytes' },
@@ -221,8 +224,8 @@ export const agentValidationProfileAbi = [
 // ─── AgentReviewRecord ABI ───────────────────────────────────────────
 
 export const agentReviewRecordAbi = [
-  { type: 'function', name: 'createReview', inputs: [{ name: 'subject', type: 'address' }, { name: 'reviewType', type: 'bytes32' }, { name: 'recommendation', type: 'bytes32' }, { name: 'overallScore', type: 'uint8' }, { name: 'dimensions', type: 'tuple[]', components: [{ name: 'dimension', type: 'bytes32' }, { name: 'score', type: 'uint8' }] }, { name: 'comment', type: 'string' }, { name: 'evidenceURI', type: 'string' }], outputs: [{ name: 'reviewId', type: 'uint256' }], stateMutability: 'nonpayable' },
-  { type: 'function', name: 'getReview', inputs: [{ name: 'reviewId', type: 'uint256' }], outputs: [{ name: '', type: 'tuple', components: [{ name: 'reviewId', type: 'uint256' }, { name: 'reviewer', type: 'address' }, { name: 'subject', type: 'address' }, { name: 'reviewType', type: 'bytes32' }, { name: 'recommendation', type: 'bytes32' }, { name: 'overallScore', type: 'uint8' }, { name: 'comment', type: 'string' }, { name: 'evidenceURI', type: 'string' }, { name: 'createdAt', type: 'uint256' }, { name: 'revoked', type: 'bool' }] }], stateMutability: 'view' },
+  { type: 'function', name: 'createReview', inputs: [{ name: 'reviewer', type: 'address' }, { name: 'subject', type: 'address' }, { name: 'reviewType', type: 'bytes32' }, { name: 'recommendation', type: 'bytes32' }, { name: 'overallScore', type: 'uint8' }, { name: 'dimensions', type: 'tuple[]', components: [{ name: 'dimension', type: 'bytes32' }, { name: 'score', type: 'uint8' }] }, { name: 'comment', type: 'string' }, { name: 'evidenceURI', type: 'string' }], outputs: [{ name: 'reviewId', type: 'uint256' }], stateMutability: 'nonpayable' },
+  { type: 'function', name: 'getReview', inputs: [{ name: 'reviewId', type: 'uint256' }], outputs: [{ name: '', type: 'tuple', components: [{ name: 'reviewId', type: 'uint256' }, { name: 'reviewer', type: 'address' }, { name: 'subject', type: 'address' }, { name: 'reviewType', type: 'bytes32' }, { name: 'recommendation', type: 'bytes32' }, { name: 'overallScore', type: 'uint8' }, { name: 'signedValue', type: 'int128' }, { name: 'valueDecimals', type: 'uint8' }, { name: 'tag1', type: 'string' }, { name: 'tag2', type: 'string' }, { name: 'endpoint', type: 'string' }, { name: 'comment', type: 'string' }, { name: 'evidenceURI', type: 'string' }, { name: 'feedbackHash', type: 'bytes32' }, { name: 'createdAt', type: 'uint256' }, { name: 'revoked', type: 'bool' }] }], stateMutability: 'view' },
   { type: 'function', name: 'getDimensions', inputs: [{ name: 'reviewId', type: 'uint256' }], outputs: [{ name: '', type: 'tuple[]', components: [{ name: 'dimension', type: 'bytes32' }, { name: 'score', type: 'uint8' }] }], stateMutability: 'view' },
   { type: 'function', name: 'getReviewsBySubject', inputs: [{ name: 'subject', type: 'address' }], outputs: [{ name: '', type: 'uint256[]' }], stateMutability: 'view' },
   { type: 'function', name: 'getAverageScore', inputs: [{ name: 'subject', type: 'address' }], outputs: [{ name: 'avg', type: 'uint256' }, { name: 'count', type: 'uint256' }], stateMutability: 'view' },

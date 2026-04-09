@@ -33,10 +33,11 @@ export interface CreateAgentAccountParams {
 
 // ─── Delegation Types ───────────────────────────────────────────────
 
-/** On-chain caveat — references an enforcer contract */
+/** On-chain caveat — references an enforcer contract (ERC-7710 / DeleGator aligned) */
 export interface Caveat {
   enforcer: `0x${string}`
   terms: `0x${string}`
+  args: `0x${string}`  // redeemer-provided runtime arguments (excluded from delegation hash)
 }
 
 /** Signed delegation from delegator to delegate */

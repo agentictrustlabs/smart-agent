@@ -51,6 +51,19 @@ echo "Carol:  $CAROL_AGENT"
 echo "ATL:    $ORG_ATL"
 echo "DeFi:   $ORG_DEFI"
 
+# Set DelegationManager on all accounts (ERC-7710: authorize delegation execution)
+DM="${DELEGATION_MANAGER_ADDRESS}"
+set_dm() {
+  cast send "$1" "setDelegationManager(address)" "$DM" --rpc-url "$RPC" --private-key "$KEY" > /dev/null 2>&1
+}
+echo ""
+echo "Setting DelegationManager on initial agents..."
+set_dm "$ALICE_AGENT"
+set_dm "$BOB_AGENT"
+set_dm "$CAROL_AGENT"
+set_dm "$ORG_ATL"
+set_dm "$ORG_DEFI"
+
 # Helper: create edge with roles, activate, and assert
 create_relationship() {
   local subject=$1 object=$2 relType=$3 metaURI=$4
@@ -259,6 +272,12 @@ echo "TrustValidator:  $TRUST_VALIDATOR"
 TEE_RUNTIME=$(deploy_agent 3004)
 echo "TEE Runtime:     $TEE_RUNTIME"
 
+echo "Setting DelegationManager on additional agents..."
+set_dm "$INSURECO"
+set_dm "$STAKEPOOL"
+set_dm "$TRUST_VALIDATOR"
+set_dm "$TEE_RUNTIME"
+
 # ─── Register Issuers ───────────────────────────────────────────────
 
 ISSUER_CONTRACT="${AGENT_ISSUER_ADDRESS}"
@@ -387,6 +406,15 @@ echo "Reviewer Eve:       $REVIEWER_EVE"
 REVIEWER_FRANK=$(deploy_agent 4007)
 echo "Reviewer Frank:     $REVIEWER_FRANK"
 
+echo "Setting DelegationManager on AI/reviewer agents..."
+set_dm "$DISCOVERY_AGENT"
+set_dm "$DISCOVERY_TEE"
+set_dm "$VALIDATOR_ALPHA"
+set_dm "$VALIDATOR_BETA"
+set_dm "$REVIEWER_DAVE"
+set_dm "$REVIEWER_EVE"
+set_dm "$REVIEWER_FRANK"
+
 # Get new type/role hashes
 ORG_CTRL=$(cast call "$REL" "ORGANIZATIONAL_CONTROL()(bytes32)" --rpc-url "$RPC")
 ACT_VAL=$(cast call "$REL" "ACTIVITY_VALIDATION()(bytes32)" --rpc-url "$RPC")
@@ -471,29 +499,29 @@ DIM_HELPFULNESS=$(cast call "$REVIEW_CONTRACT" "DIM_HELPFULNESS()(bytes32)" --rp
 echo ""
 echo "=== Creating structured reviews ==="
 
-# Dave's review — endorses, score 85
+# Dave's review — endorses, score 85 (reviewer = Dave agent)
 echo "Dave reviews Discovery AI Agent: score=85, endorses"
 cast send "$REVIEW_CONTRACT" \
-  "createReview(address,bytes32,bytes32,uint8,(bytes32,uint8)[],string,string)" \
-  "$DISCOVERY_AGENT" "$RT_PERFORMANCE" "$REC_ENDORSES" 85 \
+  "createReview(address,address,bytes32,bytes32,uint8,(bytes32,uint8)[],string,string)" \
+  "$REVIEWER_DAVE" "$DISCOVERY_AGENT" "$RT_PERFORMANCE" "$REC_ENDORSES" 85 \
   "[($DIM_ACCURACY,88),($DIM_RELIABILITY,82),($DIM_SAFETY,90),($DIM_TRANSPARENCY,80)]" \
   "Excellent discovery capabilities with strong safety controls" "" \
   --rpc-url "$RPC" --private-key "$KEY" > /dev/null 2>&1
 
-# Eve's review — recommends, score 72
+# Eve's review — recommends, score 72 (reviewer = Eve agent)
 echo "Eve reviews Discovery AI Agent: score=72, recommends"
 cast send "$REVIEW_CONTRACT" \
-  "createReview(address,bytes32,bytes32,uint8,(bytes32,uint8)[],string,string)" \
-  "$DISCOVERY_AGENT" "$RT_TRUST" "$REC_RECOMMENDS" 72 \
+  "createReview(address,address,bytes32,bytes32,uint8,(bytes32,uint8)[],string,string)" \
+  "$REVIEWER_EVE" "$DISCOVERY_AGENT" "$RT_TRUST" "$REC_RECOMMENDS" 72 \
   "[($DIM_ACCURACY,75),($DIM_RELIABILITY,70),($DIM_HELPFULNESS,78),($DIM_TRANSPARENCY,65)]" \
   "Good trust practices but could improve transparency" "" \
   --rpc-url "$RPC" --private-key "$KEY" > /dev/null 2>&1
 
-# Frank's review — flags, score 45
+# Frank's review — flags, score 45 (reviewer = Frank agent)
 echo "Frank reviews Discovery AI Agent: score=45, flags"
 cast send "$REVIEW_CONTRACT" \
-  "createReview(address,bytes32,bytes32,uint8,(bytes32,uint8)[],string,string)" \
-  "$DISCOVERY_AGENT" "$RT_QUALITY" "$REC_FLAGS" 45 \
+  "createReview(address,address,bytes32,bytes32,uint8,(bytes32,uint8)[],string,string)" \
+  "$REVIEWER_FRANK" "$DISCOVERY_AGENT" "$RT_QUALITY" "$REC_FLAGS" 45 \
   "[($DIM_ACCURACY,50),($DIM_RELIABILITY,40),($DIM_SAFETY,55),($DIM_HELPFULNESS,35)]" \
   "Quality concerns with output reliability and helpfulness" "ipfs://evidence-frank" \
   --rpc-url "$RPC" --private-key "$KEY" > /dev/null 2>&1

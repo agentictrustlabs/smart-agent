@@ -124,7 +124,8 @@ export function encodeAllowedMethodsTerms(selectors: `0x${string}`[]): `0x${stri
   return encodeAbiParameters([{ type: 'bytes4[]' }], [selectors])
 }
 
-/** Build a Caveat struct from an enforcer address and encoded terms. */
-export function buildCaveat(enforcer: `0x${string}`, terms: `0x${string}`): Caveat {
-  return { enforcer, terms }
+/** Build a Caveat struct from an enforcer address and encoded terms.
+ *  args defaults to '0x' (empty) — provided at redemption time by the redeemer. */
+export function buildCaveat(enforcer: `0x${string}`, terms: `0x${string}`, args: `0x${string}` = '0x'): Caveat {
+  return { enforcer, terms, args }
 }

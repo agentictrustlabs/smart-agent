@@ -17,10 +17,12 @@ export default async function RelationshipsPage() {
   // My agents
   const myPersonAgents = await db.select().from(schema.personAgents).where(eq(schema.personAgents.userId, currentUser.id))
   const myOrgAgents = await db.select().from(schema.orgAgents).where(eq(schema.orgAgents.createdBy, currentUser.id))
+  const myAIAgents = await db.select().from(schema.aiAgents).where(eq(schema.aiAgents.createdBy, currentUser.id))
 
   // All agents (for target selection)
   const allPersonAgents = await db.select().from(schema.personAgents)
   const allOrgAgents = await db.select().from(schema.orgAgents)
+  const allAIAgents = await db.select().from(schema.aiAgents)
   const allUsers = await db.select().from(schema.users)
 
   const myAgents: Array<{ address: string; name: string; did: string; type: string }> = []
@@ -40,6 +42,14 @@ export default async function RelationshipsPage() {
       type: 'org',
     })
   }
+  for (const a of myAIAgents) {
+    myAgents.push({
+      address: a.smartAccountAddress,
+      name: a.name,
+      did: toDidEthr(CHAIN_ID, a.smartAccountAddress as `0x${string}`),
+      type: 'ai',
+    })
+  }
 
   const allAgents: Array<{ address: string; name: string; did: string; type: string }> = []
   for (const p of allPersonAgents) {
@@ -57,6 +67,14 @@ export default async function RelationshipsPage() {
       name: o.name,
       did: toDidEthr(CHAIN_ID, o.smartAccountAddress as `0x${string}`),
       type: 'org',
+    })
+  }
+  for (const a of allAIAgents) {
+    allAgents.push({
+      address: a.smartAccountAddress,
+      name: a.name,
+      did: toDidEthr(CHAIN_ID, a.smartAccountAddress as `0x${string}`),
+      type: 'ai',
     })
   }
 

@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { db, schema } from '@/db'
-import { eq } from 'drizzle-orm'
+import { eq, and } from 'drizzle-orm'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { getEdgesBySubject, getEdge, getEdgeRoles } from '@/lib/contracts'
 import { ROLE_REVIEWER } from '@smart-agent/sdk'
@@ -27,15 +27,20 @@ export default async function SubmitReviewPage() {
     )
   }
 
+  const myAgentAddr = personAgents[0].smartAccountAddress.toLowerCase()
+
   // Find agents where user has active reviewer relationship
-  const reviewableAgents: Array<{ address: string; name: string }> = []
+  const reviewableAgents: Array<{ address: string; name: string; delegationStatus: string; delegationExpiry: string | null }> = []
   const allOrgs = await db.select().from(schema.orgAgents)
   const allPerson = await db.select().from(schema.personAgents)
+  const allAI = await db.select().from(schema.aiAgents)
   const allUsers = await db.select().from(schema.users)
 
   const getName = (addr: string) => {
     const org = allOrgs.find((o) => o.smartAccountAddress.toLowerCase() === addr.toLowerCase())
     if (org) return org.name
+    const ai = allAI.find((a) => a.smartAccountAddress.toLowerCase() === addr.toLowerCase())
+    if (ai) return ai.name
     const p = allPerson.find((p) => p.smartAccountAddress.toLowerCase() === addr.toLowerCase())
     if (p) {
       const u = allUsers.find((u) => u.id === p.userId)
@@ -51,9 +56,32 @@ export default async function SubmitReviewPage() {
       if (edge.status < 2) continue // need confirmed or active
       const roles = await getEdgeRoles(edgeId)
       if (roles.some((r) => r === ROLE_REVIEWER)) {
+        // Check delegation status
+        const delegations = await db.select().from(schema.reviewDelegations)
+          .where(and(
+            eq(schema.reviewDelegations.reviewerAgentAddress, myAgentAddr),
+            eq(schema.reviewDelegations.subjectAgentAddress, edge.object_.toLowerCase()),
+            eq(schema.reviewDelegations.status, 'active'),
+          ))
+          .limit(1)
+
+        let delegationStatus = 'none'
+        let delegationExpiry: string | null = null
+        if (delegations[0]) {
+          const expiresAt = new Date(delegations[0].expiresAt)
+          if (expiresAt > new Date()) {
+            delegationStatus = 'active'
+            delegationExpiry = delegations[0].expiresAt
+          } else {
+            delegationStatus = 'expired'
+          }
+        }
+
         reviewableAgents.push({
           address: edge.object_,
           name: getName(edge.object_),
+          delegationStatus,
+          delegationExpiry,
         })
       }
     }
@@ -82,7 +110,7 @@ export default async function SubmitReviewPage() {
       <div data-component="page-header">
         <h1>Submit Review</h1>
         <p>Submit a structured review for an agent you have an active reviewer relationship with.
-           This review is recorded on-chain via the DelegationManager.</p>
+           Reviews are submitted on-chain via delegated execution (ERC-7710).</p>
       </div>
 
       <SubmitReviewClient reviewableAgents={reviewableAgents} />
