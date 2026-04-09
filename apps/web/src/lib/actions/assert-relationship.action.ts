@@ -58,7 +58,7 @@ export async function assertRelationship(
         await confirmRelationship(edgeId)
 
         // Auto-issue review delegation if this is a reviewer relationship
-        if (roleHash === keccak256(toBytes('reviewer'))) {
+        if (roleHash === ROLE_REVIEWER) {
           try {
             const { delegation, expiresAt } = await issueReviewDelegation({
               subjectAgentAddress: input.orgAgentAddress as `0x${string}`,

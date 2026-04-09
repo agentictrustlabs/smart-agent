@@ -60,8 +60,8 @@ contract Deploy is Script {
         DelegationManager delegationManager = new DelegationManager();
         console.log("DelegationManager:", address(delegationManager));
 
-        // 3. AgentAccountFactory (deploys implementation singleton, sets DelegationManager on all accounts)
-        AgentAccountFactory factory = new AgentAccountFactory(entryPoint, address(delegationManager));
+        // 3. AgentAccountFactory (deploys implementation singleton, sets DelegationManager + serverSigner)
+        AgentAccountFactory factory = new AgentAccountFactory(entryPoint, address(delegationManager), deployer);
         console.log("AgentAccountFactory:", address(factory));
         console.log("  AgentRootAccount impl:", address(factory.accountImplementation()));
 

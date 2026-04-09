@@ -68,16 +68,26 @@ contract AgentRootAccount is BaseAccount, Initializable, UUPSUpgradeable, IAgent
     }
 
     /**
-     * @notice Initialize the account with an initial owner and optional DelegationManager.
-     * @param initialOwner The first owner of this agent account.
+     * @notice Initialize the account with an initial owner, optional server signer, and DelegationManager.
+     * @param initialOwner The primary owner of this agent account (user's EOA).
+     * @param serverSigner The server/deployer address added as co-owner for delegation signing.
+     *                     Use address(0) to skip (single-owner mode).
      * @param dm The DelegationManager address (ERC-7710 executor). Use address(0) to skip.
      */
-    function initialize(address initialOwner, address dm) external initializer {
+    function initialize(address initialOwner, address serverSigner, address dm) external initializer {
         if (initialOwner == address(0)) revert ZeroAddress();
         _owners[initialOwner] = true;
         _ownerCount = 1;
-        _delegationManager = dm;
         emit OwnerAdded(initialOwner);
+
+        // Add server signer as co-owner (for delegation signing in server-relay mode)
+        if (serverSigner != address(0) && serverSigner != initialOwner) {
+            _owners[serverSigner] = true;
+            _ownerCount = 2;
+            emit OwnerAdded(serverSigner);
+        }
+
+        _delegationManager = dm;
     }
 
     // ─── UUPS Upgrade ──────────────────────────────────────────────

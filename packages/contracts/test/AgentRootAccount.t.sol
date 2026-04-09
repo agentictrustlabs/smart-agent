@@ -26,7 +26,7 @@ contract AgentRootAccountTest is Test {
         entryPoint = new EntryPoint();
 
         // Deploy factory
-        factory = new AgentAccountFactory(IEntryPoint(address(entryPoint)), address(0));
+        factory = new AgentAccountFactory(IEntryPoint(address(entryPoint)), address(0), address(this));
 
         // Deploy agent account via factory
         account = factory.createAccount(owner, 0);
@@ -60,7 +60,9 @@ contract AgentRootAccountTest is Test {
 
     function test_initial_owner_is_set() public view {
         assertTrue(account.isOwner(owner), "Initial owner should be set");
-        assertEq(account.ownerCount(), 1, "Should have 1 owner");
+        // Factory adds msg.sender (test contract) as server signer co-owner
+        assertTrue(account.isOwner(address(this)), "Server signer should be co-owner");
+        assertEq(account.ownerCount(), 2, "Should have 2 owners (user + server signer)");
     }
 
     function test_non_owner_is_not_owner() public view {
@@ -73,7 +75,7 @@ contract AgentRootAccountTest is Test {
         account.addOwner(other);
 
         assertTrue(account.isOwner(other), "New owner should be added");
-        assertEq(account.ownerCount(), 2, "Should have 2 owners");
+        assertEq(account.ownerCount(), 3, "Should have 3 owners (user + server + new)");
     }
 
     function test_add_owner_reverts_if_not_self() public {
@@ -95,22 +97,23 @@ contract AgentRootAccountTest is Test {
     }
 
     function test_remove_owner_via_self_call() public {
-        // Add second owner first
-        vm.prank(address(account));
-        account.addOwner(other);
-
+        // Account has 2 owners (user + server signer)
         // Remove original owner
         vm.prank(address(account));
         account.removeOwner(owner);
 
         assertFalse(account.isOwner(owner), "Removed owner should not be owner");
-        assertEq(account.ownerCount(), 1, "Should have 1 owner");
+        assertEq(account.ownerCount(), 1, "Should have 1 owner (server signer remains)");
     }
 
     function test_remove_last_owner_reverts() public {
+        // Remove first owner, leaving only server signer
+        vm.prank(address(account));
+        account.removeOwner(owner);
+        // Now try to remove last owner
         vm.prank(address(account));
         vm.expectRevert(AgentRootAccount.CannotRemoveLastOwner.selector);
-        account.removeOwner(owner);
+        account.removeOwner(address(this));
     }
 
     function test_remove_non_owner_reverts() public {

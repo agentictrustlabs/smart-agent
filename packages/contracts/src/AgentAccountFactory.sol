@@ -7,7 +7,7 @@ import "./AgentRootAccount.sol";
 /**
  * @title AgentAccountFactory
  * @notice Factory for deploying AgentRootAccount proxies with deterministic CREATE2 addresses.
- *         Automatically sets the DelegationManager on each new account (ERC-7710).
+ *         Automatically sets the DelegationManager and server signer on each new account.
  */
 contract AgentAccountFactory {
     /// @notice The AgentRootAccount implementation (singleton).
@@ -16,20 +16,31 @@ contract AgentAccountFactory {
     /// @notice The DelegationManager address set on every new account.
     address public delegationManager;
 
+    /// @notice The server signer added as co-owner on every new account.
+    ///         This allows the server to sign delegations on behalf of user accounts.
+    address public serverSigner;
+
     /// @notice Emitted when a new agent account is deployed.
     event AgentAccountCreated(address indexed account, address indexed owner, uint256 salt);
 
-    constructor(IEntryPoint entryPoint_, address delegationManager_) {
+    constructor(IEntryPoint entryPoint_, address delegationManager_, address serverSigner_) {
         accountImplementation = new AgentRootAccount(entryPoint_);
         delegationManager = delegationManager_;
+        serverSigner = serverSigner_;
     }
 
     /**
      * @notice Update the DelegationManager for future deployments.
-     * @param dm The new DelegationManager address.
      */
     function setDelegationManager(address dm) external {
         delegationManager = dm;
+    }
+
+    /**
+     * @notice Update the server signer for future deployments.
+     */
+    function setServerSigner(address signer) external {
+        serverSigner = signer;
     }
 
     /**
@@ -50,10 +61,10 @@ contract AgentAccountFactory {
         }
 
         // Deploy ERC1967Proxy pointing to the implementation
-        // initialize(owner, delegationManager) sets both at creation time
+        // initialize(owner, serverSigner, delegationManager) sets all at creation time
         bytes memory initData = abi.encodeCall(
             AgentRootAccount.initialize,
-            (owner, delegationManager)
+            (owner, serverSigner, delegationManager)
         );
 
         ERC1967Proxy proxy = new ERC1967Proxy{salt: bytes32(salt)}(
@@ -77,7 +88,7 @@ contract AgentAccountFactory {
     ) public view returns (address) {
         bytes memory initData = abi.encodeCall(
             AgentRootAccount.initialize,
-            (owner, delegationManager)
+            (owner, serverSigner, delegationManager)
         );
 
         bytes memory proxyBytecode = abi.encodePacked(

@@ -2,6 +2,30 @@ import Link from 'next/link'
 import { getPublicClient } from '@/lib/contracts'
 import { agentReviewRecordAbi, agentDisputeRecordAbi, agentTrustProfileAbi } from '@smart-agent/sdk'
 import { db, schema } from '@/db'
+import { keccak256, toBytes } from 'viem'
+
+// Decode on-chain bytes32 hashes to display labels
+const REC_LABELS: Record<string, string> = {
+  [keccak256(toBytes('endorses'))]: 'positive',
+  [keccak256(toBytes('recommends'))]: 'positive',
+  [keccak256(toBytes('neutral'))]: 'neutral',
+  [keccak256(toBytes('flags'))]: 'negative',
+  [keccak256(toBytes('disputes'))]: 'negative',
+}
+const REC_NAMES: Record<string, string> = {
+  [keccak256(toBytes('endorses'))]: 'endorses',
+  [keccak256(toBytes('recommends'))]: 'recommends',
+  [keccak256(toBytes('neutral'))]: 'neutral',
+  [keccak256(toBytes('flags'))]: 'flags',
+  [keccak256(toBytes('disputes'))]: 'disputes',
+}
+const TYPE_NAMES: Record<string, string> = {
+  [keccak256(toBytes('PerformanceReview'))]: 'Performance',
+  [keccak256(toBytes('TrustReview'))]: 'Trust',
+  [keccak256(toBytes('QualityReview'))]: 'Quality',
+  [keccak256(toBytes('ComplianceReview'))]: 'Compliance',
+  [keccak256(toBytes('SafetyReview'))]: 'Safety',
+}
 
 export default async function ReviewsPage() {
   const client = getPublicClient()
@@ -51,10 +75,10 @@ export default async function ReviewsPage() {
       }
       reviews.push({
         id: Number(r.reviewId),
-        reviewer: getName(r.reviewer),  // now resolves correctly — reviewer is person agent address
+        reviewer: getName(r.reviewer),
         subject: getName(r.subject),
-        reviewType: 'Review',
-        recommendation: r.overallScore >= 70 ? 'positive' : r.overallScore >= 50 ? 'neutral' : 'negative',
+        reviewType: TYPE_NAMES[r.reviewType] ?? 'Review',
+        recommendation: REC_NAMES[r.recommendation] ?? 'unknown',
         score: r.overallScore, comment: r.comment, revoked: r.revoked,
       })
     }
@@ -104,18 +128,22 @@ export default async function ReviewsPage() {
         ) : (
           <table data-component="graph-table">
             <thead>
-              <tr><th>Subject</th><th>Reviewer</th><th>Score</th><th>Signal</th><th>Comment</th></tr>
+              <tr><th>Subject</th><th>Reviewer</th><th>Type</th><th>Score</th><th>Signal</th><th>Comment</th></tr>
             </thead>
             <tbody>
-              {reviews.map((r) => (
+              {reviews.map((r) => {
+                const signal = REC_LABELS[Object.entries(REC_NAMES).find(([, v]) => v === r.recommendation)?.[0] ?? ''] ?? 'neutral'
+                return (
                 <tr key={r.id}>
                   <td>{r.subject}</td>
                   <td>{r.reviewer}</td>
+                  <td><span data-component="role-badge">{r.reviewType}</span></td>
                   <td><strong>{r.score}</strong>/100</td>
-                  <td><span data-component="role-badge" data-status={r.recommendation === 'positive' ? 'active' : r.recommendation === 'negative' ? 'revoked' : 'proposed'}>{r.recommendation}</span></td>
+                  <td><span data-component="role-badge" data-status={signal === 'positive' ? 'active' : signal === 'negative' ? 'revoked' : 'proposed'}>{r.recommendation}</span></td>
                   <td style={{ maxWidth: 300, fontSize: '0.8rem', color: '#8888a0' }}>{r.comment}</td>
                 </tr>
-              ))}
+                )
+              })}
             </tbody>
           </table>
         )}
