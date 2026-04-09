@@ -552,9 +552,9 @@ if (!carol) {
 }
 
 // Person agents — all three
-db.prepare('INSERT INTO person_agents VALUES (?,?,?,?,?,?,?,?)').run(id(),'test-user-001','$ALICE_AGENT',31337,'0x1','hybrid','deployed',ts());
-db.prepare('INSERT INTO person_agents VALUES (?,?,?,?,?,?,?,?)').run(id(),'test-user-002','$BOB_AGENT',31337,'0x2','hybrid','deployed',ts());
-db.prepare('INSERT INTO person_agents VALUES (?,?,?,?,?,?,?,?)').run(id(),'test-user-003','$CAROL_AGENT',31337,'0x3','hybrid','deployed',ts());
+db.prepare('INSERT INTO person_agents (id,name,user_id,smart_account_address,chain_id,salt,implementation_type,status,created_at) VALUES (?,?,?,?,?,?,?,?,?)').run(id(),'Alice Agent','test-user-001','$ALICE_AGENT',31337,'0x1','hybrid','deployed',ts());
+db.prepare('INSERT INTO person_agents (id,name,user_id,smart_account_address,chain_id,salt,implementation_type,status,created_at) VALUES (?,?,?,?,?,?,?,?,?)').run(id(),'Bob Agent','test-user-002','$BOB_AGENT',31337,'0x2','hybrid','deployed',ts());
+db.prepare('INSERT INTO person_agents (id,name,user_id,smart_account_address,chain_id,salt,implementation_type,status,created_at) VALUES (?,?,?,?,?,?,?,?,?)').run(id(),'Carol Agent','test-user-003','$CAROL_AGENT',31337,'0x3','hybrid','deployed',ts());
 
 // Org agents
 db.prepare('INSERT INTO org_agents VALUES (?,?,?,?,?,?,?,?,?,?)').run(id(),'Agentic Trust Labs','Agent trust, identity, and reputation research','test-user-001','$ORG_ATL',31337,'0x4','hybrid','deployed',ts());
@@ -587,9 +587,9 @@ if (!frank) {
     'test-user-006','frank@example.com','Frank','0x0000000000000000000000000000000000001006','did:privy:test-user-006',ts()
   );
 }
-db.prepare('INSERT INTO person_agents VALUES (?,?,?,?,?,?,?,?)').run(id(),'test-user-004','$REVIEWER_DAVE',31337,'0x14','hybrid','deployed',ts());
-db.prepare('INSERT INTO person_agents VALUES (?,?,?,?,?,?,?,?)').run(id(),'test-user-005','$REVIEWER_EVE',31337,'0x15','hybrid','deployed',ts());
-db.prepare('INSERT INTO person_agents VALUES (?,?,?,?,?,?,?,?)').run(id(),'test-user-006','$REVIEWER_FRANK',31337,'0x16','hybrid','deployed',ts());
+db.prepare('INSERT INTO person_agents (id,name,user_id,smart_account_address,chain_id,salt,implementation_type,status,created_at) VALUES (?,?,?,?,?,?,?,?,?)').run(id(),'Dave Agent','test-user-004','$REVIEWER_DAVE',31337,'0x14','hybrid','deployed',ts());
+db.prepare('INSERT INTO person_agents (id,name,user_id,smart_account_address,chain_id,salt,implementation_type,status,created_at) VALUES (?,?,?,?,?,?,?,?,?)').run(id(),'Eve Agent','test-user-005','$REVIEWER_EVE',31337,'0x15','hybrid','deployed',ts());
+db.prepare('INSERT INTO person_agents (id,name,user_id,smart_account_address,chain_id,salt,implementation_type,status,created_at) VALUES (?,?,?,?,?,?,?,?,?)').run(id(),'Frank Agent','test-user-006','$REVIEWER_FRANK',31337,'0x16','hybrid','deployed',ts());
 
 console.log('DB seeded: 6 people, 11 orgs/services');
 "

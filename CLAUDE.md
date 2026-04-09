@@ -78,6 +78,7 @@ Orchestrator + Sub-agent model. See `docs/agents/` for role guides.
 | QA           | docs/agents/qa.md              |
 | Infra        | docs/agents/infra.md           |
 | Test User    | docs/agents/user.md            |
+| Documentarian| docs/agents/documentarian.md   |
 
 ### Feature Pipeline
 ```

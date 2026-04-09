@@ -12,6 +12,7 @@ export {
   agentReviewRecordAbi,
   agentDisputeRecordAbi,
   agentTrustProfileAbi,
+  agentControlAbi,
 } from './abi'
 
 // ─── Account Client ──────────────────────────────────────────────────

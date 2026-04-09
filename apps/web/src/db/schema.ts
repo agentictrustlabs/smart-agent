@@ -17,6 +17,7 @@ export const users = sqliteTable('users', {
 
 export const personAgents = sqliteTable('person_agents', {
   id: text('id').primaryKey(),
+  name: text('name').notNull().default('Person Agent'),
   userId: text('user_id')
     .notNull()
     .references(() => users.id)
@@ -64,4 +65,41 @@ export const orgAgents = sqliteTable('org_agents', {
   createdAt: text('created_at')
     .notNull()
     .$defaultFn(() => new Date().toISOString()),
+})
+
+// ─── Invites ─────────────────────────────────────────────────────────
+
+export const invites = sqliteTable('invites', {
+  id: text('id').primaryKey(),
+  code: text('code').notNull().unique(),
+  agentAddress: text('agent_address').notNull(),
+  agentName: text('agent_name').notNull(),
+  role: text('role', { enum: ['owner', 'admin', 'member'] }).notNull().default('owner'),
+  createdBy: text('created_by').notNull().references(() => users.id),
+  expiresAt: text('expires_at').notNull(),
+  acceptedBy: text('accepted_by').references(() => users.id),
+  acceptedAt: text('accepted_at'),
+  status: text('status', { enum: ['pending', 'accepted', 'expired', 'revoked'] }).notNull().default('pending'),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+})
+
+// ─── Messages / Notifications ────────────────────────────────────────
+
+export const messages = sqliteTable('messages', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => users.id),
+  type: text('type', {
+    enum: [
+      'ownership_offered', 'ownership_accepted',
+      'relationship_proposed', 'relationship_confirmed', 'relationship_rejected',
+      'review_received', 'dispute_filed',
+      'proposal_created', 'proposal_executed',
+      'invite_sent', 'invite_accepted',
+    ],
+  }).notNull(),
+  title: text('title').notNull(),
+  body: text('body').notNull(),
+  link: text('link'),
+  read: integer('read').notNull().default(0),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
 })

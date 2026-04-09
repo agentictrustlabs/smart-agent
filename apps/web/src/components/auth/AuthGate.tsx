@@ -17,7 +17,7 @@ export function AuthGate() {
 
     const googleUser = user as unknown as Record<string, { name?: string } | undefined>
 
-    // Ensure user exists in DB via API route, then go to dashboard
+    // Ensure user in DB
     fetch('/api/auth/ensure-user', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -26,9 +26,20 @@ export function AuthGate() {
         email: user.email?.address ?? null,
         name: googleUser.google?.name ?? 'Agent User',
       }),
-    }).then(() => {
-      router.push('/dashboard')
     })
+      .then((r) => r.json())
+      .then((data) => {
+        // Check if profile is complete
+        return fetch('/api/auth/profile')
+      })
+      .then((r) => r.json())
+      .then((profile) => {
+        if (!profile.name || profile.name === 'Agent User' || !profile.email) {
+          router.push('/onboarding')
+        } else {
+          router.push('/dashboard')
+        }
+      })
   }, [ready, authenticated, user, router])
 
   return null

@@ -1,10 +1,10 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { db, schema } from '@/db'
-import { eq } from 'drizzle-orm'
+import { eq, inArray } from 'drizzle-orm'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
-import { getEdgesByObject, getEdge, getEdgeRoles } from '@/lib/contracts'
-import { roleName, toDidEthr } from '@smart-agent/sdk'
+import { getEdgesByObject, getEdgesBySubject, getEdge, getEdgeRoles } from '@/lib/contracts'
+import { roleName, toDidEthr, ORGANIZATION_GOVERNANCE, ROLE_OWNER } from '@smart-agent/sdk'
 
 const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? '31337')
 
@@ -20,11 +20,42 @@ export default async function DashboardPage() {
 
   const personAgent = personAgents[0]
 
-  const orgAgents = await db
+  // Get orgs created by user
+  const createdOrgs = await db
     .select()
     .from(schema.orgAgents)
     .where(eq(schema.orgAgents.createdBy, currentUser.id))
     .orderBy(schema.orgAgents.createdAt)
+
+  // Also find orgs where user has an ownership relationship via trust graph
+  const additionalOrgAddresses: string[] = []
+  if (personAgent) {
+    try {
+      const edgeIds = await getEdgesBySubject(personAgent.smartAccountAddress as `0x${string}`)
+      for (const edgeId of edgeIds) {
+        const e = await getEdge(edgeId)
+        const roles = await getEdgeRoles(edgeId)
+        // Check if this is an ownership edge to an org
+        if (roles.some((r) => r === ROLE_OWNER) && e.status >= 2) { // CONFIRMED or ACTIVE
+          const addr = e.object_.toLowerCase()
+          if (!createdOrgs.some((o) => o.smartAccountAddress.toLowerCase() === addr)) {
+            additionalOrgAddresses.push(e.object_)
+          }
+        }
+      }
+    } catch { /* contracts may not be deployed */ }
+  }
+
+  // Fetch additional orgs from DB
+  let additionalOrgs: typeof createdOrgs = []
+  if (additionalOrgAddresses.length > 0) {
+    const allOrgs = await db.select().from(schema.orgAgents)
+    additionalOrgs = allOrgs.filter((o) =>
+      additionalOrgAddresses.some((a) => a.toLowerCase() === o.smartAccountAddress.toLowerCase())
+    )
+  }
+
+  const orgAgents = [...createdOrgs, ...additionalOrgs]
 
   // Fetch relationship edges for each org
   type EdgeView = { subject: string; roles: string[]; status: string }
@@ -39,7 +70,7 @@ export default async function DashboardPage() {
       for (const edgeId of edgeIds) {
         const e = await getEdge(edgeId)
         const roleHashes = await getEdgeRoles(edgeId)
-        const statusLabels = ['none', 'proposed', 'active', 'suspended', 'revoked']
+        const statusLabels = ['none', 'proposed', 'confirmed', 'active', 'suspended', 'revoked', 'rejected']
         edges.push({
           subject: e.subject,
           roles: roleHashes.map((r) => roleName(r)),
@@ -66,6 +97,10 @@ export default async function DashboardPage() {
         <h2>Person Agent (Your 4337 Account)</h2>
         {personAgent ? (
           <div data-component="agent-card" data-status={personAgent.status}>
+            <div data-component="agent-card-header">
+              <h3>{(personAgent as Record<string, unknown>).name as string || 'Person Agent'}</h3>
+              <Link href={`/agents/${personAgent.smartAccountAddress}`} data-component="settings-link">Settings</Link>
+            </div>
             <dl>
               <dt>Smart Account</dt>
               <dd data-component="address">{personAgent.smartAccountAddress}</dd>
@@ -94,7 +129,10 @@ export default async function DashboardPage() {
           <div data-component="agent-grid">
             {orgsWithEdges.map((org) => (
               <div key={org.id} data-component="agent-card" data-status={org.status}>
-                <h3>{org.name}</h3>
+                <div data-component="agent-card-header">
+                  <h3>{org.name}</h3>
+                  <Link href={`/agents/${org.smartAccountAddress}`} data-component="settings-link">Settings</Link>
+                </div>
                 {org.description && <p data-component="card-description">{org.description}</p>}
                 <dl>
                   <dt>Smart Account</dt>

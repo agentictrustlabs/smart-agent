@@ -18,9 +18,11 @@ contract AgentRelationship {
     enum EdgeStatus {
         NONE,
         PROPOSED,
+        CONFIRMED,
         ACTIVE,
         SUSPENDED,
-        REVOKED
+        REVOKED,
+        REJECTED
     }
 
     struct Edge {
@@ -146,6 +148,11 @@ contract AgentRelationship {
     event EdgeStatusUpdated(bytes32 indexed edgeId, EdgeStatus status, address indexed updater);
     event EdgeMetadataUpdated(bytes32 indexed edgeId, string metadataURI, address indexed updater);
 
+    // ─── Events (confirmation) ────────────────────────────────────────
+
+    event EdgeConfirmed(bytes32 indexed edgeId, address indexed confirmedBy);
+    event EdgeRejected(bytes32 indexed edgeId, address indexed rejectedBy);
+
     // ─── Errors ─────────────────────────────────────────────────────
 
     error InvalidEdge();
@@ -154,6 +161,7 @@ contract AgentRelationship {
     error RoleAlreadyExists();
     error RoleNotFound();
     error NotAuthorized();
+    error InvalidTransition();
 
     // ─── Edge ID ────────────────────────────────────────────────────
 
@@ -245,6 +253,52 @@ contract AgentRelationship {
         emit EdgeStatusUpdated(edgeId, newStatus, msg.sender);
     }
 
+    /**
+     * @notice Counterparty confirms a PROPOSED relationship.
+     *         Only the object side (or its owner via isOwner) can confirm.
+     *         PROPOSED → CONFIRMED. Resolver later promotes to ACTIVE.
+     */
+    function confirmEdge(bytes32 edgeId) external {
+        Edge storage e = _edges[edgeId];
+        if (e.createdAt == 0) revert EdgeNotFound();
+        if (e.status != EdgeStatus.PROPOSED) revert InvalidTransition();
+        _requireObjectAuth(e);
+
+        e.status = EdgeStatus.CONFIRMED;
+        e.updatedAt = block.timestamp;
+        emit EdgeConfirmed(edgeId, msg.sender);
+    }
+
+    /**
+     * @notice Counterparty rejects a PROPOSED relationship.
+     *         Only the object side can reject.
+     */
+    function rejectEdge(bytes32 edgeId) external {
+        Edge storage e = _edges[edgeId];
+        if (e.createdAt == 0) revert EdgeNotFound();
+        if (e.status != EdgeStatus.PROPOSED) revert InvalidTransition();
+        _requireObjectAuth(e);
+
+        e.status = EdgeStatus.REJECTED;
+        e.updatedAt = block.timestamp;
+        emit EdgeRejected(edgeId, msg.sender);
+    }
+
+    /**
+     * @notice Activate a CONFIRMED edge. Called after resolver checks pass.
+     *         Either party or deployer can activate.
+     */
+    function activateEdge(bytes32 edgeId) external {
+        Edge storage e = _edges[edgeId];
+        if (e.createdAt == 0) revert EdgeNotFound();
+        if (e.status != EdgeStatus.CONFIRMED) revert InvalidTransition();
+        _requireAuth(e);
+
+        e.status = EdgeStatus.ACTIVE;
+        e.updatedAt = block.timestamp;
+        emit EdgeStatusUpdated(edgeId, EdgeStatus.ACTIVE, msg.sender);
+    }
+
     // ─── Metadata ───────────────────────────────────────────────────
 
     function setMetadataURI(bytes32 edgeId, string calldata metadataURI) external {
@@ -317,5 +371,20 @@ contract AgentRelationship {
         if (msg.sender != e.subject && msg.sender != e.object_ && msg.sender != e.createdBy) {
             revert NotAuthorized();
         }
+    }
+
+    /// @dev Only the object agent or its owner can call.
+    function _requireObjectAuth(Edge storage e) internal view {
+        if (msg.sender == e.object_) return;
+
+        // Check if caller is an owner of the object (4337 account)
+        if (e.object_.code.length > 0) {
+            (bool success, bytes memory result) = e.object_.staticcall(
+                abi.encodeWithSignature("isOwner(address)", msg.sender)
+            );
+            if (success && result.length >= 32 && abi.decode(result, (bool))) return;
+        }
+
+        revert NotAuthorized();
     }
 }

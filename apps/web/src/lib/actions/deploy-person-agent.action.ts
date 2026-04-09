@@ -19,7 +19,7 @@ export interface DeployPersonAgentResult {
  * Deploy a Person Agent — calls AgentAccountFactory.createAccount() on-chain
  * to deploy an ERC-4337 AgentRootAccount owned by the user's wallet.
  */
-export async function deployPersonAgent(): Promise<DeployPersonAgentResult> {
+export async function deployPersonAgent(agentName?: string): Promise<DeployPersonAgentResult> {
   try {
     const session = await requireSession()
 
@@ -66,6 +66,7 @@ export async function deployPersonAgent(): Promise<DeployPersonAgentResult> {
 
     await db.insert(schema.personAgents).values({
       id: agentId,
+      name: agentName?.trim() || `${user.name}'s Agent`,
       userId: user.id,
       smartAccountAddress,
       chainId: DEFAULT_CHAIN_ID,

@@ -72,6 +72,9 @@ export const agentRelationshipAbi = [
   { type: 'function', name: 'addRole', inputs: [{ name: 'edgeId', type: 'bytes32' }, { name: 'role', type: 'bytes32' }], outputs: [], stateMutability: 'nonpayable' },
   { type: 'function', name: 'removeRole', inputs: [{ name: 'edgeId', type: 'bytes32' }, { name: 'role', type: 'bytes32' }], outputs: [], stateMutability: 'nonpayable' },
   { type: 'function', name: 'setEdgeStatus', inputs: [{ name: 'edgeId', type: 'bytes32' }, { name: 'newStatus', type: 'uint8' }], outputs: [], stateMutability: 'nonpayable' },
+  { type: 'function', name: 'confirmEdge', inputs: [{ name: 'edgeId', type: 'bytes32' }], outputs: [], stateMutability: 'nonpayable' },
+  { type: 'function', name: 'rejectEdge', inputs: [{ name: 'edgeId', type: 'bytes32' }], outputs: [], stateMutability: 'nonpayable' },
+  { type: 'function', name: 'activateEdge', inputs: [{ name: 'edgeId', type: 'bytes32' }], outputs: [], stateMutability: 'nonpayable' },
   { type: 'function', name: 'setMetadataURI', inputs: [{ name: 'edgeId', type: 'bytes32' }, { name: 'metadataURI', type: 'string' }], outputs: [], stateMutability: 'nonpayable' },
   { type: 'function', name: 'computeEdgeId', inputs: [{ name: 'subject', type: 'address' }, { name: 'object_', type: 'address' }, { name: 'relationshipType', type: 'bytes32' }], outputs: [{ name: '', type: 'bytes32' }], stateMutability: 'pure' },
   { type: 'function', name: 'getEdge', inputs: [{ name: 'edgeId', type: 'bytes32' }], outputs: [{ name: '', type: 'tuple', components: [{ name: 'edgeId', type: 'bytes32' }, { name: 'subject', type: 'address' }, { name: 'object_', type: 'address' }, { name: 'relationshipType', type: 'bytes32' }, { name: 'status', type: 'uint8' }, { name: 'createdBy', type: 'address' }, { name: 'createdAt', type: 'uint256' }, { name: 'updatedAt', type: 'uint256' }, { name: 'metadataURI', type: 'string' }] }], stateMutability: 'view' },
@@ -245,4 +248,28 @@ export const agentTrustProfileAbi = [
   { type: 'function', name: 'checkDiscoveryTrust', inputs: [{ name: 'agent', type: 'address' }], outputs: [{ name: '', type: 'tuple', components: [{ name: 'passes', type: 'bool' }, { name: 'score', type: 'uint256' }, { name: 'edgeCount', type: 'uint256' }, { name: 'reviewCount', type: 'uint256' }, { name: 'avgReviewScore', type: 'uint256' }, { name: 'openDisputes', type: 'uint256' }] }], stateMutability: 'view' },
   { type: 'function', name: 'checkExecutionTrust', inputs: [{ name: 'agent', type: 'address' }], outputs: [{ name: '', type: 'tuple', components: [{ name: 'passes', type: 'bool' }, { name: 'score', type: 'uint256' }, { name: 'edgeCount', type: 'uint256' }, { name: 'reviewCount', type: 'uint256' }, { name: 'avgReviewScore', type: 'uint256' }, { name: 'openDisputes', type: 'uint256' }] }], stateMutability: 'view' },
   { type: 'function', name: 'isTrusted', inputs: [{ name: 'agent', type: 'address' }, { name: 'threshold', type: 'uint256' }], outputs: [{ name: '', type: 'bool' }], stateMutability: 'view' },
+] as const
+
+// ─── AgentControl ABI (Governance) ───────────────────────────────────
+
+export const agentControlAbi = [
+  { type: 'function', name: 'initializeAgent', inputs: [{ name: 'agent', type: 'address' }, { name: 'minOwners', type: 'uint256' }, { name: 'quorum', type: 'uint256' }], outputs: [], stateMutability: 'nonpayable' },
+  { type: 'function', name: 'addOwner', inputs: [{ name: 'agent', type: 'address' }, { name: 'newOwner', type: 'address' }], outputs: [], stateMutability: 'nonpayable' },
+  { type: 'function', name: 'removeOwner', inputs: [{ name: 'agent', type: 'address' }, { name: 'owner', type: 'address' }], outputs: [], stateMutability: 'nonpayable' },
+  { type: 'function', name: 'setQuorum', inputs: [{ name: 'agent', type: 'address' }, { name: 'newQuorum', type: 'uint256' }], outputs: [], stateMutability: 'nonpayable' },
+  { type: 'function', name: 'createProposal', inputs: [{ name: 'agent', type: 'address' }, { name: 'actionClass', type: 'uint8' }, { name: 'data', type: 'bytes' }], outputs: [{ name: 'proposalId', type: 'uint256' }], stateMutability: 'nonpayable' },
+  { type: 'function', name: 'approveProposal', inputs: [{ name: 'agent', type: 'address' }, { name: 'proposalId', type: 'uint256' }], outputs: [], stateMutability: 'nonpayable' },
+  { type: 'function', name: 'getConfig', inputs: [{ name: 'agent', type: 'address' }], outputs: [{ name: '', type: 'tuple', components: [{ name: 'minOwners', type: 'uint256' }, { name: 'quorum', type: 'uint256' }, { name: 'isBootstrap', type: 'bool' }] }], stateMutability: 'view' },
+  { type: 'function', name: 'getOwners', inputs: [{ name: 'agent', type: 'address' }], outputs: [{ name: '', type: 'address[]' }], stateMutability: 'view' },
+  { type: 'function', name: 'isOwner', inputs: [{ name: 'agent', type: 'address' }, { name: 'account', type: 'address' }], outputs: [{ name: '', type: 'bool' }], stateMutability: 'view' },
+  { type: 'function', name: 'ownerCount', inputs: [{ name: 'agent', type: 'address' }], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view' },
+  { type: 'function', name: 'isInitialized', inputs: [{ name: 'agent', type: 'address' }], outputs: [{ name: '', type: 'bool' }], stateMutability: 'view' },
+  { type: 'function', name: 'isGovernanceReady', inputs: [{ name: 'agent', type: 'address' }], outputs: [{ name: '', type: 'bool' }], stateMutability: 'view' },
+  { type: 'function', name: 'canAct', inputs: [{ name: 'agent', type: 'address' }, { name: 'caller', type: 'address' }], outputs: [{ name: '', type: 'bool' }], stateMutability: 'view' },
+  { type: 'function', name: 'getProposal', inputs: [{ name: 'agent', type: 'address' }, { name: 'proposalId', type: 'uint256' }], outputs: [{ name: '', type: 'tuple', components: [{ name: 'proposalId', type: 'uint256' }, { name: 'agent', type: 'address' }, { name: 'actionClass', type: 'uint8' }, { name: 'data', type: 'bytes' }, { name: 'proposer', type: 'address' }, { name: 'createdAt', type: 'uint256' }, { name: 'status', type: 'uint8' }, { name: 'approvalCount', type: 'uint256' }] }], stateMutability: 'view' },
+  { type: 'function', name: 'proposalCount', inputs: [{ name: 'agent', type: 'address' }], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view' },
+  { type: 'event', name: 'AgentInitialized', inputs: [{ name: 'agent', type: 'address', indexed: true }, { name: 'creator', type: 'address', indexed: true }, { name: 'minOwners', type: 'uint256', indexed: false }, { name: 'quorum', type: 'uint256', indexed: false }] },
+  { type: 'event', name: 'ProposalCreated', inputs: [{ name: 'agent', type: 'address', indexed: true }, { name: 'proposalId', type: 'uint256', indexed: true }, { name: 'actionClass', type: 'uint8', indexed: false }, { name: 'proposer', type: 'address', indexed: false }] },
+  { type: 'event', name: 'ProposalApproved', inputs: [{ name: 'agent', type: 'address', indexed: true }, { name: 'proposalId', type: 'uint256', indexed: true }, { name: 'approver', type: 'address', indexed: true }] },
+  { type: 'event', name: 'ProposalExecuted', inputs: [{ name: 'agent', type: 'address', indexed: true }, { name: 'proposalId', type: 'uint256', indexed: true }] },
 ] as const

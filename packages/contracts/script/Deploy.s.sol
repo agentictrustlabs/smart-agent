@@ -17,6 +17,7 @@ import "../src/AgentValidationProfile.sol";
 import "../src/AgentReviewRecord.sol";
 import "../src/AgentDisputeRecord.sol";
 import "../src/AgentTrustProfile.sol";
+import "../src/AgentControl.sol";
 import "account-abstraction/interfaces/IEntryPoint.sol";
 import "account-abstraction/core/EntryPoint.sol";
 
@@ -115,6 +116,10 @@ contract Deploy is Script {
         );
         console.log("AgentTrustProfile:", address(trustProfile));
 
+        // 12. Agent Control (Governance)
+        AgentControl agentControl = new AgentControl();
+        console.log("AgentControl:", address(agentControl));
+
         vm.stopBroadcast();
 
         // Print env vars for copy-paste into apps/web/.env
@@ -136,6 +141,7 @@ contract Deploy is Script {
         _logEnv("AGENT_REVIEW_ADDRESS", address(reviewRecord));
         _logEnv("AGENT_DISPUTE_ADDRESS", address(disputeRecord));
         _logEnv("AGENT_TRUST_PROFILE_ADDRESS", address(trustProfile));
+        _logEnv("AGENT_CONTROL_ADDRESS", address(agentControl));
     }
 
     function _logEnv(string memory key, address addr) internal pure {

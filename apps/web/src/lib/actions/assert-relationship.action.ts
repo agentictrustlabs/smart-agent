@@ -1,24 +1,14 @@
 'use server'
 
 import { requireSession } from '@/lib/auth/session'
-import { createRelationship } from '@/lib/contracts'
-import {
-  ORGANIZATION_MEMBERSHIP,
-  ROLE_OWNER,
-  ROLE_ADMIN,
-  ROLE_MEMBER,
-  ROLE_OPERATOR,
-  ROLE_AUDITOR,
-  ROLE_VENDOR,
-} from '@smart-agent/sdk'
+import { createRelationship, confirmRelationship } from '@/lib/contracts'
+import { db, schema } from '@/db'
+import { eq } from 'drizzle-orm'
+import { keccak256, toBytes } from 'viem'
+import { ORGANIZATION_MEMBERSHIP } from '@smart-agent/sdk'
 
-const ROLE_MAP: Record<string, `0x${string}`> = {
-  owner: ROLE_OWNER,
-  admin: ROLE_ADMIN,
-  member: ROLE_MEMBER,
-  operator: ROLE_OPERATOR,
-  auditor: ROLE_AUDITOR,
-  vendor: ROLE_VENDOR,
+function roleToHash(role: string): `0x${string}` {
+  return keccak256(toBytes(role))
 }
 
 export interface AssertRelationshipInput {
@@ -30,15 +20,10 @@ export interface AssertRelationshipInput {
 export interface AssertRelationshipResult {
   success: boolean
   edgeId?: string
+  autoConfirmed?: boolean
   error?: string
 }
 
-/**
- * Create a full relationship on-chain (3 transactions):
- * 1. AgentRelationship.createEdge() — edge primitive (PROPOSED)
- * 2. AgentRelationship.setEdgeStatus(ACTIVE) — activate
- * 3. AgentAssertion.makeAssertion(OBJECT_ASSERTED) — provenance claim
- */
 export async function assertRelationship(
   input: AssertRelationshipInput,
 ): Promise<AssertRelationshipResult> {
@@ -48,11 +33,15 @@ export async function assertRelationship(
       return { success: false, error: 'No wallet connected' }
     }
 
-    const roleHash = ROLE_MAP[input.role]
-    if (!roleHash) {
-      return { success: false, error: `Unknown role: ${input.role}` }
-    }
+    // Get current user
+    const users = await db.select().from(schema.users)
+      .where(eq(schema.users.privyUserId, session.userId)).limit(1)
+    const user = users[0]
+    if (!user) return { success: false, error: 'User not found' }
 
+    const roleHash = roleToHash(input.role)
+
+    // Create the relationship edge (PROPOSED)
     const edgeId = await createRelationship({
       subject: input.personAgentAddress as `0x${string}`,
       object: input.orgAgentAddress as `0x${string}`,
@@ -60,10 +49,55 @@ export async function assertRelationship(
       relationshipType: ORGANIZATION_MEMBERSHIP,
     })
 
-    return { success: true, edgeId }
+    // Check if user owns the object agent (created it or has ownership relationship)
+    const userOwnsObject = await checkUserOwnsAgent(user.id, input.orgAgentAddress)
+
+    if (userOwnsObject) {
+      // Auto-confirm: user owns both sides, no counterparty needed
+      try {
+        await confirmRelationship(edgeId)
+        return { success: true, edgeId, autoConfirmed: true }
+      } catch {
+        // Confirm failed but edge was created — still success, just not confirmed
+        return { success: true, edgeId, autoConfirmed: false }
+      }
+    }
+
+    // Different owner — send notification to object agent's owner
+    try {
+      const orgAgent = await db.select().from(schema.orgAgents)
+        .where(eq(schema.orgAgents.smartAccountAddress, input.orgAgentAddress)).limit(1)
+      if (orgAgent[0]) {
+        await db.insert(schema.messages).values({
+          id: crypto.randomUUID(),
+          userId: orgAgent[0].createdBy,
+          type: 'relationship_proposed',
+          title: 'Relationship request',
+          body: `Someone wants to be "${input.role}" of ${orgAgent[0].name}. Review and confirm on the Relationships page.`,
+          link: '/relationships',
+        })
+      }
+    } catch { /* non-fatal */ }
+
+    return { success: true, edgeId, autoConfirmed: false }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to create relationship'
     console.error('Create relationship failed:', message)
     return { success: false, error: message }
   }
+}
+
+/** Check if user owns an agent (created it or is a person agent owner) */
+async function checkUserOwnsAgent(userId: string, agentAddress: string): Promise<boolean> {
+  // Check if user created this org
+  const orgAgent = await db.select().from(schema.orgAgents)
+    .where(eq(schema.orgAgents.smartAccountAddress, agentAddress)).limit(1)
+  if (orgAgent[0] && orgAgent[0].createdBy === userId) return true
+
+  // Check if user's person agent is this address
+  const personAgent = await db.select().from(schema.personAgents)
+    .where(eq(schema.personAgents.smartAccountAddress, agentAddress)).limit(1)
+  if (personAgent[0] && personAgent[0].userId === userId) return true
+
+  return false
 }

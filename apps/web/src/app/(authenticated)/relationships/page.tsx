@@ -2,141 +2,179 @@ import { redirect } from 'next/navigation'
 import { db, schema } from '@/db'
 import { eq } from 'drizzle-orm'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
-import { getEdgesByObject, getEdge, getEdgeRoles } from '@/lib/contracts'
-import { roleName, toDidEthr } from '@smart-agent/sdk'
+import { getEdgesByObject, getEdgesBySubject, getEdge, getEdgeRoles } from '@/lib/contracts'
+import { roleName, relationshipTypeName, toDidEthr } from '@smart-agent/sdk'
 import { RelationshipsClient } from './RelationshipsClient'
+import { PendingActions } from './PendingActions'
 
 const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? '31337')
-const STATUS_LABELS = ['none', 'proposed', 'active', 'suspended', 'revoked']
+const STATUS_LABELS = ['none', 'proposed', 'confirmed', 'active', 'suspended', 'revoked', 'rejected']
 
 export default async function RelationshipsPage() {
   const currentUser = await getCurrentUser()
   if (!currentUser) redirect('/')
 
-  const personAgents = await db
-    .select()
-    .from(schema.personAgents)
-    .where(eq(schema.personAgents.userId, currentUser.id))
-    .limit(1)
+  // My agents
+  const myPersonAgents = await db.select().from(schema.personAgents).where(eq(schema.personAgents.userId, currentUser.id))
+  const myOrgAgents = await db.select().from(schema.orgAgents).where(eq(schema.orgAgents.createdBy, currentUser.id))
 
-  const orgAgents = await db
-    .select()
-    .from(schema.orgAgents)
-    .where(eq(schema.orgAgents.createdBy, currentUser.id))
-    .orderBy(schema.orgAgents.createdAt)
+  // All agents (for target selection)
+  const allPersonAgents = await db.select().from(schema.personAgents)
+  const allOrgAgents = await db.select().from(schema.orgAgents)
+  const allUsers = await db.select().from(schema.users)
 
-  const personAgent = personAgents[0]
+  const myAgents: Array<{ address: string; name: string; did: string; type: string }> = []
+  for (const p of myPersonAgents) {
+    myAgents.push({
+      address: p.smartAccountAddress,
+      name: (p as Record<string, unknown>).name as string || 'Person Agent',
+      did: toDidEthr(CHAIN_ID, p.smartAccountAddress as `0x${string}`),
+      type: 'person',
+    })
+  }
+  for (const o of myOrgAgents) {
+    myAgents.push({
+      address: o.smartAccountAddress,
+      name: o.name,
+      did: toDidEthr(CHAIN_ID, o.smartAccountAddress as `0x${string}`),
+      type: 'org',
+    })
+  }
 
-  if (!personAgent) {
+  const allAgents: Array<{ address: string; name: string; did: string; type: string }> = []
+  for (const p of allPersonAgents) {
+    const user = allUsers.find((u) => u.id === p.userId)
+    allAgents.push({
+      address: p.smartAccountAddress,
+      name: (p as Record<string, unknown>).name as string || user?.name || 'Person Agent',
+      did: toDidEthr(CHAIN_ID, p.smartAccountAddress as `0x${string}`),
+      type: 'person',
+    })
+  }
+  for (const o of allOrgAgents) {
+    allAgents.push({
+      address: o.smartAccountAddress,
+      name: o.name,
+      did: toDidEthr(CHAIN_ID, o.smartAccountAddress as `0x${string}`),
+      type: 'org',
+    })
+  }
+
+  if (myAgents.length === 0) {
     return (
       <div data-page="relationships">
         <div data-component="page-header">
-          <h1>Trust Graph</h1>
+          <h1>Relationships</h1>
           <p>Create on-chain relationships between agents</p>
         </div>
         <div data-component="empty-state">
-          <p>Deploy a Person Agent first to create relationships.</p>
+          <p>Deploy an agent first to create relationships.</p>
           <a href="/deploy/person">Deploy Person Agent</a>
         </div>
       </div>
     )
   }
 
-  if (orgAgents.length === 0) {
-    return (
-      <div data-page="relationships">
-        <div data-component="page-header">
-          <h1>Trust Graph</h1>
-          <p>Create on-chain relationships between agents</p>
-        </div>
-        <div data-component="empty-state">
-          <p>Deploy an Organization Agent to create relationships.</p>
-          <a href="/deploy/org">Deploy Org Agent</a>
-        </div>
-      </div>
-    )
-  }
+  // Fetch existing edges for my agents
+  const myAddresses = new Set(myAgents.map((a) => a.address.toLowerCase()))
 
-  // Fetch all existing edges from on-chain for each org
   type EdgeView = {
-    edgeId: string
-    subject: string
-    subjectDid: string
-    roles: string[]
-    status: string
-    orgName: string
+    subject: string; subjectName: string
+    object: string; objectName: string
+    roles: string[]; relType: string; status: string; edgeId: string
+    canConfirm: boolean  // true if I'm the object and status is proposed
+    statusNum: number
+  }
+  const existingEdges: EdgeView[] = []
+  const seenEdges = new Set<string>()
+
+  const getName = (addr: string) => {
+    const a = allAgents.find((a) => a.address.toLowerCase() === addr.toLowerCase())
+    return a?.name ?? `${addr.slice(0, 6)}...${addr.slice(-4)}`
   }
 
-  const existingEdges: EdgeView[] = []
-
-  for (const org of orgAgents) {
+  for (const agent of myAgents) {
     try {
-      const edgeIds = await getEdgesByObject(org.smartAccountAddress as `0x${string}`)
-      for (const edgeId of edgeIds) {
+      // Edges where my agent is subject
+      const subjectEdgeIds = await getEdgesBySubject(agent.address as `0x${string}`)
+      for (const edgeId of subjectEdgeIds) {
+        if (seenEdges.has(edgeId)) continue
+        seenEdges.add(edgeId)
+        const e = await getEdge(edgeId)
+        const roleHashes = await getEdgeRoles(edgeId)
+        // I'm subject — can I also confirm? Yes if I own the object agent too
+        const iAlsoOwnObject = myAddresses.has(e.object_.toLowerCase())
+        existingEdges.push({
+          subject: e.subject, subjectName: getName(e.subject),
+          object: e.object_, objectName: getName(e.object_),
+          roles: roleHashes.map((r) => roleName(r)),
+          relType: relationshipTypeName(e.relationshipType),
+          status: STATUS_LABELS[e.status] ?? 'unknown',
+          statusNum: e.status,
+          edgeId,
+          canConfirm: e.status === 1 && iAlsoOwnObject, // PROPOSED and I own the object
+        })
+      }
+      // Edges where my agent is object (proposed by someone else)
+      const objectEdgeIds = await getEdgesByObject(agent.address as `0x${string}`)
+      for (const edgeId of objectEdgeIds) {
+        if (seenEdges.has(edgeId)) continue
+        seenEdges.add(edgeId)
         const e = await getEdge(edgeId)
         const roleHashes = await getEdgeRoles(edgeId)
         existingEdges.push({
-          edgeId: edgeId.slice(0, 18) + '...',
-          subject: e.subject,
-          subjectDid: toDidEthr(CHAIN_ID, e.subject),
+          subject: e.subject, subjectName: getName(e.subject),
+          object: e.object_, objectName: getName(e.object_),
           roles: roleHashes.map((r) => roleName(r)),
+          relType: relationshipTypeName(e.relationshipType),
           status: STATUS_LABELS[e.status] ?? 'unknown',
-          orgName: org.name,
+          statusNum: e.status,
+          edgeId,
+          canConfirm: e.status === 1, // PROPOSED = 1, I'm the object
         })
       }
-    } catch {
-      // contracts may not be accessible
-    }
+    } catch { /* skip */ }
   }
 
   return (
     <div data-page="relationships">
       <div data-component="page-header">
-        <h1>Trust Graph</h1>
-        <p>On-chain relationships between agent accounts (did:ethr)</p>
-      </div>
-
-      {/* Protocol info */}
-      <div data-component="protocol-info">
-        <h3>Protocol Contracts</h3>
-        <dl>
-          <dt>AgentRelationship</dt>
-          <dd data-component="address">{process.env.AGENT_RELATIONSHIP_ADDRESS}</dd>
-          <dt>AgentAssertion</dt>
-          <dd data-component="address">{process.env.AGENT_ASSERTION_ADDRESS}</dd>
-          <dt>AgentRelationshipResolver</dt>
-          <dd data-component="address">{process.env.AGENT_RESOLVER_ADDRESS}</dd>
-        </dl>
+        <h1>Relationships</h1>
+        <p>Create and view on-chain relationships between agents</p>
       </div>
 
       {/* Existing edges */}
       {existingEdges.length > 0 && (
         <section data-component="graph-section">
-          <h2>Active Relationships ({existingEdges.length})</h2>
+          <h2>My Relationships ({existingEdges.length})</h2>
           <table data-component="graph-table">
             <thead>
               <tr>
-                <th>Subject (Agent)</th>
+                <th>From</th>
                 <th>Roles</th>
-                <th>Object (Org)</th>
-                <th>Edge Status</th>
-                <th>Edge ID</th>
+                <th>To</th>
+                <th>Type</th>
+                <th>Status</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {existingEdges.map((e, i) => (
                 <tr key={i}>
-                  <td>
-                    <code data-component="address">{e.subject.slice(0, 8)}...{e.subject.slice(-4)}</code>
-                  </td>
+                  <td>{e.subjectName}</td>
                   <td data-component="role-list">
-                    {e.roles.map((r, j) => (
-                      <span key={j} data-component="role-badge">{r}</span>
-                    ))}
+                    {e.roles.map((r, j) => <span key={j} data-component="role-badge">{r}</span>)}
                   </td>
-                  <td>{e.orgName}</td>
+                  <td>{e.objectName}</td>
+                  <td><span data-component="role-badge">{e.relType}</span></td>
                   <td><span data-component="role-badge" data-status={e.status}>{e.status}</span></td>
-                  <td><code data-component="edge-id">{e.edgeId}</code></td>
+                  <td>
+                    {e.canConfirm ? (
+                      <PendingActions edgeId={e.edgeId} />
+                    ) : e.status === 'proposed' ? (
+                      <span data-component="text-muted" style={{ fontSize: '0.75rem' }}>Awaiting confirmation</span>
+                    ) : null}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -146,16 +184,8 @@ export default async function RelationshipsPage() {
 
       {/* Create new relationship */}
       <RelationshipsClient
-        personAgent={{
-          address: personAgent.smartAccountAddress,
-          did: toDidEthr(CHAIN_ID, personAgent.smartAccountAddress as `0x${string}`),
-          label: 'Person Agent',
-        }}
-        orgAgents={orgAgents.map((o) => ({
-          address: o.smartAccountAddress,
-          did: toDidEthr(CHAIN_ID, o.smartAccountAddress as `0x${string}`),
-          label: o.name,
-        }))}
+        myAgents={myAgents}
+        allAgents={allAgents}
       />
     </div>
   )

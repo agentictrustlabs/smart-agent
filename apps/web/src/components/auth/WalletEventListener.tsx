@@ -4,10 +4,6 @@ import { useEffect, useRef } from 'react'
 import { useAuth } from '@/hooks/use-auth'
 import { useRouter, usePathname } from 'next/navigation'
 
-/**
- * Listens for wallet disconnect and account-change events.
- * Mount once in the root layout.
- */
 export function WalletEventListener() {
   const { authenticated, ready, logout, user } = useAuth()
   const router = useRouter()
@@ -48,10 +44,7 @@ export function WalletEventListener() {
     }
 
     ethereum.on('accountsChanged', handleAccountsChanged)
-
-    return () => {
-      ethereum.removeListener?.('accountsChanged', handleAccountsChanged)
-    }
+    return () => { ethereum.removeListener?.('accountsChanged', handleAccountsChanged) }
   }, [ready, authenticated, logout, router])
 
   useEffect(() => {

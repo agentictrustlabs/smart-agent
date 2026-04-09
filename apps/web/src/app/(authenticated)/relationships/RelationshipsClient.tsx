@@ -5,80 +5,117 @@ import { useRouter } from 'next/navigation'
 import { assertRelationship } from '@/lib/actions/assert-relationship.action'
 
 const ROLES = [
-  { value: 'owner', label: 'Owner', desc: 'Full control over the organization agent' },
-  { value: 'admin', label: 'Admin', desc: 'Can manage members and settings' },
-  { value: 'member', label: 'Member', desc: 'Standard member access' },
-  { value: 'operator', label: 'Operator', desc: 'Can execute operations' },
-  { value: 'auditor', label: 'Auditor', desc: 'Read-only audit access' },
-  { value: 'vendor', label: 'Vendor', desc: 'External service provider' },
+  { value: 'owner', label: 'Owner' },
+  { value: 'admin', label: 'Admin' },
+  { value: 'member', label: 'Member' },
+  { value: 'operator', label: 'Operator' },
+  { value: 'auditor', label: 'Auditor' },
+  { value: 'vendor', label: 'Vendor' },
+  { value: 'board-member', label: 'Board Member' },
+  { value: 'ceo', label: 'CEO' },
+  { value: 'executive', label: 'Executive' },
+  { value: 'treasurer', label: 'Treasurer' },
+  { value: 'authorized-signer', label: 'Authorized Signer' },
+  { value: 'validator', label: 'Validator' },
+  { value: 'insurer', label: 'Insurer' },
+  { value: 'staker', label: 'Staker' },
+  { value: 'strategic-partner', label: 'Strategic Partner' },
+  { value: 'service-provider', label: 'Service Provider' },
+  { value: 'delegated-operator', label: 'Delegated Operator' },
+  { value: 'reviewer', label: 'Reviewer' },
+  { value: 'operated-agent', label: 'Operated Agent' },
+  { value: 'administers', label: 'Administers' },
+  { value: 'activity-validator', label: 'Activity Validator' },
 ]
 
 interface Agent {
   address: string
+  name: string
   did: string
-  label: string
+  type: string
 }
 
 interface RelationshipsClientProps {
-  personAgent: Agent
-  orgAgents: Agent[]
+  myAgents: Agent[]
+  allAgents: Agent[]
 }
 
-export function RelationshipsClient({ personAgent, orgAgents }: RelationshipsClientProps) {
+export function RelationshipsClient({ myAgents, allAgents }: RelationshipsClientProps) {
   const router = useRouter()
-  const [selectedOrg, setSelectedOrg] = useState(orgAgents[0]?.address ?? '')
+  const [fromAgent, setFromAgent] = useState(myAgents[0]?.address ?? '')
+  const [toAgent, setToAgent] = useState('')
   const [selectedRole, setSelectedRole] = useState('member')
+  const [showAllTargets, setShowAllTargets] = useState(false)
   const [asserting, setAsserting] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
+  // Target list: default to my agents, toggle to all
+  const targetAgents = showAllTargets ? allAgents : myAgents
+  // Filter out the "from" agent from target list
+  const availableTargets = targetAgents.filter((a) => a.address.toLowerCase() !== fromAgent.toLowerCase())
+
+  // Auto-select first target if current selection is not in the list
+  const currentTarget = availableTargets.find((a) => a.address === toAgent)
+  if (!currentTarget && availableTargets.length > 0 && toAgent !== availableTargets[0].address) {
+    // Can't call setState during render, so we'll handle it in the select
+  }
+
+  const effectiveToAgent = currentTarget ? toAgent : availableTargets[0]?.address ?? ''
+
+  const fromInfo = myAgents.find((a) => a.address === fromAgent)
+  const toInfo = availableTargets.find((a) => a.address === effectiveToAgent)
+
   async function handleAssert(e: React.FormEvent) {
     e.preventDefault()
-    if (!selectedOrg) return
+    if (!fromAgent || !effectiveToAgent) return
 
     setAsserting(true)
     setError('')
     setSuccess('')
 
     const result = await assertRelationship({
-      personAgentAddress: personAgent.address,
-      orgAgentAddress: selectedOrg,
+      personAgentAddress: fromAgent,
+      orgAgentAddress: effectiveToAgent,
       role: selectedRole,
     })
 
     setAsserting(false)
 
     if (result.success) {
-      const orgLabel = orgAgents.find((o) => o.address === selectedOrg)?.label ?? selectedOrg
-      setSuccess(
-        `On-chain: createEdge → setEdgeStatus(ACTIVE) → makeAssertion(OBJECT_ASSERTED)\n` +
-        `${personAgent.label} is ${selectedRole} of ${orgLabel}\n` +
-        `Edge ID: ${result.edgeId}`
-      )
+      const status = result.autoConfirmed ? 'Created and auto-confirmed (you own both agents)' : 'Created as PROPOSED — awaiting counterparty confirmation'
+      setSuccess(`${fromInfo?.name} → ${toInfo?.name} [${selectedRole}]\n${status}`)
       router.refresh()
     } else {
       setError(result.error ?? 'Failed to create relationship')
     }
   }
 
-  const selectedRoleInfo = ROLES.find((r) => r.value === selectedRole)
-  const selectedOrgAgent = orgAgents.find((o) => o.address === selectedOrg)
-
   return (
     <section data-component="assert-section">
       <h2>Create Relationship</h2>
       <p data-component="assert-description">
-        Creates an on-chain relationship edge between your Person Agent and an Org Agent.
-        Three transactions: <strong>createEdge</strong> (AgentRelationship) →
-        <strong> setEdgeStatus(ACTIVE)</strong> → <strong>makeAssertion(OBJECT_ASSERTED)</strong> (AgentAssertion)
+        Create an on-chain relationship edge between two agents.
+        Select one of your agents as the source, and any agent as the target.
       </p>
 
       <form onSubmit={handleAssert} data-component="assert-form">
         <div data-component="assert-visual">
+          {/* FROM — always my agents */}
           <div data-component="assert-agent" data-type="subject">
-            <span data-component="assert-label">Subject</span>
-            <span data-component="assert-name">{personAgent.label}</span>
-            <code data-component="did">{personAgent.did}</code>
+            <span data-component="assert-label">From (My Agent)</span>
+            <select
+              value={fromAgent}
+              onChange={(e) => setFromAgent(e.target.value)}
+              data-component="org-select"
+            >
+              {myAgents.map((a) => (
+                <option key={a.address} value={a.address}>
+                  {a.name} ({a.type})
+                </option>
+              ))}
+            </select>
+            {fromInfo && <code data-component="did">{fromInfo.did}</code>}
           </div>
 
           <div data-component="assert-arrow">
@@ -95,30 +132,39 @@ export function RelationshipsClient({ personAgent, orgAgents }: RelationshipsCli
             <span>in</span>
           </div>
 
+          {/* TO — my agents or all agents */}
           <div data-component="assert-agent" data-type="object">
-            <span data-component="assert-label">Object (Authority)</span>
+            <div data-component="target-header">
+              <span data-component="assert-label">To (Target Agent)</span>
+              <button
+                type="button"
+                onClick={() => setShowAllTargets(!showAllTargets)}
+                data-component="filter-btn"
+                data-active={showAllTargets ? 'true' : 'false'}
+              >
+                {showAllTargets ? `All (${allAgents.length})` : `My Agents (${myAgents.length})`}
+              </button>
+            </div>
             <select
-              value={selectedOrg}
-              onChange={(e) => setSelectedOrg(e.target.value)}
+              value={effectiveToAgent}
+              onChange={(e) => setToAgent(e.target.value)}
               data-component="org-select"
             >
-              {orgAgents.map((o) => (
-                <option key={o.address} value={o.address}>{o.label}</option>
+              {availableTargets.map((a) => (
+                <option key={a.address} value={a.address}>
+                  {a.name} ({a.type})
+                </option>
               ))}
             </select>
-            <code data-component="did">{selectedOrgAgent?.did}</code>
+            {toInfo && <code data-component="did">{toInfo.did}</code>}
           </div>
         </div>
 
-        {selectedRoleInfo && (
-          <p data-component="role-description">{selectedRoleInfo.desc}</p>
-        )}
-
         {error && <p role="alert" data-component="error-message">{error}</p>}
-        {success && <pre data-component="success-message">{success}</pre>}
+        {success && <p data-component="success-message">{success}</p>}
 
-        <button type="submit" disabled={asserting}>
-          {asserting ? 'Creating edge + assertion (3 txns)...' : 'Create Relationship'}
+        <button type="submit" disabled={asserting || !effectiveToAgent}>
+          {asserting ? 'Creating relationship (3 txns)...' : 'Create Relationship'}
         </button>
       </form>
     </section>

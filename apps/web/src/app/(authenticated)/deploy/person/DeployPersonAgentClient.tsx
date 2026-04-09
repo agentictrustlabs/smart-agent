@@ -6,10 +6,12 @@ import { deployPersonAgent } from '@/lib/actions/deploy-person-agent.action'
 
 interface DeployPersonAgentClientProps {
   walletAddress: string
+  userName: string
 }
 
-export function DeployPersonAgentClient({ walletAddress }: DeployPersonAgentClientProps) {
+export function DeployPersonAgentClient({ walletAddress, userName }: DeployPersonAgentClientProps) {
   const router = useRouter()
+  const [agentName, setAgentName] = useState(`${userName}'s Agent`)
   const [deploying, setDeploying] = useState(false)
   const [error, setError] = useState('')
   const [result, setResult] = useState<{
@@ -17,19 +19,19 @@ export function DeployPersonAgentClient({ walletAddress }: DeployPersonAgentClie
     smartAccountAddress: string
   } | null>(null)
 
-  async function handleDeploy() {
+  async function handleDeploy(e: React.FormEvent) {
+    e.preventDefault()
+    if (!agentName.trim()) { setError('Agent name is required'); return }
+
     setDeploying(true)
     setError('')
 
-    const res = await deployPersonAgent()
+    const res = await deployPersonAgent(agentName.trim())
 
     setDeploying(false)
 
     if (res.success && res.agentId && res.smartAccountAddress) {
-      setResult({
-        agentId: res.agentId,
-        smartAccountAddress: res.smartAccountAddress,
-      })
+      setResult({ agentId: res.agentId, smartAccountAddress: res.smartAccountAddress })
     } else {
       setError(res.error ?? 'Deployment failed')
     }
@@ -40,9 +42,9 @@ export function DeployPersonAgentClient({ walletAddress }: DeployPersonAgentClie
       <div data-component="deploy-success">
         <h2>Person Agent Deployed</h2>
         <dl>
-          <dt>Agent ID</dt>
-          <dd><code>{result.agentId}</code></dd>
-          <dt>Smart Account Address</dt>
+          <dt>Agent Name</dt>
+          <dd><strong>{agentName}</strong></dd>
+          <dt>Smart Account</dt>
           <dd data-component="address"><code>{result.smartAccountAddress}</code></dd>
           <dt>Owner (Your EOA)</dt>
           <dd data-component="address"><code>{walletAddress}</code></dd>
@@ -53,25 +55,33 @@ export function DeployPersonAgentClient({ walletAddress }: DeployPersonAgentClie
   }
 
   return (
-    <div data-component="deploy-form">
+    <form onSubmit={handleDeploy} data-component="deploy-form">
+      <div data-component="form-field">
+        <label htmlFor="agent-name">Agent Name</label>
+        <input
+          id="agent-name"
+          type="text"
+          value={agentName}
+          onChange={(e) => setAgentName(e.target.value)}
+          placeholder="e.g. Alice's Discovery Agent"
+          required
+        />
+      </div>
+
       <div data-component="deploy-details">
         <dl>
           <dt>Owner Wallet</dt>
           <dd><code>{walletAddress}</code></dd>
           <dt>Account Type</dt>
           <dd>AgentRootAccount (ERC-4337)</dd>
-          <dt>Network</dt>
-          <dd>Local Anvil (Chain 31337)</dd>
         </dl>
       </div>
 
-      {error && (
-        <p role="alert" data-component="error-message">{error}</p>
-      )}
+      {error && <p role="alert" data-component="error-message">{error}</p>}
 
-      <button onClick={handleDeploy} disabled={deploying}>
+      <button type="submit" disabled={deploying}>
         {deploying ? 'Deploying...' : 'Deploy Person Agent'}
       </button>
-    </div>
+    </form>
   )
 }

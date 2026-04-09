@@ -3,7 +3,8 @@
 import { db, schema } from '@/db'
 import { eq } from 'drizzle-orm'
 import { requireSession } from '@/lib/auth/session'
-import { deploySmartAccount } from '@/lib/contracts'
+import { deploySmartAccount, getPublicClient, getWalletClient } from '@/lib/contracts'
+import { agentControlAbi } from '@smart-agent/sdk'
 import { keccak256, encodePacked } from 'viem'
 
 const DEFAULT_CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID || '31337')
@@ -11,6 +12,9 @@ const DEFAULT_CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID || '31337')
 export interface DeployOrgAgentInput {
   name: string
   description: string
+  minOwners: number
+  quorum: number
+  coOwners: string[]  // additional EOA addresses to add as owners
 }
 
 export interface DeployOrgAgentResult {
@@ -21,8 +25,11 @@ export interface DeployOrgAgentResult {
 }
 
 /**
- * Deploy an Organization Agent — calls AgentAccountFactory.createAccount() on-chain
- * to deploy an ERC-4337 AgentRootAccount for the org, owned by the creating user.
+ * Deploy an Organization Agent with multi-sig governance:
+ * 1. Deploy 4337 smart account via factory
+ * 2. Initialize AgentControl governance (owner set, quorum)
+ * 3. Add co-owners
+ * 4. Store in DB
  */
 export async function deployOrgAgent(
   input: DeployOrgAgentInput,
@@ -51,7 +58,7 @@ export async function deployOrgAgent(
 
     const ownerAddress = session.walletAddress as `0x${string}`
 
-    // Unique salt from owner + org name + timestamp
+    // Unique salt
     const saltHash = keccak256(
       encodePacked(
         ['string', 'address', 'string'],
@@ -60,9 +67,46 @@ export async function deployOrgAgent(
     )
     const salt = BigInt(saltHash)
 
-    // Deploy on-chain via factory
+    // 1. Deploy smart account
     const smartAccountAddress = await deploySmartAccount(ownerAddress, salt)
 
+    // 2. Initialize governance on AgentControl
+    const controlAddr = process.env.AGENT_CONTROL_ADDRESS as `0x${string}`
+    if (controlAddr) {
+      const walletClient = getWalletClient()
+      const publicClient = getPublicClient()
+
+      const minOwners = Math.max(1, input.minOwners || 1)
+      const quorum = Math.max(1, Math.min(input.quorum || 1, minOwners))
+
+      try {
+        let hash = await walletClient.writeContract({
+          address: controlAddr,
+          abi: agentControlAbi,
+          functionName: 'initializeAgent',
+          args: [smartAccountAddress as `0x${string}`, BigInt(minOwners), BigInt(quorum)],
+        })
+        await publicClient.waitForTransactionReceipt({ hash })
+
+        // 3. Add co-owners
+        for (const coOwner of input.coOwners) {
+          const addr = coOwner.trim()
+          if (addr && addr.startsWith('0x') && addr.length === 42) {
+            hash = await walletClient.writeContract({
+              address: controlAddr,
+              abi: agentControlAbi,
+              functionName: 'addOwner',
+              args: [smartAccountAddress as `0x${string}`, addr as `0x${string}`],
+            })
+            await publicClient.waitForTransactionReceipt({ hash })
+          }
+        }
+      } catch (govError) {
+        console.warn('Governance init failed (non-fatal):', govError)
+      }
+    }
+
+    // 4. Store in DB
     const agentId = crypto.randomUUID()
 
     await db.insert(schema.orgAgents).values({

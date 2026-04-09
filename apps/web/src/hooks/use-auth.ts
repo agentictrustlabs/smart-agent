@@ -13,11 +13,6 @@ const MOCK_USER = {
   google: { name: 'Test User' },
 } as const
 
-/**
- * Wrapper around Privy's usePrivy hook.
- * When NEXT_PUBLIC_SKIP_AUTH=true, returns mock authenticated state
- * so the app can be tested without a real Privy connection.
- */
 export function useAuth() {
   if (SKIP_AUTH) {
     return {

@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server'
+import { eq } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { getEdgesByObject, getEdge, getEdgeRoles, getTemplateCount, getTemplate } from '@/lib/contracts'
 import { roleName, relationshipTypeName, toDidEthr } from '@smart-agent/sdk'
 
 const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? '31337')
-const STATUS_LABELS = ['none', 'proposed', 'active', 'suspended', 'revoked']
+const STATUS_LABELS = ['none', 'proposed', 'confirmed', 'active', 'suspended', 'revoked', 'rejected']
 
 export interface GraphNode {
   id: string
@@ -41,8 +42,10 @@ export async function GET() {
 
     const nameMap = new Map<string, string>()
     for (const p of allPersonAgents) {
+      // Use agent name if available, fall back to user name
       const user = allUsers.find((u) => u.id === p.userId)
-      nameMap.set(p.smartAccountAddress.toLowerCase(), user?.name ?? 'Person Agent')
+      const agentName = (p as Record<string, unknown>).name as string | undefined
+      nameMap.set(p.smartAccountAddress.toLowerCase(), agentName || user?.name || 'Person Agent')
     }
     for (const o of allOrgAgents) {
       nameMap.set(o.smartAccountAddress.toLowerCase(), o.name)
@@ -128,8 +131,24 @@ export async function GET() {
       } catch { /* skip */ }
     }
 
-    return NextResponse.json({ nodes, edges })
+    // Include current user's agent addresses for client-side filtering
+    const currentUserAddresses: string[] = []
+    try {
+      const { getSession } = await import('@/lib/auth/session')
+      const session = await getSession()
+      if (session) {
+        const currentUser = await db.select().from(schema.users).where(eq(schema.users.privyUserId, session.userId)).limit(1)
+        if (currentUser[0]) {
+          const myPerson = allPersonAgents.filter((p) => p.userId === currentUser[0].id)
+          const myOrgs = allOrgAgents.filter((o) => o.createdBy === currentUser[0].id)
+          myPerson.forEach((p) => currentUserAddresses.push(p.smartAccountAddress.toLowerCase()))
+          myOrgs.forEach((o) => currentUserAddresses.push(o.smartAccountAddress.toLowerCase()))
+        }
+      }
+    } catch { /* skip */ }
+
+    return NextResponse.json({ nodes, edges, currentUserAddresses })
   } catch (error) {
-    return NextResponse.json({ nodes: [], edges: [], error: String(error) })
+    return NextResponse.json({ nodes: [], edges: [], currentUserAddresses: [], error: String(error) })
   }
 }

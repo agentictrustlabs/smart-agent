@@ -187,7 +187,7 @@ export async function createRelationship(params: {
     return edgeId
   }
 
-  // 1. Create edge with initial roles
+  // 1. Create edge with initial roles — stays PROPOSED until counterparty confirms
   const createHash = await walletClient.writeContract({
     address: relAddr,
     abi: agentRelationshipAbi,
@@ -196,25 +196,84 @@ export async function createRelationship(params: {
   })
   await publicClient.waitForTransactionReceipt({ hash: createHash })
 
-  // 2. Set ACTIVE
-  const statusHash = await walletClient.writeContract({
-    address: relAddr,
-    abi: agentRelationshipAbi,
-    functionName: 'setEdgeStatus',
-    args: [edgeId, 2],
-  })
-  await publicClient.waitForTransactionReceipt({ hash: statusHash })
-
-  // 3. Make object assertion
+  // 2. Make self-assertion (subject claims the relationship)
   const assertHash = await walletClient.writeContract({
     address: assertAddr,
     abi: agentAssertionAbi,
     functionName: 'makeAssertion',
-    args: [edgeId, 2, 0n, 0n, ''],
+    args: [edgeId, 1, 0n, 0n, ''], // SELF_ASSERTED
   })
   await publicClient.waitForTransactionReceipt({ hash: assertHash })
 
   return edgeId
+}
+
+/**
+ * Confirm a PROPOSED relationship.
+ * Uses setEdgeStatus (allowed for createdBy) since the deployer created the edge.
+ * PROPOSED → CONFIRMED(2) → ACTIVE(3), plus object assertion.
+ */
+export async function confirmRelationship(edgeId: `0x${string}`): Promise<void> {
+  const walletClient = getWalletClient()
+  const publicClient = getPublicClient()
+  const relAddr = getRelationshipAddress()
+  const assertAddr = getAssertionAddress()
+
+  // 1. Set CONFIRMED
+  let hash = await walletClient.writeContract({
+    address: relAddr,
+    abi: agentRelationshipAbi,
+    functionName: 'setEdgeStatus',
+    args: [edgeId, 2], // CONFIRMED
+  })
+  await publicClient.waitForTransactionReceipt({ hash })
+
+  // 2. Set ACTIVE
+  hash = await walletClient.writeContract({
+    address: relAddr,
+    abi: agentRelationshipAbi,
+    functionName: 'setEdgeStatus',
+    args: [edgeId, 3], // ACTIVE
+  })
+  await publicClient.waitForTransactionReceipt({ hash })
+
+  // 3. Object assertion
+  hash = await walletClient.writeContract({
+    address: assertAddr,
+    abi: agentAssertionAbi,
+    functionName: 'makeAssertion',
+    args: [edgeId, 2, 0n, 0n, ''], // OBJECT_ASSERTED
+  })
+  await publicClient.waitForTransactionReceipt({ hash })
+}
+
+/**
+ * Reject a PROPOSED relationship.
+ */
+export async function rejectRelationship(edgeId: `0x${string}`): Promise<void> {
+  const walletClient = getWalletClient()
+  const publicClient = getPublicClient()
+  const relAddr = getRelationshipAddress()
+
+  // Use setEdgeStatus with REJECTED(6)
+  const hash = await walletClient.writeContract({
+    address: relAddr,
+    abi: agentRelationshipAbi,
+    functionName: 'setEdgeStatus',
+    args: [edgeId, 6], // REJECTED
+  })
+  await publicClient.waitForTransactionReceipt({ hash })
+}
+
+/** Get edges where the address is the subject. */
+export async function getEdgesBySubject(subject: `0x${string}`): Promise<`0x${string}`[]> {
+  const client = getPublicClient()
+  return (await client.readContract({
+    address: getRelationshipAddress(),
+    abi: agentRelationshipAbi,
+    functionName: 'getEdgesBySubject',
+    args: [subject],
+  })) as `0x${string}`[]
 }
 
 /** Get edges where the address is the object (authority). */

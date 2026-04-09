@@ -7,15 +7,9 @@ export function ConnectWalletButton() {
 
   if (!ready) {
     return (
-      <div data-component="connect-area">
-        <button disabled data-component="connect-wallet-btn" data-state="loading">
-          <span data-component="spinner-dot" />
-          Connecting to Privy...
-        </button>
-        <p data-component="connect-hint">
-          Make sure you are accessing via <strong>http://localhost:3000</strong>
-        </p>
-      </div>
+      <button disabled data-component="connect-wallet-btn" data-state="loading">
+        Loading...
+      </button>
     )
   }
 

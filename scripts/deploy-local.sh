@@ -45,6 +45,7 @@ VALIDATION_ADDR=$(echo "$OUTPUT" | grep "AGENT_VALIDATION_ADDRESS=" | sed 's/.*=
 REVIEW_ADDR=$(echo "$OUTPUT" | grep "AGENT_REVIEW_ADDRESS=" | sed 's/.*=//')
 DISPUTE_ADDR=$(echo "$OUTPUT" | grep "AGENT_DISPUTE_ADDRESS=" | sed 's/.*=//')
 TRUST_PROFILE_ADDR=$(echo "$OUTPUT" | grep "AGENT_TRUST_PROFILE_ADDRESS=" | sed 's/.*=//')
+CONTROL_ADDR=$(echo "$OUTPUT" | grep "AGENT_CONTROL_ADDRESS=" | sed 's/.*=//')
 
 echo ""
 echo "=== Extracted addresses ==="
@@ -60,6 +61,7 @@ echo "AgentValidationProfile:    $VALIDATION_ADDR"
 echo "AgentReviewRecord:         $REVIEW_ADDR"
 echo "AgentDisputeRecord:        $DISPUTE_ADDR"
 echo "AgentTrustProfile:         $TRUST_PROFILE_ADDR"
+echo "AgentControl:              $CONTROL_ADDR"
 echo "TimestampEnforcer:         $TIMESTAMP"
 echo "ValueEnforcer:             $VALUE"
 echo "AllowedTargetsEnforcer:    $TARGETS"
@@ -84,6 +86,7 @@ sed -i '/^AGENT_VALIDATION_ADDRESS=/d' "$WEB_ENV"
 sed -i '/^AGENT_REVIEW_ADDRESS=/d' "$WEB_ENV"
 sed -i '/^AGENT_DISPUTE_ADDRESS=/d' "$WEB_ENV"
 sed -i '/^AGENT_TRUST_PROFILE_ADDRESS=/d' "$WEB_ENV"
+sed -i '/^AGENT_CONTROL_ADDRESS=/d' "$WEB_ENV"
 sed -i '/^TIMESTAMP_ENFORCER_ADDRESS=/d' "$WEB_ENV"
 sed -i '/^VALUE_ENFORCER_ADDRESS=/d' "$WEB_ENV"
 sed -i '/^ALLOWED_TARGETS_ENFORCER_ADDRESS=/d' "$WEB_ENV"
@@ -109,6 +112,7 @@ AGENT_VALIDATION_ADDRESS=$VALIDATION_ADDR
 AGENT_REVIEW_ADDRESS=$REVIEW_ADDR
 AGENT_DISPUTE_ADDRESS=$DISPUTE_ADDR
 AGENT_TRUST_PROFILE_ADDRESS=$TRUST_PROFILE_ADDR
+AGENT_CONTROL_ADDRESS=$CONTROL_ADDR
 TIMESTAMP_ENFORCER_ADDRESS=$TIMESTAMP
 VALUE_ENFORCER_ADDRESS=$VALUE
 ALLOWED_TARGETS_ENFORCER_ADDRESS=$TARGETS

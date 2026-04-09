@@ -56,17 +56,37 @@ function layoutNodes(nodes: GraphNode[], w: number, h: number): GraphNode[] {
 }
 
 export function TrustGraphView() {
-  const [data, setData] = useState<GraphData | null>(null)
+  const [rawData, setRawData] = useState<(GraphData & { currentUserAddresses?: string[] }) | null>(null)
   const [selectedNode, setSelectedNode] = useState<string | null>(null)
   const [selectedEdge, setSelectedEdge] = useState<GraphEdge | null>(null)
+  const [filter, setFilter] = useState<'all' | 'mine'>('mine')
 
   useEffect(() => {
-    fetch('/api/graph').then((r) => r.json()).then(setData).catch(() => {})
+    fetch('/api/graph').then((r) => r.json()).then(setRawData).catch(() => {})
   }, [])
 
-  if (!data || data.nodes.length === 0) {
-    return <div data-component="graph-empty"><p>No graph data. Deploy agents and create relationships first.</p></div>
+  if (!rawData || rawData.nodes.length === 0) {
+    return <div data-component="graph-empty"><p>No graph data yet.</p><p><a href="/deploy/person">Deploy a Person Agent</a> or <a href="/deploy/org">Deploy an Org Agent</a> to get started.</p></div>
   }
+
+  // Apply filter
+  const myAddrs = new Set((rawData.currentUserAddresses ?? []).map((a) => a.toLowerCase()))
+  const data: GraphData = filter === 'all' ? rawData : (() => {
+    // "mine" = show my agents + any agents connected to mine
+    const connectedAddrs = new Set<string>(myAddrs)
+    rawData.edges.forEach((e) => {
+      if (myAddrs.has(e.source.toLowerCase()) || myAddrs.has(e.target.toLowerCase())) {
+        connectedAddrs.add(e.source.toLowerCase())
+        connectedAddrs.add(e.target.toLowerCase())
+      }
+    })
+    return {
+      nodes: rawData.nodes.filter((n) => connectedAddrs.has(n.id.toLowerCase())),
+      edges: rawData.edges.filter((e) =>
+        connectedAddrs.has(e.source.toLowerCase()) && connectedAddrs.has(e.target.toLowerCase())
+      ),
+    }
+  })()
 
   const W = 900, H = 600
   const nodes = layoutNodes(data.nodes, W, H)
@@ -106,12 +126,31 @@ export function TrustGraphView() {
   return (
     <div data-component="trust-graph-container">
       <div data-component="graph-legend">
-        <div data-component="legend-items">
-          <span data-component="legend-item"><span style={{ background: NODE_COLORS.person }} data-component="legend-dot" /> Person</span>
-          <span data-component="legend-item"><span style={{ background: NODE_COLORS.org }} data-component="legend-dot" /> Organization</span>
-          {Object.entries(EDGE_COLORS).map(([t, c]) => (
-            <span key={t} data-component="legend-item"><span style={{ background: c }} data-component="legend-line" /> {t}</span>
-          ))}
+        <div data-component="graph-toolbar">
+          <div data-component="graph-filter">
+            <button
+              onClick={() => { setFilter('all'); setSelectedNode(null); setSelectedEdge(null) }}
+              data-component="filter-btn"
+              data-active={filter === 'all' ? 'true' : 'false'}
+            >
+              All Agents ({rawData.nodes.length})
+            </button>
+            <button
+              onClick={() => { setFilter('mine'); setSelectedNode(null); setSelectedEdge(null) }}
+              data-component="filter-btn"
+              data-active={filter === 'mine' ? 'true' : 'false'}
+              disabled={myAddrs.size === 0}
+            >
+              My Agents ({myAddrs.size})
+            </button>
+          </div>
+          <div data-component="legend-items">
+            <span data-component="legend-item"><span style={{ background: NODE_COLORS.person }} data-component="legend-dot" /> Person</span>
+            <span data-component="legend-item"><span style={{ background: NODE_COLORS.org }} data-component="legend-dot" /> Organization</span>
+            {Object.entries(EDGE_COLORS).map(([t, c]) => (
+              <span key={t} data-component="legend-item"><span style={{ background: c }} data-component="legend-line" /> {t}</span>
+            ))}
+          </div>
         </div>
       </div>
 

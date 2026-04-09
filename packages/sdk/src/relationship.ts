@@ -180,9 +180,11 @@ export function validationMethodName(hash: `0x${string}`): string {
 export const EdgeStatus = {
   NONE: 0,
   PROPOSED: 1,
-  ACTIVE: 2,
-  SUSPENDED: 3,
-  REVOKED: 4,
+  CONFIRMED: 2,
+  ACTIVE: 3,
+  SUSPENDED: 4,
+  REVOKED: 5,
+  REJECTED: 6,
 } as const
 
 // ─── Assertion Types ────────────────────────────────────────────────
