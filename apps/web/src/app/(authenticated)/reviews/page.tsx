@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { getPublicClient } from '@/lib/contracts'
 import { agentReviewRecordAbi, agentDisputeRecordAbi, agentTrustProfileAbi } from '@smart-agent/sdk'
 import { db, schema } from '@/db'
@@ -71,7 +72,10 @@ export default async function ReviewsPage() {
   return (
     <div data-page="reviews">
       <div data-component="page-header">
-        <h1>Reviews & Disputes</h1>
+        <div data-component="section-header">
+          <h1>Reviews & Disputes</h1>
+          <Link href="/reviews/submit" data-component="section-action">+ Submit Review</Link>
+        </div>
         <p>Structured review claims and adverse signals for agents in the trust fabric</p>
       </div>
 

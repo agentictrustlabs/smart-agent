@@ -228,6 +228,18 @@ cast send "$TMPL" "createTemplate(bytes32,bytes32,string,string,(address,bool,by
   "" "" \
   --rpc-url "$RPC" --private-key "$KEY" > /dev/null 2>&1
 
+# Template 7: Reviewer Access
+echo "Template: Reviewer Access"
+REVIEW_T=$(cast call "$REL" "REVIEW_RELATIONSHIP()(bytes32)" --rpc-url "$RPC")
+R_REVIEWER_ROLE=$(cast call "$REL" "ROLE_REVIEWER()(bytes32)" --rpc-url "$RPC")
+cast send "$TMPL" "createTemplate(bytes32,bytes32,string,string,(address,bool,bytes)[],string,string)" \
+  "$REVIEW_T" "$R_REVIEWER_ROLE" \
+  "Reviewer Access" \
+  "Reviewers may submit structured reviews for agents via delegation. Time-bounded, method-restricted." \
+  "[($TIMESTAMP_ENF,true,0x),($METHODS_ENF,true,0x)]" \
+  "" "" \
+  --rpc-url "$RPC" --private-key "$KEY" > /dev/null 2>&1
+
 echo "Templates created: $(cast call $TMPL 'templateCount()(uint256)' --rpc-url $RPC)"
 
 # ─── Deploy additional agent nodes ──────────────────────────────────

@@ -67,6 +67,37 @@ export const orgAgents = sqliteTable('org_agents', {
     .$defaultFn(() => new Date().toISOString()),
 })
 
+// ─── AI Agents (autonomous AI agent 4337 accounts) ──────────────────
+
+export const aiAgents = sqliteTable('ai_agents', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  description: text('description'),
+  agentType: text('agent_type', {
+    enum: ['discovery', 'assistant', 'executor', 'validator', 'oracle', 'custom'],
+  }).notNull().default('custom'),
+  createdBy: text('created_by')
+    .notNull()
+    .references(() => users.id),
+  operatedBy: text('operated_by'), // org agent address that operates this AI agent
+  smartAccountAddress: text('smart_account_address').notNull(),
+  chainId: integer('chain_id').notNull(),
+  salt: text('salt').notNull(),
+  implementationType: text('implementation_type', {
+    enum: ['hybrid', 'multisig', 'stateless7702'],
+  })
+    .notNull()
+    .default('hybrid'),
+  status: text('status', {
+    enum: ['pending', 'deployed', 'failed'],
+  })
+    .notNull()
+    .default('pending'),
+  createdAt: text('created_at')
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+})
+
 // ─── Invites ─────────────────────────────────────────────────────────
 
 export const invites = sqliteTable('invites', {

@@ -10,7 +10,7 @@ const STATUS_LABELS = ['none', 'proposed', 'confirmed', 'active', 'suspended', '
 export interface GraphNode {
   id: string
   label: string
-  type: 'person' | 'org'
+  type: 'person' | 'org' | 'ai'
   did: string
   address: string
 }
@@ -39,10 +39,10 @@ export async function GET() {
     const allUsers = await db.select().from(schema.users)
     const allPersonAgents = await db.select().from(schema.personAgents)
     const allOrgAgents = await db.select().from(schema.orgAgents)
+    const allAIAgents = await db.select().from(schema.aiAgents)
 
     const nameMap = new Map<string, string>()
     for (const p of allPersonAgents) {
-      // Use agent name if available, fall back to user name
       const user = allUsers.find((u) => u.id === p.userId)
       const agentName = (p as Record<string, unknown>).name as string | undefined
       nameMap.set(p.smartAccountAddress.toLowerCase(), agentName || user?.name || 'Person Agent')
@@ -50,13 +50,16 @@ export async function GET() {
     for (const o of allOrgAgents) {
       nameMap.set(o.smartAccountAddress.toLowerCase(), o.name)
     }
+    for (const a of allAIAgents) {
+      nameMap.set(a.smartAccountAddress.toLowerCase(), a.name)
+    }
 
     const nodes: GraphNode[] = []
     const edges: GraphEdge[] = []
     const seenNodes = new Set<string>()
     const seenEdges = new Set<string>()
 
-    function addNode(address: string, type: 'person' | 'org') {
+    function addNode(address: string, type: 'person' | 'org' | 'ai') {
       const key = address.toLowerCase()
       if (seenNodes.has(key)) return
       seenNodes.add(key)
@@ -71,6 +74,7 @@ export async function GET() {
 
     for (const p of allPersonAgents) addNode(p.smartAccountAddress, 'person')
     for (const o of allOrgAgents) addNode(o.smartAccountAddress, 'org')
+    for (const a of allAIAgents) addNode(a.smartAccountAddress, 'ai')
 
     // Load all templates: (relType:role) → TemplateInfo[]
     const templatesByKey = new Map<string, TemplateInfo[]>()
@@ -96,6 +100,8 @@ export async function GET() {
     // Fetch on-chain edges
     const allAddresses = [...seenNodes].map((a) => a as `0x${string}`)
     const isOrg = (a: string) => allOrgAgents.some((o) => o.smartAccountAddress.toLowerCase() === a.toLowerCase())
+    const isAI = (a: string) => allAIAgents.some((ai) => ai.smartAccountAddress.toLowerCase() === a.toLowerCase())
+    const getNodeType = (a: string): 'person' | 'org' | 'ai' => isAI(a) ? 'ai' : isOrg(a) ? 'org' : 'person'
 
     for (const addr of allAddresses) {
       try {
@@ -107,8 +113,8 @@ export async function GET() {
           const e = await getEdge(edgeId)
           const roleHashes = await getEdgeRoles(edgeId)
 
-          addNode(e.subject, isOrg(e.subject) ? 'org' : 'person')
-          addNode(e.object_, isOrg(e.object_) ? 'org' : 'person')
+          addNode(e.subject, getNodeType(e.subject))
+          addNode(e.object_, getNodeType(e.object_))
 
           // Gather templates for this edge's role+type combos
           const edgeTemplates: TemplateInfo[] = []
@@ -141,8 +147,10 @@ export async function GET() {
         if (currentUser[0]) {
           const myPerson = allPersonAgents.filter((p) => p.userId === currentUser[0].id)
           const myOrgs = allOrgAgents.filter((o) => o.createdBy === currentUser[0].id)
+          const myAIs = allAIAgents.filter((a) => a.createdBy === currentUser[0].id)
           myPerson.forEach((p) => currentUserAddresses.push(p.smartAccountAddress.toLowerCase()))
           myOrgs.forEach((o) => currentUserAddresses.push(o.smartAccountAddress.toLowerCase()))
+          myAIs.forEach((a) => currentUserAddresses.push(a.smartAccountAddress.toLowerCase()))
         }
       }
     } catch { /* skip */ }

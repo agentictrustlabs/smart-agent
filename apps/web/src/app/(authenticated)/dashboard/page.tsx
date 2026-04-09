@@ -57,6 +57,11 @@ export default async function DashboardPage() {
 
   const orgAgents = [...createdOrgs, ...additionalOrgs]
 
+  // Get AI agents
+  const aiAgents = await db.select().from(schema.aiAgents)
+    .where(eq(schema.aiAgents.createdBy, currentUser.id))
+    .orderBy(schema.aiAgents.createdAt)
+
   // Fetch relationship edges for each org
   type EdgeView = { subject: string; roles: string[]; status: string }
   type OrgWithEdges = (typeof orgAgents)[number] & { edges: EdgeView[] }
@@ -186,6 +191,40 @@ export default async function DashboardPage() {
           <div data-component="empty-state">
             <p>No organization agents deployed yet.</p>
             <a href="/deploy/org">Deploy Org Agent</a>
+          </div>
+        )}
+      </section>
+
+      <section data-component="agent-section">
+        <div data-component="section-header">
+          <h2>AI Agents</h2>
+          <Link href="/deploy/ai" data-component="section-action">+ New AI Agent</Link>
+        </div>
+        {aiAgents.length > 0 ? (
+          <div data-component="agent-grid">
+            {aiAgents.map((agent) => (
+              <div key={agent.id} data-component="agent-card" data-status={agent.status}>
+                <div data-component="agent-card-header">
+                  <h3>{agent.name}</h3>
+                  <span data-component="role-badge">{agent.agentType}</span>
+                  <Link href={`/agents/${agent.smartAccountAddress}`} data-component="settings-link">Settings</Link>
+                </div>
+                {agent.description && <p data-component="card-description">{agent.description}</p>}
+                <dl>
+                  <dt>Smart Account</dt>
+                  <dd data-component="address">{agent.smartAccountAddress}</dd>
+                  <dt>DID</dt>
+                  <dd data-component="did">{toDidEthr(CHAIN_ID, agent.smartAccountAddress as `0x${string}`)}</dd>
+                  <dt>Status</dt>
+                  <dd data-status={agent.status}>{agent.status}</dd>
+                </dl>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div data-component="empty-state">
+            <p>No AI agents deployed yet.</p>
+            <a href="/deploy/ai">Deploy AI Agent</a>
           </div>
         )}
       </section>

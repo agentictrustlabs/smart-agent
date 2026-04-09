@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react'
 interface GraphNode {
   id: string
   label: string
-  type: 'person' | 'org'
+  type: 'person' | 'org' | 'ai'
   did: string
   address: string
   x?: number
@@ -36,7 +36,7 @@ interface GraphData {
   edges: GraphEdge[]
 }
 
-const NODE_COLORS: Record<string, string> = { person: '#6366f1', org: '#22c55e' }
+const NODE_COLORS: Record<string, string> = { person: '#6366f1', org: '#22c55e', ai: '#f59e0b' }
 
 const EDGE_COLORS: Record<string, string> = {
   Governance: '#f59e0b', Membership: '#6366f1', Alliance: '#ec4899',
@@ -147,6 +147,7 @@ export function TrustGraphView() {
           <div data-component="legend-items">
             <span data-component="legend-item"><span style={{ background: NODE_COLORS.person }} data-component="legend-dot" /> Person</span>
             <span data-component="legend-item"><span style={{ background: NODE_COLORS.org }} data-component="legend-dot" /> Organization</span>
+            <span data-component="legend-item"><span style={{ background: NODE_COLORS.ai }} data-component="legend-dot" /> AI Agent</span>
             {Object.entries(EDGE_COLORS).map(([t, c]) => (
               <span key={t} data-component="legend-item"><span style={{ background: c }} data-component="legend-line" /> {t}</span>
             ))}
@@ -194,12 +195,16 @@ export function TrustGraphView() {
           {nodes.map((node) => {
             const hl = isNodeHighlighted(node.id)
             const isSel = selectedNode === node.id.toLowerCase()
-            const r = node.type === 'org' ? 28 : 22
+            const r = node.type === 'org' ? 28 : node.type === 'ai' ? 25 : 22
             return (
               <g key={node.id} opacity={hl ? 1 : 0.12} style={{ cursor: 'pointer' }}
                 onClick={() => handleNodeClick(node.id)}>
                 {node.type === 'org' ? (
                   <rect x={(node.x ?? 0) - r} y={(node.y ?? 0) - r} width={r * 2} height={r * 2} rx={8}
+                    fill={NODE_COLORS[node.type]} stroke={isSel ? '#fff' : 'rgba(255,255,255,0.4)'} strokeWidth={isSel ? 3 : 1.5} />
+                ) : node.type === 'ai' ? (
+                  <polygon
+                    points={`${node.x},${(node.y ?? 0) - r} ${(node.x ?? 0) + r},${node.y} ${node.x},${(node.y ?? 0) + r} ${(node.x ?? 0) - r},${node.y}`}
                     fill={NODE_COLORS[node.type]} stroke={isSel ? '#fff' : 'rgba(255,255,255,0.4)'} strokeWidth={isSel ? 3 : 1.5} />
                 ) : (
                   <circle cx={node.x} cy={node.y} r={r}
