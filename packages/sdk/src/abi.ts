@@ -7,14 +7,18 @@ export const agentRootAccountAbi = [
   { type: 'function', name: 'ownerCount', inputs: [], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view' },
   { type: 'function', name: 'entryPoint', inputs: [], outputs: [{ name: '', type: 'address' }], stateMutability: 'view' },
   { type: 'function', name: 'getNonce', inputs: [], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view' },
-  { type: 'function', name: 'initialize', inputs: [{ name: 'initialOwner', type: 'address' }], outputs: [], stateMutability: 'nonpayable' },
+  { type: 'function', name: 'initialize', inputs: [{ name: 'initialOwner', type: 'address' }, { name: 'dm', type: 'address' }], outputs: [], stateMutability: 'nonpayable' },
   { type: 'function', name: 'execute', inputs: [{ name: 'target', type: 'address' }, { name: 'value', type: 'uint256' }, { name: 'data', type: 'bytes' }], outputs: [], stateMutability: 'nonpayable' },
   { type: 'function', name: 'executeBatch', inputs: [{ name: 'calls', type: 'tuple[]', components: [{ name: 'target', type: 'address' }, { name: 'value', type: 'uint256' }, { name: 'data', type: 'bytes' }] }], outputs: [], stateMutability: 'nonpayable' },
   { type: 'function', name: 'isValidSignature', inputs: [{ name: 'hash', type: 'bytes32' }, { name: 'signature', type: 'bytes' }], outputs: [{ name: '', type: 'bytes4' }], stateMutability: 'view' },
   { type: 'function', name: 'setDelegationManager', inputs: [{ name: 'dm', type: 'address' }], outputs: [], stateMutability: 'nonpayable' },
   { type: 'function', name: 'delegationManager', inputs: [], outputs: [{ name: '', type: 'address' }], stateMutability: 'view' },
+  { type: 'function', name: 'version', inputs: [], outputs: [{ name: '', type: 'string' }], stateMutability: 'pure' },
+  { type: 'function', name: 'upgradeToAndCall', inputs: [{ name: 'newImplementation', type: 'address' }, { name: 'data', type: 'bytes' }], outputs: [], stateMutability: 'payable' },
+  { type: 'function', name: 'proxiableUUID', inputs: [], outputs: [{ name: '', type: 'bytes32' }], stateMutability: 'view' },
   { type: 'event', name: 'OwnerAdded', inputs: [{ name: 'owner', type: 'address', indexed: true }] },
   { type: 'event', name: 'OwnerRemoved', inputs: [{ name: 'owner', type: 'address', indexed: true }] },
+  { type: 'event', name: 'Upgraded', inputs: [{ name: 'implementation', type: 'address', indexed: true }] },
 ] as const
 
 // ─── AgentAccountFactory ABI ─────────────────────────────────────────
@@ -59,6 +63,7 @@ export const delegationManagerAbi = [
     { name: 'caveats', type: 'tuple[]', components: [
       { name: 'enforcer', type: 'address' },
       { name: 'terms', type: 'bytes' },
+      { name: 'args', type: 'bytes' },
     ]},
     { name: 'salt', type: 'uint256' },
     { name: 'signature', type: 'bytes' },

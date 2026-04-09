@@ -56,14 +56,14 @@ contract Deploy is Script {
             console.log("EntryPoint (deployed):", address(ep));
         }
 
-        // 2. AgentAccountFactory (deploys the implementation singleton internally)
-        AgentAccountFactory factory = new AgentAccountFactory(entryPoint);
-        console.log("AgentAccountFactory:", address(factory));
-        console.log("  AgentRootAccount impl:", address(factory.accountImplementation()));
-
-        // 3. DelegationManager
+        // 2. DelegationManager (deployed first so factory can pass it to accounts)
         DelegationManager delegationManager = new DelegationManager();
         console.log("DelegationManager:", address(delegationManager));
+
+        // 3. AgentAccountFactory (deploys implementation singleton, sets DelegationManager on all accounts)
+        AgentAccountFactory factory = new AgentAccountFactory(entryPoint, address(delegationManager));
+        console.log("AgentAccountFactory:", address(factory));
+        console.log("  AgentRootAccount impl:", address(factory.accountImplementation()));
 
         // 4. Caveat Enforcers
         TimestampEnforcer timestampEnforcer = new TimestampEnforcer();

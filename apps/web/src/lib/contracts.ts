@@ -121,14 +121,6 @@ export async function deploySmartAccount(
   })
 
   await publicClient.waitForTransactionReceipt({ hash })
-
-  // Set DelegationManager on the new account (ERC-7710: authorize delegation execution)
-  try {
-    await setAgentDelegationManager(address)
-  } catch (e) {
-    console.error('Failed to set DelegationManager on account:', e)
-  }
-
   return address
 }
 
@@ -478,9 +470,13 @@ export async function issueReviewDelegation(params: {
   const salt = BigInt(Math.floor(Math.random() * Number.MAX_SAFE_INTEGER))
 
   // Build unsigned delegation
+  // delegate = deployer address (the server relays the call on behalf of the reviewer)
+  // The reviewer's identity is encoded in the createReview calldata, not the delegate field.
+  // In future, when reviewers call redeemDelegation directly, delegate = reviewer agent.
+  const deployerAddress = walletClient.account!.address
   const delegation: Delegation = {
     delegator: params.subjectAgentAddress,
-    delegate: params.reviewerAgentAddress,
+    delegate: deployerAddress,
     authority: ROOT_AUTHORITY as `0x${string}`,
     caveats,
     salt,

@@ -51,18 +51,7 @@ echo "Carol:  $CAROL_AGENT"
 echo "ATL:    $ORG_ATL"
 echo "DeFi:   $ORG_DEFI"
 
-# Set DelegationManager on all accounts (ERC-7710: authorize delegation execution)
-DM="${DELEGATION_MANAGER_ADDRESS}"
-set_dm() {
-  cast send "$1" "setDelegationManager(address)" "$DM" --rpc-url "$RPC" --private-key "$KEY" > /dev/null 2>&1
-}
-echo ""
-echo "Setting DelegationManager on initial agents..."
-set_dm "$ALICE_AGENT"
-set_dm "$BOB_AGENT"
-set_dm "$CAROL_AGENT"
-set_dm "$ORG_ATL"
-set_dm "$ORG_DEFI"
+echo "(DelegationManager set automatically by factory during createAccount)"
 
 # Helper: create edge with roles, activate, and assert
 create_relationship() {
@@ -272,11 +261,6 @@ echo "TrustValidator:  $TRUST_VALIDATOR"
 TEE_RUNTIME=$(deploy_agent 3004)
 echo "TEE Runtime:     $TEE_RUNTIME"
 
-echo "Setting DelegationManager on additional agents..."
-set_dm "$INSURECO"
-set_dm "$STAKEPOOL"
-set_dm "$TRUST_VALIDATOR"
-set_dm "$TEE_RUNTIME"
 
 # ─── Register Issuers ───────────────────────────────────────────────
 
@@ -406,14 +390,6 @@ echo "Reviewer Eve:       $REVIEWER_EVE"
 REVIEWER_FRANK=$(deploy_agent 4007)
 echo "Reviewer Frank:     $REVIEWER_FRANK"
 
-echo "Setting DelegationManager on AI/reviewer agents..."
-set_dm "$DISCOVERY_AGENT"
-set_dm "$DISCOVERY_TEE"
-set_dm "$VALIDATOR_ALPHA"
-set_dm "$VALIDATOR_BETA"
-set_dm "$REVIEWER_DAVE"
-set_dm "$REVIEWER_EVE"
-set_dm "$REVIEWER_FRANK"
 
 # Get new type/role hashes
 ORG_CTRL=$(cast call "$REL" "ORGANIZATIONAL_CONTROL()(bytes32)" --rpc-url "$RPC")

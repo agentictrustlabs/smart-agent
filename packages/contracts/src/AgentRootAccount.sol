@@ -6,16 +6,28 @@ import "account-abstraction/interfaces/IEntryPoint.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import "./IAgentAccount.sol";
 
 /**
  * @title AgentRootAccount
- * @notice ERC-4337 smart account that serves as an agent's on-chain identity anchor.
- *         Supports multiple owners, ERC-1271 signature validation, and serves as the
- *         root of trust for the agent delegation system.
+ * @notice ERC-4337 + UUPS-upgradeable smart account — agent identity anchor.
+ *
+ * The agent address IS the identity (did:ethr:<chainId>:<address>).
+ * UUPS upgradeability means the implementation can evolve without
+ * changing the proxy address or losing state.
+ *
+ * Upgrade authorization: only the account itself (via UserOp or self-call).
+ * This follows the MetaMask DeleGator pattern for upgradeable smart accounts.
+ *
+ * Supports:
+ * - Multi-owner with ERC-1271 signature validation
+ * - ERC-4337 UserOp validation
+ * - ERC-7710 delegated execution via DelegationManager
+ * - UUPS upgrades (ERC-1822)
  */
-contract AgentRootAccount is BaseAccount, Initializable, IAgentAccount, IERC1271 {
+contract AgentRootAccount is BaseAccount, Initializable, UUPSUpgradeable, IAgentAccount, IERC1271 {
     using ECDSA for bytes32;
     using MessageHashUtils for bytes32;
 
@@ -35,6 +47,7 @@ contract AgentRootAccount is BaseAccount, Initializable, IAgentAccount, IERC1271
     // ─── Errors ─────────────────────────────────────────────────────
 
     error NotFromSelf();
+    error NotOwnerOrSelf();
     error OwnerAlreadyExists(address owner);
     error OwnerDoesNotExist(address owner);
     error CannotRemoveLastOwner();
@@ -55,15 +68,32 @@ contract AgentRootAccount is BaseAccount, Initializable, IAgentAccount, IERC1271
     }
 
     /**
-     * @notice Initialize the account with an initial owner.
+     * @notice Initialize the account with an initial owner and optional DelegationManager.
      * @param initialOwner The first owner of this agent account.
+     * @param dm The DelegationManager address (ERC-7710 executor). Use address(0) to skip.
      */
-    function initialize(address initialOwner) external initializer {
+    function initialize(address initialOwner, address dm) external initializer {
         if (initialOwner == address(0)) revert ZeroAddress();
         _owners[initialOwner] = true;
         _ownerCount = 1;
+        _delegationManager = dm;
         emit OwnerAdded(initialOwner);
     }
+
+    // ─── UUPS Upgrade ──────────────────────────────────────────────
+
+    /**
+     * @dev Only the account itself can authorize upgrades (via UserOp or self-call).
+     *      This prevents unauthorized implementation changes.
+     */
+    function _authorizeUpgrade(address) internal view override onlySelf {}
+
+    /// @notice Returns the current implementation version.
+    function version() external pure returns (string memory) {
+        return "2.0.0";
+    }
+
+    // ─── Delegation Manager (ERC-7710) ─────────────────────────────
 
     /**
      * @notice Set the DelegationManager authorized to execute on behalf of this account.
@@ -72,9 +102,8 @@ contract AgentRootAccount is BaseAccount, Initializable, IAgentAccount, IERC1271
      *         Can be called by an owner (for initial setup) or by the account itself.
      */
     function setDelegationManager(address dm) external {
-        // Allow owners to set during initial setup, or the account itself
         if (msg.sender != address(this) && !_owners[msg.sender]) {
-            revert NotFromSelf();
+            revert NotOwnerOrSelf();
         }
         _delegationManager = dm;
     }

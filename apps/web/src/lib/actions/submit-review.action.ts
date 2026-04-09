@@ -5,6 +5,7 @@ import { eq, and } from 'drizzle-orm'
 import { requireSession } from '@/lib/auth/session'
 import {
   getPublicClient,
+  getWalletClient,
   redeemReviewDelegation,
   issueReviewDelegation,
   getEdgesBySubject,
@@ -104,36 +105,44 @@ export async function submitReview(input: SubmitReviewInput): Promise<SubmitRevi
 
     let delegation: Delegation
 
+    // Helper: issue fresh delegation and store
+    const issueAndStore = async (edgeId: string) => {
+      const result = await issueReviewDelegation({
+        subjectAgentAddress: subjectAddr,
+        reviewerAgentAddress: myAgent,
+      })
+      await db.insert(schema.reviewDelegations).values({
+        id: crypto.randomUUID(),
+        reviewerAgentAddress: myAgent.toLowerCase(),
+        subjectAgentAddress: subjectAddr.toLowerCase(),
+        edgeId,
+        delegationJson: JSON.stringify(result.delegation, (_, v) =>
+          typeof v === 'bigint' ? v.toString() : v
+        ),
+        salt: result.delegation.salt.toString(),
+        expiresAt: result.expiresAt,
+      })
+      return result.delegation
+    }
+
     if (storedDelegations[0]) {
-      // Check if delegation is expired
+      // Check if delegation is expired or stale (wrong delegate address from old version)
       const expiresAt = new Date(storedDelegations[0].expiresAt)
-      if (expiresAt < new Date()) {
-        // Mark as expired and re-issue
+      const parsed = JSON.parse(storedDelegations[0].delegationJson)
+      // Delegate must be the deployer (server relays the call). Old delegations may have
+      // the reviewer's agent as delegate — those need to be re-issued.
+      const deployerAddr = getWalletClient().account!.address.toLowerCase()
+      const needsReissue = expiresAt < new Date()
+        || parsed.delegate?.toLowerCase() !== deployerAddr
+
+      if (needsReissue) {
+        // Mark old as expired and re-issue
         await db.update(schema.reviewDelegations)
           .set({ status: 'expired' })
           .where(eq(schema.reviewDelegations.id, storedDelegations[0].id))
-
-        const result = await issueReviewDelegation({
-          subjectAgentAddress: subjectAddr,
-          reviewerAgentAddress: myAgent,
-        })
-        delegation = result.delegation
-
-        // Store new delegation
-        await db.insert(schema.reviewDelegations).values({
-          id: crypto.randomUUID(),
-          reviewerAgentAddress: myAgent.toLowerCase(),
-          subjectAgentAddress: subjectAddr.toLowerCase(),
-          edgeId: storedDelegations[0].edgeId,
-          delegationJson: JSON.stringify(delegation, (_, v) =>
-            typeof v === 'bigint' ? v.toString() : v
-          ),
-          salt: delegation.salt.toString(),
-          expiresAt: result.expiresAt,
-        })
+        delegation = await issueAndStore(storedDelegations[0].edgeId)
       } else {
         // Parse stored delegation (restore bigint fields)
-        const parsed = JSON.parse(storedDelegations[0].delegationJson)
         delegation = {
           ...parsed,
           salt: BigInt(parsed.salt),
@@ -146,23 +155,7 @@ export async function submitReview(input: SubmitReviewInput): Promise<SubmitRevi
       }
     } else {
       // No delegation stored — issue a new one (fallback for existing relationships)
-      const result = await issueReviewDelegation({
-        subjectAgentAddress: subjectAddr,
-        reviewerAgentAddress: myAgent,
-      })
-      delegation = result.delegation
-
-      await db.insert(schema.reviewDelegations).values({
-        id: crypto.randomUUID(),
-        reviewerAgentAddress: myAgent.toLowerCase(),
-        subjectAgentAddress: subjectAddr.toLowerCase(),
-        edgeId: '',
-        delegationJson: JSON.stringify(delegation, (_, v) =>
-          typeof v === 'bigint' ? v.toString() : v
-        ),
-        salt: delegation.salt.toString(),
-        expiresAt: result.expiresAt,
-      })
+      delegation = await issueAndStore('')
     }
 
     // Validate inputs

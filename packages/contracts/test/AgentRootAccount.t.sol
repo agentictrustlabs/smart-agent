@@ -26,7 +26,7 @@ contract AgentRootAccountTest is Test {
         entryPoint = new EntryPoint();
 
         // Deploy factory
-        factory = new AgentAccountFactory(IEntryPoint(address(entryPoint)));
+        factory = new AgentAccountFactory(IEntryPoint(address(entryPoint)), address(0));
 
         // Deploy agent account via factory
         account = factory.createAccount(owner, 0);

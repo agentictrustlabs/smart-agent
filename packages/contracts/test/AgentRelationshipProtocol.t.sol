@@ -31,7 +31,7 @@ contract AgentRelationshipProtocolTest is Test {
         bob = makeAddr("bob");
 
         EntryPoint ep = new EntryPoint();
-        factory = new AgentAccountFactory(IEntryPoint(address(ep)));
+        factory = new AgentAccountFactory(IEntryPoint(address(ep)), address(0));
         personAgent = address(factory.createAccount(alice, 1));
         orgAgent = address(factory.createAccount(alice, 2));
 

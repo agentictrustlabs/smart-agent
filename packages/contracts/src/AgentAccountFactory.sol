@@ -7,16 +7,29 @@ import "./AgentRootAccount.sol";
 /**
  * @title AgentAccountFactory
  * @notice Factory for deploying AgentRootAccount proxies with deterministic CREATE2 addresses.
+ *         Automatically sets the DelegationManager on each new account (ERC-7710).
  */
 contract AgentAccountFactory {
     /// @notice The AgentRootAccount implementation (singleton).
     AgentRootAccount public immutable accountImplementation;
 
+    /// @notice The DelegationManager address set on every new account.
+    address public delegationManager;
+
     /// @notice Emitted when a new agent account is deployed.
     event AgentAccountCreated(address indexed account, address indexed owner, uint256 salt);
 
-    constructor(IEntryPoint entryPoint_) {
+    constructor(IEntryPoint entryPoint_, address delegationManager_) {
         accountImplementation = new AgentRootAccount(entryPoint_);
+        delegationManager = delegationManager_;
+    }
+
+    /**
+     * @notice Update the DelegationManager for future deployments.
+     * @param dm The new DelegationManager address.
+     */
+    function setDelegationManager(address dm) external {
+        delegationManager = dm;
     }
 
     /**
@@ -37,7 +50,11 @@ contract AgentAccountFactory {
         }
 
         // Deploy ERC1967Proxy pointing to the implementation
-        bytes memory initData = abi.encodeCall(AgentRootAccount.initialize, (owner));
+        // initialize(owner, delegationManager) sets both at creation time
+        bytes memory initData = abi.encodeCall(
+            AgentRootAccount.initialize,
+            (owner, delegationManager)
+        );
 
         ERC1967Proxy proxy = new ERC1967Proxy{salt: bytes32(salt)}(
             address(accountImplementation),
@@ -58,7 +75,10 @@ contract AgentAccountFactory {
         address owner,
         uint256 salt
     ) public view returns (address) {
-        bytes memory initData = abi.encodeCall(AgentRootAccount.initialize, (owner));
+        bytes memory initData = abi.encodeCall(
+            AgentRootAccount.initialize,
+            (owner, delegationManager)
+        );
 
         bytes memory proxyBytecode = abi.encodePacked(
             type(ERC1967Proxy).creationCode,
