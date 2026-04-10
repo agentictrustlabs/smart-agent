@@ -1,10 +1,11 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { db, schema } from '@/db'
-import { eq, inArray } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { getEdgesByObject, getEdgesBySubject, getEdge, getEdgeRoles } from '@/lib/contracts'
-import { roleName, toDidEthr, ORGANIZATION_GOVERNANCE, ROLE_OWNER } from '@smart-agent/sdk'
+import { roleName, toDidEthr, ROLE_OWNER } from '@smart-agent/sdk'
+import { getAgentMetadata, type AgentMetadata } from '@/lib/agent-metadata'
 
 const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? '31337')
 
@@ -62,6 +63,17 @@ export default async function DashboardPage() {
     .where(eq(schema.aiAgents.createdBy, currentUser.id))
     .orderBy(schema.aiAgents.createdAt)
 
+  // Load resolver metadata for all user agents
+  const agentMeta = new Map<string, AgentMetadata>()
+  const allAgentAddrs = [
+    ...(personAgent ? [personAgent.smartAccountAddress] : []),
+    ...orgAgents.map(o => o.smartAccountAddress),
+    ...aiAgents.map(a => a.smartAccountAddress),
+  ]
+  for (const addr of allAgentAddrs) {
+    try { agentMeta.set(addr.toLowerCase(), await getAgentMetadata(addr)) } catch {}
+  }
+
   // Fetch relationship edges for each org
   type EdgeView = { subject: string; roles: string[]; status: string }
   type OrgWithEdges = (typeof orgAgents)[number] & { edges: EdgeView[] }
@@ -103,19 +115,25 @@ export default async function DashboardPage() {
         {personAgent ? (
           <div data-component="agent-card" data-status={personAgent.status}>
             <div data-component="agent-card-header">
-              <h3>{(personAgent as Record<string, unknown>).name as string || 'Person Agent'}</h3>
-              <Link href={`/agents/${personAgent.smartAccountAddress}`} data-component="settings-link">Settings</Link>
+              <h3>{agentMeta.get(personAgent.smartAccountAddress.toLowerCase())?.displayName ?? personAgent.name ?? 'Person Agent'}</h3>
+              {agentMeta.get(personAgent.smartAccountAddress.toLowerCase())?.isResolverRegistered && <span data-component="role-badge" data-status="active" style={{ fontSize: '0.6rem' }}>on-chain</span>}
+              <Link href={`/agents/${personAgent.smartAccountAddress}`} data-component="settings-link">View</Link>
+              <Link href={`/agents/${personAgent.smartAccountAddress}/metadata`} data-component="settings-link">Metadata</Link>
             </div>
             <dl>
               <dt>Smart Account</dt>
               <dd data-component="address">{personAgent.smartAccountAddress}</dd>
               <dt>DID</dt>
               <dd data-component="did">{toDidEthr(CHAIN_ID, personAgent.smartAccountAddress as `0x${string}`)}</dd>
-              <dt>Chain</dt>
-              <dd>{personAgent.chainId === 11155111 ? 'Sepolia' : personAgent.chainId === 31337 ? 'Anvil (Local)' : `Chain ${personAgent.chainId}`}</dd>
               <dt>Status</dt>
               <dd data-status={personAgent.status}>{personAgent.status}</dd>
             </dl>
+            {agentMeta.get(personAgent.smartAccountAddress.toLowerCase())?.capabilities?.length ? (
+              <div style={{ marginTop: '0.5rem' }}>
+                <span style={{ fontSize: '0.7rem', color: '#8888a0' }}>Capabilities: </span>
+                {agentMeta.get(personAgent.smartAccountAddress.toLowerCase())!.capabilities.map(c => <span key={c} data-component="role-badge" style={{ fontSize: '0.65rem', marginRight: 2 }}>{c}</span>)}
+              </div>
+            ) : null}
           </div>
         ) : (
           <div data-component="empty-state">
@@ -132,13 +150,17 @@ export default async function DashboardPage() {
         </div>
         {orgsWithEdges.length > 0 ? (
           <div data-component="agent-grid">
-            {orgsWithEdges.map((org) => (
+            {orgsWithEdges.map((org) => {
+              const om = agentMeta.get(org.smartAccountAddress.toLowerCase())
+              return (
               <div key={org.id} data-component="agent-card" data-status={org.status}>
                 <div data-component="agent-card-header">
-                  <h3>{org.name}</h3>
-                  <Link href={`/agents/${org.smartAccountAddress}`} data-component="settings-link">Settings</Link>
+                  <h3>{om?.displayName ?? org.name}</h3>
+                  {om?.isResolverRegistered && <span data-component="role-badge" data-status="active" style={{ fontSize: '0.6rem' }}>on-chain</span>}
+                  <Link href={`/agents/${org.smartAccountAddress}`} data-component="settings-link">View</Link>
+                  <Link href={`/agents/${org.smartAccountAddress}/metadata`} data-component="settings-link">Metadata</Link>
                 </div>
-                {org.description && <p data-component="card-description">{org.description}</p>}
+                <p data-component="card-description">{om?.description || org.description || ''}</p>
                 <dl>
                   <dt>Smart Account</dt>
                   <dd data-component="address">{org.smartAccountAddress}</dd>
@@ -185,7 +207,8 @@ export default async function DashboardPage() {
                   </div>
                 )}
               </div>
-            ))}
+              )
+            })}
           </div>
         ) : (
           <div data-component="empty-state">
@@ -202,14 +225,18 @@ export default async function DashboardPage() {
         </div>
         {aiAgents.length > 0 ? (
           <div data-component="agent-grid">
-            {aiAgents.map((agent) => (
+            {aiAgents.map((agent) => {
+              const am = agentMeta.get(agent.smartAccountAddress.toLowerCase())
+              return (
               <div key={agent.id} data-component="agent-card" data-status={agent.status}>
                 <div data-component="agent-card-header">
-                  <h3>{agent.name}</h3>
-                  <span data-component="role-badge">{agent.agentType}</span>
-                  <Link href={`/agents/${agent.smartAccountAddress}`} data-component="settings-link">Settings</Link>
+                  <h3>{am?.displayName ?? agent.name}</h3>
+                  <span data-component="role-badge">{am?.aiAgentClass || agent.agentType}</span>
+                  {am?.isResolverRegistered && <span data-component="role-badge" data-status="active" style={{ fontSize: '0.6rem' }}>on-chain</span>}
+                  <Link href={`/agents/${agent.smartAccountAddress}`} data-component="settings-link">View</Link>
+                  <Link href={`/agents/${agent.smartAccountAddress}/metadata`} data-component="settings-link">Metadata</Link>
                 </div>
-                {agent.description && <p data-component="card-description">{agent.description}</p>}
+                <p data-component="card-description">{am?.description || agent.description || ''}</p>
                 <dl>
                   <dt>Smart Account</dt>
                   <dd data-component="address">{agent.smartAccountAddress}</dd>
@@ -218,8 +245,27 @@ export default async function DashboardPage() {
                   <dt>Status</dt>
                   <dd data-status={agent.status}>{agent.status}</dd>
                 </dl>
+                {am?.capabilities && am.capabilities.length > 0 && (
+                  <div style={{ marginTop: '0.5rem' }}>
+                    <span style={{ fontSize: '0.7rem', color: '#8888a0' }}>Capabilities: </span>
+                    {am.capabilities.map(c => <span key={c} data-component="role-badge" style={{ fontSize: '0.65rem', marginRight: 2 }}>{c}</span>)}
+                  </div>
+                )}
+                {am?.trustModels && am.trustModels.length > 0 && (
+                  <div style={{ marginTop: '0.25rem' }}>
+                    <span style={{ fontSize: '0.7rem', color: '#8888a0' }}>Trust: </span>
+                    {am.trustModels.map(t => <span key={t} data-component="role-badge" data-status="active" style={{ fontSize: '0.65rem', marginRight: 2 }}>{t}</span>)}
+                  </div>
+                )}
+                {(am?.a2aEndpoint || am?.mcpServer) && (
+                  <div style={{ marginTop: '0.25rem', fontSize: '0.7rem', color: '#666' }}>
+                    {am?.a2aEndpoint && <span>A2A: {am.a2aEndpoint} </span>}
+                    {am?.mcpServer && <span>MCP: {am.mcpServer}</span>}
+                  </div>
+                )}
               </div>
-            ))}
+              )
+            })}
           </div>
         ) : (
           <div data-component="empty-state">

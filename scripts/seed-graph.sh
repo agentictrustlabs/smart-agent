@@ -545,6 +545,107 @@ cast call "$TRUST_PROFILE_CONTRACT" "checkDiscoveryTrust(address)((bool,uint256,
 echo "Execution trust for Discovery Agent:"
 cast call "$TRUST_PROFILE_CONTRACT" "checkExecutionTrust(address)((bool,uint256,uint256,uint256,uint256,uint256))" "$DISCOVERY_AGENT" --rpc-url "$RPC"
 
+# ─── Ontology Term Registration ────────────────────────────────────
+
+ONTOLOGY="${ONTOLOGY_REGISTRY_ADDRESS}"
+AGENT_RESOLVER="${AGENT_ACCOUNT_RESOLVER_ADDRESS}"
+
+echo ""
+echo "=== Registering ontology terms ==="
+
+# Register core predicates in batch — each term: (id, curie, uri, label, datatype)
+# We'll register them one by one since cast doesn't easily handle batch calls
+register_term() {
+  local curie=$1 uri=$2 label=$3 dtype=$4
+  local id=$(cast keccak "$curie")
+  cast send "$ONTOLOGY" "registerTerm(bytes32,string,string,string,string)" \
+    "$id" "$curie" "$uri" "$label" "$dtype" \
+    --rpc-url "$RPC" --private-key "$KEY" > /dev/null 2>&1
+}
+
+BASE="https://agentictrust.io/ontology/core#"
+register_term "rdf:type" "http://www.w3.org/1999/02/22-rdf-syntax-ns#type" "RDF Type" "string"
+register_term "atl:displayName" "${BASE}displayName" "Display Name" "string"
+register_term "atl:description" "${BASE}description" "Description" "string"
+register_term "atl:isActive" "${BASE}isActive" "Is Active" "bool"
+register_term "atl:version" "${BASE}version" "Version" "string"
+register_term "atl:agentType" "${BASE}agentType" "Agent Type" "string"
+register_term "atl:aiAgentClass" "${BASE}aiAgentClass" "AI Agent Class" "string"
+register_term "atl:hasA2AEndpoint" "${BASE}hasA2AEndpoint" "A2A Endpoint" "string"
+register_term "atl:hasMCPServer" "${BASE}hasMCPServer" "MCP Server" "string"
+register_term "atl:hasServiceEndpoint" "${BASE}hasServiceEndpoint" "Service Endpoint" "string"
+register_term "atl:supportedTrustModel" "${BASE}supportedTrustModel" "Supported Trust Model" "string[]"
+register_term "atl:hasCapability" "${BASE}hasCapability" "Capability" "string[]"
+register_term "atl:hasController" "${BASE}hasController" "Controller" "address[]"
+register_term "atl:operatedBy" "${BASE}operatedBy" "Operated By" "address"
+register_term "atl:metadataURI" "${BASE}metadataURI" "Metadata URI" "string"
+register_term "atl:metadataHash" "${BASE}metadataHash" "Metadata Hash" "bytes32"
+register_term "atl:schemaURI" "${BASE}schemaURI" "Schema URI" "string"
+register_term "atl:entryPoint" "${BASE}entryPoint" "Entry Point" "string"
+register_term "atl:implementation" "${BASE}implementation" "Implementation" "string"
+register_term "atl:delegationManager" "${BASE}delegationManager" "Delegation Manager" "string"
+
+echo "Ontology terms registered: $(cast call $ONTOLOGY 'termCount()(uint256)' --rpc-url $RPC)"
+
+# ─── Register Agents in Resolver ──────────────────────────────────
+
+echo ""
+echo "=== Registering agents in resolver ==="
+
+# Agent type hashes
+T_PERSON=$(cast keccak "atl:PersonAgent")
+T_ORG=$(cast keccak "atl:OrganizationAgent")
+T_AI=$(cast keccak "atl:AIAgent")
+
+# AI class hashes
+C_DISCOVERY=$(cast keccak "atl:DiscoveryAgent")
+C_VALIDATOR=$(cast keccak "atl:ValidatorAgent")
+C_EXECUTOR=$(cast keccak "atl:ExecutorAgent")
+
+register_agent() {
+  local agent=$1 name=$2 desc=$3 atype=$4 aclass=$5
+  cast send "$AGENT_RESOLVER" \
+    "register(address,string,string,bytes32,bytes32,string)" \
+    "$agent" "$name" "$desc" "$atype" "$aclass" "" \
+    --rpc-url "$RPC" --private-key "$KEY" > /dev/null 2>&1
+}
+
+# Person agents
+register_agent "$ALICE_AGENT" "Alice Agent" "Alice's person agent" "$T_PERSON" "0x0000000000000000000000000000000000000000000000000000000000000000"
+register_agent "$BOB_AGENT" "Bob Agent" "Bob's person agent" "$T_PERSON" "0x0000000000000000000000000000000000000000000000000000000000000000"
+register_agent "$CAROL_AGENT" "Carol Agent" "Carol's person agent" "$T_PERSON" "0x0000000000000000000000000000000000000000000000000000000000000000"
+
+# Org agents
+register_agent "$ORG_ATL" "Agentic Trust Labs" "Agent trust, identity, and reputation research" "$T_ORG" "0x0000000000000000000000000000000000000000000000000000000000000000"
+register_agent "$ORG_DEFI" "DeFi Protocol DAO" "Decentralized finance governance" "$T_ORG" "0x0000000000000000000000000000000000000000000000000000000000000000"
+register_agent "$INSURECO" "InsureCo" "Agent insurance and coverage provider" "$T_ORG" "0x0000000000000000000000000000000000000000000000000000000000000000"
+register_agent "$STAKEPOOL" "StakePool" "Economic security bonding pool" "$T_ORG" "0x0000000000000000000000000000000000000000000000000000000000000000"
+
+# AI Agents
+register_agent "$TRUST_VALIDATOR" "TrustValidator" "Trusted identity and compliance validator" "$T_AI" "$C_VALIDATOR"
+register_agent "$TEE_RUNTIME" "ATL TEE Runtime" "AWS Nitro enclave for ATL agent execution" "$T_AI" "$C_EXECUTOR"
+register_agent "$DISCOVERY_AGENT" "Discovery Agent" "Autonomous trust discovery and evaluation agent" "$T_AI" "$C_DISCOVERY"
+register_agent "$DISCOVERY_TEE" "Discovery TEE" "TEE runtime environment for Discovery Agent" "$T_AI" "$C_EXECUTOR"
+register_agent "$VALIDATOR_ALPHA" "Validator Alpha" "Activity validation for AI agents" "$T_AI" "$C_VALIDATOR"
+register_agent "$VALIDATOR_BETA" "Validator Beta" "Activity validation and compliance" "$T_AI" "$C_VALIDATOR"
+
+# Reviewer person agents
+register_agent "$REVIEWER_DAVE" "Dave Agent" "Dave's person agent" "$T_PERSON" "0x0000000000000000000000000000000000000000000000000000000000000000"
+register_agent "$REVIEWER_EVE" "Eve Agent" "Eve's person agent" "$T_PERSON" "0x0000000000000000000000000000000000000000000000000000000000000000"
+register_agent "$REVIEWER_FRANK" "Frank Agent" "Frank's person agent" "$T_PERSON" "0x0000000000000000000000000000000000000000000000000000000000000000"
+
+echo "Agents registered in resolver: $(cast call $AGENT_RESOLVER 'agentCount()(uint256)' --rpc-url $RPC)"
+
+# Set some capabilities on the Discovery Agent
+P_CAPABILITY=$(cast keccak "atl:hasCapability")
+P_TRUST=$(cast keccak "atl:supportedTrustModel")
+cast send "$AGENT_RESOLVER" "addMultiStringProperty(address,bytes32,string)" "$DISCOVERY_AGENT" "$P_CAPABILITY" "evaluate-trust" --rpc-url "$RPC" --private-key "$KEY" > /dev/null 2>&1
+cast send "$AGENT_RESOLVER" "addMultiStringProperty(address,bytes32,string)" "$DISCOVERY_AGENT" "$P_CAPABILITY" "submit-review" --rpc-url "$RPC" --private-key "$KEY" > /dev/null 2>&1
+cast send "$AGENT_RESOLVER" "addMultiStringProperty(address,bytes32,string)" "$DISCOVERY_AGENT" "$P_CAPABILITY" "discover-agents" --rpc-url "$RPC" --private-key "$KEY" > /dev/null 2>&1
+cast send "$AGENT_RESOLVER" "addMultiStringProperty(address,bytes32,string)" "$DISCOVERY_AGENT" "$P_TRUST" "reputation" --rpc-url "$RPC" --private-key "$KEY" > /dev/null 2>&1
+cast send "$AGENT_RESOLVER" "addMultiStringProperty(address,bytes32,string)" "$DISCOVERY_AGENT" "$P_TRUST" "tee-attestation" --rpc-url "$RPC" --private-key "$KEY" > /dev/null 2>&1
+echo "Discovery Agent capabilities and trust models set"
+
 # Seed the web app DB
 echo ""
 echo "=== Seeding database ==="

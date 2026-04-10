@@ -19,6 +19,9 @@ import "../src/AgentDisputeRecord.sol";
 import "../src/AgentTrustProfile.sol";
 import "../src/AgentControl.sol";
 import "../src/MockTeeVerifier.sol";
+import "../src/OntologyTermRegistry.sol";
+import "../src/AgentAccountResolver.sol";
+import "../src/AgentUniversalResolver.sol";
 import "account-abstraction/interfaces/IEntryPoint.sol";
 import "account-abstraction/core/EntryPoint.sol";
 
@@ -125,6 +128,25 @@ contract Deploy is Script {
         MockTeeVerifier mockTeeVerifier = new MockTeeVerifier();
         console.log("MockTeeVerifier:", address(mockTeeVerifier));
 
+        // 14. Ontology Term Registry (governed predicate definitions)
+        OntologyTermRegistry ontologyRegistry = new OntologyTermRegistry(deployer);
+        console.log("OntologyTermRegistry:", address(ontologyRegistry));
+
+        // 15. Agent Account Resolver (on-chain agent metadata)
+        AgentAccountResolver accountResolver = new AgentAccountResolver(address(ontologyRegistry));
+        console.log("AgentAccountResolver:", address(accountResolver));
+
+        // 16. Agent Universal Resolver (read-only aggregation façade)
+        AgentUniversalResolver universalResolver = new AgentUniversalResolver(
+            address(accountResolver),
+            address(agentRelationship),
+            address(reviewRecord),
+            address(disputeRecord),
+            address(validationProfile),
+            address(trustProfile)
+        );
+        console.log("AgentUniversalResolver:", address(universalResolver));
+
         vm.stopBroadcast();
 
         // Print env vars for copy-paste into apps/web/.env
@@ -148,6 +170,9 @@ contract Deploy is Script {
         _logEnv("AGENT_TRUST_PROFILE_ADDRESS", address(trustProfile));
         _logEnv("AGENT_CONTROL_ADDRESS", address(agentControl));
         _logEnv("MOCK_TEE_VERIFIER_ADDRESS", address(mockTeeVerifier));
+        _logEnv("ONTOLOGY_REGISTRY_ADDRESS", address(ontologyRegistry));
+        _logEnv("AGENT_ACCOUNT_RESOLVER_ADDRESS", address(accountResolver));
+        _logEnv("UNIVERSAL_RESOLVER_ADDRESS", address(universalResolver));
     }
 
     function _logEnv(string memory key, address addr) internal pure {

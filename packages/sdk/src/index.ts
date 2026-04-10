@@ -14,6 +14,9 @@ export {
   agentTrustProfileAbi,
   agentControlAbi,
   mockTeeVerifierAbi,
+  ontologyTermRegistryAbi,
+  agentAccountResolverAbi,
+  agentUniversalResolverAbi,
 } from './abi'
 
 // ─── Account Client ──────────────────────────────────────────────────
@@ -85,6 +88,20 @@ export type {
   OnChainEdge,
   OnChainAssertion,
 } from './relationship'
+
+// ─── Predicates (Ontology Constants) ─────────────────────────────────
+export {
+  RDF_TYPE, ATL_DISPLAY_NAME, ATL_DESCRIPTION, ATL_IS_ACTIVE, ATL_VERSION,
+  ATL_AGENT_TYPE, ATL_AI_AGENT_CLASS,
+  TYPE_PERSON, TYPE_ORGANIZATION, TYPE_AI_AGENT,
+  CLASS_DISCOVERY, CLASS_VALIDATOR, CLASS_EXECUTOR, CLASS_ASSISTANT, CLASS_ORACLE, CLASS_CUSTOM,
+  ATL_A2A_ENDPOINT, ATL_MCP_SERVER, ATL_SERVICE_ENDPOINT,
+  ATL_SUPPORTED_TRUST, ATL_CAPABILITY,
+  ATL_CONTROLLER, ATL_OPERATED_BY,
+  ATL_METADATA_URI, ATL_METADATA_HASH, ATL_SCHEMA_URI,
+  ATL_ENTRY_POINT, ATL_IMPLEMENTATION, ATL_DELEGATION_MANAGER,
+  AGENT_TYPE_LABELS, AI_CLASS_LABELS,
+} from './predicates'
 
 // ─── Re-export types ─────────────────────────────────────────────────
 export type {

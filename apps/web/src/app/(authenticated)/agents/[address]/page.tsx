@@ -5,7 +5,11 @@ import { getPublicClient, getEdgesBySubject, getEdgesByObject, getEdge, getEdgeR
 import {
   agentControlAbi, agentRootAccountAbi, agentReviewRecordAbi,
   agentValidationProfileAbi, agentTrustProfileAbi, agentDisputeRecordAbi,
+  agentAccountResolverAbi,
   roleName, relationshipTypeName,
+  AGENT_TYPE_LABELS, AI_CLASS_LABELS,
+  ATL_CAPABILITY, ATL_SUPPORTED_TRUST, ATL_A2A_ENDPOINT, ATL_MCP_SERVER,
+  TYPE_PERSON, TYPE_ORGANIZATION, TYPE_AI_AGENT,
 } from '@smart-agent/sdk'
 import { db, schema } from '@/db'
 import { eq } from 'drizzle-orm'
@@ -81,6 +85,58 @@ export default async function AgentSettingsPage({
     agentType = 'ai'
     agentDescription = aiAgent[0].description ?? ''
   }
+
+  // ─── On-Chain Resolver Data (overrides DB if registered) ──────────
+  let resolverRegistered = false
+  let resolverCapabilities: string[] = []
+  let resolverTrustModels: string[] = []
+  let resolverA2A = ''
+  let resolverMCP = ''
+  let resolverMetadataURI = ''
+  try {
+    const resolverAddr = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}`
+    if (resolverAddr) {
+      resolverRegistered = (await client.readContract({
+        address: resolverAddr, abi: agentAccountResolverAbi,
+        functionName: 'isRegistered', args: [agentAddress],
+      })) as boolean
+
+      if (resolverRegistered) {
+        const core = (await client.readContract({
+          address: resolverAddr, abi: agentAccountResolverAbi,
+          functionName: 'getCore', args: [agentAddress],
+        })) as { displayName: string; description: string; agentType: `0x${string}`; agentClass: `0x${string}`; metadataURI: string; active: boolean }
+
+        // Override DB values with on-chain data
+        if (core.displayName) agentName = core.displayName
+        if (core.description) agentDescription = core.description
+        if (core.metadataURI) resolverMetadataURI = core.metadataURI
+
+        const typeMap: Record<string, string> = { [TYPE_PERSON]: 'person', [TYPE_ORGANIZATION]: 'org', [TYPE_AI_AGENT]: 'ai' }
+        if (typeMap[core.agentType]) agentType = typeMap[core.agentType]
+
+        resolverCapabilities = (await client.readContract({
+          address: resolverAddr, abi: agentAccountResolverAbi,
+          functionName: 'getMultiStringProperty', args: [agentAddress, ATL_CAPABILITY as `0x${string}`],
+        })) as string[]
+
+        resolverTrustModels = (await client.readContract({
+          address: resolverAddr, abi: agentAccountResolverAbi,
+          functionName: 'getMultiStringProperty', args: [agentAddress, ATL_SUPPORTED_TRUST as `0x${string}`],
+        })) as string[]
+
+        resolverA2A = (await client.readContract({
+          address: resolverAddr, abi: agentAccountResolverAbi,
+          functionName: 'getStringProperty', args: [agentAddress, ATL_A2A_ENDPOINT as `0x${string}`],
+        })) as string
+
+        resolverMCP = (await client.readContract({
+          address: resolverAddr, abi: agentAccountResolverAbi,
+          functionName: 'getStringProperty', args: [agentAddress, ATL_MCP_SERVER as `0x${string}`],
+        })) as string
+      }
+    }
+  } catch { /* resolver may not be deployed */ }
 
   // Get on-chain owner info from AgentRootAccount
   let onChainOwners: string[] = []
@@ -286,10 +342,13 @@ export default async function AgentSettingsPage({
     <div data-page="agent-settings">
       {/* ─── Header ────────────────────────────────────────────────── */}
       <div data-component="page-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <h1 style={{ margin: 0 }}>{agentName}</h1>
-          <span data-component="role-badge" data-status="active">{typeLabel}</span>
-          {aiSubtype && <span data-component="role-badge">{aiSubtype}</span>}
+        <div data-component="section-header">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <h1 style={{ margin: 0 }}>{agentName}</h1>
+            <span data-component="role-badge" data-status="active">{typeLabel}</span>
+            {aiSubtype && <span data-component="role-badge">{aiSubtype}</span>}
+          </div>
+          <Link href={`/agents/${agentAddress}/metadata`} data-component="section-action">Edit Metadata</Link>
         </div>
         {agentDescription && <p>{agentDescription}</p>}
       </div>
@@ -305,6 +364,45 @@ export default async function AgentSettingsPage({
           )}
         </dl>
       </div>
+
+      {/* ─── On-Chain Metadata (from Resolver) ──────────────────────── */}
+      {resolverRegistered && (
+        <section data-component="graph-section">
+          <h2>On-Chain Metadata</h2>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+            {resolverCapabilities.length > 0 && (
+              <div data-component="protocol-info">
+                <h3>Capabilities</h3>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
+                  {resolverCapabilities.map(c => <span key={c} data-component="role-badge">{c}</span>)}
+                </div>
+              </div>
+            )}
+            {resolverTrustModels.length > 0 && (
+              <div data-component="protocol-info">
+                <h3>Trust Models</h3>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
+                  {resolverTrustModels.map(t => <span key={t} data-component="role-badge" data-status="active">{t}</span>)}
+                </div>
+              </div>
+            )}
+            {(resolverA2A || resolverMCP) && (
+              <div data-component="protocol-info">
+                <h3>Endpoints</h3>
+                <dl>
+                  {resolverA2A && <><dt>A2A</dt><dd style={{ fontSize: '0.75rem' }}>{resolverA2A}</dd></>}
+                  {resolverMCP && <><dt>MCP</dt><dd style={{ fontSize: '0.75rem' }}>{resolverMCP}</dd></>}
+                </dl>
+              </div>
+            )}
+          </div>
+          {resolverMetadataURI && (
+            <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#8888a0' }}>
+              Metadata URI: <code>{resolverMetadataURI.slice(0, 50)}{resolverMetadataURI.length > 50 ? '...' : ''}</code>
+            </div>
+          )}
+        </section>
+      )}
 
       {/* ─── Trust Scores ──────────────────────────────────────────── */}
       <section data-component="graph-section">

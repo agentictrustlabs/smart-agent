@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 import { eq } from 'drizzle-orm'
 import { db, schema } from '@/db'
-import { getEdgesByObject, getEdge, getEdgeRoles, getTemplateCount, getTemplate } from '@/lib/contracts'
-import { roleName, relationshipTypeName, toDidEthr } from '@smart-agent/sdk'
+import { getEdgesByObject, getEdge, getEdgeRoles, getTemplateCount, getTemplate, getPublicClient } from '@/lib/contracts'
+import { roleName, relationshipTypeName, toDidEthr, agentAccountResolverAbi, ATL_CAPABILITY, ATL_SUPPORTED_TRUST, ATL_A2A_ENDPOINT, AI_CLASS_LABELS } from '@smart-agent/sdk'
 
 const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? '31337')
 const STATUS_LABELS = ['none', 'proposed', 'confirmed', 'active', 'suspended', 'revoked', 'rejected']
@@ -13,6 +13,12 @@ export interface GraphNode {
   type: 'person' | 'org' | 'ai' | 'eoa'
   did: string
   address: string
+  description?: string
+  capabilities?: string[]
+  trustModels?: string[]
+  a2aEndpoint?: string
+  aiClass?: string
+  isResolverRegistered?: boolean
 }
 
 export interface TemplateInfo {
@@ -124,6 +130,30 @@ export async function GET() {
         })
       }
     }
+
+    // Enrich nodes with resolver metadata
+    try {
+      const resolverAddr = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}`
+      if (resolverAddr) {
+        const client = getPublicClient()
+        for (const node of nodes) {
+          if (node.type === 'eoa') continue
+          try {
+            const isReg = await client.readContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'isRegistered', args: [node.address as `0x${string}`] }) as boolean
+            if (!isReg) continue
+            node.isResolverRegistered = true
+            const core = await client.readContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'getCore', args: [node.address as `0x${string}`] }) as { displayName: string; description: string; agentClass: `0x${string}` }
+            if (core.displayName) node.label = core.displayName
+            if (core.description) node.description = core.description
+            if (AI_CLASS_LABELS[core.agentClass]) node.aiClass = AI_CLASS_LABELS[core.agentClass]
+            node.capabilities = await client.readContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'getMultiStringProperty', args: [node.address as `0x${string}`, ATL_CAPABILITY as `0x${string}`] }) as string[]
+            node.trustModels = await client.readContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'getMultiStringProperty', args: [node.address as `0x${string}`, ATL_SUPPORTED_TRUST as `0x${string}`] }) as string[]
+            const a2a = await client.readContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'getStringProperty', args: [node.address as `0x${string}`, ATL_A2A_ENDPOINT as `0x${string}`] }) as string
+            if (a2a) node.a2aEndpoint = a2a
+          } catch { /* skip individual agent errors */ }
+        }
+      }
+    } catch { /* resolver not deployed */ }
 
     // Load all templates: (relType:role) → TemplateInfo[]
     const templatesByKey = new Map<string, TemplateInfo[]>()

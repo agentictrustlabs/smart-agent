@@ -1,0 +1,215 @@
+@prefix atl: <https://agentictrust.io/ontology/core#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+
+# ─────────────────────────────────────────────────────────────────────
+# Agentic Trust Labs — Core Ontology
+#
+# Defines classes and properties for ERC-4337 agent smart accounts
+# in the Smart Agent trust fabric. Used with SHACL shapes for
+# validation and JSON-LD context for serialization.
+# ─────────────────────────────────────────────────────────────────────
+
+atl: a owl:Ontology ;
+    rdfs:label "Agentic Trust Labs Core Ontology" ;
+    rdfs:comment "Semantic vocabulary for ERC-4337 agent smart accounts, trust relationships, and delegation authority." ;
+    dcterms:creator "Agentic Trust Labs" ;
+    owl:versionInfo "1.0.0" .
+
+# ═══════════════════════════════════════════════════════════════════════
+# Classes
+# ═══════════════════════════════════════════════════════════════════════
+
+atl:AgentAccount a rdfs:Class ;
+    rdfs:label "Agent Account" ;
+    rdfs:comment "An ERC-4337 smart account serving as an agent's on-chain identity anchor. The account address is the canonical subject (did:ethr:<chainId>:<address>)." .
+
+atl:PersonAgent a rdfs:Class ;
+    rdfs:subClassOf atl:AgentAccount ;
+    rdfs:label "Person Agent" ;
+    rdfs:comment "An agent account controlled by an individual human. Represents the person's on-chain identity for interacting with the trust fabric." .
+
+atl:OrganizationAgent a rdfs:Class ;
+    rdfs:subClassOf atl:AgentAccount ;
+    rdfs:label "Organization Agent" ;
+    rdfs:comment "An agent account representing an organization, DAO, or legal entity. May have multi-sig governance and sub-agents." .
+
+atl:AIAgent a rdfs:Class ;
+    rdfs:subClassOf atl:AgentAccount ;
+    rdfs:label "AI Agent" ;
+    rdfs:comment "An autonomous or semi-autonomous AI agent operating under programmatic delegation. Typically operated by an organization and may run in a TEE." .
+
+# ─── AI Agent Subclasses ─────────────────────────────────────────────
+
+atl:DiscoveryAgent a rdfs:Class ;
+    rdfs:subClassOf atl:AIAgent ;
+    rdfs:label "Discovery Agent" ;
+    rdfs:comment "Discovers and evaluates other agents in the trust fabric." .
+
+atl:ValidatorAgent a rdfs:Class ;
+    rdfs:subClassOf atl:AIAgent ;
+    rdfs:label "Validator Agent" ;
+    rdfs:comment "Validates agent activities, attestations, or compliance." .
+
+atl:ExecutorAgent a rdfs:Class ;
+    rdfs:subClassOf atl:AIAgent ;
+    rdfs:label "Executor Agent" ;
+    rdfs:comment "Executes delegated tasks on behalf of other agents." .
+
+atl:AssistantAgent a rdfs:Class ;
+    rdfs:subClassOf atl:AIAgent ;
+    rdfs:label "Assistant Agent" ;
+    rdfs:comment "Provides assistance and information to human users." .
+
+atl:OracleAgent a rdfs:Class ;
+    rdfs:subClassOf atl:AIAgent ;
+    rdfs:label "Oracle Agent" ;
+    rdfs:comment "Provides external data feeds and attestations." .
+
+# ─── Trust Model Classes ─────────────────────────────────────────────
+
+atl:TrustModel a rdfs:Class ;
+    rdfs:label "Trust Model" ;
+    rdfs:comment "A mechanism through which an agent establishes trust." .
+
+atl:ReputationTrust a rdfs:Class ;
+    rdfs:subClassOf atl:TrustModel ;
+    rdfs:label "Reputation Trust" .
+
+atl:CryptoEconomicTrust a rdfs:Class ;
+    rdfs:subClassOf atl:TrustModel ;
+    rdfs:label "Crypto-Economic Trust" .
+
+atl:TEEAttestation a rdfs:Class ;
+    rdfs:subClassOf atl:TrustModel ;
+    rdfs:label "TEE Attestation Trust" .
+
+# ═══════════════════════════════════════════════════════════════════════
+# Properties
+# ═══════════════════════════════════════════════════════════════════════
+
+# ─── Core Identity ───────────────────────────────────────────────────
+
+atl:accountAddress a rdf:Property ;
+    rdfs:label "Account Address" ;
+    rdfs:comment "The ERC-4337 smart account address (0x...)." ;
+    rdfs:domain atl:AgentAccount ;
+    rdfs:range xsd:string .
+
+atl:displayName a rdf:Property ;
+    rdfs:label "Display Name" ;
+    rdfs:comment "Human-readable name for the agent." ;
+    rdfs:domain atl:AgentAccount ;
+    rdfs:range xsd:string .
+
+atl:description a rdf:Property ;
+    rdfs:label "Description" ;
+    rdfs:comment "Description of the agent's purpose and capabilities." ;
+    rdfs:domain atl:AgentAccount ;
+    rdfs:range xsd:string .
+
+atl:isActive a rdf:Property ;
+    rdfs:label "Is Active" ;
+    rdfs:comment "Whether the agent is currently active." ;
+    rdfs:domain atl:AgentAccount ;
+    rdfs:range xsd:boolean .
+
+atl:version a rdf:Property ;
+    rdfs:label "Version" ;
+    rdfs:comment "Agent implementation version." ;
+    rdfs:domain atl:AgentAccount ;
+    rdfs:range xsd:string .
+
+# ─── Classification ──────────────────────────────────────────────────
+
+atl:agentType a rdf:Property ;
+    rdfs:label "Agent Type" ;
+    rdfs:comment "The primary type classification (PersonAgent, OrganizationAgent, AIAgent)." ;
+    rdfs:domain atl:AgentAccount ;
+    rdfs:range rdfs:Class .
+
+atl:aiAgentClass a rdf:Property ;
+    rdfs:label "AI Agent Class" ;
+    rdfs:comment "Subclass for AI agents (DiscoveryAgent, ValidatorAgent, etc.)." ;
+    rdfs:domain atl:AIAgent ;
+    rdfs:range rdfs:Class .
+
+# ─── Service Endpoints ───────────────────────────────────────────────
+
+atl:hasA2AEndpoint a rdf:Property ;
+    rdfs:label "A2A Endpoint" ;
+    rdfs:comment "Agent-to-Agent communication endpoint URI." ;
+    rdfs:domain atl:AgentAccount ;
+    rdfs:range xsd:anyURI .
+
+atl:hasMCPServer a rdf:Property ;
+    rdfs:label "MCP Server" ;
+    rdfs:comment "Model Context Protocol server endpoint URI." ;
+    rdfs:domain atl:AgentAccount ;
+    rdfs:range xsd:anyURI .
+
+atl:hasServiceEndpoint a rdf:Property ;
+    rdfs:label "Service Endpoint" ;
+    rdfs:comment "Generic service endpoint URI." ;
+    rdfs:domain atl:AgentAccount ;
+    rdfs:range xsd:anyURI .
+
+# ─── Trust & Capabilities ────────────────────────────────────────────
+
+atl:supportedTrustModel a rdf:Property ;
+    rdfs:label "Supported Trust Model" ;
+    rdfs:comment "Trust models this agent supports (reputation, crypto-economic, tee-attestation)." ;
+    rdfs:domain atl:AgentAccount ;
+    rdfs:range xsd:string .
+
+atl:hasCapability a rdf:Property ;
+    rdfs:label "Capability" ;
+    rdfs:comment "A capability or skill this agent offers." ;
+    rdfs:domain atl:AgentAccount ;
+    rdfs:range xsd:string .
+
+# ─── Relationships ───────────────────────────────────────────────────
+
+atl:hasController a rdf:Property ;
+    rdfs:label "Controller" ;
+    rdfs:comment "EOA wallet address that controls this agent (owner in the multi-sig set)." ;
+    rdfs:domain atl:AgentAccount ;
+    rdfs:range xsd:string .
+
+atl:operatedBy a rdf:Property ;
+    rdfs:label "Operated By" ;
+    rdfs:comment "Organization agent that operates this AI agent." ;
+    rdfs:domain atl:AIAgent ;
+    rdfs:range atl:OrganizationAgent .
+
+# ─── Metadata ────────────────────────────────────────────────────────
+
+atl:metadataURI a rdf:Property ;
+    rdfs:label "Metadata URI" ;
+    rdfs:comment "URI to the canonical JSON-LD metadata document (typically on IPFS)." ;
+    rdfs:domain atl:AgentAccount ;
+    rdfs:range xsd:anyURI .
+
+atl:schemaURI a rdf:Property ;
+    rdfs:label "Schema URI" ;
+    rdfs:comment "URI to the SHACL shape that validates this agent's metadata." ;
+    rdfs:domain atl:AgentAccount ;
+    rdfs:range xsd:anyURI .
+
+# ─── ERC-4337 Technical ──────────────────────────────────────────────
+
+atl:entryPoint a rdf:Property ;
+    rdfs:label "Entry Point" ;
+    rdfs:comment "ERC-4337 EntryPoint contract address." ;
+    rdfs:domain atl:AgentAccount ;
+    rdfs:range xsd:string .
+
+atl:delegationManager a rdf:Property ;
+    rdfs:label "Delegation Manager" ;
+    rdfs:comment "ERC-7710 DelegationManager contract address authorized to execute on behalf of this agent." ;
+    rdfs:domain atl:AgentAccount ;
+    rdfs:range xsd:string .

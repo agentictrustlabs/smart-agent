@@ -8,6 +8,12 @@ interface GraphNode {
   type: 'person' | 'org' | 'ai' | 'eoa'
   did: string
   address: string
+  description?: string
+  capabilities?: string[]
+  trustModels?: string[]
+  a2aEndpoint?: string
+  aiClass?: string
+  isResolverRegistered?: boolean
   x?: number
   y?: number
 }
@@ -248,8 +254,44 @@ export function TrustGraphView() {
               <div data-component="agent-detail-header" data-type={selectedNodeData.type}>
                 <h3>{selectedNodeData.label}</h3>
                 <span data-component="role-badge">{selectedNodeData.type}</span>
+                {selectedNodeData.aiClass && <span data-component="role-badge">{selectedNodeData.aiClass}</span>}
+                {selectedNodeData.isResolverRegistered && <span data-component="role-badge" data-status="active" style={{ fontSize: '0.55rem' }}>on-chain</span>}
               </div>
               <code data-component="did">{selectedNodeData.did}</code>
+
+              {selectedNodeData.description && (
+                <p style={{ fontSize: '0.8rem', color: '#8888a0', margin: '0.5rem 0' }}>{selectedNodeData.description}</p>
+              )}
+
+              {selectedNodeData.capabilities && selectedNodeData.capabilities.length > 0 && (
+                <div style={{ margin: '0.5rem 0' }}>
+                  <span style={{ fontSize: '0.7rem', color: '#666' }}>Capabilities: </span>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.2rem', marginTop: '0.2rem' }}>
+                    {selectedNodeData.capabilities.map(c => <span key={c} data-component="role-badge" style={{ fontSize: '0.6rem' }}>{c}</span>)}
+                  </div>
+                </div>
+              )}
+
+              {selectedNodeData.trustModels && selectedNodeData.trustModels.length > 0 && (
+                <div style={{ margin: '0.25rem 0' }}>
+                  <span style={{ fontSize: '0.7rem', color: '#666' }}>Trust: </span>
+                  {selectedNodeData.trustModels.map(t => <span key={t} data-component="role-badge" data-status="active" style={{ fontSize: '0.6rem', marginRight: 2 }}>{t}</span>)}
+                </div>
+              )}
+
+              {selectedNodeData.a2aEndpoint && (
+                <div style={{ fontSize: '0.7rem', color: '#666', margin: '0.25rem 0' }}>
+                  A2A: <code style={{ fontSize: '0.65rem' }}>{selectedNodeData.a2aEndpoint}</code>
+                </div>
+              )}
+
+              {selectedNodeData.type !== 'eoa' && (
+                <div style={{ margin: '0.5rem 0' }}>
+                  <a href={`/agents/${selectedNodeData.address}`} style={{ fontSize: '0.75rem', color: '#6366f1' }}>View Trust Profile</a>
+                  {' | '}
+                  <a href={`/agents/${selectedNodeData.address}/metadata`} style={{ fontSize: '0.75rem', color: '#6366f1' }}>Edit Metadata</a>
+                </div>
+              )}
 
               <h4>Relationships ({connectedEdges.length})</h4>
               {connectedEdges.map((e, i) => {

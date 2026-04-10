@@ -317,3 +317,63 @@ export const mockTeeVerifierAbi = [
   ] },
 ] as const
 
+// ─── OntologyTermRegistry ABI ──────────────────────────────────────
+
+export const ontologyTermRegistryAbi = [
+  { type: 'function', name: 'registerTerm', inputs: [{ name: 'id', type: 'bytes32' }, { name: 'curie', type: 'string' }, { name: 'uri', type: 'string' }, { name: 'label', type: 'string' }, { name: 'datatype', type: 'string' }], outputs: [], stateMutability: 'nonpayable' },
+  { type: 'function', name: 'getTerm', inputs: [{ name: 'id', type: 'bytes32' }], outputs: [{ name: '', type: 'tuple', components: [{ name: 'id', type: 'bytes32' }, { name: 'curie', type: 'string' }, { name: 'uri', type: 'string' }, { name: 'label', type: 'string' }, { name: 'datatype', type: 'string' }, { name: 'active', type: 'bool' }, { name: 'registeredAt', type: 'uint256' }] }], stateMutability: 'view' },
+  { type: 'function', name: 'isRegistered', inputs: [{ name: 'id', type: 'bytes32' }], outputs: [{ name: '', type: 'bool' }], stateMutability: 'view' },
+  { type: 'function', name: 'isActive', inputs: [{ name: 'id', type: 'bytes32' }], outputs: [{ name: '', type: 'bool' }], stateMutability: 'view' },
+  { type: 'function', name: 'termCount', inputs: [], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view' },
+  { type: 'function', name: 'getTermAt', inputs: [{ name: 'index', type: 'uint256' }], outputs: [{ name: '', type: 'tuple', components: [{ name: 'id', type: 'bytes32' }, { name: 'curie', type: 'string' }, { name: 'uri', type: 'string' }, { name: 'label', type: 'string' }, { name: 'datatype', type: 'string' }, { name: 'active', type: 'bool' }, { name: 'registeredAt', type: 'uint256' }] }], stateMutability: 'view' },
+  { type: 'function', name: 'getAllTermIds', inputs: [], outputs: [{ name: '', type: 'bytes32[]' }], stateMutability: 'view' },
+  { type: 'function', name: 'governor', inputs: [], outputs: [{ name: '', type: 'address' }], stateMutability: 'view' },
+] as const
+
+// ─── AgentAccountResolver ABI ──────────────────────────────────────
+
+export const agentAccountResolverAbi = [
+  { type: 'function', name: 'register', inputs: [{ name: 'agent', type: 'address' }, { name: 'displayName', type: 'string' }, { name: 'description', type: 'string' }, { name: 'agentType', type: 'bytes32' }, { name: 'agentClass', type: 'bytes32' }, { name: 'schemaURI', type: 'string' }], outputs: [], stateMutability: 'nonpayable' },
+  { type: 'function', name: 'updateCore', inputs: [{ name: 'agent', type: 'address' }, { name: 'displayName', type: 'string' }, { name: 'description', type: 'string' }, { name: 'agentType', type: 'bytes32' }, { name: 'agentClass', type: 'bytes32' }], outputs: [], stateMutability: 'nonpayable' },
+  { type: 'function', name: 'setActive', inputs: [{ name: 'agent', type: 'address' }, { name: 'active', type: 'bool' }], outputs: [], stateMutability: 'nonpayable' },
+  { type: 'function', name: 'setMetadataURI', inputs: [{ name: 'agent', type: 'address' }, { name: 'uri', type: 'string' }, { name: 'hash', type: 'bytes32' }], outputs: [], stateMutability: 'nonpayable' },
+  { type: 'function', name: 'setStringProperty', inputs: [{ name: 'agent', type: 'address' }, { name: 'predicate', type: 'bytes32' }, { name: 'value', type: 'string' }], outputs: [], stateMutability: 'nonpayable' },
+  { type: 'function', name: 'setAddressProperty', inputs: [{ name: 'agent', type: 'address' }, { name: 'predicate', type: 'bytes32' }, { name: 'value', type: 'address' }], outputs: [], stateMutability: 'nonpayable' },
+  { type: 'function', name: 'setBoolProperty', inputs: [{ name: 'agent', type: 'address' }, { name: 'predicate', type: 'bytes32' }, { name: 'value', type: 'bool' }], outputs: [], stateMutability: 'nonpayable' },
+  { type: 'function', name: 'addMultiStringProperty', inputs: [{ name: 'agent', type: 'address' }, { name: 'predicate', type: 'bytes32' }, { name: 'value', type: 'string' }], outputs: [], stateMutability: 'nonpayable' },
+  { type: 'function', name: 'clearMultiStringProperty', inputs: [{ name: 'agent', type: 'address' }, { name: 'predicate', type: 'bytes32' }], outputs: [], stateMutability: 'nonpayable' },
+  { type: 'function', name: 'getCore', inputs: [{ name: 'agent', type: 'address' }], outputs: [{ name: '', type: 'tuple', components: [{ name: 'displayName', type: 'string' }, { name: 'description', type: 'string' }, { name: 'agentType', type: 'bytes32' }, { name: 'agentClass', type: 'bytes32' }, { name: 'metadataURI', type: 'string' }, { name: 'metadataHash', type: 'bytes32' }, { name: 'schemaURI', type: 'string' }, { name: 'active', type: 'bool' }, { name: 'registeredAt', type: 'uint256' }, { name: 'updatedAt', type: 'uint256' }] }], stateMutability: 'view' },
+  { type: 'function', name: 'isRegistered', inputs: [{ name: 'agent', type: 'address' }], outputs: [{ name: '', type: 'bool' }], stateMutability: 'view' },
+  { type: 'function', name: 'agentCount', inputs: [], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view' },
+  { type: 'function', name: 'getAgentAt', inputs: [{ name: 'index', type: 'uint256' }], outputs: [{ name: '', type: 'address' }], stateMutability: 'view' },
+  { type: 'function', name: 'getAllAgents', inputs: [], outputs: [{ name: '', type: 'address[]' }], stateMutability: 'view' },
+  { type: 'function', name: 'getStringProperty', inputs: [{ name: 'agent', type: 'address' }, { name: 'predicate', type: 'bytes32' }], outputs: [{ name: '', type: 'string' }], stateMutability: 'view' },
+  { type: 'function', name: 'getAddressProperty', inputs: [{ name: 'agent', type: 'address' }, { name: 'predicate', type: 'bytes32' }], outputs: [{ name: '', type: 'address' }], stateMutability: 'view' },
+  { type: 'function', name: 'getBoolProperty', inputs: [{ name: 'agent', type: 'address' }, { name: 'predicate', type: 'bytes32' }], outputs: [{ name: '', type: 'bool' }], stateMutability: 'view' },
+  { type: 'function', name: 'getMultiStringProperty', inputs: [{ name: 'agent', type: 'address' }, { name: 'predicate', type: 'bytes32' }], outputs: [{ name: '', type: 'string[]' }], stateMutability: 'view' },
+  { type: 'function', name: 'getPredicateKeys', inputs: [{ name: 'agent', type: 'address' }], outputs: [{ name: '', type: 'bytes32[]' }], stateMutability: 'view' },
+  { type: 'event', name: 'AgentRegistered', inputs: [{ name: 'agent', type: 'address', indexed: true }, { name: 'displayName', type: 'string', indexed: false }, { name: 'agentType', type: 'bytes32', indexed: true }] },
+  { type: 'event', name: 'PropertySet', inputs: [{ name: 'agent', type: 'address', indexed: true }, { name: 'predicate', type: 'bytes32', indexed: true }] },
+  { type: 'event', name: 'MetadataUpdated', inputs: [{ name: 'agent', type: 'address', indexed: true }, { name: 'metadataURI', type: 'string', indexed: false }, { name: 'metadataHash', type: 'bytes32', indexed: false }] },
+] as const
+
+// ─── AgentUniversalResolver ABI ────────────────────────────────────
+
+export const agentUniversalResolverAbi = [
+  { type: 'function', name: 'resolveAgent', inputs: [{ name: 'agent', type: 'address' }], outputs: [{ name: '', type: 'tuple', components: [
+    { name: 'displayName', type: 'string' }, { name: 'description', type: 'string' },
+    { name: 'agentType', type: 'bytes32' }, { name: 'agentClass', type: 'bytes32' },
+    { name: 'metadataURI', type: 'string' }, { name: 'metadataHash', type: 'bytes32' },
+    { name: 'schemaURI', type: 'string' }, { name: 'active', type: 'bool' },
+    { name: 'registeredAt', type: 'uint256' },
+    { name: 'discoveryTrustPasses', type: 'bool' }, { name: 'discoveryTrustScore', type: 'uint256' },
+    { name: 'executionTrustPasses', type: 'bool' }, { name: 'executionTrustScore', type: 'uint256' },
+    { name: 'runtimeTrustPasses', type: 'bool' }, { name: 'runtimeTrustScore', type: 'uint256' },
+    { name: 'reviewCount', type: 'uint256' }, { name: 'avgReviewScore', type: 'uint256' },
+    { name: 'validationCount', type: 'uint256' }, { name: 'openDisputeCount', type: 'uint256' },
+  ] }], stateMutability: 'view' },
+  { type: 'function', name: 'resolveProperties', inputs: [{ name: 'agent', type: 'address' }, { name: 'predicates', type: 'bytes32[]' }], outputs: [{ name: '', type: 'string[]' }], stateMutability: 'view' },
+  { type: 'function', name: 'isRegistered', inputs: [{ name: 'agent', type: 'address' }], outputs: [{ name: '', type: 'bool' }], stateMutability: 'view' },
+  { type: 'function', name: 'agentCount', inputs: [], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view' },
+] as const
+

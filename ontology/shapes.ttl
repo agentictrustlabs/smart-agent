@@ -1,0 +1,212 @@
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix atl: <https://agentictrust.io/ontology/core#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+# ─────────────────────────────────────────────────────────────────────
+# SHACL Shapes for Agent Account Metadata
+#
+# These shapes validate the JSON-LD metadata documents published
+# by agents. The on-chain AgentAccountResolver stores core properties;
+# the full semantic representation lives in JSON-LD on IPFS.
+#
+# Usage: validate a JSON-LD document against these shapes using
+# a SHACL processor (e.g., rdf-validate-shacl, pySHACL, TopBraid).
+# ─────────────────────────────────────────────────────────────────────
+
+# ═══════════════════════════════════════════════════════════════════════
+# Base Agent Account Shape (all agents must conform)
+# ═══════════════════════════════════════════════════════════════════════
+
+atl:AgentAccountShape a sh:NodeShape ;
+    sh:targetClass atl:AgentAccount ;
+    rdfs:label "Agent Account Shape" ;
+    rdfs:comment "Base validation shape for all agent accounts." ;
+
+    # Required: smart account address
+    sh:property [
+        sh:path atl:accountAddress ;
+        sh:name "Account Address" ;
+        sh:description "ERC-4337 smart account address (0x...)" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:pattern "^0x[a-fA-F0-9]{40}$" ;
+    ] ;
+
+    # Required: display name
+    sh:property [
+        sh:path atl:displayName ;
+        sh:name "Display Name" ;
+        sh:description "Human-readable name" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:minLength 1 ;
+        sh:maxLength 100 ;
+    ] ;
+
+    # Required: active status
+    sh:property [
+        sh:path atl:isActive ;
+        sh:name "Is Active" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:boolean ;
+    ] ;
+
+    # Required: agent type
+    sh:property [
+        sh:path atl:agentType ;
+        sh:name "Agent Type" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:in ( atl:PersonAgent atl:OrganizationAgent atl:AIAgent ) ;
+    ] ;
+
+    # Optional: description
+    sh:property [
+        sh:path atl:description ;
+        sh:name "Description" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:maxLength 500 ;
+    ] ;
+
+    # Optional: metadata URI
+    sh:property [
+        sh:path atl:metadataURI ;
+        sh:name "Metadata URI" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:anyURI ;
+    ] ;
+
+    # Optional: schema URI
+    sh:property [
+        sh:path atl:schemaURI ;
+        sh:name "Schema URI" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:anyURI ;
+    ] ;
+
+    # Optional: controllers (multi-value)
+    sh:property [
+        sh:path atl:hasController ;
+        sh:name "Controller" ;
+        sh:description "EOA wallet addresses that control this agent" ;
+        sh:datatype xsd:string ;
+    ] ;
+
+    # Optional: service endpoints
+    sh:property [
+        sh:path atl:hasA2AEndpoint ;
+        sh:name "A2A Endpoint" ;
+        sh:datatype xsd:anyURI ;
+    ] ;
+
+    sh:property [
+        sh:path atl:hasMCPServer ;
+        sh:name "MCP Server" ;
+        sh:datatype xsd:anyURI ;
+    ] ;
+
+    # Optional: trust models (multi-value)
+    sh:property [
+        sh:path atl:supportedTrustModel ;
+        sh:name "Supported Trust Model" ;
+        sh:datatype xsd:string ;
+    ] ;
+
+    # Optional: capabilities (multi-value)
+    sh:property [
+        sh:path atl:hasCapability ;
+        sh:name "Capability" ;
+        sh:datatype xsd:string ;
+    ] .
+
+# ═══════════════════════════════════════════════════════════════════════
+# Person Agent Shape
+# ═══════════════════════════════════════════════════════════════════════
+
+atl:PersonAgentShape a sh:NodeShape ;
+    sh:targetClass atl:PersonAgent ;
+    rdfs:label "Person Agent Shape" ;
+    rdfs:comment "Validation shape for person agents." ;
+
+    # Inherits all base agent constraints
+    sh:node atl:AgentAccountShape ;
+
+    # Required: at least one controller (the person's EOA wallet)
+    sh:property [
+        sh:path atl:hasController ;
+        sh:name "Controller" ;
+        sh:description "Person agents must have at least one controller (EOA wallet)" ;
+        sh:minCount 1 ;
+    ] .
+
+# ═══════════════════════════════════════════════════════════════════════
+# Organization Agent Shape
+# ═══════════════════════════════════════════════════════════════════════
+
+atl:OrganizationAgentShape a sh:NodeShape ;
+    sh:targetClass atl:OrganizationAgent ;
+    rdfs:label "Organization Agent Shape" ;
+    rdfs:comment "Validation shape for organization agents." ;
+
+    sh:node atl:AgentAccountShape ;
+
+    # Required: organizations must have a description
+    sh:property [
+        sh:path atl:description ;
+        sh:name "Description" ;
+        sh:description "Organizations must describe their purpose" ;
+        sh:minCount 1 ;
+        sh:datatype xsd:string ;
+    ] .
+
+# ═══════════════════════════════════════════════════════════════════════
+# AI Agent Shape
+# ═══════════════════════════════════════════════════════════════════════
+
+atl:AIAgentShape a sh:NodeShape ;
+    sh:targetClass atl:AIAgent ;
+    rdfs:label "AI Agent Shape" ;
+    rdfs:comment "Validation shape for AI agents." ;
+
+    sh:node atl:AgentAccountShape ;
+
+    # Required: AI agents must declare their subclass
+    sh:property [
+        sh:path atl:aiAgentClass ;
+        sh:name "AI Agent Class" ;
+        sh:description "AI agents must declare their class (discovery, validator, executor, etc.)" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:in ( atl:DiscoveryAgent atl:ValidatorAgent atl:ExecutorAgent
+                atl:AssistantAgent atl:OracleAgent ) ;
+    ] ;
+
+    # Required: at least one supported trust model
+    sh:property [
+        sh:path atl:supportedTrustModel ;
+        sh:name "Supported Trust Model" ;
+        sh:description "AI agents must declare at least one supported trust model" ;
+        sh:minCount 1 ;
+    ] ;
+
+    # Required: at least one capability
+    sh:property [
+        sh:path atl:hasCapability ;
+        sh:name "Capability" ;
+        sh:description "AI agents must declare at least one capability" ;
+        sh:minCount 1 ;
+    ] ;
+
+    # Optional: operated by an organization
+    sh:property [
+        sh:path atl:operatedBy ;
+        sh:name "Operated By" ;
+        sh:description "Organization that operates this AI agent" ;
+        sh:maxCount 1 ;
+        sh:class atl:OrganizationAgent ;
+    ] .
