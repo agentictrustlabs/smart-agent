@@ -10,7 +10,7 @@ const STATUS_LABELS = ['none', 'proposed', 'confirmed', 'active', 'suspended', '
 export interface GraphNode {
   id: string
   label: string
-  type: 'person' | 'org' | 'ai'
+  type: 'person' | 'org' | 'ai' | 'eoa'
   did: string
   address: string
 }
@@ -59,22 +59,71 @@ export async function GET() {
     const seenNodes = new Set<string>()
     const seenEdges = new Set<string>()
 
-    function addNode(address: string, type: 'person' | 'org' | 'ai') {
+    function addNode(address: string, type: 'person' | 'org' | 'ai' | 'eoa') {
       const key = address.toLowerCase()
       if (seenNodes.has(key)) return
       seenNodes.add(key)
       nodes.push({
         id: address,
-        label: nameMap.get(key) ?? `Agent ${address.slice(0, 6)}`,
+        label: nameMap.get(key) ?? `${address.slice(0, 6)}...${address.slice(-4)}`,
         type,
-        did: toDidEthr(CHAIN_ID, address as `0x${string}`),
+        did: type === 'eoa' ? `eoa:${address}` : toDidEthr(CHAIN_ID, address as `0x${string}`),
         address,
       })
     }
 
-    for (const p of allPersonAgents) addNode(p.smartAccountAddress, 'person')
-    for (const o of allOrgAgents) addNode(o.smartAccountAddress, 'org')
-    for (const a of allAIAgents) addNode(a.smartAccountAddress, 'ai')
+    // Add EOA wallet nodes and controller edges
+    for (const u of allUsers) {
+      nameMap.set(u.walletAddress.toLowerCase(), u.name)
+      addNode(u.walletAddress, 'eoa')
+    }
+
+    for (const p of allPersonAgents) {
+      addNode(p.smartAccountAddress, 'person')
+      // EOA → Person Agent controller edge
+      const user = allUsers.find((u) => u.id === p.userId)
+      if (user) {
+        edges.push({
+          source: user.walletAddress,
+          target: p.smartAccountAddress,
+          roles: ['controller'],
+          relationshipType: 'Controller',
+          status: 'active',
+          edgeId: `ctrl-${user.walletAddress}-${p.smartAccountAddress}`,
+          templates: [],
+        })
+      }
+    }
+    for (const o of allOrgAgents) {
+      addNode(o.smartAccountAddress, 'org')
+      const user = allUsers.find((u) => u.id === o.createdBy)
+      if (user) {
+        edges.push({
+          source: user.walletAddress,
+          target: o.smartAccountAddress,
+          roles: ['controller'],
+          relationshipType: 'Controller',
+          status: 'active',
+          edgeId: `ctrl-${user.walletAddress}-${o.smartAccountAddress}`,
+          templates: [],
+        })
+      }
+    }
+    for (const a of allAIAgents) {
+      addNode(a.smartAccountAddress, 'ai')
+      const user = allUsers.find((u) => u.id === a.createdBy)
+      if (user) {
+        edges.push({
+          source: user.walletAddress,
+          target: a.smartAccountAddress,
+          roles: ['controller'],
+          relationshipType: 'Controller',
+          status: 'active',
+          edgeId: `ctrl-${user.walletAddress}-${a.smartAccountAddress}`,
+          templates: [],
+        })
+      }
+    }
 
     // Load all templates: (relType:role) → TemplateInfo[]
     const templatesByKey = new Map<string, TemplateInfo[]>()
@@ -148,6 +197,7 @@ export async function GET() {
           const myPerson = allPersonAgents.filter((p) => p.userId === currentUser[0].id)
           const myOrgs = allOrgAgents.filter((o) => o.createdBy === currentUser[0].id)
           const myAIs = allAIAgents.filter((a) => a.createdBy === currentUser[0].id)
+          currentUserAddresses.push(currentUser[0].walletAddress.toLowerCase())
           myPerson.forEach((p) => currentUserAddresses.push(p.smartAccountAddress.toLowerCase()))
           myOrgs.forEach((o) => currentUserAddresses.push(o.smartAccountAddress.toLowerCase()))
           myAIs.forEach((a) => currentUserAddresses.push(a.smartAccountAddress.toLowerCase()))

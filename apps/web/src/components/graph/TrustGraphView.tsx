@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react'
 interface GraphNode {
   id: string
   label: string
-  type: 'person' | 'org' | 'ai'
+  type: 'person' | 'org' | 'ai' | 'eoa'
   did: string
   address: string
   x?: number
@@ -36,7 +36,7 @@ interface GraphData {
   edges: GraphEdge[]
 }
 
-const NODE_COLORS: Record<string, string> = { person: '#6366f1', org: '#22c55e', ai: '#f59e0b' }
+const NODE_COLORS: Record<string, string> = { person: '#6366f1', org: '#22c55e', ai: '#f59e0b', eoa: '#94a3b8' }
 
 const EDGE_COLORS: Record<string, string> = {
   Governance: '#f59e0b', Membership: '#6366f1', Alliance: '#ec4899',
@@ -44,6 +44,7 @@ const EDGE_COLORS: Record<string, string> = {
   Service: '#f97316', Delegation: '#ef4444', Compliance: '#a3e635',
   'Runtime/TEE': '#22d3ee', 'Build Provenance': '#94a3b8',
   'Org Control': '#fb923c', 'Activity Validation': '#a3e635', Review: '#f472b6',
+  Controller: '#94a3b8',
 }
 
 function layoutNodes(nodes: GraphNode[], w: number, h: number): GraphNode[] {
@@ -148,6 +149,7 @@ export function TrustGraphView() {
             <span data-component="legend-item"><span style={{ background: NODE_COLORS.person }} data-component="legend-dot" /> Person</span>
             <span data-component="legend-item"><span style={{ background: NODE_COLORS.org }} data-component="legend-dot" /> Organization</span>
             <span data-component="legend-item"><span style={{ background: NODE_COLORS.ai }} data-component="legend-dot" /> AI Agent</span>
+            <span data-component="legend-item"><span style={{ background: NODE_COLORS.eoa }} data-component="legend-dot" /> EOA Wallet</span>
             {Object.entries(EDGE_COLORS).map(([t, c]) => (
               <span key={t} data-component="legend-item"><span style={{ background: c }} data-component="legend-line" /> {t}</span>
             ))}
@@ -195,20 +197,27 @@ export function TrustGraphView() {
           {nodes.map((node) => {
             const hl = isNodeHighlighted(node.id)
             const isSel = selectedNode === node.id.toLowerCase()
-            const r = node.type === 'org' ? 28 : node.type === 'ai' ? 25 : 22
+            const r = node.type === 'org' ? 28 : node.type === 'ai' ? 25 : node.type === 'eoa' ? 18 : 22
+            const nx = node.x ?? 0, ny = node.y ?? 0
+            const stroke = isSel ? '#fff' : 'rgba(255,255,255,0.4)'
+            const sw = isSel ? 3 : 1.5
             return (
               <g key={node.id} opacity={hl ? 1 : 0.12} style={{ cursor: 'pointer' }}
                 onClick={() => handleNodeClick(node.id)}>
                 {node.type === 'org' ? (
-                  <rect x={(node.x ?? 0) - r} y={(node.y ?? 0) - r} width={r * 2} height={r * 2} rx={8}
-                    fill={NODE_COLORS[node.type]} stroke={isSel ? '#fff' : 'rgba(255,255,255,0.4)'} strokeWidth={isSel ? 3 : 1.5} />
+                  <rect x={nx - r} y={ny - r} width={r * 2} height={r * 2} rx={8}
+                    fill={NODE_COLORS[node.type]} stroke={stroke} strokeWidth={sw} />
                 ) : node.type === 'ai' ? (
                   <polygon
-                    points={`${node.x},${(node.y ?? 0) - r} ${(node.x ?? 0) + r},${node.y} ${node.x},${(node.y ?? 0) + r} ${(node.x ?? 0) - r},${node.y}`}
-                    fill={NODE_COLORS[node.type]} stroke={isSel ? '#fff' : 'rgba(255,255,255,0.4)'} strokeWidth={isSel ? 3 : 1.5} />
+                    points={`${nx},${ny - r} ${nx + r},${ny} ${nx},${ny + r} ${nx - r},${ny}`}
+                    fill={NODE_COLORS[node.type]} stroke={stroke} strokeWidth={sw} />
+                ) : node.type === 'eoa' ? (
+                  <polygon
+                    points={(() => { const s = r; return [0,1,2,3,4,5].map(i => { const a = Math.PI/3*i - Math.PI/6; return `${nx+s*Math.cos(a)},${ny+s*Math.sin(a)}`; }).join(' '); })()}
+                    fill={NODE_COLORS[node.type]} stroke={stroke} strokeWidth={sw} />
                 ) : (
-                  <circle cx={node.x} cy={node.y} r={r}
-                    fill={NODE_COLORS[node.type]} stroke={isSel ? '#fff' : 'rgba(255,255,255,0.4)'} strokeWidth={isSel ? 3 : 1.5} />
+                  <circle cx={nx} cy={ny} r={r}
+                    fill={NODE_COLORS[node.type]} stroke={stroke} strokeWidth={sw} />
                 )}
                 <text x={node.x} y={(node.y ?? 0) + r + 14} fill="#e4e4ef" fontSize="11" textAnchor="middle" fontWeight="600">{node.label}</text>
                 <text x={node.x} y={(node.y ?? 0) + r + 25} fill="#8888a0" fontSize="7" textAnchor="middle">
