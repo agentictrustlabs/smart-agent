@@ -318,6 +318,18 @@ cast send "$ISSUER_CONTRACT" "registerIssuer(address,bytes32,string,string,bytes
   "" \
   --rpc-url "$RPC" --private-key "$KEY" > /dev/null 2>&1
 
+# Register MockTeeVerifier as a TEE verifier issuer
+MOCK_TEE="${MOCK_TEE_VERIFIER_ADDRESS}"
+IT_TEE=$(cast call "$ISSUER_CONTRACT" "ISSUER_TEE_VERIFIER()(bytes32)" --rpc-url "$RPC")
+echo "MockTeeVerifier — type: tee-verifier"
+cast send "$ISSUER_CONTRACT" "registerIssuer(address,bytes32,string,string,bytes32[],bytes32[],string)" \
+  "$MOCK_TEE" "$IT_TEE" \
+  "Mock TEE Verifier" "Development TEE attestation verifier (simulates Nitro/TDX/SGX verification)" \
+  "[$VM_TEE_ONCHAIN]" \
+  "[]" \
+  "" \
+  --rpc-url "$RPC" --private-key "$KEY" > /dev/null 2>&1
+
 echo "Issuers registered: $(cast call $ISSUER_CONTRACT 'issuerCount()(uint256)' --rpc-url $RPC)"
 
 # ─── Additional relationship edges ──────────────────────────────────
@@ -540,8 +552,11 @@ cd "$ROOT_DIR/apps/web"
 node -e "
 const Database = require('better-sqlite3');
 const db = new Database('local.db');
-db.prepare('DELETE FROM person_agents').run();
-db.prepare('DELETE FROM org_agents').run();
+// Only delete SEEDED agents (test-user-*), preserve user-created ones
+db.prepare(\"DELETE FROM person_agents WHERE user_id LIKE 'test-user-%'\").run();
+db.prepare(\"DELETE FROM org_agents WHERE created_by LIKE 'test-user-%'\").run();
+try { db.prepare(\"DELETE FROM ai_agents WHERE created_by LIKE 'test-user-%'\").run(); } catch(e) {}
+try { db.prepare(\"DELETE FROM review_delegations\").run(); } catch(e) {}
 const ts = () => new Date().toISOString();
 const id = () => require('crypto').randomUUID();
 
@@ -572,17 +587,20 @@ db.prepare('INSERT INTO person_agents (id,name,user_id,smart_account_address,cha
 db.prepare('INSERT INTO person_agents (id,name,user_id,smart_account_address,chain_id,salt,implementation_type,status,created_at) VALUES (?,?,?,?,?,?,?,?,?)').run(id(),'Bob Agent','test-user-002','$BOB_AGENT',31337,'0x2','hybrid','deployed',ts());
 db.prepare('INSERT INTO person_agents (id,name,user_id,smart_account_address,chain_id,salt,implementation_type,status,created_at) VALUES (?,?,?,?,?,?,?,?,?)').run(id(),'Carol Agent','test-user-003','$CAROL_AGENT',31337,'0x3','hybrid','deployed',ts());
 
-// Org agents
+// Org agents (actual organizations)
 db.prepare('INSERT INTO org_agents VALUES (?,?,?,?,?,?,?,?,?,?)').run(id(),'Agentic Trust Labs','Agent trust, identity, and reputation research','test-user-001','$ORG_ATL',31337,'0x4','hybrid','deployed',ts());
 db.prepare('INSERT INTO org_agents VALUES (?,?,?,?,?,?,?,?,?,?)').run(id(),'DeFi Protocol DAO','Decentralized finance governance','test-user-001','$ORG_DEFI',31337,'0x5','hybrid','deployed',ts());
 db.prepare('INSERT INTO org_agents VALUES (?,?,?,?,?,?,?,?,?,?)').run(id(),'InsureCo','Agent insurance and coverage provider','test-user-001','$INSURECO',31337,'0x6','hybrid','deployed',ts());
 db.prepare('INSERT INTO org_agents VALUES (?,?,?,?,?,?,?,?,?,?)').run(id(),'StakePool','Economic security bonding pool','test-user-001','$STAKEPOOL',31337,'0x7','hybrid','deployed',ts());
-db.prepare('INSERT INTO org_agents VALUES (?,?,?,?,?,?,?,?,?,?)').run(id(),'TrustValidator','Trusted identity and compliance validator','test-user-001','$TRUST_VALIDATOR',31337,'0x8','hybrid','deployed',ts());
-db.prepare('INSERT INTO org_agents VALUES (?,?,?,?,?,?,?,?,?,?)').run(id(),'ATL TEE Runtime','AWS Nitro enclave for ATL agent execution','test-user-001','$TEE_RUNTIME',31337,'0x9','hybrid','deployed',ts());
-db.prepare('INSERT INTO org_agents VALUES (?,?,?,?,?,?,?,?,?,?)').run(id(),'Discovery AI Agent','Agentic Trust Discovery AI Agent - operated by ATL','test-user-001','$DISCOVERY_AGENT',31337,'0x10','hybrid','deployed',ts());
-db.prepare('INSERT INTO org_agents VALUES (?,?,?,?,?,?,?,?,?,?)').run(id(),'Discovery TEE','TEE environment for Discovery AI Agent','test-user-001','$DISCOVERY_TEE',31337,'0x11','hybrid','deployed',ts());
-db.prepare('INSERT INTO org_agents VALUES (?,?,?,?,?,?,?,?,?,?)').run(id(),'Validator Alpha','Activity validation service for AI agents','test-user-001','$VALIDATOR_ALPHA',31337,'0x12','hybrid','deployed',ts());
-db.prepare('INSERT INTO org_agents VALUES (?,?,?,?,?,?,?,?,?,?)').run(id(),'Validator Beta','Activity validation and compliance service','test-user-001','$VALIDATOR_BETA',31337,'0x13','hybrid','deployed',ts());
+
+// AI Agents (autonomous agents with agent_type)
+// ai_agents columns: id, name, description, agent_type, created_by, operated_by, smart_account_address, chain_id, salt, implementation_type, status, created_at
+db.prepare('INSERT INTO ai_agents (id,name,description,agent_type,created_by,operated_by,smart_account_address,chain_id,salt,implementation_type,status,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)').run(id(),'TrustValidator','Trusted identity and compliance validator','validator','test-user-001',null,'$TRUST_VALIDATOR',31337,'0x8','hybrid','deployed',ts());
+db.prepare('INSERT INTO ai_agents (id,name,description,agent_type,created_by,operated_by,smart_account_address,chain_id,salt,implementation_type,status,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)').run(id(),'ATL TEE Runtime','AWS Nitro enclave for ATL agent execution','executor','test-user-001','$ORG_ATL','$TEE_RUNTIME',31337,'0x9','hybrid','deployed',ts());
+db.prepare('INSERT INTO ai_agents (id,name,description,agent_type,created_by,operated_by,smart_account_address,chain_id,salt,implementation_type,status,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)').run(id(),'Discovery Agent','Autonomous trust discovery and evaluation agent - operated by ATL','discovery','test-user-001','$ORG_ATL','$DISCOVERY_AGENT',31337,'0x10','hybrid','deployed',ts());
+db.prepare('INSERT INTO ai_agents (id,name,description,agent_type,created_by,operated_by,smart_account_address,chain_id,salt,implementation_type,status,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)').run(id(),'Discovery TEE','TEE runtime environment for Discovery Agent','executor','test-user-001','$ORG_ATL','$DISCOVERY_TEE',31337,'0x11','hybrid','deployed',ts());
+db.prepare('INSERT INTO ai_agents (id,name,description,agent_type,created_by,operated_by,smart_account_address,chain_id,salt,implementation_type,status,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)').run(id(),'Validator Alpha','Activity validation for AI agents','validator','test-user-001',null,'$VALIDATOR_ALPHA',31337,'0x12','hybrid','deployed',ts());
+db.prepare('INSERT INTO ai_agents (id,name,description,agent_type,created_by,operated_by,smart_account_address,chain_id,salt,implementation_type,status,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)').run(id(),'Validator Beta','Activity validation and compliance','validator','test-user-001',null,'$VALIDATOR_BETA',31337,'0x13','hybrid','deployed',ts());
 
 // Reviewer users
 const dave = db.prepare(\"SELECT id FROM users WHERE name = 'Dave'\").get();
@@ -607,12 +625,15 @@ db.prepare('INSERT INTO person_agents (id,name,user_id,smart_account_address,cha
 db.prepare('INSERT INTO person_agents (id,name,user_id,smart_account_address,chain_id,salt,implementation_type,status,created_at) VALUES (?,?,?,?,?,?,?,?,?)').run(id(),'Eve Agent','test-user-005','$REVIEWER_EVE',31337,'0x15','hybrid','deployed',ts());
 db.prepare('INSERT INTO person_agents (id,name,user_id,smart_account_address,chain_id,salt,implementation_type,status,created_at) VALUES (?,?,?,?,?,?,?,?,?)').run(id(),'Frank Agent','test-user-006','$REVIEWER_FRANK',31337,'0x16','hybrid','deployed',ts());
 
-console.log('DB seeded: 6 people, 11 orgs/services');
+console.log('DB seeded: 6 person agents, 4 org agents, 6 AI agents');
 "
 
 echo ""
 echo "=== Trust graph seeded ==="
-echo "Agents: 16 (Alice, Bob, Carol, Dave, Eve, Frank + ATL, DeFi DAO, InsureCo, StakePool, TrustValidator, TEE Runtime, Discovery AI Agent, Discovery TEE, Validator Alpha, Validator Beta)"
+echo "Agents: 16 total"
+echo "  Person: Alice, Bob, Carol, Dave, Eve, Frank"
+echo "  Org:    Agentic Trust Labs, DeFi Protocol DAO, InsureCo, StakePool"
+echo "  AI:     TrustValidator, ATL TEE Runtime, Discovery Agent, Discovery TEE, Validator Alpha, Validator Beta"
 echo "Edges: 28+ relationships across Governance, Membership, Alliance, Insurance, Economic Security, Service, Delegation, Runtime/TEE, Validation, Org Control, Activity Validation, Review"
 echo "Issuers: 6 registered"
 echo "Templates: 6 delegation templates"

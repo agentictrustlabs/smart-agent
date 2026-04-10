@@ -117,6 +117,7 @@ export async function recordTeeValidation(
       abi: agentValidationProfileAbi,
       functionName: 'recordValidation',
       args: [
+        input.agentAddress as `0x${string}`,
         assertionId,
         methodHash,
         (input.verifierContract || '0x0000000000000000000000000000000000000000') as `0x${string}`,

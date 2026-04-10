@@ -213,17 +213,17 @@ export const agentIssuerProfileAbi = [
 // ─── AgentValidationProfile ABI ──────────────────────────────────────
 
 export const agentValidationProfileAbi = [
-  { type: 'function', name: 'recordValidation', inputs: [{ name: 'assertionId', type: 'uint256' }, { name: 'validationMethod', type: 'bytes32' }, { name: 'verifierContract', type: 'address' }, { name: 'teeArch', type: 'bytes32' }, { name: 'codeMeasurement', type: 'bytes32' }, { name: 'evidenceURI', type: 'string' }], outputs: [{ name: 'validationId', type: 'uint256' }], stateMutability: 'nonpayable' },
-  { type: 'function', name: 'getValidation', inputs: [{ name: 'validationId', type: 'uint256' }], outputs: [{ name: '', type: 'tuple', components: [{ name: 'validationId', type: 'uint256' }, { name: 'assertionId', type: 'uint256' }, { name: 'validationMethod', type: 'bytes32' }, { name: 'verifierContract', type: 'address' }, { name: 'teeArch', type: 'bytes32' }, { name: 'codeMeasurement', type: 'bytes32' }, { name: 'evidenceURI', type: 'string' }, { name: 'validatedBy', type: 'address' }, { name: 'validatedAt', type: 'uint256' }] }], stateMutability: 'view' },
+  { type: 'function', name: 'recordValidation', inputs: [{ name: 'agent', type: 'address' }, { name: 'assertionId', type: 'uint256' }, { name: 'validationMethod', type: 'bytes32' }, { name: 'verifierContract', type: 'address' }, { name: 'teeArch', type: 'bytes32' }, { name: 'codeMeasurement', type: 'bytes32' }, { name: 'evidenceURI', type: 'string' }], outputs: [{ name: 'validationId', type: 'uint256' }], stateMutability: 'nonpayable' },
+  { type: 'function', name: 'getValidation', inputs: [{ name: 'validationId', type: 'uint256' }], outputs: [{ name: '', type: 'tuple', components: [{ name: 'validationId', type: 'uint256' }, { name: 'agent', type: 'address' }, { name: 'assertionId', type: 'uint256' }, { name: 'validationMethod', type: 'bytes32' }, { name: 'verifierContract', type: 'address' }, { name: 'teeArch', type: 'bytes32' }, { name: 'codeMeasurement', type: 'bytes32' }, { name: 'evidenceURI', type: 'string' }, { name: 'validatedBy', type: 'address' }, { name: 'validatedAt', type: 'uint256' }] }], stateMutability: 'view' },
+  { type: 'function', name: 'getValidationsByAgent', inputs: [{ name: 'agent', type: 'address' }], outputs: [{ name: '', type: 'uint256[]' }], stateMutability: 'view' },
   { type: 'function', name: 'getValidationsByAssertion', inputs: [{ name: 'assertionId', type: 'uint256' }], outputs: [{ name: '', type: 'uint256[]' }], stateMutability: 'view' },
   { type: 'function', name: 'getValidationsByValidator', inputs: [{ name: 'validator', type: 'address' }], outputs: [{ name: '', type: 'uint256[]' }], stateMutability: 'view' },
   { type: 'function', name: 'validationCount', inputs: [], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view' },
-  // TEE arch constants
   { type: 'function', name: 'TEE_NITRO', inputs: [], outputs: [{ name: '', type: 'bytes32' }], stateMutability: 'view' },
   { type: 'function', name: 'TEE_TDX', inputs: [], outputs: [{ name: '', type: 'bytes32' }], stateMutability: 'view' },
   { type: 'function', name: 'TEE_SGX', inputs: [], outputs: [{ name: '', type: 'bytes32' }], stateMutability: 'view' },
   { type: 'function', name: 'TEE_SEV', inputs: [], outputs: [{ name: '', type: 'bytes32' }], stateMutability: 'view' },
-  { type: 'event', name: 'ValidationRecorded', inputs: [{ name: 'validationId', type: 'uint256', indexed: true }, { name: 'assertionId', type: 'uint256', indexed: true }, { name: 'validationMethod', type: 'bytes32', indexed: false }, { name: 'validatedBy', type: 'address', indexed: true }] },
+  { type: 'event', name: 'ValidationRecorded', inputs: [{ name: 'validationId', type: 'uint256', indexed: true }, { name: 'agent', type: 'address', indexed: true }, { name: 'validationMethod', type: 'bytes32', indexed: false }, { name: 'validatedBy', type: 'address', indexed: true }] },
 ] as const
 
 // ─── AgentReviewRecord ABI ───────────────────────────────────────────
@@ -253,8 +253,9 @@ export const agentDisputeRecordAbi = [
 // ─── AgentTrustProfile ABI ───────────────────────────────────────────
 
 export const agentTrustProfileAbi = [
-  { type: 'function', name: 'checkDiscoveryTrust', inputs: [{ name: 'agent', type: 'address' }], outputs: [{ name: '', type: 'tuple', components: [{ name: 'passes', type: 'bool' }, { name: 'score', type: 'uint256' }, { name: 'edgeCount', type: 'uint256' }, { name: 'reviewCount', type: 'uint256' }, { name: 'avgReviewScore', type: 'uint256' }, { name: 'openDisputes', type: 'uint256' }] }], stateMutability: 'view' },
-  { type: 'function', name: 'checkExecutionTrust', inputs: [{ name: 'agent', type: 'address' }], outputs: [{ name: '', type: 'tuple', components: [{ name: 'passes', type: 'bool' }, { name: 'score', type: 'uint256' }, { name: 'edgeCount', type: 'uint256' }, { name: 'reviewCount', type: 'uint256' }, { name: 'avgReviewScore', type: 'uint256' }, { name: 'openDisputes', type: 'uint256' }] }], stateMutability: 'view' },
+  { type: 'function', name: 'checkDiscoveryTrust', inputs: [{ name: 'agent', type: 'address' }], outputs: [{ name: '', type: 'tuple', components: [{ name: 'passes', type: 'bool' }, { name: 'score', type: 'uint256' }, { name: 'edgeCount', type: 'uint256' }, { name: 'reviewCount', type: 'uint256' }, { name: 'avgReviewScore', type: 'uint256' }, { name: 'openDisputes', type: 'uint256' }, { name: 'validationCount', type: 'uint256' }] }], stateMutability: 'view' },
+  { type: 'function', name: 'checkExecutionTrust', inputs: [{ name: 'agent', type: 'address' }], outputs: [{ name: '', type: 'tuple', components: [{ name: 'passes', type: 'bool' }, { name: 'score', type: 'uint256' }, { name: 'edgeCount', type: 'uint256' }, { name: 'reviewCount', type: 'uint256' }, { name: 'avgReviewScore', type: 'uint256' }, { name: 'openDisputes', type: 'uint256' }, { name: 'validationCount', type: 'uint256' }] }], stateMutability: 'view' },
+  { type: 'function', name: 'checkRuntimeTrust', inputs: [{ name: 'agent', type: 'address' }], outputs: [{ name: '', type: 'tuple', components: [{ name: 'passes', type: 'bool' }, { name: 'score', type: 'uint256' }, { name: 'edgeCount', type: 'uint256' }, { name: 'reviewCount', type: 'uint256' }, { name: 'avgReviewScore', type: 'uint256' }, { name: 'openDisputes', type: 'uint256' }, { name: 'validationCount', type: 'uint256' }] }], stateMutability: 'view' },
   { type: 'function', name: 'isTrusted', inputs: [{ name: 'agent', type: 'address' }, { name: 'threshold', type: 'uint256' }], outputs: [{ name: '', type: 'bool' }], stateMutability: 'view' },
 ] as const
 
@@ -280,5 +281,39 @@ export const agentControlAbi = [
   { type: 'event', name: 'ProposalCreated', inputs: [{ name: 'agent', type: 'address', indexed: true }, { name: 'proposalId', type: 'uint256', indexed: true }, { name: 'actionClass', type: 'uint8', indexed: false }, { name: 'proposer', type: 'address', indexed: false }] },
   { type: 'event', name: 'ProposalApproved', inputs: [{ name: 'agent', type: 'address', indexed: true }, { name: 'proposalId', type: 'uint256', indexed: true }, { name: 'approver', type: 'address', indexed: true }] },
   { type: 'event', name: 'ProposalExecuted', inputs: [{ name: 'agent', type: 'address', indexed: true }, { name: 'proposalId', type: 'uint256', indexed: true }] },
+] as const
+
+// ─── MockTeeVerifier ABI (Development TEE Simulator) ───────────────
+
+export const mockTeeVerifierAbi = [
+  { type: 'function', name: 'verifyNitro', inputs: [
+    { name: 'agent', type: 'address' }, { name: 'pcr0', type: 'bytes32' },
+    { name: 'pcr1', type: 'bytes32' }, { name: 'pcr2', type: 'bytes32' },
+    { name: 'publicKey', type: 'bytes' },
+  ], outputs: [{ name: 'codeMeasurement', type: 'bytes32' }], stateMutability: 'nonpayable' },
+  { type: 'function', name: 'verifyTdx', inputs: [
+    { name: 'agent', type: 'address' }, { name: 'mrtd', type: 'bytes32' },
+    { name: 'rtmr0', type: 'bytes32' }, { name: 'rtmr1', type: 'bytes32' },
+    { name: 'publicKey', type: 'bytes' },
+  ], outputs: [{ name: 'codeMeasurement', type: 'bytes32' }], stateMutability: 'nonpayable' },
+  { type: 'function', name: 'verify', inputs: [
+    { name: 'agent', type: 'address' }, { name: 'teeArch', type: 'bytes32' },
+    { name: 'measurement0', type: 'bytes32' }, { name: 'measurement1', type: 'bytes32' },
+    { name: 'measurement2', type: 'bytes32' }, { name: 'publicKey', type: 'bytes' },
+  ], outputs: [{ name: 'codeMeasurement', type: 'bytes32' }], stateMutability: 'nonpayable' },
+  { type: 'function', name: 'getAttestation', inputs: [{ name: 'codeMeasurement', type: 'bytes32' }], outputs: [
+    { name: 'agent', type: 'address' }, { name: 'teeArch', type: 'bytes32' },
+    { name: 'pcr0', type: 'bytes32' }, { name: 'pcr1', type: 'bytes32' },
+    { name: 'pcr2', type: 'bytes32' }, { name: 'publicKey', type: 'bytes' },
+    { name: 'verifiedAt', type: 'uint256' }, { name: 'valid', type: 'bool' },
+  ], stateMutability: 'view' },
+  { type: 'function', name: 'getAgentMeasurements', inputs: [{ name: 'agent', type: 'address' }], outputs: [{ name: '', type: 'bytes32[]' }], stateMutability: 'view' },
+  { type: 'function', name: 'isValid', inputs: [{ name: 'codeMeasurement', type: 'bytes32' }], outputs: [{ name: '', type: 'bool' }], stateMutability: 'view' },
+  { type: 'function', name: 'attestationCount', inputs: [], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view' },
+  { type: 'function', name: 'revoke', inputs: [{ name: 'codeMeasurement', type: 'bytes32' }], outputs: [], stateMutability: 'nonpayable' },
+  { type: 'event', name: 'AttestationVerified', inputs: [
+    { name: 'agent', type: 'address', indexed: true }, { name: 'codeMeasurement', type: 'bytes32', indexed: true },
+    { name: 'teeArch', type: 'bytes32', indexed: false }, { name: 'verifiedAt', type: 'uint256', indexed: false },
+  ] },
 ] as const
 

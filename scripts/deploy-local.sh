@@ -46,6 +46,7 @@ REVIEW_ADDR=$(echo "$OUTPUT" | grep "AGENT_REVIEW_ADDRESS=" | sed 's/.*=//')
 DISPUTE_ADDR=$(echo "$OUTPUT" | grep "AGENT_DISPUTE_ADDRESS=" | sed 's/.*=//')
 TRUST_PROFILE_ADDR=$(echo "$OUTPUT" | grep "AGENT_TRUST_PROFILE_ADDRESS=" | sed 's/.*=//')
 CONTROL_ADDR=$(echo "$OUTPUT" | grep "AGENT_CONTROL_ADDRESS=" | sed 's/.*=//')
+MOCK_TEE_VERIFIER=$(echo "$OUTPUT" | grep "MOCK_TEE_VERIFIER_ADDRESS=" | sed 's/.*=//')
 
 echo ""
 echo "=== Extracted addresses ==="
@@ -66,6 +67,7 @@ echo "TimestampEnforcer:         $TIMESTAMP"
 echo "ValueEnforcer:             $VALUE"
 echo "AllowedTargetsEnforcer:    $TARGETS"
 echo "AllowedMethodsEnforcer:    $METHODS"
+echo "MockTeeVerifier:           $MOCK_TEE_VERIFIER"
 
 # Update .env file
 if [ ! -f "$WEB_ENV" ]; then
@@ -91,6 +93,7 @@ sed -i '/^TIMESTAMP_ENFORCER_ADDRESS=/d' "$WEB_ENV"
 sed -i '/^VALUE_ENFORCER_ADDRESS=/d' "$WEB_ENV"
 sed -i '/^ALLOWED_TARGETS_ENFORCER_ADDRESS=/d' "$WEB_ENV"
 sed -i '/^ALLOWED_METHODS_ENFORCER_ADDRESS=/d' "$WEB_ENV"
+sed -i '/^MOCK_TEE_VERIFIER_ADDRESS=/d' "$WEB_ENV"
 sed -i '/^RPC_URL=/d' "$WEB_ENV"
 sed -i '/^DEPLOYER_PRIVATE_KEY=/d' "$WEB_ENV"
 
@@ -117,6 +120,7 @@ TIMESTAMP_ENFORCER_ADDRESS=$TIMESTAMP
 VALUE_ENFORCER_ADDRESS=$VALUE
 ALLOWED_TARGETS_ENFORCER_ADDRESS=$TARGETS
 ALLOWED_METHODS_ENFORCER_ADDRESS=$METHODS
+MOCK_TEE_VERIFIER_ADDRESS=$MOCK_TEE_VERIFIER
 EOF
 
 echo ""

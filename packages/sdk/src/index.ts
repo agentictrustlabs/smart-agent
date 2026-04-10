@@ -13,6 +13,7 @@ export {
   agentDisputeRecordAbi,
   agentTrustProfileAbi,
   agentControlAbi,
+  mockTeeVerifierAbi,
 } from './abi'
 
 // ─── Account Client ──────────────────────────────────────────────────

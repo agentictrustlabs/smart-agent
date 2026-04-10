@@ -34,6 +34,8 @@ export default async function TeeValidationPage() {
 
   type ValidationView = {
     id: number
+    agent: string
+    agentAddress: string
     assertionId: number
     teeArch: string
     validationMethod: string
@@ -69,13 +71,15 @@ export default async function TeeValidationPage() {
         functionName: 'getValidation',
         args: [i],
       })) as {
-        validationId: bigint; assertionId: bigint; validationMethod: `0x${string}`
+        validationId: bigint; agent: string; assertionId: bigint; validationMethod: `0x${string}`
         verifierContract: string; teeArch: `0x${string}`; codeMeasurement: `0x${string}`
         evidenceURI: string; validatedBy: string; validatedAt: bigint
       }
 
       validations.push({
         id: Number(v.validationId),
+        agent: getName(v.agent),
+        agentAddress: v.agent,
         assertionId: Number(v.assertionId),
         teeArch: TEE_ARCH_NAMES[v.teeArch] ?? 'Unknown',
         validationMethod: VM_NAMES[v.validationMethod] ?? 'Unknown',
@@ -120,6 +124,7 @@ export default async function TeeValidationPage() {
       <div data-component="page-header">
         <div data-component="section-header">
           <h1>TEE Validation</h1>
+          <Link href="/tee/simulate" data-component="section-action" style={{ marginRight: '0.5rem' }}>Simulate TEE</Link>
           <Link href="/tee/submit" data-component="section-action">+ Record Validation</Link>
         </div>
         <p>Trusted Execution Environment attestation records for agents in the trust fabric</p>
@@ -172,24 +177,18 @@ export default async function TeeValidationPage() {
         ) : (
           <table data-component="graph-table">
             <thead>
-              <tr><th>TEE</th><th>Method</th><th>Code Measurement</th><th>Validated By</th><th>Date</th><th>Evidence</th></tr>
+              <tr><th>Agent</th><th>TEE</th><th>Method</th><th>Code Measurement</th><th>Validated By</th><th>Date</th></tr>
             </thead>
             <tbody>
               {validations.map((v) => (
                 <tr key={v.id}>
+                  <td><Link href={`/agents/${v.agentAddress}`} style={{ color: '#6366f1' }}>{v.agent}</Link></td>
                   <td><span data-component="role-badge">{v.teeArch}</span></td>
                   <td><span data-component="role-badge" data-status="active">{v.validationMethod}</span></td>
                   <td style={{ fontFamily: 'monospace', fontSize: '0.7rem', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' }}
                     title={v.codeMeasurement}>{v.codeMeasurement.slice(0, 10)}...{v.codeMeasurement.slice(-8)}</td>
                   <td>{v.validatedBy}</td>
                   <td style={{ fontSize: '0.8rem', color: '#8888a0' }}>{v.validatedAt}</td>
-                  <td>
-                    {v.evidenceURI ? (
-                      <span style={{ fontSize: '0.75rem' }} title={v.evidenceURI}>{v.evidenceURI.slice(0, 30)}...</span>
-                    ) : (
-                      <span style={{ color: '#555' }}>none</span>
-                    )}
-                  </td>
                 </tr>
               ))}
             </tbody>

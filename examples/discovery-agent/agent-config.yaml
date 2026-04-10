@@ -1,0 +1,68 @@
+# Discovery Agent — Application Configuration
+#
+# This config defines the agent's runtime behavior when deployed in a TEE.
+# For TEE attestation simulation, paste this entire file content into
+# the "Application Config" field at /tee/simulate.
+#
+# In AWS Nitro, this contributes to PCR2 (application measurement).
+# In Intel TDX with dstack, this contributes to RTMR3 (compose measurement).
+
+name: discovery-agent
+version: 1.2.0
+type: discovery
+
+# Agent identity
+identity:
+  smart_account: "${AGENT_ADDRESS}"
+  chain_id: 31337
+  did: "did:ethr:31337:${AGENT_ADDRESS}"
+
+# Trust evaluation parameters
+evaluation:
+  model: gpt-4
+  min_trust_score: 50
+  evaluation_interval: 300  # seconds
+  dimensions:
+    - accuracy
+    - reliability
+    - responsiveness
+    - safety
+    - transparency
+
+# On-chain contracts
+contracts:
+  relationship: "${AGENT_RELATIONSHIP_ADDRESS}"
+  review: "${AGENT_REVIEW_ADDRESS}"
+  trust_profile: "${AGENT_TRUST_PROFILE_ADDRESS}"
+  delegation_manager: "${DELEGATION_MANAGER_ADDRESS}"
+  validation_profile: "${AGENT_VALIDATION_ADDRESS}"
+
+# A2A (Agent-to-Agent) endpoint
+a2a:
+  port: 8080
+  version: "1.0"
+  capabilities:
+    - evaluate-trust
+    - submit-review
+    - discover-agents
+
+# TEE configuration
+tee:
+  architecture: aws-nitro
+  attestation:
+    auto_attest: true
+    verifier: "${MOCK_TEE_VERIFIER_ADDRESS}"
+    evidence_storage: ipfs
+  key_management:
+    type: enclave-sealed  # key never leaves the TEE
+    derive_from: attestation_document
+
+# Supported trust models (advertised in agent card)
+supported_trust:
+  - reputation
+  - tee-attestation
+
+# Logging
+logging:
+  level: INFO
+  format: "%(asctime)s [%(levelname)s] %(message)s"

@@ -89,15 +89,32 @@ export async function assertRelationship(
 
     // Different owner — send notification to object agent's owner
     try {
+      let ownerId: string | null = null
+      let agentName = 'your agent'
+
       const orgAgent = await db.select().from(schema.orgAgents)
         .where(eq(schema.orgAgents.smartAccountAddress, input.orgAgentAddress)).limit(1)
-      if (orgAgent[0]) {
+      if (orgAgent[0]) { ownerId = orgAgent[0].createdBy; agentName = orgAgent[0].name }
+
+      if (!ownerId) {
+        const aiAgent = await db.select().from(schema.aiAgents)
+          .where(eq(schema.aiAgents.smartAccountAddress, input.orgAgentAddress)).limit(1)
+        if (aiAgent[0]) { ownerId = aiAgent[0].createdBy; agentName = aiAgent[0].name }
+      }
+
+      if (!ownerId) {
+        const personAgent = await db.select().from(schema.personAgents)
+          .where(eq(schema.personAgents.smartAccountAddress, input.orgAgentAddress)).limit(1)
+        if (personAgent[0]) { ownerId = personAgent[0].userId; agentName = personAgent[0].name }
+      }
+
+      if (ownerId) {
         await db.insert(schema.messages).values({
           id: crypto.randomUUID(),
-          userId: orgAgent[0].createdBy,
+          userId: ownerId,
           type: 'relationship_proposed',
           title: 'Relationship request',
-          body: `Someone wants to be "${input.role}" of ${orgAgent[0].name}. Review and confirm on the Relationships page.`,
+          body: `Someone wants to be "${input.role}" of ${agentName}. Review and confirm on the Relationships page.`,
           link: '/relationships',
         })
       }

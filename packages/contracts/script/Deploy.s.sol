@@ -18,6 +18,7 @@ import "../src/AgentReviewRecord.sol";
 import "../src/AgentDisputeRecord.sol";
 import "../src/AgentTrustProfile.sol";
 import "../src/AgentControl.sol";
+import "../src/MockTeeVerifier.sol";
 import "account-abstraction/interfaces/IEntryPoint.sol";
 import "account-abstraction/core/EntryPoint.sol";
 
@@ -112,13 +113,17 @@ contract Deploy is Script {
 
         // 11. Trust Profile
         AgentTrustProfile trustProfile = new AgentTrustProfile(
-            address(agentRelationship), address(reviewRecord), address(disputeRecord)
+            address(agentRelationship), address(reviewRecord), address(disputeRecord), address(validationProfile)
         );
         console.log("AgentTrustProfile:", address(trustProfile));
 
         // 12. Agent Control (Governance)
         AgentControl agentControl = new AgentControl();
         console.log("AgentControl:", address(agentControl));
+
+        // 13. Mock TEE Verifier (development only — simulates attestation verification)
+        MockTeeVerifier mockTeeVerifier = new MockTeeVerifier();
+        console.log("MockTeeVerifier:", address(mockTeeVerifier));
 
         vm.stopBroadcast();
 
@@ -142,6 +147,7 @@ contract Deploy is Script {
         _logEnv("AGENT_DISPUTE_ADDRESS", address(disputeRecord));
         _logEnv("AGENT_TRUST_PROFILE_ADDRESS", address(trustProfile));
         _logEnv("AGENT_CONTROL_ADDRESS", address(agentControl));
+        _logEnv("MOCK_TEE_VERIFIER_ADDRESS", address(mockTeeVerifier));
     }
 
     function _logEnv(string memory key, address addr) internal pure {
