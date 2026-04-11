@@ -60,7 +60,7 @@ export function SetupWizardClient({ templates }: { templates: OrgTemplate[] }) {
     return (
       <div>
         <h1 style={{ fontSize: '1.8rem', marginBottom: '0.5rem' }}>New Organization</h1>
-        <p style={{ color: '#6b7280', marginBottom: '2rem' }}>
+        <p style={{ color: '#616161', marginBottom: '2rem' }}>
           Select the structure that best fits your organization. Each option comes with pre-configured roles, governance, and AI assistants.
         </p>
 
@@ -76,16 +76,16 @@ export function SetupWizardClient({ templates }: { templates: OrgTemplate[] }) {
             >
               <h3 style={{ color: t.color, marginBottom: '0.5rem' }}>{t.name}</h3>
               <p style={{ color: '#1a1a2e', fontSize: '0.9rem', marginBottom: '0.75rem' }}>{t.description}</p>
-              <p style={{ color: '#6b7280', fontSize: '0.8rem', lineHeight: 1.5 }}>{t.details}</p>
+              <p style={{ color: '#616161', fontSize: '0.8rem', lineHeight: 1.5 }}>{t.details}</p>
 
               <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: '0.7rem', padding: '0.15rem 0.4rem', background: '#f0f1f3', borderRadius: 4, color: '#6b7280' }}>
+                <span style={{ fontSize: '0.7rem', padding: '0.15rem 0.4rem', background: '#f5f5f5', borderRadius: 4, color: '#616161' }}>
                   {t.defaultMinOwners} min owners
                 </span>
-                <span style={{ fontSize: '0.7rem', padding: '0.15rem 0.4rem', background: '#f0f1f3', borderRadius: 4, color: '#6b7280' }}>
+                <span style={{ fontSize: '0.7rem', padding: '0.15rem 0.4rem', background: '#f5f5f5', borderRadius: 4, color: '#616161' }}>
                   {t.roles.length} roles
                 </span>
-                <span style={{ fontSize: '0.7rem', padding: '0.15rem 0.4rem', background: '#f0f1f3', borderRadius: 4, color: '#6b7280' }}>
+                <span style={{ fontSize: '0.7rem', padding: '0.15rem 0.4rem', background: '#f5f5f5', borderRadius: 4, color: '#616161' }}>
                   {t.aiAgents.length} AI agent{t.aiAgents.length !== 1 ? 's' : ''}
                 </span>
               </div>
@@ -104,7 +104,7 @@ export function SetupWizardClient({ templates }: { templates: OrgTemplate[] }) {
         </div>
 
         <div style={{ marginTop: '2rem', textAlign: 'center' }}>
-          <button onClick={() => router.push('/dashboard')} style={{ background: '#e5e7eb', color: '#1a1a2e' }}>
+          <button onClick={() => router.push('/dashboard')} style={{ background: '#e0e0e0', color: '#1a1a2e' }}>
             Skip — go to dashboard
           </button>
         </div>
@@ -116,14 +116,14 @@ export function SetupWizardClient({ templates }: { templates: OrgTemplate[] }) {
   if (step === 'configure' && selectedTemplate) {
     return (
       <div>
-        <button onClick={() => setStep('template')} style={{ background: 'transparent', color: '#6b7280', padding: 0, marginBottom: '1rem', fontSize: '0.85rem' }}>
+        <button onClick={() => setStep('template')} style={{ background: 'transparent', color: '#616161', padding: 0, marginBottom: '1rem', fontSize: '0.85rem' }}>
           ← Back to templates
         </button>
 
         <h1 style={{ fontSize: '1.8rem', marginBottom: '0.25rem' }}>
           <span style={{ color: selectedTemplate.color }}>{selectedTemplate.name}</span>
         </h1>
-        <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>{selectedTemplate.description}</p>
+        <p style={{ color: '#616161', marginBottom: '1.5rem' }}>{selectedTemplate.description}</p>
 
         <form onSubmit={(e) => { e.preventDefault(); handleDeploy() }} data-component="deploy-form">
           <div data-component="form-field">
@@ -181,7 +181,7 @@ export function SetupWizardClient({ templates }: { templates: OrgTemplate[] }) {
                 {selectedTemplate.roles.map(r => (
                   <tr key={r.roleKey}>
                     <td><span data-component="role-badge">{r.label}</span></td>
-                    <td style={{ fontSize: '0.8rem', color: '#6b7280' }}>{r.description}</td>
+                    <td style={{ fontSize: '0.8rem', color: '#616161' }}>{r.description}</td>
                     <td style={{ fontSize: '0.8rem' }}>{r.maxCount === Infinity ? 'Unlimited' : `Max ${r.maxCount}`}</td>
                   </tr>
                 ))}
@@ -204,10 +204,10 @@ export function SetupWizardClient({ templates }: { templates: OrgTemplate[] }) {
     return (
       <div style={{ textAlign: 'center', padding: '3rem 0' }}>
         <h1 style={{ fontSize: '1.8rem', marginBottom: '1rem' }}>Setting Up Your Organization</h1>
-        <p style={{ color: '#6b7280', marginBottom: '2rem' }}>
+        <p style={{ color: '#616161', marginBottom: '2rem' }}>
           Creating accounts, configuring governance, launching AI assistants...
         </p>
-        <div style={{ width: 40, height: 40, border: '3px solid #333', borderTopColor: '#2563eb', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto' }} />
+        <div style={{ width: 40, height: 40, border: '3px solid #333', borderTopColor: '#1565c0', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto' }} />
         <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
       </div>
     )
@@ -218,7 +218,7 @@ export function SetupWizardClient({ templates }: { templates: OrgTemplate[] }) {
     return (
       <div>
         <h1 style={{ fontSize: '1.8rem', color: '#10b981', marginBottom: '0.5rem' }}>Organization Ready</h1>
-        <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>
+        <p style={{ color: '#616161', marginBottom: '1.5rem' }}>
           Your organization, roles, and AI assistants are set up and ready to use.
         </p>
 
@@ -250,13 +250,13 @@ export function SetupWizardClient({ templates }: { templates: OrgTemplate[] }) {
         {selectedTemplate && selectedTemplate.roles.filter(r => r.generateInvite).length > 0 && (
           <div data-component="protocol-info" style={{ marginTop: '1rem' }}>
             <h3>Invite Team Members</h3>
-            <p style={{ fontSize: '0.8rem', color: '#6b7280', marginBottom: '0.75rem' }}>
+            <p style={{ fontSize: '0.8rem', color: '#616161', marginBottom: '0.75rem' }}>
               Share invite links with your team. Each role can be assigned during onboarding.
             </p>
             {selectedTemplate.roles.filter(r => r.generateInvite).map(r => (
               <div key={r.roleKey} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
                 <span data-component="role-badge">{r.label}</span>
-                <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>{r.description}</span>
+                <span style={{ fontSize: '0.8rem', color: '#616161' }}>{r.description}</span>
               </div>
             ))}
             <p style={{ fontSize: '0.75rem', color: '#555', marginTop: '0.5rem' }}>
@@ -267,8 +267,8 @@ export function SetupWizardClient({ templates }: { templates: OrgTemplate[] }) {
 
         <div style={{ marginTop: '1.5rem', display: 'flex', gap: '0.5rem' }}>
           <button onClick={() => router.push('/dashboard')}>Go to Home</button>
-          <button onClick={() => router.push('/team')} style={{ background: '#e5e7eb', color: '#1a1a2e' }}>Invite People</button>
-          <button onClick={() => router.push('/agents')} style={{ background: '#e5e7eb', color: '#1a1a2e' }}>View Agents</button>
+          <button onClick={() => router.push('/team')} style={{ background: '#e0e0e0', color: '#1a1a2e' }}>Invite People</button>
+          <button onClick={() => router.push('/agents')} style={{ background: '#e0e0e0', color: '#1a1a2e' }}>View Agents</button>
         </div>
       </div>
     )

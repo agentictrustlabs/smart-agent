@@ -141,7 +141,7 @@ export default async function TeamPage({ searchParams }: { searchParams: Promise
         </div>
         {selectedOrg
           ? <p>Members, roles, delegated authority, and partnerships for {selectedOrg.name}.
-              For multi-sig governance settings, see <Link href="/settings?tab=governance" style={{ color: '#2563eb' }}>Administration</Link>.</p>
+              For multi-sig governance settings, see <Link href="/settings?tab=governance" style={{ color: '#1565c0' }}>Administration</Link>.</p>
           : <p>Create an organization to manage team members</p>
         }
       </div>
@@ -152,7 +152,7 @@ export default async function TeamPage({ searchParams }: { searchParams: Promise
           <p>Create an organization to start managing your team.</p>
           <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem' }}>
             <Link href="/setup"><button>Create Organization</button></Link>
-            <Link href="/setup/join"><button style={{ background: '#e5e7eb', color: '#1a1a2e' }}>Join Organization</button></Link>
+            <Link href="/setup/join"><button style={{ background: '#e0e0e0', color: '#1a1a2e' }}>Join Organization</button></Link>
           </div>
         </div>
       ) : (
@@ -162,7 +162,7 @@ export default async function TeamPage({ searchParams }: { searchParams: Promise
             <div data-component="section-header">
               <h2>Members & Roles ({members.length})</h2>
             </div>
-            <p style={{ fontSize: '0.85rem', color: '#6b7280', marginBottom: '1rem' }}>
+            <p style={{ fontSize: '0.85rem', color: '#616161', marginBottom: '1rem' }}>
               Roles define what each person can do within the organization.
               Delegated authority is enforced on-chain through caveats.
             </p>
@@ -173,7 +173,7 @@ export default async function TeamPage({ searchParams }: { searchParams: Promise
                 {members.map((m) => (
                   <div key={m.address} data-component="protocol-info">
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                      <Link href={`/agents/${m.address}`} style={{ color: '#2563eb', fontWeight: 600, fontSize: '0.95rem' }}>{m.name}</Link>
+                      <Link href={`/agents/${m.address}`} style={{ color: '#1565c0', fontWeight: 600, fontSize: '0.95rem' }}>{m.name}</Link>
                       <span data-component="role-badge" data-status={m.status === 'Active' ? 'active' : m.status === 'Proposed' ? 'proposed' : 'revoked'}>
                         {m.status}
                       </span>
@@ -181,28 +181,28 @@ export default async function TeamPage({ searchParams }: { searchParams: Promise
 
                     {/* Roles */}
                     <div style={{ marginBottom: '0.5rem' }}>
-                      <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>Roles: </span>
+                      <span style={{ fontSize: '0.75rem', color: '#616161' }}>Roles: </span>
                       {m.roles.map(r => <span key={r} data-component="role-badge" style={{ marginRight: 4 }}>{r}</span>)}
                     </div>
 
                     {/* Delegated Authority */}
                     {m.delegations.length > 0 ? (
                       <div style={{ borderTop: '1px solid #f0f1f3', paddingTop: '0.5rem' }}>
-                        <span style={{ fontSize: '0.75rem', color: '#6b7280', fontWeight: 600 }}>Delegated Authority:</span>
+                        <span style={{ fontSize: '0.75rem', color: '#616161', fontWeight: 600 }}>Delegated Authority:</span>
                         {m.delegations.map((d, i) => (
                           <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem', fontSize: '0.8rem' }}>
                             <span data-component="role-badge" data-status={d.status === 'active' ? 'active' : 'revoked'}>{d.status}</span>
-                            <span style={{ color: '#6b7280' }}>expires {d.expiresAt}</span>
-                            <span style={{ color: '#6b7280' }}>|</span>
+                            <span style={{ color: '#616161' }}>expires {d.expiresAt}</span>
+                            <span style={{ color: '#616161' }}>|</span>
                             {d.caveats.map((c, j) => (
-                              <span key={j} style={{ fontSize: '0.7rem', padding: '0.1rem 0.35rem', background: '#f0f1f3', borderRadius: 4, color: '#6b7280' }}>{c}</span>
+                              <span key={j} style={{ fontSize: '0.7rem', padding: '0.1rem 0.35rem', background: '#f5f5f5', borderRadius: 4, color: '#616161' }}>{c}</span>
                             ))}
                           </div>
                         ))}
                       </div>
                     ) : (
                       <div style={{ borderTop: '1px solid #f0f1f3', paddingTop: '0.5rem' }}>
-                        <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>No active delegations — role assignment only</span>
+                        <span style={{ fontSize: '0.75rem', color: '#616161' }}>No active delegations — role assignment only</span>
                       </div>
                     )}
                   </div>
@@ -220,7 +220,7 @@ export default async function TeamPage({ searchParams }: { searchParams: Promise
                 <tbody>
                   {partnerOrgs.map((p) => (
                     <tr key={p.address}>
-                      <td><Link href={`/agents/${p.address}`} style={{ color: '#2563eb' }}>{p.name}</Link></td>
+                      <td><Link href={`/agents/${p.address}`} style={{ color: '#1565c0' }}>{p.name}</Link></td>
                       <td>{p.roles.map(r => <span key={r} data-component="role-badge" style={{ marginRight: 4 }}>{r}</span>)}</td>
                       <td><span data-component="role-badge" data-status={p.status === 'Active' ? 'active' : p.status === 'Proposed' ? 'proposed' : 'revoked'}>{p.status}</span></td>
                     </tr>
@@ -244,11 +244,11 @@ export default async function TeamPage({ searchParams }: { searchParams: Promise
                 <tbody>
                   {aiAgents.map(a => (
                     <tr key={a.id}>
-                      <td><Link href={`/agents/${a.smartAccountAddress}`} style={{ color: '#2563eb' }}>{a.name}</Link></td>
+                      <td><Link href={`/agents/${a.smartAccountAddress}`} style={{ color: '#1565c0' }}>{a.name}</Link></td>
                       <td><span data-component="role-badge">{a.agentType}</span></td>
                       <td><span data-component="role-badge" data-status={a.status === 'deployed' ? 'active' : 'proposed'}>{a.status}</span></td>
                       <td style={{ fontSize: '0.8rem' }}>
-                        <Link href={`/agents/${a.smartAccountAddress}/metadata`} style={{ color: '#2563eb' }}>Metadata</Link>
+                        <Link href={`/agents/${a.smartAccountAddress}/metadata`} style={{ color: '#1565c0' }}>Metadata</Link>
                       </td>
                     </tr>
                   ))}
@@ -271,7 +271,7 @@ export default async function TeamPage({ searchParams }: { searchParams: Promise
                       <td style={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>{inv.code}</td>
                       <td><span data-component="role-badge">{inv.role}</span></td>
                       <td><span data-component="role-badge" data-status={inv.status === 'pending' ? 'proposed' : inv.status === 'accepted' ? 'active' : 'revoked'}>{inv.status}</span></td>
-                      <td style={{ fontSize: '0.8rem', color: '#6b7280' }}>{new Date(inv.expiresAt).toLocaleDateString()}</td>
+                      <td style={{ fontSize: '0.8rem', color: '#616161' }}>{new Date(inv.expiresAt).toLocaleDateString()}</td>
                     </tr>
                   ))}
                 </tbody>

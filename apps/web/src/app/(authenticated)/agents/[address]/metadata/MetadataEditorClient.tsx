@@ -197,7 +197,7 @@ export function MetadataEditorClient({ agentAddress, agentName, chainId, initial
           {/* Capabilities Section */}
           <div data-component="protocol-info" style={{ marginBottom: '1rem' }}>
             <h3>Capabilities {agentType === 'ai' && '*'}</h3>
-            <p style={{ fontSize: '0.8rem', color: '#6b7280', marginBottom: '0.5rem' }}>
+            <p style={{ fontSize: '0.8rem', color: '#616161', marginBottom: '0.5rem' }}>
               What can this agent do? Each capability is stored on-chain as a predicate value.
             </p>
 
@@ -218,7 +218,7 @@ export function MetadataEditorClient({ agentAddress, agentName, chainId, initial
                 onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCapability(newCap) } }}
                 style={{ flex: 1 }} />
               <button type="button" onClick={() => addCapability(newCap)}
-                style={{ background: '#e5e7eb', color: '#1a1a2e', padding: '0.4rem 0.8rem', whiteSpace: 'nowrap' }}>Add</button>
+                style={{ background: '#e0e0e0', color: '#1a1a2e', padding: '0.4rem 0.8rem', whiteSpace: 'nowrap' }}>Add</button>
             </div>
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
@@ -235,7 +235,7 @@ export function MetadataEditorClient({ agentAddress, agentName, chainId, initial
           {/* Trust Models Section */}
           <div data-component="protocol-info" style={{ marginBottom: '1rem' }}>
             <h3>Supported Trust Models {agentType === 'ai' && '*'}</h3>
-            <p style={{ fontSize: '0.8rem', color: '#6b7280', marginBottom: '0.5rem' }}>
+            <p style={{ fontSize: '0.8rem', color: '#616161', marginBottom: '0.5rem' }}>
               How does this agent establish trust? Select all that apply.
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
@@ -250,7 +250,7 @@ export function MetadataEditorClient({ agentAddress, agentName, chainId, initial
                       color: '#1a1a2e',
                     }}>
                     <strong style={{ display: 'block', fontSize: '0.85rem' }}>{m.label}</strong>
-                    <span style={{ display: 'block', fontSize: '0.75rem', color: '#6b7280', marginTop: '0.15rem' }}>{m.desc}</span>
+                    <span style={{ display: 'block', fontSize: '0.75rem', color: '#616161', marginTop: '0.15rem' }}>{m.desc}</span>
                   </button>
                 )
               })}
@@ -260,7 +260,7 @@ export function MetadataEditorClient({ agentAddress, agentName, chainId, initial
           {/* Service Endpoints Section */}
           <div data-component="protocol-info" style={{ marginBottom: '1rem' }}>
             <h3>Service Endpoints</h3>
-            <p style={{ fontSize: '0.8rem', color: '#6b7280', marginBottom: '0.5rem' }}>
+            <p style={{ fontSize: '0.8rem', color: '#616161', marginBottom: '0.5rem' }}>
               URIs where other agents and clients can reach this agent.
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
@@ -294,7 +294,7 @@ export function MetadataEditorClient({ agentAddress, agentName, chainId, initial
           {error && <p role="alert" data-component="error-message">{error}</p>}
           {success && (
             <div style={{ padding: '0.5rem 0.75rem', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 6, marginBottom: '0.5rem' }}>
-              <p style={{ color: '#22c55e', fontSize: '0.9rem', margin: 0 }}>Metadata saved on-chain. Properties are now queryable by any contract or client.</p>
+              <p style={{ color: '#2e7d32', fontSize: '0.9rem', margin: 0 }}>Metadata saved on-chain. Properties are now queryable by any contract or client.</p>
             </div>
           )}
 
@@ -302,7 +302,7 @@ export function MetadataEditorClient({ agentAddress, agentName, chainId, initial
             <button type="submit" disabled={submitting || hasErrors}>
               {submitting ? 'Saving...' : initial.isRegistered ? 'Save Changes' : 'Save Profile'}
             </button>
-            <button type="button" onClick={() => router.push(`/agents/${agentAddress}`)} style={{ background: '#e5e7eb', color: '#1a1a2e' }}>
+            <button type="button" onClick={() => router.push(`/agents/${agentAddress}`)} style={{ background: '#e0e0e0', color: '#1a1a2e' }}>
               Back to Agent
             </button>
           </div>
@@ -313,7 +313,7 @@ export function MetadataEditorClient({ agentAddress, agentName, chainId, initial
       {activeTab === 'jsonld' && (
         <section data-component="graph-section">
           <h2>JSON-LD Metadata Document</h2>
-          <p style={{ fontSize: '0.8rem', color: '#6b7280', marginBottom: '0.5rem' }}>
+          <p style={{ fontSize: '0.8rem', color: '#616161', marginBottom: '0.5rem' }}>
             Generated from on-chain resolver data. This document can be pinned to IPFS and
             its hash stored on-chain. It is the SHACL-validatable semantic representation
             of this agent&apos;s identity.
@@ -330,9 +330,9 @@ export function MetadataEditorClient({ agentAddress, agentName, chainId, initial
               </div>
 
               <pre style={{
-                background: '#f8f9fa', border: '1px solid #f0f1f3', borderRadius: 8,
+                background: '#fafafa', border: '1px solid #f0f1f3', borderRadius: 8,
                 padding: '1rem', fontSize: '0.75rem', overflow: 'auto', maxHeight: 500,
-                color: '#6b7280', lineHeight: 1.6,
+                color: '#616161', lineHeight: 1.6,
               }}>
                 {JSON.stringify(jsonLd, null, 2)}
               </pre>
@@ -347,14 +347,14 @@ export function MetadataEditorClient({ agentAddress, agentName, chainId, initial
       {activeTab === 'shacl' && (
         <section data-component="graph-section">
           <h2>SHACL Shape Validation</h2>
-          <p style={{ fontSize: '0.8rem', color: '#6b7280', marginBottom: '1rem' }}>
+          <p style={{ fontSize: '0.8rem', color: '#616161', marginBottom: '1rem' }}>
             Validates agent metadata against SHACL shapes defined in <code>ontology/shapes.ttl</code>.
             Each agent type has specific requirements.
           </p>
 
           <div data-component="protocol-info" style={{ marginBottom: '1rem' }}>
             <h3>Active Shape: {agentType === 'ai' ? 'atl:AIAgentShape' : agentType === 'org' ? 'atl:OrganizationAgentShape' : 'atl:PersonAgentShape'}</h3>
-            <p style={{ fontSize: '0.8rem', color: '#6b7280' }}>
+            <p style={{ fontSize: '0.8rem', color: '#616161' }}>
               {agentType === 'ai' && 'AI agents must declare: agent class, at least one capability, at least one trust model'}
               {agentType === 'org' && 'Organizations must provide: a description'}
               {agentType === 'person' && 'Person agents must have: at least one controller (EOA wallet)'}
@@ -363,8 +363,8 @@ export function MetadataEditorClient({ agentAddress, agentName, chainId, initial
 
           {shaclIssues.length === 0 ? (
             <div style={{ padding: '1rem', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, textAlign: 'center' }}>
-              <p style={{ color: '#22c55e', fontSize: '1rem', fontWeight: 600 }}>All SHACL constraints satisfied</p>
-              <p style={{ color: '#6b7280', fontSize: '0.8rem' }}>This agent&apos;s metadata conforms to the {agentType === 'ai' ? 'AIAgent' : agentType === 'org' ? 'OrganizationAgent' : 'PersonAgent'} shape</p>
+              <p style={{ color: '#2e7d32', fontSize: '1rem', fontWeight: 600 }}>All SHACL constraints satisfied</p>
+              <p style={{ color: '#616161', fontSize: '0.8rem' }}>This agent&apos;s metadata conforms to the {agentType === 'ai' ? 'AIAgent' : agentType === 'org' ? 'OrganizationAgent' : 'PersonAgent'} shape</p>
             </div>
           ) : (
             <table data-component="graph-table">
@@ -380,7 +380,7 @@ export function MetadataEditorClient({ agentAddress, agentName, chainId, initial
                       </span>
                     </td>
                     <td style={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>{issue.field}</td>
-                    <td style={{ fontSize: '0.8rem', color: '#6b7280' }}>{issue.message}</td>
+                    <td style={{ fontSize: '0.8rem', color: '#616161' }}>{issue.message}</td>
                   </tr>
                 ))}
               </tbody>

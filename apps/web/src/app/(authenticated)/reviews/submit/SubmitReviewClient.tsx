@@ -13,9 +13,9 @@ const REVIEW_TYPES = [
 ]
 
 const RECOMMENDATIONS = [
-  { value: 'endorses', label: 'Endorses', color: '#22c55e' },
-  { value: 'recommends', label: 'Recommends', color: '#2563eb' },
-  { value: 'neutral', label: 'Neutral', color: '#6b7280' },
+  { value: 'endorses', label: 'Endorses', color: '#2e7d32' },
+  { value: 'recommends', label: 'Recommends', color: '#1565c0' },
+  { value: 'neutral', label: 'Neutral', color: '#616161' },
   { value: 'flags', label: 'Flags', color: '#f59e0b' },
   { value: 'disputes', label: 'Disputes', color: '#ef4444' },
 ]
@@ -115,7 +115,7 @@ export function SubmitReviewClient({ reviewableAgents }: { reviewableAgents: Age
               </>
             )}
             <dt>Flow</dt>
-            <dd style={{ fontSize: '0.8rem', color: '#6b7280' }}>
+            <dd style={{ fontSize: '0.8rem', color: '#616161' }}>
               DelegationManager.redeemDelegation() → Agent Account → AgentReviewRecord.createReview()
             </dd>
           </dl>
@@ -167,7 +167,7 @@ export function SubmitReviewClient({ reviewableAgents }: { reviewableAgents: Age
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
           {DIMENSIONS.map((dim) => (
             <div key={dim} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <span style={{ fontSize: '0.8rem', color: '#6b7280', width: '100px', textTransform: 'capitalize' }}>{dim}</span>
+              <span style={{ fontSize: '0.8rem', color: '#616161', width: '100px', textTransform: 'capitalize' }}>{dim}</span>
               <input
                 type="range" min="0" max="100" value={dimensions[dim]}
                 onChange={(e) => setDimension(dim, Number(e.target.value))}

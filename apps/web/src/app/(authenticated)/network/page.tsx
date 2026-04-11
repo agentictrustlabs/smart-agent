@@ -72,7 +72,7 @@ export default async function NetworkPage({ searchParams }: { searchParams: Prom
                 {!selectedOrg ? (
                   <p data-component="text-muted">Select or create an organization to see relationships.</p>
                 ) : relationships.length === 0 ? (
-                  <p data-component="text-muted">No relationships yet. <Link href="/relationships" style={{ color: '#2563eb' }}>Create your first relationship</Link>.</p>
+                  <p data-component="text-muted">No relationships yet. <Link href="/relationships" style={{ color: '#1565c0' }}>Create your first relationship</Link>.</p>
                 ) : (
                   <>
                     {/* Outgoing: This org → others */}
@@ -84,7 +84,7 @@ export default async function NetworkPage({ searchParams }: { searchParams: Prom
                           <tbody>
                             {outgoing.map(r => (
                               <tr key={r.edgeId}>
-                                <td><Link href={`/agents/${r.counterpartyAddr}`} style={{ color: '#2563eb' }}>{r.counterparty}</Link></td>
+                                <td><Link href={`/agents/${r.counterpartyAddr}`} style={{ color: '#1565c0' }}>{r.counterparty}</Link></td>
                                 <td><span data-component="role-badge">{r.type}</span></td>
                                 <td>{r.roles.map(role => <span key={role} data-component="role-badge" style={{ marginRight: 4 }}>{role}</span>)}</td>
                                 <td><span data-component="role-badge" data-status={r.status === 'Active' ? 'active' : r.status === 'Proposed' ? 'proposed' : 'revoked'}>{r.status}</span></td>
@@ -104,7 +104,7 @@ export default async function NetworkPage({ searchParams }: { searchParams: Prom
                           <tbody>
                             {incoming.map(r => (
                               <tr key={r.edgeId}>
-                                <td><Link href={`/agents/${r.counterpartyAddr}`} style={{ color: '#2563eb' }}>{r.counterparty}</Link></td>
+                                <td><Link href={`/agents/${r.counterpartyAddr}`} style={{ color: '#1565c0' }}>{r.counterparty}</Link></td>
                                 <td><span data-component="role-badge">{r.type}</span></td>
                                 <td>{r.roles.map(role => <span key={role} data-component="role-badge" style={{ marginRight: 4 }}>{role}</span>)}</td>
                                 <td><span data-component="role-badge" data-status={r.status === 'Active' ? 'active' : r.status === 'Proposed' ? 'proposed' : 'revoked'}>{r.status}</span></td>
@@ -133,14 +133,14 @@ export default async function NetworkPage({ searchParams }: { searchParams: Prom
                       ) : (
                         <section data-component="graph-section">
                           <h2>Endorsements Received ({endorsements.length})</h2>
-                          <p style={{ fontSize: '0.85rem', color: '#6b7280', marginBottom: '1rem' }}>
+                          <p style={{ fontSize: '0.85rem', color: '#616161', marginBottom: '1rem' }}>
                             Organizations that have endorsed, accredited, or validated {selectedOrg.name}.
                           </p>
                           <div style={{ display: 'grid', gap: '0.75rem' }}>
                             {endorsements.map(e => (
                               <div key={e.edgeId} data-component="protocol-info">
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                  <Link href={`/agents/${e.counterpartyAddr}`} style={{ color: '#2563eb', fontWeight: 600 }}>{e.counterparty}</Link>
+                                  <Link href={`/agents/${e.counterpartyAddr}`} style={{ color: '#1565c0', fontWeight: 600 }}>{e.counterparty}</Link>
                                   <span data-component="role-badge" data-status={e.status === 'Active' ? 'active' : 'proposed'}>{e.status}</span>
                                   {e.roles.map(r => <span key={r} data-component="role-badge">{r}</span>)}
                                 </div>
@@ -157,14 +157,14 @@ export default async function NetworkPage({ searchParams }: { searchParams: Prom
                       return given.length === 0 ? null : (
                         <section data-component="graph-section" style={{ marginTop: '1.5rem' }}>
                           <h2>Endorsements Given ({given.length})</h2>
-                          <p style={{ fontSize: '0.85rem', color: '#6b7280', marginBottom: '1rem' }}>
+                          <p style={{ fontSize: '0.85rem', color: '#616161', marginBottom: '1rem' }}>
                             Organizations that {selectedOrg.name} has endorsed or accredited.
                           </p>
                           <div style={{ display: 'grid', gap: '0.75rem' }}>
                             {given.map(e => (
                               <div key={e.edgeId} data-component="protocol-info">
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                  <Link href={`/agents/${e.counterpartyAddr}`} style={{ color: '#2563eb', fontWeight: 600 }}>{e.counterparty}</Link>
+                                  <Link href={`/agents/${e.counterpartyAddr}`} style={{ color: '#1565c0', fontWeight: 600 }}>{e.counterparty}</Link>
                                   <span data-component="role-badge" data-status={e.status === 'Active' ? 'active' : 'proposed'}>{e.status}</span>
                                   {e.roles.map(r => <span key={r} data-component="role-badge">{r}</span>)}
                                 </div>

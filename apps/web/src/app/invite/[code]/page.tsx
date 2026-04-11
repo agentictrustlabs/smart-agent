@@ -41,7 +41,7 @@ export default async function InvitePage({ params }: { params: Promise<{ code: s
       <div data-component="hero">
         <h1>You're Invited</h1>
         <p>You've been invited to become a <strong>{invite.role}</strong> of</p>
-        <h2 style={{ color: '#2563eb', margin: '0.5rem 0' }}>{invite.agentName}</h2>
+        <h2 style={{ color: '#1565c0', margin: '0.5rem 0' }}>{invite.agentName}</h2>
         <code data-component="address" style={{ fontSize: '0.8rem' }}>{invite.agentAddress}</code>
         <InviteAcceptClient code={code} agentName={invite.agentName} role={invite.role} />
       </div>

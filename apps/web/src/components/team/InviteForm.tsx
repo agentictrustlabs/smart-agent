@@ -51,7 +51,7 @@ export function InviteForm({ agentAddress, agentName, roles }: {
       <h3>Invite a New Member</h3>
       <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-end', flexWrap: 'wrap', marginTop: '0.5rem' }}>
         <div style={{ flex: '1 1 200px' }}>
-          <label style={{ display: 'block', fontSize: '0.8rem', color: '#6b7280', marginBottom: '0.25rem' }}>Role</label>
+          <label style={{ display: 'block', fontSize: '0.8rem', color: '#616161', marginBottom: '0.25rem' }}>Role</label>
           <select
             value={selectedRole}
             onChange={e => setSelectedRole(e.target.value)}
@@ -62,7 +62,7 @@ export function InviteForm({ agentAddress, agentName, roles }: {
             ))}
           </select>
           {selectedRoleInfo && (
-            <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.2rem' }}>{selectedRoleInfo.description}</p>
+            <p style={{ fontSize: '0.75rem', color: '#616161', marginTop: '0.2rem' }}>{selectedRoleInfo.description}</p>
           )}
         </div>
         <button onClick={handleCreate} disabled={creating} style={{ whiteSpace: 'nowrap' }}>
@@ -74,8 +74,8 @@ export function InviteForm({ agentAddress, agentName, roles }: {
 
       {inviteCode && (
         <div style={{ marginTop: '0.75rem', padding: '0.75rem', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 6 }}>
-          <p style={{ fontSize: '0.85rem', color: '#059669', fontWeight: 600, marginBottom: '0.25rem' }}>Invitation created</p>
-          <p style={{ fontSize: '0.8rem', color: '#6b7280', marginBottom: '0.5rem' }}>
+          <p style={{ fontSize: '0.85rem', color: '#2e7d32', fontWeight: 600, marginBottom: '0.25rem' }}>Invitation created</p>
+          <p style={{ fontSize: '0.8rem', color: '#616161', marginBottom: '0.5rem' }}>
             Share this link with the person you want to invite as <strong>{selectedRole}</strong>:
           </p>
           <code style={{

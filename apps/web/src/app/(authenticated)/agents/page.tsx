@@ -4,27 +4,62 @@ import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { db, schema } from '@/db'
 import { eq } from 'drizzle-orm'
 import { getAgentMetadata } from '@/lib/agent-metadata'
-import { toDidEthr } from '@smart-agent/sdk'
+import { getSelectedOrg } from '@/lib/get-selected-org'
+import { getEdgesByObject, getEdge, getEdgeRoles } from '@/lib/contracts'
+import { roleName, toDidEthr } from '@smart-agent/sdk'
 
 const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? '31337')
 
-export default async function AgentsPage() {
+export default async function AgentsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const currentUser = await getCurrentUser()
   if (!currentUser) redirect('/')
+  const params = await searchParams
+  const selectedOrg = await getSelectedOrg(currentUser.id, params)
 
-  // Load all agents the user has access to
+  // Person agent for this user (always shown)
   const personAgents = await db.select().from(schema.personAgents)
     .where(eq(schema.personAgents.userId, currentUser.id))
-  const orgAgents = await db.select().from(schema.orgAgents)
-    .where(eq(schema.orgAgents.createdBy, currentUser.id))
-  const aiAgents = await db.select().from(schema.aiAgents)
-    .where(eq(schema.aiAgents.createdBy, currentUser.id))
+  const personAgent = personAgents[0]
 
-  // Load resolver metadata for all
+  // AI agents operated by selected org
+  const allAI = await db.select().from(schema.aiAgents)
+  const orgAiAgents = selectedOrg
+    ? allAI.filter(a => a.operatedBy?.toLowerCase() === selectedOrg.smartAccountAddress.toLowerCase())
+    : allAI.filter(a => a.createdBy === currentUser.id)
+
+  // Org members (person agents with edges to this org)
+  const allPersonAgents = await db.select().from(schema.personAgents)
+  const personAddrs = new Set(allPersonAgents.map(p => p.smartAccountAddress.toLowerCase()))
+
+  type MemberAgent = { address: string; name: string; roles: string[] }
+  const memberAgents: MemberAgent[] = []
+
+  if (selectedOrg) {
+    try {
+      const edgeIds = await getEdgesByObject(selectedOrg.smartAccountAddress as `0x${string}`)
+      for (const edgeId of edgeIds) {
+        const edge = await getEdge(edgeId)
+        if (edge.status < 2) continue
+        if (!personAddrs.has(edge.subject.toLowerCase())) continue
+        const roles = await getEdgeRoles(edgeId)
+        const existing = memberAgents.find(m => m.address.toLowerCase() === edge.subject.toLowerCase())
+        const newRoles = roles.map(r => roleName(r))
+        if (existing) {
+          for (const r of newRoles) { if (!existing.roles.includes(r)) existing.roles.push(r) }
+        } else {
+          const pa = allPersonAgents.find(p => p.smartAccountAddress.toLowerCase() === edge.subject.toLowerCase())
+          memberAgents.push({ address: edge.subject, name: (pa as Record<string, unknown>)?.name as string || edge.subject.slice(0, 10), roles: newRoles })
+        }
+      }
+    } catch {}
+  }
+
+  // Load metadata for all displayed agents
   const allAddrs = [
-    ...personAgents.map(a => a.smartAccountAddress),
-    ...orgAgents.map(a => a.smartAccountAddress),
-    ...aiAgents.map(a => a.smartAccountAddress),
+    ...(personAgent ? [personAgent.smartAccountAddress] : []),
+    ...(selectedOrg ? [selectedOrg.smartAccountAddress] : []),
+    ...orgAiAgents.map(a => a.smartAccountAddress),
+    ...memberAgents.map(m => m.address),
   ]
 
   const metaEntries = await Promise.all(
@@ -34,83 +69,155 @@ export default async function AgentsPage() {
   )
   const metaMap = new Map(metaEntries.filter(Boolean).map(m => [m!.address.toLowerCase(), m!]))
 
-  const agents = allAddrs.map((addr) => {
-    const m = metaMap.get(addr.toLowerCase())
-    return {
-      address: addr,
-      name: m?.displayName ?? addr.slice(0, 10),
-      type: m?.agentType ?? 'unknown',
-      typeLabel: m?.agentTypeLabel ?? 'Unknown',
-      aiClass: m?.aiAgentClass ?? '',
-      description: m?.description ?? '',
-      capabilities: m?.capabilities ?? [],
-      trustModels: m?.trustModels ?? [],
-      isResolverRegistered: m?.isResolverRegistered ?? false,
-      a2aEndpoint: m?.a2aEndpoint ?? '',
-    }
-  })
-
   return (
     <div data-page="agents">
       <div data-component="page-header">
         <div data-component="section-header">
-          <h1>Agents</h1>
+          <h1>Agents{selectedOrg ? ` — ${selectedOrg.name}` : ''}</h1>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
             <Link href="/deploy/ai" data-component="section-action">+ AI Agent</Link>
             <Link href="/deploy/org" data-component="section-action">+ Organization</Link>
           </div>
         </div>
-        <p>All agents you own or operate. Click an agent to view its trust profile, metadata, and relationships.</p>
+        <p>All agents associated with {selectedOrg ? selectedOrg.name : 'your account'}. Click an agent to view its trust profile, metadata, and relationships.</p>
       </div>
 
-      {agents.length === 0 ? (
-        <div data-component="empty-state">
-          <p>No agents deployed yet.</p>
-          <Link href="/setup">Create Organization</Link> or <Link href="/deploy/person">Deploy Person Agent</Link>
-        </div>
-      ) : (
-        <div data-component="agent-grid">
-          {agents.map((agent) => (
-            <div key={agent.address} data-component="agent-card" data-status="deployed">
-              <div data-component="agent-card-header">
-                <h3>{agent.name}</h3>
-                <span data-component="role-badge" data-status="active">{agent.typeLabel}</span>
-                {agent.aiClass && <span data-component="role-badge">{agent.aiClass}</span>}
-                {agent.isResolverRegistered && <span data-component="role-badge" data-status="active" style={{ fontSize: '0.6rem' }}>on-chain</span>}
-              </div>
-
-              {agent.description && (
-                <p data-component="card-description">{agent.description}</p>
-              )}
-
-              <dl>
-                <dt>Address</dt>
-                <dd data-component="address">{agent.address}</dd>
-                <dt>DID</dt>
-                <dd style={{ fontSize: '0.7rem', fontFamily: 'monospace' }}>{toDidEthr(CHAIN_ID, agent.address as `0x${string}`)}</dd>
-              </dl>
-
-              {agent.capabilities.length > 0 && (
-                <div style={{ marginTop: '0.5rem' }}>
-                  {agent.capabilities.map(c => <span key={c} data-component="role-badge" style={{ fontSize: '0.6rem', marginRight: 2 }}>{c}</span>)}
+      {/* Your Person Agent */}
+      {personAgent && (
+        <section data-component="graph-section">
+          <h2>Your Agent</h2>
+          <div data-component="agent-grid">
+            {(() => {
+              const m = metaMap.get(personAgent.smartAccountAddress.toLowerCase())
+              return (
+                <div data-component="agent-card" data-status="deployed">
+                  <div data-component="agent-card-header">
+                    <h3>{m?.displayName ?? personAgent.name ?? 'Person Agent'}</h3>
+                    <span data-component="role-badge" data-status="active">Person</span>
+                    {m?.isResolverRegistered && <span data-component="role-badge" data-status="active" style={{ fontSize: '0.6rem' }}>on-chain</span>}
+                  </div>
+                  <dl>
+                    <dt>Address</dt>
+                    <dd data-component="address">{personAgent.smartAccountAddress}</dd>
+                  </dl>
+                  <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.5rem', fontSize: '0.8rem' }}>
+                    <Link href={`/agents/${personAgent.smartAccountAddress}`} style={{ color: '#1565c0' }}>Trust Profile</Link>
+                    <Link href={`/agents/${personAgent.smartAccountAddress}/metadata`} style={{ color: '#1565c0' }}>Metadata</Link>
+                  </div>
                 </div>
-              )}
-
-              {agent.trustModels.length > 0 && (
-                <div style={{ marginTop: '0.25rem' }}>
-                  {agent.trustModels.map(t => <span key={t} data-component="role-badge" data-status="active" style={{ fontSize: '0.6rem', marginRight: 2 }}>{t}</span>)}
-                </div>
-              )}
-
-              <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.5rem', fontSize: '0.8rem' }}>
-                <Link href={`/agents/${agent.address}`} style={{ color: '#2563eb' }}>Trust Profile</Link>
-                <Link href={`/agents/${agent.address}/metadata`} style={{ color: '#2563eb' }}>Metadata</Link>
-                {agent.a2aEndpoint && <Link href={`/agents/${agent.address}/communicate`} style={{ color: '#2563eb' }}>Communicate</Link>}
-              </div>
-            </div>
-          ))}
-        </div>
+              )
+            })()}
+          </div>
+        </section>
       )}
+
+      {/* Organization Agent */}
+      {selectedOrg && (
+        <section data-component="graph-section">
+          <h2>Organization</h2>
+          <div data-component="agent-grid">
+            {(() => {
+              const m = metaMap.get(selectedOrg.smartAccountAddress.toLowerCase())
+              return (
+                <div data-component="agent-card" data-status="deployed">
+                  <div data-component="agent-card-header">
+                    <h3>{m?.displayName ?? selectedOrg.name}</h3>
+                    <span data-component="role-badge" data-status="active">Organization</span>
+                    {m?.isResolverRegistered && <span data-component="role-badge" data-status="active" style={{ fontSize: '0.6rem' }}>on-chain</span>}
+                  </div>
+                  {(m?.description || selectedOrg.description) && (
+                    <p data-component="card-description">{m?.description || selectedOrg.description}</p>
+                  )}
+                  <dl>
+                    <dt>Address</dt>
+                    <dd data-component="address">{selectedOrg.smartAccountAddress}</dd>
+                    <dt>DID</dt>
+                    <dd style={{ fontSize: '0.7rem', fontFamily: 'monospace' }}>{toDidEthr(CHAIN_ID, selectedOrg.smartAccountAddress as `0x${string}`)}</dd>
+                  </dl>
+                  <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.5rem', fontSize: '0.8rem' }}>
+                    <Link href={`/agents/${selectedOrg.smartAccountAddress}`} style={{ color: '#1565c0' }}>Trust Profile</Link>
+                    <Link href={`/agents/${selectedOrg.smartAccountAddress}/metadata`} style={{ color: '#1565c0' }}>Metadata</Link>
+                  </div>
+                </div>
+              )
+            })()}
+          </div>
+        </section>
+      )}
+
+      {/* Member Agents */}
+      {memberAgents.length > 0 && (
+        <section data-component="graph-section">
+          <h2>Members ({memberAgents.length})</h2>
+          <div data-component="agent-grid">
+            {memberAgents.map((agent) => {
+              const m = metaMap.get(agent.address.toLowerCase())
+              return (
+                <div key={agent.address} data-component="agent-card" data-status="deployed">
+                  <div data-component="agent-card-header">
+                    <h3>{m?.displayName ?? agent.name}</h3>
+                    <span data-component="role-badge" data-status="active">Person</span>
+                  </div>
+                  <div style={{ marginBottom: '0.5rem' }}>
+                    {agent.roles.map(r => <span key={r} data-component="role-badge" style={{ marginRight: 4 }}>{r}</span>)}
+                  </div>
+                  <dl>
+                    <dt>Address</dt>
+                    <dd data-component="address">{agent.address}</dd>
+                  </dl>
+                  <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.5rem', fontSize: '0.8rem' }}>
+                    <Link href={`/agents/${agent.address}`} style={{ color: '#1565c0' }}>Trust Profile</Link>
+                    <Link href={`/agents/${agent.address}/metadata`} style={{ color: '#1565c0' }}>Metadata</Link>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* AI Agents */}
+      <section data-component="graph-section">
+        <div data-component="section-header">
+          <h2>AI Agents ({orgAiAgents.length})</h2>
+          <Link href="/deploy/ai" data-component="section-action">+ Deploy Agent</Link>
+        </div>
+        {orgAiAgents.length === 0 ? (
+          <p data-component="text-muted">No AI agents{selectedOrg ? ` for ${selectedOrg.name}` : ''}.</p>
+        ) : (
+          <div data-component="agent-grid">
+            {orgAiAgents.map((agent) => {
+              const m = metaMap.get(agent.smartAccountAddress.toLowerCase())
+              return (
+                <div key={agent.smartAccountAddress} data-component="agent-card" data-status="deployed">
+                  <div data-component="agent-card-header">
+                    <h3>{m?.displayName ?? agent.name}</h3>
+                    <span data-component="role-badge">{m?.aiAgentClass || agent.agentType}</span>
+                    {m?.isResolverRegistered && <span data-component="role-badge" data-status="active" style={{ fontSize: '0.6rem' }}>on-chain</span>}
+                  </div>
+                  {(m?.description || agent.description) && (
+                    <p data-component="card-description">{m?.description || agent.description}</p>
+                  )}
+                  {m?.capabilities && m.capabilities.length > 0 && (
+                    <div style={{ marginTop: '0.5rem' }}>
+                      {m.capabilities.map(c => <span key={c} data-component="role-badge" style={{ fontSize: '0.6rem', marginRight: 2 }}>{c}</span>)}
+                    </div>
+                  )}
+                  <dl>
+                    <dt>Address</dt>
+                    <dd data-component="address">{agent.smartAccountAddress}</dd>
+                  </dl>
+                  <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.5rem', fontSize: '0.8rem' }}>
+                    <Link href={`/agents/${agent.smartAccountAddress}`} style={{ color: '#1565c0' }}>Trust Profile</Link>
+                    <Link href={`/agents/${agent.smartAccountAddress}/metadata`} style={{ color: '#1565c0' }}>Metadata</Link>
+                    {m?.a2aEndpoint && <Link href={`/agents/${agent.smartAccountAddress}/communicate`} style={{ color: '#1565c0' }}>Communicate</Link>}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </section>
     </div>
   )
 }

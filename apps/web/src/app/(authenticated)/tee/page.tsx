@@ -132,7 +132,7 @@ export default async function TeeValidationPage() {
 
       <div data-component="protocol-info">
         <h3>What is TEE Validation?</h3>
-        <p style={{ fontSize: '0.85rem', color: '#6b7280', lineHeight: 1.6 }}>
+        <p style={{ fontSize: '0.85rem', color: '#616161', lineHeight: 1.6 }}>
           A Trusted Execution Environment (TEE) is a secure, isolated area within a processor
           that guarantees code and data are protected from the rest of the system. TEE validation
           proves that an agent&apos;s code is running exactly as published, inside tamper-proof hardware.
@@ -160,7 +160,7 @@ export default async function TeeValidationPage() {
                 <tr key={v.address}>
                   <td><strong>{v.name}</strong></td>
                   <td data-component="address" style={{ fontSize: '0.75rem' }}>{v.address}</td>
-                  <td style={{ fontSize: '0.8rem', color: '#6b7280' }}>{v.description}</td>
+                  <td style={{ fontSize: '0.8rem', color: '#616161' }}>{v.description}</td>
                   <td><span data-component="role-badge" data-status={v.active ? 'active' : 'revoked'}>{v.active ? 'Active' : 'Inactive'}</span></td>
                 </tr>
               ))}
@@ -182,13 +182,13 @@ export default async function TeeValidationPage() {
             <tbody>
               {validations.map((v) => (
                 <tr key={v.id}>
-                  <td><Link href={`/agents/${v.agentAddress}`} style={{ color: '#2563eb' }}>{v.agent}</Link></td>
+                  <td><Link href={`/agents/${v.agentAddress}`} style={{ color: '#1565c0' }}>{v.agent}</Link></td>
                   <td><span data-component="role-badge">{v.teeArch}</span></td>
                   <td><span data-component="role-badge" data-status="active">{v.validationMethod}</span></td>
                   <td style={{ fontFamily: 'monospace', fontSize: '0.7rem', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' }}
                     title={v.codeMeasurement}>{v.codeMeasurement.slice(0, 10)}...{v.codeMeasurement.slice(-8)}</td>
                   <td>{v.validatedBy}</td>
-                  <td style={{ fontSize: '0.8rem', color: '#6b7280' }}>{v.validatedAt}</td>
+                  <td style={{ fontSize: '0.8rem', color: '#616161' }}>{v.validatedAt}</td>
                 </tr>
               ))}
             </tbody>
@@ -199,7 +199,7 @@ export default async function TeeValidationPage() {
       {/* How It Works */}
       <section data-component="graph-section">
         <h2>How TEE Validation Works</h2>
-        <div style={{ fontSize: '0.85rem', color: '#6b7280', lineHeight: 1.7 }}>
+        <div style={{ fontSize: '0.85rem', color: '#616161', lineHeight: 1.7 }}>
           <ol style={{ paddingLeft: '1.2rem' }}>
             <li><strong>Agent runs in TEE</strong> — The agent&apos;s code executes inside a Trusted Execution Environment (AWS Nitro Enclave, Intel TDX VM, etc.)</li>
             <li><strong>TEE generates attestation</strong> — The hardware produces a cryptographic quote containing code measurements (PCRs for Nitro, RTMRs for TDX)</li>

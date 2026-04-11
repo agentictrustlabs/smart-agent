@@ -42,19 +42,19 @@ export function OnboardingClient({ currentName, currentEmail }: OnboardingClient
     return (
       <div data-component="onboarding-form" style={{ textAlign: 'center' }}>
         <h2 style={{ marginBottom: '0.5rem' }}>Welcome, {name}!</h2>
-        <p style={{ color: '#6b7280', marginBottom: '2rem' }}>What would you like to do?</p>
+        <p style={{ color: '#616161', marginBottom: '2rem' }}>What would you like to do?</p>
         <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
           <button onClick={() => router.push('/setup')} style={{ padding: '1.5rem 2rem', minWidth: 200 }}>
             <strong style={{ display: 'block', marginBottom: '0.25rem' }}>New Organization</strong>
-            <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>Set up your organization with AI assistants</span>
+            <span style={{ fontSize: '0.8rem', color: '#616161' }}>Set up your organization with AI assistants</span>
           </button>
-          <button onClick={() => router.push('/setup/join')} style={{ background: '#e5e7eb', color: '#1a1a2e', padding: '1.5rem 2rem', minWidth: 200 }}>
+          <button onClick={() => router.push('/setup/join')} style={{ background: '#e0e0e0', color: '#1a1a2e', padding: '1.5rem 2rem', minWidth: 200 }}>
             <strong style={{ display: 'block', marginBottom: '0.25rem' }}>Join an Organization</strong>
-            <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>I have an invitation</span>
+            <span style={{ fontSize: '0.8rem', color: '#616161' }}>I have an invitation</span>
           </button>
           <button onClick={() => router.push('/dashboard')} style={{ background: 'transparent', border: '1px solid #e2e4e8', color: '#1a1a2e', padding: '1.5rem 2rem', minWidth: 200 }}>
             <strong style={{ display: 'block', marginBottom: '0.25rem' }}>Explore</strong>
-            <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>Browse the platform first</span>
+            <span style={{ fontSize: '0.8rem', color: '#616161' }}>Browse the platform first</span>
           </button>
         </div>
       </div>

@@ -163,7 +163,7 @@ export function AgentSettingsClient({
               {addMode === 'select' && (
                 <div>
                   {availablePeople.length === 0 ? (
-                    <p style={{ color: '#6b7280', fontSize: '0.85rem' }}>No available people to add. Use "By Address" or "Invite Link".</p>
+                    <p style={{ color: '#616161', fontSize: '0.85rem' }}>No available people to add. Use "By Address" or "Invite Link".</p>
                   ) : (
                     <div data-component="form-field">
                       <label>Select a person</label>
@@ -188,7 +188,7 @@ export function AgentSettingsClient({
                 <div data-component="form-field">
                   <label>EOA Address</label>
                   <input type="text" value={newOwnerAddr} onChange={(e) => setNewOwnerAddr(e.target.value)} placeholder="0x..." />
-                  <p style={{ fontSize: '0.75rem', color: '#6b7280', margin: '0.25rem 0' }}>
+                  <p style={{ fontSize: '0.75rem', color: '#616161', margin: '0.25rem 0' }}>
                     An invite link will be generated — the person must accept to become co-owner.
                   </p>
                   <button type="button" disabled={!newOwnerAddr.trim() || acting} onClick={() => handleAddOwnerByAddress(newOwnerAddr)}
@@ -200,7 +200,7 @@ export function AgentSettingsClient({
 
               {addMode === 'invite' && (
                 <div>
-                  <p style={{ color: '#6b7280', fontSize: '0.85rem', marginBottom: '0.75rem' }}>
+                  <p style={{ color: '#616161', fontSize: '0.85rem', marginBottom: '0.75rem' }}>
                     Generate an invite link to share. When someone opens it, connects their wallet, and accepts,
                     they'll be added as a co-owner of this agent.
                   </p>
@@ -209,7 +209,7 @@ export function AgentSettingsClient({
                   </button>
                   {inviteLink && (
                     <div style={{ marginTop: '0.75rem', padding: '0.75rem', background: 'var(--bg-card)', border: '1px solid var(--accent)', borderRadius: '8px' }}>
-                      <label style={{ fontSize: '0.75rem', color: '#6b7280' }}>Share this link (expires in 7 days)</label>
+                      <label style={{ fontSize: '0.75rem', color: '#616161' }}>Share this link (expires in 7 days)</label>
                       <input type="text" readOnly value={inviteLink} onClick={(e) => (e.target as HTMLInputElement).select()} style={{ marginTop: '0.25rem' }} />
                       <button type="button" onClick={() => navigator.clipboard.writeText(inviteLink)} data-component="copy-btn" style={{ marginTop: '0.25rem' }}>Copy</button>
                     </div>
@@ -223,7 +223,7 @@ export function AgentSettingsClient({
           </div>
         ) : (
           <form onSubmit={handleInitialize} data-component="deploy-form">
-            <p style={{ color: '#6b7280', marginBottom: '1rem' }}>
+            <p style={{ color: '#616161', marginBottom: '1rem' }}>
               Set up multi-sig governance for this agent.
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>

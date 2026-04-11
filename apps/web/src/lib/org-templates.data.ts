@@ -256,6 +256,78 @@ export const ORG_TEMPLATES: OrgTemplate[] = [
     ],
     aiAgents: [],
   },
+  // ─── ILAD Mission Collective Templates ──────────────────────────────
+
+  {
+    id: 'impact-investor',
+    name: 'Impact Investment Firm',
+    description: 'Revenue-sharing capital deployment and portfolio management',
+    details: 'An impact investment organization that deploys capital via revenue-sharing partnerships (not loans, not equity). Manages underwriting, deployment, collection, and funder reporting with multi-sig governance for capital decisions.',
+    color: '#0d9488',
+    defaultMinOwners: 2,
+    defaultQuorum: 2,
+    roles: [
+      { roleKey: 'owner', label: 'Managing Director', description: 'Full authority over investment operations', required: true, maxCount: 2, relationshipType: 'governance', generateInvite: false },
+      { roleKey: 'authorized-signer', label: 'Capital Officer', description: 'Authorized to approve capital deployments', required: true, maxCount: 3, relationshipType: 'governance', generateInvite: true },
+      { roleKey: 'board-member', label: 'Board Member', description: 'Governance oversight and strategic direction', required: false, maxCount: 5, relationshipType: 'governance', generateInvite: true },
+      { roleKey: 'operator', label: 'Field Operations', description: 'Manages on-ground portfolio monitoring', required: false, maxCount: 5, relationshipType: 'membership', generateInvite: true },
+      { roleKey: 'auditor', label: 'Compliance Officer', description: 'Audit trail verification and regulatory compliance', required: false, maxCount: 2, relationshipType: 'membership', generateInvite: true },
+    ],
+    aiAgents: [
+      { name: 'Treasury Agent', agentType: 'executor', description: 'Manages capital pool — deployment, collection, and recovery tracking', capabilities: ['treasury-management', 'capital-deployment', 'revenue-collection', 'recovery-tracking'], trustModels: ['reputation', 'tee-attestation'], autoDeploy: true },
+      { name: 'Portfolio Analytics', agentType: 'discovery', description: 'Tracks portfolio health, wave progression, graduation pipeline, and funder projections', capabilities: ['portfolio-analysis', 'health-monitoring', 'funder-reporting', 'risk-assessment'], trustModels: ['reputation'], autoDeploy: true },
+    ],
+  },
+
+  {
+    id: 'field-agency',
+    name: 'Field Agency',
+    description: 'On-ground training, deployment, and business support',
+    details: 'An agency that trains entrepreneurs, provides business development support, and manages field operations. Coordinates between capital providers and local businesses.',
+    color: '#7c3aed',
+    defaultMinOwners: 2,
+    defaultQuorum: 2,
+    roles: [
+      { roleKey: 'owner', label: 'Agency Director', description: 'Full authority over agency operations', required: true, maxCount: 1, relationshipType: 'governance', generateInvite: false },
+      { roleKey: 'operator', label: 'Operations Lead', description: 'Manages field staff and business relationships', required: true, maxCount: 3, relationshipType: 'membership', generateInvite: true },
+      { roleKey: 'member', label: 'Field Staff', description: 'Business coaching and support', required: false, maxCount: Infinity, relationshipType: 'membership', generateInvite: true },
+      { roleKey: 'reviewer', label: 'Training Assessor', description: 'Evaluates training fidelity and business readiness', required: false, maxCount: 5, relationshipType: 'review', generateInvite: true },
+    ],
+    aiAgents: [
+      { name: 'Training Tracker', agentType: 'validator', description: 'Tracks BDC training completion, certification, and performance correlation', capabilities: ['training-tracking', 'certification-management', 'performance-correlation'], trustModels: ['reputation'], autoDeploy: true },
+    ],
+  },
+
+  {
+    id: 'oversight-committee',
+    name: 'Oversight Committee',
+    description: 'Governance review, voting, and accountability',
+    details: 'An advisory oversight body that conducts quarterly reviews, votes on escalations, and provides governance accountability. Members review business health, capital recovery, and training correlation data.',
+    color: '#b91c1c',
+    defaultMinOwners: 3,
+    defaultQuorum: 2,
+    roles: [
+      { roleKey: 'owner', label: 'Committee Chair', description: 'Leads committee proceedings', required: true, maxCount: 1, relationshipType: 'governance', generateInvite: false },
+      { roleKey: 'board-member', label: 'Committee Member', description: 'Participates in reviews and votes on decisions', required: true, maxCount: 5, relationshipType: 'governance', generateInvite: true },
+      { roleKey: 'auditor', label: 'Observer', description: 'Read-only access for oversight purposes', required: false, maxCount: 3, relationshipType: 'membership', generateInvite: true },
+    ],
+    aiAgents: [],
+  },
+
+  {
+    id: 'portfolio-business',
+    name: 'Portfolio Business',
+    description: 'Revenue-sharing enterprise receiving capital investment',
+    details: 'A small business receiving revenue-sharing capital. Submits monthly revenue reports, tracks against performance targets, and progresses through investment waves toward graduation.',
+    color: '#ea580c',
+    defaultMinOwners: 1,
+    defaultQuorum: 1,
+    roles: [
+      { roleKey: 'owner', label: 'Business Owner', description: 'Operates the business and submits revenue reports', required: true, maxCount: 1, relationshipType: 'governance', generateInvite: false },
+      { roleKey: 'advisor', label: 'Business Coach', description: 'Provides guidance and mentoring', required: false, maxCount: 2, relationshipType: 'membership', generateInvite: true },
+    ],
+    aiAgents: [],
+  },
 ]
 
 export function getOrgTemplate(id: string): OrgTemplate | undefined {

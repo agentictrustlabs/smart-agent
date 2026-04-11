@@ -68,23 +68,23 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
             templates: (
               <div>
                 <h2>Organization Templates</h2>
-                <p style={{ fontSize: '0.85rem', color: '#6b7280', marginBottom: '1rem' }}>
+                <p style={{ fontSize: '0.85rem', color: '#616161', marginBottom: '1rem' }}>
                   Templates define governance structure, roles, and AI agents for each organization type.
-                  Select a template when <Link href="/setup" style={{ color: '#2563eb' }}>creating a new organization</Link>.
+                  Select a template when <Link href="/setup" style={{ color: '#1565c0' }}>creating a new organization</Link>.
                 </p>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   {ORG_TEMPLATES.map(t => (
                     <div key={t.id} data-component="protocol-info">
                       <h3 style={{ color: t.color }}>{t.name}</h3>
-                      <p style={{ fontSize: '0.85rem', color: '#6b7280', marginBottom: '0.5rem' }}>{t.description}</p>
+                      <p style={{ fontSize: '0.85rem', color: '#616161', marginBottom: '0.5rem' }}>{t.description}</p>
                       <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
-                        <span style={{ fontSize: '0.7rem', padding: '0.1rem 0.4rem', background: '#f0f1f3', borderRadius: 4, color: '#6b7280' }}>
+                        <span style={{ fontSize: '0.7rem', padding: '0.1rem 0.4rem', background: '#f5f5f5', borderRadius: 4, color: '#616161' }}>
                           {t.defaultQuorum}-of-{t.defaultMinOwners} approval
                         </span>
-                        <span style={{ fontSize: '0.7rem', padding: '0.1rem 0.4rem', background: '#f0f1f3', borderRadius: 4, color: '#6b7280' }}>
+                        <span style={{ fontSize: '0.7rem', padding: '0.1rem 0.4rem', background: '#f5f5f5', borderRadius: 4, color: '#616161' }}>
                           {t.roles.length} roles
                         </span>
-                        <span style={{ fontSize: '0.7rem', padding: '0.1rem 0.4rem', background: '#f0f1f3', borderRadius: 4, color: '#6b7280' }}>
+                        <span style={{ fontSize: '0.7rem', padding: '0.1rem 0.4rem', background: '#f5f5f5', borderRadius: 4, color: '#616161' }}>
                           {t.aiAgents.length} AI agents
                         </span>
                       </div>
@@ -103,18 +103,18 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
             governance: (
               <div>
                 <h2>Governance (Control Plane){selectedOrg ? ` — ${selectedOrg.name}` : ''}</h2>
-                <p style={{ fontSize: '0.85rem', color: '#6b7280', marginBottom: '1rem' }}>
+                <p style={{ fontSize: '0.85rem', color: '#616161', marginBottom: '1rem' }}>
                   Governance controls <strong>who can change the organization itself</strong> — add/remove signers,
                   change approval thresholds, upgrade contracts. This is separate from operational roles and delegations
-                  which are managed on the <Link href="/team" style={{ color: '#2563eb' }}>Organization page</Link>.
+                  which are managed on the <Link href="/team" style={{ color: '#1565c0' }}>Organization page</Link>.
                 </p>
                 {!selectedOrg ? (
                   <p data-component="text-muted">Select or create an organization to view governance settings.</p>
                 ) : !govInitialized ? (
                   <div data-component="protocol-info">
                     <p>Governance has not been initialized for this organization.</p>
-                    <p style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: '0.5rem' }}>
-                      <Link href={`/agents/${selectedOrg.smartAccountAddress}`} style={{ color: '#2563eb' }}>Initialize governance</Link> in the agent settings.
+                    <p style={{ fontSize: '0.85rem', color: '#616161', marginTop: '0.5rem' }}>
+                      <Link href={`/agents/${selectedOrg.smartAccountAddress}`} style={{ color: '#1565c0' }}>Initialize governance</Link> in the agent settings.
                     </p>
                   </div>
                 ) : (
@@ -133,14 +133,14 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
                       <div style={{ marginTop: '0.75rem' }}>
                         <strong style={{ fontSize: '0.85rem' }}>Authorized Signers</strong>
                         {govOwners.map((addr, i) => (
-                          <div key={i} style={{ fontFamily: 'monospace', fontSize: '0.8rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                          <div key={i} style={{ fontFamily: 'monospace', fontSize: '0.8rem', color: '#616161', marginTop: '0.25rem' }}>
                             {addr}
                           </div>
                         ))}
                       </div>
                     )}
                     <div style={{ marginTop: '0.75rem' }}>
-                      <Link href={`/agents/${selectedOrg.smartAccountAddress}`} style={{ color: '#2563eb', fontSize: '0.85rem' }}>
+                      <Link href={`/agents/${selectedOrg.smartAccountAddress}`} style={{ color: '#1565c0', fontSize: '0.85rem' }}>
                         Manage signers and governance
                       </Link>
                     </div>
@@ -152,7 +152,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
             issuers: (
               <div>
                 <h2>Registered Authorities ({issuerCount})</h2>
-                <p style={{ fontSize: '0.85rem', color: '#6b7280', marginBottom: '1rem' }}>
+                <p style={{ fontSize: '0.85rem', color: '#616161', marginBottom: '1rem' }}>
                   Authorities are agents authorized to make trust assertions — validators, auditors, accreditors, TEE verifiers.
                 </p>
                 {issuers.length === 0 ? (
@@ -164,9 +164,9 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
                       {issuers.map(iss => (
                         <tr key={iss.address}>
                           <td><strong>{iss.name}</strong></td>
-                          <td style={{ fontSize: '0.8rem', color: '#6b7280', maxWidth: 300 }}>{iss.description}</td>
+                          <td style={{ fontSize: '0.8rem', color: '#616161', maxWidth: 300 }}>{iss.description}</td>
                           <td><span data-component="role-badge" data-status={iss.active ? 'active' : 'revoked'}>{iss.active ? 'Active' : 'Inactive'}</span></td>
-                          <td><Link href={`/agents/${iss.address}`} style={{ color: '#2563eb', fontSize: '0.8rem' }}>View</Link></td>
+                          <td><Link href={`/agents/${iss.address}`} style={{ color: '#1565c0', fontSize: '0.8rem' }}>View</Link></td>
                         </tr>
                       ))}
                     </tbody>
@@ -178,7 +178,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
             ontology: (
               <div>
                 <h2>Data Registry</h2>
-                <p style={{ fontSize: '0.85rem', color: '#6b7280', marginBottom: '1rem' }}>
+                <p style={{ fontSize: '0.85rem', color: '#616161', marginBottom: '1rem' }}>
                   The on-chain registry stores agent properties using a governed ontology.
                   Properties are defined as terms with URIs, labels, and data types.
                 </p>

@@ -18,7 +18,7 @@ export function JoinOrgClient() {
   return (
     <div>
       <h1 style={{ fontSize: '1.8rem', marginBottom: '0.5rem' }}>Join an Organization</h1>
-      <p style={{ color: '#6b7280', marginBottom: '2rem' }}>
+      <p style={{ color: '#616161', marginBottom: '2rem' }}>
         Enter the invite code shared by your organization administrator.
         You&apos;ll be able to select your role and join the team.
       </p>
@@ -39,7 +39,7 @@ export function JoinOrgClient() {
       <div style={{ marginTop: '2rem', textAlign: 'center' }}>
         <p style={{ color: '#666', fontSize: '0.85rem' }}>
           Want to create your own organization instead?{' '}
-          <a href="/setup" style={{ color: '#2563eb' }}>Create Organization</a>
+          <a href="/setup" style={{ color: '#1565c0' }}>Create Organization</a>
         </p>
       </div>
     </div>

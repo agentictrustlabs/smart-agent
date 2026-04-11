@@ -13,18 +13,15 @@ export function OrgSelector() {
   if (orgs.length === 0) {
     return (
       <div data-component="org-selector">
-        <a href="/setup" style={{ color: '#2563eb', fontSize: '0.8rem' }}>Create Organization</a>
+        <a href="/setup" style={{ color: '#1565c0', fontSize: '0.8rem' }}>Create Organization</a>
       </div>
     )
   }
 
   function handleChange(address: string) {
     selectOrg(address)
-    // Update URL so server components can read the selected org
-    const orgPages = ['/dashboard', '/team', '/treasury', '/agents']
-    if (orgPages.some(p => pathname.startsWith(p))) {
-      router.push(`${pathname}?org=${address}`)
-    }
+    // Update URL so server components can read the selected org on ALL authenticated pages
+    router.push(`${pathname}?org=${address}`)
   }
 
   return (

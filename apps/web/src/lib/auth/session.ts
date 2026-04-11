@@ -30,6 +30,23 @@ export const DEMO_USERS: Record<string, { userId: string; walletAddress: string;
   'gc-user-003': { userId: 'did:privy:gc-003', walletAddress: '0x0000000000000000000000000000000000010003', email: 'dan@ecfa.org', name: 'Dan Busby', org: 'ECFA', role: 'Executive Director' },
   'gc-user-004': { userId: 'did:privy:gc-004', walletAddress: '0x0000000000000000000000000000000000010004', email: 'john@wycliffe.org', name: 'John Chesnut', org: 'Wycliffe Bible Translators', role: 'Director' },
   'gc-user-005': { userId: 'did:privy:gc-005', walletAddress: '0x0000000000000000000000000000000000010005', email: 'david@ncf.org', name: 'David Wills', org: 'National Christian Foundation', role: 'President' },
+  // ILAD Mission Collective
+  'mc-user-001': { userId: 'did:privy:mc-001', walletAddress: '0x0000000000000000000000000000000000050001', email: 'john@collectiveimpactlabs.org', name: 'John', org: 'Collective Impact Labs', role: 'Managing Director' },
+  'mc-user-002': { userId: 'did:privy:mc-002', walletAddress: '0x0000000000000000000000000000000000050002', email: 'cameron@ilad.org', name: 'Cameron Henrion', org: 'ILAD Togo', role: 'Operations Lead' },
+  'mc-user-003': { userId: 'did:privy:mc-003', walletAddress: '0x0000000000000000000000000000000000050003', email: 'nick@ilad.org', name: 'Nick Courchesne', org: 'ILAD Togo', role: 'Operations' },
+  'mc-user-004': { userId: 'did:privy:mc-004', walletAddress: '0x0000000000000000000000000000000000050004', email: 'joseph@ilad-togo.org', name: 'Joseph', org: 'ILAD Togo', role: 'Local Manager (Lomé)' },
+  'mc-user-005': { userId: 'did:privy:mc-005', walletAddress: '0x0000000000000000000000000000000000050005', email: 'paul@funder.org', name: 'Paul Martel', org: 'Collective Impact Labs', role: 'Funder / Advisor' },
+  'mc-user-006': { userId: 'did:privy:mc-006', walletAddress: '0x0000000000000000000000000000000000050006', email: 'adama@togokafe.tg', name: 'Adama Mensah', org: 'TogoKafe', role: 'Business Owner' },
+  'mc-user-007': { userId: 'did:privy:mc-007', walletAddress: '0x0000000000000000000000000000000000050007', email: 'fatou@savonafriq.tg', name: 'Fatou Amegah', org: 'SavonAfriq', role: 'Business Owner' },
+  // Togo Revenue-Sharing Pilot
+  'tg-user-001': { userId: 'did:privy:tg-001', walletAddress: '0x0000000000000000000000000000000000080001', email: 'kofi@cafelome.tg', name: 'Kofi Adenu', org: 'Café Lomé', role: 'Business Owner' },
+  'tg-user-002': { userId: 'did:privy:tg-002', walletAddress: '0x0000000000000000000000000000000000080002', email: 'ama@mamaafi.tg', name: 'Ama Lawson', org: 'Mama Afi Restaurant', role: 'Business Owner' },
+  'tg-user-003': { userId: 'did:privy:tg-003', walletAddress: '0x0000000000000000000000000000000000080003', email: 'edem@techfix.tg', name: 'Edem Togbi', org: 'TechFix Lomé', role: 'Business Owner' },
+  'tg-user-004': { userId: 'did:privy:tg-004', walletAddress: '0x0000000000000000000000000000000000080004', email: 'akosua@couturedior.tg', name: 'Akosua Mensah', org: "Couture d'Or", role: 'Business Owner' },
+  'tg-user-005': { userId: 'did:privy:tg-005', walletAddress: '0x0000000000000000000000000000000000080005', email: 'yao@agriplus.tg', name: 'Yao Agbeko', org: 'AgriPlus Togo', role: 'Business Owner' },
+  'tg-user-006': { userId: 'did:privy:tg-006', walletAddress: '0x0000000000000000000000000000000000080006', email: 'essi@ilad-togo.org', name: 'Essi Amegah', org: 'ILAD Togo', role: 'Local Coordinator' },
+  'tg-user-007': { userId: 'did:privy:tg-007', walletAddress: '0x0000000000000000000000000000000000080007', email: 'kokou@ilad-togo.org', name: 'Kokou Abalo', org: 'ILAD Togo', role: 'BDC Trainer' },
+  'tg-user-008': { userId: 'did:privy:tg-008', walletAddress: '0x0000000000000000000000000000000000080008', email: 'lawrence@ilad-togo.org', name: 'Lawrence', org: 'ILAD Togo', role: 'Training Assessor' },
 }
 
 export async function getSession(): Promise<AuthSession | null> {

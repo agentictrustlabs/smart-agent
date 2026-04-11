@@ -97,11 +97,11 @@ export default async function TreasuryPage({ searchParams }: { searchParams: Pro
         <div data-component="empty-state">
           <h3>No Treasury Agent</h3>
           <p>{selectedOrg.name} doesn&apos;t have a Treasury Agent.</p>
-          <p style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: '0.5rem' }}>
+          <p style={{ fontSize: '0.85rem', color: '#616161', marginTop: '0.5rem' }}>
             Treasury Agents are included in Church, Grant Organization, Giving Intermediary, and Investment Club templates.
           </p>
           <div style={{ marginTop: '1rem' }}>
-            <Link href="/deploy/ai"><button style={{ background: '#e5e7eb', color: '#1a1a2e' }}>Deploy AI Agent</button></Link>
+            <Link href="/deploy/ai"><button style={{ background: '#e0e0e0', color: '#1a1a2e' }}>Deploy AI Agent</button></Link>
           </div>
         </div>
       ) : (
@@ -110,26 +110,26 @@ export default async function TreasuryPage({ searchParams }: { searchParams: Pro
           <div data-component="protocol-info" style={{ marginBottom: '1.5rem' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1.5rem' }}>
               <div>
-                <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>Treasury Balance</div>
-                <div style={{ fontSize: '2rem', fontWeight: 700, color: '#059669' }}>
-                  {treasuryData.reduce((sum, t) => sum + parseFloat(t.balance), 0).toFixed(4)} <span style={{ fontSize: '1rem', color: '#6b7280' }}>ETH</span>
+                <div style={{ fontSize: '0.8rem', color: '#616161' }}>Treasury Balance</div>
+                <div style={{ fontSize: '2rem', fontWeight: 700, color: '#2e7d32' }}>
+                  {treasuryData.reduce((sum, t) => sum + parseFloat(t.balance), 0).toFixed(4)} <span style={{ fontSize: '1rem', color: '#616161' }}>ETH</span>
                 </div>
               </div>
               <div>
-                <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>Organization Account</div>
+                <div style={{ fontSize: '0.8rem', color: '#616161' }}>Organization Account</div>
                 <div style={{ fontSize: '2rem', fontWeight: 700, color: '#1a1a2e' }}>
-                  {parseFloat(orgBalance).toFixed(4)} <span style={{ fontSize: '1rem', color: '#6b7280' }}>ETH</span>
+                  {parseFloat(orgBalance).toFixed(4)} <span style={{ fontSize: '1rem', color: '#616161' }}>ETH</span>
                 </div>
               </div>
               <div>
-                <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>Authorized to Manage</div>
+                <div style={{ fontSize: '0.8rem', color: '#616161' }}>Authorized to Manage</div>
                 <div style={{ marginTop: '0.25rem' }}>
                   {treasurers.length === 0 ? (
-                    <span style={{ color: '#6b7280', fontSize: '0.85rem' }}>No one assigned</span>
+                    <span style={{ color: '#616161', fontSize: '0.85rem' }}>No one assigned</span>
                   ) : (
                     treasurers.map(t => (
                       <div key={t.address} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '0.2rem' }}>
-                        <Link href={`/agents/${t.address}`} style={{ color: '#2563eb', fontSize: '0.85rem' }}>{t.name}</Link>
+                        <Link href={`/agents/${t.address}`} style={{ color: '#1565c0', fontSize: '0.85rem' }}>{t.name}</Link>
                         {t.roles.filter(r => r === 'treasurer' || r === 'authorized-signer').map(r =>
                           <span key={r} data-component="role-badge" style={{ fontSize: '0.55rem' }}>{r}</span>
                         )}
@@ -151,13 +151,13 @@ export default async function TreasuryPage({ searchParams }: { searchParams: Pro
                   <span data-component="role-badge">executor</span>
                 </div>
 
-                {t.description && <p style={{ fontSize: '0.85rem', color: '#6b7280', marginBottom: '1rem' }}>{t.description}</p>}
+                {t.description && <p style={{ fontSize: '0.85rem', color: '#616161', marginBottom: '1rem' }}>{t.description}</p>}
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
                   <div>
-                    <div style={{ fontSize: '0.8rem', color: '#6b7280', marginBottom: '0.25rem' }}>Balance</div>
-                    <div style={{ fontSize: '2.5rem', fontWeight: 700, color: '#059669' }}>
-                      {parseFloat(t.balance).toFixed(4)} <span style={{ fontSize: '1rem', color: '#6b7280' }}>ETH</span>
+                    <div style={{ fontSize: '0.8rem', color: '#616161', marginBottom: '0.25rem' }}>Balance</div>
+                    <div style={{ fontSize: '2.5rem', fontWeight: 700, color: '#2e7d32' }}>
+                      {parseFloat(t.balance).toFixed(4)} <span style={{ fontSize: '1rem', color: '#616161' }}>ETH</span>
                     </div>
                   </div>
                   <dl>
@@ -165,8 +165,8 @@ export default async function TreasuryPage({ searchParams }: { searchParams: Pro
                     <dd data-component="address">{t.address}</dd>
                     <dt>Controlled By</dt>
                     <dd>
-                      <Link href={`/agents/${t.orgAddress}`} style={{ color: '#2563eb' }}>{t.orgName}</Link>
-                      <span style={{ fontSize: '0.75rem', color: '#6b7280' }}> (via delegation)</span>
+                      <Link href={`/agents/${t.orgAddress}`} style={{ color: '#1565c0' }}>{t.orgName}</Link>
+                      <span style={{ fontSize: '0.75rem', color: '#616161' }}> (via delegation)</span>
                     </dd>
                   </dl>
                 </div>
@@ -174,22 +174,22 @@ export default async function TreasuryPage({ searchParams }: { searchParams: Pro
                 {/* Capabilities */}
                 {t.capabilities.length > 0 && (
                   <div style={{ marginTop: '0.75rem' }}>
-                    <span style={{ fontSize: '0.7rem', color: '#6b7280' }}>Capabilities: </span>
+                    <span style={{ fontSize: '0.7rem', color: '#616161' }}>Capabilities: </span>
                     {t.capabilities.map(c => <span key={c} data-component="role-badge" style={{ fontSize: '0.6rem', marginRight: 2 }}>{c}</span>)}
                   </div>
                 )}
 
                 <div style={{ marginTop: '1rem', display: 'flex', gap: '0.75rem', fontSize: '0.85rem' }}>
-                  <Link href={`/agents/${t.address}`} style={{ color: '#2563eb' }}>Trust & Compliance</Link>
-                  <Link href={`/agents/${t.address}/metadata`} style={{ color: '#2563eb' }}>Profile</Link>
-                  <Link href={`/agents/${t.address}/communicate`} style={{ color: '#2563eb' }}>Chat</Link>
+                  <Link href={`/agents/${t.address}`} style={{ color: '#1565c0' }}>Trust & Compliance</Link>
+                  <Link href={`/agents/${t.address}/metadata`} style={{ color: '#1565c0' }}>Profile</Link>
+                  <Link href={`/agents/${t.address}/communicate`} style={{ color: '#1565c0' }}>Chat</Link>
                 </div>
               </div>
 
               {/* Delegation Bounds */}
               <div data-component="protocol-info" style={{ marginTop: '1rem' }}>
                 <h3>Delegation Bounds</h3>
-                <p style={{ fontSize: '0.85rem', color: '#6b7280', marginBottom: '0.75rem' }}>
+                <p style={{ fontSize: '0.85rem', color: '#616161', marginBottom: '0.75rem' }}>
                   Operations within these bounds execute automatically.
                   Anything outside requires multi-sig approval.
                 </p>
@@ -200,8 +200,8 @@ export default async function TreasuryPage({ searchParams }: { searchParams: Pro
                     { label: 'Allowed Methods', value: 'transfer' },
                     { label: 'Allowed Targets', value: 'Approved list' },
                   ].map(b => (
-                    <div key={b.label} style={{ padding: '0.5rem 0.75rem', background: '#f8f9fa', borderRadius: 6, border: '1px solid #e2e4e8' }}>
-                      <div style={{ fontSize: '0.7rem', color: '#6b7280' }}>{b.label}</div>
+                    <div key={b.label} style={{ padding: '0.5rem 0.75rem', background: '#fafafa', borderRadius: 6, border: '1px solid #e2e4e8' }}>
+                      <div style={{ fontSize: '0.7rem', color: '#616161' }}>{b.label}</div>
                       <div style={{ fontWeight: 600, fontSize: '0.85rem', color: '#1a1a2e' }}>{b.value}</div>
                     </div>
                   ))}
@@ -211,7 +211,7 @@ export default async function TreasuryPage({ searchParams }: { searchParams: Pro
               {/* Fund */}
               <div data-component="protocol-info" style={{ marginTop: '1rem' }}>
                 <h3>Fund {t.name}</h3>
-                <p style={{ fontSize: '0.85rem', color: '#6b7280', marginBottom: '0.75rem' }}>
+                <p style={{ fontSize: '0.85rem', color: '#616161', marginBottom: '0.75rem' }}>
                   Send ETH to this agent&apos;s smart account. Funds are held separately from the organization.
                 </p>
                 <TreasuryClient targetAddress={t.address} targetName={t.name} />

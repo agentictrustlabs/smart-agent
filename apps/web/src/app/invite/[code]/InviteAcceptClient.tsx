@@ -46,13 +46,13 @@ export function InviteAcceptClient({ code, agentName, role }: InviteAcceptClient
     }
   }
 
-  if (!ready) return <p style={{ marginTop: '1rem', color: '#6b7280' }}>Loading...</p>
+  if (!ready) return <p style={{ marginTop: '1rem', color: '#616161' }}>Loading...</p>
 
   if (accepted) {
     return (
       <div style={{ marginTop: '1.5rem' }}>
-        <p style={{ color: '#22c55e', fontWeight: 600 }}>Accepted! You are now a {role} of {agentName}.</p>
-        <p style={{ color: '#6b7280', fontSize: '0.85rem' }}>Redirecting to dashboard...</p>
+        <p style={{ color: '#2e7d32', fontWeight: 600 }}>Accepted! You are now a {role} of {agentName}.</p>
+        <p style={{ color: '#616161', fontSize: '0.85rem' }}>Redirecting to dashboard...</p>
       </div>
     )
   }
@@ -60,7 +60,7 @@ export function InviteAcceptClient({ code, agentName, role }: InviteAcceptClient
   if (!authenticated) {
     return (
       <div style={{ marginTop: '1.5rem' }}>
-        <p style={{ color: '#6b7280', marginBottom: '1rem' }}>Connect your wallet to accept this invite.</p>
+        <p style={{ color: '#616161', marginBottom: '1rem' }}>Connect your wallet to accept this invite.</p>
         <button onClick={login} data-component="connect-wallet-btn" data-state="disconnected">
           Connect Wallet
         </button>
@@ -70,7 +70,7 @@ export function InviteAcceptClient({ code, agentName, role }: InviteAcceptClient
 
   return (
     <div style={{ marginTop: '1.5rem' }}>
-      <p style={{ color: '#6b7280', marginBottom: '0.5rem' }}>
+      <p style={{ color: '#616161', marginBottom: '0.5rem' }}>
         Connected as {user?.wallet?.address?.slice(0, 6)}...{user?.wallet?.address?.slice(-4)}
       </p>
       {error && <p role="alert" data-component="error-message">{error}</p>}

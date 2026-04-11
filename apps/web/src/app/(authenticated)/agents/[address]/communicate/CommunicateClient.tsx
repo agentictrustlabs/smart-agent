@@ -75,10 +75,10 @@ export function CommunicateClient({ agentName, a2aEndpoint, mcpServer }: Props) 
           {mcpServer && <><dt>MCP Server</dt><dd style={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>{mcpServer}</dd></>}
         </dl>
         <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-          <button onClick={handleHealthCheck} style={{ background: '#e5e7eb', color: '#1a1a2e', padding: '0.4rem 0.8rem', fontSize: '0.8rem' }} disabled={!a2aEndpoint}>
+          <button onClick={handleHealthCheck} style={{ background: '#e0e0e0', color: '#1a1a2e', padding: '0.4rem 0.8rem', fontSize: '0.8rem' }} disabled={!a2aEndpoint}>
             Health Check
           </button>
-          <button onClick={handleAgentCard} style={{ background: '#e5e7eb', color: '#1a1a2e', padding: '0.4rem 0.8rem', fontSize: '0.8rem' }} disabled={!a2aEndpoint}>
+          <button onClick={handleAgentCard} style={{ background: '#e0e0e0', color: '#1a1a2e', padding: '0.4rem 0.8rem', fontSize: '0.8rem' }} disabled={!a2aEndpoint}>
             Agent Card
           </button>
         </div>
@@ -86,7 +86,7 @@ export function CommunicateClient({ agentName, a2aEndpoint, mcpServer }: Props) 
 
       {/* Message Log */}
       <div style={{
-        background: '#f8f9fa', border: '1px solid #f0f1f3', borderRadius: 8,
+        background: '#fafafa', border: '1px solid #f0f1f3', borderRadius: 8,
         padding: '1rem', minHeight: 300, maxHeight: 500, overflow: 'auto', marginBottom: '1rem',
       }}>
         {messages.length === 0 ? (
@@ -97,7 +97,7 @@ export function CommunicateClient({ agentName, a2aEndpoint, mcpServer }: Props) 
           messages.map((msg, i) => (
             <div key={i} style={{
               marginBottom: '0.75rem', padding: '0.5rem 0.75rem',
-              borderLeft: `3px solid ${msg.role === 'user' ? '#2563eb' : msg.role === 'agent' ? '#22c55e' : '#6b7280'}`,
+              borderLeft: `3px solid ${msg.role === 'user' ? '#1565c0' : msg.role === 'agent' ? '#2e7d32' : '#616161'}`,
               background: msg.role === 'user' ? '#eff6ff' : msg.role === 'agent' ? '#f0fdf4' : '#ffffff',
               borderRadius: '0 4px 4px 0',
             }}>

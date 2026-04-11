@@ -53,7 +53,7 @@ export function DemoUserBadge() {
           boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 50, minWidth: 220,
           padding: '0.5rem',
         }}>
-          <div style={{ fontSize: '0.7rem', color: '#6b7280', padding: '0.25rem 0.5rem', borderBottom: '1px solid #f0f1f3', marginBottom: '0.25rem' }}>
+          <div style={{ fontSize: '0.7rem', color: '#616161', padding: '0.25rem 0.5rem', borderBottom: '1px solid #f0f1f3', marginBottom: '0.25rem' }}>
             Switch Demo Account
           </div>
           {users.map(u => (
@@ -68,7 +68,7 @@ export function DemoUserBadge() {
               }}
             >
               <strong>{u.name}</strong>
-              <span style={{ display: 'block', fontSize: '0.7rem', color: '#6b7280' }}>
+              <span style={{ display: 'block', fontSize: '0.7rem', color: '#616161' }}>
                 {u.role} — {u.org}
               </span>
             </button>
@@ -80,7 +80,7 @@ export function DemoUserBadge() {
                 display: 'block', width: '100%', textAlign: 'center',
                 padding: '0.3rem', border: 'none', borderRadius: 4,
                 background: 'transparent', cursor: 'pointer',
-                fontSize: '0.75rem', color: '#6b7280',
+                fontSize: '0.75rem', color: '#616161',
               }}
             >
               Back to login
