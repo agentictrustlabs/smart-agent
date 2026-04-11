@@ -138,7 +138,7 @@ export function SimulateTeeClient({ agents, verifierAddress }: { agents: Agent[]
         <div data-component="form-field">
           <label htmlFor="source">
             {teeArch === 'aws-nitro' ? 'Enclave Image (Dockerfile / EIF config)' : 'Application Code / Config'}
-            {' '}<span style={{ fontSize: '0.75rem', color: '#8888a0' }}>
+            {' '}<span style={{ fontSize: '0.75rem', color: '#6b7280' }}>
               {teeArch === 'aws-nitro' ? '→ becomes PCR0 (enclave image)' : '→ becomes measurement 0'}
             </span>
           </label>
@@ -152,7 +152,7 @@ export function SimulateTeeClient({ agents, verifierAddress }: { agents: Agent[]
         <div data-component="form-field">
           <label htmlFor="kernel">
             {teeArch === 'aws-nitro' ? 'Kernel + Bootstrap' : 'Runtime / Firmware'}
-            {' '}<span style={{ fontSize: '0.75rem', color: '#8888a0' }}>
+            {' '}<span style={{ fontSize: '0.75rem', color: '#6b7280' }}>
               {teeArch === 'aws-nitro' ? '→ becomes PCR1 (kernel)' : '→ becomes measurement 1'}
             </span>
           </label>
@@ -166,7 +166,7 @@ export function SimulateTeeClient({ agents, verifierAddress }: { agents: Agent[]
         <div data-component="form-field">
           <label htmlFor="config">
             {teeArch === 'aws-nitro' ? 'Application Config' : teeArch === 'intel-tdx' ? 'Compose File (RTMR3 in dstack)' : 'Application Manifest'}
-            {' '}<span style={{ fontSize: '0.75rem', color: '#8888a0' }}>
+            {' '}<span style={{ fontSize: '0.75rem', color: '#6b7280' }}>
               {teeArch === 'aws-nitro' ? '→ becomes PCR2 (application)' : '→ becomes measurement 2'}
             </span>
           </label>
@@ -178,7 +178,7 @@ export function SimulateTeeClient({ agents, verifierAddress }: { agents: Agent[]
 
         <div data-component="protocol-info" style={{ marginBottom: '1rem' }}>
           <h3>Simulation Flow</h3>
-          <p style={{ fontSize: '0.8rem', color: '#8888a0', lineHeight: 1.6 }}>
+          <p style={{ fontSize: '0.8rem', color: '#6b7280', lineHeight: 1.6 }}>
             1. Compute PCR-like hashes from your inputs (keccak256 of each field)<br />
             2. Call MockTeeVerifier.verify{teeArch === 'aws-nitro' ? 'Nitro' : teeArch === 'intel-tdx' ? 'Tdx' : ''}() on-chain<br />
             3. Verifier computes codeMeasurement = keccak256(pcr0 || pcr1 || pcr2)<br />

@@ -90,7 +90,7 @@ export function SubmitTeeValidationClient({ agents }: { agents: Agent[] }) {
           ))}
         </select>
         {selectedArchInfo && (
-          <p style={{ fontSize: '0.8rem', color: '#8888a0', marginTop: '0.25rem' }}>
+          <p style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '0.25rem' }}>
             {selectedArchInfo.description}
           </p>
         )}
@@ -105,7 +105,7 @@ export function SubmitTeeValidationClient({ agents }: { agents: Agent[] }) {
           ))}
         </select>
         {selectedMethodInfo && (
-          <p style={{ fontSize: '0.8rem', color: '#8888a0', marginTop: '0.25rem' }}>
+          <p style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '0.25rem' }}>
             {selectedMethodInfo.description}
           </p>
         )}
@@ -122,7 +122,7 @@ export function SubmitTeeValidationClient({ agents }: { agents: Agent[] }) {
           placeholder="0xe770a284d05888028565daccbfe93d59a5433a2bbb4b683aa8f6bf6c93100545"
           style={{ fontFamily: 'monospace', fontSize: '0.8rem' }}
         />
-        <p style={{ fontSize: '0.75rem', color: '#8888a0', marginTop: '0.25rem' }}>
+        <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
           {teeArch === 'aws-nitro' && 'keccak256(PCR0 || PCR1 || PCR2) — hash of enclave image, kernel, and application measurements'}
           {teeArch === 'intel-tdx' && 'keccak256(MRTD || RTMR0 || RTMR1 || RTMR2 || RTMR3) — hash of TD and runtime measurements'}
           {teeArch === 'intel-sgx' && 'keccak256(mrEnclave || mrSigner) — hash of enclave identity'}
@@ -141,7 +141,7 @@ export function SubmitTeeValidationClient({ agents }: { agents: Agent[] }) {
           placeholder="0x0000000000000000000000000000000000000000"
           style={{ fontFamily: 'monospace', fontSize: '0.8rem' }}
         />
-        <p style={{ fontSize: '0.75rem', color: '#8888a0', marginTop: '0.25rem' }}>
+        <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
           Address of the on-chain verifier (e.g., Automata DCAP, Base Nitro Validator). Leave empty for off-chain verification.
         </p>
       </div>
@@ -156,7 +156,7 @@ export function SubmitTeeValidationClient({ agents }: { agents: Agent[] }) {
           onChange={(e) => setEvidenceURI(e.target.value)}
           placeholder="ipfs://... or https://..."
         />
-        <p style={{ fontSize: '0.75rem', color: '#8888a0', marginTop: '0.25rem' }}>
+        <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
           Link to the full attestation bundle (raw quote, build provenance, signed build artifacts)
         </p>
       </div>

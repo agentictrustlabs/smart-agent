@@ -146,13 +146,13 @@ export function MetadataEditorClient({ agentAddress, agentName, chainId, initial
       {/* Tab bar */}
       <div data-component="graph-filter" style={{ marginBottom: '1rem' }}>
         <button onClick={() => setActiveTab('form')} data-component="filter-btn" data-active={activeTab === 'form' ? 'true' : 'false'}>
-          Properties
+          Details
         </button>
         <button onClick={() => { handlePreview(); }} data-component="filter-btn" data-active={activeTab === 'jsonld' ? 'true' : 'false'}>
-          JSON-LD
+          Data Export
         </button>
         <button onClick={() => setActiveTab('shacl')} data-component="filter-btn" data-active={activeTab === 'shacl' ? 'true' : 'false'}>
-          SHACL Validation {shaclIssues.length > 0 && `(${shaclIssues.length})`}
+          Validation {shaclIssues.length > 0 && `(${shaclIssues.length})`}
         </button>
       </div>
 
@@ -197,7 +197,7 @@ export function MetadataEditorClient({ agentAddress, agentName, chainId, initial
           {/* Capabilities Section */}
           <div data-component="protocol-info" style={{ marginBottom: '1rem' }}>
             <h3>Capabilities {agentType === 'ai' && '*'}</h3>
-            <p style={{ fontSize: '0.8rem', color: '#8888a0', marginBottom: '0.5rem' }}>
+            <p style={{ fontSize: '0.8rem', color: '#6b7280', marginBottom: '0.5rem' }}>
               What can this agent do? Each capability is stored on-chain as a predicate value.
             </p>
 
@@ -218,7 +218,7 @@ export function MetadataEditorClient({ agentAddress, agentName, chainId, initial
                 onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCapability(newCap) } }}
                 style={{ flex: 1 }} />
               <button type="button" onClick={() => addCapability(newCap)}
-                style={{ background: '#333', padding: '0.4rem 0.8rem', whiteSpace: 'nowrap' }}>Add</button>
+                style={{ background: '#e5e7eb', color: '#1a1a2e', padding: '0.4rem 0.8rem', whiteSpace: 'nowrap' }}>Add</button>
             </div>
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
@@ -235,25 +235,32 @@ export function MetadataEditorClient({ agentAddress, agentName, chainId, initial
           {/* Trust Models Section */}
           <div data-component="protocol-info" style={{ marginBottom: '1rem' }}>
             <h3>Supported Trust Models {agentType === 'ai' && '*'}</h3>
-            <p style={{ fontSize: '0.8rem', color: '#8888a0', marginBottom: '0.5rem' }}>
+            <p style={{ fontSize: '0.8rem', color: '#6b7280', marginBottom: '0.5rem' }}>
               How does this agent establish trust? Select all that apply.
             </p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
-              {TRUST_MODEL_OPTIONS.map(m => (
-                <button key={m.value} type="button" onClick={() => toggleTrust(m.value)}
-                  data-component="filter-btn" data-active={trustModels.has(m.value) ? 'true' : 'false'}
-                  style={{ textAlign: 'left', padding: '0.5rem' }}>
-                  <strong style={{ display: 'block' }}>{m.label}</strong>
-                  <span style={{ fontSize: '0.7rem', color: '#8888a0' }}>{m.desc}</span>
-                </button>
-              ))}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
+              {TRUST_MODEL_OPTIONS.map(m => {
+                const isActive = trustModels.has(m.value)
+                return (
+                  <button key={m.value} type="button" onClick={() => toggleTrust(m.value)}
+                    style={{
+                      textAlign: 'left', padding: '0.75rem 1rem', borderRadius: 6, cursor: 'pointer',
+                      border: isActive ? '2px solid #2563eb' : '1px solid #e2e4e8',
+                      background: isActive ? '#eff6ff' : '#ffffff',
+                      color: '#1a1a2e',
+                    }}>
+                    <strong style={{ display: 'block', fontSize: '0.85rem' }}>{m.label}</strong>
+                    <span style={{ display: 'block', fontSize: '0.75rem', color: '#6b7280', marginTop: '0.15rem' }}>{m.desc}</span>
+                  </button>
+                )
+              })}
             </div>
           </div>
 
           {/* Service Endpoints Section */}
           <div data-component="protocol-info" style={{ marginBottom: '1rem' }}>
             <h3>Service Endpoints</h3>
-            <p style={{ fontSize: '0.8rem', color: '#8888a0', marginBottom: '0.5rem' }}>
+            <p style={{ fontSize: '0.8rem', color: '#6b7280', marginBottom: '0.5rem' }}>
               URIs where other agents and clients can reach this agent.
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
@@ -274,8 +281,8 @@ export function MetadataEditorClient({ agentAddress, agentName, chainId, initial
 
           {/* Validation warnings inline */}
           {shaclIssues.length > 0 && (
-            <div style={{ marginBottom: '1rem', padding: '0.5rem 0.75rem', background: hasErrors ? '#1a0a0a' : '#1a1a0a',
-              border: `1px solid ${hasErrors ? '#441111' : '#444411'}`, borderRadius: 6 }}>
+            <div style={{ marginBottom: '1rem', padding: '0.5rem 0.75rem', background: hasErrors ? '#fef2f2' : '#fefce8',
+              border: `1px solid ${hasErrors ? '#fecaca' : '#fef08a'}`, borderRadius: 6 }}>
               {shaclIssues.map((issue, i) => (
                 <p key={i} style={{ fontSize: '0.8rem', color: issue.severity === 'error' ? '#ef4444' : '#f59e0b', margin: '0.2rem 0' }}>
                   {issue.severity === 'error' ? 'Error' : 'Warning'}: {issue.message}
@@ -286,16 +293,16 @@ export function MetadataEditorClient({ agentAddress, agentName, chainId, initial
 
           {error && <p role="alert" data-component="error-message">{error}</p>}
           {success && (
-            <div style={{ padding: '0.5rem 0.75rem', background: '#0a1a0a', border: '1px solid #114411', borderRadius: 6, marginBottom: '0.5rem' }}>
+            <div style={{ padding: '0.5rem 0.75rem', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 6, marginBottom: '0.5rem' }}>
               <p style={{ color: '#22c55e', fontSize: '0.9rem', margin: 0 }}>Metadata saved on-chain. Properties are now queryable by any contract or client.</p>
             </div>
           )}
 
           <div style={{ display: 'flex', gap: '0.5rem' }}>
             <button type="submit" disabled={submitting || hasErrors}>
-              {submitting ? 'Publishing metadata...' : initial.isRegistered ? 'Update Metadata' : 'Publish Metadata'}
+              {submitting ? 'Saving...' : initial.isRegistered ? 'Save Changes' : 'Save Profile'}
             </button>
-            <button type="button" onClick={() => router.push(`/agents/${agentAddress}`)} style={{ background: '#333' }}>
+            <button type="button" onClick={() => router.push(`/agents/${agentAddress}`)} style={{ background: '#e5e7eb', color: '#1a1a2e' }}>
               Back to Agent
             </button>
           </div>
@@ -306,7 +313,7 @@ export function MetadataEditorClient({ agentAddress, agentName, chainId, initial
       {activeTab === 'jsonld' && (
         <section data-component="graph-section">
           <h2>JSON-LD Metadata Document</h2>
-          <p style={{ fontSize: '0.8rem', color: '#8888a0', marginBottom: '0.5rem' }}>
+          <p style={{ fontSize: '0.8rem', color: '#6b7280', marginBottom: '0.5rem' }}>
             Generated from on-chain resolver data. This document can be pinned to IPFS and
             its hash stored on-chain. It is the SHACL-validatable semantic representation
             of this agent&apos;s identity.
@@ -323,9 +330,9 @@ export function MetadataEditorClient({ agentAddress, agentName, chainId, initial
               </div>
 
               <pre style={{
-                background: '#0a0a1a', border: '1px solid #1a1a2e', borderRadius: 8,
+                background: '#f8f9fa', border: '1px solid #f0f1f3', borderRadius: 8,
                 padding: '1rem', fontSize: '0.75rem', overflow: 'auto', maxHeight: 500,
-                color: '#a0a0c0', lineHeight: 1.6,
+                color: '#6b7280', lineHeight: 1.6,
               }}>
                 {JSON.stringify(jsonLd, null, 2)}
               </pre>
@@ -340,14 +347,14 @@ export function MetadataEditorClient({ agentAddress, agentName, chainId, initial
       {activeTab === 'shacl' && (
         <section data-component="graph-section">
           <h2>SHACL Shape Validation</h2>
-          <p style={{ fontSize: '0.8rem', color: '#8888a0', marginBottom: '1rem' }}>
+          <p style={{ fontSize: '0.8rem', color: '#6b7280', marginBottom: '1rem' }}>
             Validates agent metadata against SHACL shapes defined in <code>ontology/shapes.ttl</code>.
             Each agent type has specific requirements.
           </p>
 
           <div data-component="protocol-info" style={{ marginBottom: '1rem' }}>
             <h3>Active Shape: {agentType === 'ai' ? 'atl:AIAgentShape' : agentType === 'org' ? 'atl:OrganizationAgentShape' : 'atl:PersonAgentShape'}</h3>
-            <p style={{ fontSize: '0.8rem', color: '#8888a0' }}>
+            <p style={{ fontSize: '0.8rem', color: '#6b7280' }}>
               {agentType === 'ai' && 'AI agents must declare: agent class, at least one capability, at least one trust model'}
               {agentType === 'org' && 'Organizations must provide: a description'}
               {agentType === 'person' && 'Person agents must have: at least one controller (EOA wallet)'}
@@ -355,9 +362,9 @@ export function MetadataEditorClient({ agentAddress, agentName, chainId, initial
           </div>
 
           {shaclIssues.length === 0 ? (
-            <div style={{ padding: '1rem', background: '#0a1a0a', border: '1px solid #114411', borderRadius: 8, textAlign: 'center' }}>
+            <div style={{ padding: '1rem', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, textAlign: 'center' }}>
               <p style={{ color: '#22c55e', fontSize: '1rem', fontWeight: 600 }}>All SHACL constraints satisfied</p>
-              <p style={{ color: '#8888a0', fontSize: '0.8rem' }}>This agent&apos;s metadata conforms to the {agentType === 'ai' ? 'AIAgent' : agentType === 'org' ? 'OrganizationAgent' : 'PersonAgent'} shape</p>
+              <p style={{ color: '#6b7280', fontSize: '0.8rem' }}>This agent&apos;s metadata conforms to the {agentType === 'ai' ? 'AIAgent' : agentType === 'org' ? 'OrganizationAgent' : 'PersonAgent'} shape</p>
             </div>
           ) : (
             <table data-component="graph-table">
@@ -373,7 +380,7 @@ export function MetadataEditorClient({ agentAddress, agentName, chainId, initial
                       </span>
                     </td>
                     <td style={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>{issue.field}</td>
-                    <td style={{ fontSize: '0.8rem', color: '#8888a0' }}>{issue.message}</td>
+                    <td style={{ fontSize: '0.8rem', color: '#6b7280' }}>{issue.message}</td>
                   </tr>
                 ))}
               </tbody>

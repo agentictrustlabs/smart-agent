@@ -11,6 +11,7 @@ import {
 import { db, schema } from '@/db'
 import { eq } from 'drizzle-orm'
 import { MetadataEditorClient } from './MetadataEditorClient'
+import { AgentSubNav } from '@/components/nav/AgentSubNav'
 
 export default async function MetadataEditorPage({ params }: { params: Promise<{ address: string }> }) {
   const { address } = await params
@@ -114,15 +115,17 @@ export default async function MetadataEditorPage({ params }: { params: Promise<{
           <h1>{agentName}</h1>
           <Link href={`/agents/${agentAddress}`} data-component="section-action">Back to Agent</Link>
         </div>
-        <p>Manage metadata for this agent. Properties are published to the AgentAccountResolver
-          contract where they can be queried by other agents, contracts, and discovery services.</p>
+        <p>Manage this agent&apos;s profile — name, description, capabilities, and service endpoints.
+          Changes are saved to the on-chain registry where other organizations and agents can discover them.</p>
       </div>
+
+      <AgentSubNav address={agentAddress} />
 
       <div data-component="protocol-info" style={{ marginBottom: '1rem' }}>
         <dl>
           <dt>Agent</dt><dd data-component="address">{agentAddress}</dd>
           <dt>Resolver</dt><dd data-component="address">{resolverAddr}</dd>
-          <dt>Metadata</dt><dd><span data-component="role-badge" data-status={initial.isRegistered ? 'active' : 'proposed'}>{initial.isRegistered ? 'Published' : 'Not Published'}</span></dd>
+          <dt>Profile</dt><dd><span data-component="role-badge" data-status={initial.isRegistered ? 'active' : 'proposed'}>{initial.isRegistered ? 'Published' : 'Draft'}</span></dd>
         </dl>
       </div>
 

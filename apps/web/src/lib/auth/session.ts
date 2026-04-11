@@ -22,12 +22,25 @@ export interface AuthSession {
   email: string | null
 }
 
+/** Demo user profiles for SKIP_AUTH mode */
+export const DEMO_USERS: Record<string, { userId: string; walletAddress: string; email: string; name: string; org: string; role: string }> = {
+  'test-user-001': { userId: 'did:privy:test-user-001', walletAddress: TEST_WALLET_ADDRESS, email: 'alice@example.com', name: 'Alice (Default)', org: 'Agentic Trust Labs', role: 'Owner' },
+  'gc-user-001': { userId: 'did:privy:gc-001', walletAddress: '0x0000000000000000000000000000000000010001', email: 'james@gracecommunity.org', name: 'Pastor James', org: 'Grace Community Church', role: 'Senior Pastor' },
+  'gc-user-002': { userId: 'did:privy:gc-002', walletAddress: '0x0000000000000000000000000000000000010002', email: 'sarah@sbc.net', name: 'Dr. Sarah Mitchell', org: 'Southern Baptist Convention', role: 'Executive Director' },
+  'gc-user-003': { userId: 'did:privy:gc-003', walletAddress: '0x0000000000000000000000000000000000010003', email: 'dan@ecfa.org', name: 'Dan Busby', org: 'ECFA', role: 'Executive Director' },
+  'gc-user-004': { userId: 'did:privy:gc-004', walletAddress: '0x0000000000000000000000000000000000010004', email: 'john@wycliffe.org', name: 'John Chesnut', org: 'Wycliffe Bible Translators', role: 'Director' },
+  'gc-user-005': { userId: 'did:privy:gc-005', walletAddress: '0x0000000000000000000000000000000000010005', email: 'david@ncf.org', name: 'David Wills', org: 'National Christian Foundation', role: 'President' },
+}
+
 export async function getSession(): Promise<AuthSession | null> {
   if (SKIP_AUTH) {
+    const cookieStore = await cookies()
+    const demoUser = cookieStore.get('demo-user')?.value ?? 'test-user-001'
+    const user = DEMO_USERS[demoUser] ?? DEMO_USERS['test-user-001']
     return {
-      userId: 'did:privy:test-user-001',
-      walletAddress: TEST_WALLET_ADDRESS,
-      email: 'testuser@example.com',
+      userId: user.userId,
+      walletAddress: user.walletAddress,
+      email: user.email,
     }
   }
 

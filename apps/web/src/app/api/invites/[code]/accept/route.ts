@@ -3,7 +3,32 @@ import { eq, and } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { getSession } from '@/lib/auth/session'
 import { getPublicClient, getWalletClient, createRelationship, confirmRelationship } from '@/lib/contracts'
-import { agentControlAbi, ORGANIZATION_GOVERNANCE, ROLE_OWNER } from '@smart-agent/sdk'
+import {
+  agentControlAbi,
+  ORGANIZATION_GOVERNANCE, ORGANIZATION_MEMBERSHIP, REVIEW_RELATIONSHIP, SERVICE_AGREEMENT,
+  ROLE_OWNER, ROLE_ADMIN, ROLE_MEMBER, ROLE_TREASURER, ROLE_BOARD_MEMBER,
+  ROLE_AUDITOR, ROLE_OPERATOR, ROLE_EMPLOYEE, ROLE_CONTRACTOR,
+  ROLE_REVIEWER, ROLE_AUTHORIZED_SIGNER, ROLE_CEO, ROLE_SERVICE_PROVIDER, ROLE_ADVISOR,
+} from '@smart-agent/sdk'
+import { keccak256, toBytes } from 'viem'
+
+/** Map role strings from invites to SDK role constants and relationship types */
+const ROLE_MAP: Record<string, { role: `0x${string}`; relType: `0x${string}`; isOwner: boolean }> = {
+  'owner': { role: ROLE_OWNER as `0x${string}`, relType: ORGANIZATION_GOVERNANCE as `0x${string}`, isOwner: true },
+  'ceo': { role: ROLE_CEO as `0x${string}`, relType: ORGANIZATION_GOVERNANCE as `0x${string}`, isOwner: true },
+  'treasurer': { role: ROLE_TREASURER as `0x${string}`, relType: ORGANIZATION_GOVERNANCE as `0x${string}`, isOwner: false },
+  'authorized-signer': { role: ROLE_AUTHORIZED_SIGNER as `0x${string}`, relType: ORGANIZATION_GOVERNANCE as `0x${string}`, isOwner: true },
+  'board-member': { role: ROLE_BOARD_MEMBER as `0x${string}`, relType: ORGANIZATION_GOVERNANCE as `0x${string}`, isOwner: false },
+  'advisor': { role: ROLE_ADVISOR as `0x${string}`, relType: ORGANIZATION_GOVERNANCE as `0x${string}`, isOwner: false },
+  'admin': { role: ROLE_ADMIN as `0x${string}`, relType: ORGANIZATION_MEMBERSHIP as `0x${string}`, isOwner: false },
+  'member': { role: ROLE_MEMBER as `0x${string}`, relType: ORGANIZATION_MEMBERSHIP as `0x${string}`, isOwner: false },
+  'operator': { role: ROLE_OPERATOR as `0x${string}`, relType: ORGANIZATION_MEMBERSHIP as `0x${string}`, isOwner: false },
+  'employee': { role: ROLE_EMPLOYEE as `0x${string}`, relType: ORGANIZATION_MEMBERSHIP as `0x${string}`, isOwner: false },
+  'contractor': { role: ROLE_CONTRACTOR as `0x${string}`, relType: SERVICE_AGREEMENT as `0x${string}`, isOwner: false },
+  'service-provider': { role: ROLE_SERVICE_PROVIDER as `0x${string}`, relType: SERVICE_AGREEMENT as `0x${string}`, isOwner: false },
+  'auditor': { role: ROLE_AUDITOR as `0x${string}`, relType: ORGANIZATION_MEMBERSHIP as `0x${string}`, isOwner: false },
+  'reviewer': { role: ROLE_REVIEWER as `0x${string}`, relType: REVIEW_RELATIONSHIP as `0x${string}`, isOwner: false },
+}
 
 export async function POST(request: Request, { params }: { params: Promise<{ code: string }> }) {
   try {
@@ -19,8 +44,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ cod
       .limit(1)
 
     const invite = invites[0]
-    if (!invite) return NextResponse.json({ error: 'Invalid or expired invite' }, { status: 400 })
-    if (new Date(invite.expiresAt) < new Date()) return NextResponse.json({ error: 'Invite expired' }, { status: 400 })
+    if (!invite) return NextResponse.json({ error: 'Invalid or expired invitation' }, { status: 400 })
+    if (new Date(invite.expiresAt) < new Date()) return NextResponse.json({ error: 'This invitation has expired' }, { status: 400 })
 
     // Get user
     const users = await db.select().from(schema.users)
@@ -28,16 +53,42 @@ export async function POST(request: Request, { params }: { params: Promise<{ cod
     const user = users[0]
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 400 })
 
-    // Get user's person agent (needed for relationship edge)
-    const personAgents = await db.select().from(schema.personAgents)
+    // Get or auto-deploy person agent
+    let personAgents = await db.select().from(schema.personAgents)
       .where(eq(schema.personAgents.userId, user.id)).limit(1)
+
+    if (!personAgents[0]) {
+      // Auto-deploy person agent for the user
+      try {
+        const { deploySmartAccount } = await import('@/lib/contracts')
+        const salt = BigInt(Date.now())
+        const address = await deploySmartAccount(session.walletAddress as `0x${string}`, salt)
+        await db.insert(schema.personAgents).values({
+          id: crypto.randomUUID(),
+          name: user.name,
+          userId: user.id,
+          smartAccountAddress: address,
+          chainId: Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? '31337'),
+          salt: salt.toString(),
+          status: 'deployed',
+        })
+        personAgents = await db.select().from(schema.personAgents)
+          .where(eq(schema.personAgents.userId, user.id)).limit(1)
+      } catch (e) {
+        console.warn('Failed to auto-deploy person agent:', e)
+      }
+    }
+
+    // Resolve the role mapping
+    const roleKey = invite.role
+    const mapping = ROLE_MAP[roleKey] ?? ROLE_MAP['member']
 
     const walletClient = getWalletClient()
     const publicClient = getPublicClient()
     const controlAddr = process.env.AGENT_CONTROL_ADDRESS as `0x${string}`
 
-    // 1. Add as owner on AgentControl
-    if (controlAddr && invite.role === 'owner') {
+    // 1. If this role grants owner status, add as on-chain owner
+    if (controlAddr && mapping.isOwner) {
       try {
         const hash = await walletClient.writeContract({
           address: controlAddr,
@@ -51,61 +102,46 @@ export async function POST(request: Request, { params }: { params: Promise<{ cod
       }
     }
 
-    // 2. Create ownership relationship edge: person agent → org agent [owner]
-    //    This makes the org show up in the person's "my agents" list
+    // 2. Create relationship edge with the correct role
     if (personAgents[0]) {
       try {
         const edgeId = await createRelationship({
           subject: personAgents[0].smartAccountAddress as `0x${string}`,
           object: invite.agentAddress as `0x${string}`,
-          roles: [ROLE_OWNER],
-          relationshipType: ORGANIZATION_GOVERNANCE,
+          roles: [mapping.role],
+          relationshipType: mapping.relType,
         })
-
-        // Auto-confirm since this is an accepted invite
         await confirmRelationship(edgeId)
       } catch (e) {
         console.warn('Failed to create relationship edge (may already exist):', e)
       }
     }
 
-    // 3. Add the org agent to the person's "created by" list in DB
-    //    so it shows in their dashboard
-    try {
-      // Check if org already in their list
-      const existingOrg = await db.select().from(schema.orgAgents)
-        .where(eq(schema.orgAgents.smartAccountAddress, invite.agentAddress)).limit(1)
-
-      // Don't change createdBy — instead, the relationship edge is what makes it
-      // show up. We could add a separate "associated orgs" table but for now
-      // the relationship edge handles this.
-    } catch { /* non-fatal */ }
-
-    // 4. Mark invite accepted
+    // 3. Mark invite accepted
     await db.update(schema.invites).set({
       status: 'accepted',
       acceptedBy: user.id,
       acceptedAt: new Date().toISOString(),
     }).where(eq(schema.invites.id, invite.id))
 
-    // 5. Notify inviter
+    // 4. Notify inviter
     await db.insert(schema.messages).values({
       id: crypto.randomUUID(),
       userId: invite.createdBy,
       type: 'invite_accepted',
-      title: `Invite accepted`,
-      body: `${user.name} accepted your invite to become ${invite.role} of ${invite.agentName}`,
-      link: `/agents/${invite.agentAddress}`,
+      title: 'Invitation accepted',
+      body: `${user.name} joined ${invite.agentName} as ${roleKey}`,
+      link: `/team`,
     })
 
-    // 6. Notify acceptor
+    // 5. Notify acceptor
     await db.insert(schema.messages).values({
       id: crypto.randomUUID(),
       userId: user.id,
       type: 'ownership_accepted',
       title: `Welcome to ${invite.agentName}`,
-      body: `You are now a ${invite.role} of ${invite.agentName}. The agent will appear in your dashboard.`,
-      link: `/agents/${invite.agentAddress}`,
+      body: `You are now ${roleKey} of ${invite.agentName}.`,
+      link: `/dashboard`,
     })
 
     return NextResponse.json({ success: true })

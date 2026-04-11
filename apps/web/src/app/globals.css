@@ -2,29 +2,31 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg: #0a0a0f;
-  --bg-card: #12121a;
-  --bg-hover: #1a1a2e;
-  --border: #2a2a3e;
-  --text: #e4e4ef;
-  --text-muted: #8888a0;
-  --accent: #6366f1;
-  --accent-hover: #818cf8;
-  --success: #22c55e;
-  --warning: #f59e0b;
-  --danger: #ef4444;
-  --radius: 12px;
-  --radius-sm: 8px;
+  --bg: #f8f9fa;
+  --bg-card: #ffffff;
+  --bg-hover: #f0f1f3;
+  --border: #e2e4e8;
+  --text: #1a1a2e;
+  --text-muted: #6b7280;
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --success: #059669;
+  --warning: #d97706;
+  --danger: #dc2626;
+  --radius: 8px;
+  --radius-sm: 6px;
 }
 
-html { color-scheme: dark; }
+html { color-scheme: light; }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background: var(--bg);
   color: var(--text);
   line-height: 1.6;
   min-height: 100vh;
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
 }
 
 a { color: var(--accent); text-decoration: none; }
@@ -63,13 +65,10 @@ a:hover { color: var(--accent-hover); }
 
 [data-component="hero"] h1 {
   font-size: 3.5rem;
-  font-weight: 800;
-  background: linear-gradient(135deg, var(--accent), #a78bfa, #ec4899);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  font-weight: 700;
+  color: #e8e8ed;
   margin-bottom: 1rem;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
 }
 
 [data-component="hero"] p {
@@ -105,11 +104,11 @@ button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
   padding: 1rem 2.5rem;
   font-size: 1.1rem;
   border-radius: var(--radius);
-  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.3);
+  box-shadow: 0 4px 20px rgba(37, 99, 235, 0.3);
 }
 
 [data-component="connect-wallet-btn"]:hover:not(:disabled) {
-  box-shadow: 0 6px 30px rgba(99, 102, 241, 0.5);
+  box-shadow: 0 6px 30px rgba(37, 99, 235, 0.5);
 }
 
 [data-component="connect-wallet-btn"][data-state="connected"] {
@@ -140,12 +139,10 @@ button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 [data-component="global-nav"] { flex: 1; }
 
 [data-component="app-header"] > a:first-child {
-  font-size: 1.25rem;
-  font-weight: 700;
-  background: linear-gradient(135deg, var(--accent), #a78bfa);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: -0.02em;
 }
 
 [data-component="global-nav"] {
@@ -404,7 +401,7 @@ input[type="text"], input[type="email"], textarea {
 
 input:focus, textarea:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
 textarea { resize: vertical; }
@@ -542,7 +539,7 @@ textarea { resize: vertical; }
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  background: rgba(99, 102, 241, 0.15);
+  background: rgba(37, 99, 235, 0.15);
   color: var(--accent);
 }
 
@@ -1339,3 +1336,18 @@ textarea { resize: vertical; }
 [data-component="notification-item"] strong { display: block; font-size: 0.8rem; margin-bottom: 0.15rem; }
 [data-component="notification-item"] p { font-size: 0.75rem; color: var(--text-muted); margin: 0; }
 [data-component="notification-time"] { font-size: 0.65rem; color: var(--text-muted); }
+
+/* ─── Setup Layout ────────────────────────────────────────────────── */
+[data-layout="setup"] { min-height: 100vh; background: var(--bg); color: var(--text); }
+[data-component="setup-header"] {
+  padding: 1.5rem 2rem; border-bottom: 1px solid var(--border);
+}
+[data-component="setup-content"] {
+  max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem;
+}
+
+/* ─── Active Nav State ────────────────────────────────────────────── */
+[data-component="global-nav"] a[data-active="true"] {
+  color: var(--accent); border-bottom: 2px solid var(--accent);
+  padding-bottom: 0.25rem;
+}

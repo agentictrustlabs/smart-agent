@@ -16,6 +16,7 @@ import { eq } from 'drizzle-orm'
 import { toDidEthr } from '@smart-agent/sdk'
 import { keccak256, toBytes } from 'viem'
 import { AgentSettingsClient } from './AgentSettingsClient'
+import { AgentSubNav } from '@/components/nav/AgentSubNav'
 
 const REC_NAMES: Record<string, string> = {
   [keccak256(toBytes('endorses'))]: 'endorses', [keccak256(toBytes('recommends'))]: 'recommends',
@@ -322,6 +323,81 @@ export default async function AgentSettingsPage({
     }
   } catch { /* table may not exist */ }
 
+  // Also derive authority from relationship edges (roles imply delegation authority)
+  const ROLE_AUTHORITY: Record<string, { description: string; bounds: string[] }> = {
+    'owner': { description: 'Full authority over organization', bounds: ['All methods', 'All targets', 'No spending limit'] },
+    'ceo': { description: 'Executive authority', bounds: ['All methods', 'All targets', 'No spending limit'] },
+    'treasurer': { description: 'Financial management authority', bounds: ['Time Window', 'Spending Limit', 'Allowed Targets'] },
+    'authorized-signer': { description: 'Transaction signing authority', bounds: ['Time Window', 'Spending Limit'] },
+    'board-member': { description: 'Governance proposal and approval authority', bounds: ['Allowed Methods (proposals)'] },
+    'admin': { description: 'Administrative operations', bounds: ['Allowed Methods', 'Allowed Targets'] },
+    'operator': { description: 'Operational execution authority', bounds: ['Time Window', 'Allowed Methods', 'Allowed Targets'] },
+    'reviewer': { description: 'Review submission authority', bounds: ['Time Window', 'Allowed Methods (createReview)', 'Allowed Targets (ReviewRecord)'] },
+    'auditor': { description: 'Read-only audit access', bounds: ['Allowed Methods (view only)'] },
+    'validator': { description: 'Validation and endorsement authority', bounds: ['Allowed Methods', 'Allowed Targets'] },
+  }
+
+  // For person agents: show authority from their org relationships
+  if (agentType === 'person') {
+    for (const rel of relationships) {
+      if (rel.direction !== '→') continue // outgoing = this person → some org
+      for (const role of rel.roles) {
+        const auth = ROLE_AUTHORITY[role]
+        if (!auth) continue
+        // Check if we already have an explicit delegation for this
+        const hasExplicit = delegations.some(d =>
+          d.counterpartyAddr.toLowerCase() === rel.counterpartyAddr.toLowerCase()
+        )
+        if (!hasExplicit) {
+          delegations.push({
+            id: `role-${rel.edgeId}-${role}`,
+            role: `${auth.description} at`,
+            counterparty: rel.counterparty,
+            counterpartyAddr: rel.counterpartyAddr,
+            direction: 'outgoing',
+            status: rel.status === 'Active' ? 'active' : 'proposed',
+            createdAt: '',
+            expiresAt: 'Permanent (role-based)',
+            delegator: rel.counterpartyAddr,
+            delegate: agentAddress,
+            caveats: auth.bounds.map(b => ({ name: b, enforcer: '' })),
+            authority: 'Role',
+          })
+        }
+      }
+    }
+  }
+
+  // For org agents: show authority granted TO people
+  if (agentType === 'org' || agentType === 'ai') {
+    for (const rel of relationships) {
+      if (rel.direction !== '←') continue // incoming = some person → this org
+      for (const role of rel.roles) {
+        const auth = ROLE_AUTHORITY[role]
+        if (!auth) continue
+        const hasExplicit = delegations.some(d =>
+          d.counterpartyAddr.toLowerCase() === rel.counterpartyAddr.toLowerCase()
+        )
+        if (!hasExplicit) {
+          delegations.push({
+            id: `role-${rel.edgeId}-${role}`,
+            role: `Granted ${role} authority to`,
+            counterparty: rel.counterparty,
+            counterpartyAddr: rel.counterpartyAddr,
+            direction: 'incoming',
+            status: rel.status === 'Active' ? 'active' : 'proposed',
+            createdAt: '',
+            expiresAt: 'Permanent (role-based)',
+            delegator: agentAddress,
+            delegate: rel.counterpartyAddr,
+            caveats: auth.bounds.map(b => ({ name: b, enforcer: '' })),
+            authority: 'Role',
+          })
+        }
+      }
+    }
+  }
+
   // ─── Helpers ───────────────────────────────────────────────────────
   const typeLabel = agentType === 'ai' ? 'AI Agent' : agentType === 'org' ? 'Organization' : 'Person Agent'
   const aiSubtype = aiAgent?.[0] ? (aiAgent[0] as { agentType?: string }).agentType : null
@@ -329,7 +405,7 @@ export default async function AgentSettingsPage({
   function TrustScoreBar({ score, passes }: { score: number; passes: boolean }) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-        <div style={{ flex: 1, height: 8, background: '#1a1a2e', borderRadius: 4, overflow: 'hidden' }}>
+        <div style={{ flex: 1, height: 8, background: '#f0f1f3', borderRadius: 4, overflow: 'hidden' }}>
           <div style={{ width: `${score}%`, height: '100%', background: passes ? '#22c55e' : score >= 40 ? '#f59e0b' : '#ef4444', borderRadius: 4, transition: 'width 0.3s' }} />
         </div>
         <span style={{ fontWeight: 700, fontSize: '0.9rem', minWidth: 40 }}>{score}</span>
@@ -348,10 +424,13 @@ export default async function AgentSettingsPage({
             <span data-component="role-badge" data-status="active">{typeLabel}</span>
             {aiSubtype && <span data-component="role-badge">{aiSubtype}</span>}
           </div>
-          <Link href={`/agents/${agentAddress}/metadata`} data-component="section-action">Edit Metadata</Link>
+          <Link href={`/agents/${agentAddress}/communicate`} data-component="section-action" style={{ marginRight: '0.5rem' }}>Communicate</Link>
+          <Link href={`/agents/${agentAddress}/metadata`} data-component="section-action">Metadata</Link>
         </div>
         {agentDescription && <p>{agentDescription}</p>}
       </div>
+
+      <AgentSubNav address={agentAddress} />
 
       {/* ─── Identity Card ─────────────────────────────────────────── */}
       <div data-component="protocol-info">
@@ -360,7 +439,7 @@ export default async function AgentSettingsPage({
           <dt>DID</dt><dd style={{ fontSize: '0.8rem', fontFamily: 'monospace' }}>{toDidEthr(CHAIN_ID, agentAddress)}</dd>
           <dt>On-Chain Owners</dt><dd>{ownerCount}</dd>
           {aiAgent?.[0] && (aiAgent[0] as { operatedBy?: string }).operatedBy && (
-            <><dt>Operated By</dt><dd><Link href={`/agents/${(aiAgent[0] as { operatedBy: string }).operatedBy}`} style={{ color: '#6366f1' }}>{getName((aiAgent[0] as { operatedBy: string }).operatedBy)}</Link></dd></>
+            <><dt>Operated By</dt><dd><Link href={`/agents/${(aiAgent[0] as { operatedBy: string }).operatedBy}`} style={{ color: '#2563eb' }}>{getName((aiAgent[0] as { operatedBy: string }).operatedBy)}</Link></dd></>
           )}
         </dl>
       </div>
@@ -397,7 +476,7 @@ export default async function AgentSettingsPage({
             )}
           </div>
           {resolverMetadataURI && (
-            <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#8888a0' }}>
+            <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#6b7280' }}>
               Metadata URI: <code>{resolverMetadataURI.slice(0, 50)}{resolverMetadataURI.length > 50 ? '...' : ''}</code>
             </div>
           )}
@@ -412,38 +491,38 @@ export default async function AgentSettingsPage({
           {/* Discovery Trust */}
           <div data-component="protocol-info">
             <h3>Discovery Trust</h3>
-            <p style={{ fontSize: '0.8rem', color: '#8888a0', margin: '0.25rem 0 0.75rem' }}>
+            <p style={{ fontSize: '0.8rem', color: '#6b7280', margin: '0.25rem 0 0.75rem' }}>
               Can this agent be found and relied upon? Measures organizational backing,
               community feedback, and whether the agent has been independently validated.
             </p>
             <TrustScoreBar score={Number(discoveryTrust.score)} passes={discoveryTrust.passes} />
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem', marginTop: '0.75rem', fontSize: '0.8rem' }}>
-              <div><span style={{ color: '#8888a0' }}>Edges</span><br /><strong>{Number(discoveryTrust.edgeCount)}</strong></div>
-              <div><span style={{ color: '#8888a0' }}>Reviews</span><br /><strong>{Number(discoveryTrust.reviewCount)}</strong> (avg {Number(discoveryTrust.avgReviewScore)})</div>
-              <div><span style={{ color: '#8888a0' }}>TEE</span><br /><strong>{Number(discoveryTrust.validationCount)}</strong></div>
+              <div><span style={{ color: '#6b7280' }}>Edges</span><br /><strong>{Number(discoveryTrust.edgeCount)}</strong></div>
+              <div><span style={{ color: '#6b7280' }}>Reviews</span><br /><strong>{Number(discoveryTrust.reviewCount)}</strong> (avg {Number(discoveryTrust.avgReviewScore)})</div>
+              <div><span style={{ color: '#6b7280' }}>TEE</span><br /><strong>{Number(discoveryTrust.validationCount)}</strong></div>
             </div>
           </div>
 
           {/* Execution Trust */}
           <div data-component="protocol-info">
             <h3>Execution Trust</h3>
-            <p style={{ fontSize: '0.8rem', color: '#8888a0', margin: '0.25rem 0 0.75rem' }}>
+            <p style={{ fontSize: '0.8rem', color: '#6b7280', margin: '0.25rem 0 0.75rem' }}>
               Can this agent safely execute tasks on your behalf? Weighs delegation authority,
               TEE validation (code runs in verified hardware), review quality, and dispute history.
             </p>
             <TrustScoreBar score={Number(executionTrust.score)} passes={executionTrust.passes} />
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '0.5rem', marginTop: '0.75rem', fontSize: '0.8rem' }}>
-              <div><span style={{ color: '#8888a0' }}>Delegations</span><br /><strong>{delegations.filter(d => d.status === 'active').length}</strong></div>
-              <div><span style={{ color: '#8888a0' }}>TEE</span><br /><strong>{Number(executionTrust.validationCount)}</strong></div>
-              <div><span style={{ color: '#8888a0' }}>Edges</span><br /><strong>{Number(executionTrust.edgeCount)}</strong></div>
-              <div><span style={{ color: '#8888a0' }}>Disputes</span><br /><strong>{Number(executionTrust.openDisputes)}</strong></div>
+              <div><span style={{ color: '#6b7280' }}>Delegations</span><br /><strong>{delegations.filter(d => d.status === 'active').length}</strong></div>
+              <div><span style={{ color: '#6b7280' }}>TEE</span><br /><strong>{Number(executionTrust.validationCount)}</strong></div>
+              <div><span style={{ color: '#6b7280' }}>Edges</span><br /><strong>{Number(executionTrust.edgeCount)}</strong></div>
+              <div><span style={{ color: '#6b7280' }}>Disputes</span><br /><strong>{Number(executionTrust.openDisputes)}</strong></div>
             </div>
           </div>
 
           {/* Runtime Trust */}
           <div data-component="protocol-info" style={{ gridColumn: 'span 2' }}>
             <h3>Runtime Trust</h3>
-            <p style={{ fontSize: '0.8rem', color: '#8888a0', margin: '0.25rem 0 0.75rem' }}>
+            <p style={{ fontSize: '0.8rem', color: '#6b7280', margin: '0.25rem 0 0.75rem' }}>
               Is the agent running verified code inside tamper-proof hardware?
               This profile is dominated by TEE attestation — a hardware-backed proof that
               the agent&apos;s code matches a published measurement and hasn&apos;t been modified.
@@ -451,10 +530,10 @@ export default async function AgentSettingsPage({
             </p>
             <TrustScoreBar score={Number(runtimeTrust.score)} passes={runtimeTrust.passes} />
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '0.5rem', marginTop: '0.75rem', fontSize: '0.8rem' }}>
-              <div><span style={{ color: '#8888a0' }}>TEE Validations</span><br /><strong>{Number(runtimeTrust.validationCount)}</strong></div>
-              <div><span style={{ color: '#8888a0' }}>Edges</span><br /><strong>{Number(runtimeTrust.edgeCount)}</strong></div>
-              <div><span style={{ color: '#8888a0' }}>Reviews</span><br /><strong>{Number(runtimeTrust.reviewCount)}</strong></div>
-              <div><span style={{ color: '#8888a0' }}>Disputes</span><br /><strong>{Number(runtimeTrust.openDisputes)}</strong></div>
+              <div><span style={{ color: '#6b7280' }}>TEE Validations</span><br /><strong>{Number(runtimeTrust.validationCount)}</strong></div>
+              <div><span style={{ color: '#6b7280' }}>Edges</span><br /><strong>{Number(runtimeTrust.edgeCount)}</strong></div>
+              <div><span style={{ color: '#6b7280' }}>Reviews</span><br /><strong>{Number(runtimeTrust.reviewCount)}</strong></div>
+              <div><span style={{ color: '#6b7280' }}>Disputes</span><br /><strong>{Number(runtimeTrust.openDisputes)}</strong></div>
             </div>
           </div>
         </div>
@@ -470,7 +549,7 @@ export default async function AgentSettingsPage({
               {relationships.map((r) => (
                 <tr key={r.edgeId}>
                   <td>{r.direction}</td>
-                  <td><Link href={`/agents/${r.counterpartyAddr}`} style={{ color: '#6366f1' }}>{r.counterparty}</Link></td>
+                  <td><Link href={`/agents/${r.counterpartyAddr}`} style={{ color: '#2563eb' }}>{r.counterparty}</Link></td>
                   <td><span data-component="role-badge">{r.type}</span></td>
                   <td>{r.roles.map((role) => <span key={role} data-component="role-badge" style={{ marginRight: 4 }}>{role}</span>)}</td>
                   <td><span data-component="role-badge" data-status={r.status === 'Active' ? 'active' : r.status === 'Proposed' ? 'proposed' : 'revoked'}>{r.status}</span></td>
@@ -484,7 +563,7 @@ export default async function AgentSettingsPage({
       {/* ─── Delegations ───────────────────────────────────────────── */}
       <section data-component="graph-section">
         <h2>Delegations ({delegations.length})</h2>
-        <p style={{ fontSize: '0.8rem', color: '#8888a0', marginBottom: '1rem' }}>
+        <p style={{ fontSize: '0.8rem', color: '#6b7280', marginBottom: '1rem' }}>
           Delegations authorize another agent to act on this agent&apos;s behalf via DelegationManager (ERC-7710).
           Each delegation is signed, time-bounded, and restricted by caveat enforcers.
         </p>
@@ -494,8 +573,8 @@ export default async function AgentSettingsPage({
           delegations.map((d) => (
             <div key={d.id} data-component="protocol-info" style={{ marginBottom: '1rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                <span style={{ fontSize: '0.8rem', color: '#8888a0' }}>{d.role}</span>
-                <Link href={`/agents/${d.counterpartyAddr}`} style={{ color: '#6366f1', fontWeight: 600 }}>{d.counterparty}</Link>
+                <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>{d.role}</span>
+                <Link href={`/agents/${d.counterpartyAddr}`} style={{ color: '#2563eb', fontWeight: 600 }}>{d.counterparty}</Link>
                 <span data-component="role-badge" data-status={d.status === 'active' ? 'active' : d.status === 'expired' ? 'revoked' : 'proposed'}>{d.status}</span>
               </div>
               <dl>
@@ -534,7 +613,7 @@ export default async function AgentSettingsPage({
                   <td>{r.reviewer}</td>
                   <td><strong>{r.score}</strong>/100</td>
                   <td><span data-component="role-badge" data-status={r.recommendation === 'endorses' || r.recommendation === 'recommends' ? 'active' : r.recommendation === 'flags' || r.recommendation === 'disputes' ? 'revoked' : 'proposed'}>{r.recommendation}</span></td>
-                  <td style={{ maxWidth: 300, fontSize: '0.8rem', color: '#8888a0' }}>{r.comment}</td>
+                  <td style={{ maxWidth: 300, fontSize: '0.8rem', color: '#6b7280' }}>{r.comment}</td>
                 </tr>
               ))}
             </tbody>
@@ -546,7 +625,7 @@ export default async function AgentSettingsPage({
       <section data-component="graph-section">
         <h2>TEE Validations ({validations.length})</h2>
         {validations.length === 0 ? (
-          <p data-component="text-muted">No TEE validations recorded. <Link href="/tee/simulate" style={{ color: '#6366f1' }}>Simulate one</Link></p>
+          <p data-component="text-muted">No TEE validations recorded. <Link href="/tee/simulate" style={{ color: '#2563eb' }}>Simulate one</Link></p>
         ) : (
           <table data-component="graph-table">
             <thead><tr><th>Architecture</th><th>Method</th><th>Code Measurement</th><th>Validator</th><th>Date</th></tr></thead>
@@ -557,7 +636,7 @@ export default async function AgentSettingsPage({
                   <td><span data-component="role-badge" data-status="active">{v.method}</span></td>
                   <td style={{ fontFamily: 'monospace', fontSize: '0.7rem' }} title={v.codeMeasurement}>{v.codeMeasurement.slice(0, 10)}...{v.codeMeasurement.slice(-8)}</td>
                   <td>{v.validatedBy}</td>
-                  <td style={{ fontSize: '0.8rem', color: '#8888a0' }}>{v.date}</td>
+                  <td style={{ fontSize: '0.8rem', color: '#6b7280' }}>{v.date}</td>
                 </tr>
               ))}
             </tbody>
@@ -577,7 +656,7 @@ export default async function AgentSettingsPage({
                   <td>{d.filedBy}</td>
                   <td><span data-component="role-badge">{d.type}</span></td>
                   <td><span data-component="role-badge" data-status={d.status === 'open' ? 'proposed' : d.status === 'upheld' ? 'revoked' : 'active'}>{d.status}</span></td>
-                  <td style={{ maxWidth: 300, fontSize: '0.8rem', color: '#8888a0' }}>{d.reason}</td>
+                  <td style={{ maxWidth: 300, fontSize: '0.8rem', color: '#6b7280' }}>{d.reason}</td>
                 </tr>
               ))}
             </tbody>

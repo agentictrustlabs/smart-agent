@@ -91,14 +91,14 @@ export function DeployAIAgentClient({ orgAgents }: { orgAgents: OrgAgent[] }) {
           </button>
         ))}
       </div>
-      <p style={{ fontSize: '0.8rem', color: '#8888a0' }}>
+      <p style={{ fontSize: '0.8rem', color: '#6b7280' }}>
         {AI_TYPES.find((t) => t.value === agentType)?.desc}
       </p>
 
       {orgAgents.length > 0 && (
         <>
           <h3 style={{ marginTop: '1.5rem' }}>Operating Organization</h3>
-          <p style={{ fontSize: '0.85rem', color: '#8888a0', marginBottom: '0.5rem' }}>
+          <p style={{ fontSize: '0.85rem', color: '#6b7280', marginBottom: '0.5rem' }}>
             Which organization operates this AI agent? An OrganizationalControl relationship will be created.
           </p>
           <div data-component="form-field">

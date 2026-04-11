@@ -5,13 +5,16 @@ import { eq } from 'drizzle-orm'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { getEdgesByObject, getEdgesBySubject, getEdge, getEdgeRoles } from '@/lib/contracts'
 import { roleName, toDidEthr, ROLE_OWNER } from '@smart-agent/sdk'
-import { getAgentMetadata, type AgentMetadata } from '@/lib/agent-metadata'
+import { getAgentMetadata, buildAgentNameMap, getNameFromMap, type AgentMetadata } from '@/lib/agent-metadata'
+import { getSelectedOrg } from '@/lib/get-selected-org'
 
 const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? '31337')
 
-export default async function DashboardPage() {
+export default async function DashboardPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const currentUser = await getCurrentUser()
   if (!currentUser) redirect('/')
+  const params = await searchParams
+  const selectedOrg = await getSelectedOrg(currentUser.id, params)
 
   const personAgents = await db
     .select()
@@ -74,8 +77,12 @@ export default async function DashboardPage() {
     try { agentMeta.set(addr.toLowerCase(), await getAgentMetadata(addr)) } catch {}
   }
 
+  // Build name lookup for edges
+  const nameMap = await buildAgentNameMap()
+  const getName = (a: string) => getNameFromMap(nameMap, a)
+
   // Fetch relationship edges for each org
-  type EdgeView = { subject: string; roles: string[]; status: string }
+  type EdgeView = { subject: string; subjectName: string; roles: string[]; status: string }
   type OrgWithEdges = (typeof orgAgents)[number] & { edges: EdgeView[] }
 
   const orgsWithEdges: OrgWithEdges[] = []
@@ -90,6 +97,7 @@ export default async function DashboardPage() {
         const statusLabels = ['none', 'proposed', 'confirmed', 'active', 'suspended', 'revoked', 'rejected']
         edges.push({
           subject: e.subject,
+          subjectName: getName(e.subject),
           roles: roleHashes.map((r) => roleName(r)),
           status: statusLabels[e.status] ?? 'unknown',
         })
@@ -103,12 +111,24 @@ export default async function DashboardPage() {
   return (
     <div data-page="dashboard">
       <div data-component="page-header">
-        <h1>Agent Dashboard</h1>
-        <p>Welcome, {currentUser.name}</p>
-        <p data-component="wallet-address">
-          EOA: {currentUser.walletAddress.slice(0, 6)}...{currentUser.walletAddress.slice(-4)}
-        </p>
+        <h1>{selectedOrg ? selectedOrg.name : 'Dashboard'}</h1>
+        <p>Welcome, {currentUser.name}{selectedOrg ? ` — managing ${selectedOrg.name}` : ''}</p>
       </div>
+
+      {/* No org = show getting started */}
+      {!selectedOrg && !personAgent && (
+        <div data-component="empty-state" style={{ textAlign: 'center', padding: '3rem' }}>
+          <h2 style={{ marginBottom: '0.5rem' }}>Welcome</h2>
+          <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>
+            Get started by creating your organization or joining an existing one.
+          </p>
+          <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
+            <Link href="/setup"><button>New Organization</button></Link>
+            <Link href="/setup/join"><button style={{ background: '#e5e7eb', color: '#1a1a2e' }}>Join Organization</button></Link>
+            <Link href="/deploy/person"><button style={{ background: 'transparent', border: '1px solid #e2e4e8', color: '#1a1a2e' }}>Create Personal Account</button></Link>
+          </div>
+        </div>
+      )}
 
       <section data-component="agent-section">
         <h2>Person Agent (Your 4337 Account)</h2>
@@ -130,7 +150,7 @@ export default async function DashboardPage() {
             </dl>
             {agentMeta.get(personAgent.smartAccountAddress.toLowerCase())?.capabilities?.length ? (
               <div style={{ marginTop: '0.5rem' }}>
-                <span style={{ fontSize: '0.7rem', color: '#8888a0' }}>Capabilities: </span>
+                <span style={{ fontSize: '0.7rem', color: '#6b7280' }}>Capabilities: </span>
                 {agentMeta.get(personAgent.smartAccountAddress.toLowerCase())!.capabilities.map(c => <span key={c} data-component="role-badge" style={{ fontSize: '0.65rem', marginRight: 2 }}>{c}</span>)}
               </div>
             ) : null}
@@ -185,7 +205,7 @@ export default async function DashboardPage() {
                         {org.edges.map((e, i) => (
                           <tr key={i}>
                             <td data-component="address">
-                              {e.subject.slice(0, 6)}...{e.subject.slice(-4)}
+                              {e.subjectName}
                             </td>
                             <td data-component="role-list">
                               {e.roles.map((r, j) => (
@@ -247,13 +267,13 @@ export default async function DashboardPage() {
                 </dl>
                 {am?.capabilities && am.capabilities.length > 0 && (
                   <div style={{ marginTop: '0.5rem' }}>
-                    <span style={{ fontSize: '0.7rem', color: '#8888a0' }}>Capabilities: </span>
+                    <span style={{ fontSize: '0.7rem', color: '#6b7280' }}>Capabilities: </span>
                     {am.capabilities.map(c => <span key={c} data-component="role-badge" style={{ fontSize: '0.65rem', marginRight: 2 }}>{c}</span>)}
                   </div>
                 )}
                 {am?.trustModels && am.trustModels.length > 0 && (
                   <div style={{ marginTop: '0.25rem' }}>
-                    <span style={{ fontSize: '0.7rem', color: '#8888a0' }}>Trust: </span>
+                    <span style={{ fontSize: '0.7rem', color: '#6b7280' }}>Trust: </span>
                     {am.trustModels.map(t => <span key={t} data-component="role-badge" data-status="active" style={{ fontSize: '0.65rem', marginRight: 2 }}>{t}</span>)}
                   </div>
                 )}

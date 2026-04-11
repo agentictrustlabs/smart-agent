@@ -53,7 +53,7 @@ export function DeployOrgAgentClient() {
           <dt>Governance</dt>
           <dd>Min owners: {minOwners}, Quorum: {quorum}</dd>
         </dl>
-        <p style={{ color: '#8888a0', fontSize: '0.85rem', margin: '1rem 0' }}>
+        <p style={{ color: '#6b7280', fontSize: '0.85rem', margin: '1rem 0' }}>
           {Number(minOwners) > 1
             ? `This agent is in bootstrap mode — invite ${Number(minOwners) - 1} more co-owner(s) to activate governance.`
             : 'Governance is active. You can invite co-owners from the settings page.'}
@@ -85,7 +85,7 @@ export function DeployOrgAgentClient() {
       </div>
 
       <h3 style={{ marginTop: '1.5rem' }}>Multi-Sig Governance</h3>
-      <p style={{ fontSize: '0.85rem', color: '#8888a0', marginBottom: '1rem' }}>
+      <p style={{ fontSize: '0.85rem', color: '#6b7280', marginBottom: '1rem' }}>
         Configure how many owners are required and what quorum is needed.
         You are the first owner. Invite co-owners after creation from the agent settings page.
       </p>
@@ -95,7 +95,7 @@ export function DeployOrgAgentClient() {
           <label htmlFor="min-owners">Minimum Owners</label>
           <input id="min-owners" type="number" min="1" max="10" value={minOwners}
             onChange={(e) => setMinOwners(e.target.value)} />
-          <p style={{ fontSize: '0.7rem', color: '#8888a0' }}>
+          <p style={{ fontSize: '0.7rem', color: '#6b7280' }}>
             Agent stays in bootstrap until this many owners accept invites
           </p>
         </div>
@@ -103,7 +103,7 @@ export function DeployOrgAgentClient() {
           <label htmlFor="quorum">Quorum</label>
           <input id="quorum" type="number" min="1" max="10" value={quorum}
             onChange={(e) => setQuorum(e.target.value)} />
-          <p style={{ fontSize: '0.7rem', color: '#8888a0' }}>
+          <p style={{ fontSize: '0.7rem', color: '#6b7280' }}>
             Votes needed to approve proposals
           </p>
         </div>

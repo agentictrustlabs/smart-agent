@@ -4,12 +4,17 @@ import { useAuth } from '@/hooks/use-auth'
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef } from 'react'
 
+const SKIP_AUTH = process.env.NEXT_PUBLIC_SKIP_AUTH === 'true'
+
 export function AuthGate() {
   const { authenticated, ready, user } = useAuth()
   const router = useRouter()
   const hasRedirected = useRef(false)
 
   useEffect(() => {
+    // In demo mode, don't auto-redirect — let user pick from DemoLoginPicker
+    if (SKIP_AUTH) return
+
     if (!ready || !authenticated || !user || hasRedirected.current) return
     if (!user.wallet?.address) return
 

@@ -10,6 +10,7 @@ interface OnboardingClientProps {
 
 export function OnboardingClient({ currentName, currentEmail }: OnboardingClientProps) {
   const router = useRouter()
+  const [step, setStep] = useState<'profile' | 'choose'>('profile')
   const [name, setName] = useState(currentName === 'Agent User' ? '' : currentName)
   const [email, setEmail] = useState(currentEmail)
   const [saving, setSaving] = useState(false)
@@ -30,11 +31,34 @@ export function OnboardingClient({ currentName, currentEmail }: OnboardingClient
     })
 
     if (res.ok) {
-      router.push('/dashboard')
+      setStep('choose')
     } else {
       setError('Failed to save profile')
       setSaving(false)
     }
+  }
+
+  if (step === 'choose') {
+    return (
+      <div data-component="onboarding-form" style={{ textAlign: 'center' }}>
+        <h2 style={{ marginBottom: '0.5rem' }}>Welcome, {name}!</h2>
+        <p style={{ color: '#6b7280', marginBottom: '2rem' }}>What would you like to do?</p>
+        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+          <button onClick={() => router.push('/setup')} style={{ padding: '1.5rem 2rem', minWidth: 200 }}>
+            <strong style={{ display: 'block', marginBottom: '0.25rem' }}>New Organization</strong>
+            <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>Set up your organization with AI assistants</span>
+          </button>
+          <button onClick={() => router.push('/setup/join')} style={{ background: '#e5e7eb', color: '#1a1a2e', padding: '1.5rem 2rem', minWidth: 200 }}>
+            <strong style={{ display: 'block', marginBottom: '0.25rem' }}>Join an Organization</strong>
+            <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>I have an invitation</span>
+          </button>
+          <button onClick={() => router.push('/dashboard')} style={{ background: 'transparent', border: '1px solid #e2e4e8', color: '#1a1a2e', padding: '1.5rem 2rem', minWidth: 200 }}>
+            <strong style={{ display: 'block', marginBottom: '0.25rem' }}>Explore</strong>
+            <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>Browse the platform first</span>
+          </button>
+        </div>
+      </div>
+    )
   }
 
   return (

@@ -140,7 +140,7 @@ export default async function ReviewsPage() {
                   <td><span data-component="role-badge">{r.reviewType}</span></td>
                   <td><strong>{r.score}</strong>/100</td>
                   <td><span data-component="role-badge" data-status={signal === 'positive' ? 'active' : signal === 'negative' ? 'revoked' : 'proposed'}>{r.recommendation}</span></td>
-                  <td style={{ maxWidth: 300, fontSize: '0.8rem', color: '#8888a0' }}>{r.comment}</td>
+                  <td style={{ maxWidth: 300, fontSize: '0.8rem', color: '#6b7280' }}>{r.comment}</td>
                 </tr>
                 )
               })}
@@ -165,7 +165,7 @@ export default async function ReviewsPage() {
                   <td>{d.filedBy}</td>
                   <td><span data-component="role-badge">{d.disputeType}</span></td>
                   <td><span data-component="role-badge" data-status={d.status === 'open' ? 'proposed' : d.status === 'upheld' ? 'revoked' : 'active'}>{d.status}</span></td>
-                  <td style={{ maxWidth: 300, fontSize: '0.8rem', color: '#8888a0' }}>{d.reason}</td>
+                  <td style={{ maxWidth: 300, fontSize: '0.8rem', color: '#6b7280' }}>{d.reason}</td>
                 </tr>
               ))}
             </tbody>

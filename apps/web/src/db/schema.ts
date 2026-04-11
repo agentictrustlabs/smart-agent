@@ -50,6 +50,7 @@ export const orgAgents = sqliteTable('org_agents', {
     .notNull()
     .references(() => users.id),
   smartAccountAddress: text('smart_account_address').notNull(),
+  templateId: text('template_id'), // org template used (e.g., 'grant-org', 'service-business')
   chainId: integer('chain_id').notNull(),
   salt: text('salt').notNull(),
   implementationType: text('implementation_type', {

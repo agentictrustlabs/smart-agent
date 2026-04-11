@@ -61,5 +61,31 @@ export async function PUT(request: Request) {
     .set(updates)
     .where(eq(schema.users.privyUserId, session.userId))
 
+  // Auto-deploy person agent if user doesn't have one yet
+  try {
+    const user = (await db.select().from(schema.users)
+      .where(eq(schema.users.privyUserId, session.userId)).limit(1))[0]
+    if (user) {
+      const existingAgent = await db.select().from(schema.personAgents)
+        .where(eq(schema.personAgents.userId, user.id)).limit(1)
+      if (!existingAgent[0] && session.walletAddress) {
+        const { deploySmartAccount } = await import('@/lib/contracts')
+        const salt = BigInt(Date.now())
+        const address = await deploySmartAccount(session.walletAddress as `0x${string}`, salt)
+        await db.insert(schema.personAgents).values({
+          id: crypto.randomUUID(),
+          name: name.trim(),
+          userId: user.id,
+          smartAccountAddress: address,
+          chainId: Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? '31337'),
+          salt: salt.toString(),
+          status: 'deployed',
+        })
+      }
+    }
+  } catch (e) {
+    console.warn('Auto-deploy person agent failed (non-fatal):', e)
+  }
+
   return NextResponse.json({ success: true, name: name.trim() })
 }

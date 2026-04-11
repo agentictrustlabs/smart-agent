@@ -1,5 +1,8 @@
 import { ConnectWalletButton } from '@/components/auth/ConnectWalletButton'
 import { AuthGate } from '@/components/auth/AuthGate'
+import { DemoLoginPicker } from '@/components/auth/DemoLoginPicker'
+
+const SKIP_AUTH = process.env.NEXT_PUBLIC_SKIP_AUTH === 'true'
 
 export default function HomePage() {
   return (
@@ -7,9 +10,9 @@ export default function HomePage() {
       <AuthGate />
       <div data-component="hero">
         <h1>Smart Agent</h1>
-        <p>Deploy ERC-4337 agent smart accounts with programmable delegation</p>
-        <p>Person agents, Organization agents, programmable delegation</p>
-        <ConnectWalletButton />
+        <p>Intelligent organization management with AI-powered agents, delegated authority, and verifiable trust</p>
+        {!SKIP_AUTH && <ConnectWalletButton />}
+        {SKIP_AUTH && <DemoLoginPicker />}
       </div>
     </main>
   )

@@ -42,10 +42,10 @@ interface GraphData {
   edges: GraphEdge[]
 }
 
-const NODE_COLORS: Record<string, string> = { person: '#6366f1', org: '#22c55e', ai: '#f59e0b', eoa: '#94a3b8' }
+const NODE_COLORS: Record<string, string> = { person: '#2563eb', org: '#22c55e', ai: '#f59e0b', eoa: '#94a3b8' }
 
 const EDGE_COLORS: Record<string, string> = {
-  Governance: '#f59e0b', Membership: '#6366f1', Alliance: '#ec4899',
+  Governance: '#f59e0b', Membership: '#2563eb', Alliance: '#ec4899',
   Validation: '#06b6d4', Insurance: '#8b5cf6', 'Economic Security': '#14b8a6',
   Service: '#f97316', Delegation: '#ef4444', Compliance: '#a3e635',
   'Runtime/TEE': '#22d3ee', 'Build Provenance': '#94a3b8',
@@ -192,7 +192,7 @@ export function TrustGraphView() {
                   {edge.roles.join(', ')}
                 </text>
                 {edge.templates.length > 0 && (
-                  <text x={mx + px} y={my + py + 8} fill="#8888a0" fontSize="6" textAnchor="middle">
+                  <text x={mx + px} y={my + py + 8} fill="#6b7280" fontSize="6" textAnchor="middle">
                     [{edge.templates.length} template{edge.templates.length > 1 ? 's' : ''}]
                   </text>
                 )}
@@ -205,7 +205,7 @@ export function TrustGraphView() {
             const isSel = selectedNode === node.id.toLowerCase()
             const r = node.type === 'org' ? 28 : node.type === 'ai' ? 25 : node.type === 'eoa' ? 18 : 22
             const nx = node.x ?? 0, ny = node.y ?? 0
-            const stroke = isSel ? '#fff' : 'rgba(255,255,255,0.4)'
+            const stroke = isSel ? '#1a1a2e' : 'rgba(0,0,0,0.15)'
             const sw = isSel ? 3 : 1.5
             return (
               <g key={node.id} opacity={hl ? 1 : 0.12} style={{ cursor: 'pointer' }}
@@ -225,8 +225,8 @@ export function TrustGraphView() {
                   <circle cx={nx} cy={ny} r={r}
                     fill={NODE_COLORS[node.type]} stroke={stroke} strokeWidth={sw} />
                 )}
-                <text x={node.x} y={(node.y ?? 0) + r + 14} fill="#e4e4ef" fontSize="11" textAnchor="middle" fontWeight="600">{node.label}</text>
-                <text x={node.x} y={(node.y ?? 0) + r + 25} fill="#8888a0" fontSize="7" textAnchor="middle">
+                <text x={node.x} y={(node.y ?? 0) + r + 14} fill="#1a1a2e" fontSize="11" textAnchor="middle" fontWeight="600">{node.label}</text>
+                <text x={node.x} y={(node.y ?? 0) + r + 25} fill="#6b7280" fontSize="7" textAnchor="middle">
                   {node.address.slice(0, 6)}...{node.address.slice(-4)}
                 </text>
               </g>
@@ -260,7 +260,7 @@ export function TrustGraphView() {
               <code data-component="did">{selectedNodeData.did}</code>
 
               {selectedNodeData.description && (
-                <p style={{ fontSize: '0.8rem', color: '#8888a0', margin: '0.5rem 0' }}>{selectedNodeData.description}</p>
+                <p style={{ fontSize: '0.8rem', color: '#6b7280', margin: '0.5rem 0' }}>{selectedNodeData.description}</p>
               )}
 
               {selectedNodeData.capabilities && selectedNodeData.capabilities.length > 0 && (
@@ -287,9 +287,9 @@ export function TrustGraphView() {
 
               {selectedNodeData.type !== 'eoa' && (
                 <div style={{ margin: '0.5rem 0' }}>
-                  <a href={`/agents/${selectedNodeData.address}`} style={{ fontSize: '0.75rem', color: '#6366f1' }}>View Trust Profile</a>
+                  <a href={`/agents/${selectedNodeData.address}`} style={{ fontSize: '0.75rem', color: '#2563eb' }}>View Trust Profile</a>
                   {' | '}
-                  <a href={`/agents/${selectedNodeData.address}/metadata`} style={{ fontSize: '0.75rem', color: '#6366f1' }}>Edit Metadata</a>
+                  <a href={`/agents/${selectedNodeData.address}/metadata`} style={{ fontSize: '0.75rem', color: '#2563eb' }}>Edit Metadata</a>
                 </div>
               )}
 

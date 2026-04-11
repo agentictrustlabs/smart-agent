@@ -96,7 +96,7 @@ export default async function SubmitReviewPage() {
         </div>
         <div data-component="empty-state">
           <p>No reviewable agents found. You need an active reviewer relationship first.</p>
-          <p style={{ fontSize: '0.85rem', color: '#8888a0', marginTop: '0.5rem' }}>
+          <p style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: '0.5rem' }}>
             Go to <a href="/relationships">Relationships</a>, select your agent,
             pick a target agent, choose the "Reviewer" role, and wait for the owner to confirm.
           </p>
