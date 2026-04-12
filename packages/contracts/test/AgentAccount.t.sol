@@ -2,15 +2,15 @@
 pragma solidity ^0.8.28;
 
 import "forge-std/Test.sol";
-import "../src/AgentRootAccount.sol";
+import "../src/AgentAccount.sol";
 import "../src/AgentAccountFactory.sol";
 import "account-abstraction/interfaces/IEntryPoint.sol";
 import "account-abstraction/core/EntryPoint.sol";
 
-contract AgentRootAccountTest is Test {
+contract AgentAccountTest is Test {
     EntryPoint public entryPoint;
     AgentAccountFactory public factory;
-    AgentRootAccount public account;
+    AgentAccount public account;
 
     address public owner;
     uint256 public ownerKey;
@@ -47,12 +47,12 @@ contract AgentRootAccountTest is Test {
     }
 
     function test_factory_returns_existing_on_redeploy() public {
-        AgentRootAccount account2 = factory.createAccount(owner, 0);
+        AgentAccount account2 = factory.createAccount(owner, 0);
         assertEq(address(account), address(account2), "Should return same account");
     }
 
     function test_factory_different_salt_different_address() public {
-        AgentRootAccount account2 = factory.createAccount(owner, 1);
+        AgentAccount account2 = factory.createAccount(owner, 1);
         assertTrue(address(account) != address(account2), "Different salt = different address");
     }
 
@@ -80,19 +80,19 @@ contract AgentRootAccountTest is Test {
 
     function test_add_owner_reverts_if_not_self() public {
         vm.prank(owner);
-        vm.expectRevert(AgentRootAccount.NotFromSelf.selector);
+        vm.expectRevert(AgentAccount.NotFromSelf.selector);
         account.addOwner(other);
     }
 
     function test_add_owner_reverts_if_already_owner() public {
         vm.prank(address(account));
-        vm.expectRevert(abi.encodeWithSelector(AgentRootAccount.OwnerAlreadyExists.selector, owner));
+        vm.expectRevert(abi.encodeWithSelector(AgentAccount.OwnerAlreadyExists.selector, owner));
         account.addOwner(owner);
     }
 
     function test_add_owner_reverts_if_zero_address() public {
         vm.prank(address(account));
-        vm.expectRevert(AgentRootAccount.ZeroAddress.selector);
+        vm.expectRevert(AgentAccount.ZeroAddress.selector);
         account.addOwner(address(0));
     }
 
@@ -112,13 +112,13 @@ contract AgentRootAccountTest is Test {
         account.removeOwner(owner);
         // Now try to remove last owner
         vm.prank(address(account));
-        vm.expectRevert(AgentRootAccount.CannotRemoveLastOwner.selector);
+        vm.expectRevert(AgentAccount.CannotRemoveLastOwner.selector);
         account.removeOwner(address(this));
     }
 
     function test_remove_non_owner_reverts() public {
         vm.prank(address(account));
-        vm.expectRevert(abi.encodeWithSelector(AgentRootAccount.OwnerDoesNotExist.selector, other));
+        vm.expectRevert(abi.encodeWithSelector(AgentAccount.OwnerDoesNotExist.selector, other));
         account.removeOwner(other);
     }
 

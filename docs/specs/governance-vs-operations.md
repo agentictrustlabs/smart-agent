@@ -18,7 +18,7 @@ Every agent smart account has two separate layers of authority:
 │    - Emergency pause                                             │
 │                                                                  │
 │  Analogy: Who has the keys to the building?                      │
-│  Contract: AgentControl + AgentRootAccount                       │
+│  Contract: AgentControl + AgentAccount                       │
 │  UI: Admin → Governance tab                                      │
 │                                                                  │
 ├─────────────────────────────────────────────────────────────────┤
@@ -68,7 +68,7 @@ A person can have governance authority without operational roles, and vice versa
 ```
 Alice (EOA wallet)
     │
-    │ is an owner in AgentRootAccount._owners
+    │ is an owner in AgentAccount._owners
     │ is a signer in AgentControl._isOwner
     │
     ├── Can approve proposals (AgentControl.approveProposal)
@@ -180,7 +180,7 @@ When someone is invited as "Treasurer":
 | Aspect | Governance | Operations |
 |--------|-----------|------------|
 | **Question** | Who controls the agent? | What can people do? |
-| **Contract** | AgentControl, AgentRootAccount | AgentRelationship, DelegationManager |
+| **Contract** | AgentControl, AgentAccount | AgentRelationship, DelegationManager |
 | **Data** | Owner set, quorum, proposals | Edges, roles, delegations, caveats |
 | **Changes** | Requires multi-sig approval | Relationship confirmation only |
 | **UI Location** | Admin → Governance | Organization page |

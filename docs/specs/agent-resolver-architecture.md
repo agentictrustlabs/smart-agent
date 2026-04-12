@@ -134,7 +134,7 @@ contract OntologyTermRegistry {
 
 ### 3. AgentAccountResolver
 
-The core metadata contract. Stores intrinsic, descriptive properties for each agent. Only the agent's owner (checked via AgentRootAccount.isOwner) can set properties.
+The core metadata contract. Stores intrinsic, descriptive properties for each agent. Only the agent's owner (checked via AgentAccount.isOwner) can set properties.
 
 ```solidity
 contract AgentAccountResolver {
@@ -164,7 +164,7 @@ contract AgentAccountResolver {
     mapping(address => mapping(bytes32 => address[])) multiAddressProps;
 
     // ─── Authorization ──────────────────────────────────────
-    // Checks AgentRootAccount.isOwner(msg.sender) on the target agent
+    // Checks AgentAccount.isOwner(msg.sender) on the target agent
     modifier onlyAgentOwner(address agent) { ... }
 
     // ─── Core property setters ──────────────────────────────
@@ -215,7 +215,7 @@ contract AgentUniversalResolver {
     AgentValidationProfile public immutable VALIDATIONS;
     AgentDisputeRecord public immutable DISPUTES;
     AgentTrustProfile public immutable TRUST;
-    AgentRootAccount public immutable ACCOUNT_IMPL; // for interface queries
+    AgentAccount public immutable ACCOUNT_IMPL; // for interface queries
 
     struct AgentProfile {
         // From AgentAccountResolver
@@ -226,7 +226,7 @@ contract AgentUniversalResolver {
         bool active;
         uint256 registeredAt;
 
-        // From AgentRootAccount
+        // From AgentAccount
         uint256 ownerCount;
 
         // From AgentTrustProfile
@@ -253,7 +253,7 @@ The user asked about AgentRootRegistry, AgentSubregistry, etc. Here's how our ex
 
 | ENS Concept | Our Equivalent | Status |
 |-------------|---------------|--------|
-| **Registry** (who controls a name) | `AgentRootAccount` — multi-owner smart account is the registry of who controls the agent | **Exists** |
+| **Registry** (who controls a name) | `AgentAccount` — multi-owner smart account is the registry of who controls the agent | **Exists** |
 | **Subregistry** (org controls sub-agents) | `AgentRelationship` with `ORGANIZATIONAL_CONTROL` type + `operated-agent` role | **Exists** |
 | **Resolver** (properties of a name) | `AgentAccountResolver` — generic predicate store | **NEW** |
 | **Universal Resolver** (client façade) | `AgentUniversalResolver` — aggregates all contracts | **NEW** |
@@ -262,7 +262,7 @@ The user asked about AgentRootRegistry, AgentSubregistry, etc. Here's how our ex
 | **Ontology Registry** | `OntologyTermRegistry` — governed predicate definitions | **NEW** |
 
 We don't need separate "AgentRootRegistry" and "AgentSubregistry" contracts because:
-- **AgentRootAccount IS the registry** — it stores who controls the agent (owners)
+- **AgentAccount IS the registry** — it stores who controls the agent (owners)
 - **AgentRelationship IS the subregistry** — `ORGANIZATIONAL_CONTROL` edges define org→sub-agent hierarchies
 - The factory handles registration (creating the account = registering the identity)
 
@@ -596,7 +596,7 @@ AgentUniversalResolver.resolveAgent(0x9242Fef0...)
     ├─ AgentAccountResolver.getCore(agent)
     │    → displayName, description, agentType, metadataURI, active
     │
-    ├─ AgentRootAccount(agent).ownerCount()
+    ├─ AgentAccount(agent).ownerCount()
     │    → number of controllers
     │
     ├─ AgentTrustProfile.checkDiscoveryTrust(agent)

@@ -106,6 +106,19 @@ register_agent "$PA_DAN" "Dan Busby" "Executive Director of ECFA" "$T_PERSON"
 register_agent "$PA_JOHN" "John Chesnut" "Director of Wycliffe Bible Translators" "$T_PERSON"
 register_agent "$PA_DAVID" "David Wills" "President of National Christian Foundation" "$T_PERSON"
 
+# Set ATL_CONTROLLER on person agents
+ATL_CONTROLLER="$(cast keccak 'atl:hasController')"
+set_ctrl() {
+  local agent=$1 wallet=$2
+  cast send "$RESOLVER" "addMultiAddressProperty(address,bytes32,address)" "$agent" "$ATL_CONTROLLER" "$wallet" --rpc-url "$RPC" --private-key "$KEY" > /dev/null 2>&1
+}
+echo "Setting controllers..."
+set_ctrl "$PA_JAMES" "0x0000000000000000000000000000000000010001"
+set_ctrl "$PA_SARAH" "0x0000000000000000000000000000000000010002"
+set_ctrl "$PA_DAN" "0x0000000000000000000000000000000000010003"
+set_ctrl "$PA_JOHN" "0x0000000000000000000000000000000000010004"
+set_ctrl "$PA_DAVID" "0x0000000000000000000000000000000000010005"
+
 # Treasury Agents — register as AI agents
 T_AI=$(cast keccak "atl:AIAgent")
 C_EXECUTOR=$(cast keccak "atl:ExecutorAgent")

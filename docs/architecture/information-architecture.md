@@ -29,7 +29,7 @@ erDiagram
 
 ## On-Chain Data (Smart Contracts)
 
-### AgentRootAccount
+### AgentAccount
 ```
 address: 0x...          (the agent's identity)
 owners: mapping         (EOA → bool)
@@ -142,7 +142,7 @@ read INTEGER DEFAULT 0
 
 | DOLCE Concept | Smart Agent Implementation |
 |---------------|---------------------------|
-| **Agent** | AgentRootAccount (4337 smart account) |
+| **Agent** | AgentAccount (4337 smart account) |
 | **Social Agent** | Person or Org with did:ethr identity |
 | **Description** | relationshipType (normative context) |
 | **Situation** | Edge (concrete state satisfying a description) |

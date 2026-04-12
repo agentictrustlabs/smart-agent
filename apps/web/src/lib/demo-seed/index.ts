@@ -1,22 +1,27 @@
 import { DEMO_USERS } from '@/lib/auth/session'
+import { db, schema } from '@/db'
+import { eq } from 'drizzle-orm'
 
 /**
- * Auto-seed demo community data when a demo user logs in.
- * For Catalyst: deploys agents + creates relationships ON-CHAIN.
- * Requires anvil + deployed contracts to be running.
+ * Ensure demo user exists in the DB (for Privy auth mapping).
+ * All agent data (identity, relationships, metadata) is on-chain via shell seed scripts.
+ * This only creates the `users` row if it doesn't exist.
  */
 export async function ensureDemoCommunitySeeded(demoUserKey: string) {
-  const user = DEMO_USERS[demoUserKey]
-  if (!user) return
+  const demo = DEMO_USERS[demoUserKey]
+  if (!demo) return
 
-  if (demoUserKey.startsWith('cpm-')) {
-    const { seedCpmCommunity } = await import('./seed-cpm')
-    seedCpmCommunity()
-  }
-  if (demoUserKey.startsWith('cat-')) {
-    const { seedCatalystOnChain } = await import('./seed-catalyst-onchain')
-    // Run in background — don't block the login response.
-    // The seed is idempotent so it's safe to run concurrently.
-    seedCatalystOnChain().catch(err => console.warn('[demo-seed] Catalyst seed error:', err))
+  // Ensure user row exists (the only DB table we need)
+  const existing = db.select().from(schema.users).where(eq(schema.users.privyUserId, demo.userId)).get()
+  if (!existing) {
+    try {
+      db.insert(schema.users).values({
+        id: demoUserKey,
+        email: demo.email,
+        name: demo.name,
+        walletAddress: demo.walletAddress,
+        privyUserId: demo.userId,
+      }).run()
+    } catch { /* already exists */ }
   }
 }

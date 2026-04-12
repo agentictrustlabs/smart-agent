@@ -3,7 +3,7 @@ import { privateKeyToAccount } from 'viem/accounts'
 import { foundry, sepolia } from 'viem/chains'
 import {
   agentAccountFactoryAbi,
-  agentRootAccountAbi,
+  agentAccountAbi,
   agentRelationshipAbi,
   agentAssertionAbi,
   agentResolverAbi,
@@ -136,7 +136,7 @@ export async function setAgentDelegationManager(agentAddress: `0x${string}`): Pr
 
   const hash = await walletClient.writeContract({
     address: agentAddress,
-    abi: agentRootAccountAbi,
+    abi: agentAccountAbi,
     functionName: 'setDelegationManager',
     args: [contracts.delegationManager],
   })

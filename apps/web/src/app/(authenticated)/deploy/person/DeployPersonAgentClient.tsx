@@ -73,7 +73,7 @@ export function DeployPersonAgentClient({ walletAddress, userName }: DeployPerso
           <dt>Owner Wallet</dt>
           <dd><code>{walletAddress}</code></dd>
           <dt>Account Type</dt>
-          <dd>AgentRootAccount (ERC-4337)</dd>
+          <dd>AgentAccount (ERC-4337)</dd>
         </dl>
       </div>
 

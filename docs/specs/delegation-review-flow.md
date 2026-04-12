@@ -322,7 +322,7 @@ Web App (Server)            Database                  Subject Owner
                              │ deploys ERC1967Proxy
                              ▼
 ┌──────────────────────────────────────────────────────────────┐
-│                     AgentRootAccount                         │
+│                     AgentAccount                         │
 │  ──────────────────────────────────────────────────────────  │
 │  UUPS Upgradeable (ERC-1822)                                 │
 │  ERC-4337 Smart Account (validateUserOp)                     │
@@ -503,7 +503,7 @@ Review {
 | Signature validation | EIP-712 + ERC-1271 for smart accounts | EIP-712 + ERC-1271 for smart accounts |
 | Caveat args in hash | Excluded (redeemer-provided runtime data) | Excluded (redeemer-provided runtime data) |
 | Hook execution order | beforeHooks: leaf→root, afterHooks: root→leaf | beforeHooks: leaf→root, afterHooks: root→leaf |
-| UUPS upgradeability | AgentRootAccount inherits UUPSUpgradeable | DeleGator accounts are upgradeable |
+| UUPS upgradeability | AgentAccount inherits UUPSUpgradeable | DeleGator accounts are upgradeable |
 
 ## Failure Modes
 

@@ -11,7 +11,7 @@ import "./AgentPredicates.sol";
  * Stores intrinsic, descriptive properties for each ERC-4337 agent account.
  * Properties are keyed by ontology-aligned predicates (bytes32 = keccak256 of CURIE).
  *
- * Authorization: only an owner of the agent (checked via AgentRootAccount.isOwner)
+ * Authorization: only an owner of the agent (checked via AgentAccount.isOwner)
  * can set properties. The deployer/server signer is typically a co-owner.
  *
  * Core record: gas-optimized struct for the most common reads (name, type, metadata URI).
@@ -73,7 +73,7 @@ contract AgentAccountResolver {
 
     /**
      * @dev Check if msg.sender is an owner of the agent smart account.
-     *      Calls AgentRootAccount.isOwner(msg.sender) on the agent address.
+     *      Calls AgentAccount.isOwner(msg.sender) on the agent address.
      */
     modifier onlyAgentOwner(address agent) {
         (bool ok, bytes memory data) = agent.staticcall(

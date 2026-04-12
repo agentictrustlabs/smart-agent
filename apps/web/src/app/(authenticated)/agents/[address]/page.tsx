@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { getPublicClient, getEdgesBySubject, getEdgesByObject, getEdge, getEdgeRoles } from '@/lib/contracts'
 import {
-  agentControlAbi, agentRootAccountAbi, agentReviewRecordAbi,
+  agentControlAbi, agentAccountAbi, agentReviewRecordAbi,
   agentValidationProfileAbi, agentTrustProfileAbi, agentDisputeRecordAbi,
   agentAccountResolverAbi,
   roleName, relationshipTypeName,
@@ -139,13 +139,13 @@ export default async function AgentSettingsPage({
     }
   } catch { /* resolver may not be deployed */ }
 
-  // Get on-chain owner info from AgentRootAccount
+  // Get on-chain owner info from AgentAccount
   
   let ownerCount = 0
   try {
     ownerCount = Number(await client.readContract({
       address: agentAddress,
-      abi: agentRootAccountAbi,
+      abi: agentAccountAbi,
       functionName: 'ownerCount',
     }))
   } catch { /* not deployed */ }

@@ -1,6 +1,6 @@
 import type { PublicClient, WalletClient } from 'viem'
 import { encodeFunctionData } from 'viem'
-import { agentRootAccountAbi, agentAccountFactoryAbi } from './abi'
+import { agentAccountAbi, agentAccountFactoryAbi } from './abi'
 import type { CreateAgentAccountParams } from '@smart-agent/types'
 
 export interface AgentAccountClientConfig {
@@ -10,7 +10,7 @@ export interface AgentAccountClientConfig {
 }
 
 /**
- * Client for deploying and interacting with AgentRootAccount instances.
+ * Client for deploying and interacting with AgentAccount instances.
  */
 export class AgentAccountClient {
   private publicClient: PublicClient
@@ -33,7 +33,7 @@ export class AgentAccountClient {
     })) as `0x${string}`
   }
 
-  /** Deploy a new AgentRootAccount (or return existing). */
+  /** Deploy a new AgentAccount (or return existing). */
   async createAccount(params: CreateAgentAccountParams): Promise<`0x${string}`> {
     const hash = await this.walletClient.writeContract({
       address: this.factoryAddress,
@@ -52,7 +52,7 @@ export class AgentAccountClient {
   async isOwner(accountAddress: `0x${string}`, address: `0x${string}`): Promise<boolean> {
     return (await this.publicClient.readContract({
       address: accountAddress,
-      abi: agentRootAccountAbi,
+      abi: agentAccountAbi,
       functionName: 'isOwner',
       args: [address],
     })) as boolean
@@ -62,7 +62,7 @@ export class AgentAccountClient {
   async getNonce(accountAddress: `0x${string}`): Promise<bigint> {
     return (await this.publicClient.readContract({
       address: accountAddress,
-      abi: agentRootAccountAbi,
+      abi: agentAccountAbi,
       functionName: 'getNonce',
     })) as bigint
   }
@@ -70,7 +70,7 @@ export class AgentAccountClient {
   /** Encode an execute call for use in a UserOperation's callData. */
   encodeExecute(target: `0x${string}`, value: bigint, data: `0x${string}`): `0x${string}` {
     return encodeFunctionData({
-      abi: agentRootAccountAbi,
+      abi: agentAccountAbi,
       functionName: 'execute',
       args: [target, value, data],
     })
@@ -79,7 +79,7 @@ export class AgentAccountClient {
   /** Encode a batch execute call. */
   encodeExecuteBatch(calls: Array<{ target: `0x${string}`; value: bigint; data: `0x${string}` }>): `0x${string}` {
     return encodeFunctionData({
-      abi: agentRootAccountAbi,
+      abi: agentAccountAbi,
       functionName: 'executeBatch',
       args: [calls],
     })

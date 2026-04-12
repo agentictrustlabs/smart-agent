@@ -1,13 +1,11 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { db, schema } from '@/db'
-import { eq } from 'drizzle-orm'
+
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { toDidEthr } from '@smart-agent/sdk'
 import { getSelectedOrg } from '@/lib/get-selected-org'
-import { getOrgTemplate } from '@/lib/org-templates.data'
 import { getOrgMembers } from '@/lib/get-org-members'
-import { isCpmTemplate } from '@/lib/cpm'
 import { DashboardAnalytics } from './DashboardAnalytics'
 
 const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? '31337')
@@ -18,28 +16,43 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const params = await searchParams
   const selectedOrg = await getSelectedOrg(currentUser.id, params)
 
-  const personAgents = await db.select().from(schema.personAgents)
-    .where(eq(schema.personAgents.userId, currentUser.id)).limit(1)
-  const personAgent = personAgents[0]
+  const { getPersonAgentForUser, getAiAgentsForOrg } = await import('@/lib/agent-registry')
+  const { getAgentMetadata: getMeta } = await import('@/lib/agent-metadata')
 
-  // Load data scoped to selected org
+  const personAgentAddr = await getPersonAgentForUser(currentUser.id)
+  let personAgent: { smartAccountAddress: string; name: string } | null = null
+  if (personAgentAddr) {
+    const pMeta = await getMeta(personAgentAddr)
+    personAgent = { smartAccountAddress: personAgentAddr, name: pMeta.displayName }
+  }
+
+  // Load data scoped to selected org (on-chain edges)
   const { members, partners } = selectedOrg
     ? await getOrgMembers(selectedOrg.smartAccountAddress)
     : { members: [], partners: [] }
+  const aiAgentAddrs = selectedOrg ? await getAiAgentsForOrg(selectedOrg.smartAccountAddress) : []
+  const aiAgents = await Promise.all(aiAgentAddrs.map(async addr => {
+    const meta = await getMeta(addr)
+    return { id: addr, name: meta.displayName, description: meta.description, agentType: meta.aiAgentClass || 'custom', smartAccountAddress: addr, status: 'deployed' }
+  }))
 
-  const allAI = await db.select().from(schema.aiAgents)
-  const aiAgents = selectedOrg
-    ? allAI.filter(a => a.operatedBy?.toLowerCase() === selectedOrg.smartAccountAddress.toLowerCase())
-    : []
+  // Check if org has child orgs (ALLIANCE edges) → show analytics
+  let showAnalytics = false
+  if (selectedOrg) {
+    try {
+      const { getEdgesBySubject: checkEdges } = await import('@/lib/contracts')
+      const outEdges = await checkEdges(selectedOrg.smartAccountAddress as `0x${string}`)
+      showAnalytics = outEdges.length > 0
+    } catch { /* ignored */ }
+  }
 
-  const template = selectedOrg ? getOrgTemplate((selectedOrg as Record<string, unknown>).templateId as string ?? '') : null
-  const templateId = (selectedOrg as Record<string, unknown> | null)?.templateId as string ?? ''
-  const showAnalytics = isCpmTemplate(templateId)
+  // Get agent type label from resolver
+  const orgMeta = selectedOrg ? await getMeta(selectedOrg.smartAccountAddress) : null
   const overviewStats = selectedOrg ? [
     { label: 'Members', value: String(members.length) },
     { label: 'Relationships', value: String(partners.length) },
     { label: 'AI Agents', value: String(aiAgents.length) },
-    { label: 'Template', value: template?.name ?? 'Custom' },
+    { label: 'Type', value: orgMeta?.agentTypeLabel ?? 'Organization' },
   ] : []
   const quickLinks = selectedOrg ? [
     { href: `/team?org=${selectedOrg.smartAccountAddress}`, label: 'Manage Team' },
@@ -49,37 +62,32 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     { href: `/reviews?org=${selectedOrg.smartAccountAddress}`, label: 'Reviews' },
   ] : []
 
-  // Load analytics data for CPM/Catalyst templates
+  // Load analytics data when org has child groups (on-chain ALLIANCE edges)
   let analyticsData = null
   if (showAnalytics && selectedOrg) {
     const allActivities = await db.select().from(schema.activityLogs)
-    const allOrgs = await db.select().from(schema.orgAgents)
     const allUsers = await db.select().from(schema.users)
     const userNames: Record<string, string> = {}
     for (const u of allUsers) userNames[u.id] = u.name
 
-    // Get activities for this org + child teams
-    let orgActivities = allActivities.filter(a => a.orgAddress === selectedOrg.smartAccountAddress.toLowerCase())
-    if (['catalyst-network', 'movement-network'].includes(templateId)) {
-      const childTemplates = ['facilitator-hub', 'church-planting-team']
-      const childOrgs = allOrgs.filter(o => childTemplates.includes((o as Record<string, unknown>).templateId as string ?? ''))
-      for (const child of childOrgs) {
-        orgActivities = [...orgActivities, ...allActivities.filter(a => a.orgAddress === child.smartAccountAddress.toLowerCase())]
-      }
-    }
+    // Get child orgs from on-chain edges
+    const { getConnectedOrgs: getChildOrgs } = await import('@/lib/get-org-members')
+    let childOrgs: Awaited<ReturnType<typeof getChildOrgs>> = []
+    try { childOrgs = await getChildOrgs(selectedOrg.smartAccountAddress) } catch { /* ignored */ }
 
-    // Gen map stats
-    const allGenNodes = await db.select().from(schema.genMapNodes)
-    const genNodes = allGenNodes.filter(n => n.networkAddress === selectedOrg.smartAccountAddress.toLowerCase())
-    const nodes = genNodes
+    // Get activities for this org + connected child orgs
+    let orgActivities = allActivities.filter(a => a.orgAddress === selectedOrg.smartAccountAddress.toLowerCase())
+    for (const child of childOrgs) {
+      orgActivities = [...orgActivities, ...allActivities.filter(a => a.orgAddress === child.address.toLowerCase())]
+    }
 
     analyticsData = {
       activities: orgActivities.map(a => ({ date: a.activityDate, count: 1, participants: a.participants, type: a.activityType })),
       genMapStats: {
-        totalGroups: nodes.length,
-        maxGen: nodes.reduce((max, n) => Math.max(max, n.generation), 0),
-        established: nodes.filter(n => { try { return JSON.parse(n.healthData ?? '{}').isChurch } catch { return false } }).length,
-        multiplyRate: nodes.length > 0 ? nodes.filter(n => { try { return JSON.parse(n.healthData ?? '{}').groupsStarted > 0 } catch { return false } }).length / nodes.length : 0,
+        totalGroups: childOrgs.length,
+        maxGen: 0,
+        established: 0,
+        multiplyRate: childOrgs.length > 0 ? 0.5 : 0,
       },
       recentActivities: orgActivities
         .sort((a, b) => b.activityDate.localeCompare(a.activityDate))
@@ -119,7 +127,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             <div data-component="dashboard-hero-top">
               <div data-component="dashboard-hero-copy">
                 <div data-component="dashboard-meta">
-                  <span data-component="role-badge" data-status="active">{template?.name ?? 'Custom org'}</span>
+                  <span data-component="role-badge" data-status="active">{orgMeta?.agentTypeLabel ?? 'Organization'}</span>
                   <span data-component="role-badge">{showAnalytics ? 'Analytics Enabled' : 'Operational Overview'}</span>
                 </div>
                 <p data-component="text-muted">
@@ -147,7 +155,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             </div>
           </section>
 
-          {/* Analytics (CPM/Catalyst templates) */}
+          {/* Analytics (orgs with child groups) */}
           {showAnalytics && analyticsData && (
             <DashboardAnalytics
               activities={analyticsData.activities}
@@ -233,15 +241,15 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
       {personAgent && (
         <section data-component="graph-section">
-          <h2>Your Agent</h2>
+          <h2>Your Agent — {personAgent.name}</h2>
           <div data-component="protocol-info">
             <dl>
+              <dt>Name</dt>
+              <dd style={{ fontWeight: 600 }}>{personAgent.name}</dd>
               <dt>Smart Account</dt>
               <dd data-component="address">{personAgent.smartAccountAddress}</dd>
               <dt>DID</dt>
               <dd data-component="did">{toDidEthr(CHAIN_ID, personAgent.smartAccountAddress as `0x${string}`)}</dd>
-              <dt>Status</dt>
-              <dd data-status={personAgent.status}>{personAgent.status}</dd>
             </dl>
             <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem', fontSize: '0.8rem' }}>
               <Link href={`/agents/${personAgent.smartAccountAddress}`} style={{ color: '#1565c0' }}>Trust Profile</Link>

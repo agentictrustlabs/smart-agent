@@ -24,7 +24,7 @@ The canonical ERC-4337 smart account for agent identity.
 - Anchors trust and relationship registries
 - Holds canonical metadata pointers
 
-**Contract:** `AgentRootAccount.sol`
+**Contract:** `AgentAccount.sol`
 **Interface:** `IAgentAccount.sol`
 
 ### Layer 2: Delegation / Capability Layer

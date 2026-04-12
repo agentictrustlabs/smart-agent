@@ -17,7 +17,7 @@ export interface DeployPersonAgentResult {
 
 /**
  * Deploy a Person Agent — calls AgentAccountFactory.createAccount() on-chain
- * to deploy an ERC-4337 AgentRootAccount owned by the user's wallet.
+ * to deploy an ERC-4337 AgentAccount owned by the user's wallet.
  */
 export async function deployPersonAgent(agentName?: string): Promise<DeployPersonAgentResult> {
   try {

@@ -1,6 +1,6 @@
 // ─── ABIs ────────────────────────────────────────────────────────────
 export {
-  agentRootAccountAbi,
+  agentAccountAbi,
   agentAccountFactoryAbi,
   delegationManagerAbi,
   agentRelationshipAbi,

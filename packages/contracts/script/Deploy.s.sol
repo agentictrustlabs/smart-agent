@@ -67,7 +67,7 @@ contract Deploy is Script {
         // 3. AgentAccountFactory (deploys implementation singleton, sets DelegationManager + serverSigner)
         AgentAccountFactory factory = new AgentAccountFactory(entryPoint, address(delegationManager), deployer);
         console.log("AgentAccountFactory:", address(factory));
-        console.log("  AgentRootAccount impl:", address(factory.accountImplementation()));
+        console.log("  AgentAccount impl:", address(factory.accountImplementation()));
 
         // 4. Caveat Enforcers
         TimestampEnforcer timestampEnforcer = new TimestampEnforcer();

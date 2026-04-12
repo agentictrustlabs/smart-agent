@@ -11,7 +11,7 @@ import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import "./IAgentAccount.sol";
 
 /**
- * @title AgentRootAccount
+ * @title AgentAccount
  * @notice ERC-4337 + UUPS-upgradeable smart account — agent identity anchor.
  *
  * The agent address IS the identity (did:ethr:<chainId>:<address>).
@@ -27,7 +27,7 @@ import "./IAgentAccount.sol";
  * - ERC-7710 delegated execution via DelegationManager
  * - UUPS upgrades (ERC-1822)
  */
-contract AgentRootAccount is BaseAccount, Initializable, UUPSUpgradeable, IAgentAccount, IERC1271 {
+contract AgentAccount is BaseAccount, Initializable, UUPSUpgradeable, IAgentAccount, IERC1271 {
     using ECDSA for bytes32;
     using MessageHashUtils for bytes32;
 

@@ -70,6 +70,22 @@ register "$PA_ESSI" "Essi Amegah" "ILAD Local Coordinator — Lomé" "$T_PERSON"
 register "$PA_KOKOU" "Kokou Abalo" "BDC Trainer — Business Development" "$T_PERSON"
 register "$PA_LAWRENCE" "Lawrence" "Training Assessment Lead" "$T_PERSON"
 
+# Set ATL_CONTROLLER on person agents
+ATL_CONTROLLER="$(cast keccak 'atl:hasController')"
+set_ctrl() {
+  local agent=$1 wallet=$2
+  cast send "$RESOLVER" "addMultiAddressProperty(address,bytes32,address)" "$agent" "$ATL_CONTROLLER" "$wallet" --rpc-url "$RPC" --private-key "$KEY" > /dev/null 2>&1
+}
+echo "Setting controllers..."
+set_ctrl "$PA_KOFI" "0x0000000000000000000000000000000000080001"
+set_ctrl "$PA_AMA" "0x0000000000000000000000000000000000080002"
+set_ctrl "$PA_EDEM" "0x0000000000000000000000000000000000080003"
+set_ctrl "$PA_AKOS" "0x0000000000000000000000000000000000080004"
+set_ctrl "$PA_YAO" "0x0000000000000000000000000000000000080005"
+set_ctrl "$PA_ESSI" "0x0000000000000000000000000000000000080006"
+set_ctrl "$PA_KOKOU" "0x0000000000000000000000000000000000080007"
+set_ctrl "$PA_LAWRENCE" "0x0000000000000000000000000000000000080008"
+
 # Relationships
 create_rel() {
   local subject=$1 object=$2 relType=$3 metaURI=$4

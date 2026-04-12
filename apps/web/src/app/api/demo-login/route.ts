@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { DEMO_USERS } from '@/lib/auth/session'
 import { ensureDemoCommunitySeeded } from '@/lib/demo-seed'
-import { db, schema } from '@/db'
-import { eq } from 'drizzle-orm'
+
+
 
 export async function POST(request: Request) {
   const body = await request.json()
@@ -35,12 +35,11 @@ export async function GET() {
   const current = cookieStore.get('demo-user')?.value ?? 'test-user-001'
   const demoUser = DEMO_USERS[current]
 
-  // Look up the person agent smart account address
+  // Look up person agent from on-chain registry
   let smartAccountAddress: string | null = null
   try {
-    const personAgent = await db.select().from(schema.personAgents)
-      .where(eq(schema.personAgents.userId, current)).limit(1)
-    smartAccountAddress = personAgent[0]?.smartAccountAddress ?? null
+    const { getPersonAgentForUser } = await import('@/lib/agent-registry')
+    smartAccountAddress = await getPersonAgentForUser(current)
   } catch { /* ignored */ }
 
   return NextResponse.json({

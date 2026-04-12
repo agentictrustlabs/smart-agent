@@ -47,7 +47,7 @@ export default async function DeployPersonAgentPage() {
       <div data-component="deploy-info">
         <h2>What you get</h2>
         <ul>
-          <li>ERC-4337 smart account (AgentRootAccount)</li>
+          <li>ERC-4337 smart account (AgentAccount)</li>
           <li>ERC-1271 signature validation</li>
           <li>Programmable delegation with caveats</li>
           <li>Session key support for agent runtime</li>

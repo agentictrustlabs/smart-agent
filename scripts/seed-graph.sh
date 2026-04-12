@@ -640,6 +640,21 @@ register_agent "$REVIEWER_DAVE" "Dave Agent" "Dave's person agent" "$T_PERSON" "
 register_agent "$REVIEWER_EVE" "Eve Agent" "Eve's person agent" "$T_PERSON" "0x0000000000000000000000000000000000000000000000000000000000000000"
 register_agent "$REVIEWER_FRANK" "Frank Agent" "Frank's person agent" "$T_PERSON" "0x0000000000000000000000000000000000000000000000000000000000000000"
 
+# Set ATL_CONTROLLER on person agents (wallet → agent mapping for on-chain lookup)
+ATL_CONTROLLER="$(cast keccak 'atl:hasController')"
+set_controller() {
+  local agent=$1 wallet=$2
+  cast send "$AGENT_RESOLVER" "addMultiAddressProperty(address,bytes32,address)" "$agent" "$ATL_CONTROLLER" "$wallet" --rpc-url "$RPC" --private-key "$KEY" > /dev/null 2>&1
+}
+
+echo "Setting ATL_CONTROLLER on person agents..."
+set_controller "$ALICE_AGENT" "$ALICE_EOA"
+set_controller "$BOB_AGENT" "0x0000000000000000000000000000000000001002"
+set_controller "$CAROL_AGENT" "0x0000000000000000000000000000000000001003"
+set_controller "$REVIEWER_DAVE" "0x0000000000000000000000000000000000001004"
+set_controller "$REVIEWER_EVE" "0x0000000000000000000000000000000000001005"
+set_controller "$REVIEWER_FRANK" "0x0000000000000000000000000000000000001006"
+
 echo "Agents registered in resolver: $(cast call $AGENT_RESOLVER 'agentCount()(uint256)' --rpc-url $RPC)"
 
 # Set some capabilities on the Discovery Agent

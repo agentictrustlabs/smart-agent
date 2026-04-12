@@ -81,6 +81,21 @@ register "$PA_PAUL" "Paul Martel" "Funder / Impact Investor" "$T_PERSON"
 register "$PA_ADAMA" "Adama Mensah" "Business Owner — TogoKafe" "$T_PERSON"
 register "$PA_FATOU" "Fatou Amegah" "Business Owner — SavonAfriq" "$T_PERSON"
 
+# Set ATL_CONTROLLER on person agents
+ATL_CONTROLLER="$(cast keccak 'atl:hasController')"
+set_ctrl() {
+  local agent=$1 wallet=$2
+  cast send "$RESOLVER" "addMultiAddressProperty(address,bytes32,address)" "$agent" "$ATL_CONTROLLER" "$wallet" --rpc-url "$RPC" --private-key "$KEY" > /dev/null 2>&1
+}
+echo "Setting controllers..."
+set_ctrl "$PA_JOHN" "0x0000000000000000000000000000000000050001"
+set_ctrl "$PA_CAMERON" "0x0000000000000000000000000000000000050002"
+set_ctrl "$PA_NICK" "0x0000000000000000000000000000000000050003"
+set_ctrl "$PA_JOSEPH" "0x0000000000000000000000000000000000050004"
+set_ctrl "$PA_PAUL" "0x0000000000000000000000000000000000050005"
+set_ctrl "$PA_ADAMA" "0x0000000000000000000000000000000000050006"
+set_ctrl "$PA_FATOU" "0x0000000000000000000000000000000000050007"
+
 # Fund treasury
 echo "Funding treasury..."
 cast send "$TREASURY_CIL" --value 25ether --rpc-url "$RPC" --private-key "$KEY" > /dev/null 2>&1

@@ -2,7 +2,7 @@
 
 ## Overview
 
-Every agent in the Smart Agent system is an **ERC-4337 smart account** (AgentRootAccount) controlled by one or more **EOA wallets** (Externally Owned Accounts). The smart account is the agent's on-chain identity — its address never changes, even when the implementation is upgraded or owners are added/removed.
+Every agent in the Smart Agent system is an **ERC-4337 smart account** (AgentAccount) controlled by one or more **EOA wallets** (Externally Owned Accounts). The smart account is the agent's on-chain identity — its address never changes, even when the implementation is upgraded or owners are added/removed.
 
 This document explains how these pieces fit together: who can sign, who can execute, how the EntryPoint/bundler/paymaster flow works, and how the DelegationManager fits into the execution model.
 
@@ -33,7 +33,7 @@ This document explains how these pieces fit together: who can sign, who can exec
 │  It has its own address, holds assets, and executes calls.       │
 │                                                                  │
 │  ┌──────────────────────────────────────────────────────┐        │
-│  │              AgentRootAccount (Proxy)                 │        │
+│  │              AgentAccount (Proxy)                 │        │
 │  │              0x9242Fef0...                            │        │
 │  │                                                      │        │
 │  │  _owners: {Alice, Bob, Server}                       │        │
@@ -247,7 +247,7 @@ The DelegationManager provides a **third way** to execute calls through the agen
 ### Why three execution paths?
 
 ```
-                        AgentRootAccount
+                        AgentAccount
                     _requireForExecute()
                               │
               ┌───────────────┼───────────────┐
@@ -319,7 +319,7 @@ Delegation signed by Server EOA (0xf39F...)
                          │
                          ▼
               ┌──────────────────────┐
-              │  AgentRootAccount    │
+              │  AgentAccount    │
               │  _owners:            │
               │    Alice EOA  ✓      │
               │    Server EOA ✓  ◄── signer is here → valid
@@ -358,10 +358,10 @@ For agents that need **quorum-based multi-sig** (e.g., an organization agent wit
                          │ When quorum reached:
                          │ execute the action
                          ▼
-                AgentRootAccount.addOwner(Dave)
+                AgentAccount.addOwner(Dave)
 ```
 
-| Concept | AgentRootAccount (raw) | AgentControl (governance) |
+| Concept | AgentAccount (raw) | AgentControl (governance) |
 |---------|----------------------|--------------------------|
 | Who can act | Any single owner | Quorum of owners |
 | Adding owners | Direct call (onlySelf) | Proposal → approvals → execute |
@@ -386,7 +386,7 @@ The agent address is permanent. The implementation behind it can be upgraded.
     │     _delegationMgr  │
     │                     │
     │   delegatecall ─────┼──→  ┌─────────────────────┐
-    │                     │     │  AgentRootAccount    │  ← implementation
+    │                     │     │  AgentAccount    │  ← implementation
     │                     │     │  v2.0.0              │     (upgradeable)
     └─────────────────────┘     │                     │
                                 │  execute()          │
@@ -411,7 +411,7 @@ The agent address is permanent. The implementation behind it can be upgraded.
 AgentAccountFactory
     │
     │ constructor(entryPoint, delegationManager, serverSigner)
-    │   └─ Creates singleton AgentRootAccount implementation
+    │   └─ Creates singleton AgentAccount implementation
     │
     │ createAccount(owner, salt)
     │   │
@@ -436,7 +436,7 @@ AgentAccountFactory
 
 ```
                                     ┌─────────────────────────────────┐
-                                    │       AgentRootAccount          │
+                                    │       AgentAccount          │
                                     │       (ERC-4337 Smart Account)  │
                                     │                                 │
                                     │  _owners: {Alice, Server}       │
@@ -482,7 +482,7 @@ AgentAccountFactory
 
 | Standard | What it covers | Our implementation |
 |----------|---------------|-------------------|
-| **ERC-4337** | Account abstraction, UserOp, EntryPoint, Paymaster | AgentRootAccount extends BaseAccount, validates packed UserOps |
+| **ERC-4337** | Account abstraction, UserOp, EntryPoint, Paymaster | AgentAccount extends BaseAccount, validates packed UserOps |
 | **ERC-1271** | Smart account signature validation | `isValidSignature()` checks `_owners[recovered]` |
 | **ERC-1967** | Proxy storage slots | ERC1967Proxy used by factory |
 | **ERC-1822** | UUPS upgradeable proxies | `UUPSUpgradeable` with `_authorizeUpgrade(onlySelf)` |

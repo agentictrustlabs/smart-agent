@@ -33,7 +33,7 @@ forge test             # Run Forge tests
 
 | Contract | Purpose |
 |----------|---------|
-| `AgentRootAccount` | ERC-4337 smart account — agent identity, multi-owner, ERC-1271 |
+| `AgentAccount` | ERC-4337 smart account — agent identity, multi-owner, ERC-1271 |
 | `AgentAccountFactory` | Deterministic CREATE2 deployment of account proxies |
 | `DelegationManager` | Delegation issuance, EIP-712 signing, caveat enforcement, revocation |
 | `ICaveatEnforcer` | Interface for caveat enforcer contracts |

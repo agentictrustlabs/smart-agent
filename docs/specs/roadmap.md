@@ -16,18 +16,18 @@
 
 ---
 
-### Issue #2: AgentRootAccount contract — ERC-4337 smart account
+### Issue #2: AgentAccount contract — ERC-4337 smart account
 **Labels:** `feat`, `p1`
 
 **Summary:** Implement the core ERC-4337 smart account that serves as agent identity anchor.
 
 **Acceptance Criteria:**
-- [ ] `AgentRootAccount.sol` implements `IAccount.validateUserOp`
+- [ ] `AgentAccount.sol` implements `IAccount.validateUserOp`
 - [ ] Supports `ERC-1271` (`isValidSignature`)
 - [ ] Owner management (add/remove owners)
 - [ ] Execution functions (`execute`, `executeBatch`)
 - [ ] Receives ETH (`receive()`)
-- [ ] Comprehensive forge tests in `AgentRootAccount.t.sol`
+- [ ] Comprehensive forge tests in `AgentAccount.t.sol`
 - [ ] Follows ERC-4337 EntryPoint v0.7 interface
 
 **Technical Notes:**
@@ -40,10 +40,10 @@
 ### Issue #3: AgentAccountFactory — deterministic deployment
 **Labels:** `feat`, `p1`
 
-**Summary:** Factory contract for deploying AgentRootAccount instances with `CREATE2`.
+**Summary:** Factory contract for deploying AgentAccount instances with `CREATE2`.
 
 **Acceptance Criteria:**
-- [ ] `AgentAccountFactory.sol` deploys `AgentRootAccount` proxies
+- [ ] `AgentAccountFactory.sol` deploys `AgentAccount` proxies
 - [ ] Deterministic addresses via `CREATE2` + salt
 - [ ] `getAddress(owner, salt)` returns counterfactual address
 - [ ] `createAccount(owner, salt)` deploys if not exists, returns address
@@ -63,7 +63,7 @@
 - [ ] Caveat types: time, spending limit, method selector, target contract
 - [ ] EIP-712 typed delegation signatures
 - [ ] On-chain delegation storage with revocation
-- [ ] Integration with `AgentRootAccount` (delegated execution)
+- [ ] Integration with `AgentAccount` (delegated execution)
 - [ ] Forge tests for each caveat type
 
 ---
@@ -74,7 +74,7 @@
 **Summary:** Session keypair management and delegation bundling.
 
 **Acceptance Criteria:**
-- [ ] Session key registration on `AgentRootAccount`
+- [ ] Session key registration on `AgentAccount`
 - [ ] Time-bounded session validity
 - [ ] Delegation bundle attached to session
 - [ ] Session revocation (individual and bulk)

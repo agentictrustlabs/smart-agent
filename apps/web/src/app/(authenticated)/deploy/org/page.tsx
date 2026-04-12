@@ -20,7 +20,7 @@ export default async function DeployOrgAgentPage() {
       <div data-component="deploy-info">
         <h2>What you get</h2>
         <ul>
-          <li>Organization ERC-4337 smart account (AgentRootAccount)</li>
+          <li>Organization ERC-4337 smart account (AgentAccount)</li>
           <li>Multi-owner support (add team members later)</li>
           <li>Delegation framework for scoped permissions</li>
           <li>Session keys for automated agent operations</li>

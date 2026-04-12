@@ -17,7 +17,7 @@ The Smart Agent protocol is implemented as 20 Solidity contracts (^0.8.28) organ
 graph TB
     subgraph "Layer 1 — Account"
         IAgent[IAgentAccount]
-        ARA[AgentRootAccount]
+        ARA[AgentAccount]
         AAF[AgentAccountFactory]
     end
 
@@ -73,13 +73,13 @@ graph TB
 
 These contracts create and manage agent smart accounts on-chain.
 
-### AgentRootAccount
+### AgentAccount
 
-The core identity primitive. Each agent (person, org, or AI) is represented by an AgentRootAccount.
+The core identity primitive. Each agent (person, org, or AI) is represented by an AgentAccount.
 
 ```mermaid
 classDiagram
-    class AgentRootAccount {
+    class AgentAccount {
         -IEntryPoint _entryPoint
         -mapping~address,bool~ _owners
         -uint256 _ownerCount
@@ -95,18 +95,18 @@ classDiagram
     }
 
     class AgentAccountFactory {
-        +AgentRootAccount accountImplementation
-        +createAccount(address owner, uint256 salt) AgentRootAccount
+        +AgentAccount accountImplementation
+        +createAccount(address owner, uint256 salt) AgentAccount
         +getAddress(address owner, uint256 salt) address
     }
 
-    AgentAccountFactory --> AgentRootAccount : "deploys ERC1967Proxy"
-    AgentRootAccount ..|> IAccount : "ERC-4337"
-    AgentRootAccount ..|> IERC1271 : "signature validation"
+    AgentAccountFactory --> AgentAccount : "deploys ERC1967Proxy"
+    AgentAccount ..|> IAccount : "ERC-4337"
+    AgentAccount ..|> IERC1271 : "signature validation"
 ```
 
 **Key behaviors:**
-- Factory deploys ERC1967Proxy → AgentRootAccount implementation (singleton pattern)
+- Factory deploys ERC1967Proxy → AgentAccount implementation (singleton pattern)
 - `CREATE2` gives deterministic addresses: `getAddress(owner, salt)` returns the counterfactual address before deployment
 - `validateUserOp` checks owner signature against `userOpHash` (ECDSA via `toEthSignedMessageHash`)
 - `isValidSignature` (ERC-1271) allows off-chain signature verification against the owner set
@@ -394,7 +394,7 @@ graph TB
 sequenceDiagram
     participant EOA as Alice (EOA)
     participant Factory as AgentAccountFactory
-    participant Agent as AgentRootAccount
+    participant Agent as AgentAccount
     participant Control as AgentControl
     participant Rel as AgentRelationship
     participant Assert as AgentAssertion

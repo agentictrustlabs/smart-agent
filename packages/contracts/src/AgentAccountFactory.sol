@@ -2,16 +2,16 @@
 pragma solidity ^0.8.28;
 
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import "./AgentRootAccount.sol";
+import "./AgentAccount.sol";
 
 /**
  * @title AgentAccountFactory
- * @notice Factory for deploying AgentRootAccount proxies with deterministic CREATE2 addresses.
+ * @notice Factory for deploying AgentAccount proxies with deterministic CREATE2 addresses.
  *         Automatically sets the DelegationManager and server signer on each new account.
  */
 contract AgentAccountFactory {
-    /// @notice The AgentRootAccount implementation (singleton).
-    AgentRootAccount public immutable accountImplementation;
+    /// @notice The AgentAccount implementation (singleton).
+    AgentAccount public immutable accountImplementation;
 
     /// @notice The DelegationManager address set on every new account.
     address public delegationManager;
@@ -24,7 +24,7 @@ contract AgentAccountFactory {
     event AgentAccountCreated(address indexed account, address indexed owner, uint256 salt);
 
     constructor(IEntryPoint entryPoint_, address delegationManager_, address serverSigner_) {
-        accountImplementation = new AgentRootAccount(entryPoint_);
+        accountImplementation = new AgentAccount(entryPoint_);
         delegationManager = delegationManager_;
         serverSigner = serverSigner_;
     }
@@ -44,7 +44,7 @@ contract AgentAccountFactory {
     }
 
     /**
-     * @notice Deploy a new AgentRootAccount proxy, or return the existing one if already deployed.
+     * @notice Deploy a new AgentAccount proxy, or return the existing one if already deployed.
      * @param owner The initial owner of the agent account.
      * @param salt A unique salt for deterministic deployment.
      * @return account The deployed (or existing) agent account.
@@ -52,18 +52,18 @@ contract AgentAccountFactory {
     function createAccount(
         address owner,
         uint256 salt
-    ) external returns (AgentRootAccount account) {
+    ) external returns (AgentAccount account) {
         address addr = getAddress(owner, salt);
 
         // If already deployed, return existing
         if (addr.code.length > 0) {
-            return AgentRootAccount(payable(addr));
+            return AgentAccount(payable(addr));
         }
 
         // Deploy ERC1967Proxy pointing to the implementation
         // initialize(owner, serverSigner, delegationManager) sets all at creation time
         bytes memory initData = abi.encodeCall(
-            AgentRootAccount.initialize,
+            AgentAccount.initialize,
             (owner, serverSigner, delegationManager)
         );
 
@@ -72,7 +72,7 @@ contract AgentAccountFactory {
             initData
         );
 
-        account = AgentRootAccount(payable(address(proxy)));
+        account = AgentAccount(payable(address(proxy)));
         emit AgentAccountCreated(address(account), owner, salt);
     }
 
@@ -87,7 +87,7 @@ contract AgentAccountFactory {
         uint256 salt
     ) public view returns (address) {
         bytes memory initData = abi.encodeCall(
-            AgentRootAccount.initialize,
+            AgentAccount.initialize,
             (owner, serverSigner, delegationManager)
         );
 

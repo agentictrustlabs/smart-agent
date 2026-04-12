@@ -2,7 +2,7 @@
 
 import { db, schema } from '@/db'
 import { eq } from 'drizzle-orm'
-import { randomUUID } from 'crypto'
+// randomUUID no longer needed — agent_index uses address as PK
 import {
   deploySmartAccount, createRelationship, confirmRelationship,
   getPublicClient, getWalletClient,
@@ -12,7 +12,7 @@ import {
   ORGANIZATION_GOVERNANCE, ORGANIZATION_MEMBERSHIP, ALLIANCE, ORGANIZATIONAL_CONTROL,
   ROLE_OWNER, ROLE_BOARD_MEMBER, ROLE_OPERATOR, ROLE_MEMBER, ROLE_ADVISOR, ROLE_OPERATED_AGENT,
   ROLE_STRATEGIC_PARTNER,
-  ATL_LATITUDE, ATL_LONGITUDE, ATL_SPATIAL_CRS, ATL_SPATIAL_TYPE,
+  ATL_LATITUDE, ATL_LONGITUDE, ATL_SPATIAL_CRS, ATL_SPATIAL_TYPE, ATL_CONTROLLER,
 } from '@smart-agent/sdk'
 import { agentAccountResolverAbi } from '@smart-agent/sdk'
 import { keccak256, toBytes } from 'viem'
@@ -48,6 +48,15 @@ async function createEdge(subject: `0x${string}`, object: `0x${string}`, relType
     await confirmRelationship(edgeId)
     return edgeId
   } catch (_e) { console.warn(`[catalyst-seed] Edge failed:`, _e); return null }
+}
+
+async function setController(agentAddr: `0x${string}`, walletAddr: string) {
+  const wc = getWalletClient()
+  const res = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}`
+  if (!res) return
+  try {
+    await wc.writeContract({ address: res, abi: agentAccountResolverAbi, functionName: 'addMultiAddressProperty', args: [agentAddr, ATL_CONTROLLER as `0x${string}`, walletAddr as `0x${string}`] })
+  } catch (_e) { console.warn(`[catalyst-seed] Controller failed:`, _e) }
 }
 
 async function setGeo(addr: `0x${string}`, lat: string, lon: string) {
@@ -141,6 +150,16 @@ async function doSeed() {
   await register(paHoa, 'Hoa Tran', 'Group Leader — Son Tra Group', TYPE_PERSON)
   await register(paDuc, 'Duc Le', 'Group Leader — Han Hoa Group', TYPE_PERSON)
 
+  // ─── Set ATL_CONTROLLER on person agents (wallet → agent mapping) ──
+  console.log('[catalyst-seed] Setting controller predicates...')
+  await setController(paElena, '0x00000000000000000000000000000000000b0001')
+  await setController(paLinh, '0x00000000000000000000000000000000000b0002')
+  await setController(paTran, '0x00000000000000000000000000000000000b0003')
+  await setController(paMai, '0x00000000000000000000000000000000000b0004')
+  await setController(paJames, '0x00000000000000000000000000000000000b0005')
+  await setController(paHoa, '0x00000000000000000000000000000000000b0006')
+  await setController(paDuc, '0x00000000000000000000000000000000000b0007')
+
   // ─── Geospatial Metadata (Da Nang coordinates) ────────────────────
   console.log('[catalyst-seed] Setting geospatial metadata...')
   await setGeo(network, '16.0544', '108.2022')   // Da Nang city-level
@@ -153,68 +172,8 @@ async function doSeed() {
   await setGeo(grpNgu, '16.0060', '108.2630')     // Ngu Hanh Son
   await setGeo(grpCam, '16.0200', '108.1950')     // Cam Le district
 
-  // ─── DB records (person_agents, org_agents, ai_agents) ────────────
-  console.log('[catalyst-seed] Saving DB records...')
-  const personAgents = [
-    { userId: 'cat-user-001', name: 'Elena Vasquez', addr: paElena },
-    { userId: 'cat-user-002', name: 'Linh Nguyen', addr: paLinh },
-    { userId: 'cat-user-003', name: 'Tran Minh', addr: paTran },
-    { userId: 'cat-user-004', name: 'Mai Pham', addr: paMai },
-    { userId: 'cat-user-005', name: 'James Okafor', addr: paJames },
-    { userId: 'cat-user-006', name: 'Hoa Tran', addr: paHoa },
-    { userId: 'cat-user-007', name: 'Duc Le', addr: paDuc },
-  ]
-  for (const p of personAgents) {
-    const existing = db.select().from(schema.personAgents).where(eq(schema.personAgents.userId, p.userId)).get()
-    if (!existing) {
-      db.insert(schema.personAgents).values({
-        id: randomUUID(), name: p.name, userId: p.userId,
-        smartAccountAddress: p.addr, chainId: 31337,
-        salt: '0x' + randomUUID().replace(/-/g, '').slice(0, 8),
-        implementationType: 'hybrid', status: 'deployed',
-      }).run()
-    } else if (existing.smartAccountAddress !== p.addr) {
-      // Update with correct on-chain address
-      db.update(schema.personAgents)
-        .set({ smartAccountAddress: p.addr, name: p.name, status: 'deployed' })
-        .where(eq(schema.personAgents.userId, p.userId)).run()
-    }
-  }
-
-  const healthJson = (h: Record<string, unknown>) => JSON.stringify(h)
-  const orgs = [
-    { name: 'Mekong Catalyst Network', desc: 'Regional coordination for grassroots community development', addr: network, user: 'cat-user-001', tpl: 'catalyst-network', meta: null },
-    { name: 'Da Nang Hub', desc: 'Facilitator hub — community development in Da Nang', addr: hub, user: 'cat-user-002', tpl: 'facilitator-hub', meta: null },
-    { name: 'Son Tra Group', desc: 'Established group — Son Tra (G1)', addr: grpSontra, user: 'cat-user-006', tpl: 'local-group', meta: healthJson({ seekers: 9, believers: 7, baptized: 5, leaders: 3, giving: true, isChurch: true, groupsStarted: 2, attenders: 9, generation: 1, leaderName: 'Hoa Tran' }) },
-    { name: 'Han Hoa Group', desc: 'Established group — Han Hoa (G2)', addr: grpHanhoa, user: 'cat-user-007', tpl: 'local-group', meta: healthJson({ seekers: 7, believers: 5, baptized: 3, leaders: 1, giving: true, isChurch: true, groupsStarted: 1, attenders: 7, generation: 2, leaderName: 'Duc Le' }) },
-    { name: 'My Khe Group', desc: 'Group — My Khe Beach (G2)', addr: grpMyke, user: 'cat-user-002', tpl: 'local-group', meta: healthJson({ seekers: 4, believers: 2, baptized: 1, leaders: 0, attenders: 4, generation: 2 }) },
-    { name: 'Thanh Khe Group', desc: 'Group — Thanh Khe (G1)', addr: grpThanh, user: 'cat-user-003', tpl: 'local-group', meta: healthJson({ seekers: 5, believers: 3, baptized: 1, leaders: 1, attenders: 5, generation: 1 }) },
-    { name: 'Lien Chieu Group', desc: 'Group — Lien Chieu (G2)', addr: grpLien, user: 'cat-user-003', tpl: 'local-group', meta: healthJson({ seekers: 6, believers: 2, baptized: 0, leaders: 0, attenders: 6, generation: 2 }) },
-    { name: 'Ngu Hanh Son Group', desc: 'Group — Ngu Hanh Son (G3)', addr: grpNgu, user: 'cat-user-002', tpl: 'local-group', meta: healthJson({ seekers: 8, believers: 3, baptized: 1, leaders: 0, attenders: 8, generation: 3 }) },
-    { name: 'Cam Le Group', desc: 'Group — Cam Le (G1)', addr: grpCam, user: 'cat-user-003', tpl: 'local-group', meta: healthJson({ seekers: 4, believers: 2, baptized: 0, leaders: 0, attenders: 4, generation: 1 }) },
-  ]
-  for (const o of orgs) {
-    if (!db.select().from(schema.orgAgents).where(eq(schema.orgAgents.smartAccountAddress, o.addr)).get()) {
-      db.insert(schema.orgAgents).values({
-        id: randomUUID(), name: o.name, description: o.desc, metadata: o.meta,
-        createdBy: o.user, smartAccountAddress: o.addr,
-        templateId: o.tpl, chainId: 31337,
-        salt: '0x' + randomUUID().replace(/-/g, '').slice(0, 8),
-        implementationType: 'hybrid', status: 'deployed',
-      }).run()
-    }
-  }
-
-  if (!db.select().from(schema.aiAgents).where(eq(schema.aiAgents.smartAccountAddress, analytics)).get()) {
-    db.insert(schema.aiAgents).values({
-      id: randomUUID(), name: 'Growth Analytics',
-      description: 'Generational multiplication tracking and movement health',
-      agentType: 'discovery', createdBy: 'cat-user-001', operatedBy: network,
-      smartAccountAddress: analytics, chainId: 31337,
-      salt: '0x' + randomUUID().replace(/-/g, '').slice(0, 8),
-      implementationType: 'hybrid', status: 'deployed',
-    }).run()
-  }
+  // No DB writes needed — all agent identity, relationships, and metadata are on-chain.
+  // The only DB table used is `users` (for Privy auth → wallet mapping).
 
   // ─── On-Chain Relationships (22 edges) ────────────────────────────
   // Quick check: if Hub already has outgoing ALLIANCE edges, skip all edge creation

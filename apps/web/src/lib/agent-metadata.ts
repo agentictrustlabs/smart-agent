@@ -9,8 +9,8 @@ import {
 import { db, schema } from '@/db'
 
 /**
- * Unified agent metadata — merges on-chain resolver data with DB fallback.
- * Use this everywhere instead of querying DB tables directly for agent info.
+ * Unified agent metadata — reads from on-chain resolver.
+ * No DB fallback for name/description — resolver is source of truth.
  */
 export interface AgentMetadata {
   address: string
@@ -26,7 +26,6 @@ export interface AgentMetadata {
   metadataURI: string
   isResolverRegistered: boolean
   isActive: boolean
-  // Geospatial
   latitude: string
   longitude: string
   spatialCRS: string
@@ -40,13 +39,12 @@ const TYPE_MAP: Record<string, 'person' | 'org' | 'ai'> = {
 }
 
 /**
- * Load metadata for a single agent, resolver-first with DB fallback.
+ * Load metadata for a single agent from on-chain resolver.
  */
 export async function getAgentMetadata(agentAddress: string): Promise<AgentMetadata> {
   const addr = agentAddress as `0x${string}`
   const resolverAddr = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}`
 
-  // Start with defaults
   const meta: AgentMetadata = {
     address: agentAddress,
     displayName: `${agentAddress.slice(0, 6)}...${agentAddress.slice(-4)}`,
@@ -61,43 +59,15 @@ export async function getAgentMetadata(agentAddress: string): Promise<AgentMetad
     metadataURI: '',
     isResolverRegistered: false,
     isActive: true,
-    latitude: '',
-    longitude: '',
-    spatialCRS: '',
-    spatialType: '',
+    latitude: '', longitude: '', spatialCRS: '', spatialType: '',
   }
 
-  // DB fallback first
-  const allOrgs = await db.select().from(schema.orgAgents)
-  const allAI = await db.select().from(schema.aiAgents)
-  const allPerson = await db.select().from(schema.personAgents)
+  // Agent kind will be set from resolver agentType below
 
-  const org = allOrgs.find(o => o.smartAccountAddress.toLowerCase() === addr.toLowerCase())
-  const ai = allAI.find(a => a.smartAccountAddress.toLowerCase() === addr.toLowerCase())
-  const person = allPerson.find(p => p.smartAccountAddress.toLowerCase() === addr.toLowerCase())
-
-  if (org) {
-    meta.displayName = org.name
-    meta.description = org.description ?? ''
-    meta.agentType = 'org'
-    meta.agentTypeLabel = 'Organization'
-  } else if (ai) {
-    meta.displayName = ai.name
-    meta.description = ai.description ?? ''
-    meta.agentType = 'ai'
-    meta.agentTypeLabel = 'AI Agent'
-    meta.aiAgentClass = ai.agentType ?? ''
-  } else if (person) {
-    meta.displayName = person.name
-    meta.agentType = 'person'
-    meta.agentTypeLabel = 'Person Agent'
-  }
-
-  // On-chain resolver override
+  // On-chain resolver (source of truth)
   if (resolverAddr) {
     try {
       const client = getPublicClient()
-
       const isReg = await client.readContract({
         address: resolverAddr, abi: agentAccountResolverAbi,
         functionName: 'isRegistered', args: [addr],
@@ -105,15 +75,10 @@ export async function getAgentMetadata(agentAddress: string): Promise<AgentMetad
 
       if (isReg) {
         meta.isResolverRegistered = true
-
         const core = await client.readContract({
           address: resolverAddr, abi: agentAccountResolverAbi,
           functionName: 'getCore', args: [addr],
-        }) as {
-          displayName: string; description: string
-          agentType: `0x${string}`; agentClass: `0x${string}`
-          metadataURI: string; active: boolean
-        }
+        }) as { displayName: string; description: string; agentType: `0x${string}`; agentClass: `0x${string}`; metadataURI: string; active: boolean }
 
         if (core.displayName) meta.displayName = core.displayName
         if (core.description) meta.description = core.description
@@ -128,115 +93,51 @@ export async function getAgentMetadata(agentAddress: string): Promise<AgentMetad
           meta.aiAgentClass = AI_CLASS_LABELS[core.agentClass]
         }
 
-        meta.capabilities = await client.readContract({
-          address: resolverAddr, abi: agentAccountResolverAbi,
-          functionName: 'getMultiStringProperty',
-          args: [addr, ATL_CAPABILITY as `0x${string}`],
-        }) as string[]
-
-        meta.trustModels = await client.readContract({
-          address: resolverAddr, abi: agentAccountResolverAbi,
-          functionName: 'getMultiStringProperty',
-          args: [addr, ATL_SUPPORTED_TRUST as `0x${string}`],
-        }) as string[]
-
-        meta.a2aEndpoint = await client.readContract({
-          address: resolverAddr, abi: agentAccountResolverAbi,
-          functionName: 'getStringProperty',
-          args: [addr, ATL_A2A_ENDPOINT as `0x${string}`],
-        }) as string
-
-        meta.mcpServer = await client.readContract({
-          address: resolverAddr, abi: agentAccountResolverAbi,
-          functionName: 'getStringProperty',
-          args: [addr, ATL_MCP_SERVER as `0x${string}`],
-        }) as string
-
-        // Geospatial
-        meta.latitude = await client.readContract({
-          address: resolverAddr, abi: agentAccountResolverAbi,
-          functionName: 'getStringProperty',
-          args: [addr, ATL_LATITUDE as `0x${string}`],
-        }) as string
-        meta.longitude = await client.readContract({
-          address: resolverAddr, abi: agentAccountResolverAbi,
-          functionName: 'getStringProperty',
-          args: [addr, ATL_LONGITUDE as `0x${string}`],
-        }) as string
-        meta.spatialCRS = await client.readContract({
-          address: resolverAddr, abi: agentAccountResolverAbi,
-          functionName: 'getStringProperty',
-          args: [addr, ATL_SPATIAL_CRS as `0x${string}`],
-        }) as string
-        meta.spatialType = await client.readContract({
-          address: resolverAddr, abi: agentAccountResolverAbi,
-          functionName: 'getStringProperty',
-          args: [addr, ATL_SPATIAL_TYPE as `0x${string}`],
-        }) as string
+        meta.capabilities = await client.readContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'getMultiStringProperty', args: [addr, ATL_CAPABILITY as `0x${string}`] }) as string[]
+        meta.trustModels = await client.readContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'getMultiStringProperty', args: [addr, ATL_SUPPORTED_TRUST as `0x${string}`] }) as string[]
+        meta.a2aEndpoint = await client.readContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'getStringProperty', args: [addr, ATL_A2A_ENDPOINT as `0x${string}`] }) as string
+        meta.mcpServer = await client.readContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'getStringProperty', args: [addr, ATL_MCP_SERVER as `0x${string}`] }) as string
+        meta.latitude = await client.readContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'getStringProperty', args: [addr, ATL_LATITUDE as `0x${string}`] }) as string
+        meta.longitude = await client.readContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'getStringProperty', args: [addr, ATL_LONGITUDE as `0x${string}`] }) as string
+        meta.spatialCRS = await client.readContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'getStringProperty', args: [addr, ATL_SPATIAL_CRS as `0x${string}`] }) as string
+        meta.spatialType = await client.readContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'getStringProperty', args: [addr, ATL_SPATIAL_TYPE as `0x${string}`] }) as string
       }
-    } catch { /* resolver not deployed or agent not registered */ }
+    } catch { /* ignored */ }
   }
 
   return meta
 }
 
 /**
- * Build a name lookup map for all known agents (resolver-first, DB fallback).
- * Cheaper than calling getAgentMetadata for every address — bulk loads from DB
- * then overrides with resolver names for registered agents.
+ * Build name lookup map from on-chain resolver.
  */
 export async function buildAgentNameMap(): Promise<Map<string, { name: string; type: string }>> {
   const nameMap = new Map<string, { name: string; type: string }>()
 
-  // DB baseline
-  const allOrgs = await db.select().from(schema.orgAgents)
-  const allAI = await db.select().from(schema.aiAgents)
-  const allPerson = await db.select().from(schema.personAgents)
+  // User EOA names
   const allUsers = await db.select().from(schema.users)
-
-  for (const p of allPerson) {
-    const u = allUsers.find(u => u.id === p.userId)
-    nameMap.set(p.smartAccountAddress.toLowerCase(), { name: p.name || u?.name || 'Person Agent', type: 'person' })
-  }
-  for (const o of allOrgs) nameMap.set(o.smartAccountAddress.toLowerCase(), { name: o.name, type: 'org' })
-  for (const a of allAI) nameMap.set(a.smartAccountAddress.toLowerCase(), { name: a.name, type: 'ai' })
   for (const u of allUsers) nameMap.set(u.walletAddress.toLowerCase(), { name: u.name, type: 'eoa' })
 
-  // Resolver override for registered agents
+  // On-chain resolver (source of truth for names and types)
   const resolverAddr = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}`
   if (resolverAddr) {
     try {
       const client = getPublicClient()
-      const count = await client.readContract({
-        address: resolverAddr, abi: agentAccountResolverAbi,
-        functionName: 'agentCount',
-      }) as bigint
-
+      const count = await client.readContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'agentCount' }) as bigint
       for (let i = 0n; i < count; i++) {
-        const agentAddr = await client.readContract({
-          address: resolverAddr, abi: agentAccountResolverAbi,
-          functionName: 'getAgentAt', args: [i],
-        }) as `0x${string}`
-
-        const core = await client.readContract({
-          address: resolverAddr, abi: agentAccountResolverAbi,
-          functionName: 'getCore', args: [agentAddr],
-        }) as { displayName: string; agentType: `0x${string}` }
-
+        const agentAddr = await client.readContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'getAgentAt', args: [i] }) as `0x${string}`
+        const core = await client.readContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'getCore', args: [agentAddr] }) as { displayName: string; agentType: `0x${string}` }
         if (core.displayName) {
           const type = TYPE_MAP[core.agentType] ?? nameMap.get(agentAddr.toLowerCase())?.type ?? 'unknown'
           nameMap.set(agentAddr.toLowerCase(), { name: core.displayName, type })
         }
       }
-    } catch { /* resolver not deployed */ }
+    } catch { /* ignored */ }
   }
 
   return nameMap
 }
 
-/**
- * Simple name lookup — returns display name for an address.
- */
 export function getNameFromMap(map: Map<string, { name: string; type: string }>, addr: string): string {
   return map.get(addr.toLowerCase())?.name ?? `${addr.slice(0, 6)}...${addr.slice(-4)}`
 }

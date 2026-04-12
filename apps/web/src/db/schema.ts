@@ -13,7 +13,17 @@ export const users = sqliteTable('users', {
     .$defaultFn(() => new Date().toISOString()),
 })
 
-// ─── Person Agents (individual user 4337 accounts) ──────────────────
+// ═══════════════════════════════════════════════════════════════════════
+// All agent identity, relationships, and metadata are ON-CHAIN.
+// The only DB table for agents is `users` (Privy auth → wallet mapping).
+// Agent lookup: resolver (name/type) + edges (relationships) + ATL_CONTROLLER (wallet→agent).
+// ═══════════════════════════════════════════════════════════════════════
+// DEPRECATED TABLES — These duplicate on-chain state (resolver + edges).
+// Use agent_index + on-chain resolver instead. Kept for backward compat
+// with unmigrated pages. Will be removed in a future cleanup pass.
+// ═══════════════════════════════════════════════════════════════════════
+
+// ─── Person Agents (DEPRECATED — use agent_index) ───────────────────
 
 export const personAgents = sqliteTable('person_agents', {
   id: text('id').primaryKey(),
@@ -40,7 +50,7 @@ export const personAgents = sqliteTable('person_agents', {
     .$defaultFn(() => new Date().toISOString()),
 })
 
-// ─── Org Agents (organization 4337 accounts) ────────────────────────
+// ─── Org Agents (DEPRECATED — use agent_index + resolver) ────────────────────────
 
 export const orgAgents = sqliteTable('org_agents', {
   id: text('id').primaryKey(),
@@ -70,7 +80,7 @@ export const orgAgents = sqliteTable('org_agents', {
     .$defaultFn(() => new Date().toISOString()),
 })
 
-// ─── AI Agents (autonomous AI agent 4337 accounts) ──────────────────
+// ─── AI Agents (DEPRECATED — use agent_index + resolver) ──────────────────
 
 export const aiAgents = sqliteTable('ai_agents', {
   id: text('id').primaryKey(),
@@ -101,7 +111,7 @@ export const aiAgents = sqliteTable('ai_agents', {
     .$defaultFn(() => new Date().toISOString()),
 })
 
-// ─── Review Records (maps on-chain reviewId to actual reviewer) ──────
+// ─── Review Records (DEPRECATED — on-chain AgentReviewRecord is source of truth) ──────
 
 export const reviewRecords = sqliteTable('review_records', {
   id: text('id').primaryKey(),
@@ -293,7 +303,7 @@ export const activityLogs = sqliteTable('activity_logs', {
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
 })
 
-// ─── Generational Map Nodes (groups in a generational chain) ────────
+// ─── Generational Map Nodes (DEPRECATED — use on-chain ALLIANCE edges) ────────
 
 export const genMapNodes = sqliteTable('gen_map_nodes', {
   id: text('id').primaryKey(),
@@ -318,7 +328,7 @@ export const genMapNodes = sqliteTable('gen_map_nodes', {
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
 })
 
-// ─── Demo Edges (DB-level relationship edges for demo mode) ─────────
+// ─── Demo Edges (DEPRECATED — use on-chain AgentRelationship edges) ─────────
 
 export const demoEdges = sqliteTable('demo_edges', {
   id: text('id').primaryKey(),

@@ -85,6 +85,21 @@ register "$PA_JAMES" "James Okafor" "Regional Lead — Mekong Network" "$T_PERSO
 register "$PA_HOA" "Hoa Tran" "Group Leader — Son Tra Group" "$T_PERSON"
 register "$PA_DUC" "Duc Le" "Group Leader — Han Hoa Group" "$T_PERSON"
 
+# Set ATL_CONTROLLER on person agents (wallet → agent mapping)
+ATL_CONTROLLER="$(cast keccak 'atl:hasController')"
+set_ctrl() {
+  local agent=$1 wallet=$2
+  cast send "$RESOLVER" "addMultiAddressProperty(address,bytes32,address)" "$agent" "$ATL_CONTROLLER" "$wallet" --rpc-url "$RPC" --private-key "$KEY" > /dev/null 2>&1
+}
+echo "Setting controllers..."
+set_ctrl "$PA_ELENA" "0x00000000000000000000000000000000000b0001"
+set_ctrl "$PA_LINH" "0x00000000000000000000000000000000000b0002"
+set_ctrl "$PA_TRAN" "0x00000000000000000000000000000000000b0003"
+set_ctrl "$PA_MAI" "0x00000000000000000000000000000000000b0004"
+set_ctrl "$PA_JAMES" "0x00000000000000000000000000000000000b0005"
+set_ctrl "$PA_HOA" "0x00000000000000000000000000000000000b0006"
+set_ctrl "$PA_DUC" "0x00000000000000000000000000000000000b0007"
+
 # ─── Relationships ───────────────────────────────────────────────────
 create_rel() {
   local subject=$1 object=$2 relType=$3 metaURI=$4
@@ -207,7 +222,7 @@ const users = [
 ];
 for (const u of users) {
   if (!db.prepare('SELECT id FROM users WHERE id = ?').get(u.id))
-    db.prepare('INSERT INTO users (id,email,name,wallet_address,privy_user_id,created_at) VALUES (?,?,?,?,?,?)').run(u.id, u.email, u.name, u.wallet, u.privy, ts());
+    db.prepare('INSERT OR IGNORE INTO users (id,email,name,wallet_address,privy_user_id,created_at) VALUES (?,?,?,?,?,?)').run(u.id, u.email, u.name, u.wallet, u.privy, ts());
 }
 
 // Person agents
@@ -222,7 +237,7 @@ const personAgents = [
 ];
 for (const p of personAgents) {
   if (!db.prepare('SELECT id FROM person_agents WHERE user_id = ?').get(p.userId))
-    db.prepare('INSERT INTO person_agents (id,name,user_id,smart_account_address,chain_id,salt,implementation_type,status,created_at) VALUES (?,?,?,?,?,?,?,?,?)').run(id(), p.name, p.userId, p.addr, 31337, '0x' + Math.random().toString(16).slice(2,10), 'hybrid', 'deployed', ts());
+    db.prepare('INSERT OR IGNORE INTO person_agents (id,name,user_id,smart_account_address,chain_id,salt,implementation_type,status,created_at) VALUES (?,?,?,?,?,?,?,?,?)').run(id(), p.name, p.userId, p.addr, 31337, '0x' + Math.random().toString(16).slice(2,10), 'hybrid', 'deployed', ts());
 }
 
 // Org agents — Network, Hub, AND each Circle as a proper org agent
@@ -240,12 +255,12 @@ const orgs = [
 ];
 for (const o of orgs) {
   if (!db.prepare('SELECT id FROM org_agents WHERE smart_account_address = ?').get(o.addr))
-    db.prepare('INSERT INTO org_agents (id,name,description,created_by,smart_account_address,template_id,chain_id,salt,implementation_type,status,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)').run(id(), o.name, o.desc, o.user, o.addr, o.tpl, 31337, '0x' + Math.random().toString(16).slice(2,10), 'hybrid', 'deployed', ts());
+    db.prepare('INSERT OR IGNORE INTO org_agents (id,name,description,created_by,smart_account_address,template_id,chain_id,salt,implementation_type,status,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)').run(id(), o.name, o.desc, o.user, o.addr, o.tpl, 31337, '0x' + Math.random().toString(16).slice(2,10), 'hybrid', 'deployed', ts());
 }
 
 // AI agent
 if (!db.prepare(\"SELECT id FROM ai_agents WHERE name = 'Growth Analytics' AND operated_by = ?\").get('$NETWORK'))
-  db.prepare('INSERT INTO ai_agents (id,name,description,agent_type,created_by,operated_by,smart_account_address,chain_id,salt,implementation_type,status,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)').run(id(), 'Growth Analytics', 'Tracks generational multiplication and movement health', 'discovery', 'cat-user-001', '$NETWORK', '$ANALYTICS', 31337, '0x' + Math.random().toString(16).slice(2,10), 'hybrid', 'deployed', ts());
+  db.prepare('INSERT OR IGNORE INTO ai_agents (id,name,description,agent_type,created_by,operated_by,smart_account_address,chain_id,salt,implementation_type,status,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)').run(id(), 'Growth Analytics', 'Tracks generational multiplication and movement health', 'discovery', 'cat-user-001', '$NETWORK', '$ANALYTICS', 31337, '0x' + Math.random().toString(16).slice(2,10), 'hybrid', 'deployed', ts());
 
 // Gen map nodes — reference actual org agent addresses
 const networkAddr = '$NETWORK'.toLowerCase();
@@ -264,7 +279,7 @@ const genNodes = [
 // Clear old gen map nodes for this network and re-seed with org references
 db.prepare('DELETE FROM gen_map_nodes WHERE network_address = ?').run(networkAddr);
 for (const n of genNodes) {
-  db.prepare('INSERT INTO gen_map_nodes (id,network_address,group_address,parent_id,generation,name,leader_name,location,health_data,status,started_at,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)')
+  db.prepare('INSERT OR IGNORE INTO gen_map_nodes (id,network_address,group_address,parent_id,generation,name,leader_name,location,health_data,status,started_at,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)')
     .run(n.id, networkAddr, n.groupAddr ? n.groupAddr.toLowerCase() : null, n.parent, n.gen, n.name, n.leader, n.loc, JSON.stringify(n.health), n.status, n.started, ts());
 }
 
@@ -287,16 +302,47 @@ if (!existingAct || existingAct.c === 0) {
     { user: 'cat-user-006', type: 'meeting', title: 'Son Tra Saturday session', desc: 'Full circle session. 7 participants, 3 prospects. Digital literacy module. One prospect asked about starting own circle.', participants: 10, loc: 'Son Tra', dur: 90, date: '2026-04-09' },
   ];
   for (const a of activities) {
-    db.prepare('INSERT INTO activity_logs (id,org_address,user_id,activity_type,title,description,participants,location,lat,lng,duration_minutes,related_entity,activity_date,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
+    db.prepare('INSERT OR IGNORE INTO activity_logs (id,org_address,user_id,activity_type,title,description,participants,location,lat,lng,duration_minutes,related_entity,activity_date,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
       .run(id(), hubAddr, a.user, a.type, a.title, a.desc, a.participants, a.loc, null, null, a.dur, null, a.date, ts());
   }
 }
 
+// Agent index (minimal off-chain index into on-chain agents)
+function upsertIdx(addr, kind, userId, createdBy, operatedBy, templateId) {
+  const key = addr.toLowerCase();
+  if (!db.prepare('SELECT smart_account_address FROM agent_index WHERE smart_account_address = ?').get(key)) {
+    db.prepare('INSERT OR IGNORE INTO agent_index (smart_account_address,agent_kind,user_id,created_by,operated_by,template_id,created_at) VALUES (?,?,?,?,?,?,?)').run(key, kind, userId, createdBy, operatedBy, templateId, ts());
+  }
+}
+
+// Person agents
+upsertIdx('$PA_ELENA', 'person', 'cat-user-001', 'cat-user-001', null, null);
+upsertIdx('$PA_LINH', 'person', 'cat-user-002', 'cat-user-002', null, null);
+upsertIdx('$PA_TRAN', 'person', 'cat-user-003', 'cat-user-003', null, null);
+upsertIdx('$PA_MAI', 'person', 'cat-user-004', 'cat-user-004', null, null);
+upsertIdx('$PA_JAMES', 'person', 'cat-user-005', 'cat-user-005', null, null);
+upsertIdx('$PA_HOA', 'person', 'cat-user-006', 'cat-user-006', null, null);
+upsertIdx('$PA_DUC', 'person', 'cat-user-007', 'cat-user-007', null, null);
+
+// Org agents
+upsertIdx('$NETWORK', 'org', null, 'cat-user-001', null, 'catalyst-network');
+upsertIdx('$HUB_DANANG', 'org', null, 'cat-user-002', null, 'facilitator-hub');
+upsertIdx('$CIRCLE_SONTRA', 'org', null, 'cat-user-006', null, 'local-group');
+upsertIdx('$CIRCLE_HANHOA', 'org', null, 'cat-user-007', null, 'local-group');
+upsertIdx('$CIRCLE_MYKE', 'org', null, 'cat-user-002', null, 'local-group');
+upsertIdx('$CIRCLE_THANH', 'org', null, 'cat-user-003', null, 'local-group');
+upsertIdx('$CIRCLE_LIEN', 'org', null, 'cat-user-003', null, 'local-group');
+upsertIdx('$CIRCLE_NGU', 'org', null, 'cat-user-002', null, 'local-group');
+upsertIdx('$CIRCLE_CAM', 'org', null, 'cat-user-003', null, 'local-group');
+
+// AI agent
+upsertIdx('$ANALYTICS', 'ai', null, 'cat-user-001', '$NETWORK', null);
+
 console.log('Catalyst Network seeded:');
 console.log('  7 users, 7 person agents');
-console.log('  9 org agents (1 network + 1 hub + 7 circles)');
+console.log('  9 org agents (1 network + 1 hub + 7 groups)');
 console.log('  1 AI agent (Growth Analytics)');
-console.log('  9 gen map nodes with org agent references');
+console.log('  17 agent_index entries');
 console.log('  12 activity logs');
 "
 

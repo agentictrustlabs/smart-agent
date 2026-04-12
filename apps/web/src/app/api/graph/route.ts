@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { eq } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { getEdgesByObject, getEdge, getEdgeRoles, getTemplateCount, getTemplate, getPublicClient } from '@/lib/contracts'
-import { roleName, relationshipTypeName, toDidEthr, agentAccountResolverAbi, ATL_CAPABILITY, ATL_SUPPORTED_TRUST, ATL_A2A_ENDPOINT, AI_CLASS_LABELS } from '@smart-agent/sdk'
+import { roleName, relationshipTypeName, toDidEthr, agentAccountResolverAbi, ATL_CAPABILITY, ATL_SUPPORTED_TRUST, ATL_A2A_ENDPOINT, ATL_CONTROLLER, AI_CLASS_LABELS } from '@smart-agent/sdk'
 
 const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? '31337')
 const STATUS_LABELS = ['none', 'proposed', 'confirmed', 'active', 'suspended', 'revoked', 'rejected']
@@ -43,21 +43,15 @@ export interface GraphEdge {
 export async function GET() {
   try {
     const allUsers = await db.select().from(schema.users)
-    const allPersonAgents = await db.select().from(schema.personAgents)
-    const allOrgAgents = await db.select().from(schema.orgAgents)
-    const allAIAgents = await db.select().from(schema.aiAgents)
 
+    // Build name + type map from on-chain resolver
+    const { buildAgentNameMap } = await import('@/lib/agent-metadata')
+    const resolverNames = await buildAgentNameMap()
     const nameMap = new Map<string, string>()
-    for (const p of allPersonAgents) {
-      const user = allUsers.find((u) => u.id === p.userId)
-      const agentName = (p as Record<string, unknown>).name as string | undefined
-      nameMap.set(p.smartAccountAddress.toLowerCase(), agentName || user?.name || 'Person Agent')
-    }
-    for (const o of allOrgAgents) {
-      nameMap.set(o.smartAccountAddress.toLowerCase(), o.name)
-    }
-    for (const a of allAIAgents) {
-      nameMap.set(a.smartAccountAddress.toLowerCase(), a.name)
+    const typeMap = new Map<string, string>()
+    for (const [addr, info] of resolverNames) {
+      nameMap.set(addr, info.name)
+      typeMap.set(addr, info.type)
     }
 
     const nodes: GraphNode[] = []
@@ -84,51 +78,37 @@ export async function GET() {
       addNode(u.walletAddress, 'eoa')
     }
 
-    for (const p of allPersonAgents) {
-      addNode(p.smartAccountAddress, 'person')
-      // EOA → Person Agent controller edge
-      const user = allUsers.find((u) => u.id === p.userId)
-      if (user) {
-        edges.push({
-          source: user.walletAddress,
-          target: p.smartAccountAddress,
-          roles: ['controller'],
-          relationshipType: 'Controller',
-          status: 'active',
-          edgeId: `ctrl-${user.walletAddress}-${p.smartAccountAddress}`,
-          templates: [],
-        })
-      }
-    }
-    for (const o of allOrgAgents) {
-      addNode(o.smartAccountAddress, 'org')
-      const user = allUsers.find((u) => u.id === o.createdBy)
-      if (user) {
-        edges.push({
-          source: user.walletAddress,
-          target: o.smartAccountAddress,
-          roles: ['controller'],
-          relationshipType: 'Controller',
-          status: 'active',
-          edgeId: `ctrl-${user.walletAddress}-${o.smartAccountAddress}`,
-          templates: [],
-        })
-      }
-    }
-    for (const a of allAIAgents) {
-      addNode(a.smartAccountAddress, 'ai')
-      const user = allUsers.find((u) => u.id === a.createdBy)
-      if (user) {
-        edges.push({
-          source: user.walletAddress,
-          target: a.smartAccountAddress,
-          roles: ['controller'],
-          relationshipType: 'Controller',
-          status: 'active',
-          edgeId: `ctrl-${user.walletAddress}-${a.smartAccountAddress}`,
-          templates: [],
-        })
-      }
+    // Add agent nodes from on-chain resolver
+    const resolverAddr = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}`
+    if (resolverAddr) {
+      try {
+        const client = getPublicClient()
+        const agentCount = await client.readContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'agentCount' }) as bigint
+        for (let i = 0n; i < agentCount; i++) {
+          const agentAddr = await client.readContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'getAgentAt', args: [i] }) as `0x${string}`
+          const kind = (typeMap.get(agentAddr.toLowerCase()) ?? 'person') as 'person' | 'org' | 'ai'
+          addNode(agentAddr, kind)
+
+          // Controller edge: check ATL_CONTROLLER for wallet addresses
+          try {
+            const controllers = await client.readContract({
+              address: resolverAddr, abi: agentAccountResolverAbi,
+              functionName: 'getMultiAddressProperty',
+              args: [agentAddr, ATL_CONTROLLER as `0x${string}`],
+            }) as string[]
+            for (const ctrl of controllers) {
+              const user = allUsers.find(u => u.walletAddress.toLowerCase() === ctrl.toLowerCase())
+              if (user) {
+                edges.push({
+                  source: user.walletAddress, target: agentAddr,
+                  roles: ['controller'], relationshipType: 'Controller',
+                  status: 'active', edgeId: `ctrl-${user.walletAddress}-${agentAddr}`, templates: [],
+                })
+              }
+            }
+          } catch { /* ignored */ }
+        }
+      } catch { /* ignored */ }
     }
 
     // Enrich nodes with resolver metadata
@@ -178,9 +158,7 @@ export async function GET() {
 
     // Fetch on-chain edges
     const allAddresses = [...seenNodes].map((a) => a as `0x${string}`)
-    const isOrg = (a: string) => allOrgAgents.some((o) => o.smartAccountAddress.toLowerCase() === a.toLowerCase())
-    const isAI = (a: string) => allAIAgents.some((ai) => ai.smartAccountAddress.toLowerCase() === a.toLowerCase())
-    const getNodeType = (a: string): 'person' | 'org' | 'ai' => isAI(a) ? 'ai' : isOrg(a) ? 'org' : 'person'
+    const getNodeType = (a: string): 'person' | 'org' | 'ai' => (typeMap.get(a.toLowerCase()) as 'person' | 'org' | 'ai') ?? 'person'
 
     for (const addr of allAddresses) {
       try {
@@ -224,13 +202,15 @@ export async function GET() {
       if (session) {
         const currentUser = await db.select().from(schema.users).where(eq(schema.users.privyUserId, session.userId)).limit(1)
         if (currentUser[0]) {
-          const myPerson = allPersonAgents.filter((p) => p.userId === currentUser[0].id)
-          const myOrgs = allOrgAgents.filter((o) => o.createdBy === currentUser[0].id)
-          const myAIs = allAIAgents.filter((a) => a.createdBy === currentUser[0].id)
           currentUserAddresses.push(currentUser[0].walletAddress.toLowerCase())
-          myPerson.forEach((p) => currentUserAddresses.push(p.smartAccountAddress.toLowerCase()))
-          myOrgs.forEach((o) => currentUserAddresses.push(o.smartAccountAddress.toLowerCase()))
-          myAIs.forEach((a) => currentUserAddresses.push(a.smartAccountAddress.toLowerCase()))
+          // Find this user's person agent from on-chain registry
+          const { getPersonAgentForUser, getOrgsForPersonAgent } = await import('@/lib/agent-registry')
+          const personAddr = await getPersonAgentForUser(currentUser[0].id)
+          if (personAddr) {
+            currentUserAddresses.push(personAddr.toLowerCase())
+            const orgs = await getOrgsForPersonAgent(personAddr)
+            orgs.forEach(o => currentUserAddresses.push(o.address.toLowerCase()))
+          }
         }
       }
     } catch { /* skip */ }

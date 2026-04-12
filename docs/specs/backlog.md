@@ -12,7 +12,7 @@
 
 | # | Feature | Status |
 |---|---------|--------|
-| 1 | AgentRootAccount + Factory (ERC-4337) | Done |
+| 1 | AgentAccount + Factory (ERC-4337) | Done |
 | 2 | DelegationManager + 4 caveat enforcers | Done |
 | 3 | AgentRelationship (multi-role edges) | Done |
 | 4 | AgentAssertion (provenance/claims) | Done |

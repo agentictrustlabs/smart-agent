@@ -18,7 +18,7 @@ smart-agent/
 ```mermaid
 graph TB
     subgraph "Account Layer"
-        ARA[AgentRootAccount<br/>ERC-4337 Smart Account]
+        ARA[AgentAccount<br/>ERC-4337 Smart Account]
         AAF[AgentAccountFactory<br/>CREATE2 Deployment]
         DM[DelegationManager<br/>Caveat Enforcement]
     end
@@ -69,13 +69,13 @@ graph TB
     ATP -->|scores via| AR & ARVR & ADR
 ```
 
-## AgentRootAccount (ERC-4337)
+## AgentAccount (ERC-4337)
 
 The core smart account — each agent's on-chain identity.
 
 ```mermaid
 classDiagram
-    class AgentRootAccount {
+    class AgentAccount {
         +IEntryPoint entryPoint
         +mapping owners
         +uint256 ownerCount
@@ -89,12 +89,12 @@ classDiagram
     }
 
     class AgentAccountFactory {
-        +AgentRootAccount accountImplementation
-        +createAccount(address owner, uint256 salt) AgentRootAccount
+        +AgentAccount accountImplementation
+        +createAccount(address owner, uint256 salt) AgentAccount
         +getAddress(address owner, uint256 salt) address
     }
 
-    AgentAccountFactory --> AgentRootAccount : deploys proxy
+    AgentAccountFactory --> AgentAccount : deploys proxy
 ```
 
 ## Tech Stack
