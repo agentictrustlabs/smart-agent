@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, type CSSProperties } from 'react'
 import { useRouter } from 'next/navigation'
 
 interface DemoUser { key: string; name: string; org: string; role: string }
@@ -119,32 +119,31 @@ export function DemoLoginPicker() {
   // Community selection view
   if (!community) {
     return (
-      <div style={{ marginTop: '2rem', width: '100%', maxWidth: 720 }}>
-        <p style={{ textAlign: 'center', fontSize: '0.85rem', color: '#9e9e9e', marginBottom: '1.25rem', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 500 }}>
+      <div data-component="demo-picker">
+        <p data-component="demo-picker-eyebrow">
           Select a community
         </p>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
+        <div data-component="demo-picker-grid">
           {COMMUNITIES.map(c => (
             <button
               key={c.id}
               onClick={() => setSelectedCommunity(c.id)}
+              data-component="demo-community-card"
               style={{
-                textAlign: 'left', padding: '1.1rem 1.25rem', background: '#ffffff',
-                border: `1px solid #e8e8e8`, borderRadius: 10, cursor: 'pointer',
-                color: '#212121', transition: 'all 0.2s ease',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
                 borderLeft: `3px solid ${c.color}`,
-              }}
-              onMouseOver={e => { (e.currentTarget as HTMLElement).style.borderColor = c.color; (e.currentTarget as HTMLElement).style.boxShadow = `0 4px 12px ${c.color}15`; (e.currentTarget as HTMLElement).style.transform = 'translateY(-1px)' }}
-              onMouseOut={e => { (e.currentTarget as HTMLElement).style.borderColor = '#e8e8e8'; (e.currentTarget as HTMLElement).style.boxShadow = '0 1px 3px rgba(0,0,0,0.04)'; (e.currentTarget as HTMLElement).style.transform = 'none'; (e.currentTarget as HTMLElement).style.borderLeftColor = c.color }}
+                '--demo-community-color': c.color,
+              } as CSSProperties}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.3rem' }}>
-                <strong style={{ fontSize: '0.95rem', color: c.color }}>{c.name}</strong>
-                <span style={{ fontSize: '0.65rem', padding: '0.1rem 0.4rem', background: `${c.color}10`, borderRadius: 100, color: c.color, fontWeight: 600 }}>
+              <div data-component="demo-community-head">
+                <strong style={{ color: c.color }}>{c.name}</strong>
+                <span
+                  data-component="demo-community-count"
+                  style={{ background: `${c.color}10`, color: c.color }}
+                >
                   {c.users.length}
                 </span>
               </div>
-              <p style={{ fontSize: '0.78rem', color: '#757575', margin: 0, lineHeight: 1.4 }}>{c.description}</p>
+              <p data-component="demo-community-description">{c.description}</p>
             </button>
           ))}
         </div>
@@ -154,58 +153,66 @@ export function DemoLoginPicker() {
 
   // User selection view
   return (
-    <div style={{ marginTop: '1.5rem', width: '100%', maxWidth: 640 }}>
+    <div data-component="demo-picker">
       <button
         onClick={() => setSelectedCommunity(null)}
-        style={{ background: 'transparent', border: 'none', color: '#9e9e9e', cursor: 'pointer', fontSize: '0.8rem', padding: 0, marginBottom: '1rem', fontWeight: 500 }}
+        data-component="demo-picker-back"
       >
         ← Communities
       </button>
 
-      <div style={{ textAlign: 'center', marginBottom: '1.25rem' }}>
-        <div style={{ display: 'inline-block', padding: '0.25rem 0.75rem', background: `${community.color}10`, borderRadius: 100, marginBottom: '0.4rem' }}>
-          <span style={{ fontSize: '0.7rem', fontWeight: 600, color: community.color, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{community.name}</span>
-        </div>
-        <p style={{ fontSize: '0.82rem', color: '#757575' }}>{community.description}</p>
-      </div>
-
-      <p style={{ fontSize: '0.75rem', color: '#9e9e9e', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 500, textAlign: 'left' }}>
-        Sign in as
-      </p>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-        {community.users.map(u => (
-          <button
-            key={u.key}
-            onClick={() => selectUser(u.key)}
-            disabled={loading}
-            style={{
-              textAlign: 'left', padding: '0.85rem 1rem', background: '#ffffff',
-              border: '1px solid #e8e8e8', borderRadius: 8, cursor: loading ? 'wait' : 'pointer',
-              color: '#212121', transition: 'all 0.15s', boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
-            }}
-            onMouseOver={e => { if (!loading) { (e.currentTarget as HTMLElement).style.borderColor = community.color; (e.currentTarget as HTMLElement).style.background = `${community.color}05` } }}
-            onMouseOut={e => { (e.currentTarget as HTMLElement).style.borderColor = '#e8e8e8'; (e.currentTarget as HTMLElement).style.background = '#ffffff' }}
+      <section data-component="demo-picker-panel">
+        <div data-component="demo-picker-header">
+          <div
+            data-component="demo-picker-chip"
+            style={{ background: `${community.color}10`, color: community.color }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <div style={{ width: 28, height: 28, borderRadius: '50%', background: `${community.color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.7rem', color: community.color, flexShrink: 0 }}>
-                {u.name.charAt(0)}
-              </div>
-              <div>
-                <strong style={{ display: 'block', fontSize: '0.85rem', lineHeight: 1.2 }}>{u.name}</strong>
-                <span style={{ fontSize: '0.72rem', color: '#757575' }}>{u.role}</span>
-              </div>
-            </div>
-            <span style={{ display: 'block', fontSize: '0.68rem', color: '#ababab', marginTop: '0.2rem', paddingLeft: '2.25rem' }}>{u.org}</span>
-          </button>
-        ))}
-      </div>
-
-      {loading && (
-        <div style={{ textAlign: 'center', marginTop: '1rem', color: community.color, fontSize: '0.8rem', fontWeight: 500 }}>
-          Connecting...
+            {community.name}
+          </div>
+          <p data-component="demo-picker-description">{community.description}</p>
         </div>
-      )}
+
+        <p data-component="demo-picker-eyebrow">
+          Sign in as
+        </p>
+
+        <div data-component="demo-picker-grid">
+          {community.users.map(u => (
+            <button
+              key={u.key}
+              onClick={() => selectUser(u.key)}
+              disabled={loading}
+              data-component="demo-user-card"
+              style={{
+                '--demo-community-color': community.color,
+              } as CSSProperties}
+            >
+              <div data-component="demo-user-head">
+                <div
+                  data-component="demo-user-avatar"
+                  style={{ background: `${community.color}15`, color: community.color }}
+                >
+                  {u.name.charAt(0)}
+                </div>
+                <div data-component="demo-user-copy">
+                  <strong>{u.name}</strong>
+                  <span>{u.role}</span>
+                </div>
+              </div>
+              <span data-component="demo-user-org">{u.org}</span>
+            </button>
+          ))}
+        </div>
+
+        {loading && (
+          <div
+            data-component="demo-picker-loading"
+            style={{ color: community.color }}
+          >
+            Connecting...
+          </div>
+        )}
+      </section>
     </div>
   )
 }
