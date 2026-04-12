@@ -7,6 +7,7 @@ import { toDidEthr } from '@smart-agent/sdk'
 import { getSelectedOrg } from '@/lib/get-selected-org'
 import { getOrgMembers } from '@/lib/get-org-members'
 import { DashboardAnalytics } from './DashboardAnalytics'
+import { buildDefaultAgentContexts, getHubIdForTemplate, getHubProfile } from '@/lib/hub-profiles'
 
 const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? '31337')
 
@@ -48,18 +49,48 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   // Get agent type label from resolver
   const orgMeta = selectedOrg ? await getMeta(selectedOrg.smartAccountAddress) : null
+  const hubId = getHubIdForTemplate(selectedOrg?.templateId)
+  const hubProfile = getHubProfile(hubId)
+  const derivedCapabilities = [
+    'network',
+    'agents',
+    'reviews',
+    ...(showAnalytics ? ['genmap', 'activities', 'members'] : []),
+    ...(aiAgents.length > 0 ? ['treasury'] : []),
+  ]
+  const agentContexts = selectedOrg ? buildDefaultAgentContexts({
+    orgAddress: selectedOrg.smartAccountAddress,
+    orgName: selectedOrg.name,
+    orgDescription: selectedOrg.description,
+    hubId,
+    capabilities: derivedCapabilities,
+    aiAgentCount: aiAgents.length,
+  }) : []
+  const requestedContextId = typeof params.context === 'string' ? params.context : undefined
+  const activeContext = agentContexts.find(context => context.id === requestedContextId)
+    ?? agentContexts.find(context => context.isDefault)
+    ?? agentContexts[0]
+    ?? null
+  const makeScopedHref = (pathname: string) => {
+    const nextParams = new URLSearchParams()
+    if (selectedOrg) nextParams.set('org', selectedOrg.smartAccountAddress)
+    if (hubId) nextParams.set('hub', hubId)
+    if (activeContext) nextParams.set('context', activeContext.id)
+    const query = nextParams.toString()
+    return query ? `${pathname}?${query}` : pathname
+  }
   const overviewStats = selectedOrg ? [
     { label: 'Members', value: String(members.length) },
     { label: 'Relationships', value: String(partners.length) },
     { label: 'AI Agents', value: String(aiAgents.length) },
-    { label: 'Type', value: orgMeta?.agentTypeLabel ?? 'Organization' },
+    { label: 'Context', value: activeContext?.kind ?? hubProfile.contextTerm },
   ] : []
   const quickLinks = selectedOrg ? [
-    { href: `/team?org=${selectedOrg.smartAccountAddress}`, label: 'Manage Team' },
-    { href: `/agents?org=${selectedOrg.smartAccountAddress}`, label: 'View Agents' },
-    { href: `/network?org=${selectedOrg.smartAccountAddress}`, label: 'Open Network' },
-    { href: `/treasury?org=${selectedOrg.smartAccountAddress}`, label: 'Treasury' },
-    { href: `/reviews?org=${selectedOrg.smartAccountAddress}`, label: 'Reviews' },
+    { href: makeScopedHref('/contexts'), label: hubProfile.contextsLabel },
+    { href: makeScopedHref('/agents'), label: hubProfile.agentLabel },
+    { href: makeScopedHref('/network'), label: hubProfile.networkLabel },
+    { href: makeScopedHref('/treasury'), label: 'Treasury' },
+    { href: makeScopedHref('/reviews'), label: 'Reviews' },
   ] : []
 
   // Load analytics data when org has child groups (on-chain ALLIANCE edges)
@@ -99,10 +130,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   return (
     <div data-page="dashboard">
       <div data-component="page-header">
-        <h1>{selectedOrg ? selectedOrg.name : 'Dashboard'}</h1>
+        <h1>{activeContext?.name ?? selectedOrg?.name ?? hubProfile.overviewLabel}</h1>
         <p>
           {selectedOrg
-            ? `${selectedOrg.description || `Welcome, ${currentUser.name} — managing ${selectedOrg.name}`}`
+            ? `${hubProfile.name} portal onto ${activeContext?.name ?? selectedOrg.name}. Anchor org: ${selectedOrg.name}.`
             : `Welcome, ${currentUser.name}`}
         </p>
       </div>
@@ -127,15 +158,21 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             <div data-component="dashboard-hero-top">
               <div data-component="dashboard-hero-copy">
                 <div data-component="dashboard-meta">
-                  <span data-component="role-badge" data-status="active">{orgMeta?.agentTypeLabel ?? 'Organization'}</span>
-                  <span data-component="role-badge">{showAnalytics ? 'Analytics Enabled' : 'Operational Overview'}</span>
+                  <span data-component="role-badge" data-status="active">{hubProfile.name}</span>
+                  <span data-component="role-badge">{hubProfile.contextTerm}</span>
+                  <span data-component="role-badge">{activeContext?.kind ?? 'context'}</span>
                 </div>
+                {activeContext?.description && <p data-component="text-muted">{activeContext.description}</p>}
+                <p data-component="text-muted">
+                  Anchor org: <span style={{ fontWeight: 600 }}>{selectedOrg.name}</span>
+                </p>
                 <p data-component="text-muted">
                   Smart account: <span data-component="address">{selectedOrg.smartAccountAddress}</span>
                 </p>
               </div>
               <div data-component="dashboard-meta">
                 <span data-component="role-badge">{currentUser.name}</span>
+                <span data-component="role-badge">{orgMeta?.agentTypeLabel ?? 'Organization'}</span>
               </div>
             </div>
             <div data-component="dashboard-kpi-grid">
@@ -168,10 +205,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             <section data-component="graph-section">
               <div data-component="section-header">
                 <h2>Members ({members.length})</h2>
-                <Link href={`/team?org=${selectedOrg.smartAccountAddress}`} data-component="section-action">Manage</Link>
+                <Link href={makeScopedHref('/team')} data-component="section-action">Manage</Link>
               </div>
               {members.length === 0 ? (
-                <p data-component="text-muted">No members yet. <Link href={`/team?org=${selectedOrg.smartAccountAddress}`}>Invite people</Link>.</p>
+                <p data-component="text-muted">No members yet. <Link href={makeScopedHref('/team')}>Invite people</Link>.</p>
               ) : (
                 <div data-component="table-wrap">
                   <table data-component="graph-table">
@@ -192,11 +229,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
             <section data-component="graph-section">
               <div data-component="section-header">
-                <h2>Relationships ({partners.length})</h2>
-                <Link href={`/network?org=${selectedOrg.smartAccountAddress}`} data-component="section-action">Network</Link>
+                <h2>{hubProfile.networkLabel} Relationships ({partners.length})</h2>
+                <Link href={makeScopedHref('/network')} data-component="section-action">{hubProfile.networkLabel}</Link>
               </div>
               {partners.length === 0 ? (
-                <p data-component="text-muted">No relationships yet. <Link href={`/relationships?org=${selectedOrg.smartAccountAddress}`}>Add one</Link>.</p>
+                <p data-component="text-muted">No relationships yet. <Link href={makeScopedHref('/relationships')}>Add one</Link>.</p>
               ) : (
                 <div data-component="table-wrap">
                   <table data-component="graph-table">
@@ -220,7 +257,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             <section data-component="graph-section">
               <div data-component="section-header">
                 <h2>AI Agents ({aiAgents.length})</h2>
-                <Link href={`/agents?org=${selectedOrg.smartAccountAddress}`} data-component="section-action">View All</Link>
+                <Link href={makeScopedHref('/agents')} data-component="section-action">View All</Link>
               </div>
               <div data-component="agent-grid">
                 {aiAgents.map(agent => (

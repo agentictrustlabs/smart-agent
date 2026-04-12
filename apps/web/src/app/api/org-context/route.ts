@@ -23,11 +23,21 @@ export async function GET() {
     const rolesByOrg: Record<string, string[]> = {}
     for (const o of orgRoles) rolesByOrg[o.address.toLowerCase()] = o.roles
 
+    const orgRows = await db.select().from(schema.orgAgents)
+    const templateByAddress = new Map(
+      orgRows.map(org => [org.smartAccountAddress.toLowerCase(), (org as Record<string, unknown>).templateId as string | null ?? null])
+    )
+
     // Build org list with on-chain metadata
     const orgs: Array<{ address: string; name: string; description: string; templateId: string | null }> = []
     for (const o of orgRoles) {
       const meta = await getAgentMetadata(o.address)
-      orgs.push({ address: o.address, name: meta.displayName, description: meta.description, templateId: null })
+      orgs.push({
+        address: o.address,
+        name: meta.displayName,
+        description: meta.description,
+        templateId: templateByAddress.get(o.address.toLowerCase()) ?? null,
+      })
     }
 
     // AI agents from on-chain ORGANIZATIONAL_CONTROL edges

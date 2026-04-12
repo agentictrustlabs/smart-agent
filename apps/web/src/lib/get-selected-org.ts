@@ -1,5 +1,6 @@
 import { getPersonAgentForUser, getOrgsForPersonAgent } from '@/lib/agent-registry'
 import { getAgentMetadata } from '@/lib/agent-metadata'
+import { db, schema } from '@/db'
 
 /**
  * Get the selected org for a user.
@@ -21,6 +22,10 @@ export async function getSelectedOrg(
   // Build org list with on-chain metadata
   type OrgView = { smartAccountAddress: string; name: string; description: string; templateId: string | null }
   const orgList: OrgView[] = []
+  const orgRows = await db.select().from(schema.orgAgents)
+  const templateByAddress = new Map(
+    orgRows.map(org => [org.smartAccountAddress.toLowerCase(), (org as Record<string, unknown>).templateId as string | null ?? null])
+  )
 
   for (const org of orgs) {
     const meta = await getAgentMetadata(org.address)
@@ -28,7 +33,7 @@ export async function getSelectedOrg(
       smartAccountAddress: org.address,
       name: meta.displayName,
       description: meta.description,
-      templateId: null, // No longer used for capabilities — derived from on-chain data
+      templateId: templateByAddress.get(org.address.toLowerCase()) ?? null,
     })
   }
 

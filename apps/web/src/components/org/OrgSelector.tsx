@@ -23,13 +23,14 @@ export function OrgSelector() {
     selectOrg(address)
     const nextParams = new URLSearchParams(searchParams.toString())
     nextParams.set('org', address)
+    nextParams.delete('context')
     router.push(`${pathname}?${nextParams.toString()}`)
   }
 
   return (
     <div data-component="org-selector" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
       {orgs.length === 1 ? (
-        <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>{selectedOrg?.name}</span>
+        <span data-component="org-selector-chip">{selectedOrg?.name}</span>
       ) : (
         <select
           value={selectedOrg?.address ?? ''}

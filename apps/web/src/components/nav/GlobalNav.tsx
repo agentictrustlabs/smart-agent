@@ -1,8 +1,9 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { useOrgContext } from '@/components/org/OrgContext'
+import { getHubProfile } from '@/lib/hub-profiles'
 
 interface NavItem {
   href: string
@@ -15,6 +16,7 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { href: '/dashboard', label: 'Home' },
+  { href: '/contexts', label: 'Contexts' },
   { href: '/team', label: 'Organization' },
   { href: '/agents', label: 'Agents' },
   { href: '/network', label: 'Network' },
@@ -32,7 +34,19 @@ const NAV_ITEMS: NavItem[] = [
 
 export function GlobalNav() {
   const pathname = usePathname()
-  const { userRoles, hasCapability, selectedOrg, loading } = useOrgContext()
+  const searchParams = useSearchParams()
+  const { userRoles, hasCapability, selectedOrg, selectedHub, activeContext, loading } = useOrgContext()
+  const profile = getHubProfile(selectedHub?.id)
+
+  function getNavLabel(item: NavItem): string {
+    if (item.href === '/dashboard') return profile.overviewLabel
+    if (item.href === '/contexts') return profile.contextsLabel
+    if (item.href === '/agents') return profile.agentLabel
+    if (item.href === '/activities') return profile.activityLabel
+    if (item.href === '/network') return activeContext?.kind === 'lineage' ? profile.lineageLabel : profile.networkLabel
+    if (item.href === '/genmap') return profile.lineageLabel
+    return item.label
+  }
 
   return (
     <nav data-component="global-nav">
@@ -46,7 +60,11 @@ export function GlobalNav() {
         const isRelevant = !item.forRoles || item.forRoles.length === 0
           || loading
           || userRoles.some(r => item.forRoles!.includes(r))
-        const href = selectedOrg ? `${item.href}?org=${selectedOrg.address}` : item.href
+        const nextParams = new URLSearchParams(searchParams.toString())
+        if (selectedOrg) nextParams.set('org', selectedOrg.address)
+        if (selectedHub) nextParams.set('hub', selectedHub.id)
+        if (activeContext) nextParams.set('context', activeContext.id)
+        const href = nextParams.toString() ? `${item.href}?${nextParams.toString()}` : item.href
 
         return (
           <Link
@@ -55,7 +73,7 @@ export function GlobalNav() {
             data-active={isActive ? 'true' : 'false'}
             style={!isRelevant ? { opacity: 0.4 } : undefined}
           >
-            {item.label}
+            {getNavLabel(item)}
           </Link>
         )
       })}

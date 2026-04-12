@@ -149,10 +149,10 @@ export function GenMapClient({ nodes, orgAddress, orgName: _orgName, pinnedNodeI
         <line x1={cx} y1={cy - r} x2={cx} y2={cy + r} stroke="#e0e0e0" strokeWidth={0.5} />
         <line x1={cx - r} y1={cy} x2={cx + r} y2={cy} stroke="#e0e0e0" strokeWidth={0.5} />
         {/* TL: seekers/attenders, TR: baptized, BR: leaders, BL: believers */}
-        <text x={cx - r / 2} y={cy - r / 3} textAnchor="middle" fontSize={9} fill="#1565c0" fontWeight="bold">{health.attenders || health.seekers}</text>
-        <text x={cx + r / 2} y={cy - r / 3} textAnchor="middle" fontSize={9} fill="#2e7d32" fontWeight="bold">{health.baptized}</text>
-        <text x={cx + r / 2} y={cy + r / 2} textAnchor="middle" fontSize={9} fill="#7c3aed" fontWeight="bold">{health.leaders}</text>
-        <text x={cx - r / 2} y={cy + r / 2} textAnchor="middle" fontSize={9} fill="#ea580c" fontWeight="bold">{health.believers}</text>
+        <text x={cx - r / 2} y={cy - r / 3} textAnchor="middle" fontSize={9} fill="#1565c0" fontWeight="bold">{health.attenders || health.seekers || 0}</text>
+        <text x={cx + r / 2} y={cy - r / 3} textAnchor="middle" fontSize={9} fill="#2e7d32" fontWeight="bold">{health.baptized || 0}</text>
+        <text x={cx + r / 2} y={cy + r / 2} textAnchor="middle" fontSize={9} fill="#7c3aed" fontWeight="bold">{health.leaders || 0}</text>
+        <text x={cx - r / 2} y={cy + r / 2} textAnchor="middle" fontSize={9} fill="#ea580c" fontWeight="bold">{health.believers || 0}</text>
         {health.groupsStarted > 0 && (
           <text x={cx} y={cy + 3} textAnchor="middle" fontSize={10} fill="#0d9488" fontWeight="bold">{health.groupsStarted}</text>
         )}
@@ -232,14 +232,14 @@ export function GenMapClient({ nodes, orgAddress, orgName: _orgName, pinnedNodeI
 
           {/* Health numbers */}
           <div style={{ display: 'flex', gap: '0.35rem', fontSize: '0.6rem', color: '#616161', flexShrink: 0 }}>
-            <div style={{ textAlign: 'center' }}><div style={{ fontWeight: 700, color: '#1565c0' }}>{health.attenders || health.seekers}</div><div>Att</div></div>
-            <div style={{ textAlign: 'center' }}><div style={{ fontWeight: 700, color: '#ea580c' }}>{health.believers}</div><div>Blvr</div></div>
-            <div style={{ textAlign: 'center' }}><div style={{ fontWeight: 700, color: '#2e7d32' }}>{health.baptized}</div><div>Bap</div></div>
-            <div style={{ textAlign: 'center' }}><div style={{ fontWeight: 700, color: '#7c3aed' }}>{health.leaders}</div><div>Ldr</div></div>
+            <div style={{ textAlign: 'center' }}><div style={{ fontWeight: 700, color: '#1565c0' }}>{health.attenders || health.seekers || 0}</div><div>Att</div></div>
+            <div style={{ textAlign: 'center' }}><div style={{ fontWeight: 700, color: '#ea580c' }}>{health.believers || 0}</div><div>Blvr</div></div>
+            <div style={{ textAlign: 'center' }}><div style={{ fontWeight: 700, color: '#2e7d32' }}>{health.baptized || 0}</div><div>Bap</div></div>
+            <div style={{ textAlign: 'center' }}><div style={{ fontWeight: 700, color: '#7c3aed' }}>{health.leaders || 0}</div><div>Ldr</div></div>
           </div>
 
           <div style={{ textAlign: 'center', flexShrink: 0 }}>
-            <div style={{ fontSize: '1rem', fontWeight: 700, color: statusColor }}>{node.healthScore}</div>
+            <div style={{ fontSize: '1rem', fontWeight: 700, color: statusColor }}>{node.healthScore || 0}</div>
             <div style={{ fontSize: '0.55rem', color: '#616161' }}>health</div>
           </div>
 

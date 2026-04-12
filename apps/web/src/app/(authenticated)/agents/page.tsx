@@ -8,6 +8,7 @@ import { getSelectedOrg } from '@/lib/get-selected-org'
 import { getEdgesByObject, getEdge, getEdgeRoles } from '@/lib/contracts'
 import { roleName, toDidEthr } from '@smart-agent/sdk'
 import { getConnectedOrgs } from '@/lib/get-org-members'
+import { buildDefaultAgentContexts, getHubIdForTemplate, getHubProfile } from '@/lib/hub-profiles'
 
 const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? '31337')
 
@@ -72,18 +73,44 @@ export default async function AgentsPage({ searchParams }: { searchParams: Promi
     })
   )
   const metaMap = new Map(metaEntries.filter(Boolean).map(m => [m!.address.toLowerCase(), m!]))
+  const hubId = getHubIdForTemplate(selectedOrg?.templateId)
+  const hubProfile = getHubProfile(hubId)
+  const agentContexts = selectedOrg ? buildDefaultAgentContexts({
+    orgAddress: selectedOrg.smartAccountAddress,
+    orgName: selectedOrg.name,
+    orgDescription: selectedOrg.description,
+    hubId,
+    capabilities: ['network', 'agents', 'reviews', ...(connectedOrgs.length > 0 ? ['genmap', 'activities', 'members'] : [])],
+    aiAgentCount: orgAiAgents.length,
+  }) : []
+  const requestedContextId = typeof params.context === 'string' ? params.context : undefined
+  const activeContext = agentContexts.find(context => context.id === requestedContextId)
+    ?? agentContexts.find(context => context.isDefault)
+    ?? agentContexts[0]
+    ?? null
+  const scopedHref = (pathname: string) => {
+    const nextParams = new URLSearchParams()
+    if (selectedOrg) nextParams.set('org', selectedOrg.smartAccountAddress)
+    if (hubId) nextParams.set('hub', hubId)
+    if (activeContext) nextParams.set('context', activeContext.id)
+    const query = nextParams.toString()
+    return query ? `${pathname}?${query}` : pathname
+  }
 
   return (
     <div data-page="agents">
       <div data-component="page-header">
         <div data-component="section-header">
-          <h1>Agents{selectedOrg ? ` — ${selectedOrg.name}` : ''}</h1>
+          <h1>{activeContext?.name ?? (selectedOrg ? `${hubProfile.agentLabel} — ${selectedOrg.name}` : hubProfile.agentLabel)}</h1>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <Link href="/deploy/ai" data-component="section-action">+ AI Agent</Link>
-            <Link href="/deploy/org" data-component="section-action">+ Organization</Link>
+            <Link href={scopedHref('/deploy/ai')} data-component="section-action">+ AI Agent</Link>
+            <Link href={scopedHref('/deploy/org')} data-component="section-action">+ Organization</Link>
           </div>
         </div>
-        <p>All agents associated with {selectedOrg ? selectedOrg.name : 'your account'}. Click an agent to view its trust profile, metadata, and relationships.</p>
+        <p>
+          {hubProfile.name} portal onto {activeContext?.name ?? (selectedOrg ? selectedOrg.name : 'your account')}.
+          Click an agent to view its trust profile, metadata, and relationships.
+        </p>
       </div>
 
       {/* Your Person Agent */}
@@ -118,7 +145,7 @@ export default async function AgentsPage({ searchParams }: { searchParams: Promi
       {/* Organization Agent */}
       {selectedOrg && (
         <section data-component="graph-section">
-          <h2>Organization</h2>
+          <h2>Anchor Org</h2>
           <div data-component="agent-grid">
             {(() => {
               const m = metaMap.get(selectedOrg.smartAccountAddress.toLowerCase())
@@ -184,7 +211,7 @@ export default async function AgentsPage({ searchParams }: { searchParams: Promi
       {connectedOrgs.length > 0 && (
         <section data-component="graph-section">
           <div data-component="section-header">
-            <h2>Connected Organizations ({connectedOrgs.length})</h2>
+            <h2>{hubProfile.networkLabel} ({connectedOrgs.length})</h2>
           </div>
           <div data-component="agent-grid">
             {connectedOrgs.map((circle) => {
@@ -213,7 +240,7 @@ export default async function AgentsPage({ searchParams }: { searchParams: Promi
                   <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem', fontSize: '0.8rem' }}>
                     <Link href={`/agents/${circle.address}`} style={{ color: '#1565c0' }}>Trust Profile</Link>
                     <Link href={`/agents/${circle.address}/metadata`} style={{ color: '#1565c0' }}>Metadata</Link>
-                    <Link href={`/network?org=${circle.address}`} style={{ color: '#1565c0' }}>Relationships</Link>
+                    <Link href={`/network?org=${circle.address}&hub=${hubId}`} style={{ color: '#1565c0' }}>Relationships</Link>
                   </div>
                 </div>
               )
@@ -226,7 +253,7 @@ export default async function AgentsPage({ searchParams }: { searchParams: Promi
       <section data-component="graph-section">
         <div data-component="section-header">
           <h2>AI Agents ({orgAiAgents.length})</h2>
-          <Link href="/deploy/ai" data-component="section-action">+ Deploy Agent</Link>
+          <Link href={scopedHref('/deploy/ai')} data-component="section-action">+ Deploy Agent</Link>
         </div>
         {orgAiAgents.length === 0 ? (
           <p data-component="text-muted">No AI agents{selectedOrg ? ` for ${selectedOrg.name}` : ''}.</p>
