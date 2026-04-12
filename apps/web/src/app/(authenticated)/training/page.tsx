@@ -54,7 +54,7 @@ export default async function TrainingPage({ searchParams }: { searchParams: Pro
 
   // Detect if current user has reviewer/advisor role on this org
   const personAgent = allPersonAgents.find(p => p.userId === currentUser.id)
-  let userRolesOnOrg: string[] = []
+  const userRolesOnOrg: string[] = []
   if (personAgent && selectedOrg) {
     try {
       const edgeIds = await getEdgesByObject(selectedOrg.smartAccountAddress as `0x${string}`)
@@ -65,7 +65,7 @@ export default async function TrainingPage({ searchParams }: { searchParams: Pro
         const roles = await getEdgeRoles(edgeId)
         userRolesOnOrg.push(...roles.map(r => roleName(r)))
       }
-    } catch {}
+    } catch { /* ignored */ }
   }
   const isAssessorOrAdvisor = userRolesOnOrg.some(r => ['reviewer', 'advisor'].includes(r))
 
@@ -93,7 +93,7 @@ export default async function TrainingPage({ searchParams }: { searchParams: Pro
           }
         }
       }
-    } catch {}
+    } catch { /* ignored */ }
     // If no owner found, fall back to current user
     if (trainees.length === 0) {
       trainees.push({
@@ -129,7 +129,7 @@ export default async function TrainingPage({ searchParams }: { searchParams: Pro
             }
           }
         }
-      } catch {}
+      } catch { /* ignored */ }
     }
   }
 

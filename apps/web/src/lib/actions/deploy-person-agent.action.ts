@@ -3,7 +3,7 @@
 import { db, schema } from '@/db'
 import { eq } from 'drizzle-orm'
 import { requireSession } from '@/lib/auth/session'
-import { deploySmartAccount, getSmartAccountAddress } from '@/lib/contracts'
+import { deploySmartAccount } from '@/lib/contracts'
 import { keccak256, encodePacked } from 'viem'
 
 const DEFAULT_CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID || '31337')

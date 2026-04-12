@@ -33,7 +33,7 @@ export function AuthGate() {
       }),
     })
       .then((r) => r.json())
-      .then((data) => {
+      .then((_data) => {
         // Check if profile is complete
         return fetch('/api/auth/profile')
       })

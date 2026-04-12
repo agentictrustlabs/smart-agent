@@ -30,7 +30,7 @@ const ACTION_LABELS: Record<string, string> = {
   'general': 'General',
 }
 
-export function GovernanceClient({ proposals, orgAddress, orgName, canPropose, canVote, currentUserId, businesses }: Props) {
+export function GovernanceClient({ proposals, orgAddress, orgName: _orgName, canPropose, canVote, currentUserId, businesses }: Props) {
   const [showForm, setShowForm] = useState(false)
   const [loading, setLoading] = useState(false)
   const [title, setTitle] = useState('')

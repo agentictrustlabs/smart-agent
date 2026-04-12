@@ -47,6 +47,22 @@ export const DEMO_USERS: Record<string, { userId: string; walletAddress: string;
   'tg-user-006': { userId: 'did:privy:tg-006', walletAddress: '0x0000000000000000000000000000000000080006', email: 'essi@ilad-togo.org', name: 'Essi Amegah', org: 'ILAD Togo', role: 'Local Coordinator' },
   'tg-user-007': { userId: 'did:privy:tg-007', walletAddress: '0x0000000000000000000000000000000000080007', email: 'kokou@ilad-togo.org', name: 'Kokou Abalo', org: 'ILAD Togo', role: 'BDC Trainer' },
   'tg-user-008': { userId: 'did:privy:tg-008', walletAddress: '0x0000000000000000000000000000000000080008', email: 'lawrence@ilad-togo.org', name: 'Lawrence', org: 'ILAD Togo', role: 'Training Assessor' },
+  // Church Planting Movement
+  'cpm-user-001': { userId: 'did:privy:cpm-001', walletAddress: '0x00000000000000000000000000000000000a0001', email: 'mark@reachglobal.org', name: 'Mark Thompson', org: 'South Asia Movement Network', role: 'Network Director' },
+  'cpm-user-002': { userId: 'did:privy:cpm-002', walletAddress: '0x00000000000000000000000000000000000a0002', email: 'priya@reachglobal.org', name: 'Priya Sharma', org: 'Kolkata Team', role: 'Team Leader' },
+  'cpm-user-003': { userId: 'did:privy:cpm-003', walletAddress: '0x00000000000000000000000000000000000a0003', email: 'raj@localpartner.in', name: 'Raj Patel', org: 'Kolkata Team', role: 'Church Planter' },
+  'cpm-user-004': { userId: 'did:privy:cpm-004', walletAddress: '0x00000000000000000000000000000000000a0004', email: 'anita@localpartner.in', name: 'Anita Das', org: 'Kolkata Team', role: 'National Partner' },
+  'cpm-user-005': { userId: 'did:privy:cpm-005', walletAddress: '0x00000000000000000000000000000000000a0005', email: 'david@sendagency.org', name: 'David Kim', org: 'South Asia Movement Network', role: 'Strategy Lead' },
+  'cpm-user-006': { userId: 'did:privy:cpm-006', walletAddress: '0x00000000000000000000000000000000000a0006', email: 'samuel@housechurch.in', name: 'Samuel Bose', org: 'Baranagar Group', role: 'Group Leader' },
+  'cpm-user-007': { userId: 'did:privy:cpm-007', walletAddress: '0x00000000000000000000000000000000000a0007', email: 'meera@housechurch.in', name: 'Meera Ghosh', org: 'Salt Lake Group', role: 'Group Leader' },
+  // Catalyst Network (community development)
+  'cat-user-001': { userId: 'did:privy:cat-001', walletAddress: '0x00000000000000000000000000000000000b0001', email: 'elena@catalystglobal.org', name: 'Elena Vasquez', org: 'Mekong Catalyst Network', role: 'Program Director' },
+  'cat-user-002': { userId: 'did:privy:cat-002', walletAddress: '0x00000000000000000000000000000000000b0002', email: 'linh@catalystglobal.org', name: 'Linh Nguyen', org: 'Da Nang Hub', role: 'Hub Lead' },
+  'cat-user-003': { userId: 'did:privy:cat-003', walletAddress: '0x00000000000000000000000000000000000b0003', email: 'tran@community.vn', name: 'Tran Minh', org: 'Da Nang Hub', role: 'Facilitator' },
+  'cat-user-004': { userId: 'did:privy:cat-004', walletAddress: '0x00000000000000000000000000000000000b0004', email: 'mai@community.vn', name: 'Mai Pham', org: 'Da Nang Hub', role: 'Community Partner' },
+  'cat-user-005': { userId: 'did:privy:cat-005', walletAddress: '0x00000000000000000000000000000000000b0005', email: 'james@impactfund.org', name: 'James Okafor', org: 'Mekong Catalyst Network', role: 'Regional Lead' },
+  'cat-user-006': { userId: 'did:privy:cat-006', walletAddress: '0x00000000000000000000000000000000000b0006', email: 'hoa@circle-sontra.vn', name: 'Hoa Tran', org: 'Son Tra Group', role: 'Group Leader' },
+  'cat-user-007': { userId: 'did:privy:cat-007', walletAddress: '0x00000000000000000000000000000000000b0007', email: 'duc@circle-hanhoa.vn', name: 'Duc Le', org: 'Han Hoa Group', role: 'Group Leader' },
 }
 
 export async function getSession(): Promise<AuthSession | null> {

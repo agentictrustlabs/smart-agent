@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 export function JoinOrgClient() {
   const router = useRouter()
   const [inviteCode, setInviteCode] = useState('')
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [error, setError] = useState('')
 
   function handleSubmit(e: React.FormEvent) {

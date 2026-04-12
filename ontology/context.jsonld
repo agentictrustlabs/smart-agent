@@ -40,6 +40,11 @@
     "schemaURI": { "@id": "atl:schemaURI", "@type": "@id" },
 
     "entryPoint": "atl:entryPoint",
-    "delegationManager": "atl:delegationManager"
+    "delegationManager": "atl:delegationManager",
+
+    "latitude": "atl:latitude",
+    "longitude": "atl:longitude",
+    "spatialCRS": "atl:spatialCRS",
+    "spatialType": "atl:spatialType"
   }
 }

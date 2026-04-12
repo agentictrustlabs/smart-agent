@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { getSelectedOrg } from '@/lib/get-selected-org'
 import { db, schema } from '@/db'
-import { eq } from 'drizzle-orm'
+
 import { getPublicClient, getEdgesByObject, getEdge, getEdgeRoles } from '@/lib/contracts'
 import { formatEther } from 'viem'
 import { getAgentMetadata, buildAgentNameMap, getNameFromMap } from '@/lib/agent-metadata'
@@ -78,7 +78,7 @@ export default async function TreasuryPage({ searchParams }: { searchParams: Pro
           }
         }
       }
-    } catch {}
+    } catch { /* ignored */ }
   }
 
   return (

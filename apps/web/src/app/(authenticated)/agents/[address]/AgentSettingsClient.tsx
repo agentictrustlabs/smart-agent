@@ -15,7 +15,7 @@ interface AgentSettingsClientProps {
 }
 
 export function AgentSettingsClient({
-  agentAddress, agentName, controlAddress,
+  agentAddress, agentName, controlAddress: _controlAddress,
   governanceInitialized, governanceConfig, governanceOwners,
 }: AgentSettingsClientProps) {
   const router = useRouter()

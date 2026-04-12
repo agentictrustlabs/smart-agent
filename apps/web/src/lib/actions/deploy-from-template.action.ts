@@ -26,7 +26,7 @@ import {
   ATL_CAPABILITY,
   ATL_SUPPORTED_TRUST,
 } from '@smart-agent/sdk'
-import { keccak256, toBytes } from 'viem'
+
 import type { OrgTemplate } from '@/lib/org-templates'
 
 const AI_CLASS_MAP: Record<string, `0x${string}`> = {

@@ -48,6 +48,12 @@ export const ATL_METADATA_URI = keccak256(toBytes('atl:metadataURI'))
 export const ATL_METADATA_HASH = keccak256(toBytes('atl:metadataHash'))
 export const ATL_SCHEMA_URI = keccak256(toBytes('atl:schemaURI'))
 
+// ─── Geospatial (GeoSPARQL-aligned, EPSG:4326 default) ─────────────
+export const ATL_LATITUDE = keccak256(toBytes('atl:latitude'))
+export const ATL_LONGITUDE = keccak256(toBytes('atl:longitude'))
+export const ATL_SPATIAL_CRS = keccak256(toBytes('atl:spatialCRS'))
+export const ATL_SPATIAL_TYPE = keccak256(toBytes('atl:spatialType'))
+
 // ─── ERC-4337 technical ─────────────────────────────────────────────
 export const ATL_ENTRY_POINT = keccak256(toBytes('atl:entryPoint'))
 export const ATL_IMPLEMENTATION = keccak256(toBytes('atl:implementation'))

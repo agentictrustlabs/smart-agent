@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { eq, and, isNull, gt } from 'drizzle-orm'
+import { eq,  } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { getSession } from '@/lib/auth/session'
 

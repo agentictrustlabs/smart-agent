@@ -30,7 +30,7 @@ interface Props {
   templateId: string | null
 }
 
-export function RevenueClient({ reports, orgAddress, orgName, canSubmit, canVerify, templateId }: Props) {
+export function RevenueClient({ reports, orgAddress, orgName: _orgName, canSubmit, canVerify, templateId }: Props) {
   const [showForm, setShowForm] = useState(false)
   const [loading, setLoading] = useState(false)
   const [period, setPeriod] = useState(() => {
@@ -57,7 +57,7 @@ export function RevenueClient({ reports, orgAddress, orgName, canSubmit, canVeri
         currency: 'XOF', notes,
       })
       window.location.reload()
-    } catch (err) {
+    } catch {
       alert('Failed to submit report')
     } finally {
       setLoading(false)

@@ -10,7 +10,7 @@ import {
   ROLE_AUDITOR, ROLE_OPERATOR, ROLE_EMPLOYEE, ROLE_CONTRACTOR,
   ROLE_REVIEWER, ROLE_AUTHORIZED_SIGNER, ROLE_CEO, ROLE_SERVICE_PROVIDER, ROLE_ADVISOR,
 } from '@smart-agent/sdk'
-import { keccak256, toBytes } from 'viem'
+
 
 /** Map role strings from invites to SDK role constants and relationship types */
 const ROLE_MAP: Record<string, { role: `0x${string}`; relType: `0x${string}`; isOwner: boolean }> = {

@@ -34,7 +34,7 @@ export default async function RevenuePage({ searchParams }: { searchParams: Prom
   const getName = (a: string) => getNameFromMap(nameMap, a)
 
   let reports: typeof allReports
-  let businessNames: Record<string, string> = {}
+  const businessNames: Record<string, string> = {}
 
   if (templateId === 'portfolio-business') {
     // Business owner sees their own reports
@@ -57,7 +57,7 @@ export default async function RevenuePage({ searchParams }: { searchParams: Prom
 
   // Detect user roles on this org
   const personAgents = await db.select().from(schema.personAgents).where(eq(schema.personAgents.userId, currentUser.id)).limit(1)
-  let userRolesOnOrg: string[] = []
+  const userRolesOnOrg: string[] = []
   if (personAgents[0] && selectedOrg) {
     try {
       const edgeIds = await getEdgesByObject(selectedOrg.smartAccountAddress as `0x${string}`)
@@ -68,7 +68,7 @@ export default async function RevenuePage({ searchParams }: { searchParams: Prom
         const roles = await getEdgeRoles(edgeId)
         userRolesOnOrg.push(...roles.map(r => roleName(r)))
       }
-    } catch {}
+    } catch { /* ignored */ }
   }
 
   const canSubmit = templateId === 'portfolio-business' && userRolesOnOrg.includes('owner')

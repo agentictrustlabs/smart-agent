@@ -3,7 +3,7 @@
 import { requireSession } from '@/lib/auth/session'
 import { getPublicClient, getWalletClient } from '@/lib/contracts'
 import { mockTeeVerifierAbi, agentValidationProfileAbi } from '@smart-agent/sdk'
-import { keccak256, toBytes, toHex } from 'viem'
+import { keccak256, toBytes } from 'viem'
 
 const TEE_ARCHS: Record<string, `0x${string}`> = {
   'aws-nitro': keccak256(toBytes('aws-nitro')),

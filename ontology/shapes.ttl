@@ -122,6 +122,40 @@ atl:AgentAccountShape a sh:NodeShape ;
         sh:path atl:hasCapability ;
         sh:name "Capability" ;
         sh:datatype xsd:string ;
+    ] ;
+
+    # Optional: geospatial (GeoSPARQL-aligned)
+    sh:property [
+        sh:path atl:latitude ;
+        sh:name "Latitude" ;
+        sh:description "WGS84 latitude (-90 to 90)" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+    ] ;
+
+    sh:property [
+        sh:path atl:longitude ;
+        sh:name "Longitude" ;
+        sh:description "WGS84 longitude (-180 to 180)" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+    ] ;
+
+    sh:property [
+        sh:path atl:spatialCRS ;
+        sh:name "Spatial CRS" ;
+        sh:description "Coordinate Reference System (e.g., EPSG:4326)" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+    ] ;
+
+    sh:property [
+        sh:path atl:spatialType ;
+        sh:name "Spatial Type" ;
+        sh:description "Geometry type (Point, Polygon, etc.)" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:in ( "Point" "Polygon" "LineString" "MultiPoint" ) ;
     ] .
 
 # ═══════════════════════════════════════════════════════════════════════

@@ -4,7 +4,7 @@ import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { getPublicClient } from '@/lib/contracts'
 import {
   agentAccountResolverAbi,
-  AGENT_TYPE_LABELS, AI_CLASS_LABELS,
+  AI_CLASS_LABELS,
   ATL_CAPABILITY, ATL_SUPPORTED_TRUST, ATL_A2A_ENDPOINT, ATL_MCP_SERVER,
   TYPE_PERSON, TYPE_ORGANIZATION, TYPE_AI_AGENT,
 } from '@smart-agent/sdk'

@@ -1,11 +1,12 @@
 'use client'
 
-import { useRouter, usePathname } from 'next/navigation'
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { useOrgContext } from './OrgContext'
 
 export function OrgSelector() {
   const router = useRouter()
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const { orgs, selectedOrg, primaryRole, selectOrg, loading } = useOrgContext()
 
   if (loading) return null
@@ -20,8 +21,9 @@ export function OrgSelector() {
 
   function handleChange(address: string) {
     selectOrg(address)
-    // Update URL so server components can read the selected org on ALL authenticated pages
-    router.push(`${pathname}?org=${address}`)
+    const nextParams = new URLSearchParams(searchParams.toString())
+    nextParams.set('org', address)
+    router.push(`${pathname}?${nextParams.toString()}`)
   }
 
   return (
@@ -32,6 +34,7 @@ export function OrgSelector() {
         <select
           value={selectedOrg?.address ?? ''}
           onChange={(e) => handleChange(e.target.value)}
+          data-component="org-selector-control"
           style={{
             background: '#ffffff', border: '1px solid #e2e4e8', color: '#1a1a2e',
             padding: '0.3rem 0.5rem', borderRadius: 6, fontSize: '0.8rem', fontWeight: 600,

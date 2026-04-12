@@ -8,7 +8,7 @@ import {
   CLASS_DISCOVERY, CLASS_VALIDATOR, CLASS_EXECUTOR, CLASS_ASSISTANT, CLASS_ORACLE, CLASS_CUSTOM,
   ATL_CAPABILITY, ATL_SUPPORTED_TRUST, ATL_A2A_ENDPOINT, ATL_MCP_SERVER,
 } from '@smart-agent/sdk'
-import { keccak256, toBytes } from 'viem'
+
 
 const AGENT_TYPE_MAP: Record<string, `0x${string}`> = {
   person: TYPE_PERSON as `0x${string}`,

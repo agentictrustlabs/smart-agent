@@ -55,6 +55,12 @@ library AgentPredicates {
     bytes32 constant ATL_METADATA_HASH = keccak256("atl:metadataHash");
     bytes32 constant ATL_SCHEMA_URI = keccak256("atl:schemaURI");
 
+    // ─── Geospatial (GeoSPARQL-aligned, EPSG:4326 default) ────────
+    bytes32 constant ATL_LATITUDE = keccak256("atl:latitude");
+    bytes32 constant ATL_LONGITUDE = keccak256("atl:longitude");
+    bytes32 constant ATL_SPATIAL_CRS = keccak256("atl:spatialCRS");
+    bytes32 constant ATL_SPATIAL_TYPE = keccak256("atl:spatialType");
+
     // ─── ERC-4337 technical ─────────────────────────────────────────
     bytes32 constant ATL_ENTRY_POINT = keccak256("atl:entryPoint");
     bytes32 constant ATL_IMPLEMENTATION = keccak256("atl:implementation");

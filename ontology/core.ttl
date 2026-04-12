@@ -213,3 +213,31 @@ atl:delegationManager a rdf:Property ;
     rdfs:comment "ERC-7710 DelegationManager contract address authorized to execute on behalf of this agent." ;
     rdfs:domain atl:AgentAccount ;
     rdfs:range xsd:string .
+
+# ─── Geospatial (GeoSPARQL-aligned) ────────────────────────────────
+# Lightweight on-chain spatial metadata. Maps to geo:asWKT "POINT(lon lat)"
+# via the GeoSPARQL 1.1 profile. CRS defaults to EPSG:4326 (WGS84).
+
+atl:latitude a rdf:Property ;
+    rdfs:label "Latitude" ;
+    rdfs:comment "WGS84 latitude coordinate as decimal string (-90 to 90). Maps to geo:asWKT point Y value." ;
+    rdfs:domain atl:AgentAccount ;
+    rdfs:range xsd:string .
+
+atl:longitude a rdf:Property ;
+    rdfs:label "Longitude" ;
+    rdfs:comment "WGS84 longitude coordinate as decimal string (-180 to 180). Maps to geo:asWKT point X value." ;
+    rdfs:domain atl:AgentAccount ;
+    rdfs:range xsd:string .
+
+atl:spatialCRS a rdf:Property ;
+    rdfs:label "Spatial CRS" ;
+    rdfs:comment "Coordinate Reference System identifier (e.g., EPSG:4326). Defaults to WGS84." ;
+    rdfs:domain atl:AgentAccount ;
+    rdfs:range xsd:string .
+
+atl:spatialType a rdf:Property ;
+    rdfs:label "Spatial Type" ;
+    rdfs:comment "Geometry type: Point, Polygon, LineString, etc. Aligns with GeoSPARQL geometry types." ;
+    rdfs:domain atl:AgentAccount ;
+    rdfs:range xsd:string .

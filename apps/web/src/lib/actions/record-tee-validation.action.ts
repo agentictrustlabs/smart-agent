@@ -1,7 +1,7 @@
 'use server'
 
 import { db, schema } from '@/db'
-import { eq } from 'drizzle-orm'
+
 import { requireSession } from '@/lib/auth/session'
 import { getPublicClient, getWalletClient } from '@/lib/contracts'
 import { agentValidationProfileAbi, agentAssertionAbi } from '@smart-agent/sdk'
@@ -127,7 +127,7 @@ export async function recordTeeValidation(
       ],
     })
 
-    const receipt = await publicClient.waitForTransactionReceipt({ hash })
+    await publicClient.waitForTransactionReceipt({ hash })
 
     // Extract validationId from logs
     let validationId = 0

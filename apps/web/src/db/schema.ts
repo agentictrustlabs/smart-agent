@@ -46,6 +46,8 @@ export const orgAgents = sqliteTable('org_agents', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
   description: text('description'),
+  /** Structured agent metadata (JSON) — health data, leader, generation, people group, etc. */
+  metadata: text('metadata'),
   createdBy: text('created_by')
     .notNull()
     .references(() => users.id),
@@ -254,6 +256,105 @@ export const votes = sqliteTable('votes', {
   voter: text('voter').notNull().references(() => users.id),
   vote: text('vote', { enum: ['for', 'against', 'abstain'] }).notNull(),
   comment: text('comment'),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+})
+
+// ─── Activity Logs (general-purpose field activity tracking) ─────────
+
+export const activityLogs = sqliteTable('activity_logs', {
+  id: text('id').primaryKey(),
+  /** Org agent address this activity belongs to */
+  orgAddress: text('org_address').notNull(),
+  /** User who logged the activity */
+  userId: text('user_id').notNull().references(() => users.id),
+  /** Activity type (general categories) */
+  activityType: text('activity_type', {
+    enum: [
+      'meeting', 'visit', 'training', 'outreach', 'follow-up',
+      'assessment', 'coaching', 'prayer', 'service', 'other',
+    ],
+  }).notNull().default('other'),
+  title: text('title').notNull(),
+  description: text('description'),
+  /** Number of participants / attendees */
+  participants: integer('participants').notNull().default(0),
+  /** Location label (city, neighborhood, etc.) */
+  location: text('location'),
+  /** Latitude for map display */
+  lat: text('lat'),
+  /** Longitude for map display */
+  lng: text('lng'),
+  /** Duration in minutes */
+  durationMinutes: integer('duration_minutes'),
+  /** Optional link to related entity (e.g., group address, edge ID) */
+  relatedEntity: text('related_entity'),
+  /** Date of the activity (may differ from created_at) */
+  activityDate: text('activity_date').notNull().$defaultFn(() => new Date().toISOString()),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+})
+
+// ─── Generational Map Nodes (groups in a generational chain) ────────
+
+export const genMapNodes = sqliteTable('gen_map_nodes', {
+  id: text('id').primaryKey(),
+  /** Org agent address of the movement network or team */
+  networkAddress: text('network_address').notNull(),
+  /** Org agent address of the group (if it has one) */
+  groupAddress: text('group_address'),
+  /** Parent node ID (null for root/G0) */
+  parentId: text('parent_id'),
+  /** Generation number (0 = missionary, 1 = first planted, etc.) */
+  generation: integer('generation').notNull().default(0),
+  /** Display name for the group */
+  name: text('name').notNull(),
+  /** Leader name */
+  leaderName: text('leader_name'),
+  location: text('location'),
+  /** Group health markers (JSON: seekers, believers, baptized, leaders, giving, isChurch) */
+  healthData: text('health_data'),
+  /** Status: active, inactive, multiplied, closed */
+  status: text('status', { enum: ['active', 'inactive', 'multiplied', 'closed'] }).notNull().default('active'),
+  startedAt: text('started_at'),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+})
+
+// ─── Demo Edges (DB-level relationship edges for demo mode) ─────────
+
+export const demoEdges = sqliteTable('demo_edges', {
+  id: text('id').primaryKey(),
+  subjectAddress: text('subject_address').notNull(),
+  objectAddress: text('object_address').notNull(),
+  /** Relationship type name (e.g., 'ALLIANCE', 'ORGANIZATION_GOVERNANCE') */
+  relationshipType: text('relationship_type').notNull(),
+  /** JSON array of role strings (e.g., '["owner","board-member"]') */
+  roles: text('roles').notNull().default('[]'),
+  status: text('status').notNull().default('active'),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+})
+
+// ─── Detached Members (people tracked without accounts) ─────────────
+
+export const detachedMembers = sqliteTable('detached_members', {
+  id: text('id').primaryKey(),
+  /** Org this member belongs to */
+  orgAddress: text('org_address').notNull(),
+  name: text('name').notNull(),
+  /** Optional: which group/node they're assigned to */
+  assignedNodeId: text('assigned_node_id'),
+  role: text('role'),
+  notes: text('notes'),
+  createdBy: text('created_by').notNull().references(() => users.id),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+})
+
+// ─── Pinned Items (quick-access bookmarks) ──────────────────────────
+
+export const pinnedItems = sqliteTable('pinned_items', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => users.id),
+  /** Type: 'node' (gen map node) or 'org' */
+  itemType: text('item_type', { enum: ['node', 'org'] }).notNull(),
+  itemId: text('item_id').notNull(),
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
 })
 

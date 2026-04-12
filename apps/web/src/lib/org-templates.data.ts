@@ -328,6 +328,98 @@ export const ORG_TEMPLATES: OrgTemplate[] = [
     ],
     aiAgents: [],
   },
+  // ─── Church Planting Movement (CPM) Templates ─────────────────────
+
+  {
+    id: 'movement-network',
+    name: 'Movement Network',
+    description: 'Multi-agency coordination for church planting movements',
+    details: 'A network coordinating multiple agencies and teams working toward church planting movements among unreached people groups. Tracks generational multiplication, activity metrics, and provides cross-organizational visibility.',
+    color: '#1e40af',
+    defaultMinOwners: 2,
+    defaultQuorum: 2,
+    roles: [
+      { roleKey: 'owner', label: 'Network Director', description: 'Overall network leadership and strategy', required: true, maxCount: 2, relationshipType: 'governance', generateInvite: false },
+      { roleKey: 'board-member', label: 'Strategy Lead', description: 'Strategic oversight and inter-agency coordination', required: false, maxCount: 5, relationshipType: 'governance', generateInvite: true },
+      { roleKey: 'operator', label: 'Regional Coordinator', description: 'Coordinates teams across a geographic region', required: false, maxCount: 10, relationshipType: 'membership', generateInvite: true },
+      { roleKey: 'member', label: 'Partner Agency', description: 'Participating agency or organization', required: false, maxCount: Infinity, relationshipType: 'membership', generateInvite: true },
+      { roleKey: 'auditor', label: 'Data Analyst', description: 'Analyzes movement metrics and generates reports', required: false, maxCount: 3, relationshipType: 'membership', generateInvite: true },
+    ],
+    aiAgents: [
+      { name: 'Movement Analytics', agentType: 'discovery', description: 'Tracks generational growth, identifies stalled streams, and generates movement health reports', capabilities: ['movement-analytics', 'gen-map-analysis', 'people-group-tracking', 'activity-reporting'], trustModels: ['reputation'], autoDeploy: true },
+    ],
+  },
+
+  {
+    id: 'church-planting-team',
+    name: 'Church Planting Team',
+    description: 'Field team planting churches among a specific people group',
+    details: 'A team of church planters focused on a specific people group or geographic area. Logs field activities, tracks group formation and health, and reports into a movement network.',
+    color: '#7c3aed',
+    defaultMinOwners: 1,
+    defaultQuorum: 1,
+    roles: [
+      { roleKey: 'owner', label: 'Team Leader', description: 'Leads the church planting team', required: true, maxCount: 1, relationshipType: 'governance', generateInvite: false },
+      { roleKey: 'operator', label: 'Church Planter', description: 'Frontline church planting and discipleship', required: false, maxCount: Infinity, relationshipType: 'membership', generateInvite: true },
+      { roleKey: 'member', label: 'National Partner', description: 'Local believer partnering in the work', required: false, maxCount: Infinity, relationshipType: 'membership', generateInvite: true },
+      { roleKey: 'advisor', label: 'Coach / Mentor', description: 'Provides coaching and accountability', required: false, maxCount: 3, relationshipType: 'membership', generateInvite: true },
+    ],
+    aiAgents: [],
+  },
+
+  {
+    id: 'local-group',
+    name: 'Local Group / House Church',
+    description: 'A local gathering — discipleship group or house church',
+    details: 'A local group that is part of a generational chain. Tracks group health markers (seekers, believers, baptisms, leaders, giving) and its relationship to parent and child groups in the movement.',
+    color: '#059669',
+    defaultMinOwners: 1,
+    defaultQuorum: 1,
+    roles: [
+      { roleKey: 'owner', label: 'Group Leader', description: 'Leads the local group', required: true, maxCount: 2, relationshipType: 'governance', generateInvite: false },
+      { roleKey: 'member', label: 'Group Member', description: 'Participating member of the group', required: false, maxCount: Infinity, relationshipType: 'membership', generateInvite: true },
+    ],
+    aiAgents: [],
+  },
+  // ─── Catalyst Network Templates (community development) ────────────
+
+  {
+    id: 'catalyst-network',
+    name: 'Catalyst Network',
+    description: 'Regional coordination for grassroots community development',
+    details: 'A network coordinating facilitators and hubs working toward self-sustaining community development. Tracks generational multiplication of learning circles, activity metrics, and cross-hub visibility.',
+    color: '#0369a1',
+    defaultMinOwners: 2,
+    defaultQuorum: 2,
+    roles: [
+      { roleKey: 'owner', label: 'Program Director', description: 'Overall network leadership and strategy', required: true, maxCount: 2, relationshipType: 'governance', generateInvite: false },
+      { roleKey: 'board-member', label: 'Regional Lead', description: 'Strategic oversight across hubs', required: false, maxCount: 5, relationshipType: 'governance', generateInvite: true },
+      { roleKey: 'operator', label: 'Hub Coordinator', description: 'Coordinates facilitators across a geographic hub', required: false, maxCount: 10, relationshipType: 'membership', generateInvite: true },
+      { roleKey: 'member', label: 'Partner Organization', description: 'Participating organization or agency', required: false, maxCount: Infinity, relationshipType: 'membership', generateInvite: true },
+      { roleKey: 'auditor', label: 'Impact Analyst', description: 'Analyzes growth metrics and generates reports', required: false, maxCount: 3, relationshipType: 'membership', generateInvite: true },
+    ],
+    aiAgents: [
+      { name: 'Growth Analytics', agentType: 'discovery', description: 'Tracks generational multiplication, identifies stalled circles, and generates impact reports', capabilities: ['growth-analytics', 'gen-map-analysis', 'impact-reporting', 'activity-reporting'], trustModels: ['reputation'], autoDeploy: true },
+    ],
+  },
+
+  {
+    id: 'facilitator-hub',
+    name: 'Facilitator Hub',
+    description: 'Local team training facilitators for community circles',
+    details: 'A hub of trained facilitators working in a specific community. Logs field activities, tracks circle formation and health, and reports into the broader network.',
+    color: '#7e22ce',
+    defaultMinOwners: 1,
+    defaultQuorum: 1,
+    roles: [
+      { roleKey: 'owner', label: 'Hub Lead', description: 'Leads the facilitator hub', required: true, maxCount: 1, relationshipType: 'governance', generateInvite: false },
+      { roleKey: 'operator', label: 'Facilitator', description: 'Frontline community facilitation and mentoring', required: false, maxCount: Infinity, relationshipType: 'membership', generateInvite: true },
+      { roleKey: 'member', label: 'Community Partner', description: 'Local partner contributing to the work', required: false, maxCount: Infinity, relationshipType: 'membership', generateInvite: true },
+      { roleKey: 'advisor', label: 'Mentor', description: 'Provides coaching and accountability to facilitators', required: false, maxCount: 3, relationshipType: 'membership', generateInvite: true },
+    ],
+    aiAgents: [],
+  },
+
 ]
 
 export function getOrgTemplate(id: string): OrgTemplate | undefined {

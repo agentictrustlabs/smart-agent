@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { getSelectedOrg } from '@/lib/get-selected-org'
-import { getPublicClient, getEdgesBySubject, getEdgesByObject, getEdge, getEdgeRoles } from '@/lib/contracts'
+import { getEdgesBySubject, getEdgesByObject, getEdge, getEdgeRoles } from '@/lib/contracts'
 import { roleName, relationshipTypeName } from '@smart-agent/sdk'
 import { buildAgentNameMap, getNameFromMap } from '@/lib/agent-metadata'
 import { TrustGraphView } from '@/components/graph/TrustGraphView'
@@ -47,20 +47,47 @@ export default async function NetworkPage({ searchParams }: { searchParams: Prom
         })
       }
     } catch { /* contracts not deployed */ }
+
   }
 
   const outgoing = relationships.filter(r => r.direction === 'outgoing')
   const incoming = relationships.filter(r => r.direction === 'incoming')
+  const endorsementsReceived = incoming.filter(r => r.type === 'Validation')
+  const endorsementsGiven = outgoing.filter(r => r.type === 'Validation')
+  const addRelationshipHref = selectedOrg
+    ? `/relationships?org=${selectedOrg.smartAccountAddress}`
+    : '/relationships'
 
   return (
     <div data-page="network">
       <div data-component="page-header">
         <div data-component="section-header">
           <h1>Network{selectedOrg ? ` — ${selectedOrg.name}` : ''}</h1>
-          <Link href="/relationships" data-component="section-action">+ Add Relationship</Link>
+          <Link href={addRelationshipHref} data-component="section-action">+ Add Relationship</Link>
         </div>
         <p>Trust graph, organizational relationships, endorsements, and partnerships</p>
       </div>
+
+      {selectedOrg && (
+        <div data-component="network-summary">
+          <div data-component="network-summary-card">
+            <div data-component="network-summary-value">{relationships.length}</div>
+            <div data-component="network-summary-label">Total Relationships</div>
+          </div>
+          <div data-component="network-summary-card">
+            <div data-component="network-summary-value">{outgoing.length}</div>
+            <div data-component="network-summary-label">Outgoing</div>
+          </div>
+          <div data-component="network-summary-card">
+            <div data-component="network-summary-value">{incoming.length}</div>
+            <div data-component="network-summary-label">Incoming</div>
+          </div>
+          <div data-component="network-summary-card">
+            <div data-component="network-summary-value">{endorsementsReceived.length + endorsementsGiven.length}</div>
+            <div data-component="network-summary-label">Validation Edges</div>
+          </div>
+        </div>
+      )}
 
       <Suspense fallback={<p>Loading...</p>}>
         <NetworkTabs>
@@ -72,46 +99,56 @@ export default async function NetworkPage({ searchParams }: { searchParams: Prom
                 {!selectedOrg ? (
                   <p data-component="text-muted">Select or create an organization to see relationships.</p>
                 ) : relationships.length === 0 ? (
-                  <p data-component="text-muted">No relationships yet. <Link href="/relationships" style={{ color: '#1565c0' }}>Create your first relationship</Link>.</p>
+                  <p data-component="text-muted">No relationships yet. <Link href={addRelationshipHref}>Create your first relationship</Link>.</p>
                 ) : (
                   <>
-                    {/* Outgoing: This org → others */}
                     {outgoing.length > 0 && (
                       <section data-component="graph-section">
                         <h2>{selectedOrg.name} → Others ({outgoing.length})</h2>
-                        <table data-component="graph-table">
-                          <thead><tr><th>To</th><th>Type</th><th>Roles</th><th>Status</th></tr></thead>
-                          <tbody>
-                            {outgoing.map(r => (
-                              <tr key={r.edgeId}>
-                                <td><Link href={`/agents/${r.counterpartyAddr}`} style={{ color: '#1565c0' }}>{r.counterparty}</Link></td>
-                                <td><span data-component="role-badge">{r.type}</span></td>
-                                <td>{r.roles.map(role => <span key={role} data-component="role-badge" style={{ marginRight: 4 }}>{role}</span>)}</td>
-                                <td><span data-component="role-badge" data-status={r.status === 'Active' ? 'active' : r.status === 'Proposed' ? 'proposed' : 'revoked'}>{r.status}</span></td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                        <div data-component="network-card-grid">
+                          {outgoing.map(r => (
+                            <div key={r.edgeId} data-component="network-rel-card">
+                              <div data-component="network-rel-head">
+                                <div>
+                                  <Link href={`/agents/${r.counterpartyAddr}`} data-component="network-rel-title">{r.counterparty}</Link>
+                                  <div data-component="network-rel-meta">
+                                    <span data-component="role-badge">{r.type}</span>
+                                    <span data-component="role-badge" data-status={r.status === 'Active' ? 'active' : r.status === 'Proposed' ? 'proposed' : 'revoked'}>{r.status}</span>
+                                  </div>
+                                </div>
+                                <Link href={`/agents/${r.counterpartyAddr}`} data-component="section-action">Open</Link>
+                              </div>
+                              <div data-component="network-rel-meta">
+                                {r.roles.map(role => <span key={role} data-component="role-badge">{role}</span>)}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </section>
                     )}
 
-                    {/* Incoming: Others → this org */}
                     {incoming.length > 0 && (
                       <section data-component="graph-section">
                         <h2>Others → {selectedOrg.name} ({incoming.length})</h2>
-                        <table data-component="graph-table">
-                          <thead><tr><th>From</th><th>Type</th><th>Roles</th><th>Status</th></tr></thead>
-                          <tbody>
-                            {incoming.map(r => (
-                              <tr key={r.edgeId}>
-                                <td><Link href={`/agents/${r.counterpartyAddr}`} style={{ color: '#1565c0' }}>{r.counterparty}</Link></td>
-                                <td><span data-component="role-badge">{r.type}</span></td>
-                                <td>{r.roles.map(role => <span key={role} data-component="role-badge" style={{ marginRight: 4 }}>{role}</span>)}</td>
-                                <td><span data-component="role-badge" data-status={r.status === 'Active' ? 'active' : r.status === 'Proposed' ? 'proposed' : 'revoked'}>{r.status}</span></td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                        <div data-component="network-card-grid">
+                          {incoming.map(r => (
+                            <div key={r.edgeId} data-component="network-rel-card">
+                              <div data-component="network-rel-head">
+                                <div>
+                                  <Link href={`/agents/${r.counterpartyAddr}`} data-component="network-rel-title">{r.counterparty}</Link>
+                                  <div data-component="network-rel-meta">
+                                    <span data-component="role-badge">{r.type}</span>
+                                    <span data-component="role-badge" data-status={r.status === 'Active' ? 'active' : r.status === 'Proposed' ? 'proposed' : 'revoked'}>{r.status}</span>
+                                  </div>
+                                </div>
+                                <Link href={`/agents/${r.counterpartyAddr}`} data-component="section-action">Open</Link>
+                              </div>
+                              <div data-component="network-rel-meta">
+                                {r.roles.map(role => <span key={role} data-component="role-badge">{role}</span>)}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </section>
                     )}
                   </>
@@ -125,55 +162,61 @@ export default async function NetworkPage({ searchParams }: { searchParams: Prom
                   <p data-component="text-muted">Select or create an organization to see endorsements.</p>
                 ) : (
                   <>
-                    {/* Endorsements received (validation edges where org is object) */}
-                    {(() => {
-                      const endorsements = incoming.filter(r => r.type === 'Validation')
-                      return endorsements.length === 0 ? (
-                        <p data-component="text-muted">No endorsements or accreditations received.</p>
-                      ) : (
-                        <section data-component="graph-section">
-                          <h2>Endorsements Received ({endorsements.length})</h2>
-                          <p style={{ fontSize: '0.85rem', color: '#616161', marginBottom: '1rem' }}>
-                            Organizations that have endorsed, accredited, or validated {selectedOrg.name}.
-                          </p>
-                          <div style={{ display: 'grid', gap: '0.75rem' }}>
-                            {endorsements.map(e => (
-                              <div key={e.edgeId} data-component="protocol-info">
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                  <Link href={`/agents/${e.counterpartyAddr}`} style={{ color: '#1565c0', fontWeight: 600 }}>{e.counterparty}</Link>
-                                  <span data-component="role-badge" data-status={e.status === 'Active' ? 'active' : 'proposed'}>{e.status}</span>
-                                  {e.roles.map(r => <span key={r} data-component="role-badge">{r}</span>)}
+                    {endorsementsReceived.length === 0 ? (
+                      <p data-component="text-muted">No endorsements or accreditations received.</p>
+                    ) : (
+                      <section data-component="graph-section">
+                        <h2>Endorsements Received ({endorsementsReceived.length})</h2>
+                        <p data-component="text-muted">
+                          Organizations that have endorsed, accredited, or validated {selectedOrg.name}.
+                        </p>
+                        <div data-component="network-card-grid">
+                          {endorsementsReceived.map(e => (
+                            <div key={e.edgeId} data-component="network-rel-card">
+                              <div data-component="network-rel-head">
+                                <div>
+                                  <Link href={`/agents/${e.counterpartyAddr}`} data-component="network-rel-title">{e.counterparty}</Link>
+                                  <div data-component="network-rel-meta">
+                                    <span data-component="role-badge" data-status={e.status === 'Active' ? 'active' : 'proposed'}>{e.status}</span>
+                                  </div>
                                 </div>
+                                <Link href={`/agents/${e.counterpartyAddr}`} data-component="section-action">Open</Link>
                               </div>
-                            ))}
-                          </div>
-                        </section>
-                      )
-                    })()}
+                              <div data-component="network-rel-meta">
+                                {e.roles.map(r => <span key={r} data-component="role-badge">{r}</span>)}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </section>
+                    )}
 
-                    {/* Endorsements given (validation edges where org is subject) */}
-                    {(() => {
-                      const given = outgoing.filter(r => r.type === 'Validation')
-                      return given.length === 0 ? null : (
-                        <section data-component="graph-section" style={{ marginTop: '1.5rem' }}>
-                          <h2>Endorsements Given ({given.length})</h2>
-                          <p style={{ fontSize: '0.85rem', color: '#616161', marginBottom: '1rem' }}>
-                            Organizations that {selectedOrg.name} has endorsed or accredited.
-                          </p>
-                          <div style={{ display: 'grid', gap: '0.75rem' }}>
-                            {given.map(e => (
-                              <div key={e.edgeId} data-component="protocol-info">
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                  <Link href={`/agents/${e.counterpartyAddr}`} style={{ color: '#1565c0', fontWeight: 600 }}>{e.counterparty}</Link>
-                                  <span data-component="role-badge" data-status={e.status === 'Active' ? 'active' : 'proposed'}>{e.status}</span>
-                                  {e.roles.map(r => <span key={r} data-component="role-badge">{r}</span>)}
+                    {endorsementsGiven.length > 0 && (
+                      <section data-component="graph-section">
+                        <h2>Endorsements Given ({endorsementsGiven.length})</h2>
+                        <p data-component="text-muted">
+                          Organizations that {selectedOrg.name} has endorsed or accredited.
+                        </p>
+                        <div data-component="network-card-grid">
+                          {endorsementsGiven.map(e => (
+                            <div key={e.edgeId} data-component="network-rel-card">
+                              <div data-component="network-rel-head">
+                                <div>
+                                  <Link href={`/agents/${e.counterpartyAddr}`} data-component="network-rel-title">{e.counterparty}</Link>
+                                  <div data-component="network-rel-meta">
+                                    <span data-component="role-badge" data-status={e.status === 'Active' ? 'active' : 'proposed'}>{e.status}</span>
+                                  </div>
                                 </div>
+                                <Link href={`/agents/${e.counterpartyAddr}`} data-component="section-action">Open</Link>
                               </div>
-                            ))}
-                          </div>
-                        </section>
-                      )
-                    })()}
+                              <div data-component="network-rel-meta">
+                                {e.roles.map(r => <span key={r} data-component="role-badge">{r}</span>)}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </section>
+                    )}
                   </>
                 )}
               </div>

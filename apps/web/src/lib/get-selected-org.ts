@@ -4,7 +4,7 @@ import { getEdgesBySubject, getEdge } from '@/lib/contracts'
 
 /**
  * Get the selected org from search params, falling back to the user's first org.
- * Finds orgs the user created AND orgs they joined via relationship edges.
+ * Finds orgs the user created AND orgs they joined via on-chain relationship edges.
  */
 export async function getSelectedOrg(
   userId: string,
@@ -14,7 +14,7 @@ export async function getSelectedOrg(
   const createdOrgs = await db.select().from(schema.orgAgents)
     .where(eq(schema.orgAgents.createdBy, userId))
 
-  // Also find orgs joined via edges
+  // Also find orgs joined via on-chain edges
   const personAgents = await db.select().from(schema.personAgents)
     .where(eq(schema.personAgents.userId, userId)).limit(1)
 

@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { getSelectedOrg } from '@/lib/get-selected-org'
 import { db, schema } from '@/db'
-import { eq } from 'drizzle-orm'
+
 import { getEdgesByObject, getEdge, getEdgeRoles } from '@/lib/contracts'
 import { roleName } from '@smart-agent/sdk'
 import { WAVE_COLORS, WAVE_LABELS, getWaveStatus, computeHealthScore, HEALTH_COLORS } from '@/lib/togo'
@@ -61,7 +61,7 @@ export default async function PortfolioPage({ searchParams }: { searchParams: Pr
           }
         }
       }
-    } catch {}
+    } catch { /* ignored */ }
 
     const reports = allReports.filter(r => r.orgAddress === biz.smartAccountAddress.toLowerCase())
     const totalRevenue = reports.reduce((s, r) => s + r.grossRevenue, 0)

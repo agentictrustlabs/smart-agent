@@ -4,7 +4,6 @@ import { db, schema } from '@/db'
 import { eq, and } from 'drizzle-orm'
 import { requireSession } from '@/lib/auth/session'
 import {
-  getPublicClient,
   getWalletClient,
   redeemReviewDelegation,
   issueReviewDelegation,
@@ -12,7 +11,7 @@ import {
   getEdge,
   getEdgeRoles,
 } from '@/lib/contracts'
-import { agentReviewRecordAbi, REVIEW_RELATIONSHIP, ROLE_REVIEWER } from '@smart-agent/sdk'
+import { ROLE_REVIEWER } from '@smart-agent/sdk'
 import { keccak256, toBytes } from 'viem'
 import type { Delegation } from '@smart-agent/types'
 

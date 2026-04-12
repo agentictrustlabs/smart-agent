@@ -7,6 +7,7 @@ import { getAgentMetadata } from '@/lib/agent-metadata'
 import { getSelectedOrg } from '@/lib/get-selected-org'
 import { getEdgesByObject, getEdge, getEdgeRoles } from '@/lib/contracts'
 import { roleName, toDidEthr } from '@smart-agent/sdk'
+import { getConnectedOrgs } from '@/lib/get-org-members'
 
 const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? '31337')
 
@@ -26,6 +27,9 @@ export default async function AgentsPage({ searchParams }: { searchParams: Promi
   const orgAiAgents = selectedOrg
     ? allAI.filter(a => a.operatedBy?.toLowerCase() === selectedOrg.smartAccountAddress.toLowerCase())
     : allAI.filter(a => a.createdBy === currentUser.id)
+
+  // Circle org agents connected to this org (via ALLIANCE edges)
+  const connectedOrgs = selectedOrg ? await getConnectedOrgs(selectedOrg.smartAccountAddress) : []
 
   // Org members (person agents with edges to this org)
   const allPersonAgents = await db.select().from(schema.personAgents)
@@ -51,7 +55,7 @@ export default async function AgentsPage({ searchParams }: { searchParams: Promi
           memberAgents.push({ address: edge.subject, name: (pa as Record<string, unknown>)?.name as string || edge.subject.slice(0, 10), roles: newRoles })
         }
       }
-    } catch {}
+    } catch { /* ignored */ }
   }
 
   // Load metadata for all displayed agents
@@ -168,6 +172,48 @@ export default async function AgentsPage({ searchParams }: { searchParams: Promi
                   <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.5rem', fontSize: '0.8rem' }}>
                     <Link href={`/agents/${agent.address}`} style={{ color: '#1565c0' }}>Trust Profile</Link>
                     <Link href={`/agents/${agent.address}/metadata`} style={{ color: '#1565c0' }}>Metadata</Link>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* Connected Organizations (groups, hubs, etc. via ALLIANCE relationships) */}
+      {connectedOrgs.length > 0 && (
+        <section data-component="graph-section">
+          <div data-component="section-header">
+            <h2>Connected Organizations ({connectedOrgs.length})</h2>
+          </div>
+          <div data-component="agent-grid">
+            {connectedOrgs.map((circle) => {
+              const health = circle.metadata as Record<string, unknown> | null
+              const isEstablished = health?.isChurch === true
+              const gen = typeof health?.generation === 'number' ? health.generation : null
+              return (
+                <div key={circle.address} data-component="agent-card" data-status="deployed">
+                  <div data-component="agent-card-header">
+                    <Link href={`/agents/${circle.address}`} style={{ color: '#1565c0', fontWeight: 700 }}>{circle.name}</Link>
+                    {gen !== null && <span data-component="role-badge" style={{ fontSize: '0.6rem' }}>G{gen}</span>}
+                    <span data-component="role-badge" data-status={isEstablished ? 'active' : 'proposed'} style={{ fontSize: '0.55rem' }}>
+                      {isEstablished ? 'established' : 'group'}
+                    </span>
+                  </div>
+                  {circle.description && <p data-component="card-description">{circle.description}</p>}
+                  {health && (
+                    <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.7rem', color: '#616161', marginTop: '0.35rem' }}>
+                      {typeof health.attenders === 'number' && <span><strong style={{ color: '#1565c0' }}>{health.attenders}</strong> att</span>}
+                      {typeof health.believers === 'number' && <span><strong style={{ color: '#ea580c' }}>{health.believers}</strong> blvr</span>}
+                      {typeof health.baptized === 'number' && <span><strong style={{ color: '#2e7d32' }}>{health.baptized}</strong> bap</span>}
+                      {typeof health.leaders === 'number' && <span><strong style={{ color: '#7c3aed' }}>{health.leaders}</strong> ldr</span>}
+                      {typeof health.leaderName === 'string' && <span>Led by {health.leaderName}</span>}
+                    </div>
+                  )}
+                  <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem', fontSize: '0.8rem' }}>
+                    <Link href={`/agents/${circle.address}`} style={{ color: '#1565c0' }}>Trust Profile</Link>
+                    <Link href={`/agents/${circle.address}/metadata`} style={{ color: '#1565c0' }}>Metadata</Link>
+                    <Link href={`/network?org=${circle.address}`} style={{ color: '#1565c0' }}>Relationships</Link>
                   </div>
                 </div>
               )

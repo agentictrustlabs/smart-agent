@@ -585,6 +585,12 @@ register_term "atl:entryPoint" "${BASE}entryPoint" "Entry Point" "string"
 register_term "atl:implementation" "${BASE}implementation" "Implementation" "string"
 register_term "atl:delegationManager" "${BASE}delegationManager" "Delegation Manager" "string"
 
+# Geospatial (GeoSPARQL-aligned)
+register_term "atl:latitude" "${BASE}latitude" "Latitude" "string"
+register_term "atl:longitude" "${BASE}longitude" "Longitude" "string"
+register_term "atl:spatialCRS" "${BASE}spatialCRS" "Spatial CRS" "string"
+register_term "atl:spatialType" "${BASE}spatialType" "Spatial Type" "string"
+
 echo "Ontology terms registered: $(cast call $ONTOLOGY 'termCount()(uint256)' --rpc-url $RPC)"
 
 # ─── Register Agents in Resolver ──────────────────────────────────
@@ -689,10 +695,10 @@ db.prepare('INSERT INTO person_agents (id,name,user_id,smart_account_address,cha
 db.prepare('INSERT INTO person_agents (id,name,user_id,smart_account_address,chain_id,salt,implementation_type,status,created_at) VALUES (?,?,?,?,?,?,?,?,?)').run(id(),'Carol Agent','test-user-003','$CAROL_AGENT',31337,'0x3','hybrid','deployed',ts());
 
 // Org agents (actual organizations)
-db.prepare('INSERT INTO org_agents VALUES (?,?,?,?,?,?,?,?,?,?)').run(id(),'Agentic Trust Labs','Agent trust, identity, and reputation research','test-user-001','$ORG_ATL',31337,'0x4','hybrid','deployed',ts());
-db.prepare('INSERT INTO org_agents VALUES (?,?,?,?,?,?,?,?,?,?)').run(id(),'DeFi Protocol DAO','Decentralized finance governance','test-user-001','$ORG_DEFI',31337,'0x5','hybrid','deployed',ts());
-db.prepare('INSERT INTO org_agents VALUES (?,?,?,?,?,?,?,?,?,?)').run(id(),'InsureCo','Agent insurance and coverage provider','test-user-001','$INSURECO',31337,'0x6','hybrid','deployed',ts());
-db.prepare('INSERT INTO org_agents VALUES (?,?,?,?,?,?,?,?,?,?)').run(id(),'StakePool','Economic security bonding pool','test-user-001','$STAKEPOOL',31337,'0x7','hybrid','deployed',ts());
+db.prepare('INSERT INTO org_agents (id,name,description,created_by,smart_account_address,chain_id,salt,implementation_type,status,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)').run(id(),'Agentic Trust Labs','Agent trust, identity, and reputation research','test-user-001','$ORG_ATL',31337,'0x4','hybrid','deployed',ts());
+db.prepare('INSERT INTO org_agents (id,name,description,created_by,smart_account_address,chain_id,salt,implementation_type,status,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)').run(id(),'DeFi Protocol DAO','Decentralized finance governance','test-user-001','$ORG_DEFI',31337,'0x5','hybrid','deployed',ts());
+db.prepare('INSERT INTO org_agents (id,name,description,created_by,smart_account_address,chain_id,salt,implementation_type,status,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)').run(id(),'InsureCo','Agent insurance and coverage provider','test-user-001','$INSURECO',31337,'0x6','hybrid','deployed',ts());
+db.prepare('INSERT INTO org_agents (id,name,description,created_by,smart_account_address,chain_id,salt,implementation_type,status,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)').run(id(),'StakePool','Economic security bonding pool','test-user-001','$STAKEPOOL',31337,'0x7','hybrid','deployed',ts());
 
 // AI Agents (autonomous agents with agent_type)
 // ai_agents columns: id, name, description, agent_type, created_by, operated_by, smart_account_address, chain_id, salt, implementation_type, status, created_at

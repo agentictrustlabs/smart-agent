@@ -3,14 +3,10 @@ import { db, schema } from '@/db'
 import { eq } from 'drizzle-orm'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { redirect } from 'next/navigation'
-import { getEdgesByObject, getEdge, getEdgeRoles } from '@/lib/contracts'
-import { roleName } from '@smart-agent/sdk'
-import { buildAgentNameMap, getNameFromMap } from '@/lib/agent-metadata'
 import { getSelectedOrg } from '@/lib/get-selected-org'
 import { getOrgTemplate } from '@/lib/org-templates.data'
+import { getOrgMembers } from '@/lib/get-org-members'
 import { InviteForm } from '@/components/team/InviteForm'
-
-const STATUS_NAMES = ['None', 'Proposed', 'Confirmed', 'Active', 'Suspended', 'Revoked', 'Rejected']
 
 export default async function TeamPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const currentUser = await getCurrentUser()
@@ -19,9 +15,6 @@ export default async function TeamPage({ searchParams }: { searchParams: Promise
   const params = await searchParams
   const selectedOrg = await getSelectedOrg(currentUser.id, params)
 
-  const nameMap = await buildAgentNameMap()
-  const getName = (a: string) => getNameFromMap(nameMap, a)
-
   // Get pending invites for selected org
   const allInvites = await db.select().from(schema.invites)
     .where(eq(schema.invites.createdBy, currentUser.id))
@@ -29,17 +22,10 @@ export default async function TeamPage({ searchParams }: { searchParams: Promise
     ? allInvites.filter(i => i.agentAddress.toLowerCase() === selectedOrg.smartAccountAddress.toLowerCase())
     : []
 
-  // Load relationships for selected org — separate people from organizations
-  const allPersonAgents = await db.select().from(schema.personAgents)
-  const allOrgAgents = await db.select().from(schema.orgAgents)
-  const personAddrs = new Set(allPersonAgents.map(p => p.smartAccountAddress.toLowerCase()))
-  const orgAddrs = new Set(allOrgAgents.map(o => o.smartAccountAddress.toLowerCase()))
-
-  type DelegationInfo = { status: string; expiresAt: string; caveats: string[] }
-  type MemberView = { address: string; name: string; roles: string[]; status: string; delegations: DelegationInfo[] }
-  type PartnerView = { address: string; name: string; roles: string[]; status: string }
-  const members: MemberView[] = []
-  const partnerOrgs: PartnerView[] = []
+  // Get members and partners
+  const { members, partners: partnerOrgs } = selectedOrg
+    ? await getOrgMembers(selectedOrg.smartAccountAddress)
+    : { members: [], partners: [] }
 
   // Load delegations for this org
   const orgDelegations = selectedOrg
@@ -47,7 +33,6 @@ export default async function TeamPage({ searchParams }: { searchParams: Promise
         .where(eq(schema.reviewDelegations.subjectAgentAddress, selectedOrg.smartAccountAddress.toLowerCase()))
     : []
 
-  // Enforcer name lookup
   const enforcerNames: Record<string, string> = {
     [process.env.TIMESTAMP_ENFORCER_ADDRESS?.toLowerCase() ?? '']: 'Time Window',
     [process.env.ALLOWED_METHODS_ENFORCER_ADDRESS?.toLowerCase() ?? '']: 'Allowed Methods',
@@ -55,76 +40,27 @@ export default async function TeamPage({ searchParams }: { searchParams: Promise
     [process.env.VALUE_ENFORCER_ADDRESS?.toLowerCase() ?? '']: 'Spending Limit',
   }
 
-  if (selectedOrg) {
-    try {
-      const edgeIds = await getEdgesByObject(selectedOrg.smartAccountAddress as `0x${string}`)
-      for (const edgeId of edgeIds) {
-        const edge = await getEdge(edgeId)
-        const roles = await getEdgeRoles(edgeId)
-
-        if (personAddrs.has(edge.subject.toLowerCase())) {
-          // Merge with existing member entry if same person has multiple edges
-          const existing = members.find(m => m.address.toLowerCase() === edge.subject.toLowerCase())
-          const newRoles = roles.map(r => roleName(r))
-
-          if (existing) {
-            // Add new roles (deduplicate)
-            for (const r of newRoles) {
-              if (!existing.roles.includes(r)) existing.roles.push(r)
-            }
-          } else {
-            // Find delegations for this person
-            const personDelegations = orgDelegations
-              .filter(d => d.reviewerAgentAddress === edge.subject.toLowerCase())
-              .map(d => {
-                const isExpired = new Date(d.expiresAt) < new Date()
-                let caveats: string[] = []
-                try {
-                  const parsed = JSON.parse(d.delegationJson)
-                  caveats = (parsed.caveats ?? []).map((c: { enforcer: string }) =>
-                    enforcerNames[c.enforcer?.toLowerCase()] ?? 'Custom'
-                  )
-                } catch {}
-                return {
-                  status: isExpired ? 'expired' : d.status,
-                  expiresAt: new Date(d.expiresAt).toLocaleDateString(),
-                  caveats,
-                }
-              })
-
-            members.push({
-              address: edge.subject,
-              name: getName(edge.subject),
-              roles: newRoles,
-              status: STATUS_NAMES[edge.status] ?? 'Unknown',
-              delegations: personDelegations,
-            })
-          }
-        } else {
-          // Org or unknown — merge by address
-          const addr = edge.subject.toLowerCase()
-          const existingPartner = partnerOrgs.find(p => p.address.toLowerCase() === addr)
-          const newRoles = roles.map(r => roleName(r))
-          if (existingPartner) {
-            for (const r of newRoles) {
-              if (!existingPartner.roles.includes(r)) existingPartner.roles.push(r)
-            }
-          } else {
-            partnerOrgs.push({
-              address: edge.subject,
-              name: getName(edge.subject),
-              roles: newRoles,
-              status: STATUS_NAMES[edge.status] ?? 'Unknown',
-            })
-          }
-        }
-      }
-    } catch { /* contracts not deployed */ }
-  }
+  // Enrich members with delegation info
+  const membersWithDelegations = members.map(m => {
+    const personDelegations = orgDelegations
+      .filter(d => d.reviewerAgentAddress === m.address.toLowerCase())
+      .map(d => {
+        const isExpired = new Date(d.expiresAt) < new Date()
+        let caveats: string[] = []
+        try {
+          const parsed = JSON.parse(d.delegationJson)
+          caveats = (parsed.caveats ?? []).map((c: { enforcer: string }) =>
+            enforcerNames[c.enforcer?.toLowerCase()] ?? 'Custom'
+          )
+        } catch { /* ignored */ }
+        return { status: isExpired ? 'expired' : d.status, expiresAt: new Date(d.expiresAt).toLocaleDateString(), caveats }
+      })
+    return { ...m, delegations: personDelegations }
+  })
 
   // Get AI agents operated by this org
   const aiAgents = selectedOrg
-    ? await db.select().from(schema.aiAgents).where(eq(schema.aiAgents.createdBy, currentUser.id))
+    ? await db.select().from(schema.aiAgents)
         .then(all => all.filter(a => a.operatedBy?.toLowerCase() === selectedOrg.smartAccountAddress.toLowerCase()))
     : []
 
@@ -134,14 +70,11 @@ export default async function TeamPage({ searchParams }: { searchParams: Promise
         <div data-component="section-header">
           <h1>Organization{selectedOrg ? ` — ${selectedOrg.name}` : ''}</h1>
           {selectedOrg && (
-            <Link href={`/agents/${selectedOrg.smartAccountAddress}`} data-component="section-action">
-              Settings
-            </Link>
+            <Link href={`/agents/${selectedOrg.smartAccountAddress}`} data-component="section-action">Settings</Link>
           )}
         </div>
         {selectedOrg
-          ? <p>Members, roles, delegated authority, and partnerships for {selectedOrg.name}.
-              For multi-sig governance settings, see <Link href="/settings?tab=governance" style={{ color: '#1565c0' }}>Administration</Link>.</p>
+          ? <p>Members, roles, delegated authority, and partnerships for {selectedOrg.name}.</p>
           : <p>Create an organization to manage team members</p>
         }
       </div>
@@ -160,32 +93,25 @@ export default async function TeamPage({ searchParams }: { searchParams: Promise
           {/* Members & Roles */}
           <section data-component="graph-section">
             <div data-component="section-header">
-              <h2>Members & Roles ({members.length})</h2>
+              <h2>Members & Roles ({membersWithDelegations.length})</h2>
             </div>
             <p style={{ fontSize: '0.85rem', color: '#616161', marginBottom: '1rem' }}>
               Roles define what each person can do within the organization.
-              Delegated authority is enforced on-chain through caveats.
             </p>
-            {members.length === 0 ? (
+            {membersWithDelegations.length === 0 ? (
               <p data-component="text-muted">No members yet. Invite people using the form below.</p>
             ) : (
               <div style={{ display: 'grid', gap: '0.75rem' }}>
-                {members.map((m) => (
+                {membersWithDelegations.map((m) => (
                   <div key={m.address} data-component="protocol-info">
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
                       <Link href={`/agents/${m.address}`} style={{ color: '#1565c0', fontWeight: 600, fontSize: '0.95rem' }}>{m.name}</Link>
-                      <span data-component="role-badge" data-status={m.status === 'Active' ? 'active' : m.status === 'Proposed' ? 'proposed' : 'revoked'}>
-                        {m.status}
-                      </span>
+                      <span data-component="role-badge" data-status={m.status === 'Active' ? 'active' : 'proposed'}>{m.status}</span>
                     </div>
-
-                    {/* Roles */}
                     <div style={{ marginBottom: '0.5rem' }}>
                       <span style={{ fontSize: '0.75rem', color: '#616161' }}>Roles: </span>
                       {m.roles.map(r => <span key={r} data-component="role-badge" style={{ marginRight: 4 }}>{r}</span>)}
                     </div>
-
-                    {/* Delegated Authority */}
                     {m.delegations.length > 0 ? (
                       <div style={{ borderTop: '1px solid #f0f1f3', paddingTop: '0.5rem' }}>
                         <span style={{ fontSize: '0.75rem', color: '#616161', fontWeight: 600 }}>Delegated Authority:</span>
@@ -193,7 +119,6 @@ export default async function TeamPage({ searchParams }: { searchParams: Promise
                           <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem', fontSize: '0.8rem' }}>
                             <span data-component="role-badge" data-status={d.status === 'active' ? 'active' : 'revoked'}>{d.status}</span>
                             <span style={{ color: '#616161' }}>expires {d.expiresAt}</span>
-                            <span style={{ color: '#616161' }}>|</span>
                             {d.caveats.map((c, j) => (
                               <span key={j} style={{ fontSize: '0.7rem', padding: '0.1rem 0.35rem', background: '#f5f5f5', borderRadius: 4, color: '#616161' }}>{c}</span>
                             ))}
@@ -222,7 +147,7 @@ export default async function TeamPage({ searchParams }: { searchParams: Promise
                     <tr key={p.address}>
                       <td><Link href={`/agents/${p.address}`} style={{ color: '#1565c0' }}>{p.name}</Link></td>
                       <td>{p.roles.map(r => <span key={r} data-component="role-badge" style={{ marginRight: 4 }}>{r}</span>)}</td>
-                      <td><span data-component="role-badge" data-status={p.status === 'Active' ? 'active' : p.status === 'Proposed' ? 'proposed' : 'revoked'}>{p.status}</span></td>
+                      <td><span data-component="role-badge" data-status={p.status === 'Active' ? 'active' : 'proposed'}>{p.status}</span></td>
                     </tr>
                   ))}
                 </tbody>
@@ -230,7 +155,7 @@ export default async function TeamPage({ searchParams }: { searchParams: Promise
             </section>
           )}
 
-          {/* AI Agents in this org */}
+          {/* AI Agents */}
           <section data-component="graph-section">
             <div data-component="section-header">
               <h2>AI Agents ({aiAgents.length})</h2>
@@ -287,15 +212,10 @@ export default async function TeamPage({ searchParams }: { searchParams: Promise
               roles={(() => {
                 const tpl = getOrgTemplate((selectedOrg as Record<string, unknown>).templateId as string ?? '')
                 if (tpl) return tpl.roles.map(r => ({ key: r.roleKey, label: r.label, description: r.description }))
-                // Default roles if no template
                 return [
                   { key: 'owner', label: 'Owner', description: 'Full authority' },
                   { key: 'admin', label: 'Admin', description: 'Administrative access' },
                   { key: 'member', label: 'Member', description: 'General membership' },
-                  { key: 'treasurer', label: 'Treasurer', description: 'Financial management' },
-                  { key: 'board-member', label: 'Board Member', description: 'Governance decisions' },
-                  { key: 'auditor', label: 'Auditor', description: 'Compliance oversight' },
-                  { key: 'reviewer', label: 'Reviewer', description: 'Performance reviews' },
                 ]
               })()}
             />

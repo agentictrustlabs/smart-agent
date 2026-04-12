@@ -24,6 +24,5 @@ export function useAuth() {
     }
   }
 
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   return usePrivy()
 }

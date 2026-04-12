@@ -13,13 +13,19 @@ export function NetworkTabs({ children }: { children: Record<string, React.React
   const router = useRouter()
   const activeTab = searchParams.get('tab') ?? 'graph'
 
+  function handleTabChange(tab: string) {
+    const nextParams = new URLSearchParams(searchParams.toString())
+    nextParams.set('tab', tab)
+    router.push(`/network?${nextParams.toString()}`)
+  }
+
   return (
     <div>
-      <div data-component="graph-filter" style={{ marginBottom: '1.5rem' }}>
+      <div data-component="network-tabbar">
         {TABS.map((tab) => (
           <button
             key={tab.key}
-            onClick={() => router.push(`/network?tab=${tab.key}`)}
+            onClick={() => handleTabChange(tab.key)}
             data-component="filter-btn"
             data-active={activeTab === tab.key ? 'true' : 'false'}
           >

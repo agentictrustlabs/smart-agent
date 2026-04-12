@@ -3,23 +3,28 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "dev":           "pnpm --filter @smart-agent/web dev",
-    "build":         "pnpm -r build",
-    "test":          "pnpm -r test",
+    "dev": "pnpm --filter @smart-agent/web dev",
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
     "test:coverage": "pnpm --filter @smart-agent/web test:coverage",
-    "lint":          "pnpm -r lint",
-    "format":        "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,css}\" --ignore-path .gitignore",
-    "format:check":  "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,css}\" --ignore-path .gitignore",
-    "typecheck":     "pnpm -r typecheck",
-    "clean":         "pnpm -r clean && rm -rf node_modules"
+    "lint": "pnpm -r lint",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,css}\" --ignore-path .gitignore",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,css}\" --ignore-path .gitignore",
+    "typecheck": "pnpm -r typecheck",
+    "clean": "pnpm -r clean && rm -rf node_modules"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
-    "@typescript-eslint/parser":        "^8.0.0",
-    "eslint":                           "^9.0.0",
-    "prettier":                         "^3.3.0",
-    "typescript":                       "^5.5.0"
+    "@typescript-eslint/parser": "^8.0.0",
+    "eslint": "^9.0.0",
+    "ffmpeg-static": "^5.3.0",
+    "prettier": "^3.3.0",
+    "typescript": "^5.5.0"
   },
-  "engines": { "node": ">=20", "pnpm": ">=9" },
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=9"
+  },
   "packageManager": "pnpm@9.15.0"
 }

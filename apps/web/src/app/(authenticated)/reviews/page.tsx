@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { getSelectedOrg } from '@/lib/get-selected-org'
 import { getPublicClient, getEdgesByObject, getEdgesBySubject, getEdge } from '@/lib/contracts'
-import { agentReviewRecordAbi, agentDisputeRecordAbi, agentTrustProfileAbi } from '@smart-agent/sdk'
+import { agentReviewRecordAbi, agentDisputeRecordAbi } from '@smart-agent/sdk'
 import { db, schema } from '@/db'
 import { keccak256, toBytes } from 'viem'
 
@@ -71,7 +71,7 @@ export default async function ReviewsPage({ searchParams }: { searchParams: Prom
         const edge = await getEdge(edgeId)
         orgScopeAddrs.add(edge.object_.toLowerCase())
       }
-    } catch {}
+    } catch { /* ignored */ }
     // Add AI agents operated by this org
     for (const a of allAI) {
       if (a.operatedBy?.toLowerCase() === selectedOrg.smartAccountAddress.toLowerCase()) {

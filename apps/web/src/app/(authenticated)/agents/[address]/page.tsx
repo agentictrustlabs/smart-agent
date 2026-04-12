@@ -7,7 +7,7 @@ import {
   agentValidationProfileAbi, agentTrustProfileAbi, agentDisputeRecordAbi,
   agentAccountResolverAbi,
   roleName, relationshipTypeName,
-  AGENT_TYPE_LABELS, AI_CLASS_LABELS,
+  
   ATL_CAPABILITY, ATL_SUPPORTED_TRUST, ATL_A2A_ENDPOINT, ATL_MCP_SERVER,
   TYPE_PERSON, TYPE_ORGANIZATION, TYPE_AI_AGENT,
 } from '@smart-agent/sdk'
@@ -140,7 +140,7 @@ export default async function AgentSettingsPage({
   } catch { /* resolver may not be deployed */ }
 
   // Get on-chain owner info from AgentRootAccount
-  let onChainOwners: string[] = []
+  
   let ownerCount = 0
   try {
     ownerCount = Number(await client.readContract({

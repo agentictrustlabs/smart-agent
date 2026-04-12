@@ -3,6 +3,7 @@ import {
   agentAccountResolverAbi,
   AGENT_TYPE_LABELS, AI_CLASS_LABELS,
   ATL_CAPABILITY, ATL_SUPPORTED_TRUST, ATL_A2A_ENDPOINT, ATL_MCP_SERVER,
+  ATL_LATITUDE, ATL_LONGITUDE, ATL_SPATIAL_CRS, ATL_SPATIAL_TYPE,
   TYPE_PERSON, TYPE_ORGANIZATION, TYPE_AI_AGENT,
 } from '@smart-agent/sdk'
 import { db, schema } from '@/db'
@@ -25,6 +26,11 @@ export interface AgentMetadata {
   metadataURI: string
   isResolverRegistered: boolean
   isActive: boolean
+  // Geospatial
+  latitude: string
+  longitude: string
+  spatialCRS: string
+  spatialType: string
 }
 
 const TYPE_MAP: Record<string, 'person' | 'org' | 'ai'> = {
@@ -55,6 +61,10 @@ export async function getAgentMetadata(agentAddress: string): Promise<AgentMetad
     metadataURI: '',
     isResolverRegistered: false,
     isActive: true,
+    latitude: '',
+    longitude: '',
+    spatialCRS: '',
+    spatialType: '',
   }
 
   // DB fallback first
@@ -140,6 +150,28 @@ export async function getAgentMetadata(agentAddress: string): Promise<AgentMetad
           address: resolverAddr, abi: agentAccountResolverAbi,
           functionName: 'getStringProperty',
           args: [addr, ATL_MCP_SERVER as `0x${string}`],
+        }) as string
+
+        // Geospatial
+        meta.latitude = await client.readContract({
+          address: resolverAddr, abi: agentAccountResolverAbi,
+          functionName: 'getStringProperty',
+          args: [addr, ATL_LATITUDE as `0x${string}`],
+        }) as string
+        meta.longitude = await client.readContract({
+          address: resolverAddr, abi: agentAccountResolverAbi,
+          functionName: 'getStringProperty',
+          args: [addr, ATL_LONGITUDE as `0x${string}`],
+        }) as string
+        meta.spatialCRS = await client.readContract({
+          address: resolverAddr, abi: agentAccountResolverAbi,
+          functionName: 'getStringProperty',
+          args: [addr, ATL_SPATIAL_CRS as `0x${string}`],
+        }) as string
+        meta.spatialType = await client.readContract({
+          address: resolverAddr, abi: agentAccountResolverAbi,
+          functionName: 'getStringProperty',
+          args: [addr, ATL_SPATIAL_TYPE as `0x${string}`],
         }) as string
       }
     } catch { /* resolver not deployed or agent not registered */ }
