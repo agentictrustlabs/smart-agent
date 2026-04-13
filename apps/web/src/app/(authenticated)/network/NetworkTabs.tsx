@@ -5,7 +5,6 @@ import { useSearchParams, useRouter } from 'next/navigation'
 const TABS = [
   { key: 'graph', label: 'Trust Graph' },
   { key: 'genmap', label: 'Lineage' },
-  { key: 'relationships', label: 'Relationships' },
   { key: 'endorsements', label: 'Endorsements' },
 ]
 

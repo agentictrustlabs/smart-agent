@@ -1,32 +1,80 @@
 import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
-import { getSelectedOrg } from '@/lib/get-selected-org'
+import { getUserOrgs } from '@/lib/get-user-orgs'
 import { db, schema } from '@/db'
 import { eq } from 'drizzle-orm'
 import { getEdgesBySubject, getEdge } from '@/lib/contracts'
 import { getAgentMetadata } from '@/lib/agent-metadata'
 import { getConnectedOrgs } from '@/lib/get-org-members'
-import { buildGenTree, computeMovementMetrics } from '@/lib/cpm'
-import { computeGroupHealth } from '@/lib/cpm/group-health'
+// Inline health computation (was in @/lib/cpm)
+function computeGroupHealth(data: Record<string, unknown>): { total: number; status: string } {
+  const s = Number(data.seekers ?? 0), b = Number(data.believers ?? 0)
+  const bap = Number(data.baptized ?? 0), l = Number(data.leaders ?? 0)
+  const gs = Number(data.groupsStarted ?? 0), ic = Boolean(data.isChurch)
+  const score = Math.min(25, s > 0 ? 15 : 0 + b > 0 ? 10 : 0) +
+    Math.min(25, bap > 0 ? 15 : 0 + b >= 3 ? 10 : 0) +
+    Math.min(25, l > 0 ? 10 : 0 + (ic ? 15 : 0)) +
+    Math.min(25, gs * 8)
+  return { total: score, status: score >= 75 ? 'thriving' : score >= 50 ? 'growing' : score >= 25 ? 'emerging' : 'stalled' }
+}
+
+function buildGenTree(rows: Array<{ id: string; parentId: string | null; generation: number; name: string; leaderName: string | null; location: string | null; healthData: string | null; status: string; startedAt: string | null }>) {
+  const nodes = rows.map(r => ({ ...r, children: [] as typeof rows }))
+  const map = new Map(nodes.map(n => [n.id, n]))
+  const roots: typeof nodes = []
+  for (const n of nodes) {
+    if (n.parentId && map.has(n.parentId)) map.get(n.parentId)!.children.push(n)
+    else roots.push(n)
+  }
+  return roots
+}
+
+function computeMovementMetrics(roots: ReturnType<typeof buildGenTree>) {
+  const all: Array<{ generation: number; healthData: string | null; children: unknown[] }> = []
+  function collect(n: (typeof roots)[number]) { all.push(n); (n.children as typeof roots).forEach(collect) }
+  roots.forEach(collect)
+  const maxGen = all.reduce((m, n) => Math.max(m, n.generation), 0)
+  const churchCount = all.filter(n => { try { return JSON.parse(n.healthData ?? '{}').isChurch } catch { return false } }).length
+  const multiplied = all.filter(n => n.children.length > 0).length
+  const genBreakdown: Record<number, number> = {}
+  for (const n of all) genBreakdown[n.generation] = (genBreakdown[n.generation] ?? 0) + 1
+  return {
+    totalGroups: all.length, activeGroups: all.length, totalBelievers: 0, totalBaptized: 0,
+    totalLeaders: 0, maxGeneration: maxGen, churchCount,
+    multiplicationRate: all.length > 0 ? multiplied / all.length : 0,
+    streamCount: roots.length, generationBreakdown: genBreakdown,
+  }
+}
 import { GenMapClient } from './GenMapClient'
 
-export default async function GenMapPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+export default async function GenMapPage() {
   const currentUser = await getCurrentUser()
   if (!currentUser) redirect('/')
-  const params = await searchParams
-  const selectedOrg = await getSelectedOrg(currentUser.id, params)
 
-  if (!selectedOrg) {
+  const userOrgs = await getUserOrgs(currentUser.id)
+
+  if (userOrgs.length === 0) {
     return (
       <div data-page="genmap">
-        <div data-component="page-header"><h1>Generational Map</h1><p>Select an organization to view the generational map.</p></div>
+        <div data-component="page-header"><h1>Generational Map</h1><p>No organizations found.</p></div>
       </div>
     )
   }
 
-  // ─── Primary: Build hierarchy from on-chain ALLIANCE edges ────────
-  // Get all connected org agents (transitively via ALLIANCE edges)
-  const connectedOrgs = await getConnectedOrgs(selectedOrg.smartAccountAddress)
+  // ─── Build hierarchy from on-chain ALLIANCE edges across all user orgs ────
+  const allConnected: Array<{ address: string; name: string; description: string; metadata: Record<string, unknown> | null }> = []
+  const seenConnected = new Set<string>()
+
+  for (const org of userOrgs) {
+    const connected = await getConnectedOrgs(org.address)
+    for (const c of connected) {
+      if (!seenConnected.has(c.address.toLowerCase())) {
+        seenConnected.add(c.address.toLowerCase())
+        allConnected.push(c)
+      }
+    }
+  }
+  const connectedOrgs = allConnected
 
   // Build parent-child map from edges
   type HierarchyNode = {
@@ -46,11 +94,11 @@ export default async function GenMapPage({ searchParams }: { searchParams: Promi
 
     // Check edges from selected org
     try {
-      const edgeIds = await getEdgesBySubject(selectedOrg.smartAccountAddress as `0x${string}`)
+      const edgeIds = await getEdgesBySubject(userOrgs[0].address as `0x${string}`)
       for (const edgeId of edgeIds) {
         const edge = await getEdge(edgeId)
         if (edge.status >= 2) {
-          parentMap.set(edge.object_.toLowerCase(), selectedOrg.smartAccountAddress.toLowerCase())
+          parentMap.set(edge.object_.toLowerCase(), userOrgs[0].address.toLowerCase())
         }
       }
     } catch { /* ignored */ }
@@ -115,7 +163,7 @@ export default async function GenMapPage({ searchParams }: { searchParams: Promi
   let nodes = hierarchyNodes
   if (nodes.length === 0) {
     const allNodes = await db.select().from(schema.genMapNodes)
-    const orgNodes = allNodes.filter(n => n.networkAddress === selectedOrg.smartAccountAddress.toLowerCase())
+    const orgNodes = allNodes.filter(n => n.networkAddress === userOrgs[0].address.toLowerCase())
     nodes = orgNodes.map(n => {
       const health = computeGroupHealth(
         n.healthData ? (() => { try { return JSON.parse(n.healthData!) } catch { return {} } })() : {}
@@ -162,7 +210,7 @@ export default async function GenMapPage({ searchParams }: { searchParams: Promi
   return (
     <div data-page="genmap">
       <div data-component="page-header">
-        <h1>Generational Map{selectedOrg ? ` — ${selectedOrg.name}` : ''}</h1>
+        <h1>Generational Map{userOrgs.length > 0 ? ` — ${userOrgs[0].name}` : ''}</h1>
         <p>Tracks how groups multiply across generations. Hierarchy is derived from on-chain ALLIANCE relationships.</p>
       </div>
 
@@ -211,8 +259,8 @@ export default async function GenMapPage({ searchParams }: { searchParams: Promi
 
       <GenMapClient
         nodes={nodes}
-        orgAddress={selectedOrg.smartAccountAddress}
-        orgName={selectedOrg.name}
+        orgAddress={userOrgs[0].address}
+        orgName={userOrgs[0].name}
         pinnedNodeIds={pinnedNodeIds}
         geoAgents={geoAgents}
       />

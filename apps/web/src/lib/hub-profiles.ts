@@ -1,4 +1,4 @@
-export type HubId = 'generic' | 'global-church' | 'ilad' | 'cpm' | 'catalyst'
+export type HubId = 'generic' | 'global-church' | 'catalyst' | 'cil'
 
 export type AgentContextKind = 'collection' | 'cohort' | 'network' | 'lineage' | 'portal'
 
@@ -98,64 +98,6 @@ export const HUB_PROFILES: HubProfile[] = [
     ],
   },
   {
-    id: 'ilad',
-    name: 'ILAD Capital',
-    description: 'Capital deployment, training, revenue, and governance workspace.',
-    templateIds: [
-      'impact-investor',
-      'field-agency',
-      'oversight-committee',
-      'portfolio-business',
-    ],
-    contextTerm: 'Operating Group',
-    contextPlural: 'Operating Groups',
-    defaultContextKind: 'cohort',
-    networkLabel: 'Delivery Network',
-    lineageLabel: 'Growth Tree',
-    overviewLabel: 'Operating View',
-    contextsLabel: 'Groups',
-    agentLabel: 'Operators',
-    activityLabel: 'Operations',
-    navItems: [
-      { href: '/dashboard', label: 'Operating View' },
-      { href: '/agents', label: 'Operators' },
-      { href: '/network', label: 'Delivery Network' },
-      { href: '/portfolio', label: 'Portfolio' },
-      { href: '/revenue', label: 'Revenue' },
-      { href: '/training', label: 'Training' },
-      { href: '/governance', label: 'Governance' },
-      { href: '/treasury', label: 'Treasury' },
-    ],
-  },
-  {
-    id: 'cpm',
-    name: 'Church Planting Movement',
-    description: 'Movement tracking portal for teams, groups, and multiplication streams.',
-    templateIds: [
-      'movement-network',
-      'church-planting-team',
-      'local-group',
-    ],
-    contextTerm: 'Movement',
-    contextPlural: 'Movements',
-    defaultContextKind: 'lineage',
-    networkLabel: 'Movement Network',
-    lineageLabel: 'Lineage',
-    overviewLabel: 'Movement View',
-    contextsLabel: 'Movements',
-    agentLabel: 'Field Agents',
-    activityLabel: 'Field Activity',
-    navItems: [
-      { href: '/dashboard', label: 'Movement View' },
-      { href: '/agents', label: 'Field Agents' },
-      { href: '/network', label: 'Movement Network' },
-      { href: '/genmap', label: 'Lineage' },
-      { href: '/activities', label: 'Field Activity' },
-      { href: '/members', label: 'Members' },
-      { href: '/reviews', label: 'Reviews' },
-    ],
-  },
-  {
     id: 'catalyst',
     name: 'Catalyst Network',
     description: 'Community development portal for hubs, circles, and facilitators.',
@@ -182,6 +124,35 @@ export const HUB_PROFILES: HubProfile[] = [
       { href: '/reviews', label: 'Reviews' },
     ],
   },
+  {
+    id: 'cil',
+    name: 'Collective Impact Labs',
+    description: 'Revenue-sharing capital deployment with trust graph, assertions, and conflict resolution.',
+    templateIds: [
+      'cil-operator',
+      'cil-funder',
+      'cil-pilot',
+      'cil-business',
+    ],
+    contextTerm: 'Operating Group',
+    contextPlural: 'Operating Groups',
+    defaultContextKind: 'cohort',
+    networkLabel: 'Trust Network',
+    lineageLabel: 'Capital Flow',
+    overviewLabel: 'Pilot View',
+    contextsLabel: 'Groups',
+    agentLabel: 'Participants',
+    activityLabel: 'Operations',
+    navItems: [
+      { href: '/dashboard', label: 'Pilot View' },
+      { href: '/agents', label: 'Participants' },
+      { href: '/network', label: 'Trust Network' },
+      { href: '/activities', label: 'Operations' },
+      { href: '/members', label: 'Members' },
+      { href: '/reviews', label: 'Assertions' },
+      { href: '/treasury', label: 'Treasury' },
+    ],
+  },
 ]
 
 const TEMPLATE_TO_HUB = new Map<string, HubId>()
@@ -198,10 +169,8 @@ export function getHubIdForTemplate(templateId: string | null | undefined): HubI
   return TEMPLATE_TO_HUB.get(templateId) ?? 'generic'
 }
 
-export function inferHubId(templateId: string | null | undefined, capabilities: string[]): HubId {
+export function inferHubId(templateId: string | null | undefined, _capabilities: string[]): HubId {
   if (templateId) return getHubIdForTemplate(templateId)
-  if (capabilities.includes('portfolio') || capabilities.includes('revenue') || capabilities.includes('training')) return 'ilad'
-  if (capabilities.includes('genmap') || capabilities.includes('activities')) return 'cpm'
   return 'generic'
 }
 
@@ -242,16 +211,7 @@ export function buildDefaultAgentContexts(args: {
     },
   ]
 
-  if (profile.defaultContextKind !== 'lineage') {
-    contexts.push({
-      id: `network:${args.orgAddress.toLowerCase()}`,
-      kind: 'network',
-      name: `${args.orgName} ${profile.networkLabel}`,
-      description: `Graph-derived context for ${args.orgName}.`,
-      orgAddress: args.orgAddress,
-      hubId: args.hubId,
-    })
-  }
+  // Note: network context already added above (line 236) — no duplicate needed
 
   if (args.capabilities.includes('genmap') && profile.defaultContextKind !== 'lineage') {
     contexts.push({

@@ -4,15 +4,14 @@ import Link from 'next/link'
 import { UserDropdown } from '@/components/auth/UserDropdown'
 import { NotificationBell } from '@/components/notifications/NotificationBell'
 import { HubNav } from '@/components/nav/HubNav'
-import { OrgContextProvider } from '@/components/org/OrgContext'
-import { ContextSelector } from '@/components/org/ContextSelector'
+import { UserContextProvider } from '@/components/user/UserContext'
 import { DemoUserBadge } from '@/components/auth/DemoUserBadge'
 
 const SKIP_AUTH = process.env.NEXT_PUBLIC_SKIP_AUTH === 'true'
 
 export default function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   return (
-    <OrgContextProvider>
+    <UserContextProvider>
       <div data-layout="authenticated">
         <header data-component="app-header">
           <div data-component="header-primary">
@@ -25,8 +24,6 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
               </svg>
               Smart Agent
             </Link>
-            <div data-component="header-divider" />
-            <ContextSelector />
             <HubNav />
           </div>
           <div data-component="header-utility">
@@ -36,6 +33,6 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
         </header>
         <main data-component="app-content">{children}</main>
       </div>
-    </OrgContextProvider>
+    </UserContextProvider>
   )
 }

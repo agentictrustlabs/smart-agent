@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { eq } from 'drizzle-orm'
 import { db, schema } from '@/db'
-import { getEdgesByObject, getEdge, getEdgeRoles, getTemplateCount, getTemplate, getPublicClient } from '@/lib/contracts'
+import { getEdgesByObject, getEdgesBySubject, getEdge, getEdgeRoles, getTemplateCount, getTemplate, getPublicClient } from '@/lib/contracts'
 import { roleName, relationshipTypeName, toDidEthr, agentAccountResolverAbi, ATL_CAPABILITY, ATL_SUPPORTED_TRUST, ATL_A2A_ENDPOINT, ATL_CONTROLLER, AI_CLASS_LABELS } from '@smart-agent/sdk'
 
 const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? '31337')
@@ -40,8 +40,11 @@ export interface GraphEdge {
   templates: TemplateInfo[]
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url)
+    const scopeOrg = searchParams.get('org')
+
     const allUsers = await db.select().from(schema.users)
 
     // Build name + type map from on-chain resolver
@@ -72,50 +75,90 @@ export async function GET() {
       })
     }
 
-    // Add EOA wallet nodes and controller edges
-    for (const u of allUsers) {
-      nameMap.set(u.walletAddress.toLowerCase(), u.name)
-      addNode(u.walletAddress, 'eoa')
-    }
-
-    // Add agent nodes from on-chain resolver
     const resolverAddr = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}`
-    if (resolverAddr) {
+    const client = resolverAddr ? getPublicClient() : null
+
+    // Discover agents: either scoped to an org's network or all agents
+    const agentAddresses: string[] = []
+
+    if (scopeOrg && resolverAddr && client) {
+      // Scoped mode: walk edges from the given org to find connected agents
+      const scopeSet = new Set<string>()
+      scopeSet.add(scopeOrg.toLowerCase())
+
+      // Get all edges where this org is subject or object
+      const walkEdgesFrom = async (addr: string) => {
+        const connected: string[] = []
+        try {
+          const subjectEdges = await getEdgesByObject(addr as `0x${string}`)
+          for (const edgeId of subjectEdges) {
+            const e = await getEdge(edgeId)
+            connected.push(e.subject)
+          }
+        } catch { /* ignored */ }
+        try {
+          const objectEdges = await getEdgesBySubject(addr as `0x${string}`)
+          for (const edgeId of objectEdges) {
+            const e = await getEdge(edgeId)
+            connected.push(e.object_)
+          }
+        } catch { /* ignored */ }
+        return connected
+      }
+
+      // First level: agents directly connected to the scoped org
+      const firstLevel = await walkEdgesFrom(scopeOrg)
+      for (const addr of firstLevel) scopeSet.add(addr.toLowerCase())
+
+      // Second level: agents connected to first-level agents (full hub network)
+      for (const addr of firstLevel) {
+        const secondLevel = await walkEdgesFrom(addr)
+        for (const a of secondLevel) scopeSet.add(a.toLowerCase())
+      }
+
+      for (const addr of scopeSet) agentAddresses.push(addr)
+    } else if (resolverAddr && client) {
+      // Unscoped: load all agents from resolver
       try {
-        const client = getPublicClient()
         const agentCount = await client.readContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'agentCount' }) as bigint
         for (let i = 0n; i < agentCount; i++) {
           const agentAddr = await client.readContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'getAgentAt', args: [i] }) as `0x${string}`
-          const kind = (typeMap.get(agentAddr.toLowerCase()) ?? 'person') as 'person' | 'org' | 'ai'
-          addNode(agentAddr, kind)
-
-          // Controller edge: check ATL_CONTROLLER for wallet addresses
-          try {
-            const controllers = await client.readContract({
-              address: resolverAddr, abi: agentAccountResolverAbi,
-              functionName: 'getMultiAddressProperty',
-              args: [agentAddr, ATL_CONTROLLER as `0x${string}`],
-            }) as string[]
-            for (const ctrl of controllers) {
-              const user = allUsers.find(u => u.walletAddress.toLowerCase() === ctrl.toLowerCase())
-              if (user) {
-                edges.push({
-                  source: user.walletAddress, target: agentAddr,
-                  roles: ['controller'], relationshipType: 'Controller',
-                  status: 'active', edgeId: `ctrl-${user.walletAddress}-${agentAddr}`, templates: [],
-                })
-              }
-            }
-          } catch { /* ignored */ }
+          agentAddresses.push(agentAddr)
         }
       } catch { /* ignored */ }
     }
 
+    // Add agent nodes + controller edges
+    for (const agentAddr of agentAddresses) {
+      const kind = (typeMap.get(agentAddr.toLowerCase()) ?? 'person') as 'person' | 'org' | 'ai'
+      addNode(agentAddr, kind)
+
+      if (resolverAddr && client) {
+        try {
+          const controllers = await client.readContract({
+            address: resolverAddr, abi: agentAccountResolverAbi,
+            functionName: 'getMultiAddressProperty',
+            args: [agentAddr as `0x${string}`, ATL_CONTROLLER as `0x${string}`],
+          }) as string[]
+          for (const ctrl of controllers) {
+            const user = allUsers.find(u => u.walletAddress.toLowerCase() === ctrl.toLowerCase())
+            if (user) {
+              nameMap.set(user.walletAddress.toLowerCase(), user.name)
+              addNode(user.walletAddress, 'eoa')
+              edges.push({
+                source: user.walletAddress, target: agentAddr,
+                roles: ['controller'], relationshipType: 'Controller',
+                status: 'active', edgeId: `ctrl-${user.walletAddress}-${agentAddr}`, templates: [],
+              })
+            }
+          }
+        } catch { /* ignored */ }
+      }
+    }
+
     // Enrich nodes with resolver metadata
     try {
-      const resolverAddr = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}`
-      if (resolverAddr) {
-        const client = getPublicClient()
+      if (resolverAddr && client) {
         for (const node of nodes) {
           if (node.type === 'eoa') continue
           try {

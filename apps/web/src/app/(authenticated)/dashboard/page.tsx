@@ -1,297 +1,381 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { db, schema } from '@/db'
+import { eq } from 'drizzle-orm'
+import { formatEther } from 'viem'
 
 import { getCurrentUser } from '@/lib/auth/get-current-user'
-import { toDidEthr } from '@smart-agent/sdk'
-import { getSelectedOrg } from '@/lib/get-selected-org'
+import { getUserOrgs } from '@/lib/get-user-orgs'
 import { getOrgMembers } from '@/lib/get-org-members'
-import { DashboardAnalytics } from './DashboardAnalytics'
-import { buildDefaultAgentContexts, getHubIdForTemplate, getHubProfile } from '@/lib/hub-profiles'
 
-const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? '31337')
-
-export default async function DashboardPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+export default async function DashboardPage() {
   const currentUser = await getCurrentUser()
   if (!currentUser) redirect('/')
-  const params = await searchParams
-  const selectedOrg = await getSelectedOrg(currentUser.id, params)
 
   const { getPersonAgentForUser, getAiAgentsForOrg } = await import('@/lib/agent-registry')
   const { getAgentMetadata: getMeta } = await import('@/lib/agent-metadata')
+  const { getPublicClient, getEdgesBySubject } = await import('@/lib/contracts')
 
+  // Person agent
   const personAgentAddr = await getPersonAgentForUser(currentUser.id)
-  let personAgent: { smartAccountAddress: string; name: string } | null = null
-  if (personAgentAddr) {
-    const pMeta = await getMeta(personAgentAddr)
-    personAgent = { smartAccountAddress: personAgentAddr, name: pMeta.displayName }
-  }
+  const userOrgs = await getUserOrgs(currentUser.id)
 
-  // Load data scoped to selected org (on-chain edges)
-  const { members, partners } = selectedOrg
-    ? await getOrgMembers(selectedOrg.smartAccountAddress)
-    : { members: [], partners: [] }
-  const aiAgentAddrs = selectedOrg ? await getAiAgentsForOrg(selectedOrg.smartAccountAddress) : []
-  const aiAgents = await Promise.all(aiAgentAddrs.map(async addr => {
-    const meta = await getMeta(addr)
-    return { id: addr, name: meta.displayName, description: meta.description, agentType: meta.aiAgentClass || 'custom', smartAccountAddress: addr, status: 'deployed' }
-  }))
-
-  // Check if org has child orgs (ALLIANCE edges) → show analytics
-  let showAnalytics = false
-  if (selectedOrg) {
-    try {
-      const { getEdgesBySubject: checkEdges } = await import('@/lib/contracts')
-      const outEdges = await checkEdges(selectedOrg.smartAccountAddress as `0x${string}`)
-      showAnalytics = outEdges.length > 0
-    } catch { /* ignored */ }
-  }
-
-  // Get agent type label from resolver
-  const orgMeta = selectedOrg ? await getMeta(selectedOrg.smartAccountAddress) : null
-  const hubId = getHubIdForTemplate(selectedOrg?.templateId)
-  const hubProfile = getHubProfile(hubId)
-  const derivedCapabilities = [
-    'network',
-    'agents',
-    'reviews',
-    ...(showAnalytics ? ['genmap', 'activities', 'members'] : []),
-    ...(aiAgents.length > 0 ? ['treasury'] : []),
-  ]
-  const agentContexts = selectedOrg ? buildDefaultAgentContexts({
-    orgAddress: selectedOrg.smartAccountAddress,
-    orgName: selectedOrg.name,
-    orgDescription: selectedOrg.description,
-    hubId,
-    capabilities: derivedCapabilities,
-    aiAgentCount: aiAgents.length,
-  }) : []
-  const requestedContextId = typeof params.context === 'string' ? params.context : undefined
-  const activeContext = agentContexts.find(context => context.id === requestedContextId)
-    ?? agentContexts.find(context => context.isDefault)
-    ?? agentContexts[0]
-    ?? null
-  const makeScopedHref = (pathname: string) => {
-    const nextParams = new URLSearchParams()
-    if (selectedOrg) nextParams.set('org', selectedOrg.smartAccountAddress)
-    if (hubId) nextParams.set('hub', hubId)
-    if (activeContext) nextParams.set('context', activeContext.id)
-    const query = nextParams.toString()
-    return query ? `${pathname}?${query}` : pathname
-  }
-  const overviewStats = selectedOrg ? [
-    { label: 'Members', value: String(members.length) },
-    { label: 'Relationships', value: String(partners.length) },
-    { label: 'AI Agents', value: String(aiAgents.length) },
-    { label: 'Context', value: activeContext?.kind ?? hubProfile.contextTerm },
-  ] : []
-  const quickLinks = selectedOrg ? [
-    { href: makeScopedHref('/contexts'), label: hubProfile.contextsLabel },
-    { href: makeScopedHref('/agents'), label: hubProfile.agentLabel },
-    { href: makeScopedHref('/network'), label: hubProfile.networkLabel },
-    { href: makeScopedHref('/treasury'), label: 'Treasury' },
-    { href: makeScopedHref('/reviews'), label: 'Reviews' },
-  ] : []
-
-  // Load analytics data when org has child groups (on-chain ALLIANCE edges)
-  let analyticsData = null
-  if (showAnalytics && selectedOrg) {
-    const allActivities = await db.select().from(schema.activityLogs)
-    const allUsers = await db.select().from(schema.users)
-    const userNames: Record<string, string> = {}
-    for (const u of allUsers) userNames[u.id] = u.name
-
-    // Get child orgs from on-chain edges
-    const { getConnectedOrgs: getChildOrgs } = await import('@/lib/get-org-members')
-    let childOrgs: Awaited<ReturnType<typeof getChildOrgs>> = []
-    try { childOrgs = await getChildOrgs(selectedOrg.smartAccountAddress) } catch { /* ignored */ }
-
-    // Get activities for this org + connected child orgs
-    let orgActivities = allActivities.filter(a => a.orgAddress === selectedOrg.smartAccountAddress.toLowerCase())
-    for (const child of childOrgs) {
-      orgActivities = [...orgActivities, ...allActivities.filter(a => a.orgAddress === child.address.toLowerCase())]
-    }
-
-    analyticsData = {
-      activities: orgActivities.map(a => ({ date: a.activityDate, count: 1, participants: a.participants, type: a.activityType })),
-      genMapStats: {
-        totalGroups: childOrgs.length,
-        maxGen: 0,
-        established: 0,
-        multiplyRate: childOrgs.length > 0 ? 0.5 : 0,
-      },
-      recentActivities: orgActivities
-        .sort((a, b) => b.activityDate.localeCompare(a.activityDate))
-        .slice(0, 6)
-        .map(a => ({ title: a.title, type: a.activityType, date: a.activityDate, userName: userNames[a.userId] ?? 'Unknown', location: a.location })),
-    }
-  }
-
-  return (
-    <div data-page="dashboard">
-      <div data-component="page-header">
-        <h1>{activeContext?.name ?? selectedOrg?.name ?? hubProfile.overviewLabel}</h1>
-        <p>
-          {selectedOrg
-            ? `${hubProfile.name} portal onto ${activeContext?.name ?? selectedOrg.name}. Anchor org: ${selectedOrg.name}.`
-            : `Welcome, ${currentUser.name}`}
-        </p>
-      </div>
-
-      {!selectedOrg && !personAgent && (
+  if (userOrgs.length === 0 && !personAgentAddr) {
+    return (
+      <div data-page="dashboard">
+        <div data-component="page-header">
+          <h1>Welcome, {currentUser.name}</h1>
+          <p>Get started by creating your organization or joining an existing one.</p>
+        </div>
         <div data-component="empty-state">
-          <h2>Welcome</h2>
-          <p>
-            Get started by creating your organization or joining an existing one.
-          </p>
           <div data-component="dashboard-actions" style={{ justifyContent: 'center' }}>
             <Link href="/setup"><button>New Organization</button></Link>
             <Link href="/setup/join"><button style={{ background: '#e0e0e0', color: '#1a1a2e' }}>Join Organization</button></Link>
             <Link href="/deploy/person"><button style={{ background: 'transparent', border: '1px solid #e2e4e8', color: '#1a1a2e' }}>Create Personal Account</button></Link>
           </div>
         </div>
-      )}
+      </div>
+    )
+  }
 
-      {selectedOrg && (
-        <>
-          <section data-component="dashboard-hero">
-            <div data-component="dashboard-hero-top">
-              <div data-component="dashboard-hero-copy">
-                <div data-component="dashboard-meta">
-                  <span data-component="role-badge" data-status="active">{hubProfile.name}</span>
-                  <span data-component="role-badge">{hubProfile.contextTerm}</span>
-                  <span data-component="role-badge">{activeContext?.kind ?? 'context'}</span>
-                </div>
-                {activeContext?.description && <p data-component="text-muted">{activeContext.description}</p>}
-                <p data-component="text-muted">
-                  Anchor org: <span style={{ fontWeight: 600 }}>{selectedOrg.name}</span>
-                </p>
-                <p data-component="text-muted">
-                  Smart account: <span data-component="address">{selectedOrg.smartAccountAddress}</span>
-                </p>
-              </div>
-              <div data-component="dashboard-meta">
-                <span data-component="role-badge">{currentUser.name}</span>
-                <span data-component="role-badge">{orgMeta?.agentTypeLabel ?? 'Organization'}</span>
-              </div>
+  // ─── Build role-based responsibility sections ───────────────────────
+
+  // Collect all unique roles across orgs
+  const allRoles = new Set<string>()
+  for (const org of userOrgs) {
+    for (const r of org.roles) allRoles.add(r.toLowerCase())
+  }
+
+  // Delegations granted to this user
+  type DelegationView = { id: string; orgName: string; orgAddress: string; status: string; expiresAt: string; caveats: string[] }
+  const activeDelegations: DelegationView[] = []
+  if (personAgentAddr) {
+    const delegations = await db.select().from(schema.reviewDelegations)
+      .where(eq(schema.reviewDelegations.reviewerAgentAddress, personAgentAddr.toLowerCase()))
+    const enforcerNames: Record<string, string> = {
+      [process.env.TIMESTAMP_ENFORCER_ADDRESS?.toLowerCase() ?? '']: 'Time Window',
+      [process.env.ALLOWED_METHODS_ENFORCER_ADDRESS?.toLowerCase() ?? '']: 'Allowed Methods',
+      [process.env.ALLOWED_TARGETS_ENFORCER_ADDRESS?.toLowerCase() ?? '']: 'Allowed Targets',
+      [process.env.VALUE_ENFORCER_ADDRESS?.toLowerCase() ?? '']: 'Spending Limit',
+    }
+    for (const d of delegations) {
+      const isExpired = new Date(d.expiresAt) < new Date()
+      if (isExpired || d.status !== 'active') continue
+      let caveats: string[] = []
+      try {
+        const parsed = JSON.parse(d.delegationJson)
+        caveats = (parsed.caveats ?? []).map((c: { enforcer: string }) =>
+          enforcerNames[c.enforcer?.toLowerCase()] ?? 'Custom'
+        )
+      } catch { /* ignored */ }
+      const org = userOrgs.find(o => o.address.toLowerCase() === d.subjectAgentAddress.toLowerCase())
+      activeDelegations.push({
+        id: d.id,
+        orgName: org?.name ?? d.subjectAgentAddress.slice(0, 10) + '...',
+        orgAddress: d.subjectAgentAddress,
+        status: 'active',
+        expiresAt: new Date(d.expiresAt).toLocaleDateString(),
+        caveats,
+      })
+    }
+  }
+
+  // ─── Gather data per responsibility area ────────────────────────────
+
+  // Treasury: orgs where user has financial authority
+  const client = getPublicClient()
+  type TreasuryItem = { orgName: string; orgAddress: string; orgBalance: string; agentCount: number; agentBalance: string }
+  const treasuryItems: TreasuryItem[] = []
+  const financialRoles = ['owner', 'treasurer', 'authorized-signer']
+  for (const org of userOrgs) {
+    if (!org.roles.some(r => financialRoles.includes(r.toLowerCase()))) continue
+    const orgBal = await client.getBalance({ address: org.address as `0x${string}` }).catch(() => 0n)
+    const aiAddrs = await getAiAgentsForOrg(org.address)
+    let agentBal = 0n
+    let agentCount = 0
+    for (const addr of aiAddrs) {
+      const meta = await getMeta(addr)
+      if (meta.displayName.toLowerCase().includes('treasury') || meta.aiAgentClass === 'executor') {
+        agentBal += await client.getBalance({ address: addr as `0x${string}` }).catch(() => 0n)
+        agentCount++
+      }
+    }
+    treasuryItems.push({
+      orgName: org.name, orgAddress: org.address,
+      orgBalance: formatEther(orgBal),
+      agentCount, agentBalance: formatEther(agentBal),
+    })
+  }
+
+  // Governance: orgs where user is owner/admin
+  type GovItem = { orgName: string; orgAddress: string; memberCount: number; pendingCount: number }
+  const govItems: GovItem[] = []
+  for (const org of userOrgs) {
+    if (!org.roles.some(r => ['owner', 'admin', 'ceo'].includes(r.toLowerCase()))) continue
+    const { members } = await getOrgMembers(org.address)
+    const pendingInvites = await db.select().from(schema.invites)
+      .where(eq(schema.invites.agentAddress, org.address.toLowerCase()))
+    const pending = pendingInvites.filter(i => i.status === 'pending').length
+    govItems.push({ orgName: org.name, orgAddress: org.address, memberCount: members.length, pendingCount: pending })
+  }
+
+  // Operations: orgs with child groups (field activity)
+  type OpsItem = { orgName: string; orgAddress: string; childCount: number; recentActivityCount: number }
+  const opsItems: OpsItem[] = []
+  const thisWeek = new Date()
+  thisWeek.setDate(thisWeek.getDate() - 7)
+  for (const org of userOrgs) {
+    try {
+      const outEdges = await getEdgesBySubject(org.address as `0x${string}`)
+      if (outEdges.length === 0) continue
+      const { getConnectedOrgs } = await import('@/lib/get-org-members')
+      const children = await getConnectedOrgs(org.address)
+      const orgAddrs = new Set([org.address.toLowerCase(), ...children.map(c => c.address.toLowerCase())])
+      const activities = await db.select().from(schema.activityLogs)
+      const recentCount = activities.filter(a => orgAddrs.has(a.orgAddress.toLowerCase()) && new Date(a.activityDate) >= thisWeek).length
+      opsItems.push({ orgName: org.name, orgAddress: org.address, childCount: children.length, recentActivityCount: recentCount })
+    } catch { /* ignored */ }
+  }
+
+  // Reviews: pending reviews where user has delegation authority
+  const reviewAddr = process.env.AGENT_REVIEW_ADDRESS as `0x${string}`
+  const pendingReviewCount = 0
+  let totalReviewCount = 0
+  if (reviewAddr) {
+    try {
+      const { agentReviewRecordAbi } = await import('@smart-agent/sdk')
+      totalReviewCount = Number(await client.readContract({ address: reviewAddr, abi: agentReviewRecordAbi, functionName: 'reviewCount' }) as bigint)
+    } catch { /* not deployed */ }
+  }
+
+  // Recent activity across all orgs
+  const allActivities = await db.select().from(schema.activityLogs)
+  const allUsers = await db.select().from(schema.users)
+  const userNameMap: Record<string, string> = {}
+  for (const u of allUsers) userNameMap[u.id] = u.name
+  const orgAddrSet = new Set(userOrgs.map(o => o.address.toLowerCase()))
+
+  // Include child org activities
+  for (const ops of opsItems) {
+    try {
+      const { getConnectedOrgs } = await import('@/lib/get-org-members')
+      const children = await getConnectedOrgs(ops.orgAddress)
+      for (const c of children) orgAddrSet.add(c.address.toLowerCase())
+    } catch { /* ignored */ }
+  }
+
+  const recentActivities = allActivities
+    .filter(a => orgAddrSet.has(a.orgAddress.toLowerCase()))
+    .sort((a, b) => b.activityDate.localeCompare(a.activityDate))
+    .slice(0, 5)
+
+  return (
+    <div data-page="dashboard">
+      <div data-component="page-header">
+        <h1>{currentUser.name}</h1>
+        <p style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          {[...allRoles].map(r => (
+            <span key={r} data-component="role-badge" data-status="active">{r}</span>
+          ))}
+          <span style={{ color: '#616161' }}>across {userOrgs.length} organization{userOrgs.length !== 1 ? 's' : ''}</span>
+        </p>
+      </div>
+
+      {/* ─── Role Cards: one per org showing user's responsibilities ─── */}
+      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+        {userOrgs.map(org => (
+          <div key={org.address} data-component="protocol-info" style={{ padding: '1rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+              <Link href={`/agents/${org.address}`} style={{ fontWeight: 700, color: '#1565c0', fontSize: '0.95rem' }}>{org.name}</Link>
             </div>
-            <div data-component="dashboard-kpi-grid">
-              {overviewStats.map((stat) => (
-                <div key={stat.label} data-component="dashboard-kpi">
-                  <div data-component="dashboard-kpi-value">{stat.value}</div>
-                  <div data-component="dashboard-kpi-label">{stat.label}</div>
-                </div>
+            <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
+              {org.roles.map(r => (
+                <span key={r} data-component="role-badge" data-status="active" style={{ fontSize: '0.65rem' }}>{r}</span>
               ))}
             </div>
-            <div data-component="dashboard-actions">
-              {quickLinks.map((link) => (
-                <Link key={link.href} href={link.href} data-component="dashboard-action">
-                  {link.label}
-                </Link>
-              ))}
+            {org.description && <p style={{ fontSize: '0.8rem', color: '#616161', margin: '0 0 0.5rem' }}>{org.description}</p>}
+            <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.8rem' }}>
+              <Link href="/team" style={{ color: '#1565c0' }}>Team</Link>
+              <Link href="/network" style={{ color: '#1565c0' }}>Network</Link>
+              <Link href={`/agents/${org.address}`} style={{ color: '#1565c0' }}>Profile</Link>
+            </div>
+          </div>
+        ))}
+      </section>
+
+      {/* ─── Action Areas: only shown if user has relevant authority ─── */}
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '1rem' }}>
+
+        {/* Governance & Team — shown if owner/admin */}
+        {govItems.length > 0 && (
+          <section data-component="graph-section">
+            <div data-component="section-header">
+              <h2>Governance</h2>
+              <Link href="/team" data-component="section-action">Manage</Link>
+            </div>
+            {govItems.map(g => (
+              <div key={g.orgAddress} data-component="protocol-info" style={{ marginBottom: '0.75rem', padding: '0.75rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                  <strong style={{ fontSize: '0.85rem' }}>{g.orgName}</strong>
+                  <span style={{ fontSize: '0.75rem', color: '#616161' }}>{g.memberCount} members</span>
+                </div>
+                {g.pendingCount > 0 && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span data-component="role-badge" data-status="proposed">{g.pendingCount} pending invite{g.pendingCount !== 1 ? 's' : ''}</span>
+                    <Link href="/team" style={{ color: '#1565c0', fontSize: '0.8rem' }}>Review</Link>
+                  </div>
+                )}
+                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', fontSize: '0.8rem' }}>
+                  <Link href="/team" style={{ color: '#1565c0' }}>Invite Member</Link>
+                  <Link href="/settings" style={{ color: '#1565c0' }}>Settings</Link>
+                </div>
+              </div>
+            ))}
+          </section>
+        )}
+
+        {/* Treasury — shown if treasurer/owner/signer */}
+        {treasuryItems.length > 0 && (
+          <section data-component="graph-section">
+            <div data-component="section-header">
+              <h2>Treasury</h2>
+              <Link href="/treasury" data-component="section-action">Manage</Link>
+            </div>
+            {treasuryItems.map(t => (
+              <div key={t.orgAddress} data-component="protocol-info" style={{ marginBottom: '0.75rem', padding: '0.75rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                  <strong style={{ fontSize: '0.85rem' }}>{t.orgName}</strong>
+                </div>
+                <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '0.35rem' }}>
+                  <div>
+                    <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#2e7d32' }}>
+                      {parseFloat(t.orgBalance).toFixed(4)} <span style={{ fontSize: '0.75rem', color: '#616161' }}>ETH</span>
+                    </div>
+                    <div style={{ fontSize: '0.7rem', color: '#616161' }}>Org Account</div>
+                  </div>
+                  {t.agentCount > 0 && (
+                    <div>
+                      <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#1565c0' }}>
+                        {parseFloat(t.agentBalance).toFixed(4)} <span style={{ fontSize: '0.75rem', color: '#616161' }}>ETH</span>
+                      </div>
+                      <div style={{ fontSize: '0.7rem', color: '#616161' }}>{t.agentCount} Treasury Agent{t.agentCount !== 1 ? 's' : ''}</div>
+                    </div>
+                  )}
+                </div>
+                <Link href="/treasury" style={{ color: '#1565c0', fontSize: '0.8rem' }}>View Details</Link>
+              </div>
+            ))}
+          </section>
+        )}
+
+        {/* Delegated Authority — shown if user has active delegations */}
+        {activeDelegations.length > 0 && (
+          <section data-component="graph-section">
+            <div data-component="section-header">
+              <h2>Delegated Authority</h2>
+              <Link href="/reviews" data-component="section-action">Reviews</Link>
+            </div>
+            {activeDelegations.map(d => (
+              <div key={d.id} data-component="protocol-info" style={{ marginBottom: '0.75rem', padding: '0.75rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                  <strong style={{ fontSize: '0.85rem' }}>{d.orgName}</strong>
+                  <span data-component="role-badge" data-status="active">active</span>
+                </div>
+                <div style={{ fontSize: '0.75rem', color: '#616161', marginBottom: '0.35rem' }}>Expires {d.expiresAt}</div>
+                <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
+                  {d.caveats.map((c, i) => (
+                    <span key={i} style={{ fontSize: '0.65rem', padding: '0.1rem 0.35rem', background: '#f5f5f5', borderRadius: 4, color: '#616161' }}>{c}</span>
+                  ))}
+                </div>
+                <div style={{ marginTop: '0.5rem' }}>
+                  <Link href="/reviews/submit" style={{ color: '#1565c0', fontSize: '0.8rem' }}>Submit Review</Link>
+                </div>
+              </div>
+            ))}
+          </section>
+        )}
+
+        {/* Operations — shown if user has orgs with child groups */}
+        {opsItems.length > 0 && (
+          <section data-component="graph-section">
+            <div data-component="section-header">
+              <h2>Operations</h2>
+              <Link href="/activities" data-component="section-action">Activities</Link>
+            </div>
+            {opsItems.map(o => (
+              <div key={o.orgAddress} data-component="protocol-info" style={{ marginBottom: '0.75rem', padding: '0.75rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                  <strong style={{ fontSize: '0.85rem' }}>{o.orgName}</strong>
+                  <span style={{ fontSize: '0.75rem', color: '#616161' }}>{o.childCount} groups</span>
+                </div>
+                <div style={{ display: 'flex', gap: '1rem', marginBottom: '0.35rem' }}>
+                  <div>
+                    <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#7c3aed' }}>{o.recentActivityCount}</div>
+                    <div style={{ fontSize: '0.7rem', color: '#616161' }}>This Week</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0d9488' }}>{o.childCount}</div>
+                    <div style={{ fontSize: '0.7rem', color: '#616161' }}>Groups</div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.8rem' }}>
+                  <Link href="/activities" style={{ color: '#1565c0' }}>Log Activity</Link>
+                  <Link href="/genmap" style={{ color: '#1565c0' }}>Gen Map</Link>
+                  <Link href="/members" style={{ color: '#1565c0' }}>Members</Link>
+                </div>
+              </div>
+            ))}
+          </section>
+        )}
+
+        {/* Reviews — shown if user has review capability */}
+        {(totalReviewCount > 0 || allRoles.has('reviewer') || allRoles.has('auditor') || allRoles.has('endorser')) && (
+          <section data-component="graph-section">
+            <div data-component="section-header">
+              <h2>Reviews</h2>
+              <Link href="/reviews" data-component="section-action">View All</Link>
+            </div>
+            <div data-component="protocol-info" style={{ padding: '0.75rem' }}>
+              <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '0.5rem' }}>
+                <div>
+                  <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#1565c0' }}>{totalReviewCount}</div>
+                  <div style={{ fontSize: '0.7rem', color: '#616161' }}>Total Reviews</div>
+                </div>
+                {pendingReviewCount > 0 && (
+                  <div>
+                    <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#ea580c' }}>{pendingReviewCount}</div>
+                    <div style={{ fontSize: '0.7rem', color: '#616161' }}>Pending</div>
+                  </div>
+                )}
+              </div>
+              <Link href="/reviews/submit" style={{ color: '#1565c0', fontSize: '0.8rem' }}>Submit Review</Link>
             </div>
           </section>
+        )}
+      </div>
 
-          {/* Analytics (orgs with child groups) */}
-          {showAnalytics && analyticsData && (
-            <DashboardAnalytics
-              activities={analyticsData.activities}
-              genMapStats={analyticsData.genMapStats}
-              recentActivities={analyticsData.recentActivities}
-            />
-          )}
-
-          <div data-component="dashboard-section-grid">
-            <section data-component="graph-section">
-              <div data-component="section-header">
-                <h2>Members ({members.length})</h2>
-                <Link href={makeScopedHref('/team')} data-component="section-action">Manage</Link>
-              </div>
-              {members.length === 0 ? (
-                <p data-component="text-muted">No members yet. <Link href={makeScopedHref('/team')}>Invite people</Link>.</p>
-              ) : (
-                <div data-component="table-wrap">
-                  <table data-component="graph-table">
-                    <thead><tr><th>Name</th><th>Roles</th><th>Status</th></tr></thead>
-                    <tbody>
-                      {members.map(m => (
-                        <tr key={m.address}>
-                          <td><Link href={`/agents/${m.address}`}>{m.name}</Link></td>
-                          <td>{m.roles.map(r => <span key={r} data-component="role-badge" style={{ marginRight: 4 }}>{r}</span>)}</td>
-                          <td><span data-component="role-badge" data-status={m.status === 'Active' ? 'active' : 'proposed'}>{m.status}</span></td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </section>
-
-            <section data-component="graph-section">
-              <div data-component="section-header">
-                <h2>{hubProfile.networkLabel} Relationships ({partners.length})</h2>
-                <Link href={makeScopedHref('/network')} data-component="section-action">{hubProfile.networkLabel}</Link>
-              </div>
-              {partners.length === 0 ? (
-                <p data-component="text-muted">No relationships yet. <Link href={makeScopedHref('/relationships')}>Add one</Link>.</p>
-              ) : (
-                <div data-component="table-wrap">
-                  <table data-component="graph-table">
-                    <thead><tr><th>Entity</th><th>Roles</th><th>Status</th></tr></thead>
-                    <tbody>
-                      {partners.map(p => (
-                        <tr key={p.address}>
-                          <td><Link href={`/agents/${p.address}`}>{p.name}</Link></td>
-                          <td>{p.roles.map(r => <span key={r} data-component="role-badge" style={{ marginRight: 4 }}>{r}</span>)}</td>
-                          <td><span data-component="role-badge" data-status={p.status === 'Active' ? 'active' : 'proposed'}>{p.status}</span></td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </section>
+      {/* ─── Recent Activity Feed ─── */}
+      {recentActivities.length > 0 && (
+        <section data-component="graph-section" style={{ marginTop: '1.5rem' }}>
+          <div data-component="section-header">
+            <h2>Recent Activity</h2>
+            <Link href="/activities" data-component="section-action">View All</Link>
           </div>
-
-          {aiAgents.length > 0 && (
-            <section data-component="graph-section">
-              <div data-component="section-header">
-                <h2>AI Agents ({aiAgents.length})</h2>
-                <Link href={makeScopedHref('/agents')} data-component="section-action">View All</Link>
+          <div style={{ display: 'grid', gap: '0.5rem' }}>
+            {recentActivities.map(a => (
+              <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', background: '#fafafa', borderRadius: 6, border: '1px solid #f0f1f3' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <span data-component="role-badge" style={{ fontSize: '0.6rem' }}>{a.activityType}</span>
+                  <strong style={{ fontSize: '0.85rem' }}>{a.title}</strong>
+                  <span style={{ fontSize: '0.75rem', color: '#616161' }}>{userNameMap[a.userId] ?? 'Unknown'}</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  {a.location && <span style={{ fontSize: '0.7rem', color: '#616161' }}>{a.location}</span>}
+                  <span style={{ fontSize: '0.7rem', color: '#616161' }}>{a.activityDate}</span>
+                </div>
               </div>
-              <div data-component="agent-grid">
-                {aiAgents.map(agent => (
-                  <div key={agent.id} data-component="agent-card" data-status={agent.status}>
-                    <div data-component="agent-card-header">
-                      <h3>{agent.name}</h3>
-                      <span data-component="role-badge">{agent.agentType}</span>
-                    </div>
-                    {agent.description && <p data-component="card-description">{agent.description}</p>}
-                    <Link href={`/agents/${agent.smartAccountAddress}`} data-component="section-action">View Agent</Link>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-        </>
-      )}
-
-      {personAgent && (
-        <section data-component="graph-section">
-          <h2>Your Agent — {personAgent.name}</h2>
-          <div data-component="protocol-info">
-            <dl>
-              <dt>Name</dt>
-              <dd style={{ fontWeight: 600 }}>{personAgent.name}</dd>
-              <dt>Smart Account</dt>
-              <dd data-component="address">{personAgent.smartAccountAddress}</dd>
-              <dt>DID</dt>
-              <dd data-component="did">{toDidEthr(CHAIN_ID, personAgent.smartAccountAddress as `0x${string}`)}</dd>
-            </dl>
-            <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem', fontSize: '0.8rem' }}>
-              <Link href={`/agents/${personAgent.smartAccountAddress}`} style={{ color: '#1565c0' }}>Trust Profile</Link>
-              <Link href={`/agents/${personAgent.smartAccountAddress}/metadata`} style={{ color: '#1565c0' }}>Metadata</Link>
-            </div>
+            ))}
           </div>
         </section>
       )}

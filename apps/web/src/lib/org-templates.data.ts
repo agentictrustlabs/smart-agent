@@ -256,122 +256,15 @@ export const ORG_TEMPLATES: OrgTemplate[] = [
     ],
     aiAgents: [],
   },
-  // ─── ILAD Mission Collective Templates ──────────────────────────────
+  // (ILAD and CPM templates removed)
 
-  {
-    id: 'impact-investor',
-    name: 'Impact Investment Firm',
-    description: 'Revenue-sharing capital deployment and portfolio management',
-    details: 'An impact investment organization that deploys capital via revenue-sharing partnerships (not loans, not equity). Manages underwriting, deployment, collection, and funder reporting with multi-sig governance for capital decisions.',
-    color: '#0d9488',
-    defaultMinOwners: 2,
-    defaultQuorum: 2,
-    roles: [
-      { roleKey: 'owner', label: 'Managing Director', description: 'Full authority over investment operations', required: true, maxCount: 2, relationshipType: 'governance', generateInvite: false },
-      { roleKey: 'authorized-signer', label: 'Capital Officer', description: 'Authorized to approve capital deployments', required: true, maxCount: 3, relationshipType: 'governance', generateInvite: true },
-      { roleKey: 'board-member', label: 'Board Member', description: 'Governance oversight and strategic direction', required: false, maxCount: 5, relationshipType: 'governance', generateInvite: true },
-      { roleKey: 'operator', label: 'Field Operations', description: 'Manages on-ground portfolio monitoring', required: false, maxCount: 5, relationshipType: 'membership', generateInvite: true },
-      { roleKey: 'auditor', label: 'Compliance Officer', description: 'Audit trail verification and regulatory compliance', required: false, maxCount: 2, relationshipType: 'membership', generateInvite: true },
-    ],
-    aiAgents: [
-      { name: 'Treasury Agent', agentType: 'executor', description: 'Manages capital pool — deployment, collection, and recovery tracking', capabilities: ['treasury-management', 'capital-deployment', 'revenue-collection', 'recovery-tracking'], trustModels: ['reputation', 'tee-attestation'], autoDeploy: true },
-      { name: 'Portfolio Analytics', agentType: 'discovery', description: 'Tracks portfolio health, wave progression, graduation pipeline, and funder projections', capabilities: ['portfolio-analysis', 'health-monitoring', 'funder-reporting', 'risk-assessment'], trustModels: ['reputation'], autoDeploy: true },
-    ],
-  },
-
-  {
-    id: 'field-agency',
-    name: 'Field Agency',
-    description: 'On-ground training, deployment, and business support',
-    details: 'An agency that trains entrepreneurs, provides business development support, and manages field operations. Coordinates between capital providers and local businesses.',
-    color: '#7c3aed',
-    defaultMinOwners: 2,
-    defaultQuorum: 2,
-    roles: [
-      { roleKey: 'owner', label: 'Agency Director', description: 'Full authority over agency operations', required: true, maxCount: 1, relationshipType: 'governance', generateInvite: false },
-      { roleKey: 'operator', label: 'Operations Lead', description: 'Manages field staff and business relationships', required: true, maxCount: 3, relationshipType: 'membership', generateInvite: true },
-      { roleKey: 'member', label: 'Field Staff', description: 'Business coaching and support', required: false, maxCount: Infinity, relationshipType: 'membership', generateInvite: true },
-      { roleKey: 'reviewer', label: 'Training Assessor', description: 'Evaluates training fidelity and business readiness', required: false, maxCount: 5, relationshipType: 'review', generateInvite: true },
-    ],
-    aiAgents: [
-      { name: 'Training Tracker', agentType: 'validator', description: 'Tracks BDC training completion, certification, and performance correlation', capabilities: ['training-tracking', 'certification-management', 'performance-correlation'], trustModels: ['reputation'], autoDeploy: true },
-    ],
-  },
-
-  {
-    id: 'oversight-committee',
-    name: 'Oversight Committee',
-    description: 'Governance review, voting, and accountability',
-    details: 'An advisory oversight body that conducts quarterly reviews, votes on escalations, and provides governance accountability. Members review business health, capital recovery, and training correlation data.',
-    color: '#b91c1c',
-    defaultMinOwners: 3,
-    defaultQuorum: 2,
-    roles: [
-      { roleKey: 'owner', label: 'Committee Chair', description: 'Leads committee proceedings', required: true, maxCount: 1, relationshipType: 'governance', generateInvite: false },
-      { roleKey: 'board-member', label: 'Committee Member', description: 'Participates in reviews and votes on decisions', required: true, maxCount: 5, relationshipType: 'governance', generateInvite: true },
-      { roleKey: 'auditor', label: 'Observer', description: 'Read-only access for oversight purposes', required: false, maxCount: 3, relationshipType: 'membership', generateInvite: true },
-    ],
-    aiAgents: [],
-  },
-
-  {
-    id: 'portfolio-business',
-    name: 'Portfolio Business',
-    description: 'Revenue-sharing enterprise receiving capital investment',
-    details: 'A small business receiving revenue-sharing capital. Submits monthly revenue reports, tracks against performance targets, and progresses through investment waves toward graduation.',
-    color: '#ea580c',
-    defaultMinOwners: 1,
-    defaultQuorum: 1,
-    roles: [
-      { roleKey: 'owner', label: 'Business Owner', description: 'Operates the business and submits revenue reports', required: true, maxCount: 1, relationshipType: 'governance', generateInvite: false },
-      { roleKey: 'advisor', label: 'Business Coach', description: 'Provides guidance and mentoring', required: false, maxCount: 2, relationshipType: 'membership', generateInvite: true },
-    ],
-    aiAgents: [],
-  },
-  // ─── Church Planting Movement (CPM) Templates ─────────────────────
-
-  {
-    id: 'movement-network',
-    name: 'Movement Network',
-    description: 'Multi-agency coordination for church planting movements',
-    details: 'A network coordinating multiple agencies and teams working toward church planting movements among unreached people groups. Tracks generational multiplication, activity metrics, and provides cross-organizational visibility.',
-    color: '#1e40af',
-    defaultMinOwners: 2,
-    defaultQuorum: 2,
-    roles: [
-      { roleKey: 'owner', label: 'Network Director', description: 'Overall network leadership and strategy', required: true, maxCount: 2, relationshipType: 'governance', generateInvite: false },
-      { roleKey: 'board-member', label: 'Strategy Lead', description: 'Strategic oversight and inter-agency coordination', required: false, maxCount: 5, relationshipType: 'governance', generateInvite: true },
-      { roleKey: 'operator', label: 'Regional Coordinator', description: 'Coordinates teams across a geographic region', required: false, maxCount: 10, relationshipType: 'membership', generateInvite: true },
-      { roleKey: 'member', label: 'Partner Agency', description: 'Participating agency or organization', required: false, maxCount: Infinity, relationshipType: 'membership', generateInvite: true },
-      { roleKey: 'auditor', label: 'Data Analyst', description: 'Analyzes movement metrics and generates reports', required: false, maxCount: 3, relationshipType: 'membership', generateInvite: true },
-    ],
-    aiAgents: [
-      { name: 'Movement Analytics', agentType: 'discovery', description: 'Tracks generational growth, identifies stalled streams, and generates movement health reports', capabilities: ['movement-analytics', 'gen-map-analysis', 'people-group-tracking', 'activity-reporting'], trustModels: ['reputation'], autoDeploy: true },
-    ],
-  },
-
-  {
-    id: 'church-planting-team',
-    name: 'Church Planting Team',
-    description: 'Field team planting churches among a specific people group',
-    details: 'A team of church planters focused on a specific people group or geographic area. Logs field activities, tracks group formation and health, and reports into a movement network.',
-    color: '#7c3aed',
-    defaultMinOwners: 1,
-    defaultQuorum: 1,
-    roles: [
-      { roleKey: 'owner', label: 'Team Leader', description: 'Leads the church planting team', required: true, maxCount: 1, relationshipType: 'governance', generateInvite: false },
-      { roleKey: 'operator', label: 'Church Planter', description: 'Frontline church planting and discipleship', required: false, maxCount: Infinity, relationshipType: 'membership', generateInvite: true },
-      { roleKey: 'member', label: 'National Partner', description: 'Local believer partnering in the work', required: false, maxCount: Infinity, relationshipType: 'membership', generateInvite: true },
-      { roleKey: 'advisor', label: 'Coach / Mentor', description: 'Provides coaching and accountability', required: false, maxCount: 3, relationshipType: 'membership', generateInvite: true },
-    ],
-    aiAgents: [],
-  },
-
+  // ─── Catalyst Network Templates (community development) ────────────
+  // Note: local-group template kept — used by Catalyst groups
   {
     id: 'local-group',
     name: 'Local Group / House Church',
     description: 'A local gathering — discipleship group or house church',
-    details: 'A local group that is part of a generational chain. Tracks group health markers (seekers, believers, baptisms, leaders, giving) and its relationship to parent and child groups in the movement.',
+    details: 'A local group that is part of a generational chain.',
     color: '#059669',
     defaultMinOwners: 1,
     defaultQuorum: 1,
@@ -381,7 +274,76 @@ export const ORG_TEMPLATES: OrgTemplate[] = [
     ],
     aiAgents: [],
   },
-  // ─── Catalyst Network Templates (community development) ────────────
+
+  // ─── Collective Impact Labs Templates ───────────────────────────────
+
+  {
+    id: 'cil-operator',
+    name: 'Program Operator',
+    description: 'Local operator running field operations, training, and revenue validation',
+    details: 'An organization that operates on the ground — owns business training, field operations, and validates revenue assertions from portfolio businesses.',
+    color: '#7c3aed',
+    defaultMinOwners: 2,
+    defaultQuorum: 2,
+    roles: [
+      { roleKey: 'owner', label: 'Operations Lead', description: 'Full authority over field operations', required: true, maxCount: 2, relationshipType: 'governance', generateInvite: false },
+      { roleKey: 'operator', label: 'Field Coordinator', description: 'Manages field staff and business relationships', required: false, maxCount: 5, relationshipType: 'membership', generateInvite: true },
+      { roleKey: 'reviewer', label: 'Reviewer', description: 'Reviews and validates revenue assertions', required: false, maxCount: 5, relationshipType: 'review', generateInvite: true },
+      { roleKey: 'member', label: 'Field Staff', description: 'Business coaching and support', required: false, maxCount: Infinity, relationshipType: 'membership', generateInvite: true },
+    ],
+    aiAgents: [],
+  },
+
+  {
+    id: 'cil-funder',
+    name: 'Capital Provider',
+    description: 'Funder and governance oversight for revenue-sharing capital deployment',
+    details: 'An organization that provides capital, defines the Ravah model parameters, and maintains governance oversight. Read-only access to trust indicators and audit trails.',
+    color: '#0d9488',
+    defaultMinOwners: 2,
+    defaultQuorum: 2,
+    roles: [
+      { roleKey: 'owner', label: 'Admin', description: 'Full administrative authority', required: true, maxCount: 2, relationshipType: 'governance', generateInvite: false },
+      { roleKey: 'board-member', label: 'Funder', description: 'Read-only access to reports, trust indicators, and audit trails', required: false, maxCount: 5, relationshipType: 'governance', generateInvite: true },
+      { roleKey: 'auditor', label: 'Auditor', description: 'Compliance and audit trail verification', required: false, maxCount: 3, relationshipType: 'membership', generateInvite: true },
+    ],
+    aiAgents: [
+      { name: 'Treasury Agent', agentType: 'executor', description: 'Manages capital pool — deployment, collection, and recovery tracking', capabilities: ['treasury-management', 'capital-deployment', 'revenue-collection'], trustModels: ['reputation', 'tee-attestation'], autoDeploy: true },
+    ],
+  },
+
+  {
+    id: 'cil-pilot',
+    name: 'Capital Pilot',
+    description: 'Program container holding businesses, capital flows, and governance rules',
+    details: 'A situation/context container that represents a specific capital deployment pilot. Holds the portfolio of businesses, capital flow rules, and governance parameters.',
+    color: '#1565c0',
+    defaultMinOwners: 2,
+    defaultQuorum: 2,
+    roles: [
+      { roleKey: 'owner', label: 'Pilot Lead', description: 'Manages the pilot program', required: true, maxCount: 2, relationshipType: 'governance', generateInvite: false },
+      { roleKey: 'operator', label: 'Operator', description: 'Operational oversight of the pilot', required: false, maxCount: 5, relationshipType: 'membership', generateInvite: true },
+      { roleKey: 'member', label: 'Participant', description: 'Business or agent participating in the pilot', required: false, maxCount: Infinity, relationshipType: 'membership', generateInvite: true },
+    ],
+    aiAgents: [],
+  },
+
+  {
+    id: 'cil-business',
+    name: 'Portfolio Business',
+    description: 'Revenue-sharing enterprise receiving capital investment',
+    details: 'A small business receiving revenue-sharing capital. Submits revenue assertions, receives capital, and progresses through investment waves.',
+    color: '#ea580c',
+    defaultMinOwners: 1,
+    defaultQuorum: 1,
+    roles: [
+      { roleKey: 'owner', label: 'Business Owner', description: 'Operates the business and submits revenue assertions', required: true, maxCount: 1, relationshipType: 'governance', generateInvite: false },
+      { roleKey: 'advisor', label: 'Business Coach', description: 'Provides guidance and mentoring', required: false, maxCount: 2, relationshipType: 'membership', generateInvite: true },
+    ],
+    aiAgents: [],
+  },
+
+  // ─── Catalyst Network Templates ────────────────────────────────────
 
   {
     id: 'catalyst-network',

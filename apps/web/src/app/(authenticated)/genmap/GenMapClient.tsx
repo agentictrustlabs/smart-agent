@@ -5,7 +5,9 @@ import Link from 'next/link'
 import { createGenMapNode, updateGenMapNode, deleteGenMapNode, moveGenMapNode } from '@/lib/actions/genmap.action'
 import { pinItem, unpinItem } from '@/lib/actions/members.action'
 import { GeoMapView } from '@/components/graph/GeoMapView'
-import { HEALTH_STATUS_COLORS } from '@/lib/cpm'
+const HEALTH_STATUS_COLORS: Record<string, string> = {
+  thriving: '#2e7d32', growing: '#0d9488', emerging: '#d97706', stalled: '#b91c1c',
+}
 
 interface NodeView {
   id: string; parentId: string | null; generation: number

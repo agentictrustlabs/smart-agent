@@ -62,15 +62,17 @@ function layoutNodes(nodes: GraphNode[], w: number, h: number): GraphNode[] {
   }))
 }
 
-export function TrustGraphView() {
+export function TrustGraphView({ orgAddress }: { orgAddress?: string }) {
   const [rawData, setRawData] = useState<(GraphData & { currentUserAddresses?: string[] }) | null>(null)
   const [selectedNode, setSelectedNode] = useState<string | null>(null)
   const [selectedEdge, setSelectedEdge] = useState<GraphEdge | null>(null)
   const [filter, setFilter] = useState<'all' | 'mine'>('mine')
+  const [showLegend, setShowLegend] = useState(false)
 
   useEffect(() => {
-    fetch('/api/graph').then((r) => r.json()).then(setRawData).catch(() => {})
-  }, [])
+    const url = orgAddress ? `/api/graph?org=${encodeURIComponent(orgAddress)}` : '/api/graph'
+    fetch(url).then((r) => r.json()).then(setRawData).catch(() => {})
+  }, [orgAddress])
 
   if (!rawData || rawData.nodes.length === 0) {
     return <div data-component="graph-empty"><p>No graph data yet.</p><p><a href="/deploy/person">Deploy a Person Agent</a> or <a href="/deploy/org">Deploy an Org Agent</a> to get started.</p></div>
@@ -132,35 +134,49 @@ export function TrustGraphView() {
 
   return (
     <div data-component="trust-graph-container">
-      <div data-component="graph-legend">
-        <div data-component="graph-toolbar">
-          <div data-component="graph-filter">
-            <button
-              onClick={() => { setFilter('all'); setSelectedNode(null); setSelectedEdge(null) }}
-              data-component="filter-btn"
-              data-active={filter === 'all' ? 'true' : 'false'}
-            >
-              All Agents ({rawData.nodes.length})
-            </button>
-            <button
-              onClick={() => { setFilter('mine'); setSelectedNode(null); setSelectedEdge(null) }}
-              data-component="filter-btn"
-              data-active={filter === 'mine' ? 'true' : 'false'}
-              disabled={myAddrs.size === 0}
-            >
-              My Agents ({myAddrs.size})
-            </button>
+      {/* Compact floating toolbar — top-left of graph */}
+      <div data-component="graph-floating-toolbar">
+        <button
+          onClick={() => { setFilter('mine'); setSelectedNode(null); setSelectedEdge(null) }}
+          data-component="filter-btn"
+          data-active={filter === 'mine' ? 'true' : 'false'}
+          disabled={myAddrs.size === 0}
+        >
+          My Agents ({myAddrs.size})
+        </button>
+        <button
+          onClick={() => { setFilter('all'); setSelectedNode(null); setSelectedEdge(null) }}
+          data-component="filter-btn"
+          data-active={filter === 'all' ? 'true' : 'false'}
+        >
+          All ({rawData.nodes.length})
+        </button>
+        <button
+          onClick={() => setShowLegend(!showLegend)}
+          data-component="filter-btn"
+          data-active={showLegend ? 'true' : 'false'}
+        >
+          Legend
+        </button>
+
+        {/* Legend popover */}
+        {showLegend && (
+          <div data-component="graph-legend-popover">
+            <div style={{ fontSize: '0.65rem', color: '#9e9e9e', marginBottom: '0.35rem', fontWeight: 600 }}>NODES</div>
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
+              <span data-component="legend-item"><span style={{ background: NODE_COLORS.person }} data-component="legend-dot" /> Person</span>
+              <span data-component="legend-item"><span style={{ background: NODE_COLORS.org }} data-component="legend-dot" /> Org</span>
+              <span data-component="legend-item"><span style={{ background: NODE_COLORS.ai }} data-component="legend-dot" /> AI</span>
+              <span data-component="legend-item"><span style={{ background: NODE_COLORS.eoa }} data-component="legend-dot" /> EOA</span>
+            </div>
+            <div style={{ fontSize: '0.65rem', color: '#9e9e9e', marginBottom: '0.35rem', fontWeight: 600 }}>EDGES</div>
+            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+              {Object.entries(EDGE_COLORS).map(([t, c]) => (
+                <span key={t} data-component="legend-item"><span style={{ background: c }} data-component="legend-line" /> {t}</span>
+              ))}
+            </div>
           </div>
-          <div data-component="legend-items">
-            <span data-component="legend-item"><span style={{ background: NODE_COLORS.person }} data-component="legend-dot" /> Person</span>
-            <span data-component="legend-item"><span style={{ background: NODE_COLORS.org }} data-component="legend-dot" /> Organization</span>
-            <span data-component="legend-item"><span style={{ background: NODE_COLORS.ai }} data-component="legend-dot" /> AI Agent</span>
-            <span data-component="legend-item"><span style={{ background: NODE_COLORS.eoa }} data-component="legend-dot" /> EOA Wallet</span>
-            {Object.entries(EDGE_COLORS).map(([t, c]) => (
-              <span key={t} data-component="legend-item"><span style={{ background: c }} data-component="legend-line" /> {t}</span>
-            ))}
-          </div>
-        </div>
+        )}
       </div>
 
       <div data-component="graph-layout">

@@ -1607,6 +1607,31 @@ textarea { resize: vertical; }
   border-radius: 2px;
 }
 
+/* Floating toolbar — overlays top-left of graph */
+[data-component="graph-floating-toolbar"] {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 10;
+  display: flex;
+  gap: 0.25rem;
+  align-items: flex-start;
+}
+
+[data-component="graph-legend-popover"] {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 0.25rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  padding: 0.6rem 0.75rem;
+  min-width: 260px;
+  font-size: 0.7rem;
+}
+
 [data-component="edge-detail"] {
   position: absolute;
   top: 1rem;

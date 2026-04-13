@@ -1,10 +1,9 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
-import { getSelectedOrg } from '@/lib/get-selected-org'
+import { getUserOrgs } from '@/lib/get-user-orgs'
 import { getPublicClient, getEdgesByObject, getEdgesBySubject, getEdge } from '@/lib/contracts'
 import { agentReviewRecordAbi, agentDisputeRecordAbi } from '@smart-agent/sdk'
-import { db, schema } from '@/db'
 import { keccak256, toBytes } from 'viem'
 
 const REC_LABELS: Record<string, string> = {
@@ -29,55 +28,35 @@ const TYPE_NAMES: Record<string, string> = {
   [keccak256(toBytes('SafetyReview'))]: 'Safety',
 }
 
-export default async function ReviewsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+export default async function ReviewsPage() {
   const currentUser = await getCurrentUser()
   if (!currentUser) redirect('/')
-  const params = await searchParams
-  const selectedOrg = await getSelectedOrg(currentUser.id, params)
+  const userOrgs = await getUserOrgs(currentUser.id)
 
   const client = getPublicClient()
   const reviewAddr = process.env.AGENT_REVIEW_ADDRESS as `0x${string}`
   const disputeAddr = process.env.AGENT_DISPUTE_ADDRESS as `0x${string}`
   const trustAddr = process.env.AGENT_TRUST_PROFILE_ADDRESS as `0x${string}`
 
-  // Build address→name lookup
-  const allUsers = await db.select().from(schema.users)
-  const allPerson = await db.select().from(schema.personAgents)
-  const allOrg = await db.select().from(schema.orgAgents)
-  const allAI = await db.select().from(schema.aiAgents)
-  const nameMap = new Map<string, string>()
-  for (const p of allPerson) {
-    const u = allUsers.find((u) => u.id === p.userId)
-    nameMap.set(p.smartAccountAddress.toLowerCase(), (p as Record<string, unknown>).name as string || u?.name || 'Person Agent')
-  }
-  for (const o of allOrg) nameMap.set(o.smartAccountAddress.toLowerCase(), o.name)
-  for (const a of allAI) nameMap.set(a.smartAccountAddress.toLowerCase(), a.name)
-  for (const u of allUsers) {
-    if (u.walletAddress) nameMap.set(u.walletAddress.toLowerCase(), u.name)
-  }
-  const getName = (a: string) => nameMap.get(a.toLowerCase()) ?? `${a.slice(0, 6)}...${a.slice(-4)}`
+  // Build name lookup from on-chain resolver
+  const { buildAgentNameMap, getNameFromMap } = await import('@/lib/agent-metadata')
+  const resolverNames = await buildAgentNameMap()
+  const getName = (a: string) => getNameFromMap(resolverNames, a)
 
-  // Build set of addresses relevant to selected org
+  // Build set of addresses relevant to user's orgs
   const orgScopeAddrs = new Set<string>()
-  if (selectedOrg) {
-    orgScopeAddrs.add(selectedOrg.smartAccountAddress.toLowerCase())
-    // Add all agents connected to this org (members, AI agents, partner orgs)
+  for (const org of userOrgs) {
+    orgScopeAddrs.add(org.address.toLowerCase())
     try {
-      for (const edgeId of await getEdgesByObject(selectedOrg.smartAccountAddress as `0x${string}`)) {
+      for (const edgeId of await getEdgesByObject(org.address as `0x${string}`)) {
         const edge = await getEdge(edgeId)
         orgScopeAddrs.add(edge.subject.toLowerCase())
       }
-      for (const edgeId of await getEdgesBySubject(selectedOrg.smartAccountAddress as `0x${string}`)) {
+      for (const edgeId of await getEdgesBySubject(org.address as `0x${string}`)) {
         const edge = await getEdge(edgeId)
         orgScopeAddrs.add(edge.object_.toLowerCase())
       }
     } catch { /* ignored */ }
-    // Add AI agents operated by this org
-    for (const a of allAI) {
-      if (a.operatedBy?.toLowerCase() === selectedOrg.smartAccountAddress.toLowerCase()) {
-        orgScopeAddrs.add(a.smartAccountAddress.toLowerCase())
-      }
-    }
   }
 
   type ReviewView = {
@@ -102,7 +81,7 @@ export default async function ReviewsPage({ searchParams }: { searchParams: Prom
         feedbackHash: `0x${string}`; createdAt: bigint; revoked: boolean
       }
       // Filter to org scope if org is selected
-      if (selectedOrg && !orgScopeAddrs.has(r.reviewer.toLowerCase()) && !orgScopeAddrs.has(r.subject.toLowerCase())) continue
+      if (orgScopeAddrs.size > 0 && !orgScopeAddrs.has(r.reviewer.toLowerCase()) && !orgScopeAddrs.has(r.subject.toLowerCase())) continue
       reviews.push({
         id: Number(r.reviewId),
         reviewer: getName(r.reviewer),
@@ -124,7 +103,7 @@ export default async function ReviewsPage({ searchParams }: { searchParams: Prom
         status: number; reason: string; evidenceURI: string; resolvedBy: string
         resolutionNote: string; filedAt: bigint; resolvedAt: bigint
       }
-      if (selectedOrg && !orgScopeAddrs.has(d.filedBy.toLowerCase()) && !orgScopeAddrs.has(d.subject.toLowerCase())) continue
+      if (orgScopeAddrs.size > 0 && !orgScopeAddrs.has(d.filedBy.toLowerCase()) && !orgScopeAddrs.has(d.subject.toLowerCase())) continue
       disputes.push({
         id: Number(d.disputeId), subject: getName(d.subject), filedBy: getName(d.filedBy),
         disputeType: dtNames[d.disputeType] ?? 'unknown', status: dsNames[d.status] ?? 'unknown',
@@ -137,10 +116,10 @@ export default async function ReviewsPage({ searchParams }: { searchParams: Prom
     <div data-page="reviews">
       <div data-component="page-header">
         <div data-component="section-header">
-          <h1>Reviews & Disputes{selectedOrg ? ` — ${selectedOrg.name}` : ''}</h1>
+          <h1>Reviews & Disputes</h1>
           <Link href="/reviews/submit" data-component="section-action">+ Submit Review</Link>
         </div>
-        <p>Structured review claims and adverse signals for agents in {selectedOrg ? selectedOrg.name : 'the trust fabric'}</p>
+        <p>Structured review claims and adverse signals for agents in your organizations.</p>
       </div>
 
       <div data-component="protocol-info">
@@ -155,7 +134,7 @@ export default async function ReviewsPage({ searchParams }: { searchParams: Prom
       <section data-component="graph-section">
         <h2>Reviews ({reviews.length})</h2>
         {reviews.length === 0 ? (
-          <p data-component="text-muted">No reviews yet{selectedOrg ? ` for ${selectedOrg.name}` : ''}.</p>
+          <p data-component="text-muted">No reviews yet.</p>
         ) : (
           <table data-component="graph-table">
             <thead>
@@ -183,7 +162,7 @@ export default async function ReviewsPage({ searchParams }: { searchParams: Prom
       <section data-component="graph-section">
         <h2>Disputes ({disputes.length})</h2>
         {disputes.length === 0 ? (
-          <p data-component="text-muted">No disputes filed{selectedOrg ? ` for ${selectedOrg.name}` : ''}.</p>
+          <p data-component="text-muted">No disputes filed.</p>
         ) : (
           <table data-component="graph-table">
             <thead>

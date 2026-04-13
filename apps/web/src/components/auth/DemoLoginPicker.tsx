@@ -15,15 +15,6 @@ interface DemoCommunity {
 
 const COMMUNITIES: DemoCommunity[] = [
   {
-    id: 'default',
-    name: 'Agentic Trust Labs',
-    description: 'Agent trust, identity, and reputation research platform',
-    color: '#1565c0',
-    users: [
-      { key: 'test-user-001', name: 'Alice', org: 'Agentic Trust Labs', role: 'Owner' },
-    ],
-  },
-  {
     id: 'global-church',
     name: 'Global.Church',
     description: 'Trust fabric for churches, denominations, mission agencies, and giving intermediaries',
@@ -34,52 +25,6 @@ const COMMUNITIES: DemoCommunity[] = [
       { key: 'gc-user-003', name: 'Dan Busby', org: 'ECFA', role: 'Executive Director' },
       { key: 'gc-user-004', name: 'John Chesnut', org: 'Wycliffe Bible Translators', role: 'Director' },
       { key: 'gc-user-005', name: 'David Wills', org: 'Natl Christian Foundation', role: 'President' },
-    ],
-  },
-  {
-    id: 'ilad-mc',
-    name: 'ILAD Mission Collective',
-    description: 'Revenue-sharing capital deployment — CIL investment, ILAD training, OOC governance',
-    color: '#0d9488',
-    users: [
-      { key: 'mc-user-001', name: 'John', org: 'Collective Impact Labs', role: 'Managing Director' },
-      { key: 'mc-user-002', name: 'Cameron Henrion', org: 'ILAD Togo', role: 'Operations Lead' },
-      { key: 'mc-user-003', name: 'Nick Courchesne', org: 'ILAD Togo', role: 'Operations' },
-      { key: 'mc-user-004', name: 'Joseph', org: 'ILAD Togo', role: 'Local Manager (Lomé)' },
-      { key: 'mc-user-005', name: 'Paul Martel', org: 'Collective Impact Labs', role: 'Funder / Advisor' },
-      { key: 'mc-user-006', name: 'Adama Mensah', org: 'TogoKafe', role: 'Business Owner' },
-      { key: 'mc-user-007', name: 'Fatou Amegah', org: 'SavonAfriq', role: 'Business Owner' },
-    ],
-  },
-  {
-    id: 'togo-pilot',
-    name: 'Togo Pilot — Wave 1 Businesses',
-    description: '5 BDC graduate businesses in Lomé with field staff, trainers, and assessors',
-    color: '#ea580c',
-    users: [
-      { key: 'tg-user-001', name: 'Kofi Adenu', org: 'Café Lomé', role: 'Business Owner' },
-      { key: 'tg-user-002', name: 'Ama Lawson', org: 'Mama Afi Restaurant', role: 'Business Owner' },
-      { key: 'tg-user-003', name: 'Edem Togbi', org: 'TechFix Lomé', role: 'Business Owner' },
-      { key: 'tg-user-004', name: 'Akosua Mensah', org: "Couture d'Or", role: 'Business Owner' },
-      { key: 'tg-user-005', name: 'Yao Agbeko', org: 'AgriPlus Togo', role: 'Business Owner' },
-      { key: 'tg-user-006', name: 'Essi Amegah', org: 'ILAD Togo', role: 'Local Coordinator' },
-      { key: 'tg-user-007', name: 'Kokou Abalo', org: 'ILAD Togo', role: 'BDC Trainer' },
-      { key: 'tg-user-008', name: 'Lawrence', org: 'ILAD Togo', role: 'Training Assessor' },
-    ],
-  },
-  {
-    id: 'cpm',
-    name: 'Church Planting Movement',
-    description: 'Activity logging, generational mapping, and group health for church planting teams',
-    color: '#1e40af',
-    users: [
-      { key: 'cpm-user-001', name: 'Mark Thompson', org: 'South Asia Movement Network', role: 'Network Director' },
-      { key: 'cpm-user-002', name: 'Priya Sharma', org: 'Kolkata Team', role: 'Team Leader' },
-      { key: 'cpm-user-003', name: 'Raj Patel', org: 'Kolkata Team', role: 'Church Planter' },
-      { key: 'cpm-user-004', name: 'Anita Das', org: 'Kolkata Team', role: 'National Partner' },
-      { key: 'cpm-user-005', name: 'David Kim', org: 'South Asia Movement Network', role: 'Strategy Lead' },
-      { key: 'cpm-user-006', name: 'Samuel Bose', org: 'Baranagar Group', role: 'Group Leader' },
-      { key: 'cpm-user-007', name: 'Meera Ghosh', org: 'Salt Lake Group', role: 'Group Leader' },
     ],
   },
   {
@@ -95,6 +40,21 @@ const COMMUNITIES: DemoCommunity[] = [
       { key: 'cat-user-005', name: 'James Okafor', org: 'Mekong Catalyst Network', role: 'Regional Lead' },
       { key: 'cat-user-006', name: 'Hoa Tran', org: 'Son Tra Group', role: 'Group Leader' },
       { key: 'cat-user-007', name: 'Duc Le', org: 'Han Hoa Group', role: 'Group Leader' },
+    ],
+  },
+  {
+    id: 'cil',
+    name: 'Collective Impact Labs',
+    description: 'Revenue-sharing capital deployment — ILAD operations, Ravah model, business trust graph',
+    color: '#0d9488',
+    users: [
+      { key: 'cil-user-001', name: 'Cameron Henrion', org: 'ILAD', role: 'Operations Lead' },
+      { key: 'cil-user-002', name: 'Nick Courchesne', org: 'ILAD', role: 'Reviewer' },
+      { key: 'cil-user-003', name: 'Afia Mensah', org: "Afia's Market", role: 'Business Owner' },
+      { key: 'cil-user-004', name: 'Kossi Agbeko', org: 'Kossi Mobile Repairs', role: 'Business Owner' },
+      { key: 'cil-user-005', name: 'Yaw', org: 'ILAD', role: 'Local Manager' },
+      { key: 'cil-user-006', name: 'John F. Kim', org: 'Collective Impact Labs', role: 'Admin' },
+      { key: 'cil-user-007', name: 'Paul Martel', org: 'Collective Impact Labs', role: 'Funder' },
     ],
   },
 ]
