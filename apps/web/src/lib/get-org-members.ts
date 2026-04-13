@@ -28,6 +28,7 @@ export async function getOrgMembers(orgAddress: string): Promise<{ members: OrgM
       const roles = await getEdgeRoles(edgeId)
       const roleNames = roles.map(r => roleName(r))
       const kind = await getAgentKind(edge.subject)
+      if (kind === 'hub' || kind === 'unknown') continue // skip hub agents and unregistered
       const isPerson = kind === 'person'
       const meta = await getAgentMetadata(edge.subject)
       const target = isPerson ? members : partners

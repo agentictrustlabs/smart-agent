@@ -205,6 +205,36 @@ echo "=== AI Agent → Org ==="
 echo "Treasury → CIL (operated agent)"
 create_rel "$TREASURY" "$CIL" "$ORG_CTRL" "" "$R_OPERATED"
 
+# ─── Hub Agent ──────────────────────────────────────────────────────
+echo ""
+echo "=== Hub Agent ==="
+HUB_CIL=$(deploy_agent 390001)
+T_HUB=$(cast keccak "atl:HubAgent")
+register "$HUB_CIL" "CIL Hub" "Collective Impact Labs hub — revenue-sharing capital deployment with trust graph" "$T_HUB"
+echo "Hub: $HUB_CIL"
+
+# Set hub predicates
+HUB_NAV=$(cast keccak "atl:hubNavConfig")
+HUB_NET=$(cast keccak "atl:hubNetworkLabel")
+HUB_CTX=$(cast keccak "atl:hubContextTerm")
+HUB_OVR=$(cast keccak "atl:hubOverviewLabel")
+HUB_AGT=$(cast keccak "atl:hubAgentLabel")
+
+cast send "$RESOLVER" "setStringProperty(address,bytes32,string)" "$HUB_CIL" "$HUB_NET" "Trust Network" --rpc-url "$RPC" --private-key "$KEY" > /dev/null 2>&1
+cast send "$RESOLVER" "setStringProperty(address,bytes32,string)" "$HUB_CIL" "$HUB_CTX" "Operating Group" --rpc-url "$RPC" --private-key "$KEY" > /dev/null 2>&1
+cast send "$RESOLVER" "setStringProperty(address,bytes32,string)" "$HUB_CIL" "$HUB_OVR" "Pilot View" --rpc-url "$RPC" --private-key "$KEY" > /dev/null 2>&1
+cast send "$RESOLVER" "setStringProperty(address,bytes32,string)" "$HUB_CIL" "$HUB_AGT" "Participants" --rpc-url "$RPC" --private-key "$KEY" > /dev/null 2>&1
+
+NAV_JSON='[{"href":"/dashboard","label":"Pilot View"},{"href":"/agents","label":"Participants"},{"href":"/network","label":"Trust Network"},{"href":"/activities","label":"Operations"},{"href":"/members","label":"Members"},{"href":"/reviews","label":"Assertions"},{"href":"/treasury","label":"Treasury"}]'
+cast send "$RESOLVER" "setStringProperty(address,bytes32,string)" "$HUB_CIL" "$HUB_NAV" "$NAV_JSON" --rpc-url "$RPC" --private-key "$KEY" > /dev/null 2>&1
+
+# HAS_MEMBER edges: hub → all orgs, persons, and AI agents
+HAS_MEMBER=$(cast call "$REL" "HAS_MEMBER()(bytes32)" --rpc-url "$RPC")
+echo "Creating HAS_MEMBER edges..."
+for AGENT in $ILAD $CIL $PILOT $BIZ_AFIA $BIZ_KOSSI $BIZ_AMA $TREASURY $PA_CAMERON $PA_NICK $PA_AFIA $PA_KOSSI $PA_YAW $PA_JOHN $PA_PAUL; do
+  create_rel "$HUB_CIL" "$AGENT" "$HAS_MEMBER" "" "$R_MEMBER"
+done
+
 # ─── Fund Treasury ──────────────────────────────────────────────────
 echo "Funding treasury..."
 cast send "$TREASURY" --value 10ether --rpc-url "$RPC" --private-key "$KEY" > /dev/null 2>&1

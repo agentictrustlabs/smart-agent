@@ -155,6 +155,58 @@ export const HUB_PROFILES: HubProfile[] = [
   },
 ]
 
+/**
+ * Resolve a hub profile from on-chain hub agent metadata.
+ * Falls back to static profiles if hub predicates aren't set.
+ */
+export async function getHubProfileFromChain(hubAddress: string): Promise<HubProfile | null> {
+  try {
+    const { getPublicClient } = await import('@/lib/contracts')
+    const { agentAccountResolverAbi, ATL_HUB_NAV_CONFIG, ATL_HUB_NETWORK_LABEL, ATL_HUB_CONTEXT_TERM, ATL_HUB_OVERVIEW_LABEL, ATL_HUB_AGENT_LABEL } = await import('@smart-agent/sdk')
+    const resolverAddr = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}`
+    if (!resolverAddr) return null
+
+    const client = getPublicClient()
+    const core = await client.readContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'getCore', args: [hubAddress as `0x${string}`] }) as { displayName: string; description: string }
+
+    const getString = async (pred: `0x${string}`) => {
+      try { return await client.readContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'getStringProperty', args: [hubAddress as `0x${string}`, pred] }) as string } catch { return '' }
+    }
+
+    const networkLabel = await getString(ATL_HUB_NETWORK_LABEL as `0x${string}`) || 'Network'
+    const contextTerm = await getString(ATL_HUB_CONTEXT_TERM as `0x${string}`) || 'Context'
+    const overviewLabel = await getString(ATL_HUB_OVERVIEW_LABEL as `0x${string}`) || 'Overview'
+    const agentLabel = await getString(ATL_HUB_AGENT_LABEL as `0x${string}`) || 'Agents'
+    const navJson = await getString(ATL_HUB_NAV_CONFIG as `0x${string}`)
+
+    let navItems: HubNavItem[] = [
+      { href: '/dashboard', label: overviewLabel },
+      { href: '/agents', label: agentLabel },
+      { href: '/network', label: networkLabel },
+    ]
+    if (navJson) {
+      try { navItems = JSON.parse(navJson) } catch { /* use defaults */ }
+    }
+
+    return {
+      id: hubAddress.toLowerCase().slice(0, 10) as HubId,
+      name: core.displayName || 'Hub',
+      description: core.description || '',
+      templateIds: [],
+      contextTerm,
+      contextPlural: contextTerm + 's',
+      defaultContextKind: 'cohort',
+      networkLabel,
+      lineageLabel: 'Lineage',
+      overviewLabel,
+      contextsLabel: contextTerm + 's',
+      agentLabel,
+      activityLabel: 'Activity',
+      navItems,
+    }
+  } catch { return null }
+}
+
 const TEMPLATE_TO_HUB = new Map<string, HubId>()
 for (const profile of HUB_PROFILES) {
   for (const templateId of profile.templateIds) TEMPLATE_TO_HUB.set(templateId, profile.id)

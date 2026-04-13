@@ -3,36 +3,39 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "dev":       "next dev",
-    "build":     "next build",
-    "start":     "next start",
-    "lint":      "next lint",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "test":      "echo 'no tests yet'",
+    "test": "echo 'no tests yet'",
     "db:generate": "drizzle-kit generate",
-    "db:push":     "drizzle-kit push",
-    "clean":     "rm -rf .next dist"
+    "db:push": "drizzle-kit push",
+    "clean": "rm -rf .next dist"
   },
   "dependencies": {
-    "@smart-agent/types":       "workspace:*",
-    "@smart-agent/sdk":         "workspace:*",
-    "@privy-io/react-auth":     "^1.92.0",
-    "@privy-io/server-auth":    "^1.32.0",
-    "viem":                     "^2.21.0",
-    "better-sqlite3":           "^11.0.0",
-    "drizzle-orm":              "^0.38.0",
-    "next":                     "^15.0.0",
-    "react":                    "^19.0.0",
-    "react-dom":                "^19.0.0"
+    "@privy-io/react-auth": "^1.92.0",
+    "@privy-io/server-auth": "^1.32.0",
+    "@smart-agent/sdk": "workspace:*",
+    "@smart-agent/types": "workspace:*",
+    "better-sqlite3": "^11.0.0",
+    "drizzle-orm": "^0.38.0",
+    "leaflet": "^1.9.4",
+    "next": "^15.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-leaflet": "^5.0.0",
+    "viem": "^2.21.0"
   },
   "devDependencies": {
-    "@types/node":          "^22.0.0",
     "@types/better-sqlite3": "^7.6.0",
-    "@types/react":         "^19.0.0",
-    "@types/react-dom":     "^19.0.0",
-    "drizzle-kit":          "^0.30.0",
-    "eslint":               "^9.0.0",
-    "eslint-config-next":   "^15.0.0",
-    "typescript":           "^5.5.0"
+    "@types/leaflet": "^1.9.21",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "drizzle-kit": "^0.30.0",
+    "eslint": "^9.0.0",
+    "eslint-config-next": "^15.0.0",
+    "typescript": "^5.5.0"
   }
 }

@@ -310,6 +310,44 @@ TARGET_TERMS=$(cast abi-encode "f(address[])" "[$REVIEW_ADDR]")
 echo "  Delegation caveats: TimestampEnforcer (30 days), AllowedMethods (createReview), AllowedTargets (ReviewRecord)"
 echo "  Delegation valid: $(date -d @$NOW '+%Y-%m-%d') to $(date -d @$EXPIRES '+%Y-%m-%d')"
 
+# ─── Hub Agent ──────────────────────────────────────────────────────
+echo ""
+echo "=== Hub Agent ==="
+HUB_GC=$(deploy_agent 190001)
+T_HUB=$(cast keccak "atl:HubAgent")
+
+# Register hub
+isHubReg=$(cast call "$RESOLVER" "isRegistered(address)(bool)" "$HUB_GC" --rpc-url "$RPC" 2>/dev/null || echo "false")
+if [ "$isHubReg" != "true" ]; then
+  cast send "$RESOLVER" "register(address,string,string,bytes32,bytes32,string)" \
+    "$HUB_GC" "Global Church Hub" "Global Church hub — trust fabric for churches, denominations, and mission agencies" \
+    "$T_HUB" "$ZERO32" "" --rpc-url "$RPC" --private-key "$KEY" > /dev/null 2>&1
+fi
+echo "Hub: $HUB_GC"
+
+# Hub predicates
+HUB_NAV_K=$(cast keccak "atl:hubNavConfig")
+HUB_NET_K=$(cast keccak "atl:hubNetworkLabel")
+HUB_CTX_K=$(cast keccak "atl:hubContextTerm")
+HUB_OVR_K=$(cast keccak "atl:hubOverviewLabel")
+HUB_AGT_K=$(cast keccak "atl:hubAgentLabel")
+
+cast send "$RESOLVER" "setStringProperty(address,bytes32,string)" "$HUB_GC" "$HUB_NET_K" "Church Network" --rpc-url "$RPC" --private-key "$KEY" > /dev/null 2>&1
+cast send "$RESOLVER" "setStringProperty(address,bytes32,string)" "$HUB_GC" "$HUB_CTX_K" "Council" --rpc-url "$RPC" --private-key "$KEY" > /dev/null 2>&1
+cast send "$RESOLVER" "setStringProperty(address,bytes32,string)" "$HUB_GC" "$HUB_OVR_K" "Council View" --rpc-url "$RPC" --private-key "$KEY" > /dev/null 2>&1
+cast send "$RESOLVER" "setStringProperty(address,bytes32,string)" "$HUB_GC" "$HUB_AGT_K" "Participants" --rpc-url "$RPC" --private-key "$KEY" > /dev/null 2>&1
+
+GC_NAV='[{"href":"/dashboard","label":"Council View"},{"href":"/agents","label":"Participants"},{"href":"/network","label":"Church Network"},{"href":"/treasury","label":"Treasury"},{"href":"/reviews","label":"Endorsements"},{"href":"/team","label":"Members"}]'
+cast send "$RESOLVER" "setStringProperty(address,bytes32,string)" "$HUB_GC" "$HUB_NAV_K" "$GC_NAV" --rpc-url "$RPC" --private-key "$KEY" > /dev/null 2>&1
+
+# HAS_MEMBER edges
+HAS_MEMBER=$(cast call "$REL" "HAS_MEMBER()(bytes32)" --rpc-url "$RPC")
+R_MEMBER=$(cast call "$REL" "ROLE_MEMBER()(bytes32)" --rpc-url "$RPC")
+echo "Creating HAS_MEMBER edges..."
+for AGENT in $GRACE_CHURCH $SBC $ECFA $WYCLIFFE $NCF $TREASURY_GRACE $TREASURY_NCF $PA_JAMES $PA_SARAH $PA_DAN $PA_JOHN $PA_DAVID; do
+  create_rel "$HUB_GC" "$AGENT" "$HAS_MEMBER" "" "$R_MEMBER"
+done
+
 # ─── Seed DB records ─────────────────────────────────────────────────
 
 echo ""

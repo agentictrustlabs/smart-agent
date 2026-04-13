@@ -28,6 +28,7 @@ library AgentPredicates {
     bytes32 constant TYPE_PERSON = keccak256("atl:PersonAgent");
     bytes32 constant TYPE_ORGANIZATION = keccak256("atl:OrganizationAgent");
     bytes32 constant TYPE_AI_AGENT = keccak256("atl:AIAgent");
+    bytes32 constant TYPE_HUB = keccak256("atl:HubAgent");
 
     // ─── AI agent class values ──────────────────────────────────────
     bytes32 constant CLASS_DISCOVERY = keccak256("atl:DiscoveryAgent");
@@ -60,6 +61,13 @@ library AgentPredicates {
     bytes32 constant ATL_LONGITUDE = keccak256("atl:longitude");
     bytes32 constant ATL_SPATIAL_CRS = keccak256("atl:spatialCRS");
     bytes32 constant ATL_SPATIAL_TYPE = keccak256("atl:spatialType");
+
+    // ─── Hub configuration ────────────────────────────────────────────
+    bytes32 constant ATL_HUB_NAV_CONFIG = keccak256("atl:hubNavConfig");
+    bytes32 constant ATL_HUB_NETWORK_LABEL = keccak256("atl:hubNetworkLabel");
+    bytes32 constant ATL_HUB_CONTEXT_TERM = keccak256("atl:hubContextTerm");
+    bytes32 constant ATL_HUB_OVERVIEW_LABEL = keccak256("atl:hubOverviewLabel");
+    bytes32 constant ATL_HUB_AGENT_LABEL = keccak256("atl:hubAgentLabel");
 
     // ─── ERC-4337 technical ─────────────────────────────────────────
     bytes32 constant ATL_ENTRY_POINT = keccak256("atl:entryPoint");

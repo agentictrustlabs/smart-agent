@@ -18,6 +18,7 @@ export const BUILD_PROVENANCE = keccak256(toBytes('BuildProvenance'))
 export const ORGANIZATIONAL_CONTROL = keccak256(toBytes('OrganizationalControl'))
 export const ACTIVITY_VALIDATION = keccak256(toBytes('ActivityValidation'))
 export const REVIEW_RELATIONSHIP = keccak256(toBytes('ReviewRelationship'))
+export const HAS_MEMBER = keccak256(toBytes('HasMember'))
 
 const REL_TYPE_NAMES: Record<string, string> = {
   [ORGANIZATION_GOVERNANCE]: 'Governance',
@@ -34,6 +35,7 @@ const REL_TYPE_NAMES: Record<string, string> = {
   [ORGANIZATIONAL_CONTROL]: 'Org Control',
   [ACTIVITY_VALIDATION]: 'Activity Validation',
   [REVIEW_RELATIONSHIP]: 'Review',
+  [HAS_MEMBER]: 'Hub Membership',
 }
 
 export function relationshipTypeName(hash: `0x${string}`): string {

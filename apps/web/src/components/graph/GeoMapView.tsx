@@ -1,5 +1,7 @@
 'use client'
 
+import { useState, useEffect, useRef, useCallback } from 'react'
+import Link from 'next/link'
 
 interface MapAgent {
   address: string
@@ -14,137 +16,149 @@ interface MapAgent {
 
 interface Props {
   agents: MapAgent[]
-  centerLat?: number
-  centerLon?: number
 }
 
-// Da Nang bounding box (with padding)
-const DEFAULT_BOUNDS = {
-  minLat: 15.95, maxLat: 16.12,
-  minLon: 108.10, maxLon: 108.32,
-}
+const GEN_COLORS = ['#1565c0', '#0d9488', '#2e7d32', '#7c3aed', '#ea580c', '#b91c1c']
 
-const STATUS_COLORS: Record<string, string> = {
-  established: '#2e7d32',
-  active: '#1565c0',
-  multiplied: '#0d9488',
-  inactive: '#9e9e9e',
-  closed: '#b91c1c',
-}
+export function GeoMapView({ agents }: Props) {
+  const mapRef = useRef<HTMLDivElement>(null)
+  const mapInstance = useRef<L.Map | null>(null)
+  const [selectedAgent, setSelectedAgent] = useState<MapAgent | null>(null)
 
-export function GeoMapView({ agents, centerLat: _centerLat, centerLon: _centerLon }: Props) {
+  const handleSelect = useCallback((a: MapAgent | null) => setSelectedAgent(a), [])
+
+  useEffect(() => {
+    if (!mapRef.current || mapInstance.current || agents.length === 0) return
+
+    import('leaflet').then((L) => {
+      const lats = agents.map(a => a.latitude)
+      const lons = agents.map(a => a.longitude)
+      const center: [number, number] = [
+        (Math.min(...lats) + Math.max(...lats)) / 2,
+        (Math.min(...lons) + Math.max(...lons)) / 2,
+      ]
+
+      const map = L.map(mapRef.current!, { center, zoom: 13, scrollWheelZoom: true })
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        maxZoom: 19,
+      }).addTo(map)
+
+      if (agents.length > 1) {
+        const bounds = L.latLngBounds(agents.map(a => [a.latitude, a.longitude] as [number, number]))
+        map.fitBounds(bounds, { padding: [40, 40] })
+      }
+
+      map.on('click', () => handleSelect(null))
+
+      // Lines between nearby agents
+      for (let i = 0; i < agents.length; i++) {
+        for (let j = i + 1; j < agents.length; j++) {
+          const a = agents[i], b = agents[j]
+          const dist = Math.sqrt(Math.pow(a.latitude - b.latitude, 2) + Math.pow(a.longitude - b.longitude, 2))
+          if (dist > 0.1) continue
+          L.polyline([[a.latitude, a.longitude], [b.latitude, b.longitude]], {
+            color: '#b0bec5', weight: 1.5, dashArray: '4 3', opacity: 0.4,
+          }).addTo(map)
+        }
+      }
+
+      // Agent markers
+      for (const agent of agents) {
+        const gen = agent.generation ?? 0
+        const color = agent.isEstablished ? '#2e7d32' : (GEN_COLORS[gen] ?? '#1565c0')
+        const r = agent.isEstablished ? 14 : 11
+        const dash = agent.isEstablished ? '' : 'stroke-dasharray="4 2"'
+
+        const icon = L.divIcon({
+          className: 'map-agent-pin',
+          html: `<div style="display:flex;flex-direction:column;align-items:center;">
+            <svg width="${r * 2 + 8}" height="${r * 2 + 8}" viewBox="0 0 ${r * 2 + 8} ${r * 2 + 8}">
+              <circle cx="${r + 4}" cy="${r + 4}" r="${r}" fill="white" stroke="${color}" stroke-width="2.5" ${dash} />
+              <text x="${r + 4}" y="${r + 8}" text-anchor="middle" font-size="10" font-weight="700" fill="${color}">G${gen}</text>
+            </svg>
+            <div style="background:white;border:1px solid #e0e0e0;border-radius:4px;padding:1px 6px;margin-top:-2px;font-size:11px;font-weight:600;color:#1a1a2e;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,0.1);">${agent.name}</div>
+          </div>`,
+          iconSize: [0, 0],
+          iconAnchor: [r + 4, r + 4],
+        })
+
+        const marker = L.marker([agent.latitude, agent.longitude], { icon }).addTo(map)
+
+        // Hover tooltip
+        marker.bindTooltip(
+          `<strong>${agent.name}</strong><br/>G${gen} · ${agent.isEstablished ? 'Established' : 'Group'}${agent.healthScore ? ` · Health: ${agent.healthScore}` : ''}`,
+          { direction: 'top', offset: L.point(0, -r - 8) }
+        )
+
+        // Click → select (don't navigate)
+        marker.on('click', (e: L.LeafletMouseEvent) => {
+          L.DomEvent.stopPropagation(e)
+          handleSelect(agent)
+        })
+      }
+
+      mapInstance.current = map
+    })
+
+    return () => {
+      if (mapInstance.current) {
+        mapInstance.current.remove()
+        mapInstance.current = null
+      }
+    }
+  }, [agents, handleSelect])
+
   if (agents.length === 0) {
     return <p data-component="text-muted">No agents with location data.</p>
   }
 
-  // Compute bounds from agent positions (with padding)
-  const lats = agents.map(a => a.latitude)
-  const lons = agents.map(a => a.longitude)
-  const padding = 0.015
-  const bounds = {
-    minLat: Math.min(...lats, DEFAULT_BOUNDS.minLat) - padding,
-    maxLat: Math.max(...lats, DEFAULT_BOUNDS.maxLat) + padding,
-    minLon: Math.min(...lons, DEFAULT_BOUNDS.minLon) - padding,
-    maxLon: Math.max(...lons, DEFAULT_BOUNDS.maxLon) + padding,
-  }
-
-  const W = 800
-  const H = 500
-
-  function project(lat: number, lon: number): { x: number; y: number } {
-    const x = ((lon - bounds.minLon) / (bounds.maxLon - bounds.minLon)) * W
-    const y = H - ((lat - bounds.minLat) / (bounds.maxLat - bounds.minLat)) * H
-    return { x, y }
-  }
-
   return (
-    <div style={{ background: '#f0f4f8', borderRadius: 10, padding: '1rem', position: 'relative' }}>
-      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', minHeight: 350 }}>
-        {/* Background grid */}
-        <defs>
-          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#e0e4e8" strokeWidth="0.5" />
-          </pattern>
-        </defs>
-        <rect width={W} height={H} fill="url(#grid)" rx="8" />
+    <div style={{ position: 'relative' }}>
+      <div ref={mapRef} style={{ width: '100%', height: 450, borderRadius: 10 }} />
 
-        {/* Water bodies (simplified Da Nang coastline hint) */}
-        <path d={`M ${W * 0.75} 0 Q ${W * 0.85} ${H * 0.3} ${W} ${H * 0.5}`}
-          fill="none" stroke="#bbd4e8" strokeWidth="3" opacity="0.4" />
+      {/* Agent detail panel */}
+      {selectedAgent && (() => {
+        const gen = selectedAgent.generation ?? 0
+        const color = selectedAgent.isEstablished ? '#2e7d32' : (GEN_COLORS[gen] ?? '#1565c0')
+        return (
+          <div style={{
+            position: 'absolute', top: 12, right: 12, width: 280, zIndex: 1000,
+            background: 'white', borderRadius: 10, padding: '1rem',
+            border: `2px solid ${color}`, boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+              <div>
+                <strong style={{ fontSize: '1rem', color: '#1a1a2e' }}>{selectedAgent.name}</strong>
+                <div style={{ display: 'flex', gap: '0.25rem', marginTop: '0.25rem' }}>
+                  <span data-component="role-badge" style={{ fontSize: '0.6rem' }}>G{gen}</span>
+                  {selectedAgent.isEstablished && <span data-component="role-badge" data-status="active" style={{ fontSize: '0.6rem' }}>Established</span>}
+                  {selectedAgent.status && <span data-component="role-badge" data-status={selectedAgent.status === 'active' ? 'active' : 'proposed'} style={{ fontSize: '0.6rem' }}>{selectedAgent.status}</span>}
+                </div>
+              </div>
+              <button onClick={() => setSelectedAgent(null)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.1rem', color: '#616161', lineHeight: 1 }}>✕</button>
+            </div>
 
-        {/* Connection lines between agents */}
-        {agents.map((a, i) => {
-          // Draw lines to agents that are geographically close (within ~0.05 degrees)
-          return agents.slice(i + 1).map((b, j) => {
-            const dist = Math.sqrt(Math.pow(a.latitude - b.latitude, 2) + Math.pow(a.longitude - b.longitude, 2))
-            if (dist > 0.08) return null
-            const p1 = project(a.latitude, a.longitude)
-            const p2 = project(b.latitude, b.longitude)
-            return (
-              <line key={`${i}-${j}`} x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y}
-                stroke="#c0cad4" strokeWidth="1" strokeDasharray="4 3" opacity="0.5" />
-            )
-          })
-        })}
+            <div style={{ fontSize: '0.75rem', color: '#616161', marginBottom: '0.5rem' }}>
+              {selectedAgent.latitude.toFixed(4)}, {selectedAgent.longitude.toFixed(4)}
+            </div>
 
-        {/* Agent pins */}
-        {agents.map((agent) => {
-          const { x, y } = project(agent.latitude, agent.longitude)
-          const color = agent.isEstablished
-            ? STATUS_COLORS.established
-            : STATUS_COLORS[agent.status ?? 'active'] ?? STATUS_COLORS.active
-          const r = agent.isEstablished ? 14 : 10
+            {selectedAgent.healthScore !== undefined && selectedAgent.healthScore > 0 && (
+              <div style={{ fontSize: '0.8rem', marginBottom: '0.5rem' }}>
+                <span style={{ color: '#616161' }}>Health Score: </span>
+                <strong style={{ color }}>{selectedAgent.healthScore}</strong>
+              </div>
+            )}
 
-          return (
-            <g key={agent.address}>
-              {/* Drop shadow */}
-              <circle cx={x} cy={y + 2} r={r + 2} fill="rgba(0,0,0,0.1)" />
-
-              {/* Pin circle — solid if established, dashed if group */}
-              <circle cx={x} cy={y} r={r} fill="white" stroke={color} strokeWidth={2.5}
-                strokeDasharray={agent.isEstablished ? 'none' : '3 2'} />
-
-              {/* Generation number inside */}
-              {agent.generation !== undefined && (
-                <text x={x} y={y + 4} textAnchor="middle" fontSize={agent.isEstablished ? 10 : 8}
-                  fontWeight="700" fill={color}>
-                  G{agent.generation}
-                </text>
-              )}
-
-              {/* Label below pin */}
-              <text x={x} y={y + r + 14} textAnchor="middle" fontSize="9" fontWeight="600" fill="#1a1a2e">
-                {agent.name.length > 18 ? agent.name.slice(0, 17) + '...' : agent.name}
-              </text>
-
-              {/* Health score badge */}
-              {agent.healthScore !== undefined && agent.healthScore > 0 && (
-                <g>
-                  <rect x={x + r - 2} y={y - r - 2} width="18" height="12" rx="3" fill={color} />
-                  <text x={x + r + 7} y={y - r + 7} textAnchor="middle" fontSize="7" fontWeight="700" fill="white">
-                    {agent.healthScore}
-                  </text>
-                </g>
-              )}
-
-              {/* Clickable overlay */}
-              <a href={`/agents/${agent.address}`}>
-                <circle cx={x} cy={y} r={r + 8} fill="transparent" style={{ cursor: 'pointer' }} />
-              </a>
-            </g>
-          )
-        })}
-
-        {/* Legend */}
-        <g transform={`translate(${W - 160}, ${H - 60})`}>
-          <rect width="150" height="50" rx="6" fill="white" opacity="0.9" stroke="#e0e0e0" />
-          <circle cx={15} cy={15} r={6} fill="none" stroke="#2e7d32" strokeWidth="2" />
-          <text x={28} y={19} fontSize="8" fill="#424242">Established</text>
-          <circle cx={15} cy={35} r={6} fill="none" stroke="#1565c0" strokeWidth="2" strokeDasharray="3 2" />
-          <text x={28} y={39} fontSize="8" fill="#424242">Group (gathering)</text>
-          <text x={90} y={19} fontSize="7" fill="#9e9e9e">EPSG:4326</text>
-        </g>
-      </svg>
+            <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.8rem', paddingTop: '0.5rem', borderTop: '1px solid #f0f1f3' }}>
+              <Link href={`/agents/${selectedAgent.address}`} style={{ color: '#1565c0', fontWeight: 600 }}>Trust Profile</Link>
+              <Link href={`/agents/${selectedAgent.address}/metadata`} style={{ color: '#1565c0' }}>Metadata</Link>
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }

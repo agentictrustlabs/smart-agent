@@ -34,10 +34,18 @@ export interface UserDelegation {
   caveats: string[]
 }
 
+export interface UserHub {
+  address: string
+  name: string
+  description: string
+}
+
 export interface UserContextResponse {
   personAgent: { address: string; name: string } | null
   orgs: UserOrg[]
   delegations: UserDelegation[]
+  /** Hub agents the user belongs to (via HAS_MEMBER edges) */
+  hubs: UserHub[]
   /** Union of all capabilities across all orgs */
   capabilities: string[]
   /** Union of all roles across all orgs */
@@ -59,7 +67,7 @@ function initEnforcerNames() {
 
 export async function GET() {
   initEnforcerNames()
-  const empty: UserContextResponse = { personAgent: null, orgs: [], delegations: [], capabilities: [], roles: [] }
+  const empty: UserContextResponse = { personAgent: null, orgs: [], delegations: [], hubs: [], capabilities: [], roles: [] }
 
   try {
     const { getSession } = await import('@/lib/auth/session')
@@ -162,10 +170,27 @@ export async function GET() {
       }
     }
 
+    // Discover hub agents the user belongs to
+    const { getHubsForAgent } = await import('@/lib/agent-registry')
+    const hubs: UserHub[] = []
+    const seenHubs = new Set<string>()
+    for (const org of orgs) {
+      try {
+        const hubAddrs = await getHubsForAgent(org.address)
+        for (const hubAddr of hubAddrs) {
+          if (seenHubs.has(hubAddr.toLowerCase())) continue
+          seenHubs.add(hubAddr.toLowerCase())
+          const hubMeta = await getAgentMetadata(hubAddr)
+          hubs.push({ address: hubAddr, name: hubMeta.displayName, description: hubMeta.description })
+        }
+      } catch { /* ignored */ }
+    }
+
     return NextResponse.json({
       personAgent,
       orgs,
       delegations,
+      hubs,
       capabilities: [...allCapabilities],
       roles: [...allRoles],
     } satisfies UserContextResponse)

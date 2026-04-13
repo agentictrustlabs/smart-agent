@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react'
-import type { UserContextResponse, UserOrg, UserDelegation } from '@/app/api/user-context/route'
+import type { UserContextResponse, UserOrg, UserDelegation, UserHub } from '@/app/api/user-context/route'
 
 interface UserContextValue {
   /** Connected user's person agent */
@@ -10,6 +10,8 @@ interface UserContextValue {
   orgs: UserOrg[]
   /** Active delegations granted to this user */
   delegations: UserDelegation[]
+  /** Hub agents the user belongs to */
+  hubs: UserHub[]
   /** Union of all capabilities across all orgs + delegations */
   capabilities: string[]
   /** Union of all roles across all orgs */
@@ -29,7 +31,7 @@ interface UserContextValue {
 }
 
 const UserCtx = createContext<UserContextValue>({
-  personAgent: null, orgs: [], delegations: [], capabilities: [], roles: [],
+  personAgent: null, orgs: [], delegations: [], hubs: [], capabilities: [], roles: [],
   loading: true, hasCapability: () => false, hasRole: () => false,
   orgsWithRole: () => [], orgsWithCapability: () => [], primaryRole: '',
 })
@@ -42,7 +44,7 @@ const ROLE_PRIORITY = ['owner', 'ceo', 'treasurer', 'authorized-signer', 'board-
 
 export function UserContextProvider({ children }: { children: React.ReactNode }) {
   const [data, setData] = useState<UserContextResponse>({
-    personAgent: null, orgs: [], delegations: [], capabilities: [], roles: [],
+    personAgent: null, orgs: [], delegations: [], hubs: [], capabilities: [], roles: [],
   })
   const [loading, setLoading] = useState(true)
 
@@ -73,6 +75,7 @@ export function UserContextProvider({ children }: { children: React.ReactNode })
       personAgent: data.personAgent,
       orgs: data.orgs,
       delegations: data.delegations,
+      hubs: data.hubs,
       capabilities: data.capabilities,
       roles: data.roles,
       loading,

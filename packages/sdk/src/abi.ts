@@ -380,3 +380,25 @@ export const agentUniversalResolverAbi = [
   { type: 'function', name: 'agentCount', inputs: [], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view' },
 ] as const
 
+// ─── Relationship Type Registry ─────────────────────────────────────
+export const relationshipTypeRegistryAbi = [
+  { type: 'function', name: 'registerType', inputs: [{ name: 'relationshipType', type: 'bytes32' }, { name: 'label', type: 'string' }, { name: 'hierarchical', type: 'bool' }, { name: 'transitive', type: 'bool' }, { name: 'symmetric', type: 'bool' }], outputs: [], stateMutability: 'nonpayable' },
+  { type: 'function', name: 'updateSemantics', inputs: [{ name: 'relationshipType', type: 'bytes32' }, { name: 'hierarchical', type: 'bool' }, { name: 'transitive', type: 'bool' }, { name: 'symmetric', type: 'bool' }], outputs: [], stateMutability: 'nonpayable' },
+  { type: 'function', name: 'getTypeSemantics', inputs: [{ name: 'relationshipType', type: 'bytes32' }], outputs: [{ name: '', type: 'tuple', components: [{ name: 'relationshipType', type: 'bytes32' }, { name: 'label', type: 'string' }, { name: 'isHierarchical', type: 'bool' }, { name: 'isTransitive', type: 'bool' }, { name: 'isSymmetric', type: 'bool' }, { name: 'active', type: 'bool' }, { name: 'registeredAt', type: 'uint256' }] }], stateMutability: 'view' },
+  { type: 'function', name: 'isRegistered', inputs: [{ name: 'relationshipType', type: 'bytes32' }], outputs: [{ name: '', type: 'bool' }], stateMutability: 'view' },
+  { type: 'function', name: 'isHierarchical', inputs: [{ name: 'relationshipType', type: 'bytes32' }], outputs: [{ name: '', type: 'bool' }], stateMutability: 'view' },
+  { type: 'function', name: 'isTransitive', inputs: [{ name: 'relationshipType', type: 'bytes32' }], outputs: [{ name: '', type: 'bool' }], stateMutability: 'view' },
+  { type: 'function', name: 'isSymmetric', inputs: [{ name: 'relationshipType', type: 'bytes32' }], outputs: [{ name: '', type: 'bool' }], stateMutability: 'view' },
+  { type: 'function', name: 'typeCount', inputs: [], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view' },
+  { type: 'function', name: 'getTypeAt', inputs: [{ name: 'index', type: 'uint256' }], outputs: [{ name: '', type: 'bytes32' }], stateMutability: 'view' },
+  { type: 'event', name: 'TypeRegistered', inputs: [{ name: 'relationshipType', type: 'bytes32', indexed: true }, { name: 'label', type: 'string', indexed: false }, { name: 'isHierarchical', type: 'bool', indexed: false }, { name: 'isTransitive', type: 'bool', indexed: false }, { name: 'isSymmetric', type: 'bool', indexed: false }] },
+] as const
+
+// ─── Agent Relationship Query ───────────────────────────────────────
+export const agentRelationshipQueryAbi = [
+  { type: 'function', name: 'directTargetsOf', inputs: [{ name: 'agent', type: 'address' }, { name: 'relationType', type: 'bytes32' }], outputs: [{ name: '', type: 'address[]' }], stateMutability: 'view' },
+  { type: 'function', name: 'directSourcesOf', inputs: [{ name: 'agent', type: 'address' }, { name: 'relationType', type: 'bytes32' }], outputs: [{ name: '', type: 'address[]' }], stateMutability: 'view' },
+  { type: 'function', name: 'isHierarchicalType', inputs: [{ name: 'relationType', type: 'bytes32' }], outputs: [{ name: '', type: 'bool' }], stateMutability: 'view' },
+  { type: 'function', name: 'isTransitiveType', inputs: [{ name: 'relationType', type: 'bytes32' }], outputs: [{ name: '', type: 'bool' }], stateMutability: 'view' },
+] as const
+

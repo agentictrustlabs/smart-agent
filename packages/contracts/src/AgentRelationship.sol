@@ -61,6 +61,8 @@ contract AgentRelationship {
     bytes32 public constant ACTIVITY_VALIDATION = keccak256("ActivityValidation");
     // I. Reviews
     bytes32 public constant REVIEW_RELATIONSHIP = keccak256("ReviewRelationship");
+    // J. Hub Membership (hierarchical, transitive)
+    bytes32 public constant HAS_MEMBER = keccak256("HasMember");
 
     // ─── Well-Known Roles ───────────────────────────────────────────
     // Governance

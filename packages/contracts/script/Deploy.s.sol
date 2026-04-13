@@ -11,6 +11,8 @@ import "../src/enforcers/AllowedMethodsEnforcer.sol";
 import "../src/AgentRelationship.sol";
 import "../src/AgentAssertion.sol";
 import "../src/AgentRelationshipResolver.sol";
+import "../src/RelationshipTypeRegistry.sol";
+import "../src/AgentRelationshipQuery.sol";
 import "../src/AgentRelationshipTemplate.sol";
 import "../src/AgentIssuerProfile.sol";
 import "../src/AgentValidationProfile.sol";
@@ -94,6 +96,16 @@ contract Deploy is Script {
         );
         console.log("AgentRelationshipResolver:", address(agentResolver));
 
+        // 5b. Relationship Type Registry (semantic metadata for relationship types)
+        RelationshipTypeRegistry typeRegistry = new RelationshipTypeRegistry(deployer);
+        console.log("RelationshipTypeRegistry:", address(typeRegistry));
+
+        // 5c. Relationship Query (read-only view contract for directed traversal)
+        AgentRelationshipQuery relQuery = new AgentRelationshipQuery(
+            address(agentRelationship), address(typeRegistry)
+        );
+        console.log("AgentRelationshipQuery:", address(relQuery));
+
         // 6. Template contract
         AgentRelationshipTemplate agentTemplate = new AgentRelationshipTemplate();
         console.log("AgentRelationshipTemplate:", address(agentTemplate));
@@ -173,6 +185,8 @@ contract Deploy is Script {
         _logEnv("ONTOLOGY_REGISTRY_ADDRESS", address(ontologyRegistry));
         _logEnv("AGENT_ACCOUNT_RESOLVER_ADDRESS", address(accountResolver));
         _logEnv("UNIVERSAL_RESOLVER_ADDRESS", address(universalResolver));
+        _logEnv("RELATIONSHIP_TYPE_REGISTRY_ADDRESS", address(typeRegistry));
+        _logEnv("AGENT_RELATIONSHIP_QUERY_ADDRESS", address(relQuery));
     }
 
     function _logEnv(string memory key, address addr) internal pure {

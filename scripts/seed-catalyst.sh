@@ -180,6 +180,36 @@ echo "=== AI Agent → Org ==="
 echo "Growth Analytics → Network (operated agent)"
 create_rel "$ANALYTICS" "$NETWORK" "$ORG_CTRL" "" "$R_OPERATED"
 
+# ─── Hub Agent ──────────────────────────────────────────────────────
+echo ""
+echo "=== Hub Agent ==="
+HUB_CATALYST=$(deploy_agent 290001)
+T_HUB=$(cast keccak "atl:HubAgent")
+register "$HUB_CATALYST" "Catalyst Hub" "Catalyst Network hub — community development, activity tracking, multiplication mapping" "$T_HUB"
+echo "Hub: $HUB_CATALYST"
+
+# Hub predicates
+HUB_NAV=$(cast keccak "atl:hubNavConfig")
+HUB_NET=$(cast keccak "atl:hubNetworkLabel")
+HUB_CTX=$(cast keccak "atl:hubContextTerm")
+HUB_OVR=$(cast keccak "atl:hubOverviewLabel")
+HUB_AGT=$(cast keccak "atl:hubAgentLabel")
+
+cast send "$RESOLVER" "setStringProperty(address,bytes32,string)" "$HUB_CATALYST" "$HUB_NET" "Partner Network" --rpc-url "$RPC" --private-key "$KEY" > /dev/null 2>&1
+cast send "$RESOLVER" "setStringProperty(address,bytes32,string)" "$HUB_CATALYST" "$HUB_CTX" "Network" --rpc-url "$RPC" --private-key "$KEY" > /dev/null 2>&1
+cast send "$RESOLVER" "setStringProperty(address,bytes32,string)" "$HUB_CATALYST" "$HUB_OVR" "Network View" --rpc-url "$RPC" --private-key "$KEY" > /dev/null 2>&1
+cast send "$RESOLVER" "setStringProperty(address,bytes32,string)" "$HUB_CATALYST" "$HUB_AGT" "Participants" --rpc-url "$RPC" --private-key "$KEY" > /dev/null 2>&1
+
+NAV_JSON='[{"href":"/dashboard","label":"Network View"},{"href":"/agents","label":"Participants"},{"href":"/network","label":"Partner Network"},{"href":"/genmap","label":"Lineage"},{"href":"/activities","label":"Field Activity"},{"href":"/members","label":"Members"},{"href":"/reviews","label":"Reviews"}]'
+cast send "$RESOLVER" "setStringProperty(address,bytes32,string)" "$HUB_CATALYST" "$HUB_NAV" "$NAV_JSON" --rpc-url "$RPC" --private-key "$KEY" > /dev/null 2>&1
+
+# HAS_MEMBER edges
+HAS_MEMBER=$(cast call "$REL" "HAS_MEMBER()(bytes32)" --rpc-url "$RPC")
+echo "Creating HAS_MEMBER edges..."
+for AGENT in $NETWORK $HUB_DANANG $CIRCLE_SONTRA $CIRCLE_HANHOA $CIRCLE_MYKE $CIRCLE_THANH $CIRCLE_LIEN $CIRCLE_NGU $CIRCLE_CAM $ANALYTICS $PA_ELENA $PA_LINH $PA_TRAN $PA_MAI $PA_JAMES $PA_HOA $PA_DUC; do
+  create_rel "$HUB_CATALYST" "$AGENT" "$HAS_MEMBER" "" "$R_MEMBER"
+done
+
 # ─── Seed DB ─────────────────────────────────────────────────────────
 echo ""
 echo "=== Seeding database ==="

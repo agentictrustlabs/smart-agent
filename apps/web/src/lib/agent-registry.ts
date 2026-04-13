@@ -10,12 +10,13 @@ import {
   getPublicClient, getEdgesBySubject, getEdgesByObject, getEdge, getEdgeRoles,
 } from '@/lib/contracts'
 import {
-  agentAccountResolverAbi, roleName,
-  TYPE_PERSON, TYPE_ORGANIZATION, TYPE_AI_AGENT,
-  ATL_CONTROLLER,
+  agentAccountResolverAbi, agentRelationshipQueryAbi, roleName,
+  TYPE_PERSON, TYPE_ORGANIZATION, TYPE_AI_AGENT, TYPE_HUB,
+  ATL_CONTROLLER, HAS_MEMBER,
 } from '@smart-agent/sdk'
 
 function resolver() { return process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}` }
+function queryContract() { return process.env.AGENT_RELATIONSHIP_QUERY_ADDRESS as `0x${string}` | undefined }
 
 /**
  * Find a user's person agent address from on-chain registry.
@@ -111,7 +112,7 @@ export async function getAiAgentsForOrg(orgAddress: string): Promise<string[]> {
 /**
  * Get agent kind from on-chain resolver agentType.
  */
-export async function getAgentKind(agentAddress: string): Promise<'person' | 'org' | 'ai' | 'unknown'> {
+export async function getAgentKind(agentAddress: string): Promise<'person' | 'org' | 'ai' | 'hub' | 'unknown'> {
   const addr = resolver()
   if (!addr) return 'unknown'
   try {
@@ -120,6 +121,7 @@ export async function getAgentKind(agentAddress: string): Promise<'person' | 'or
     if (core.agentType === TYPE_PERSON) return 'person'
     if (core.agentType === TYPE_ORGANIZATION) return 'org'
     if (core.agentType === TYPE_AI_AGENT) return 'ai'
+    if (core.agentType === TYPE_HUB) return 'hub'
   } catch { /* ignored */ }
   return 'unknown'
 }
@@ -132,4 +134,76 @@ export async function getOrgsCreatedByUser(userId: string): Promise<string[]> {
   if (!personAddr) return []
   const orgs = await getOrgsForPersonAgent(personAddr)
   return orgs.filter(o => o.roles.includes('owner')).map(o => o.address)
+}
+
+/**
+ * Find hub agents that an agent belongs to (via HAS_MEMBER edges where agent is target).
+ * Uses the AgentRelationshipQuery contract's directSourcesOf if available,
+ * otherwise falls back to edge iteration.
+ */
+export async function getHubsForAgent(agentAddress: string): Promise<string[]> {
+  const qAddr = queryContract()
+  if (qAddr) {
+    try {
+      const client = getPublicClient()
+      const sources = await client.readContract({
+        address: qAddr,
+        abi: agentRelationshipQueryAbi,
+        functionName: 'directSourcesOf',
+        args: [agentAddress as `0x${string}`, HAS_MEMBER as `0x${string}`],
+      }) as string[]
+      return sources
+    } catch { /* fallback below */ }
+  }
+
+  // Fallback: iterate edges
+  const hubs: string[] = []
+  const addr = resolver()
+  if (!addr) return hubs
+  const client = getPublicClient()
+
+  try {
+    const edgeIds = await getEdgesByObject(agentAddress as `0x${string}`)
+    for (const edgeId of edgeIds) {
+      const edge = await getEdge(edgeId)
+      if (edge.status < 2) continue
+      try {
+        const core = await client.readContract({ address: addr, abi: agentAccountResolverAbi, functionName: 'getCore', args: [edge.subject as `0x${string}`] }) as { agentType: `0x${string}` }
+        if (core.agentType === TYPE_HUB) {
+          hubs.push(edge.subject)
+        }
+      } catch { /* ignored */ }
+    }
+  } catch { /* ignored */ }
+  return hubs
+}
+
+/**
+ * Get all members of a hub (via HAS_MEMBER edges where hub is source).
+ */
+export async function getHubMembers(hubAddress: string): Promise<string[]> {
+  const qAddr = queryContract()
+  if (qAddr) {
+    try {
+      const client = getPublicClient()
+      return await client.readContract({
+        address: qAddr,
+        abi: agentRelationshipQueryAbi,
+        functionName: 'directTargetsOf',
+        args: [hubAddress as `0x${string}`, HAS_MEMBER as `0x${string}`],
+      }) as string[]
+    } catch { /* fallback below */ }
+  }
+
+  // Fallback
+  const members: string[] = []
+  try {
+    const edgeIds = await getEdgesBySubject(hubAddress as `0x${string}`)
+    for (const edgeId of edgeIds) {
+      const edge = await getEdge(edgeId)
+      if (edge.status < 2) continue
+      members.push(edge.object_)
+    }
+  } catch { /* ignored */ }
+  return members
 }

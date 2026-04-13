@@ -4,7 +4,8 @@ import { useSearchParams, useRouter } from 'next/navigation'
 
 const TABS = [
   { key: 'graph', label: 'Trust Graph' },
-  { key: 'genmap', label: 'Lineage' },
+  { key: 'map', label: 'Map' },
+  { key: 'hierarchy', label: 'Hierarchy' },
   { key: 'endorsements', label: 'Endorsements' },
 ]
 
@@ -25,7 +26,7 @@ export function NetworkTabs({ children, stats, labels }: {
 
   function getTabLabel(key: string, fallback: string) {
     if (key === 'graph') return labels?.network ?? fallback
-    if (key === 'genmap') return labels?.lineage ?? fallback
+    if (key === 'hierarchy') return labels?.lineage ?? fallback
     return fallback
   }
 

@@ -21,6 +21,7 @@ export const ATL_AI_AGENT_CLASS = keccak256(toBytes('atl:aiAgentClass'))
 export const TYPE_PERSON = keccak256(toBytes('atl:PersonAgent'))
 export const TYPE_ORGANIZATION = keccak256(toBytes('atl:OrganizationAgent'))
 export const TYPE_AI_AGENT = keccak256(toBytes('atl:AIAgent'))
+export const TYPE_HUB = keccak256(toBytes('atl:HubAgent'))
 
 // ─── AI agent class values ──────────────────────────────────────────
 export const CLASS_DISCOVERY = keccak256(toBytes('atl:DiscoveryAgent'))
@@ -54,6 +55,13 @@ export const ATL_LONGITUDE = keccak256(toBytes('atl:longitude'))
 export const ATL_SPATIAL_CRS = keccak256(toBytes('atl:spatialCRS'))
 export const ATL_SPATIAL_TYPE = keccak256(toBytes('atl:spatialType'))
 
+// ─── Hub configuration ──────────────────────────────────────────────
+export const ATL_HUB_NAV_CONFIG = keccak256(toBytes('atl:hubNavConfig'))
+export const ATL_HUB_NETWORK_LABEL = keccak256(toBytes('atl:hubNetworkLabel'))
+export const ATL_HUB_CONTEXT_TERM = keccak256(toBytes('atl:hubContextTerm'))
+export const ATL_HUB_OVERVIEW_LABEL = keccak256(toBytes('atl:hubOverviewLabel'))
+export const ATL_HUB_AGENT_LABEL = keccak256(toBytes('atl:hubAgentLabel'))
+
 // ─── ERC-4337 technical ─────────────────────────────────────────────
 export const ATL_ENTRY_POINT = keccak256(toBytes('atl:entryPoint'))
 export const ATL_IMPLEMENTATION = keccak256(toBytes('atl:implementation'))
@@ -65,6 +73,7 @@ export const AGENT_TYPE_LABELS: Record<string, string> = {
   [TYPE_PERSON]: 'Person Agent',
   [TYPE_ORGANIZATION]: 'Organization',
   [TYPE_AI_AGENT]: 'AI Agent',
+  [TYPE_HUB]: 'Hub',
 }
 
 export const AI_CLASS_LABELS: Record<string, string> = {
