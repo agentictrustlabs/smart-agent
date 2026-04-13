@@ -7,12 +7,11 @@ import { useUserContext } from '@/components/user/UserContext'
 /** Nav items driven by user capabilities across all orgs */
 const NAV_ITEMS: Array<{ href: string; label: string; requires?: string }> = [
   { href: '/dashboard', label: 'Overview' },
+  { href: '/catalyst', label: 'Catalyst' },
   { href: '/agents', label: 'Agents' },
   { href: '/network', label: 'Network' },
   { href: '/reviews', label: 'Reviews', requires: 'reviews' },
   { href: '/treasury', label: 'Treasury', requires: 'treasury' },
-  { href: '/activities', label: 'Activities', requires: 'activities' },
-  { href: '/members', label: 'Members', requires: 'members' },
   { href: '/settings', label: 'Admin', requires: 'settings' },
 ]
 
