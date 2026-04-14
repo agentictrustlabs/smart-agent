@@ -25,6 +25,7 @@ interface CircleEntry {
   personName: string
   proximity: number
   response: 'not-interested' | 'curious' | 'interested' | 'seeking' | 'decided' | 'baptized'
+  plannedConversation?: boolean
   notes?: string
 }
 
@@ -36,7 +37,7 @@ function insertCircles(userId: string, entries: CircleEntry[]) {
       personName: e.personName,
       proximity: e.proximity,
       response: e.response,
-      plannedConversation: 0,
+      plannedConversation: e.plannedConversation ? 1 : 0,
       notes: e.notes ?? null,
     }).run()
   }
@@ -186,59 +187,105 @@ function seedGlobalChurch() {
 }
 
 function seedCatalystNetwork() {
-  // ─── cat-user-001: Elena Vasquez (Coach) ──────────────────────────
+  // ─── cat-user-001: Maria Gonzalez (Coach — NoCo Hispanic outreach) ─
   const u1 = 'cat-user-001'
   if (!hasCircles(u1)) {
     insertCircles(u1, [
-      { personName: 'Linh', proximity: 1, response: 'decided' },
-      { personName: 'Community leaders', proximity: 2, response: 'seeking' },
-      { personName: 'Government contact', proximity: 3, response: 'interested' },
-      { personName: 'Market vendors', proximity: 4, response: 'curious' },
+      { personName: 'Pastor David', proximity: 1, response: 'decided' },
+      { personName: 'Rosa Martinez', proximity: 1, response: 'decided' },
+      { personName: 'Familia Lopez (Wellington)', proximity: 2, response: 'seeking' },
+      { personName: 'County social services contact', proximity: 3, response: 'interested' },
+      { personName: 'Tienda La Favorita owners', proximity: 3, response: 'curious' },
+      { personName: 'Poudre School District liaison', proximity: 4, response: 'interested' },
     ])
     insertPrayers(u1, [
-      { title: 'Mekong network growth', schedule: 'daily', lastPrayed: today() },
-      { title: "Linh's leadership", schedule: 'mon,wed,fri' },
-      { title: 'Community health', schedule: 'daily' },
+      { title: 'NoCo network growth and unity', schedule: 'daily', lastPrayed: today() },
+      { title: "Pastor David's bridge-building vision", schedule: 'mon,wed,fri' },
+      { title: 'Hispanic families facing housing insecurity', schedule: 'daily' },
+      { title: 'Wisdom for immigration support ministry', schedule: 'tue,thu' },
     ])
     insert411(u1, 6)  // all complete
     insertCOC(u1, 10) // all complete
     insertCoachRelationship('cat-user-002', u1)
-    insertPreferences(u1, 'en', 'Mekong Catalyst Network', 'Da Nang, Vietnam')
+    insertCoachRelationship('cat-user-003', u1)
+    insertPreferences(u1, 'es', 'Catalyst NoCo Network', 'Fort Collins, CO')
   }
 
-  // ─── cat-user-002: Linh Nguyen (Disciple) ────────────────────────
+  // ─── cat-user-002: Pastor David Chen (Hub Lead — Disciple) ────────
   const u2 = 'cat-user-002'
   if (!hasCircles(u2)) {
     insertCircles(u2, [
-      { personName: 'Hoa', proximity: 1, response: 'decided' },
-      { personName: 'Duc', proximity: 1, response: 'decided' },
-      { personName: 'Tran', proximity: 1, response: 'seeking' },
-      { personName: 'Market women', proximity: 3, response: 'curious' },
+      { personName: 'Ana Reyes (Wellington)', proximity: 1, response: 'decided' },
+      { personName: 'Miguel Santos (Laporte)', proximity: 1, response: 'decided' },
+      { personName: 'Rosa Martinez', proximity: 1, response: 'seeking' },
+      { personName: 'Local pastors coalition', proximity: 2, response: 'interested' },
+      { personName: 'CSU campus ministry contact', proximity: 3, response: 'curious' },
     ])
     insertPrayers(u2, [
-      { title: 'Da Nang Hub growth', schedule: 'daily', lastPrayed: daysAgo(1) },
-      { title: 'Son Tra community', schedule: 'mon,wed,fri,sat' },
+      { title: 'Fort Collins Hub growth', schedule: 'daily', lastPrayed: daysAgo(1) },
+      { title: 'Wellington Circle — Ana and new families', schedule: 'mon,wed,fri,sat' },
+      { title: 'Bilingual worship team development', schedule: 'sun' },
     ])
     insert411(u2, 5)      // 5/6
     insertCOC(u2, 8, 4)   // 8/10 obeying, 4/10 teaching
-    insertPreferences(u2, 'en', 'Da Nang Hub', 'Da Nang, Vietnam')
+    insertPreferences(u2, 'en', 'Fort Collins Hub', 'Fort Collins, CO')
   }
 
-  // ─── cat-user-006: Hoa Tran (Disciple) ───────────────────────────
+  // ─── cat-user-003: Rosa Martinez (Hispanic Outreach Coordinator) ──
+  const u3 = 'cat-user-003'
+  if (!hasCircles(u3)) {
+    insertCircles(u3, [
+      { personName: 'Familia Herrera', proximity: 1, response: 'decided' },
+      { personName: 'ESL students (Tue/Thu class)', proximity: 2, response: 'seeking', plannedConversation: true },
+      { personName: 'Meat packing plant workers', proximity: 3, response: 'curious' },
+      { personName: 'Neighbor Gloria', proximity: 1, response: 'interested', plannedConversation: true },
+      { personName: 'Catholic parish contact', proximity: 3, response: 'interested' },
+    ])
+    insertPrayers(u3, [
+      { title: 'Courage for ESL gospel conversations', schedule: 'tue,thu' },
+      { title: 'Gloria and her children', schedule: 'daily', lastPrayed: daysAgo(1) },
+      { title: 'Protection for undocumented families', schedule: 'daily' },
+    ])
+    insert411(u3, 4) // 4/6
+    insertCOC(u3, 6, 2) // 6/10 obeying, 2/10 teaching
+    insertPreferences(u3, 'es', 'Fort Collins Hub', 'Fort Collins, CO')
+  }
+
+  // ─── cat-user-006: Ana Reyes (Circle Leader — Wellington) ─────────
   const u6 = 'cat-user-006'
   if (!hasCircles(u6)) {
     insertCircles(u6, [
-      { personName: 'Mrs. Nguyen', proximity: 1, response: 'seeking' },
-      { personName: 'Fishermen group', proximity: 2, response: 'interested' },
-      { personName: 'Temple visitors', proximity: 3, response: 'curious' },
+      { personName: 'Familia Morales', proximity: 1, response: 'seeking' },
+      { personName: 'Youth group teens (5)', proximity: 2, response: 'interested' },
+      { personName: 'Wellington Elementary parents', proximity: 3, response: 'curious' },
+      { personName: 'Señora Campos', proximity: 1, response: 'decided', plannedConversation: true },
     ])
     insertPrayers(u6, [
-      { title: 'Son Tra Group health', schedule: 'daily' },
-      { title: "Fishermen's families", schedule: 'tue,thu,sat' },
+      { title: 'Wellington Circle health and growth', schedule: 'daily' },
+      { title: 'Youth caught between two cultures', schedule: 'mon,wed,fri' },
+      { title: 'Familia Morales — husband seeking work', schedule: 'daily', lastPrayed: daysAgo(2) },
     ])
     insert411(u6, 3) // 3/6
     insertCOC(u6, 4) // 4/10 obeying
-    insertPreferences(u6, 'en', 'Son Tra Group', 'Son Tra, Da Nang')
+    insertPreferences(u6, 'es', 'Wellington Circle', 'Wellington, CO')
+  }
+
+  // ─── cat-user-007: Miguel Santos (Circle Leader — Laporte) ────────
+  const u7 = 'cat-user-007'
+  if (!hasCircles(u7)) {
+    insertCircles(u7, [
+      { personName: 'Farm crew (8 men)', proximity: 1, response: 'interested' },
+      { personName: 'Foreman Ricardo', proximity: 1, response: 'seeking', plannedConversation: true },
+      { personName: 'Familia Santos extended', proximity: 2, response: 'decided' },
+    ])
+    insertPrayers(u7, [
+      { title: 'Laporte farm workers — safety and hope', schedule: 'daily', lastPrayed: today() },
+      { title: 'Ricardo — open door for gospel', schedule: 'mon,wed,fri' },
+      { title: 'Housing for seasonal workers', schedule: 'tue,sat' },
+    ])
+    insert411(u7, 2) // 2/6
+    insertCOC(u7, 3) // 3/10 obeying
+    insertPreferences(u7, 'es', 'Laporte Circle', 'Laporte, CO')
   }
 }
 

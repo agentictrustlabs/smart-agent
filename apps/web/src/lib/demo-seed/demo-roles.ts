@@ -46,17 +46,17 @@ const CIL = {
   wave2: addr(0xd10008),
 }
 
-// Catalyst addresses (must match seed-catalyst.ts)
+// Catalyst NoCo addresses (must match seed-catalyst-onchain.ts)
 const CAT = {
-  network: addr(0xb10001),
-  hubDanang: addr(0xb10002),
-  circleSontra: addr(0xb10003),
-  circleHanhoa: addr(0xb10004),
-  circleMyke: addr(0xb10005),
-  circleThanh: addr(0xb10006),
-  circleLien: addr(0xb10007),
-  circleNgu: addr(0xb10008),
-  circleCam: addr(0xb10009),
+  network: addr(0xb10001),        // Catalyst NoCo Network
+  hubFortCollins: addr(0xb10002), // Fort Collins Hub
+  circleWellington: addr(0xb10003),
+  circleLaporte: addr(0xb10004),
+  circleTimnath: addr(0xb10005),
+  circleLoveland: addr(0xb10006),
+  circleBerthoud: addr(0xb10007),
+  circleJohnstown: addr(0xb10008),
+  circleRedFeather: addr(0xb10009),
 }
 
 /**
@@ -92,33 +92,34 @@ export function getDemoUserOrgRoles(userId: string): DemoOrgRole[] {
       { orgAddress: CPM.grpSalt, roles: ['owner'] },
       { orgAddress: CPM.teamKol, roles: ['member'] },
     ],
-    // Catalyst Network
-    'cat-user-001': [ // Elena Vasquez — Program Director
+    // Catalyst NoCo Network (Northern Colorado Hispanic outreach)
+    'cat-user-001': [ // Maria Gonzalez — Program Director
       { orgAddress: CAT.network, roles: ['owner'] },
-      { orgAddress: CAT.hubDanang, roles: ['board-member'] },
+      { orgAddress: CAT.hubFortCollins, roles: ['board-member'] },
     ],
-    'cat-user-002': [ // Linh Nguyen — Hub Lead
-      { orgAddress: CAT.hubDanang, roles: ['owner'] },
+    'cat-user-002': [ // Pastor David Chen — Hub Lead
+      { orgAddress: CAT.hubFortCollins, roles: ['owner'] },
       { orgAddress: CAT.network, roles: ['operator'] },
-      { orgAddress: CAT.circleSontra, roles: ['advisor'] },
+      { orgAddress: CAT.circleWellington, roles: ['advisor'] },
     ],
-    'cat-user-003': [ // Tran Minh — Facilitator
-      { orgAddress: CAT.hubDanang, roles: ['operator'] },
-      { orgAddress: CAT.circleHanhoa, roles: ['advisor'] },
+    'cat-user-003': [ // Rosa Martinez — Hispanic Outreach Coordinator
+      { orgAddress: CAT.hubFortCollins, roles: ['operator'] },
+      { orgAddress: CAT.circleLaporte, roles: ['advisor'] },
+      { orgAddress: CAT.circleRedFeather, roles: ['advisor'] },
     ],
-    'cat-user-004': [ // Mai Pham — Community Partner
-      { orgAddress: CAT.hubDanang, roles: ['member'] },
+    'cat-user-004': [ // Carlos Herrera — Community Partner
+      { orgAddress: CAT.hubFortCollins, roles: ['member'] },
     ],
-    'cat-user-005': [ // James Okafor — Regional Lead
+    'cat-user-005': [ // Sarah Thompson — Regional Lead
       { orgAddress: CAT.network, roles: ['board-member'] },
     ],
-    'cat-user-006': [ // Hoa Tran — Circle Lead
-      { orgAddress: CAT.circleSontra, roles: ['owner'] },
-      { orgAddress: CAT.hubDanang, roles: ['member'] },
+    'cat-user-006': [ // Ana Reyes — Circle Leader, Wellington
+      { orgAddress: CAT.circleWellington, roles: ['owner'] },
+      { orgAddress: CAT.hubFortCollins, roles: ['member'] },
     ],
-    'cat-user-007': [ // Duc Le — Circle Lead
-      { orgAddress: CAT.circleHanhoa, roles: ['owner'] },
-      { orgAddress: CAT.hubDanang, roles: ['member'] },
+    'cat-user-007': [ // Miguel Santos — Circle Leader, Laporte
+      { orgAddress: CAT.circleLaporte, roles: ['owner'] },
+      { orgAddress: CAT.hubFortCollins, roles: ['member'] },
     ],
     // Global.Church community
     'gc-user-001': [ // Pastor James — Senior Pastor

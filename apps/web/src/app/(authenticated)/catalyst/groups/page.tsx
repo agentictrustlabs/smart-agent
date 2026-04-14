@@ -3,7 +3,9 @@ import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { getUserOrgs } from '@/lib/get-user-orgs'
 import { getEdgesBySubject, getEdge, getPublicClient } from '@/lib/contracts'
 import { getAgentMetadata } from '@/lib/agent-metadata'
-import { GroupHierarchy, type GroupNode } from '@/components/catalyst/GroupHierarchy'
+import { type GroupNode } from '@/components/catalyst/GroupHierarchy'
+import { type CircleMapNode } from '@/components/catalyst/CircleMapView'
+import { GroupsPageClient } from './GroupsPageClient'
 import { agentAccountResolverAbi, ATL_GENMAP_DATA } from '@smart-agent/sdk'
 
 export default async function CatalystGroupsPage() {
@@ -74,6 +76,49 @@ export default async function CatalystGroupsPage() {
 
   groups.sort((a, b) => a.depth - b.depth || a.name.localeCompare(b.name))
 
+  // Build map nodes with geo data from health data or resolver metadata
+  const mapNodes: CircleMapNode[] = groups.map((g) => {
+    // Try health data first, then resolver metadata
+    const healthLat = typeof g.metadata.latitude === 'number' ? g.metadata.latitude : parseFloat(String(g.metadata.latitude || ''))
+    const healthLon = typeof g.metadata.longitude === 'number' ? g.metadata.longitude : parseFloat(String(g.metadata.longitude || ''))
+
+    const lat = !isNaN(healthLat) && healthLat !== 0 ? healthLat : null
+    const lon = !isNaN(healthLon) && healthLon !== 0 ? healthLon : null
+
+    // Parse health score from health data
+    let healthScore: number | undefined
+    if (typeof g.metadata.healthScore === 'number') {
+      healthScore = g.metadata.healthScore
+    } else if (typeof g.metadata.healthScore === 'string') {
+      healthScore = parseFloat(g.metadata.healthScore) || undefined
+    }
+
+    return {
+      address: g.address,
+      name: g.name,
+      parentAddress: g.parentAddress,
+      latitude: lat,
+      longitude: lon,
+      isEstablished: g.isEstablished,
+      leaderName: g.leaderName,
+      healthScore,
+    }
+  })
+
+  // Also try to fill in lat/lng from resolver metadata for circles missing geo in health data
+  for (const node of mapNodes) {
+    if (node.latitude != null && node.longitude != null) continue
+    try {
+      const meta = await getAgentMetadata(node.address)
+      const lat = parseFloat(meta.latitude)
+      const lon = parseFloat(meta.longitude)
+      if (!isNaN(lat) && lat !== 0 && !isNaN(lon) && lon !== 0) {
+        node.latitude = lat
+        node.longitude = lon
+      }
+    } catch { /* ignored */ }
+  }
+
   return (
     <div>
       <div style={{ marginBottom: '1rem' }}>
@@ -82,7 +127,7 @@ export default async function CatalystGroupsPage() {
           Hierarchy of circles and gatherings. Click a circle to edit health metrics and practices.
         </p>
       </div>
-      <GroupHierarchy groups={groups} orgAddress={userOrgs[0].address} />
+      <GroupsPageClient groups={groups} mapNodes={mapNodes} orgAddress={userOrgs[0].address} />
     </div>
   )
 }

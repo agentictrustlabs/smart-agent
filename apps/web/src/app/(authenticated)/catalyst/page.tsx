@@ -29,13 +29,11 @@ export default async function CatalystDashboardPage() {
   const userOrgs = await getUserOrgs(currentUser.id)
 
   // Aggregate stats
-  let totalGroups = 0
   const orgAddresses = new Set(userOrgs.map((o) => o.address.toLowerCase()))
 
   for (const org of userOrgs) {
     try {
       const connected = await getConnectedOrgs(org.address)
-      totalGroups += connected.length
       for (const c of connected) orgAddresses.add(c.address.toLowerCase())
     } catch {
       /* ignored */
@@ -66,6 +64,38 @@ export default async function CatalystDashboardPage() {
   const completedModules = progress.filter((p) => p.completed === 1).length
   const totalModules = 6 + 20 + 2 // 411(6) + commands(10*2) + 3thirds(2)
   const walkPct = totalModules > 0 ? Math.round((completedModules / totalModules) * 100) : 0
+
+  // Oikos count (circles of influence — personal relationships)
+  let oikosCount = 0
+  try {
+    const { eq } = await import('drizzle-orm')
+    const oikosRows = await db.select().from(schema.circles)
+      .where(eq(schema.circles.userId, currentUser.id))
+    oikosCount = oikosRows.length
+  } catch { /* table may not exist */ }
+
+  // Church circles count (gatherings/groups from on-chain)
+  let totalCircles = 0
+  let establishedCircles = 0
+  for (const org of userOrgs) {
+    try {
+      const connected = await getConnectedOrgs(org.address)
+      totalCircles += connected.length
+      establishedCircles += connected.filter(c => Boolean(c.metadata?.isChurch)).length
+    } catch { /* ignored */ }
+  }
+  totalCircles += userOrgs.length
+
+  // Prayer due count
+  let prayerDueCount = 0
+  try {
+    const { eq } = await import('drizzle-orm')
+    const allPrayers = await db.select().from(schema.prayers)
+      .where(eq(schema.prayers.userId, currentUser.id))
+    const days = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
+    const today = days[new Date().getDay()]
+    prayerDueCount = allPrayers.filter(p => !p.answered && (p.schedule === 'daily' || p.schedule.includes(today))).length
+  } catch { /* table may not exist */ }
 
   // Greeting
   const hour = new Date().getHours()
@@ -119,19 +149,20 @@ export default async function CatalystDashboardPage() {
         gap: '0.6rem',
         marginBottom: '1.5rem',
       }}>
-        {/* MY CIRCLES */}
-        <KpiCard label="MY CIRCLES" href="/groups">
+        {/* MY OIKOS */}
+        <KpiCard label="MY OIKOS" href="/oikos">
           <span style={{ fontSize: '1.75rem', fontWeight: 700, color: C.accent }}>
-            {totalGroups + userOrgs.length}
+            {oikosCount}
           </span>
+          <span style={{ fontSize: '0.72rem', color: C.textMuted }}>people</span>
         </KpiCard>
 
         {/* PRAY NOW */}
         <KpiCard label="PRAY NOW" href="/nurture/prayer">
           <span style={{ fontSize: '1.75rem', fontWeight: 700, color: C.accent }}>
-            {prayerCount}
+            {prayerDueCount}
           </span>
-          <span style={{ fontSize: '0.72rem', color: C.textMuted }}>due</span>
+          <span style={{ fontSize: '0.72rem', color: C.textMuted }}>due today</span>
         </KpiCard>
 
         {/* PLANNED CONVERSATIONS */}
@@ -154,6 +185,16 @@ export default async function CatalystDashboardPage() {
           </span>
         </KpiCard>
 
+        {/* MY CIRCLES */}
+        <KpiCard label="MY CIRCLES" href="/groups">
+          <span style={{ fontSize: '1.75rem', fontWeight: 700, color: C.accent }}>
+            {totalCircles}
+          </span>
+          <span style={{ fontSize: '0.72rem', color: C.textMuted }}>
+            {establishedCircles > 0 ? `${establishedCircles} established` : 'gatherings'}
+          </span>
+        </KpiCard>
+
         {/* SOW THIS WEEK */}
         <KpiCard label="SOW THIS WEEK" href="/activity">
           <span style={{ fontSize: '1.75rem', fontWeight: 700, color: C.accent }}>
@@ -161,27 +202,28 @@ export default async function CatalystDashboardPage() {
           </span>
           <span style={{ fontSize: '0.72rem', color: C.textMuted }}>activities</span>
         </KpiCard>
-
-        {/* ACTIVE SHARES */}
-        <KpiCard label="ACTIVE SHARES" href="/me">
-          {coachRel ? (
-            <span style={{ fontSize: '0.85rem', color: C.accent, fontWeight: 600 }}>
-              {coachRel.coachName}
-            </span>
-          ) : (
-            <span style={{ fontSize: '0.82rem', color: C.textMuted }}>No coach</span>
-          )}
-        </KpiCard>
       </div>
 
       {/* Quick actions */}
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
         <Link href="/activity" style={linkBtnStyle(true)}>Log Activity</Link>
         <Link href="/groups" style={linkBtnStyle(false)}>View Circles</Link>
-        <Link href="/groups/members" style={linkBtnStyle(false)}>Members</Link>
-        <Link href="/nurture/grow" style={linkBtnStyle(false)}>Grow</Link>
+        <Link href="/oikos" style={linkBtnStyle(false)}>Oikos</Link>
+        <Link href="/nurture" style={linkBtnStyle(false)}>Nurture</Link>
         <Link href="/me" style={linkBtnStyle(false)}>Profile</Link>
       </div>
+
+      {/* Coach relationship */}
+      {coachRel && (
+        <div style={{
+          marginTop: '1rem', padding: '0.6rem 1rem',
+          background: C.card, border: `1px solid ${C.border}`, borderRadius: 10,
+          fontSize: '0.82rem', color: C.text,
+        }}>
+          <span style={{ fontWeight: 600, color: C.accent }}>Coach:</span>{' '}
+          {coachRel.coachName}
+        </div>
+      )}
     </div>
   )
 }

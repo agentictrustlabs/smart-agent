@@ -28,14 +28,14 @@ export const DEMO_USERS: Record<string, { userId: string; walletAddress: string;
   'gc-user-003': { userId: 'did:privy:gc-003', walletAddress: '0x0000000000000000000000000000000000010003', email: 'dan@ecfa.org', name: 'Dan Busby', org: 'ECFA', role: 'Executive Director' },
   'gc-user-004': { userId: 'did:privy:gc-004', walletAddress: '0x0000000000000000000000000000000000010004', email: 'john@wycliffe.org', name: 'John Chesnut', org: 'Wycliffe Bible Translators', role: 'Director' },
   'gc-user-005': { userId: 'did:privy:gc-005', walletAddress: '0x0000000000000000000000000000000000010005', email: 'david@ncf.org', name: 'David Wills', org: 'National Christian Foundation', role: 'President' },
-  // Catalyst Network (community development)
-  'cat-user-001': { userId: 'did:privy:cat-001', walletAddress: '0x00000000000000000000000000000000000b0001', email: 'elena@catalystglobal.org', name: 'Elena Vasquez', org: 'Mekong Catalyst Network', role: 'Program Director' },
-  'cat-user-002': { userId: 'did:privy:cat-002', walletAddress: '0x00000000000000000000000000000000000b0002', email: 'linh@catalystglobal.org', name: 'Linh Nguyen', org: 'Da Nang Hub', role: 'Hub Lead' },
-  'cat-user-003': { userId: 'did:privy:cat-003', walletAddress: '0x00000000000000000000000000000000000b0003', email: 'tran@community.vn', name: 'Tran Minh', org: 'Da Nang Hub', role: 'Facilitator' },
-  'cat-user-004': { userId: 'did:privy:cat-004', walletAddress: '0x00000000000000000000000000000000000b0004', email: 'mai@community.vn', name: 'Mai Pham', org: 'Da Nang Hub', role: 'Community Partner' },
-  'cat-user-005': { userId: 'did:privy:cat-005', walletAddress: '0x00000000000000000000000000000000000b0005', email: 'james@impactfund.org', name: 'James Okafor', org: 'Mekong Catalyst Network', role: 'Regional Lead' },
-  'cat-user-006': { userId: 'did:privy:cat-006', walletAddress: '0x00000000000000000000000000000000000b0006', email: 'hoa@circle-sontra.vn', name: 'Hoa Tran', org: 'Son Tra Group', role: 'Group Leader' },
-  'cat-user-007': { userId: 'did:privy:cat-007', walletAddress: '0x00000000000000000000000000000000000b0007', email: 'duc@circle-hanhoa.vn', name: 'Duc Le', org: 'Han Hoa Group', role: 'Group Leader' },
+  // Catalyst Network (Northern Colorado — Hispanic outreach)
+  'cat-user-001': { userId: 'did:privy:cat-001', walletAddress: '0x00000000000000000000000000000000000b0001', email: 'maria@catalystnoco.org', name: 'Maria Gonzalez', org: 'Catalyst NoCo Network', role: 'Program Director' },
+  'cat-user-002': { userId: 'did:privy:cat-002', walletAddress: '0x00000000000000000000000000000000000b0002', email: 'david@catalystnoco.org', name: 'Pastor David Chen', org: 'Fort Collins Hub', role: 'Hub Lead' },
+  'cat-user-003': { userId: 'did:privy:cat-003', walletAddress: '0x00000000000000000000000000000000000b0003', email: 'rosa@comunidad-noco.org', name: 'Rosa Martinez', org: 'Fort Collins Hub', role: 'Hispanic Outreach Coordinator' },
+  'cat-user-004': { userId: 'did:privy:cat-004', walletAddress: '0x00000000000000000000000000000000000b0004', email: 'carlos@comunidad-noco.org', name: 'Carlos Herrera', org: 'Fort Collins Hub', role: 'Community Partner' },
+  'cat-user-005': { userId: 'did:privy:cat-005', walletAddress: '0x00000000000000000000000000000000000b0005', email: 'sarah@catalystnoco.org', name: 'Sarah Thompson', org: 'Catalyst NoCo Network', role: 'Regional Lead' },
+  'cat-user-006': { userId: 'did:privy:cat-006', walletAddress: '0x00000000000000000000000000000000000b0006', email: 'ana@wellington-circle.org', name: 'Ana Reyes', org: 'Wellington Circle', role: 'Circle Leader' },
+  'cat-user-007': { userId: 'did:privy:cat-007', walletAddress: '0x00000000000000000000000000000000000b0007', email: 'miguel@laporte-circle.org', name: 'Miguel Santos', org: 'Laporte Circle', role: 'Circle Leader' },
   // Collective Impact Labs (Ravah Capital Pilot — Togo)
   'cil-user-001': { userId: 'did:privy:cil-001', walletAddress: '0x00000000000000000000000000000000000c0001', email: 'cameron@ilad.org', name: 'Cameron Henrion', org: 'ILAD', role: 'Operations Lead' },
   'cil-user-002': { userId: 'did:privy:cil-002', walletAddress: '0x00000000000000000000000000000000000c0002', email: 'nick@ilad.org', name: 'Nick Courchesne', org: 'ILAD', role: 'Reviewer' },

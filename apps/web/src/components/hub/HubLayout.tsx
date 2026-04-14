@@ -24,14 +24,14 @@ const INTENT_TABS: IntentTab[] = [
     matchPaths: ['/', '/catalyst', '/dashboard'],
   },
   {
-    label: 'Oikos',
-    href: '/oikos',
-    matchPaths: ['/oikos', '/circles', '/catalyst/circles'],
-  },
-  {
     label: 'Nurture',
     href: '/nurture',
     matchPaths: ['/nurture', '/catalyst/prayer', '/catalyst/grow', '/catalyst/coach', '/nurture/prayer', '/nurture/grow', '/nurture/coaching'],
+  },
+  {
+    label: 'Oikos',
+    href: '/oikos',
+    matchPaths: ['/oikos', '/circles', '/catalyst/circles'],
   },
   {
     label: 'Build',
@@ -310,50 +310,6 @@ function HubLayoutInner({ children }: { children: React.ReactNode }) {
 
             {/* ── Right: Mode toggle + Agent button + User dropdown ── */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
-              {/* My Walk / Manage toggle */}
-              {availableViewModes.length > 1 && (
-                <div style={{
-                  display: 'flex',
-                  gap: '2px',
-                  background: T.accentLight,
-                  borderRadius: 18,
-                  padding: '2px',
-                }}>
-                  <button
-                    onClick={() => setViewMode('disciple')}
-                    style={{
-                      border: 'none',
-                      borderRadius: 16,
-                      padding: '0.2rem 0.6rem',
-                      fontSize: '0.7rem',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
-                      background: viewMode === 'disciple' ? T.accent : 'transparent',
-                      color: viewMode === 'disciple' ? '#fff' : T.text,
-                    }}
-                  >
-                    My Walk
-                  </button>
-                  <button
-                    onClick={() => setViewMode('coach')}
-                    style={{
-                      border: 'none',
-                      borderRadius: 16,
-                      padding: '0.2rem 0.6rem',
-                      fontSize: '0.7rem',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
-                      background: viewMode === 'coach' ? T.accent : 'transparent',
-                      color: viewMode === 'coach' ? '#fff' : T.text,
-                    }}
-                  >
-                    Manage
-                  </button>
-                </div>
-              )}
-
               {/* Agent panel toggle */}
               <button
                 onClick={() => setAgentPanelOpen(prev => !prev)}

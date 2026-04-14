@@ -18,7 +18,7 @@ if (fs.existsSync(migrationsDir)) {
       // Strip SQL comments and find the CREATE statement
       const lines = stmt.split('\n').filter(l => !l.trimStart().startsWith('--'))
       const cleaned = lines.join('\n').trim()
-      if (cleaned && (cleaned.includes('CREATE') || cleaned.includes('ALTER'))) {
+      if (cleaned && (cleaned.includes('CREATE') || cleaned.includes('ALTER') || cleaned.includes('DROP'))) {
         const safe = cleaned.replace(/CREATE TABLE `/g, 'CREATE TABLE IF NOT EXISTS `')
           .replace(/CREATE UNIQUE INDEX `/g, 'CREATE UNIQUE INDEX IF NOT EXISTS `')
           .replace(/CREATE INDEX `/g, 'CREATE INDEX IF NOT EXISTS `')

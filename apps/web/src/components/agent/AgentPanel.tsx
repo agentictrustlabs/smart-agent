@@ -59,7 +59,7 @@ const SUGGESTIONS = [
   },
   {
     id: 's3',
-    text: 'Based on your activity pattern, consider scheduling a follow-up with the Son Tra circle.',
+    text: 'Based on your activity pattern, consider scheduling a follow-up with the Wellington circle.',
   },
 ]
 

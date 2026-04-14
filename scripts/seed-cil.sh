@@ -288,7 +288,8 @@ for (const u of users) {
     db.prepare('INSERT OR IGNORE INTO users (id,email,name,wallet_address,privy_user_id,created_at) VALUES (?,?,?,?,?,?)').run(u.id, u.email, u.name, u.wallet, u.privy, ts());
 }
 
-// Deprecated org_agents for backward compat pages
+// Legacy table writes — silently skip if tables don't exist
+try {
 const orgs = [
   { name: 'ILAD', desc: 'Local operator — business training, field ops, revenue validation', addr: '$ILAD', user: 'cil-user-001', tpl: 'cil-operator' },
   { name: 'Collective Impact Labs', desc: 'Capital provider + platform sponsor — Ravah model', addr: '$CIL', user: 'cil-user-006', tpl: 'cil-funder' },
@@ -303,7 +304,8 @@ for (const o of orgs) {
     db.prepare('INSERT OR IGNORE INTO org_agents (id,name,description,created_by,smart_account_address,template_id,chain_id,salt,implementation_type,status,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)').run(id(), o.name, o.desc, o.user, o.addr, o.tpl, 31337, '0x' + Math.random().toString(16).slice(2,10), 'hybrid', 'deployed', ts());
 }
 
-console.log('CIL: 7 users, 6 orgs seeded');
+} catch(e) { /* legacy tables may not exist */ }
+console.log('CIL: 7 users seeded (legacy agent tables skipped if absent)');
 "
 
 echo ""

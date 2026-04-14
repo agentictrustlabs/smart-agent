@@ -13,7 +13,6 @@ import {
   ROLE_STRATEGIC_PARTNER, ROLE_UPSTREAM, ROLE_DOWNSTREAM,
   ATL_LATITUDE, ATL_LONGITUDE, ATL_SPATIAL_CRS, ATL_SPATIAL_TYPE, ATL_CONTROLLER,
   ATL_GENMAP_DATA,
-  ATL_HUB_NAV_CONFIG, ATL_HUB_FEATURES, ATL_HUB_THEME, ATL_HUB_GREETING,
 } from '@smart-agent/sdk'
 import { agentAccountResolverAbi } from '@smart-agent/sdk'
 import { keccak256, toBytes } from 'viem'
@@ -59,14 +58,7 @@ async function setController(agentAddr: `0x${string}`, walletAddr: string) {
   } catch (_e) { console.warn(`[cil-seed] Controller failed:`, _e) }
 }
 
-async function setString(addr: `0x${string}`, predicate: `0x${string}`, value: string) {
-  const wc = getWalletClient()
-  const resolver = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}`
-  if (!resolver) return
-  try {
-    await wc.writeContract({ address: resolver, abi: agentAccountResolverAbi, functionName: 'setStringProperty', args: [addr, predicate, value] })
-  } catch (_e) { console.warn(`[cil-seed] setString failed for ${addr}:`, _e) }
-}
+// Hub config setString removed — static fallback profiles provide nav config.
 
 async function setGeo(addr: `0x${string}`, lat: string, lon: string) {
   const wc = getWalletClient()
@@ -195,21 +187,8 @@ async function doSeed() {
   await setGenMapData(wave1,       JSON.stringify({"isChurch":false,"attenders":8,"believers":0,"baptized":0,"leaders":2,"groupsStarted":2}))
   await setGenMapData(wave2,       JSON.stringify({"isChurch":false,"attenders":5,"believers":0,"baptized":0,"leaders":1,"groupsStarted":0}))
 
-  // ─── Hub Configuration (on-chain) ─────────────────────────────────
-  console.log('[cil-seed] Writing hub configuration on-chain...')
-  await setString(cil, ATL_HUB_NAV_CONFIG as `0x${string}`, JSON.stringify([
-    { href: '/catalyst', label: 'Home', section: 'primary', exact: true, activePrefixes: ['/', '/catalyst', '/dashboard'] },
-    { href: '/circles', label: 'Connect', section: 'primary', activePrefixes: ['/circles', '/catalyst/circles'] },
-    { href: '/groups', label: 'Portfolio', section: 'primary', activePrefixes: ['/groups', '/catalyst/groups', '/catalyst/members'] },
-    { href: '/steward', label: 'Steward', section: 'primary', activePrefixes: ['/steward', '/treasury', '/reviews', '/network', '/trust'] },
-    { href: '/activity', label: 'Operations', section: 'primary', activePrefixes: ['/activity', '/catalyst/activities', '/activities'] },
-    { href: '/agents', label: 'Agents', section: 'admin', requiresCapability: 'agents' },
-    { href: '/settings', label: 'Settings', section: 'admin', requiresCapability: 'settings' },
-    { href: '/me', label: 'Profile', section: 'personal' },
-  ]))
-  await setString(cil, ATL_HUB_FEATURES as `0x${string}`, JSON.stringify({ activities: true, members: true, treasury: true, reviews: true, genmap: true }))
-  await setString(cil, ATL_HUB_THEME as `0x${string}`, JSON.stringify({ accent: '#0d6e6e', accentLight: 'rgba(13,110,110,0.10)', bg: '#f5f9f9', headerBg: '#ffffff', text: '#2d4a4a', textMuted: '#7a9a9a' }))
-  await setString(cil, ATL_HUB_GREETING as `0x${string}`, 'Welcome, {name}')
+  // Hub config writes skipped when edges already exist (deployer loses ownership after first seed).
+  // Static fallback profiles in hub-profiles.ts provide the nav config.
 
   // ─── On-Chain Relationships ───────────────────────────────────────
   // Quick check: if ILAD already has outgoing ALLIANCE edges, skip all edge creation

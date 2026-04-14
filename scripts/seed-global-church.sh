@@ -383,7 +383,8 @@ for (const u of users) {
   }
 }
 
-// Person agents
+// Legacy table writes — silently skip if tables don't exist
+try {
 const personAgents = [
   { userId: 'gc-user-001', name: 'Pastor James', addr: '$PA_JAMES' },
   { userId: 'gc-user-002', name: 'Dr. Sarah Mitchell', addr: '$PA_SARAH' },
@@ -434,7 +435,8 @@ for (const a of treasuryAgents) {
   }
 }
 
-console.log('Global.Church: 5 users, 5 person agents, 5 organizations, 2 treasury agents seeded');
+} catch(e) { /* legacy tables may not exist */ }
+console.log('Global.Church: 5 users seeded (legacy agent tables skipped if absent)');
 "
 
 echo ""
