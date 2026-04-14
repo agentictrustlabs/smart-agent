@@ -3,31 +3,33 @@ import { eq, and } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { getSession } from '@/lib/auth/session'
 import { getPublicClient, getWalletClient, createRelationship, confirmRelationship } from '@/lib/contracts'
+import { getPersonAgentForUser } from '@/lib/agent-registry'
+import { deployPersonAgent } from '@/lib/actions/deploy-person-agent.action'
 import {
   agentControlAbi,
-  ORGANIZATION_GOVERNANCE, ORGANIZATION_MEMBERSHIP, REVIEW_RELATIONSHIP, SERVICE_AGREEMENT,
-  ROLE_OWNER, ROLE_ADMIN, ROLE_MEMBER, ROLE_TREASURER, ROLE_BOARD_MEMBER,
-  ROLE_AUDITOR, ROLE_OPERATOR, ROLE_EMPLOYEE, ROLE_CONTRACTOR,
-  ROLE_REVIEWER, ROLE_AUTHORIZED_SIGNER, ROLE_CEO, ROLE_SERVICE_PROVIDER, ROLE_ADVISOR,
+  getInviteRoleDefinition,
+  getRelationshipTypeDefinitionByKey,
+  ROLE_MEMBER,
 } from '@smart-agent/sdk'
 
 
-/** Map role strings from invites to SDK role constants and relationship types */
+/** Map invite roles to taxonomy-derived role + relationship type hashes. */
 const ROLE_MAP: Record<string, { role: `0x${string}`; relType: `0x${string}`; isOwner: boolean }> = {
-  'owner': { role: ROLE_OWNER as `0x${string}`, relType: ORGANIZATION_GOVERNANCE as `0x${string}`, isOwner: true },
-  'ceo': { role: ROLE_CEO as `0x${string}`, relType: ORGANIZATION_GOVERNANCE as `0x${string}`, isOwner: true },
-  'treasurer': { role: ROLE_TREASURER as `0x${string}`, relType: ORGANIZATION_GOVERNANCE as `0x${string}`, isOwner: false },
-  'authorized-signer': { role: ROLE_AUTHORIZED_SIGNER as `0x${string}`, relType: ORGANIZATION_GOVERNANCE as `0x${string}`, isOwner: true },
-  'board-member': { role: ROLE_BOARD_MEMBER as `0x${string}`, relType: ORGANIZATION_GOVERNANCE as `0x${string}`, isOwner: false },
-  'advisor': { role: ROLE_ADVISOR as `0x${string}`, relType: ORGANIZATION_GOVERNANCE as `0x${string}`, isOwner: false },
-  'admin': { role: ROLE_ADMIN as `0x${string}`, relType: ORGANIZATION_MEMBERSHIP as `0x${string}`, isOwner: false },
-  'member': { role: ROLE_MEMBER as `0x${string}`, relType: ORGANIZATION_MEMBERSHIP as `0x${string}`, isOwner: false },
-  'operator': { role: ROLE_OPERATOR as `0x${string}`, relType: ORGANIZATION_MEMBERSHIP as `0x${string}`, isOwner: false },
-  'employee': { role: ROLE_EMPLOYEE as `0x${string}`, relType: ORGANIZATION_MEMBERSHIP as `0x${string}`, isOwner: false },
-  'contractor': { role: ROLE_CONTRACTOR as `0x${string}`, relType: SERVICE_AGREEMENT as `0x${string}`, isOwner: false },
-  'service-provider': { role: ROLE_SERVICE_PROVIDER as `0x${string}`, relType: SERVICE_AGREEMENT as `0x${string}`, isOwner: false },
-  'auditor': { role: ROLE_AUDITOR as `0x${string}`, relType: ORGANIZATION_MEMBERSHIP as `0x${string}`, isOwner: false },
-  'reviewer': { role: ROLE_REVIEWER as `0x${string}`, relType: REVIEW_RELATIONSHIP as `0x${string}`, isOwner: false },
+  owner: {
+    role: getInviteRoleDefinition('owner')!.hash,
+    relType: getRelationshipTypeDefinitionByKey('organization-governance')!.hash,
+    isOwner: true,
+  },
+  admin: {
+    role: getInviteRoleDefinition('admin')!.hash,
+    relType: getRelationshipTypeDefinitionByKey('organization-membership')!.hash,
+    isOwner: false,
+  },
+  member: {
+    role: ROLE_MEMBER as `0x${string}`,
+    relType: getRelationshipTypeDefinitionByKey('organization-membership')!.hash,
+    isOwner: false,
+  },
 }
 
 export async function POST(request: Request, { params }: { params: Promise<{ code: string }> }) {
@@ -54,26 +56,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ cod
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 400 })
 
     // Get or auto-deploy person agent
-    let personAgents = await db.select().from(schema.personAgents)
-      .where(eq(schema.personAgents.userId, user.id)).limit(1)
+    let personAgentAddress = await getPersonAgentForUser(user.id)
 
-    if (!personAgents[0]) {
+    if (!personAgentAddress) {
       // Auto-deploy person agent for the user
       try {
-        const { deploySmartAccount } = await import('@/lib/contracts')
-        const salt = BigInt(Date.now())
-        const address = await deploySmartAccount(session.walletAddress as `0x${string}`, salt)
-        await db.insert(schema.personAgents).values({
-          id: crypto.randomUUID(),
-          name: user.name,
-          userId: user.id,
-          smartAccountAddress: address,
-          chainId: Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? '31337'),
-          salt: salt.toString(),
-          status: 'deployed',
-        })
-        personAgents = await db.select().from(schema.personAgents)
-          .where(eq(schema.personAgents.userId, user.id)).limit(1)
+        const result = await deployPersonAgent(user.name)
+        personAgentAddress = result.smartAccountAddress ?? null
       } catch (e) {
         console.warn('Failed to auto-deploy person agent:', e)
       }
@@ -103,10 +92,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ cod
     }
 
     // 2. Create relationship edge with the correct role
-    if (personAgents[0]) {
+    if (personAgentAddress) {
       try {
         const edgeId = await createRelationship({
-          subject: personAgents[0].smartAccountAddress as `0x${string}`,
+          subject: personAgentAddress as `0x${string}`,
           object: invite.agentAddress as `0x${string}`,
           roles: [mapping.role],
           relationshipType: mapping.relType,

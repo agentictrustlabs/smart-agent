@@ -83,28 +83,32 @@ create_relationship() {
   echo "  Edge: ${edgeId:0:18}... [$subject → $object]"
 }
 
+hash_term() {
+  cast keccak "$1"
+}
+
 # Relationship type hashes
-ORG_GOV=$(cast call "$REL" "ORGANIZATION_GOVERNANCE()(bytes32)" --rpc-url "$RPC")
-ORG_MEM=$(cast call "$REL" "ORGANIZATION_MEMBERSHIP()(bytes32)" --rpc-url "$RPC")
-ALLIANCE_T=$(cast call "$REL" "ALLIANCE()(bytes32)" --rpc-url "$RPC")
-INSURANCE=$(cast call "$REL" "INSURANCE_COVERAGE()(bytes32)" --rpc-url "$RPC")
-ECON_SEC=$(cast call "$REL" "ECONOMIC_SECURITY()(bytes32)" --rpc-url "$RPC")
-SVC_AGR=$(cast call "$REL" "SERVICE_AGREEMENT()(bytes32)" --rpc-url "$RPC")
+ORG_GOV=$(hash_term "atl:OrganizationGovernanceRelationship")
+ORG_MEM=$(hash_term "atl:OrganizationMembershipRelationship")
+ALLIANCE_T=$(hash_term "atl:AllianceRelationship")
+INSURANCE=$(hash_term "atl:InsuranceCoverageRelationship")
+ECON_SEC=$(hash_term "atl:EconomicSecurityRelationship")
+SVC_AGR=$(hash_term "atl:ServiceAgreementRelationship")
 
 # Role hashes
-R_OWNER=$(cast call "$REL" "ROLE_OWNER()(bytes32)" --rpc-url "$RPC")
-R_CEO=$(cast call "$REL" "ROLE_CEO()(bytes32)" --rpc-url "$RPC")
-R_AUTH_SIGNER=$(cast call "$REL" "ROLE_AUTHORIZED_SIGNER()(bytes32)" --rpc-url "$RPC")
-R_BOARD=$(cast call "$REL" "ROLE_BOARD_MEMBER()(bytes32)" --rpc-url "$RPC")
-R_ADMIN=$(cast call "$REL" "ROLE_ADMIN()(bytes32)" --rpc-url "$RPC")
-R_MEMBER=$(cast call "$REL" "ROLE_MEMBER()(bytes32)" --rpc-url "$RPC")
-R_OPERATOR=$(cast call "$REL" "ROLE_OPERATOR()(bytes32)" --rpc-url "$RPC")
-R_AUDITOR=$(cast call "$REL" "ROLE_AUDITOR()(bytes32)" --rpc-url "$RPC")
-R_VALIDATOR=$(cast call "$REL" "ROLE_VALIDATOR()(bytes32)" --rpc-url "$RPC")
-R_INSURER=$(cast call "$REL" "ROLE_INSURER()(bytes32)" --rpc-url "$RPC")
-R_STAKER=$(cast call "$REL" "ROLE_STAKER()(bytes32)" --rpc-url "$RPC")
-R_PARTNER=$(cast call "$REL" "ROLE_STRATEGIC_PARTNER()(bytes32)" --rpc-url "$RPC")
-R_SVC_PROV=$(cast call "$REL" "ROLE_SERVICE_PROVIDER()(bytes32)" --rpc-url "$RPC")
+R_OWNER=$(hash_term "atl:OwnerRole")
+R_CEO=$(hash_term "atl:ChiefExecutiveRole")
+R_AUTH_SIGNER=$(hash_term "atl:AuthorizedSignerRole")
+R_BOARD=$(hash_term "atl:BoardMemberRole")
+R_ADMIN=$(hash_term "atl:AdministratorRole")
+R_MEMBER=$(hash_term "atl:MemberRole")
+R_OPERATOR=$(hash_term "atl:OperatorRole")
+R_AUDITOR=$(hash_term "atl:AuditorRole")
+R_VALIDATOR=$(hash_term "atl:ValidatorRole")
+R_INSURER=$(hash_term "atl:InsurerRole")
+R_STAKER=$(hash_term "atl:StakerRole")
+R_PARTNER=$(hash_term "atl:StrategicPartnerRole")
+R_SVC_PROV=$(hash_term "atl:ServiceProviderRole")
 
 echo ""
 echo "--- Governance ---"
@@ -147,8 +151,8 @@ create_relationship "$CAROL_AGENT" "$ORG_DEFI" "$SVC_AGR" "" "$R_SVC_PROV"
 
 # ─── Delegation Authority edges ──────────────────────────────────────
 
-DELEG=$(cast call "$REL" "DELEGATION_AUTHORITY()(bytes32)" --rpc-url "$RPC")
-R_DELEG_OP=$(cast call "$REL" "ROLE_DELEGATED_OPERATOR()(bytes32)" --rpc-url "$RPC")
+DELEG=$(hash_term "atl:DelegationAuthorityRelationship")
+R_DELEG_OP=$(hash_term "atl:DelegatedOperatorRole")
 R_AUTH_SIGNER_2=$R_AUTH_SIGNER
 
 echo ""
@@ -232,8 +236,8 @@ cast send "$TMPL" "createTemplate(bytes32,bytes32,string,string,(address,bool,by
 
 # Template 7: Reviewer Access
 echo "Template: Reviewer Access"
-REVIEW_T=$(cast call "$REL" "REVIEW_RELATIONSHIP()(bytes32)" --rpc-url "$RPC")
-R_REVIEWER_ROLE=$(cast call "$REL" "ROLE_REVIEWER()(bytes32)" --rpc-url "$RPC")
+REVIEW_T=$(hash_term "atl:ReviewRelationship")
+R_REVIEWER_ROLE=$(hash_term "atl:ReviewerRole")
 cast send "$TMPL" "createTemplate(bytes32,bytes32,string,string,(address,bool,bytes)[],string,string)" \
   "$REVIEW_T" "$R_REVIEWER_ROLE" \
   "Reviewer Access" \
@@ -334,13 +338,13 @@ echo "Issuers registered: $(cast call $ISSUER_CONTRACT 'issuerCount()(uint256)' 
 
 # ─── Additional relationship edges ──────────────────────────────────
 
-RUNTIME_T=$(cast call "$REL" "RUNTIME_ATTESTATION()(bytes32)" --rpc-url "$RPC")
-R_RUNS_IN_TEE=$(cast call "$REL" "ROLE_RUNS_IN_TEE()(bytes32)" --rpc-url "$RPC")
-R_ATTESTED_BY=$(cast call "$REL" "ROLE_ATTESTED_BY()(bytes32)" --rpc-url "$RPC")
-R_CONTROLS_RT=$(cast call "$REL" "ROLE_CONTROLS_RUNTIME()(bytes32)" --rpc-url "$RPC")
-R_GUARANTOR=$(cast call "$REL" "ROLE_GUARANTOR()(bytes32)" --rpc-url "$RPC")
-R_INSURED=$(cast call "$REL" "ROLE_INSURED_PARTY()(bytes32)" --rpc-url "$RPC")
-R_ENDORSED=$(cast call "$REL" "ROLE_ENDORSED_BY()(bytes32)" --rpc-url "$RPC")
+RUNTIME_T=$(hash_term "atl:RuntimeAttestationRelationship")
+R_RUNS_IN_TEE=$(hash_term "atl:RunsInTEERole")
+R_ATTESTED_BY=$(hash_term "atl:AttestedByRole")
+R_CONTROLS_RT=$(hash_term "atl:ControlsRuntimeRole")
+R_GUARANTOR=$(hash_term "atl:GuarantorRole")
+R_INSURED=$(hash_term "atl:InsuredPartyRole")
+R_ENDORSED=$(hash_term "atl:EndorsedByRole")
 
 echo ""
 echo "--- Insurance (InsureCo) ---"
@@ -358,10 +362,10 @@ create_relationship "$STAKEPOOL" "$ORG_DEFI" "$ECON_SEC" "" "$R_GUARANTOR"
 echo ""
 echo "--- Validation ---"
 echo "TrustValidator → Alice (validator) [ValidationTrust]"
-create_relationship "$TRUST_VALIDATOR" "$ALICE_AGENT" "$(cast call $REL 'VALIDATION_TRUST()(bytes32)' --rpc-url $RPC)" "" "$R_VALIDATOR"
+create_relationship "$TRUST_VALIDATOR" "$ALICE_AGENT" "$(hash_term 'atl:ValidationTrustRelationship')" "" "$R_VALIDATOR"
 
 echo "TrustValidator → ATL (validator) [ValidationTrust]"
-create_relationship "$TRUST_VALIDATOR" "$ORG_ATL" "$(cast call $REL 'VALIDATION_TRUST()(bytes32)' --rpc-url $RPC)" "" "$R_VALIDATOR"
+create_relationship "$TRUST_VALIDATOR" "$ORG_ATL" "$(hash_term 'atl:ValidationTrustRelationship')" "" "$R_VALIDATOR"
 
 echo ""
 echo "--- TEE / Runtime ---"
@@ -404,18 +408,18 @@ echo "Reviewer Frank:     $REVIEWER_FRANK"
 
 
 # Get new type/role hashes
-ORG_CTRL=$(cast call "$REL" "ORGANIZATIONAL_CONTROL()(bytes32)" --rpc-url "$RPC")
-ACT_VAL=$(cast call "$REL" "ACTIVITY_VALIDATION()(bytes32)" --rpc-url "$RPC")
-REVIEW_T=$(cast call "$REL" "REVIEW_RELATIONSHIP()(bytes32)" --rpc-url "$RPC")
-R_OPERATED=$(cast call "$REL" "ROLE_OPERATED_AGENT()(bytes32)" --rpc-url "$RPC")
-R_ADMINISTERS=$(cast call "$REL" "ROLE_ADMINISTERS()(bytes32)" --rpc-url "$RPC")
-R_ACT_VALIDATOR=$(cast call "$REL" "ROLE_ACTIVITY_VALIDATOR()(bytes32)" --rpc-url "$RPC")
-R_REVIEWER=$(cast call "$REL" "ROLE_REVIEWER()(bytes32)" --rpc-url "$RPC")
+ORG_CTRL=$(hash_term "atl:OrganizationalControlRelationship")
+ACT_VAL=$(hash_term "atl:ActivityValidationRelationship")
+REVIEW_T=$(hash_term "atl:ReviewRelationship")
+R_OPERATED=$(hash_term "atl:OperatedAgentRole")
+R_ADMINISTERS=$(hash_term "atl:AdministersRole")
+R_ACT_VALIDATOR=$(hash_term "atl:ActivityValidatorRole")
+R_REVIEWER=$(hash_term "atl:ReviewerRole")
 
 echo ""
 echo "--- Org Control ---"
 echo "Discovery AI Agent → ATL (operated-agent, managed-agent) [OrganizationalControl]"
-R_MANAGED=$(cast call "$REL" "ROLE_MANAGED_AGENT()(bytes32)" --rpc-url "$RPC")
+R_MANAGED=$(hash_term "atl:ManagedAgentRole")
 create_relationship "$DISCOVERY_AGENT" "$ORG_ATL" "$ORG_CTRL" "" "$R_OPERATED" "$R_MANAGED"
 
 echo "ATL → Discovery AI Agent (administers) [OrganizationalControl]"
@@ -591,6 +595,16 @@ register_term "atl:longitude" "${BASE}longitude" "Longitude" "string"
 register_term "atl:spatialCRS" "${BASE}spatialCRS" "Spatial CRS" "string"
 register_term "atl:spatialType" "${BASE}spatialType" "Spatial Type" "string"
 
+# Hub configuration
+register_term "atl:hubNavConfig" "${BASE}hubNavConfig" "Hub Navigation Config" "string"
+register_term "atl:hubNetworkLabel" "${BASE}hubNetworkLabel" "Hub Network Label" "string"
+register_term "atl:hubContextTerm" "${BASE}hubContextTerm" "Hub Context Term" "string"
+register_term "atl:hubOverviewLabel" "${BASE}hubOverviewLabel" "Hub Overview Label" "string"
+register_term "atl:hubAgentLabel" "${BASE}hubAgentLabel" "Hub Agent Label" "string"
+register_term "atl:hubVocabulary" "${BASE}hubVocabulary" "Hub Vocabulary" "string"
+register_term "atl:hubRoleVocabulary" "${BASE}hubRoleVocabulary" "Hub Role Vocabulary" "string"
+register_term "atl:hubTypeVocabulary" "${BASE}hubTypeVocabulary" "Hub Type Vocabulary" "string"
+
 echo "Ontology terms registered: $(cast call $ONTOLOGY 'termCount()(uint256)' --rpc-url $RPC)"
 
 # ─── Register Agents in Resolver ──────────────────────────────────
@@ -648,7 +662,7 @@ set_controller() {
 }
 
 echo "Setting ATL_CONTROLLER on person agents..."
-set_controller "$ALICE_AGENT" "$ALICE_EOA"
+set_controller "$ALICE_AGENT" "0x0000000000000000000000000000000000001001"
 set_controller "$BOB_AGENT" "0x0000000000000000000000000000000000001002"
 set_controller "$CAROL_AGENT" "0x0000000000000000000000000000000000001003"
 set_controller "$REVIEWER_DAVE" "0x0000000000000000000000000000000000001004"
@@ -678,7 +692,6 @@ const db = new Database('local.db');
 db.prepare(\"DELETE FROM person_agents WHERE user_id LIKE 'test-user-%'\").run();
 db.prepare(\"DELETE FROM org_agents WHERE created_by LIKE 'test-user-%'\").run();
 try { db.prepare(\"DELETE FROM ai_agents WHERE created_by LIKE 'test-user-%'\").run(); } catch(e) {}
-try { db.prepare(\"DELETE FROM review_delegations\").run(); } catch(e) {}
 const ts = () => new Date().toISOString();
 const id = () => require('crypto').randomUUID();
 

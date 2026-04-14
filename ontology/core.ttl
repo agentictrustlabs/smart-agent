@@ -186,6 +186,231 @@ atl:operatedBy a rdf:Property ;
     rdfs:domain atl:AIAgent ;
     rdfs:range atl:OrganizationAgent .
 
+# ─── Relationship Taxonomy ───────────────────────────────────────────
+
+atl:RelationshipType a rdfs:Class ;
+    rdfs:label "Relationship Type" ;
+    rdfs:comment "Semantic class for an edge type used in AgentRelationship." .
+
+atl:RelationshipRole a rdfs:Class ;
+    rdfs:label "Relationship Role" ;
+    rdfs:comment "Semantic class for a role played within a relationship edge." .
+
+atl:InstitutionalRelationship a rdfs:Class ;
+    rdfs:subClassOf atl:RelationshipType ;
+    rdfs:label "Institutional Relationship" .
+
+atl:NetworkRelationship a rdfs:Class ;
+    rdfs:subClassOf atl:RelationshipType ;
+    rdfs:label "Network Relationship" .
+
+atl:AssuranceRelationship a rdfs:Class ;
+    rdfs:subClassOf atl:RelationshipType ;
+    rdfs:label "Assurance Relationship" .
+
+atl:ExecutionRelationship a rdfs:Class ;
+    rdfs:subClassOf atl:RelationshipType ;
+    rdfs:label "Execution Relationship" .
+
+atl:CapitalRelationship a rdfs:Class ;
+    rdfs:subClassOf atl:RelationshipType ;
+    rdfs:label "Capital Relationship" .
+
+atl:InfrastructureRelationship a rdfs:Class ;
+    rdfs:subClassOf atl:RelationshipType ;
+    rdfs:label "Infrastructure Relationship" .
+
+atl:OrganizationGovernanceRelationship a rdfs:Class ;
+    rdfs:subClassOf atl:InstitutionalRelationship ;
+    rdfs:label "Organization Governance Relationship" .
+
+atl:OrganizationMembershipRelationship a rdfs:Class ;
+    rdfs:subClassOf atl:InstitutionalRelationship ;
+    rdfs:label "Organization Membership Relationship" .
+
+atl:AllianceRelationship a rdfs:Class ;
+    rdfs:subClassOf atl:NetworkRelationship ;
+    rdfs:label "Alliance Relationship" .
+
+atl:ValidationTrustRelationship a rdfs:Class ;
+    rdfs:subClassOf atl:AssuranceRelationship ;
+    rdfs:label "Validation Trust Relationship" .
+
+atl:InsuranceCoverageRelationship a rdfs:Class ;
+    rdfs:subClassOf atl:AssuranceRelationship ;
+    rdfs:label "Insurance Coverage Relationship" .
+
+atl:ComplianceRelationship a rdfs:Class ;
+    rdfs:subClassOf atl:AssuranceRelationship ;
+    rdfs:label "Compliance Relationship" .
+
+atl:EconomicSecurityRelationship a rdfs:Class ;
+    rdfs:subClassOf atl:CapitalRelationship ;
+    rdfs:label "Economic Security Relationship" .
+
+atl:ServiceAgreementRelationship a rdfs:Class ;
+    rdfs:subClassOf atl:ExecutionRelationship ;
+    rdfs:label "Service Agreement Relationship" .
+
+atl:DelegationAuthorityRelationship a rdfs:Class ;
+    rdfs:subClassOf atl:ExecutionRelationship ;
+    rdfs:label "Delegation Authority Relationship" .
+
+atl:RuntimeAttestationRelationship a rdfs:Class ;
+    rdfs:subClassOf atl:InfrastructureRelationship ;
+    rdfs:label "Runtime Attestation Relationship" .
+
+atl:BuildProvenanceRelationship a rdfs:Class ;
+    rdfs:subClassOf atl:InfrastructureRelationship ;
+    rdfs:label "Build Provenance Relationship" .
+
+atl:OrganizationalControlRelationship a rdfs:Class ;
+    rdfs:subClassOf atl:ExecutionRelationship ;
+    rdfs:label "Organizational Control Relationship" .
+
+atl:ActivityValidationRelationship a rdfs:Class ;
+    rdfs:subClassOf atl:AssuranceRelationship ;
+    rdfs:label "Activity Validation Relationship" .
+
+atl:ReviewRelationship a rdfs:Class ;
+    rdfs:subClassOf atl:AssuranceRelationship ;
+    rdfs:label "Review Relationship" .
+
+atl:HasMemberRelationship a rdfs:Class ;
+    rdfs:subClassOf atl:NetworkRelationship ;
+    rdfs:label "Has Member Relationship" .
+
+atl:GovernanceRole a rdfs:Class ;
+    rdfs:subClassOf atl:RelationshipRole ;
+    rdfs:label "Governance Role" .
+
+atl:MembershipRole a rdfs:Class ;
+    rdfs:subClassOf atl:RelationshipRole ;
+    rdfs:label "Membership Role" .
+
+atl:AssuranceRole a rdfs:Class ;
+    rdfs:subClassOf atl:RelationshipRole ;
+    rdfs:label "Assurance Role" .
+
+atl:ServiceRole a rdfs:Class ;
+    rdfs:subClassOf atl:RelationshipRole ;
+    rdfs:label "Service Role" .
+
+atl:EconomicRole a rdfs:Class ;
+    rdfs:subClassOf atl:RelationshipRole ;
+    rdfs:label "Economic Role" .
+
+atl:AllianceRole a rdfs:Class ;
+    rdfs:subClassOf atl:RelationshipRole ;
+    rdfs:label "Alliance Role" .
+
+atl:ExecutionRole a rdfs:Class ;
+    rdfs:subClassOf atl:RelationshipRole ;
+    rdfs:label "Execution Role" .
+
+atl:InfrastructureRole a rdfs:Class ;
+    rdfs:subClassOf atl:RelationshipRole ;
+    rdfs:label "Infrastructure Role" .
+
+atl:OwnerRole a rdfs:Class ;
+    rdfs:subClassOf atl:GovernanceRole ;
+    rdfs:label "Owner Role" .
+
+atl:BoardMemberRole a rdfs:Class ;
+    rdfs:subClassOf atl:GovernanceRole ;
+    rdfs:label "Board Member Role" .
+
+atl:ChiefExecutiveRole a rdfs:Class ;
+    rdfs:subClassOf atl:GovernanceRole ;
+    rdfs:label "Chief Executive Role" .
+
+atl:TreasurerRole a rdfs:Class ;
+    rdfs:subClassOf atl:GovernanceRole ;
+    rdfs:label "Treasurer Role" .
+
+atl:AuthorizedSignerRole a rdfs:Class ;
+    rdfs:subClassOf atl:GovernanceRole ;
+    rdfs:label "Authorized Signer Role" .
+
+atl:AdvisorRole a rdfs:Class ;
+    rdfs:subClassOf atl:RelationshipRole ;
+    rdfs:label "Advisor Role" .
+
+atl:AdministratorRole a rdfs:Class ;
+    rdfs:subClassOf atl:MembershipRole ;
+    rdfs:label "Administrator Role" .
+
+atl:MemberRole a rdfs:Class ;
+    rdfs:subClassOf atl:MembershipRole ;
+    rdfs:label "Member Role" .
+
+atl:OperatorRole a rdfs:Class ;
+    rdfs:subClassOf atl:MembershipRole ;
+    rdfs:label "Operator Role" .
+
+atl:AuditorRole a rdfs:Class ;
+    rdfs:subClassOf atl:AssuranceRole ;
+    rdfs:label "Auditor Role" .
+
+atl:ValidatorRole a rdfs:Class ;
+    rdfs:subClassOf atl:AssuranceRole ;
+    rdfs:label "Validator Role" .
+
+atl:StrategicPartnerRole a rdfs:Class ;
+    rdfs:subClassOf atl:AllianceRole ;
+    rdfs:label "Strategic Partner Role" .
+
+atl:ServiceProviderRole a rdfs:Class ;
+    rdfs:subClassOf atl:ServiceRole ;
+    rdfs:label "Service Provider Role" .
+
+atl:StakerRole a rdfs:Class ;
+    rdfs:subClassOf atl:EconomicRole ;
+    rdfs:label "Staker Role" .
+
+atl:ReviewerRole a rdfs:Class ;
+    rdfs:subClassOf atl:AssuranceRole ;
+    rdfs:label "Reviewer Role" .
+
+atl:ReviewedAgentRole a rdfs:Class ;
+    rdfs:subClassOf atl:AssuranceRole ;
+    rdfs:label "Reviewed Agent Role" .
+
+atl:OperatedAgentRole a rdfs:Class ;
+    rdfs:subClassOf atl:ExecutionRole ;
+    rdfs:label "Operated Agent Role" .
+
+atl:appliesToRelationshipType a rdf:Property ;
+    rdfs:label "Applies To Relationship Type" ;
+    rdfs:comment "Associates a role or policy term with a relationship type." ;
+    rdfs:range atl:RelationshipType .
+
+atl:delegationPolicyKey a rdf:Property ;
+    rdfs:label "Delegation Policy Key" ;
+    rdfs:comment "Off-chain policy key used to resolve executable delegation caveats." ;
+    rdfs:range xsd:string .
+
+atl:delegationTemplateName a rdf:Property ;
+    rdfs:label "Delegation Template Name" ;
+    rdfs:comment "Human-readable template name associated with a relationship role." ;
+    rdfs:range xsd:string .
+
+atl:hubLabel_generic a rdf:Property ;
+    rdfs:label "Hub Label (Generic)" ;
+    rdfs:range xsd:string .
+
+atl:hubLabel_catalyst a rdf:Property ;
+    rdfs:label "Hub Label (Catalyst)" ;
+    rdfs:range xsd:string .
+
+atl:hubLabel_globalChurch a rdf:Property ;
+    rdfs:label "Hub Label (Global Church)" ;
+    rdfs:range xsd:string .
+
+atl:hubLabel_cil a rdf:Property ;
+    rdfs:label "Hub Label (CIL)" ;
+    rdfs:range xsd:string .
+
 # ─── Metadata ────────────────────────────────────────────────────────
 
 atl:metadataURI a rdf:Property ;

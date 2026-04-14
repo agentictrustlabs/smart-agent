@@ -61,6 +61,12 @@ export const ATL_HUB_NETWORK_LABEL = keccak256(toBytes('atl:hubNetworkLabel'))
 export const ATL_HUB_CONTEXT_TERM = keccak256(toBytes('atl:hubContextTerm'))
 export const ATL_HUB_OVERVIEW_LABEL = keccak256(toBytes('atl:hubOverviewLabel'))
 export const ATL_HUB_AGENT_LABEL = keccak256(toBytes('atl:hubAgentLabel'))
+/** JSON map: relationship type hash → domain label */
+export const ATL_HUB_VOCABULARY = keccak256(toBytes('atl:hubVocabulary'))
+/** JSON map: role hash → domain label */
+export const ATL_HUB_ROLE_VOCABULARY = keccak256(toBytes('atl:hubRoleVocabulary'))
+/** JSON map: agent type hash → domain label */
+export const ATL_HUB_TYPE_VOCABULARY = keccak256(toBytes('atl:hubTypeVocabulary'))
 
 // ─── ERC-4337 technical ─────────────────────────────────────────────
 export const ATL_ENTRY_POINT = keccak256(toBytes('atl:entryPoint'))

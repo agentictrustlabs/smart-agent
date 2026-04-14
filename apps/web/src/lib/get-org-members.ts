@@ -2,7 +2,7 @@ import { getEdgesByObject, getEdgesBySubject, getEdge, getEdgeRoles } from '@/li
 import { roleName } from '@smart-agent/sdk'
 import { getAgentMetadata } from '@/lib/agent-metadata'
 import { getAgentKind } from '@/lib/agent-registry'
-import { db, schema } from '@/db'
+import { getAgentGenMapData, getAgentTemplateId } from '@/lib/agent-resolver'
 
 export interface OrgMember {
   address: string
@@ -79,17 +79,14 @@ export async function getConnectedOrgs(orgAddress: string): Promise<Array<{
   } catch { /* ignored */ }
 
   const results: Array<{ address: string; name: string; description: string; metadata: Record<string, unknown> | null; templateId: string | null }> = []
-  const orgRows = await db.select().from(schema.orgAgents)
-  const orgRowByAddress = new Map(orgRows.map(org => [org.smartAccountAddress.toLowerCase(), org]))
   for (const addr of connectedAddrs) {
     const meta = await getAgentMetadata(addr)
-    const row = orgRowByAddress.get(addr)
     results.push({
       address: addr,
       name: meta.displayName,
       description: meta.description,
-      metadata: ((row as Record<string, unknown> | undefined)?.metadata as Record<string, unknown> | null | undefined) ?? null,
-      templateId: ((row as Record<string, unknown> | undefined)?.templateId as string | null | undefined) ?? null,
+      metadata: await getAgentGenMapData(addr),
+      templateId: await getAgentTemplateId(addr),
     })
   }
   return results

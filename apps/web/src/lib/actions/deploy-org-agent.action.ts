@@ -6,8 +6,8 @@ import { requireSession } from '@/lib/auth/session'
 import { deploySmartAccount, getPublicClient, getWalletClient } from '@/lib/contracts'
 import { agentControlAbi } from '@smart-agent/sdk'
 import { keccak256, encodePacked } from 'viem'
-
-const DEFAULT_CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID || '31337')
+import { registerAgentMetadata } from '@/lib/actions/agent-metadata.action'
+import { addAgentController } from '@/lib/agent-resolver'
 
 export interface DeployOrgAgentInput {
   name: string
@@ -106,22 +106,15 @@ export async function deployOrgAgent(
       }
     }
 
-    // 4. Store in DB
-    const agentId = crypto.randomUUID()
-
-    await db.insert(schema.orgAgents).values({
-      id: agentId,
-      name: input.name.trim(),
-      description: input.description.trim() || null,
-      createdBy: user.id,
-      smartAccountAddress,
-      chainId: DEFAULT_CHAIN_ID,
-      salt: saltHash,
-      implementationType: 'hybrid',
-      status: 'deployed',
+    await registerAgentMetadata({
+      agentAddress: smartAccountAddress,
+      displayName: input.name.trim(),
+      description: input.description.trim(),
+      agentType: 'org',
     })
+    await addAgentController(smartAccountAddress, ownerAddress)
 
-    return { success: true, agentId, smartAccountAddress }
+    return { success: true, agentId: smartAccountAddress, smartAccountAddress }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to deploy org agent'
     console.error('Org agent deployment failed:', message)

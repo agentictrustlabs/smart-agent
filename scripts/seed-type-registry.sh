@@ -28,21 +28,21 @@ register_type() {
 }
 
 # Compute type hashes
-OG=$(cast keccak "OrganizationGovernance")
-OM=$(cast keccak "OrganizationMembership")
-AL=$(cast keccak "Alliance")
-VT=$(cast keccak "ValidationTrust")
-IC=$(cast keccak "InsuranceCoverage")
-CO=$(cast keccak "Compliance")
-ES=$(cast keccak "EconomicSecurity")
-SA=$(cast keccak "ServiceAgreement")
-DA=$(cast keccak "DelegationAuthority")
-RA=$(cast keccak "RuntimeAttestation")
-BP=$(cast keccak "BuildProvenance")
-OC=$(cast keccak "OrganizationalControl")
-AV=$(cast keccak "ActivityValidation")
-RR=$(cast keccak "ReviewRelationship")
-HM=$(cast keccak "HasMember")
+OG=$(cast keccak "atl:OrganizationGovernanceRelationship")
+OM=$(cast keccak "atl:OrganizationMembershipRelationship")
+AL=$(cast keccak "atl:AllianceRelationship")
+VT=$(cast keccak "atl:ValidationTrustRelationship")
+IC=$(cast keccak "atl:InsuranceCoverageRelationship")
+CO=$(cast keccak "atl:ComplianceRelationship")
+ES=$(cast keccak "atl:EconomicSecurityRelationship")
+SA=$(cast keccak "atl:ServiceAgreementRelationship")
+DA=$(cast keccak "atl:DelegationAuthorityRelationship")
+RA=$(cast keccak "atl:RuntimeAttestationRelationship")
+BP=$(cast keccak "atl:BuildProvenanceRelationship")
+OC=$(cast keccak "atl:OrganizationalControlRelationship")
+AV=$(cast keccak "atl:ActivityValidationRelationship")
+RR=$(cast keccak "atl:ReviewRelationship")
+HM=$(cast keccak "atl:HasMemberRelationship")
 
 # Register all types with semantic properties
 # Args: hash, label, isHierarchical, isTransitive, isSymmetric

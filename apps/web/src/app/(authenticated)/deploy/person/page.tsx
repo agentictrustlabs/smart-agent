@@ -1,19 +1,19 @@
 import { redirect } from 'next/navigation'
-import { db, schema } from '@/db'
-import { eq } from 'drizzle-orm'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { DeployPersonAgentClient } from './DeployPersonAgentClient'
 import Link from 'next/link'
+import { getPersonAgentForUser } from '@/lib/agent-registry'
+import { getAgentMetadata } from '@/lib/agent-metadata'
 
 export default async function DeployPersonAgentPage() {
   const currentUser = await getCurrentUser()
   if (!currentUser) redirect('/')
 
   // Check if already deployed
-  const existing = await db.select().from(schema.personAgents)
-    .where(eq(schema.personAgents.userId, currentUser.id)).limit(1)
+  const existingAddress = await getPersonAgentForUser(currentUser.id)
 
-  if (existing[0]) {
+  if (existingAddress) {
+    const existingMeta = await getAgentMetadata(existingAddress)
     return (
       <div data-page="deploy-person">
         <div data-component="page-header">
@@ -21,17 +21,17 @@ export default async function DeployPersonAgentPage() {
           <p>You already have a person agent.</p>
         </div>
         <div data-component="agent-card" data-status="deployed">
-          <h3>{(existing[0] as Record<string, unknown>).name as string || 'Person Agent'}</h3>
+          <h3>{existingMeta.displayName || 'Person Agent'}</h3>
           <dl>
             <dt>Smart Account</dt>
-            <dd data-component="address">{existing[0].smartAccountAddress}</dd>
+            <dd data-component="address">{existingAddress}</dd>
             <dt>Status</dt>
             <dd data-status="deployed">deployed</dd>
           </dl>
         </div>
         <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem' }}>
           <Link href="/dashboard">Dashboard</Link>
-          <Link href={`/agents/${existing[0].smartAccountAddress}`}>Settings</Link>
+          <Link href={`/agents/${existingAddress}`}>Settings</Link>
         </div>
       </div>
     )

@@ -8,8 +8,6 @@ import {
   ATL_CAPABILITY, ATL_SUPPORTED_TRUST, ATL_A2A_ENDPOINT, ATL_MCP_SERVER,
   TYPE_PERSON, TYPE_ORGANIZATION, TYPE_AI_AGENT,
 } from '@smart-agent/sdk'
-import { db, schema } from '@/db'
-import { eq } from 'drizzle-orm'
 import { MetadataEditorClient } from './MetadataEditorClient'
 import { AgentSubNav } from '@/components/nav/AgentSubNav'
 
@@ -22,17 +20,13 @@ export default async function MetadataEditorPage({ params }: { params: Promise<{
   const resolverAddr = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}`
   const client = getPublicClient()
 
-  // Get agent name from DB (fallback)
-  let agentName = 'Agent'
-  let dbAgentType = 'person'
-  let dbAiClass = ''
-  let dbDescription = ''
-  const org = await db.select().from(schema.orgAgents).where(eq(schema.orgAgents.smartAccountAddress, agentAddress)).limit(1)
-  if (org[0]) { agentName = org[0].name; dbAgentType = 'org'; dbDescription = org[0].description ?? '' }
-  const ai = await db.select().from(schema.aiAgents).where(eq(schema.aiAgents.smartAccountAddress, agentAddress)).limit(1)
-  if (ai[0]) { agentName = ai[0].name; dbAgentType = 'ai'; dbAiClass = ai[0].agentType ?? 'custom'; dbDescription = ai[0].description ?? '' }
-  const person = await db.select().from(schema.personAgents).where(eq(schema.personAgents.smartAccountAddress, agentAddress)).limit(1)
-  if (person[0]) { agentName = person[0].name; dbAgentType = 'person' }
+  // Get agent identity from on-chain resolver
+  const { getAgentMetadata } = await import('@/lib/agent-metadata')
+  const agentMeta = await getAgentMetadata(agentAddress)
+  const agentName = agentMeta.displayName
+  const dbAgentType = agentMeta.agentType === 'unknown' ? 'person' : agentMeta.agentType
+  const dbAiClass = agentMeta.aiAgentClass
+  const dbDescription = agentMeta.description
 
   // Load existing resolver data
   let initial = {
@@ -60,7 +54,7 @@ export default async function MetadataEditorPage({ params }: { params: Promise<{
           functionName: 'getCore', args: [agentAddress],
         }) as { displayName: string; description: string; agentType: `0x${string}`; agentClass: `0x${string}`; active: boolean }
 
-        const typeMap: Record<string, string> = {
+        const typeMap: Record<string, 'person' | 'org' | 'ai'> = {
           [TYPE_PERSON]: 'person', [TYPE_ORGANIZATION]: 'org', [TYPE_AI_AGENT]: 'ai',
         }
 

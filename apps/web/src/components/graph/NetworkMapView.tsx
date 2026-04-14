@@ -87,8 +87,16 @@ function LeafletMap({ agents, edges, onSelect }: Props & { onSelect: (s: Selecti
 
   useEffect(() => {
     if (!mapRef.current || mapInstance.current) return
+    let cancelled = false
 
     import('leaflet').then((L) => {
+      if (cancelled || !mapRef.current || mapInstance.current) return
+
+      const container = mapRef.current as HTMLDivElement & { _leaflet_id?: number }
+      if (container._leaflet_id) {
+        delete container._leaflet_id
+      }
+
       const lats = agents.map(a => a.latitude)
       const lons = agents.map(a => a.longitude)
       const center: [number, number] = [
@@ -96,7 +104,7 @@ function LeafletMap({ agents, edges, onSelect }: Props & { onSelect: (s: Selecti
         (Math.min(...lons) + Math.max(...lons)) / 2,
       ]
 
-      const map = L.map(mapRef.current!, { center, zoom: 13, scrollWheelZoom: true })
+      const map = L.map(container, { center, zoom: 13, scrollWheelZoom: true })
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
@@ -177,6 +185,7 @@ function LeafletMap({ agents, edges, onSelect }: Props & { onSelect: (s: Selecti
     })
 
     return () => {
+      cancelled = true
       if (mapInstance.current) {
         mapInstance.current.remove()
         mapInstance.current = null

@@ -4,6 +4,7 @@ import { eq } from 'drizzle-orm'
 import { getEdgesBySubject } from '@/lib/contracts'
 import { getPersonAgentForUser, getOrgsForPersonAgent, getAiAgentsForOrg } from '@/lib/agent-registry'
 import { getAgentMetadata } from '@/lib/agent-metadata'
+import { getAgentTemplateId } from '@/lib/agent-resolver'
 
 export async function GET() {
   try {
@@ -23,11 +24,6 @@ export async function GET() {
     const rolesByOrg: Record<string, string[]> = {}
     for (const o of orgRoles) rolesByOrg[o.address.toLowerCase()] = o.roles
 
-    const orgRows = await db.select().from(schema.orgAgents)
-    const templateByAddress = new Map(
-      orgRows.map(org => [org.smartAccountAddress.toLowerCase(), (org as Record<string, unknown>).templateId as string | null ?? null])
-    )
-
     // Build org list with on-chain metadata
     const orgs: Array<{ address: string; name: string; description: string; templateId: string | null }> = []
     for (const o of orgRoles) {
@@ -36,7 +32,7 @@ export async function GET() {
         address: o.address,
         name: meta.displayName,
         description: meta.description,
-        templateId: templateByAddress.get(o.address.toLowerCase()) ?? null,
+        templateId: await getAgentTemplateId(o.address),
       })
     }
 

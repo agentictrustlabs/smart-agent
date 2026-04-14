@@ -43,6 +43,17 @@ export { createAgentSession, isSessionValid } from './session'
 // ─── Relationship Protocol (3-contract) ──────────────────────────────
 export {
   RelationshipProtocolClient,
+  hashTaxonomyTerm,
+  listRelationshipTypeDefinitions,
+  listRoleDefinitions,
+  getRelationshipTypeDefinitionByKey,
+  getRelationshipTypeDefinitionByHash,
+  getRoleDefinitionByKey,
+  getRoleDefinitionByHash,
+  getDelegationPolicyDefinitionByKey,
+  getDelegationPolicyDefinitionForTerms,
+  listRoleDefinitionsForRelationshipType,
+  getInviteRoleDefinition,
   // Relationship types
   ORGANIZATION_GOVERNANCE, ORGANIZATION_MEMBERSHIP, ALLIANCE,
   VALIDATION_TRUST, INSURANCE_COVERAGE, COMPLIANCE,
@@ -104,6 +115,7 @@ export {
   ATL_LATITUDE, ATL_LONGITUDE, ATL_SPATIAL_CRS, ATL_SPATIAL_TYPE,
   ATL_HUB_NAV_CONFIG, ATL_HUB_NETWORK_LABEL, ATL_HUB_CONTEXT_TERM,
   ATL_HUB_OVERVIEW_LABEL, ATL_HUB_AGENT_LABEL,
+  ATL_HUB_VOCABULARY, ATL_HUB_ROLE_VOCABULARY, ATL_HUB_TYPE_VOCABULARY,
   ATL_ENTRY_POINT, ATL_IMPLEMENTATION, ATL_DELEGATION_MANAGER,
   AGENT_TYPE_LABELS, AI_CLASS_LABELS,
 } from './predicates'

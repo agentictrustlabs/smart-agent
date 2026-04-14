@@ -4,6 +4,7 @@ import { getUserOrgs } from '@/lib/get-user-orgs'
 import { db, schema } from '@/db'
 import { eq } from 'drizzle-orm'
 import { getOrgMembers } from '@/lib/get-org-members'
+import { getConnectedOrgs } from '@/lib/get-org-members'
 import { MembersClient } from './MembersClient'
 
 export default async function MembersPage() {
@@ -43,16 +44,17 @@ export default async function MembersPage() {
   }
 
   // Gen map nodes for assignment dropdown
-  let genNodes: Array<{ id: string; name: string }> = []
-  try {
-    const allNodes = await db.select().from(schema.genMapNodes)
-    genNodes = allNodes
-      .filter(n => orgAddresses.includes(n.networkAddress.toLowerCase()))
-      .map(n => ({ id: n.id, name: n.name }))
-    if (genNodes.length === 0) {
-      genNodes = allNodes.map(n => ({ id: n.id, name: n.name }))
+  const genNodes: Array<{ id: string; name: string }> = []
+  const seenNodes = new Set<string>()
+  for (const org of userOrgs) {
+    const connected = await getConnectedOrgs(org.address)
+    for (const node of connected) {
+      const key = node.address.toLowerCase()
+      if (seenNodes.has(key)) continue
+      seenNodes.add(key)
+      genNodes.push({ id: key, name: node.name })
     }
-  } catch { /* ignored */ }
+  }
 
   return (
     <div data-page="members">

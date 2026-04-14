@@ -1,19 +1,19 @@
 import { redirect } from 'next/navigation'
 import { db, schema } from '@/db'
-import { eq, and } from 'drizzle-orm'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { getEdgesBySubject, getEdge, getEdgeRoles } from '@/lib/contracts'
-import { ROLE_REVIEWER } from '@smart-agent/sdk'
+import { REVIEW_RELATIONSHIP, ROLE_REVIEWER } from '@smart-agent/sdk'
 import { SubmitReviewClient } from './SubmitReviewClient'
+import { getPersonAgentForUser } from '@/lib/agent-registry'
+import { listRegisteredAgents } from '@/lib/agent-resolver'
 
 export default async function SubmitReviewPage() {
   const currentUser = await getCurrentUser()
   if (!currentUser) redirect('/')
 
-  const personAgents = await db.select().from(schema.personAgents)
-    .where(eq(schema.personAgents.userId, currentUser.id)).limit(1)
+  const myPersonAgent = await getPersonAgentForUser(currentUser.id)
 
-  if (!personAgents[0]) {
+  if (!myPersonAgent) {
     return (
       <div data-page="submit-review">
         <div data-component="page-header">
@@ -27,61 +27,37 @@ export default async function SubmitReviewPage() {
     )
   }
 
-  const myAgentAddr = personAgents[0].smartAccountAddress.toLowerCase()
-
   // Find agents where user has active reviewer relationship
   const reviewableAgents: Array<{ address: string; name: string; delegationStatus: string; delegationExpiry: string | null }> = []
-  const allOrgs = await db.select().from(schema.orgAgents)
-  const allPerson = await db.select().from(schema.personAgents)
-  const allAI = await db.select().from(schema.aiAgents)
+  const allAgents = await listRegisteredAgents()
   const allUsers = await db.select().from(schema.users)
 
   const getName = (addr: string) => {
-    const org = allOrgs.find((o) => o.smartAccountAddress.toLowerCase() === addr.toLowerCase())
-    if (org) return org.name
-    const ai = allAI.find((a) => a.smartAccountAddress.toLowerCase() === addr.toLowerCase())
-    if (ai) return ai.name
-    const p = allPerson.find((p) => p.smartAccountAddress.toLowerCase() === addr.toLowerCase())
+    const agent = allAgents.find((entry) => entry.address.toLowerCase() === addr.toLowerCase())
+    if (agent?.name) return agent.name
+    const p = allAgents.find((entry) => entry.kind === 'person' && entry.address.toLowerCase() === addr.toLowerCase())
     if (p) {
-      const u = allUsers.find((u) => u.id === p.userId)
-      return (p as Record<string, unknown>).name as string || u?.name || 'Agent'
+      const u = allUsers.find((user) =>
+        p.controllers.some(controller => controller.toLowerCase() === user.walletAddress.toLowerCase())
+      )
+      return p.name || u?.name || 'Agent'
     }
     return `${addr.slice(0, 6)}...${addr.slice(-4)}`
   }
 
   try {
-    const edgeIds = await getEdgesBySubject(personAgents[0].smartAccountAddress as `0x${string}`)
+    const edgeIds = await getEdgesBySubject(myPersonAgent as `0x${string}`)
     for (const edgeId of edgeIds) {
       const edge = await getEdge(edgeId)
+      if (edge.relationshipType !== REVIEW_RELATIONSHIP) continue
       if (edge.status < 2) continue // need confirmed or active
       const roles = await getEdgeRoles(edgeId)
       if (roles.some((r) => r === ROLE_REVIEWER)) {
-        // Check delegation status
-        const delegations = await db.select().from(schema.reviewDelegations)
-          .where(and(
-            eq(schema.reviewDelegations.reviewerAgentAddress, myAgentAddr),
-            eq(schema.reviewDelegations.subjectAgentAddress, edge.object_.toLowerCase()),
-            eq(schema.reviewDelegations.status, 'active'),
-          ))
-          .limit(1)
-
-        let delegationStatus = 'none'
-        let delegationExpiry: string | null = null
-        if (delegations[0]) {
-          const expiresAt = new Date(delegations[0].expiresAt)
-          if (expiresAt > new Date()) {
-            delegationStatus = 'active'
-            delegationExpiry = delegations[0].expiresAt
-          } else {
-            delegationStatus = 'expired'
-          }
-        }
-
         reviewableAgents.push({
           address: edge.object_,
           name: getName(edge.object_),
-          delegationStatus,
-          delegationExpiry,
+          delegationStatus: 'available',
+          delegationExpiry: null,
         })
       }
     }

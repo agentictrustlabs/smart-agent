@@ -114,17 +114,21 @@ create_rel() {
   echo "  Edge created"
 }
 
-ORG_GOV=$(cast call "$REL" "ORGANIZATION_GOVERNANCE()(bytes32)" --rpc-url "$RPC")
-ORG_MEM=$(cast call "$REL" "ORGANIZATION_MEMBERSHIP()(bytes32)" --rpc-url "$RPC")
-ORG_CTRL=$(cast call "$REL" "ORGANIZATIONAL_CONTROL()(bytes32)" --rpc-url "$RPC")
-ALLIANCE=$(cast call "$REL" "ALLIANCE()(bytes32)" --rpc-url "$RPC")
-R_OWNER=$(cast call "$REL" "ROLE_OWNER()(bytes32)" --rpc-url "$RPC")
-R_MEMBER=$(cast call "$REL" "ROLE_MEMBER()(bytes32)" --rpc-url "$RPC")
-R_OPERATOR=$(cast call "$REL" "ROLE_OPERATOR()(bytes32)" --rpc-url "$RPC")
-R_BOARD=$(cast call "$REL" "ROLE_BOARD_MEMBER()(bytes32)" --rpc-url "$RPC")
-R_ADVISOR=$(cast call "$REL" "ROLE_ADVISOR()(bytes32)" --rpc-url "$RPC")
-R_OPERATED=$(cast call "$REL" "ROLE_OPERATED_AGENT()(bytes32)" --rpc-url "$RPC")
-R_PARTNER=$(cast call "$REL" "ROLE_STRATEGIC_PARTNER()(bytes32)" --rpc-url "$RPC")
+hash_term() {
+  cast keccak "$1"
+}
+
+ORG_GOV=$(hash_term "atl:OrganizationGovernanceRelationship")
+ORG_MEM=$(hash_term "atl:OrganizationMembershipRelationship")
+ORG_CTRL=$(hash_term "atl:OrganizationalControlRelationship")
+ALLIANCE=$(hash_term "atl:AllianceRelationship")
+R_OWNER=$(hash_term "atl:OwnerRole")
+R_MEMBER=$(hash_term "atl:MemberRole")
+R_OPERATOR=$(hash_term "atl:OperatorRole")
+R_BOARD=$(hash_term "atl:BoardMemberRole")
+R_ADVISOR=$(hash_term "atl:AdvisorRole")
+R_OPERATED=$(hash_term "atl:OperatedAgentRole")
+R_PARTNER=$(hash_term "atl:StrategicPartnerRole")
 
 echo ""
 echo "=== Person → Org Relationships ==="
@@ -204,7 +208,7 @@ NAV_JSON='[{"href":"/dashboard","label":"Network View"},{"href":"/agents","label
 cast send "$RESOLVER" "setStringProperty(address,bytes32,string)" "$HUB_CATALYST" "$HUB_NAV" "$NAV_JSON" --rpc-url "$RPC" --private-key "$KEY" > /dev/null 2>&1
 
 # HAS_MEMBER edges
-HAS_MEMBER=$(cast call "$REL" "HAS_MEMBER()(bytes32)" --rpc-url "$RPC")
+HAS_MEMBER=$(hash_term "atl:HasMemberRelationship")
 echo "Creating HAS_MEMBER edges..."
 for AGENT in $NETWORK $HUB_DANANG $CIRCLE_SONTRA $CIRCLE_HANHOA $CIRCLE_MYKE $CIRCLE_THANH $CIRCLE_LIEN $CIRCLE_NGU $CIRCLE_CAM $ANALYTICS $PA_ELENA $PA_LINH $PA_TRAN $PA_MAI $PA_JAMES $PA_HOA $PA_DUC; do
   create_rel "$HUB_CATALYST" "$AGENT" "$HAS_MEMBER" "" "$R_MEMBER"

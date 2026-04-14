@@ -1,20 +1,23 @@
 'use server'
 
 import { requireSession } from '@/lib/auth/session'
-import { createRelationship, confirmRelationship, issueReviewDelegation } from '@/lib/contracts'
+import { createRelationship, confirmRelationship } from '@/lib/contracts'
 import { db, schema } from '@/db'
 import { eq } from 'drizzle-orm'
-import { keccak256, toBytes } from 'viem'
-import { ORGANIZATION_MEMBERSHIP, ROLE_REVIEWER } from '@smart-agent/sdk'
-
-function roleToHash(role: string): `0x${string}` {
-  return keccak256(toBytes(role))
-}
+import {
+  getRelationshipTypeDefinitionByHash,
+  getRoleDefinitionByHash,
+  relationshipTypeName,
+  roleName,
+} from '@smart-agent/sdk'
+import { findAgentOwnerUserIds } from '@/lib/agent-resolver'
+import { getAgentMetadata } from '@/lib/agent-metadata'
 
 export interface AssertRelationshipInput {
-  personAgentAddress: string
-  orgAgentAddress: string
-  role: string
+  subjectAgentAddress: string
+  objectAgentAddress: string
+  relationshipType: `0x${string}`
+  role: `0x${string}`
 }
 
 export interface AssertRelationshipResult {
@@ -39,46 +42,31 @@ export async function assertRelationship(
     const user = users[0]
     if (!user) return { success: false, error: 'User not found' }
 
-    const roleHash = roleToHash(input.role)
+    const relationshipTypeDef = getRelationshipTypeDefinitionByHash(input.relationshipType)
+    const roleDef = getRoleDefinitionByHash(input.role)
+    if (!relationshipTypeDef || !roleDef) {
+      return { success: false, error: 'Unknown relationship type or role' }
+    }
+
+    if (!roleDef.relationshipTypeKeys.includes(relationshipTypeDef.key)) {
+      return { success: false, error: 'Selected role is not valid for that relationship type' }
+    }
 
     // Create the relationship edge (PROPOSED)
     const edgeId = await createRelationship({
-      subject: input.personAgentAddress as `0x${string}`,
-      object: input.orgAgentAddress as `0x${string}`,
-      roles: [roleHash],
-      relationshipType: ORGANIZATION_MEMBERSHIP,
+      subject: input.subjectAgentAddress as `0x${string}`,
+      object: input.objectAgentAddress as `0x${string}`,
+      roles: [input.role],
+      relationshipType: input.relationshipType,
     })
 
     // Check if user owns the object agent (created it or has ownership relationship)
-    const userOwnsObject = await checkUserOwnsAgent(user.id, input.orgAgentAddress)
+    const userOwnsObject = await checkUserOwnsAgent(user.id, input.objectAgentAddress)
 
     if (userOwnsObject) {
       // Auto-confirm: user owns both sides, no counterparty needed
       try {
         await confirmRelationship(edgeId)
-
-        // Auto-issue review delegation if this is a reviewer relationship
-        if (roleHash === ROLE_REVIEWER) {
-          try {
-            const { delegation, expiresAt } = await issueReviewDelegation({
-              subjectAgentAddress: input.orgAgentAddress as `0x${string}`,
-              reviewerAgentAddress: input.personAgentAddress as `0x${string}`,
-            })
-            await db.insert(schema.reviewDelegations).values({
-              id: crypto.randomUUID(),
-              reviewerAgentAddress: input.personAgentAddress.toLowerCase(),
-              subjectAgentAddress: input.orgAgentAddress.toLowerCase(),
-              edgeId,
-              delegationJson: JSON.stringify(delegation, (_, v) =>
-                typeof v === 'bigint' ? v.toString() : v
-              ),
-              salt: delegation.salt.toString(),
-              expiresAt,
-            })
-          } catch (e) {
-            console.error('Failed to auto-issue review delegation:', e)
-          }
-        }
 
         return { success: true, edgeId, autoConfirmed: true }
       } catch {
@@ -89,24 +77,12 @@ export async function assertRelationship(
 
     // Different owner — send notification to object agent's owner
     try {
-      let ownerId: string | null = null
-      let agentName = 'your agent'
-
-      const orgAgent = await db.select().from(schema.orgAgents)
-        .where(eq(schema.orgAgents.smartAccountAddress, input.orgAgentAddress)).limit(1)
-      if (orgAgent[0]) { ownerId = orgAgent[0].createdBy; agentName = orgAgent[0].name }
-
-      if (!ownerId) {
-        const aiAgent = await db.select().from(schema.aiAgents)
-          .where(eq(schema.aiAgents.smartAccountAddress, input.orgAgentAddress)).limit(1)
-        if (aiAgent[0]) { ownerId = aiAgent[0].createdBy; agentName = aiAgent[0].name }
-      }
-
-      if (!ownerId) {
-        const personAgent = await db.select().from(schema.personAgents)
-          .where(eq(schema.personAgents.smartAccountAddress, input.orgAgentAddress)).limit(1)
-        if (personAgent[0]) { ownerId = personAgent[0].userId; agentName = personAgent[0].name }
-      }
+      const ownerIds = await findAgentOwnerUserIds(input.objectAgentAddress)
+      const agentMeta = await getAgentMetadata(input.objectAgentAddress)
+      const ownerId = ownerIds[0] ?? null
+      const agentName = agentMeta.displayName || 'your agent'
+      const roleLabel = roleName(input.role)
+      const relationshipLabel = relationshipTypeName(input.relationshipType)
 
       if (ownerId) {
         await db.insert(schema.messages).values({
@@ -114,7 +90,7 @@ export async function assertRelationship(
           userId: ownerId,
           type: 'relationship_proposed',
           title: 'Relationship request',
-          body: `Someone wants to be "${input.role}" of ${agentName}. Review and confirm on the Relationships page.`,
+          body: `Someone wants the "${roleLabel}" role in ${relationshipLabel} with ${agentName}. Review and confirm on the Relationships page.`,
           link: '/relationships',
         })
       }
@@ -130,17 +106,6 @@ export async function assertRelationship(
 
 /** Check if user owns an agent (created it or is a person agent owner) */
 async function checkUserOwnsAgent(userId: string, agentAddress: string): Promise<boolean> {
-  const orgAgent = await db.select().from(schema.orgAgents)
-    .where(eq(schema.orgAgents.smartAccountAddress, agentAddress)).limit(1)
-  if (orgAgent[0] && orgAgent[0].createdBy === userId) return true
-
-  const personAgent = await db.select().from(schema.personAgents)
-    .where(eq(schema.personAgents.smartAccountAddress, agentAddress)).limit(1)
-  if (personAgent[0] && personAgent[0].userId === userId) return true
-
-  const aiAgent = await db.select().from(schema.aiAgents)
-    .where(eq(schema.aiAgents.smartAccountAddress, agentAddress)).limit(1)
-  if (aiAgent[0] && aiAgent[0].createdBy === userId) return true
-
-  return false
+  const ownerIds = await findAgentOwnerUserIds(agentAddress)
+  return ownerIds.includes(userId)
 }

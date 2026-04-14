@@ -26,8 +26,10 @@ import {
   ATL_CAPABILITY,
   ATL_SUPPORTED_TRUST,
 } from '@smart-agent/sdk'
+import { addAgentController, setAgentTemplateId } from '@/lib/agent-resolver'
 
 import type { OrgTemplate } from '@/lib/org-templates'
+import { registerAgentMetadata } from '@/lib/actions/agent-metadata.action'
 
 const AI_CLASS_MAP: Record<string, `0x${string}`> = {
   executor: CLASS_EXECUTOR as `0x${string}`,
@@ -83,20 +85,6 @@ export async function deployFromTemplate(
     const orgSalt = BigInt(Date.now())
     const orgAddress = await deploySmartAccount(walletAddress, orgSalt)
 
-    // Store in DB
-    const orgId = crypto.randomUUID()
-    await db.insert(schema.orgAgents).values({
-      id: orgId,
-      name: input.orgName,
-      description: input.orgDescription,
-      createdBy: userId,
-      smartAccountAddress: orgAddress,
-      templateId: input.template.id,
-      chainId: Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? '31337'),
-      salt: orgSalt.toString(),
-      status: 'deployed',
-    })
-
     // ─── Step 2: Initialize Governance ───────────────────────────────
     if (controlAddr) {
       try {
@@ -113,20 +101,14 @@ export async function deployFromTemplate(
     // ─── Step 3: Register Org in Resolver ────────────────────────────
     if (resolverAddr) {
       try {
-        const hash = await walletClient.writeContract({
-          address: resolverAddr,
-          abi: agentAccountResolverAbi,
-          functionName: 'register',
-          args: [
-            orgAddress,
-            input.orgName,
-            input.orgDescription,
-            TYPE_ORGANIZATION as `0x${string}`,
-            '0x0000000000000000000000000000000000000000000000000000000000000000' as `0x${string}`,
-            '',
-          ],
+        await registerAgentMetadata({
+          agentAddress: orgAddress,
+          displayName: input.orgName,
+          description: input.orgDescription,
+          agentType: 'org',
         })
-        await publicClient.waitForTransactionReceipt({ hash })
+        await addAgentController(orgAddress, walletAddress)
+        await setAgentTemplateId(orgAddress, input.template.id)
       } catch { /* resolver may not be deployed */ }
     }
 
@@ -139,20 +121,6 @@ export async function deployFromTemplate(
       try {
         const agentSalt = BigInt(Date.now() + Math.floor(Math.random() * 10000))
         const agentAddress = await deploySmartAccount(walletAddress, agentSalt)
-
-        // Store in DB
-        await db.insert(schema.aiAgents).values({
-          id: crypto.randomUUID(),
-          name: agentDef.name,
-          description: agentDef.description,
-          agentType: agentDef.agentType,
-          createdBy: userId,
-          operatedBy: orgAddress,
-          smartAccountAddress: agentAddress,
-          chainId: Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? '31337'),
-          salt: agentSalt.toString(),
-          status: 'deployed',
-        })
 
         // Create Org Control relationship (AI → Org)
         try {
@@ -168,43 +136,16 @@ export async function deployFromTemplate(
         // Register in resolver
         if (resolverAddr) {
           try {
-            const classHash = AI_CLASS_MAP[agentDef.agentType] ?? AI_CLASS_MAP.custom
-            let h = await walletClient.writeContract({
-              address: resolverAddr,
-              abi: agentAccountResolverAbi,
-              functionName: 'register',
-              args: [
-                agentAddress as `0x${string}`,
-                agentDef.name,
-                agentDef.description,
-                TYPE_AI_AGENT as `0x${string}`,
-                classHash,
-                '',
-              ],
+            await registerAgentMetadata({
+              agentAddress,
+              displayName: agentDef.name,
+              description: agentDef.description,
+              agentType: 'ai',
+              aiAgentClass: agentDef.agentType,
+              capabilities: agentDef.capabilities,
+              trustModels: agentDef.trustModels,
             })
-            await publicClient.waitForTransactionReceipt({ hash: h })
-
-            // Set capabilities
-            for (const cap of agentDef.capabilities) {
-              h = await walletClient.writeContract({
-                address: resolverAddr,
-                abi: agentAccountResolverAbi,
-                functionName: 'addMultiStringProperty',
-                args: [agentAddress as `0x${string}`, ATL_CAPABILITY as `0x${string}`, cap],
-              })
-              await publicClient.waitForTransactionReceipt({ hash: h })
-            }
-
-            // Set trust models
-            for (const tm of agentDef.trustModels) {
-              h = await walletClient.writeContract({
-                address: resolverAddr,
-                abi: agentAccountResolverAbi,
-                functionName: 'addMultiStringProperty',
-                args: [agentAddress as `0x${string}`, ATL_SUPPORTED_TRUST as `0x${string}`, tm],
-              })
-              await publicClient.waitForTransactionReceipt({ hash: h })
-            }
+            await addAgentController(agentAddress, walletAddress)
           } catch { /* resolver registration may fail */ }
         }
 
@@ -221,7 +162,7 @@ export async function deployFromTemplate(
     return {
       success: true,
       orgAddress,
-      orgId,
+      orgId: orgAddress,
       deployedAgents,
     }
   } catch (error) {

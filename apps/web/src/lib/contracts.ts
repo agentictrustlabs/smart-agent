@@ -11,9 +11,13 @@ import {
   delegationManagerAbi,
   agentReviewRecordAbi,
   encodeTimestampTerms,
+  encodeValueTerms,
   encodeAllowedMethodsTerms,
   encodeAllowedTargetsTerms,
   buildCaveat,
+  getDelegationPolicyDefinitionForTerms,
+  REVIEW_RELATIONSHIP,
+  ROLE_REVIEWER,
 } from '@smart-agent/sdk'
 import { encodeFunctionData } from 'viem'
 import type { DeployedContracts, Delegation } from '@smart-agent/types'
@@ -421,6 +425,31 @@ export async function getTemplatesByTypeAndRole(
 /** Default delegation duration: 7 days */
 const REVIEW_DELEGATION_DURATION = 7 * 24 * 60 * 60
 
+type ResolvedDelegationPolicy = NonNullable<ReturnType<typeof getDelegationPolicyDefinitionForTerms>>
+
+async function resolveTemplateBackedPolicy(
+  relationshipType: `0x${string}`,
+  role: `0x${string}`,
+): Promise<{ policy: ResolvedDelegationPolicy; templateId: bigint | null }> {
+  const policy = getDelegationPolicyDefinitionForTerms(relationshipType, role)
+  if (!policy) throw new Error('No taxonomy delegation policy found for relationship role')
+
+  let templateId: bigint | null = null
+  const templateIds = await getTemplatesByTypeAndRole(relationshipType, role)
+  for (const id of templateIds) {
+    const template = await getTemplate(id)
+    if (!template.active) continue
+    templateId = id
+    break
+  }
+
+  if (templateIds.length > 0 && templateId === null) {
+    throw new Error(`No active delegation template found for policy ${policy.key}`)
+  }
+
+  return { policy, templateId }
+}
+
 /**
  * Issue a delegation from a subject agent to a reviewer.
  * The delegation authorizes the reviewer to call createReview() on the AgentReviewRecord
@@ -442,31 +471,54 @@ export async function issueReviewDelegation(params: {
   const reviewAddr = process.env.AGENT_REVIEW_ADDRESS as `0x${string}`
   if (!reviewAddr) throw new Error('AGENT_REVIEW_ADDRESS not set')
 
+  const { policy } = await resolveTemplateBackedPolicy(REVIEW_RELATIONSHIP, ROLE_REVIEWER)
+  const policyTarget = (policy.allowedTargetEnvKey
+    ? process.env[policy.allowedTargetEnvKey]
+    : reviewAddr) as `0x${string}` | undefined
+
   // Build caveats
   const now = Math.floor(Date.now() / 1000)
-  const expiresAtUnix = now + REVIEW_DELEGATION_DURATION
+  const expiresAtUnix = now + (policy.defaultDurationSeconds ?? REVIEW_DELEGATION_DURATION)
   const expiresAt = new Date(expiresAtUnix * 1000).toISOString()
-
-  // 1. Time window
-  const timeCaveat = buildCaveat(
-    contracts.enforcers.timestamp,
-    encodeTimestampTerms(now, expiresAtUnix),
-  )
-
-  // 2. Only createReview function selector
-  const createReviewSelector = '0x7e653da2' as `0x${string}` // createReview(address,address,bytes32,bytes32,uint8,(bytes32,uint8)[],string,string)
-  const methodsCaveat = buildCaveat(
-    contracts.enforcers.allowedMethods,
-    encodeAllowedMethodsTerms([createReviewSelector]),
-  )
-
-  // 3. Only AgentReviewRecord contract
-  const targetsCaveat = buildCaveat(
-    contracts.enforcers.allowedTargets,
-    encodeAllowedTargetsTerms([reviewAddr]),
-  )
-
-  const caveats = [timeCaveat, methodsCaveat, targetsCaveat]
+  const enforcers = [...policy.requiredEnforcers, ...(policy.optionalEnforcers ?? [])]
+  const caveats = enforcers.flatMap((enforcer) => {
+    switch (enforcer) {
+      case 'timestamp':
+        return [
+          buildCaveat(
+            contracts.enforcers.timestamp,
+            encodeTimestampTerms(now, expiresAtUnix),
+          ),
+        ]
+      case 'allowedMethods':
+        return policy.allowedMethodSelectors?.length
+          ? [
+            buildCaveat(
+              contracts.enforcers.allowedMethods,
+              encodeAllowedMethodsTerms(policy.allowedMethodSelectors),
+            ),
+          ]
+          : []
+      case 'allowedTargets':
+        return policyTarget
+          ? [
+            buildCaveat(
+              contracts.enforcers.allowedTargets,
+              encodeAllowedTargetsTerms([policyTarget]),
+            ),
+          ]
+          : []
+      case 'value':
+        return [
+          buildCaveat(
+            contracts.enforcers.value,
+            encodeValueTerms(0n),
+          ),
+        ]
+      default:
+        return []
+    }
+  })
   const salt = BigInt(Math.floor(Math.random() * Number.MAX_SAFE_INTEGER))
 
   // Build unsigned delegation

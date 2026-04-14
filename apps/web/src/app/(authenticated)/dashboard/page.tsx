@@ -7,6 +7,8 @@ import { formatEther } from 'viem'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { getUserOrgs } from '@/lib/get-user-orgs'
 import { getOrgMembers } from '@/lib/get-org-members'
+import { getEdge, getEdgeRoles } from '@/lib/contracts'
+import { REVIEW_RELATIONSHIP, ROLE_REVIEWER } from '@smart-agent/sdk'
 
 export default async function DashboardPage() {
   const currentUser = await getCurrentUser()
@@ -46,36 +48,25 @@ export default async function DashboardPage() {
     for (const r of org.roles) allRoles.add(r.toLowerCase())
   }
 
-  // Delegations granted to this user
+  // Reviewer authority granted to this user
   type DelegationView = { id: string; orgName: string; orgAddress: string; status: string; expiresAt: string; caveats: string[] }
   const activeDelegations: DelegationView[] = []
   if (personAgentAddr) {
-    const delegations = await db.select().from(schema.reviewDelegations)
-      .where(eq(schema.reviewDelegations.reviewerAgentAddress, personAgentAddr.toLowerCase()))
-    const enforcerNames: Record<string, string> = {
-      [process.env.TIMESTAMP_ENFORCER_ADDRESS?.toLowerCase() ?? '']: 'Time Window',
-      [process.env.ALLOWED_METHODS_ENFORCER_ADDRESS?.toLowerCase() ?? '']: 'Allowed Methods',
-      [process.env.ALLOWED_TARGETS_ENFORCER_ADDRESS?.toLowerCase() ?? '']: 'Allowed Targets',
-      [process.env.VALUE_ENFORCER_ADDRESS?.toLowerCase() ?? '']: 'Spending Limit',
-    }
-    for (const d of delegations) {
-      const isExpired = new Date(d.expiresAt) < new Date()
-      if (isExpired || d.status !== 'active') continue
-      let caveats: string[] = []
-      try {
-        const parsed = JSON.parse(d.delegationJson)
-        caveats = (parsed.caveats ?? []).map((c: { enforcer: string }) =>
-          enforcerNames[c.enforcer?.toLowerCase()] ?? 'Custom'
-        )
-      } catch { /* ignored */ }
-      const org = userOrgs.find(o => o.address.toLowerCase() === d.subjectAgentAddress.toLowerCase())
+    const edgeIds = await getEdgesBySubject(personAgentAddr as `0x${string}`)
+    for (const edgeId of edgeIds) {
+      const edge = await getEdge(edgeId)
+      if (edge.relationshipType !== REVIEW_RELATIONSHIP) continue
+      if (edge.status < 2) continue
+      const roles = await getEdgeRoles(edgeId)
+      if (!roles.some(role => role === ROLE_REVIEWER)) continue
+      const org = userOrgs.find(o => o.address.toLowerCase() === edge.object_.toLowerCase())
       activeDelegations.push({
-        id: d.id,
-        orgName: org?.name ?? d.subjectAgentAddress.slice(0, 10) + '...',
-        orgAddress: d.subjectAgentAddress,
+        id: edgeId,
+        orgName: org?.name ?? edge.object_.slice(0, 10) + '...',
+        orgAddress: edge.object_,
         status: 'active',
-        expiresAt: new Date(d.expiresAt).toLocaleDateString(),
-        caveats,
+        expiresAt: 'On demand',
+        caveats: ['Issued on demand'],
       })
     }
   }

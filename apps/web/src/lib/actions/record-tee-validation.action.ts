@@ -6,6 +6,8 @@ import { requireSession } from '@/lib/auth/session'
 import { getPublicClient, getWalletClient } from '@/lib/contracts'
 import { agentValidationProfileAbi, agentAssertionAbi } from '@smart-agent/sdk'
 import { keccak256, toBytes } from 'viem'
+import { findAgentOwnerUserIds } from '@/lib/agent-resolver'
+import { getAgentMetadata } from '@/lib/agent-metadata'
 
 // TEE architecture hashes (match AgentValidationProfile.sol constants)
 const TEE_ARCHS: Record<string, `0x${string}`> = {
@@ -142,20 +144,15 @@ export async function recordTeeValidation(
 
     // Notify agent owner
     try {
-      const allAgents = [
-        ...(await db.select().from(schema.orgAgents)),
-        ...(await db.select().from(schema.aiAgents)),
-      ]
-      const agent = allAgents.find(
-        (a) => a.smartAccountAddress.toLowerCase() === input.agentAddress.toLowerCase(),
-      )
-      if (agent) {
+      const ownerIds = await findAgentOwnerUserIds(input.agentAddress)
+      if (ownerIds.length > 0) {
+        const agent = await getAgentMetadata(input.agentAddress)
         await db.insert(schema.messages).values({
           id: crypto.randomUUID(),
-          userId: agent.createdBy,
+          userId: ownerIds[0],
           type: 'proposal_created',
           title: 'TEE validation recorded',
-          body: `Agent ${agent.name} received a ${input.teeArch} TEE validation (method: ${input.validationMethod})`,
+          body: `Agent ${agent.displayName} received a ${input.teeArch} TEE validation (method: ${input.validationMethod})`,
           link: '/tee',
         })
       }

@@ -4,6 +4,8 @@ import { eq } from 'drizzle-orm'
 import { getEdgesBySubject } from '@/lib/contracts'
 import { getPersonAgentForUser, getOrgsForPersonAgent, getAiAgentsForOrg } from '@/lib/agent-registry'
 import { getAgentMetadata } from '@/lib/agent-metadata'
+import { getEdge, getEdgeRoles } from '@/lib/contracts'
+import { REVIEW_RELATIONSHIP, ROLE_REVIEWER } from '@smart-agent/sdk'
 
 /**
  * User-centric context API.
@@ -52,21 +54,7 @@ export interface UserContextResponse {
   roles: string[]
 }
 
-const ENFORCER_NAMES: Record<string, string> = {}
-
-function initEnforcerNames() {
-  const ts = process.env.TIMESTAMP_ENFORCER_ADDRESS?.toLowerCase()
-  const am = process.env.ALLOWED_METHODS_ENFORCER_ADDRESS?.toLowerCase()
-  const at = process.env.ALLOWED_TARGETS_ENFORCER_ADDRESS?.toLowerCase()
-  const ve = process.env.VALUE_ENFORCER_ADDRESS?.toLowerCase()
-  if (ts) ENFORCER_NAMES[ts] = 'Time Window'
-  if (am) ENFORCER_NAMES[am] = 'Allowed Methods'
-  if (at) ENFORCER_NAMES[at] = 'Allowed Targets'
-  if (ve) ENFORCER_NAMES[ve] = 'Spending Limit'
-}
-
 export async function GET() {
-  initEnforcerNames()
   const empty: UserContextResponse = { personAgent: null, orgs: [], delegations: [], hubs: [], capabilities: [], roles: [] }
 
   try {
@@ -138,35 +126,28 @@ export async function GET() {
       })
     }
 
-    // Delegations: find all delegations where this user's person agent is the reviewer
+    // Reviewer authority is derived from active reviewer relationships.
     const delegations: UserDelegation[] = []
     if (personAddr) {
-      const allDelegations = await db.select().from(schema.reviewDelegations)
-        .where(eq(schema.reviewDelegations.reviewerAgentAddress, personAddr.toLowerCase()))
+      const edgeIds = await getEdgesBySubject(personAddr as `0x${string}`)
+      for (const edgeId of edgeIds) {
+        const edge = await getEdge(edgeId)
+        if (edge.relationshipType !== REVIEW_RELATIONSHIP) continue
+        if (edge.status < 2) continue
+        const roles = await getEdgeRoles(edgeId)
+        if (!roles.some(role => role === ROLE_REVIEWER)) continue
 
-      for (const d of allDelegations) {
-        const isExpired = new Date(d.expiresAt) < new Date()
-        let caveats: string[] = []
-        try {
-          const parsed = JSON.parse(d.delegationJson)
-          caveats = (parsed.caveats ?? []).map((c: { enforcer: string }) =>
-            ENFORCER_NAMES[c.enforcer?.toLowerCase()] ?? 'Custom'
-          )
-        } catch { /* ignored */ }
-
-        // Find org name
-        const org = orgs.find(o => o.address.toLowerCase() === d.subjectAgentAddress.toLowerCase())
+        const org = orgs.find(o => o.address.toLowerCase() === edge.object_.toLowerCase())
         delegations.push({
-          id: d.id,
-          orgAddress: d.subjectAgentAddress,
-          orgName: org?.name ?? d.subjectAgentAddress.slice(0, 10) + '...',
+          id: edgeId,
+          orgAddress: edge.object_,
+          orgName: org?.name ?? edge.object_.slice(0, 10) + '...',
           type: 'review',
-          status: isExpired ? 'expired' : d.status,
-          expiresAt: d.expiresAt,
-          caveats,
+          status: 'available',
+          expiresAt: '',
+          caveats: ['Issued on demand'],
         })
-
-        if (!isExpired && d.status === 'active') allCapabilities.add('reviews')
+        allCapabilities.add('reviews')
       }
     }
 

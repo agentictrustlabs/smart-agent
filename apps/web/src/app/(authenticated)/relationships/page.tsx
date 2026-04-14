@@ -1,11 +1,11 @@
 import { redirect } from 'next/navigation'
-import { db, schema } from '@/db'
-import { eq } from 'drizzle-orm'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { getEdgesByObject, getEdgesBySubject, getEdge, getEdgeRoles } from '@/lib/contracts'
 import { roleName, relationshipTypeName, toDidEthr } from '@smart-agent/sdk'
 import { RelationshipsClient } from './RelationshipsClient'
 import { PendingActions } from './PendingActions'
+import { db, schema } from '@/db'
+import { getControlledAgentsForUser, listRegisteredAgents } from '@/lib/agent-resolver'
 
 const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? '31337')
 const STATUS_LABELS = ['none', 'proposed', 'confirmed', 'active', 'suspended', 'revoked', 'rejected']
@@ -15,66 +15,26 @@ export default async function RelationshipsPage() {
   if (!currentUser) redirect('/')
 
   // My agents
-  const myPersonAgents = await db.select().from(schema.personAgents).where(eq(schema.personAgents.userId, currentUser.id))
-  const myOrgAgents = await db.select().from(schema.orgAgents).where(eq(schema.orgAgents.createdBy, currentUser.id))
-  const myAIAgents = await db.select().from(schema.aiAgents).where(eq(schema.aiAgents.createdBy, currentUser.id))
-
-  // All agents (for target selection)
-  const allPersonAgents = await db.select().from(schema.personAgents)
-  const allOrgAgents = await db.select().from(schema.orgAgents)
-  const allAIAgents = await db.select().from(schema.aiAgents)
-  const allUsers = await db.select().from(schema.users)
+  const myRegisteredAgents = await getControlledAgentsForUser(currentUser.id)
+  const allRegisteredAgents = await listRegisteredAgents()
 
   const myAgents: Array<{ address: string; name: string; did: string; type: string }> = []
-  for (const p of myPersonAgents) {
+  for (const a of myRegisteredAgents) {
     myAgents.push({
-      address: p.smartAccountAddress,
-      name: (p as Record<string, unknown>).name as string || 'Person Agent',
-      did: toDidEthr(CHAIN_ID, p.smartAccountAddress as `0x${string}`),
-      type: 'person',
-    })
-  }
-  for (const o of myOrgAgents) {
-    myAgents.push({
-      address: o.smartAccountAddress,
-      name: o.name,
-      did: toDidEthr(CHAIN_ID, o.smartAccountAddress as `0x${string}`),
-      type: 'org',
-    })
-  }
-  for (const a of myAIAgents) {
-    myAgents.push({
-      address: a.smartAccountAddress,
+      address: a.address,
       name: a.name,
-      did: toDidEthr(CHAIN_ID, a.smartAccountAddress as `0x${string}`),
-      type: 'ai',
+      did: toDidEthr(CHAIN_ID, a.address as `0x${string}`),
+      type: a.kind,
     })
   }
 
   const allAgents: Array<{ address: string; name: string; did: string; type: string }> = []
-  for (const p of allPersonAgents) {
-    const user = allUsers.find((u) => u.id === p.userId)
+  for (const a of allRegisteredAgents) {
     allAgents.push({
-      address: p.smartAccountAddress,
-      name: (p as Record<string, unknown>).name as string || user?.name || 'Person Agent',
-      did: toDidEthr(CHAIN_ID, p.smartAccountAddress as `0x${string}`),
-      type: 'person',
-    })
-  }
-  for (const o of allOrgAgents) {
-    allAgents.push({
-      address: o.smartAccountAddress,
-      name: o.name,
-      did: toDidEthr(CHAIN_ID, o.smartAccountAddress as `0x${string}`),
-      type: 'org',
-    })
-  }
-  for (const a of allAIAgents) {
-    allAgents.push({
-      address: a.smartAccountAddress,
       name: a.name,
-      did: toDidEthr(CHAIN_ID, a.smartAccountAddress as `0x${string}`),
-      type: 'ai',
+      address: a.address,
+      did: toDidEthr(CHAIN_ID, a.address as `0x${string}`),
+      type: a.kind,
     })
   }
 

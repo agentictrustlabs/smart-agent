@@ -11,9 +11,8 @@ import {
   ATL_CAPABILITY, ATL_SUPPORTED_TRUST, ATL_A2A_ENDPOINT, ATL_MCP_SERVER,
   TYPE_PERSON, TYPE_ORGANIZATION, TYPE_AI_AGENT,
 } from '@smart-agent/sdk'
-import { db, schema } from '@/db'
-import { eq } from 'drizzle-orm'
 import { toDidEthr } from '@smart-agent/sdk'
+import { getAgentMetadata, buildAgentNameMap, getNameFromMap } from '@/lib/agent-metadata'
 import { keccak256, toBytes } from 'viem'
 import { AgentSettingsClient } from './AgentSettingsClient'
 import { AgentSubNav } from '@/components/nav/AgentSubNav'
@@ -48,44 +47,15 @@ export default async function AgentSettingsPage({
   const client = getPublicClient()
   const controlAddr = process.env.AGENT_CONTROL_ADDRESS as `0x${string}`
 
-  // Build name lookup for all agents
-  const allOrgs = await db.select().from(schema.orgAgents)
-  const allAI = await db.select().from(schema.aiAgents)
-  const allPerson = await db.select().from(schema.personAgents)
-  const allUsers = await db.select().from(schema.users)
-  const nameMap = new Map<string, string>()
-  for (const o of allOrgs) nameMap.set(o.smartAccountAddress.toLowerCase(), o.name)
-  for (const a of allAI) nameMap.set(a.smartAccountAddress.toLowerCase(), a.name)
-  for (const p of allPerson) {
-    const u = allUsers.find((u) => u.id === p.userId)
-    nameMap.set(p.smartAccountAddress.toLowerCase(), p.name || u?.name || 'Person Agent')
-  }
-  const getName = (a: string) => nameMap.get(a.toLowerCase()) ?? `${a.slice(0, 6)}...${a.slice(-4)}`
+  // Build name lookup from on-chain resolver
+  const agentNameMap = await buildAgentNameMap()
+  const getName = (a: string) => getNameFromMap(agentNameMap, a)
 
-  // Get agent name from DB
-  let agentName = 'Unknown Agent'
-  let agentType = 'unknown'
-  let agentDescription = ''
-  const personAgent = await db.select().from(schema.personAgents)
-    .where(eq(schema.personAgents.smartAccountAddress, agentAddress)).limit(1)
-  if (personAgent[0]) {
-    agentName = (personAgent[0] as Record<string, unknown>).name as string || 'Person Agent'
-    agentType = 'person'
-  }
-  const orgAgent = await db.select().from(schema.orgAgents)
-    .where(eq(schema.orgAgents.smartAccountAddress, agentAddress)).limit(1)
-  if (orgAgent[0]) {
-    agentName = orgAgent[0].name
-    agentType = 'org'
-    agentDescription = orgAgent[0].description ?? ''
-  }
-  const aiAgent = await db.select().from(schema.aiAgents)
-    .where(eq(schema.aiAgents.smartAccountAddress, agentAddress)).limit(1)
-  if (aiAgent[0]) {
-    agentName = aiAgent[0].name
-    agentType = 'ai'
-    agentDescription = aiAgent[0].description ?? ''
-  }
+  // Get agent identity from on-chain resolver
+  const agentMeta = await getAgentMetadata(agentAddress)
+  let agentName = agentMeta.displayName
+  let agentType = agentMeta.agentType === 'unknown' ? 'unknown' : agentMeta.agentType
+  let agentDescription = agentMeta.description
 
   // ─── On-Chain Resolver Data (overrides DB if registered) ──────────
   let resolverRegistered = false
@@ -272,56 +242,7 @@ export default async function AgentSettingsPage({
     authority: string
   }
   const delegations: DelegationView[] = []
-  try {
-    // Delegations where this agent is the subject (delegator — granted authority)
-    const asSubject = await db.select().from(schema.reviewDelegations)
-      .where(eq(schema.reviewDelegations.subjectAgentAddress, agentAddress.toLowerCase()))
-    for (const d of asSubject) {
-      const isExpired = new Date(d.expiresAt) < new Date()
-      const parsed = JSON.parse(d.delegationJson)
-      delegations.push({
-        id: d.id,
-        role: 'Delegated review authority to',
-        counterparty: getName(d.reviewerAgentAddress),
-        counterpartyAddr: d.reviewerAgentAddress,
-        direction: 'outgoing',
-        status: isExpired ? 'expired' : d.status,
-        createdAt: new Date(d.createdAt).toLocaleDateString(),
-        expiresAt: new Date(d.expiresAt).toLocaleDateString(),
-        delegator: parsed.delegator ?? '',
-        delegate: parsed.delegate ?? '',
-        caveats: (parsed.caveats ?? []).map((c: { enforcer: string }) => ({
-          name: enforcerNames[c.enforcer?.toLowerCase()] ?? 'Custom',
-          enforcer: c.enforcer,
-        })),
-        authority: parsed.authority === '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff' ? 'Root' : 'Chained',
-      })
-    }
-    // Delegations where this agent is the reviewer (received authority)
-    const asReviewer = await db.select().from(schema.reviewDelegations)
-      .where(eq(schema.reviewDelegations.reviewerAgentAddress, agentAddress.toLowerCase()))
-    for (const d of asReviewer) {
-      const isExpired = new Date(d.expiresAt) < new Date()
-      const parsed = JSON.parse(d.delegationJson)
-      delegations.push({
-        id: d.id,
-        role: 'Received review authority from',
-        counterparty: getName(d.subjectAgentAddress),
-        counterpartyAddr: d.subjectAgentAddress,
-        direction: 'incoming',
-        status: isExpired ? 'expired' : d.status,
-        createdAt: new Date(d.createdAt).toLocaleDateString(),
-        expiresAt: new Date(d.expiresAt).toLocaleDateString(),
-        delegator: parsed.delegator ?? '',
-        delegate: parsed.delegate ?? '',
-        caveats: (parsed.caveats ?? []).map((c: { enforcer: string }) => ({
-          name: enforcerNames[c.enforcer?.toLowerCase()] ?? 'Custom',
-          enforcer: c.enforcer,
-        })),
-        authority: parsed.authority === '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff' ? 'Root' : 'Chained',
-      })
-    }
-  } catch { /* table may not exist */ }
+  // Delegation data is now derived from on-chain relationship edges and role authority below
 
   // Also derive authority from relationship edges (roles imply delegation authority)
   const ROLE_AUTHORITY: Record<string, { description: string; bounds: string[] }> = {
@@ -400,7 +321,7 @@ export default async function AgentSettingsPage({
 
   // ─── Helpers ───────────────────────────────────────────────────────
   const typeLabel = agentType === 'ai' ? 'AI Agent' : agentType === 'org' ? 'Organization' : 'Person Agent'
-  const aiSubtype = aiAgent?.[0] ? (aiAgent[0] as { agentType?: string }).agentType : null
+  const aiSubtype = agentMeta.aiAgentClass || null
 
   function TrustScoreBar({ score, passes }: { score: number; passes: boolean }) {
     return (
@@ -438,9 +359,7 @@ export default async function AgentSettingsPage({
           <dt>Smart Account</dt><dd data-component="address">{agentAddress}</dd>
           <dt>DID</dt><dd style={{ fontSize: '0.8rem', fontFamily: 'monospace' }}>{toDidEthr(CHAIN_ID, agentAddress)}</dd>
           <dt>On-Chain Owners</dt><dd>{ownerCount}</dd>
-          {aiAgent?.[0] && (aiAgent[0] as { operatedBy?: string }).operatedBy && (
-            <><dt>Operated By</dt><dd><Link href={`/agents/${(aiAgent[0] as { operatedBy: string }).operatedBy}`} style={{ color: '#1565c0' }}>{getName((aiAgent[0] as { operatedBy: string }).operatedBy)}</Link></dd></>
-          )}
+          {/* Operated-by relationship is shown in the Relationships section below */}
         </dl>
       </div>
 

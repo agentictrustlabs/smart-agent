@@ -1,10 +1,11 @@
 /**
- * Read demo edges from the demo_edges DB table.
- * Returns simulated relationship edges for demo mode when on-chain contracts are unavailable.
+ * Demo edge compatibility helpers.
+ * Falls back to demo role fixtures when on-chain contracts are unavailable.
  */
 
 import { db, schema } from '@/db'
-import { } from 'drizzle-orm'
+import { listRegisteredAgents } from '@/lib/agent-resolver'
+import { ORGANIZATION_MEMBERSHIP, relationshipTypeName } from '@smart-agent/sdk'
 
 const SKIP_AUTH = process.env.NEXT_PUBLIC_SKIP_AUTH === 'true'
 
@@ -28,47 +29,27 @@ export async function getDemoEdgesForOrg(orgAddress: string): Promise<{ incoming
   const outgoing: DemoEdge[] = []
 
   try {
-    const allEdges = await db.select().from(schema.demoEdges).all()
+    const { getDemoUserOrgRoles } = await import('./demo-roles')
+    const allUsers = await db.select().from(schema.users)
+    const allPersonAgents = (await listRegisteredAgents()).filter(agent => agent.kind === 'person')
 
-    for (const edge of allEdges) {
-      const parsed: DemoEdge = {
-        subjectAddress: edge.subjectAddress,
-        objectAddress: edge.objectAddress,
-        roles: JSON.parse(edge.roles),
-        relationshipType: edge.relationshipType,
-        status: edge.status,
-      }
-
-      if (edge.objectAddress === addr) {
-        incoming.push(parsed) // others → this org
-      }
-      if (edge.subjectAddress === addr) {
-        outgoing.push(parsed) // this org → others
-      }
+    for (const user of allUsers) {
+      const demoRoles = getDemoUserOrgRoles(user.id)
+      const match = demoRoles.find(dr => dr.orgAddress.toLowerCase() === addr)
+      if (!match) continue
+      const pa = allPersonAgents.find(agent =>
+        agent.controllers.some(controller => controller.toLowerCase() === user.walletAddress.toLowerCase())
+      )
+      if (!pa) continue
+      incoming.push({
+        subjectAddress: pa.address.toLowerCase(),
+        objectAddress: addr,
+        roles: match.roles,
+        relationshipType: relationshipTypeName(ORGANIZATION_MEMBERSHIP),
+        status: 'active',
+      })
     }
-  } catch {
-    // Table may not exist — fall back to demo-roles.ts
-    try {
-      const { getDemoUserOrgRoles } = await import('./demo-roles')
-      const allUsers = await db.select().from(schema.users)
-      const allPersonAgents = await db.select().from(schema.personAgents)
-
-      for (const user of allUsers) {
-        const demoRoles = getDemoUserOrgRoles(user.id)
-        const match = demoRoles.find(dr => dr.orgAddress.toLowerCase() === addr)
-        if (!match) continue
-        const pa = allPersonAgents.find(p => p.userId === user.id)
-        if (!pa) continue
-        incoming.push({
-          subjectAddress: pa.smartAccountAddress.toLowerCase(),
-          objectAddress: addr,
-          roles: match.roles,
-          relationshipType: 'ORGANIZATION_MEMBERSHIP',
-          status: 'active',
-        })
-      }
-    } catch { /* ignored */ }
-  }
+  } catch { /* ignored */ }
 
   return { incoming, outgoing }
 }
@@ -79,16 +60,7 @@ export async function getDemoEdgesForOrg(orgAddress: string): Promise<{ incoming
 export async function getDemoUserRolesOnOrg(personAgentAddress: string, orgAddress: string): Promise<string[]> {
   if (!SKIP_AUTH) return []
 
-  try {
-    const edges = await db.select().from(schema.demoEdges).all()
-    const roles: string[] = []
-    for (const edge of edges) {
-      if (edge.subjectAddress === personAgentAddress.toLowerCase() && edge.objectAddress === orgAddress.toLowerCase()) {
-        roles.push(...JSON.parse(edge.roles))
-      }
-    }
-    return roles
-  } catch {
-    return []
-  }
+  const { incoming } = await getDemoEdgesForOrg(orgAddress)
+  const edge = incoming.find(entry => entry.subjectAddress === personAgentAddress.toLowerCase())
+  return edge?.roles ?? []
 }

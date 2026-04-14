@@ -17,137 +17,6 @@ export const users = sqliteTable('users', {
 // All agent identity, relationships, and metadata are ON-CHAIN.
 // The only DB table for agents is `users` (Privy auth → wallet mapping).
 // Agent lookup: resolver (name/type) + edges (relationships) + ATL_CONTROLLER (wallet→agent).
-// ═══════════════════════════════════════════════════════════════════════
-// DEPRECATED TABLES — These duplicate on-chain state (resolver + edges).
-// Use agent_index + on-chain resolver instead. Kept for backward compat
-// with unmigrated pages. Will be removed in a future cleanup pass.
-// ═══════════════════════════════════════════════════════════════════════
-
-// ─── Person Agents (DEPRECATED — use agent_index) ───────────────────
-
-export const personAgents = sqliteTable('person_agents', {
-  id: text('id').primaryKey(),
-  name: text('name').notNull().default('Person Agent'),
-  userId: text('user_id')
-    .notNull()
-    .references(() => users.id)
-    .unique(),
-  smartAccountAddress: text('smart_account_address').notNull(),
-  chainId: integer('chain_id').notNull(),
-  salt: text('salt').notNull(),
-  implementationType: text('implementation_type', {
-    enum: ['hybrid', 'multisig', 'stateless7702'],
-  })
-    .notNull()
-    .default('hybrid'),
-  status: text('status', {
-    enum: ['pending', 'deployed', 'failed'],
-  })
-    .notNull()
-    .default('pending'),
-  createdAt: text('created_at')
-    .notNull()
-    .$defaultFn(() => new Date().toISOString()),
-})
-
-// ─── Org Agents (DEPRECATED — use agent_index + resolver) ────────────────────────
-
-export const orgAgents = sqliteTable('org_agents', {
-  id: text('id').primaryKey(),
-  name: text('name').notNull(),
-  description: text('description'),
-  /** Structured agent metadata (JSON) — health data, leader, generation, people group, etc. */
-  metadata: text('metadata'),
-  createdBy: text('created_by')
-    .notNull()
-    .references(() => users.id),
-  smartAccountAddress: text('smart_account_address').notNull(),
-  templateId: text('template_id'), // org template used (e.g., 'grant-org', 'service-business')
-  chainId: integer('chain_id').notNull(),
-  salt: text('salt').notNull(),
-  implementationType: text('implementation_type', {
-    enum: ['hybrid', 'multisig', 'stateless7702'],
-  })
-    .notNull()
-    .default('hybrid'),
-  status: text('status', {
-    enum: ['pending', 'deployed', 'failed'],
-  })
-    .notNull()
-    .default('pending'),
-  createdAt: text('created_at')
-    .notNull()
-    .$defaultFn(() => new Date().toISOString()),
-})
-
-// ─── AI Agents (DEPRECATED — use agent_index + resolver) ──────────────────
-
-export const aiAgents = sqliteTable('ai_agents', {
-  id: text('id').primaryKey(),
-  name: text('name').notNull(),
-  description: text('description'),
-  agentType: text('agent_type', {
-    enum: ['discovery', 'assistant', 'executor', 'validator', 'oracle', 'custom'],
-  }).notNull().default('custom'),
-  createdBy: text('created_by')
-    .notNull()
-    .references(() => users.id),
-  operatedBy: text('operated_by'), // org agent address that operates this AI agent
-  smartAccountAddress: text('smart_account_address').notNull(),
-  chainId: integer('chain_id').notNull(),
-  salt: text('salt').notNull(),
-  implementationType: text('implementation_type', {
-    enum: ['hybrid', 'multisig', 'stateless7702'],
-  })
-    .notNull()
-    .default('hybrid'),
-  status: text('status', {
-    enum: ['pending', 'deployed', 'failed'],
-  })
-    .notNull()
-    .default('pending'),
-  createdAt: text('created_at')
-    .notNull()
-    .$defaultFn(() => new Date().toISOString()),
-})
-
-// ─── Review Records (DEPRECATED — on-chain AgentReviewRecord is source of truth) ──────
-
-export const reviewRecords = sqliteTable('review_records', {
-  id: text('id').primaryKey(),
-  onChainReviewId: integer('on_chain_review_id'),
-  reviewerUserId: text('reviewer_user_id').notNull().references(() => users.id),
-  reviewerAgentAddress: text('reviewer_agent_address').notNull(),
-  subjectAddress: text('subject_address').notNull(),
-  reviewType: text('review_type').notNull(),
-  recommendation: text('recommendation').notNull(),
-  overallScore: integer('overall_score').notNull(),
-  comment: text('comment'),
-  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
-})
-
-// ─── Review Delegations (delegation chain for reviewer→subject) ─────
-
-export const reviewDelegations = sqliteTable('review_delegations', {
-  id: text('id').primaryKey(),
-  /** Reviewer's person agent smart account address (delegate) */
-  reviewerAgentAddress: text('reviewer_agent_address').notNull(),
-  /** Subject agent smart account address (delegator) */
-  subjectAgentAddress: text('subject_agent_address').notNull(),
-  /** The relationship edge ID that authorized this delegation */
-  edgeId: text('edge_id').notNull(),
-  /** Serialized Delegation struct (JSON with signature) */
-  delegationJson: text('delegation_json').notNull(),
-  /** Salt used for this delegation */
-  salt: text('salt').notNull(),
-  /** When the delegation expires (from TimestampEnforcer) */
-  expiresAt: text('expires_at').notNull(),
-  status: text('status', { enum: ['active', 'expired', 'revoked', 'used'] })
-    .notNull()
-    .default('active'),
-  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
-})
-
 // ─── Invites ─────────────────────────────────────────────────────────
 
 export const invites = sqliteTable('invites', {
@@ -188,28 +57,7 @@ export const revenueReports = sqliteTable('revenue_reports', {
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
 })
 
-// ─── Capital Movements (general-purpose treasury tracking) ──────────
-
-export const capitalMovements = sqliteTable('capital_movements', {
-  id: text('id').primaryKey(),
-  /** Treasury agent address */
-  treasuryAgent: text('treasury_agent').notNull(),
-  /** deploy | collect | fund | return */
-  direction: text('direction', { enum: ['deploy', 'collect', 'fund', 'return'] }).notNull(),
-  /** Counterparty org/person address */
-  counterparty: text('counterparty').notNull(),
-  /** Amount in smallest unit (wei for ETH, cents for fiat) */
-  amount: text('amount').notNull(),
-  currency: text('currency').notNull().default('ETH'),
-  purpose: text('purpose'),
-  /** User who authorized the movement */
-  authorizedBy: text('authorized_by').references(() => users.id),
-  txHash: text('tx_hash'),
-  status: text('status', { enum: ['pending', 'confirmed', 'failed'] }).notNull().default('pending'),
-  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
-})
-
-// ─── Training Modules & Completions ─────────────────────────────────
+// ─── Training Modules ────────────────────────────────────────────────
 
 export const trainingModules = sqliteTable('training_modules', {
   id: text('id').primaryKey(),
@@ -223,20 +71,7 @@ export const trainingModules = sqliteTable('training_modules', {
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
 })
 
-export const trainingCompletions = sqliteTable('training_completions', {
-  id: text('id').primaryKey(),
-  /** User who completed the training */
-  userId: text('user_id').notNull().references(() => users.id),
-  moduleId: text('module_id').notNull().references(() => trainingModules.id),
-  /** Assessor who verified completion */
-  assessedBy: text('assessed_by').references(() => users.id),
-  score: integer('score'),
-  notes: text('notes'),
-  completedAt: text('completed_at').notNull().$defaultFn(() => new Date().toISOString()),
-  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
-})
-
-// ─── Governance Proposals & Votes ───────────────────────────────────
+// ─── Governance Proposals ────────────────────────────────────────────
 
 export const proposals = sqliteTable('proposals', {
   id: text('id').primaryKey(),
@@ -257,15 +92,6 @@ export const proposals = sqliteTable('proposals', {
   votesAgainst: integer('votes_against').notNull().default(0),
   status: text('status', { enum: ['open', 'passed', 'rejected', 'executed'] }).notNull().default('open'),
   executedAt: text('executed_at'),
-  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
-})
-
-export const votes = sqliteTable('votes', {
-  id: text('id').primaryKey(),
-  proposalId: text('proposal_id').notNull().references(() => proposals.id),
-  voter: text('voter').notNull().references(() => users.id),
-  vote: text('vote', { enum: ['for', 'against', 'abstain'] }).notNull(),
-  comment: text('comment'),
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
 })
 
@@ -300,45 +126,6 @@ export const activityLogs = sqliteTable('activity_logs', {
   relatedEntity: text('related_entity'),
   /** Date of the activity (may differ from created_at) */
   activityDate: text('activity_date').notNull().$defaultFn(() => new Date().toISOString()),
-  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
-})
-
-// ─── Generational Map Nodes (DEPRECATED — use on-chain ALLIANCE edges) ────────
-
-export const genMapNodes = sqliteTable('gen_map_nodes', {
-  id: text('id').primaryKey(),
-  /** Org agent address of the movement network or team */
-  networkAddress: text('network_address').notNull(),
-  /** Org agent address of the group (if it has one) */
-  groupAddress: text('group_address'),
-  /** Parent node ID (null for root/G0) */
-  parentId: text('parent_id'),
-  /** Generation number (0 = missionary, 1 = first planted, etc.) */
-  generation: integer('generation').notNull().default(0),
-  /** Display name for the group */
-  name: text('name').notNull(),
-  /** Leader name */
-  leaderName: text('leader_name'),
-  location: text('location'),
-  /** Group health markers (JSON: seekers, believers, baptized, leaders, giving, isChurch) */
-  healthData: text('health_data'),
-  /** Status: active, inactive, multiplied, closed */
-  status: text('status', { enum: ['active', 'inactive', 'multiplied', 'closed'] }).notNull().default('active'),
-  startedAt: text('started_at'),
-  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
-})
-
-// ─── Demo Edges (DEPRECATED — use on-chain AgentRelationship edges) ─────────
-
-export const demoEdges = sqliteTable('demo_edges', {
-  id: text('id').primaryKey(),
-  subjectAddress: text('subject_address').notNull(),
-  objectAddress: text('object_address').notNull(),
-  /** Relationship type name (e.g., 'ALLIANCE', 'ORGANIZATION_GOVERNANCE') */
-  relationshipType: text('relationship_type').notNull(),
-  /** JSON array of role strings (e.g., '["owner","board-member"]') */
-  roles: text('roles').notNull().default('[]'),
-  status: text('status').notNull().default('active'),
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
 })
 

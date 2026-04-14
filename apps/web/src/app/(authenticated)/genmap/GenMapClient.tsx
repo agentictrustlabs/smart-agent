@@ -112,7 +112,7 @@ export function GenMapClient({ nodes, orgAddress, orgName: _orgName, pinnedNodeI
 
   async function handleMove(nodeId: string, newParentId: string | null) {
     const newGen = newParentId ? (nodes.find(n => n.id === newParentId)?.generation ?? -1) + 1 : 0
-    try { await moveGenMapNode({ id: nodeId, newParentId, newGeneration: newGen }); window.location.reload() }
+    try { await moveGenMapNode({ id: nodeId, newParentId, newGeneration: newGen, networkAddress: orgAddress }); window.location.reload() }
     catch { alert('Failed to move') }
   }
 

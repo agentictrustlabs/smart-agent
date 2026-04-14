@@ -4,7 +4,8 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { ChurchCircle, parseHealth } from './ChurchCircle'
 import { GroupEditor, type GroupData } from './GroupEditor'
-import { createGenMapNode, updateGenMapNode } from '@/lib/actions/genmap.action'
+import { createGenMapNode } from '@/lib/actions/genmap.action'
+import { updateGroupHealth } from '@/lib/actions/update-group.action'
 
 export interface GroupNode {
   id: string
@@ -79,13 +80,13 @@ export function GroupHierarchy({ groups, orgAddress }: Props) {
         startedAt: data.startDate,
       })
     } else if (editor?.mode === 'edit' && editor.group) {
-      await updateGenMapNode({
-        id: editor.group.id,
+      await updateGroupHealth({
+        address: editor.group.address,
         name: data.name,
-        leaderName: data.leaderName,
-        location: data.location,
+        leaderName: data.leaderName || undefined,
+        location: data.location || undefined,
         healthData: { ...data.health } as Record<string, unknown>,
-        status: data.status as 'active',
+        status: data.status,
       })
     }
     setEditor(null)

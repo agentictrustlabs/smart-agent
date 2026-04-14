@@ -1,19 +1,21 @@
 'use server'
 
 import { db, schema } from '@/db'
-import { eq, and } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { requireSession } from '@/lib/auth/session'
 import {
-  getWalletClient,
   redeemReviewDelegation,
   issueReviewDelegation,
   getEdgesBySubject,
   getEdge,
   getEdgeRoles,
 } from '@/lib/contracts'
-import { ROLE_REVIEWER } from '@smart-agent/sdk'
+import { REVIEW_RELATIONSHIP, ROLE_REVIEWER } from '@smart-agent/sdk'
 import { keccak256, toBytes } from 'viem'
 import type { Delegation } from '@smart-agent/types'
+import { getPersonAgentForUser } from '@/lib/agent-registry'
+import { findAgentOwnerUserIds } from '@/lib/agent-resolver'
+import { getAgentMetadata } from '@/lib/agent-metadata'
 
 // Review type hashes
 const REVIEW_TYPES: Record<string, `0x${string}`> = {
@@ -66,20 +68,19 @@ export async function submitReview(input: SubmitReviewInput): Promise<SubmitRevi
       .where(eq(schema.users.privyUserId, session.userId)).limit(1)
     if (!users[0]) return { success: false, error: 'User not found' }
 
-    const personAgents = await db.select().from(schema.personAgents)
-      .where(eq(schema.personAgents.userId, users[0].id)).limit(1)
-    if (!personAgents[0]) return { success: false, error: 'Deploy a person agent first' }
-
-    const myAgent = personAgents[0].smartAccountAddress as `0x${string}`
+    const myAgent = await getPersonAgentForUser(users[0].id)
+    if (!myAgent) return { success: false, error: 'Deploy a person agent first' }
+    const myAgentAddr = myAgent as `0x${string}`
     const subjectAddr = input.subjectAddress as `0x${string}`
 
     // Verify reviewer has ACTIVE reviewer relationship to subject
     let hasReviewerRelationship = false
     try {
-      const edgeIds = await getEdgesBySubject(myAgent)
+      const edgeIds = await getEdgesBySubject(myAgentAddr)
       for (const edgeId of edgeIds) {
         const edge = await getEdge(edgeId)
         if (edge.object_.toLowerCase() !== subjectAddr.toLowerCase()) continue
+        if (edge.relationshipType !== REVIEW_RELATIONSHIP) continue
         if (edge.status < 2) continue // not confirmed or active
         const roles = await getEdgeRoles(edgeId)
         if (roles.some((r) => r === ROLE_REVIEWER)) {
@@ -93,69 +94,10 @@ export async function submitReview(input: SubmitReviewInput): Promise<SubmitRevi
       return { success: false, error: 'You need an active reviewer relationship with this agent. Request a reviewer role first and wait for approval.' }
     }
 
-    // Look up the stored delegation for this reviewer→subject pair
-    const storedDelegations = await db.select().from(schema.reviewDelegations)
-      .where(and(
-        eq(schema.reviewDelegations.reviewerAgentAddress, myAgent.toLowerCase()),
-        eq(schema.reviewDelegations.subjectAgentAddress, subjectAddr.toLowerCase()),
-        eq(schema.reviewDelegations.status, 'active'),
-      ))
-      .limit(1)
-
-    let delegation: Delegation
-
-    // Helper: issue fresh delegation and store
-    const issueAndStore = async (edgeId: string) => {
-      const result = await issueReviewDelegation({
-        subjectAgentAddress: subjectAddr,
-        reviewerAgentAddress: myAgent,
-      })
-      await db.insert(schema.reviewDelegations).values({
-        id: crypto.randomUUID(),
-        reviewerAgentAddress: myAgent.toLowerCase(),
-        subjectAgentAddress: subjectAddr.toLowerCase(),
-        edgeId,
-        delegationJson: JSON.stringify(result.delegation, (_, v) =>
-          typeof v === 'bigint' ? v.toString() : v
-        ),
-        salt: result.delegation.salt.toString(),
-        expiresAt: result.expiresAt,
-      })
-      return result.delegation
-    }
-
-    if (storedDelegations[0]) {
-      // Check if delegation is expired or stale (wrong delegate address from old version)
-      const expiresAt = new Date(storedDelegations[0].expiresAt)
-      const parsed = JSON.parse(storedDelegations[0].delegationJson)
-      // Delegate must be the deployer (server relays the call). Old delegations may have
-      // the reviewer's agent as delegate — those need to be re-issued.
-      const deployerAddr = getWalletClient().account!.address.toLowerCase()
-      const needsReissue = expiresAt < new Date()
-        || parsed.delegate?.toLowerCase() !== deployerAddr
-
-      if (needsReissue) {
-        // Mark old as expired and re-issue
-        await db.update(schema.reviewDelegations)
-          .set({ status: 'expired' })
-          .where(eq(schema.reviewDelegations.id, storedDelegations[0].id))
-        delegation = await issueAndStore(storedDelegations[0].edgeId)
-      } else {
-        // Parse stored delegation (restore bigint fields)
-        delegation = {
-          ...parsed,
-          salt: BigInt(parsed.salt),
-          caveats: parsed.caveats.map((c: { enforcer: string; terms: string; args?: string }) => ({
-            enforcer: c.enforcer,
-            terms: c.terms,
-            args: c.args ?? '0x',
-          })),
-        } as Delegation
-      }
-    } else {
-      // No delegation stored — issue a new one (fallback for existing relationships)
-      delegation = await issueAndStore('')
-    }
+    const { delegation } = await issueReviewDelegation({
+      subjectAgentAddress: subjectAddr,
+      reviewerAgentAddress: myAgentAddr,
+    }) as { delegation: Delegation; expiresAt: string }
 
     // Validate inputs
     const reviewTypeHash = REVIEW_TYPES[input.reviewType]
@@ -175,7 +117,7 @@ export async function submitReview(input: SubmitReviewInput): Promise<SubmitRevi
     // executes through the subject agent's smart account
     await redeemReviewDelegation({
       delegation,
-      reviewerAgentAddress: myAgent,
+      reviewerAgentAddress: myAgentAddr,
       subjectAgentAddress: subjectAddr,
       reviewType: reviewTypeHash,
       recommendation: recHash,
@@ -187,15 +129,15 @@ export async function submitReview(input: SubmitReviewInput): Promise<SubmitRevi
 
     // Notify subject agent owner
     try {
-      const orgAgent = await db.select().from(schema.orgAgents)
-        .where(eq(schema.orgAgents.smartAccountAddress, input.subjectAddress)).limit(1)
-      if (orgAgent[0]) {
+      const ownerIds = await findAgentOwnerUserIds(input.subjectAddress)
+      if (ownerIds.length > 0) {
+        const subjectMeta = await getAgentMetadata(input.subjectAddress)
         await db.insert(schema.messages).values({
           id: crypto.randomUUID(),
-          userId: orgAgent[0].createdBy,
+          userId: ownerIds[0],
           type: 'review_received',
           title: 'New review received',
-          body: `Your agent ${orgAgent[0].name} received a ${input.recommendation} review (score: ${input.overallScore}/100)`,
+          body: `Your agent ${subjectMeta.displayName} received a ${input.recommendation} review (score: ${input.overallScore}/100)`,
           link: '/reviews',
         })
       }

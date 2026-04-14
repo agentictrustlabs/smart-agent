@@ -6,6 +6,8 @@ import { redirect } from 'next/navigation'
 import { getUserOrgs } from '@/lib/get-user-orgs'
 import { getOrgMembers } from '@/lib/get-org-members'
 import { InviteForm } from '@/components/team/InviteForm'
+import { getEdgesBySubject, getEdge, getEdgeRoles } from '@/lib/contracts'
+import { REVIEW_RELATIONSHIP, ROLE_REVIEWER } from '@smart-agent/sdk'
 
 export default async function TeamPage() {
   const currentUser = await getCurrentUser()
@@ -30,13 +32,6 @@ export default async function TeamPage() {
     )
   }
 
-  const enforcerNames: Record<string, string> = {
-    [process.env.TIMESTAMP_ENFORCER_ADDRESS?.toLowerCase() ?? '']: 'Time Window',
-    [process.env.ALLOWED_METHODS_ENFORCER_ADDRESS?.toLowerCase() ?? '']: 'Allowed Methods',
-    [process.env.ALLOWED_TARGETS_ENFORCER_ADDRESS?.toLowerCase() ?? '']: 'Allowed Targets',
-    [process.env.VALUE_ENFORCER_ADDRESS?.toLowerCase() ?? '']: 'Spending Limit',
-  }
-
   // Build per-org team data
   type OrgTeam = {
     address: string
@@ -54,26 +49,29 @@ export default async function TeamPage() {
   for (const org of userOrgs) {
     const { members, partners } = await getOrgMembers(org.address)
 
-    // Delegations for this org
-    const orgDelegations = await db.select().from(schema.reviewDelegations)
-      .where(eq(schema.reviewDelegations.subjectAgentAddress, org.address.toLowerCase()))
-
     const membersWithDelegations = members.map(m => {
-      const personDelegations = orgDelegations
-        .filter(d => d.reviewerAgentAddress === m.address.toLowerCase())
-        .map(d => {
-          const isExpired = new Date(d.expiresAt) < new Date()
-          let caveats: string[] = []
-          try {
-            const parsed = JSON.parse(d.delegationJson)
-            caveats = (parsed.caveats ?? []).map((c: { enforcer: string }) =>
-              enforcerNames[c.enforcer?.toLowerCase()] ?? 'Custom'
-            )
-          } catch { /* ignored */ }
-          return { status: isExpired ? 'expired' : d.status, expiresAt: new Date(d.expiresAt).toLocaleDateString(), caveats }
-        })
+      const personDelegations: Array<{ status: string; expiresAt: string; caveats: string[] }> = []
       return { ...m, delegations: personDelegations }
     })
+
+    for (const member of membersWithDelegations) {
+      try {
+        const edgeIds = await getEdgesBySubject(member.address as `0x${string}`)
+        for (const edgeId of edgeIds) {
+          const edge = await getEdge(edgeId)
+          if (edge.object_.toLowerCase() !== org.address.toLowerCase()) continue
+          if (edge.relationshipType !== REVIEW_RELATIONSHIP) continue
+          if (edge.status < 2) continue
+          const roles = await getEdgeRoles(edgeId)
+          if (!roles.some(role => role === ROLE_REVIEWER)) continue
+          member.delegations.push({
+            status: 'available',
+            expiresAt: 'On demand',
+            caveats: ['Issued on demand'],
+          })
+        }
+      } catch { /* ignored */ }
+    }
 
     // Invites for this org
     const allInvites = await db.select().from(schema.invites)

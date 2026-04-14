@@ -1,16 +1,21 @@
 import { redirect } from 'next/navigation'
-import { db, schema } from '@/db'
-import { eq } from 'drizzle-orm'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { DeployAIAgentClient } from './DeployAIAgentClient'
+import { getOrgsCreatedByUser } from '@/lib/agent-registry'
+import { getAgentMetadata } from '@/lib/agent-metadata'
 
 export default async function DeployAIAgentPage() {
   const currentUser = await getCurrentUser()
   if (!currentUser) redirect('/')
 
   // Get user's org agents (to select which org operates the AI agent)
-  const orgAgents = await db.select().from(schema.orgAgents)
-    .where(eq(schema.orgAgents.createdBy, currentUser.id))
+  const orgAddresses = await getOrgsCreatedByUser(currentUser.id)
+  const orgAgents = await Promise.all(
+    orgAddresses.map(async (address) => {
+      const meta = await getAgentMetadata(address)
+      return { address, name: meta.displayName }
+    })
+  )
 
   return (
     <div data-page="deploy-ai">
@@ -32,7 +37,7 @@ export default async function DeployAIAgentPage() {
       </div>
 
       <DeployAIAgentClient
-        orgAgents={orgAgents.map((o) => ({ address: o.smartAccountAddress, name: o.name }))}
+        orgAgents={orgAgents}
       />
     </div>
   )

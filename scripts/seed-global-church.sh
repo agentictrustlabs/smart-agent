@@ -182,24 +182,28 @@ create_rel() {
 }
 
 # Relationship type and role hashes
-ORG_GOV=$(cast call "$REL" "ORGANIZATION_GOVERNANCE()(bytes32)" --rpc-url "$RPC")
-ORG_MEM=$(cast call "$REL" "ORGANIZATION_MEMBERSHIP()(bytes32)" --rpc-url "$RPC")
-ALLIANCE=$(cast call "$REL" "ALLIANCE()(bytes32)" --rpc-url "$RPC")
-VALIDATION=$(cast call "$REL" "VALIDATION_TRUST()(bytes32)" --rpc-url "$RPC")
-REVIEW_T=$(cast call "$REL" "REVIEW_RELATIONSHIP()(bytes32)" --rpc-url "$RPC")
+hash_term() {
+  cast keccak "$1"
+}
 
-R_OWNER=$(cast call "$REL" "ROLE_OWNER()(bytes32)" --rpc-url "$RPC")
-R_CEO=$(cast call "$REL" "ROLE_CEO()(bytes32)" --rpc-url "$RPC")
-R_TREASURER=$(cast call "$REL" "ROLE_TREASURER()(bytes32)" --rpc-url "$RPC")
-R_BOARD=$(cast call "$REL" "ROLE_BOARD_MEMBER()(bytes32)" --rpc-url "$RPC")
-R_ADMIN=$(cast call "$REL" "ROLE_ADMIN()(bytes32)" --rpc-url "$RPC")
-R_MEMBER=$(cast call "$REL" "ROLE_MEMBER()(bytes32)" --rpc-url "$RPC")
-R_AUDITOR=$(cast call "$REL" "ROLE_AUDITOR()(bytes32)" --rpc-url "$RPC")
-R_VALIDATOR=$(cast call "$REL" "ROLE_VALIDATOR()(bytes32)" --rpc-url "$RPC")
-R_REVIEWER=$(cast call "$REL" "ROLE_REVIEWER()(bytes32)" --rpc-url "$RPC")
-R_AUTH_SIGNER=$(cast call "$REL" "ROLE_AUTHORIZED_SIGNER()(bytes32)" --rpc-url "$RPC")
-R_PARTNER=$(cast call "$REL" "ROLE_STRATEGIC_PARTNER()(bytes32)" --rpc-url "$RPC")
-R_ENDORSED=$(cast call "$REL" "ROLE_ENDORSED_BY()(bytes32)" --rpc-url "$RPC")
+ORG_GOV=$(hash_term "atl:OrganizationGovernanceRelationship")
+ORG_MEM=$(hash_term "atl:OrganizationMembershipRelationship")
+ALLIANCE=$(hash_term "atl:AllianceRelationship")
+VALIDATION=$(hash_term "atl:ValidationTrustRelationship")
+REVIEW_T=$(hash_term "atl:ReviewRelationship")
+
+R_OWNER=$(hash_term "atl:OwnerRole")
+R_CEO=$(hash_term "atl:ChiefExecutiveRole")
+R_TREASURER=$(hash_term "atl:TreasurerRole")
+R_BOARD=$(hash_term "atl:BoardMemberRole")
+R_ADMIN=$(hash_term "atl:AdministratorRole")
+R_MEMBER=$(hash_term "atl:MemberRole")
+R_AUDITOR=$(hash_term "atl:AuditorRole")
+R_VALIDATOR=$(hash_term "atl:ValidatorRole")
+R_REVIEWER=$(hash_term "atl:ReviewerRole")
+R_AUTH_SIGNER=$(hash_term "atl:AuthorizedSignerRole")
+R_PARTNER=$(hash_term "atl:StrategicPartnerRole")
+R_ENDORSED=$(hash_term "atl:EndorsedByRole")
 
 # ─── Person → Organization Relationships ────────────────────────────
 
@@ -246,8 +250,8 @@ create_rel "$PA_SARAH" "$GRACE_CHURCH" "$VALIDATION" "" "$R_VALIDATOR"
 
 # ─── Treasury Agent → Organization Relationships ────────────────────
 
-ORG_CTRL=$(cast call "$REL" "ORGANIZATIONAL_CONTROL()(bytes32)" --rpc-url "$RPC")
-R_OPERATED=$(cast call "$REL" "ROLE_OPERATED_AGENT()(bytes32)" --rpc-url "$RPC")
+ORG_CTRL=$(hash_term "atl:OrganizationalControlRelationship")
+R_OPERATED=$(hash_term "atl:OperatedAgentRole")
 
 echo ""
 echo "=== Treasury Agent Relationships ==="
@@ -341,8 +345,8 @@ GC_NAV='[{"href":"/dashboard","label":"Council View"},{"href":"/agents","label":
 cast send "$RESOLVER" "setStringProperty(address,bytes32,string)" "$HUB_GC" "$HUB_NAV_K" "$GC_NAV" --rpc-url "$RPC" --private-key "$KEY" > /dev/null 2>&1
 
 # HAS_MEMBER edges
-HAS_MEMBER=$(cast call "$REL" "HAS_MEMBER()(bytes32)" --rpc-url "$RPC")
-R_MEMBER=$(cast call "$REL" "ROLE_MEMBER()(bytes32)" --rpc-url "$RPC")
+HAS_MEMBER=$(hash_term "atl:HasMemberRelationship")
+R_MEMBER=$(hash_term "atl:MemberRole")
 echo "Creating HAS_MEMBER edges..."
 for AGENT in $GRACE_CHURCH $SBC $ECFA $WYCLIFFE $NCF $TREASURY_GRACE $TREASURY_NCF $PA_JAMES $PA_SARAH $PA_DAN $PA_JOHN $PA_DAVID; do
   create_rel "$HUB_GC" "$AGENT" "$HAS_MEMBER" "" "$R_MEMBER"

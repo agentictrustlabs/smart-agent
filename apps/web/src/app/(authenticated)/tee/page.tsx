@@ -1,8 +1,8 @@
 import Link from 'next/link'
 import { getPublicClient } from '@/lib/contracts'
 import { agentValidationProfileAbi, agentIssuerProfileAbi } from '@smart-agent/sdk'
-import { db, schema } from '@/db'
 import { keccak256, toBytes } from 'viem'
+import { listRegisteredAgents } from '@/lib/agent-resolver'
 
 const TEE_ARCH_NAMES: Record<string, string> = {
   [keccak256(toBytes('aws-nitro'))]: 'AWS Nitro',
@@ -23,13 +23,9 @@ export default async function TeeValidationPage() {
   const issuerAddr = process.env.AGENT_ISSUER_ADDRESS as `0x${string}`
 
   // Build address→name lookup
-  const allOrgs = await db.select().from(schema.orgAgents)
-  const allAI = await db.select().from(schema.aiAgents)
-  const allPerson = await db.select().from(schema.personAgents)
+  const registeredAgents = await listRegisteredAgents()
   const nameMap = new Map<string, string>()
-  for (const o of allOrgs) nameMap.set(o.smartAccountAddress.toLowerCase(), o.name)
-  for (const a of allAI) nameMap.set(a.smartAccountAddress.toLowerCase(), a.name)
-  for (const p of allPerson) nameMap.set(p.smartAccountAddress.toLowerCase(), p.name)
+  for (const agent of registeredAgents) nameMap.set(agent.address.toLowerCase(), agent.name)
   const getName = (a: string) => nameMap.get(a.toLowerCase()) ?? `${a.slice(0, 6)}...${a.slice(-4)}`
 
   type ValidationView = {

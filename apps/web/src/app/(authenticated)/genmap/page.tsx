@@ -130,19 +130,15 @@ export default async function GenMapPage() {
       const addr = org.address.toLowerCase()
       const meta = org.metadata ?? {}
       const health = computeGroupHealth(meta as unknown as Parameters<typeof computeGroupHealth>[0])
-      const gen = typeof meta.generation === 'number' ? meta.generation : getGeneration(addr)
+      const gen = getGeneration(addr)
       const parentAddr = parentMap.get(addr)
-
-      // Find parent node ID
-      const parentNode = parentAddr ? connectedOrgs.find(o => o.address.toLowerCase() === parentAddr) : null
-      const parentId = parentNode ? `org-${parentNode.address.toLowerCase().slice(2, 10)}` : null
 
       let agentMeta = { latitude: '', longitude: '' }
       try { agentMeta = await getAgentMetadata(org.address) } catch { /* ignored */ }
 
       hierarchyNodes.push({
-        id: `org-${addr.slice(2, 10)}`,
-        parentId,
+        id: addr,
+        parentId: parentAddr ?? null,
         generation: gen,
         name: org.name,
         leaderName: typeof meta.leaderName === 'string' ? meta.leaderName : null,
@@ -158,23 +154,7 @@ export default async function GenMapPage() {
       })
     }
   }
-
-  // ─── Fallback: gen_map_nodes if no on-chain hierarchy ─────────────
-  let nodes = hierarchyNodes
-  if (nodes.length === 0) {
-    const allNodes = await db.select().from(schema.genMapNodes)
-    const orgNodes = allNodes.filter(n => n.networkAddress === userOrgs[0].address.toLowerCase())
-    nodes = orgNodes.map(n => {
-      const health = computeGroupHealth(
-        n.healthData ? (() => { try { return JSON.parse(n.healthData!) } catch { return {} } })() : {}
-      )
-      return {
-        ...n,
-        healthScore: health.total, healthStatus: health.status,
-        latitude: '', longitude: '',
-      }
-    })
-  }
+  const nodes = hierarchyNodes
 
   // Metrics
   const tree = buildGenTree(nodes.map(n => ({

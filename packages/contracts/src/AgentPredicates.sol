@@ -68,6 +68,13 @@ library AgentPredicates {
     bytes32 constant ATL_HUB_CONTEXT_TERM = keccak256("atl:hubContextTerm");
     bytes32 constant ATL_HUB_OVERVIEW_LABEL = keccak256("atl:hubOverviewLabel");
     bytes32 constant ATL_HUB_AGENT_LABEL = keccak256("atl:hubAgentLabel");
+    /// @notice JSON map of relationship type hash → domain-specific label
+    /// e.g. {"0xabc...":"Planted By","0xdef...":"Leads"}
+    bytes32 constant ATL_HUB_VOCABULARY = keccak256("atl:hubVocabulary");
+    /// @notice JSON map of role hash → domain-specific label
+    bytes32 constant ATL_HUB_ROLE_VOCABULARY = keccak256("atl:hubRoleVocabulary");
+    /// @notice JSON map of agent type hash → domain-specific label
+    bytes32 constant ATL_HUB_TYPE_VOCABULARY = keccak256("atl:hubTypeVocabulary");
 
     // ─── ERC-4337 technical ─────────────────────────────────────────
     bytes32 constant ATL_ENTRY_POINT = keccak256("atl:entryPoint");

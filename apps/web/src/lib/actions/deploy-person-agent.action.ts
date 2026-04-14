@@ -5,8 +5,9 @@ import { eq } from 'drizzle-orm'
 import { requireSession } from '@/lib/auth/session'
 import { deploySmartAccount } from '@/lib/contracts'
 import { keccak256, encodePacked } from 'viem'
-
-const DEFAULT_CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID || '31337')
+import { getPersonAgentForUser } from '@/lib/agent-registry'
+import { addAgentController } from '@/lib/agent-resolver'
+import { registerAgentMetadata } from '@/lib/actions/agent-metadata.action'
 
 export interface DeployPersonAgentResult {
   success: boolean
@@ -38,18 +39,12 @@ export async function deployPersonAgent(agentName?: string): Promise<DeployPerso
       return { success: false, error: 'User not found. Please complete onboarding first.' }
     }
 
-    // Check for existing agent
-    const existingAgent = await db
-      .select()
-      .from(schema.personAgents)
-      .where(eq(schema.personAgents.userId, user.id))
-      .limit(1)
-
-    if (existingAgent[0]) {
+    const existingAgent = await getPersonAgentForUser(user.id)
+    if (existingAgent) {
       return {
         success: true,
-        agentId: existingAgent[0].id,
-        smartAccountAddress: existingAgent[0].smartAccountAddress,
+        agentId: existingAgent,
+        smartAccountAddress: existingAgent,
       }
     }
 
@@ -62,20 +57,15 @@ export async function deployPersonAgent(agentName?: string): Promise<DeployPerso
     // Deploy on-chain via factory
     const smartAccountAddress = await deploySmartAccount(ownerAddress, salt)
 
-    const agentId = crypto.randomUUID()
-
-    await db.insert(schema.personAgents).values({
-      id: agentId,
-      name: agentName?.trim() || `${user.name}'s Agent`,
-      userId: user.id,
-      smartAccountAddress,
-      chainId: DEFAULT_CHAIN_ID,
-      salt: saltHash,
-      implementationType: 'hybrid',
-      status: 'deployed',
+    await registerAgentMetadata({
+      agentAddress: smartAccountAddress,
+      displayName: agentName?.trim() || `${user.name}'s Agent`,
+      description: '',
+      agentType: 'person',
     })
+    await addAgentController(smartAccountAddress, ownerAddress)
 
-    return { success: true, agentId, smartAccountAddress }
+    return { success: true, agentId: smartAccountAddress, smartAccountAddress }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to deploy person agent'
     console.error('Person agent deployment failed:', message)

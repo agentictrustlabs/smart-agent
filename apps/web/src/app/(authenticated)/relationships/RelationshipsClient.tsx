@@ -1,32 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { assertRelationship } from '@/lib/actions/assert-relationship.action'
-
-const ROLES = [
-  { value: 'owner', label: 'Owner' },
-  { value: 'admin', label: 'Admin' },
-  { value: 'member', label: 'Member' },
-  { value: 'operator', label: 'Operator' },
-  { value: 'auditor', label: 'Auditor' },
-  { value: 'vendor', label: 'Vendor' },
-  { value: 'board-member', label: 'Board Member' },
-  { value: 'ceo', label: 'CEO' },
-  { value: 'executive', label: 'Executive' },
-  { value: 'treasurer', label: 'Treasurer' },
-  { value: 'authorized-signer', label: 'Authorized Signer' },
-  { value: 'validator', label: 'Validator' },
-  { value: 'insurer', label: 'Insurer' },
-  { value: 'staker', label: 'Staker' },
-  { value: 'strategic-partner', label: 'Strategic Partner' },
-  { value: 'service-provider', label: 'Service Provider' },
-  { value: 'delegated-operator', label: 'Delegated Operator' },
-  { value: 'reviewer', label: 'Reviewer' },
-  { value: 'operated-agent', label: 'Operated Agent' },
-  { value: 'administers', label: 'Administers' },
-  { value: 'activity-validator', label: 'Activity Validator' },
-]
+import {
+  listRelationshipTypeDefinitions,
+  listRoleDefinitionsForRelationshipType,
+  relationshipTypeName,
+  roleName,
+} from '@smart-agent/sdk'
 
 interface Agent {
   address: string
@@ -42,13 +24,25 @@ interface RelationshipsClientProps {
 
 export function RelationshipsClient({ myAgents, allAgents }: RelationshipsClientProps) {
   const router = useRouter()
+  const relationshipTypes = useMemo(() => listRelationshipTypeDefinitions(), [])
   const [fromAgent, setFromAgent] = useState(myAgents[0]?.address ?? '')
   const [toAgent, setToAgent] = useState('')
-  const [selectedRole, setSelectedRole] = useState('member')
+  const [selectedRelationshipType, setSelectedRelationshipType] = useState<`0x${string}`>(
+    relationshipTypes[0]?.hash ?? '0x'
+  )
+  const [selectedRole, setSelectedRole] = useState<`0x${string}`>('0x')
   const [showAllTargets, setShowAllTargets] = useState(false)
   const [asserting, setAsserting] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+
+  const roleOptions = useMemo(
+    () => listRoleDefinitionsForRelationshipType(selectedRelationshipType),
+    [selectedRelationshipType],
+  )
+  const effectiveSelectedRole = roleOptions.some((role) => role.hash === selectedRole)
+    ? selectedRole
+    : (roleOptions[0]?.hash ?? '0x')
 
   // Target list: default to my agents, toggle to all
   const targetAgents = showAllTargets ? allAgents : myAgents
@@ -68,23 +62,26 @@ export function RelationshipsClient({ myAgents, allAgents }: RelationshipsClient
 
   async function handleAssert(e: React.FormEvent) {
     e.preventDefault()
-    if (!fromAgent || !effectiveToAgent) return
+    if (!fromAgent || !effectiveToAgent || effectiveSelectedRole === '0x' || selectedRelationshipType === '0x') return
 
     setAsserting(true)
     setError('')
     setSuccess('')
 
     const result = await assertRelationship({
-      personAgentAddress: fromAgent,
-      orgAgentAddress: effectiveToAgent,
-      role: selectedRole,
+      subjectAgentAddress: fromAgent,
+      objectAgentAddress: effectiveToAgent,
+      relationshipType: selectedRelationshipType,
+      role: effectiveSelectedRole,
     })
 
     setAsserting(false)
 
     if (result.success) {
       const status = result.autoConfirmed ? 'Created and auto-confirmed (you own both agents)' : 'Created as PROPOSED — awaiting counterparty confirmation'
-      setSuccess(`${fromInfo?.name} → ${toInfo?.name} [${selectedRole}]\n${status}`)
+      setSuccess(
+        `${fromInfo?.name} → ${toInfo?.name} [${roleName(effectiveSelectedRole)} in ${relationshipTypeName(selectedRelationshipType)}]\n${status}`
+      )
       router.refresh()
     } else {
       setError(result.error ?? 'Failed to create relationship')
@@ -121,15 +118,28 @@ export function RelationshipsClient({ myAgents, allAgents }: RelationshipsClient
           <div data-component="assert-arrow">
             <span>plays</span>
             <select
-              value={selectedRole}
-              onChange={(e) => setSelectedRole(e.target.value)}
+              value={effectiveSelectedRole}
+              onChange={(e) => setSelectedRole(e.target.value as `0x${string}`)}
               data-component="role-select"
             >
-              {ROLES.map((r) => (
-                <option key={r.value} value={r.value}>{r.label}</option>
+              {roleOptions.map((role) => (
+                <option key={role.hash} value={role.hash}>
+                  {role.label}
+                </option>
               ))}
             </select>
             <span>in</span>
+            <select
+              value={selectedRelationshipType}
+              onChange={(e) => setSelectedRelationshipType(e.target.value as `0x${string}`)}
+              data-component="role-select"
+            >
+              {relationshipTypes.map((relationshipType) => (
+                <option key={relationshipType.hash} value={relationshipType.hash}>
+                  {relationshipType.label}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* TO — my agents or all agents */}
@@ -163,7 +173,7 @@ export function RelationshipsClient({ myAgents, allAgents }: RelationshipsClient
         {error && <p role="alert" data-component="error-message">{error}</p>}
         {success && <p data-component="success-message">{success}</p>}
 
-        <button type="submit" disabled={asserting || !effectiveToAgent}>
+        <button type="submit" disabled={asserting || !effectiveToAgent || effectiveSelectedRole === '0x'}>
           {asserting ? 'Creating relationship (3 txns)...' : 'Create Relationship'}
         </button>
       </form>
