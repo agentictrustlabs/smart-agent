@@ -23,6 +23,7 @@ export async function addPrayer(data: {
   title: string
   notes?: string
   schedule: string
+  linkedOikosId?: string
 }) {
   const userId = await resolveUserId()
 
@@ -33,6 +34,7 @@ export async function addPrayer(data: {
     title: data.title,
     notes: data.notes ?? null,
     schedule: data.schedule || 'daily',
+    linkedOikosId: data.linkedOikosId ?? null,
   })
 
   revalidatePath('/catalyst/prayer')

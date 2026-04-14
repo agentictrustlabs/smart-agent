@@ -8,6 +8,7 @@ import {
   deleteCirclePerson,
   togglePlannedConversation,
 } from '@/lib/actions/circles.action'
+import QuickActivityModal from '@/components/catalyst/QuickActivityModal'
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -20,6 +21,7 @@ interface CirclePerson {
   proximity: number
   response: Response
   plannedConversation: number
+  tags: string | null
   notes: string | null
   createdAt: string
 }
@@ -30,6 +32,8 @@ interface FormData {
   response: Response
   notes: string
   plannedConversation: boolean
+  tags: string[]
+  customTag: string
 }
 
 // ─── Constants ──────────────────────────────────────────────────────
@@ -59,23 +63,46 @@ const PROXIMITY_LABELS: Record<number, string> = {
   4: 'Outer',
 }
 
+const TAGS = ['ESL Student', 'Farm Worker', 'Family Referral', 'Youth', 'New Believer', 'Leader Potential'] as const
+
+const TAG_COLORS: Record<string, string> = {
+  'ESL Student': '#6366f1',
+  'Farm Worker': '#16a34a',
+  'Family Referral': '#d97706',
+  'Youth': '#0d9488',
+  'New Believer': '#2563eb',
+  'Leader Potential': '#7c3aed',
+}
+
 const EMPTY_FORM: FormData = {
   name: '',
   proximity: 3,
   response: 'curious',
   notes: '',
   plannedConversation: false,
+  tags: [],
+  customTag: '',
 }
 
 // ─── Component ──────────────────────────────────────────────────────
 
-export function CirclesClient({ circles }: { circles: CirclePerson[] }) {
+export function CirclesClient({
+  circles,
+  lastContactMap = {},
+  orgAddress = '',
+}: {
+  circles: CirclePerson[]
+  lastContactMap?: Record<string, string>
+  orgAddress?: string
+}) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [editPerson, setEditPerson] = useState<CirclePerson | null>(null)
   const [form, setForm] = useState<FormData>(EMPTY_FORM)
   const [selectedPerson, setSelectedPerson] = useState<CirclePerson | null>(null)
+  const [quickLogPerson, setQuickLogPerson] = useState<CirclePerson | null>(null)
+  const [selectedTags, setSelectedTags] = useState<string[]>([])
   const popupRef = useRef<HTMLDivElement>(null)
 
   // ── Close popup on outside click ──────────────────────────────────
@@ -104,10 +131,24 @@ export function CirclesClient({ circles }: { circles: CirclePerson[] }) {
 
   const summaryResponses: Response[] = ['decided', 'seeking', 'interested', 'curious']
 
+  // ── Tag filter helper ───────────────────────────────────────────
+
+  const toggleTagFilter = (tag: string) => {
+    setSelectedTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag])
+  }
+
+  const filteredCircles = selectedTags.length === 0
+    ? circles
+    : circles.filter(p => {
+        if (!p.tags) return false
+        const personTags = p.tags.split(',').map(t => t.trim())
+        return selectedTags.some(st => personTags.includes(st))
+      })
+
   // ── Group people by proximity for list ──────────────────────────
 
   const groupedByProximity: Record<number, CirclePerson[]> = { 1: [], 2: [], 3: [], 4: [] }
-  for (const p of circles) {
+  for (const p of filteredCircles) {
     const ring = Math.max(1, Math.min(4, p.proximity))
     groupedByProximity[ring].push(p)
   }
@@ -122,12 +163,17 @@ export function CirclesClient({ circles }: { circles: CirclePerson[] }) {
   }
 
   const openEdit = (person: CirclePerson) => {
+    const existingTags = person.tags ? person.tags.split(',').map(t => t.trim()).filter(Boolean) : []
+    const predefined = existingTags.filter(t => (TAGS as readonly string[]).includes(t))
+    const custom = existingTags.filter(t => !(TAGS as readonly string[]).includes(t))
     setForm({
       name: person.personName,
       proximity: person.proximity,
       response: person.response,
       notes: person.notes ?? '',
       plannedConversation: Boolean(person.plannedConversation),
+      tags: predefined,
+      customTag: custom.join(', '),
     })
     setEditPerson(person)
     setShowAddDialog(true)
@@ -141,6 +187,11 @@ export function CirclesClient({ circles }: { circles: CirclePerson[] }) {
 
   const handleSave = async () => {
     if (!form.name.trim()) return
+    const allTags = [
+      ...form.tags,
+      ...form.customTag.split(',').map(t => t.trim()).filter(Boolean),
+    ]
+    const tagsStr = allTags.length > 0 ? allTags.join(',') : undefined
     startTransition(async () => {
       if (editPerson) {
         await updateCirclePerson(editPerson.id, {
@@ -149,6 +200,7 @@ export function CirclesClient({ circles }: { circles: CirclePerson[] }) {
           response: form.response,
           notes: form.notes || undefined,
           plannedConversation: form.plannedConversation,
+          tags: tagsStr ?? '',
         })
       } else {
         await addCirclePerson({
@@ -157,6 +209,7 @@ export function CirclesClient({ circles }: { circles: CirclePerson[] }) {
           response: form.response,
           notes: form.notes || undefined,
           plannedConversation: form.plannedConversation,
+          tags: tagsStr,
         })
       }
       closeDialog()
@@ -213,7 +266,7 @@ export function CirclesClient({ circles }: { circles: CirclePerson[] }) {
     return positioned
   }, [])
 
-  const positioned = positionPeople(circles)
+  const positioned = positionPeople(filteredCircles)
 
   // ── Render ──────────────────────────────────────────────────────
 
@@ -314,6 +367,55 @@ export function CirclesClient({ circles }: { circles: CirclePerson[] }) {
               )
             })}
           </div>
+        </div>
+      )}
+
+      {/* Tag Filter Bar */}
+      {circles.length > 0 && (
+        <div style={{
+          display: 'flex', gap: '0.35rem', flexWrap: 'wrap',
+          marginBottom: '0.75rem',
+        }}>
+          {TAGS.map(tag => {
+            const isActive = selectedTags.includes(tag)
+            const tagColor = TAG_COLORS[tag] ?? '#78716c'
+            return (
+              <button
+                key={tag}
+                onClick={() => toggleTagFilter(tag)}
+                style={{
+                  padding: '0.25rem 0.6rem',
+                  borderRadius: 999,
+                  border: `1.5px solid ${isActive ? tagColor : '#d6d3d1'}`,
+                  background: isActive ? `${tagColor}18` : '#fff',
+                  color: isActive ? tagColor : '#78716c',
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s',
+                }}
+              >
+                {tag}
+              </button>
+            )
+          })}
+          {selectedTags.length > 0 && (
+            <button
+              onClick={() => setSelectedTags([])}
+              style={{
+                padding: '0.25rem 0.6rem',
+                borderRadius: 999,
+                border: '1px solid #d6d3d1',
+                background: '#f5f5f4',
+                color: '#78716c',
+                fontSize: '0.72rem',
+                fontWeight: 500,
+                cursor: 'pointer',
+              }}
+            >
+              Clear filters
+            </button>
+          )}
         </div>
       )}
 
@@ -442,9 +544,49 @@ export function CirclesClient({ circles }: { circles: CirclePerson[] }) {
           </div>
 
           {circles.length === 0 && (
-            <p style={{ fontSize: '0.85rem', color: '#a8a29e', margin: '1.5rem 0', textAlign: 'center' }}>
-              No people added yet
-            </p>
+            <div style={{
+              padding: '1.25rem',
+              background: '#faf8f3',
+              borderRadius: '12px',
+              border: '1px solid #e7e5e4',
+              textAlign: 'center',
+              margin: '1rem 0',
+            }}>
+              <p style={{
+                fontSize: '1rem',
+                fontWeight: 600,
+                color: '#292524',
+                margin: '0 0 0.5rem',
+                fontFamily: 'Georgia, serif',
+              }}>
+                Your oikos is waiting to be discovered.
+              </p>
+              <p style={{
+                fontSize: '0.85rem',
+                color: '#78716c',
+                margin: '0 0 1rem',
+                lineHeight: 1.55,
+              }}>
+                Think about the people God has placed around you &mdash; neighbors,
+                coworkers, family. Add them here to begin praying for and
+                sharing with them.
+              </p>
+              <button
+                onClick={openAdd}
+                style={{
+                  background: '#8b5e3c',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '0.5rem 1.25rem',
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                + Add your first person
+              </button>
+            </div>
           )}
 
           {([1, 2, 3, 4] as const).map((ring) => {
@@ -468,6 +610,10 @@ export function CirclesClient({ circles }: { circles: CirclePerson[] }) {
 
                 {people.map((person) => {
                   const isSelected = selectedPerson?.id === person.id
+                  const lastDate = lastContactMap[person.id]
+                  const daysAgo = lastDate
+                    ? Math.floor((Date.now() - new Date(lastDate).getTime()) / 86400000)
+                    : null
                   return (
                     <div
                       key={person.id}
@@ -489,21 +635,63 @@ export function CirclesClient({ circles }: { circles: CirclePerson[] }) {
                           width: 10, height: 10, borderRadius: '50%',
                           background: RESPONSE_COLORS[person.response], flexShrink: 0,
                         }} />
-                        <span style={{
-                          fontSize: '0.85rem', color: '#292524', fontWeight: 500,
-                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                        }}>
-                          {person.personName}
-                        </span>
-                        <span style={{ fontSize: '0.72rem', color: '#a8a29e', flexShrink: 0 }}>
-                          {PROXIMITY_LABELS[person.proximity]}
-                        </span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                            <span style={{
+                              fontSize: '0.85rem', color: '#292524', fontWeight: 500,
+                              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                            }}>
+                              {person.personName}
+                            </span>
+                            <span style={{ fontSize: '0.72rem', color: '#a8a29e', flexShrink: 0 }}>
+                              {PROXIMITY_LABELS[person.proximity]}
+                            </span>
+                            {person.tags && person.tags.split(',').map(t => t.trim()).filter(Boolean).map(tag => (
+                              <span key={tag} style={{
+                                padding: '0.05rem 0.35rem', borderRadius: 999,
+                                fontSize: '0.6rem', fontWeight: 600, flexShrink: 0,
+                                background: `${TAG_COLORS[tag] ?? '#78716c'}18`,
+                                color: TAG_COLORS[tag] ?? '#78716c',
+                              }}>
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                          {daysAgo !== null && (
+                            <span style={{ fontSize: '0.65rem', color: '#a8a29e', lineHeight: 1.2 }}>
+                              Last contact: {daysAgo === 0 ? 'today' : `${daysAgo}d ago`}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      {Boolean(person.plannedConversation) && (
-                        <span style={{ fontSize: '0.85rem', flexShrink: 0, marginLeft: '0.25rem' }}>
-                          💬
-                        </span>
-                      )}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flexShrink: 0 }}>
+                        {Boolean(person.plannedConversation) && (
+                          <span style={{ fontSize: '0.85rem' }}>
+                            💬
+                          </span>
+                        )}
+                        {orgAddress && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setQuickLogPerson(person)
+                            }}
+                            title="Log contact"
+                            style={{
+                              background: 'none',
+                              border: '1px solid #e7e5e4',
+                              borderRadius: '5px',
+                              padding: '0.15rem 0.35rem',
+                              fontSize: '0.75rem',
+                              cursor: 'pointer',
+                              color: '#78716c',
+                              lineHeight: 1,
+                            }}
+                          >
+                            📝
+                          </button>
+                        )}
+                      </div>
                     </div>
                   )
                 })}
@@ -578,11 +766,43 @@ export function CirclesClient({ circles }: { circles: CirclePerson[] }) {
             </div>
 
             {/* Planned conversation status */}
-            <div style={{ fontSize: '0.85rem', color: '#78716c', marginBottom: '0.75rem' }}>
+            <div style={{ fontSize: '0.85rem', color: '#78716c', marginBottom: '0.4rem' }}>
               {selectedPerson.plannedConversation
                 ? '💬 Planned conversation'
                 : 'No conversation planned'}
             </div>
+
+            {/* Tags */}
+            {selectedPerson.tags && (
+              <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
+                {selectedPerson.tags.split(',').map(t => t.trim()).filter(Boolean).map(tag => (
+                  <span key={tag} style={{
+                    padding: '0.12rem 0.45rem', borderRadius: 999,
+                    fontSize: '0.7rem', fontWeight: 600,
+                    background: `${TAG_COLORS[tag] ?? '#78716c'}18`,
+                    color: TAG_COLORS[tag] ?? '#78716c',
+                  }}>
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Last contact */}
+            {(() => {
+              const lcd = lastContactMap[selectedPerson.id]
+              if (!lcd) return (
+                <div style={{ fontSize: '0.82rem', color: '#a8a29e', marginBottom: '0.75rem' }}>
+                  No contact logged yet
+                </div>
+              )
+              const d = Math.floor((Date.now() - new Date(lcd).getTime()) / 86400000)
+              return (
+                <div style={{ fontSize: '0.82rem', color: '#78716c', marginBottom: '0.75rem' }}>
+                  Last contact: {d === 0 ? 'today' : `${d} day${d !== 1 ? 's' : ''} ago`}
+                </div>
+              )
+            })()}
 
             {/* Notes */}
             {selectedPerson.notes && (
@@ -602,7 +822,7 @@ export function CirclesClient({ circles }: { circles: CirclePerson[] }) {
             )}
 
             {/* Action buttons */}
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
               <button
                 onClick={() => openEdit(selectedPerson)}
                 style={{
@@ -619,6 +839,27 @@ export function CirclesClient({ circles }: { circles: CirclePerson[] }) {
               >
                 Edit
               </button>
+              {orgAddress && (
+                <button
+                  onClick={() => {
+                    setQuickLogPerson(selectedPerson)
+                    setSelectedPerson(null)
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: '0.45rem 0.75rem',
+                    borderRadius: '8px',
+                    border: '1px solid #d6d3d1',
+                    background: '#fff',
+                    color: '#57534e',
+                    fontSize: '0.8rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  📝 Log Activity
+                </button>
+              )}
               <button
                 onClick={() => handleTogglePlanned(selectedPerson.id)}
                 disabled={isPending}
@@ -654,6 +895,17 @@ export function CirclesClient({ circles }: { circles: CirclePerson[] }) {
           }
         }
       `}</style>
+
+      {/* Quick Activity Log Modal */}
+      {quickLogPerson && orgAddress && (
+        <QuickActivityModal
+          orgAddress={orgAddress}
+          defaultType="follow-up"
+          defaultTitle={`Connected with ${quickLogPerson.personName}`}
+          isOpen={true}
+          onClose={() => setQuickLogPerson(null)}
+        />
+      )}
 
       {/* Add / Edit Dialog */}
       {showAddDialog && (
@@ -767,6 +1019,57 @@ export function CirclesClient({ circles }: { circles: CirclePerson[] }) {
                 }}
               />
             </label>
+
+            {/* Tags */}
+            <div style={{ marginBottom: '0.75rem' }}>
+              <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#57534e', display: 'block', marginBottom: '0.35rem' }}>
+                Tags
+              </span>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginBottom: '0.4rem' }}>
+                {TAGS.map(tag => {
+                  const isChecked = form.tags.includes(tag)
+                  const tagColor = TAG_COLORS[tag] ?? '#78716c'
+                  return (
+                    <label key={tag} style={{
+                      display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
+                      padding: '0.25rem 0.55rem', borderRadius: 999, cursor: 'pointer',
+                      border: `1.5px solid ${isChecked ? tagColor : '#d6d3d1'}`,
+                      background: isChecked ? `${tagColor}18` : '#fff',
+                      color: isChecked ? tagColor : '#78716c',
+                      fontSize: '0.75rem', fontWeight: 600,
+                      transition: 'all 0.15s',
+                    }}>
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => {
+                          setForm(prev => ({
+                            ...prev,
+                            tags: isChecked
+                              ? prev.tags.filter(t => t !== tag)
+                              : [...prev.tags, tag],
+                          }))
+                        }}
+                        style={{ display: 'none' }}
+                      />
+                      {tag}
+                    </label>
+                  )
+                })}
+              </div>
+              <input
+                type="text"
+                value={form.customTag}
+                onChange={(e) => setForm({ ...form, customTag: e.target.value })}
+                placeholder="Custom tags (comma separated)"
+                style={{
+                  display: 'block', width: '100%',
+                  padding: '0.4rem 0.75rem', border: '1px solid #d6d3d1',
+                  borderRadius: '8px', fontSize: '0.82rem', boxSizing: 'border-box',
+                  color: '#57534e',
+                }}
+              />
+            </div>
 
             {/* Planned conversation checkbox */}
             <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem', cursor: 'pointer' }}>

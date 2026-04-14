@@ -21,9 +21,21 @@ export default async function CatalystActivitiesPage() {
     } catch { /* ignored */ }
   }
 
+  // Also build set of user IDs in the same org network (for DB-seeded activities with wallet addresses)
+  const orgUserIds = new Set<string>()
+  orgUserIds.add(currentUser.id)
+  // Include all cat-user-* IDs if user is in catalyst network
+  if (currentUser.id.startsWith('cat-')) {
+    for (let i = 1; i <= 7; i++) orgUserIds.add(`cat-user-00${i}`)
+  } else if (currentUser.id.startsWith('gc-')) {
+    for (let i = 1; i <= 5; i++) orgUserIds.add(`gc-user-00${i}`)
+  } else if (currentUser.id.startsWith('cil-')) {
+    for (let i = 1; i <= 7; i++) orgUserIds.add(`cil-user-00${i}`)
+  }
+
   const allActivities = await db.select().from(schema.activityLogs)
   const activities = allActivities
-    .filter(a => orgAddresses.has(a.orgAddress.toLowerCase()))
+    .filter(a => orgAddresses.has(a.orgAddress.toLowerCase()) || orgUserIds.has(a.userId))
     .sort((a, b) => b.activityDate.localeCompare(a.activityDate))
 
   const allUsers = await db.select().from(schema.users)
@@ -42,29 +54,34 @@ export default async function CatalystActivitiesPage() {
   const weekCount = activities.filter(a => new Date(a.activityDate) >= thisWeek).length
   const totalParticipants = activities.reduce((s, a) => s + a.participants, 0)
 
+  // Compute hours
+  const totalHours = Math.round(activities.reduce((s, a) => s + (a.durationMinutes ?? 0), 0) / 60)
+
   return (
     <div>
       <div style={{ marginBottom: '1rem' }}>
-        <h1 style={{ fontSize: '1.25rem', margin: '0 0 0.25rem' }}>Activities</h1>
-        <p style={{ fontSize: '0.85rem', color: '#616161', margin: 0 }}>
-          Log field activities following the Entry → Evangelism → Discipleship → Formation → Leadership pipeline.
+        <h1 style={{ fontSize: '1.25rem', margin: '0 0 0.25rem', color: '#5c4a3a' }}>Activity</h1>
+        <p style={{ fontSize: '0.85rem', color: '#9a8c7e', margin: 0 }}>
+          Field activities across the NoCo network — outreach, visits, meetings, coaching, and more.
         </p>
       </div>
 
       {/* Quick stats */}
-      <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
-        <div style={{ padding: '0.5rem 1rem', background: '#0d948808', borderRadius: 6, border: '1px solid #0d948820', textAlign: 'center' }}>
-          <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0d9488' }}>{activities.length}</div>
-          <div style={{ fontSize: '0.7rem', color: '#616161' }}>Total</div>
-        </div>
-        <div style={{ padding: '0.5rem 1rem', background: '#7c3aed08', borderRadius: 6, border: '1px solid #7c3aed20', textAlign: 'center' }}>
-          <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#7c3aed' }}>{weekCount}</div>
-          <div style={{ fontSize: '0.7rem', color: '#616161' }}>This Week</div>
-        </div>
-        <div style={{ padding: '0.5rem 1rem', background: '#1565c008', borderRadius: 6, border: '1px solid #1565c020', textAlign: 'center' }}>
-          <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#1565c0' }}>{totalParticipants}</div>
-          <div style={{ fontSize: '0.7rem', color: '#616161' }}>Participants</div>
-        </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.6rem', marginBottom: '1.25rem' }}>
+        {[
+          { label: 'Total', value: activities.length, color: '#8b5e3c' },
+          { label: 'This Week', value: weekCount, color: '#7c3aed' },
+          { label: 'Participants', value: totalParticipants, color: '#0d9488' },
+          { label: 'Hours', value: totalHours, color: '#1565c0' },
+        ].map(s => (
+          <div key={s.label} style={{
+            padding: '0.6rem 0.75rem', background: '#fff', borderRadius: 10,
+            border: '1px solid #ece6db', textAlign: 'center',
+          }}>
+            <div style={{ fontSize: '1.5rem', fontWeight: 700, color: s.color }}>{s.value}</div>
+            <div style={{ fontSize: '0.72rem', color: '#9a8c7e' }}>{s.label}</div>
+          </div>
+        ))}
       </div>
 
       <ActivityFeed

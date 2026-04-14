@@ -23,6 +23,7 @@ export async function addCirclePerson(data: {
   response: 'not-interested' | 'curious' | 'interested' | 'seeking' | 'decided' | 'baptized'
   notes?: string
   plannedConversation?: boolean
+  tags?: string
 }) {
   const userId = await getUserId()
   const id = randomUUID()
@@ -34,6 +35,7 @@ export async function addCirclePerson(data: {
     response: data.response,
     notes: data.notes ?? null,
     plannedConversation: data.plannedConversation ? 1 : 0,
+    tags: data.tags ?? null,
   })
   return { id }
 }
@@ -46,6 +48,7 @@ export async function updateCirclePerson(
     response?: 'not-interested' | 'curious' | 'interested' | 'seeking' | 'decided' | 'baptized'
     notes?: string
     plannedConversation?: boolean
+    tags?: string
   },
 ) {
   const userId = await getUserId()
@@ -55,6 +58,7 @@ export async function updateCirclePerson(
   if (data.response !== undefined) updates.response = data.response
   if (data.notes !== undefined) updates.notes = data.notes
   if (data.plannedConversation !== undefined) updates.plannedConversation = data.plannedConversation ? 1 : 0
+  if (data.tags !== undefined) updates.tags = data.tags
 
   await db.update(schema.circles)
     .set(updates)

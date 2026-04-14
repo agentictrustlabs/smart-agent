@@ -18,7 +18,7 @@ const COMMUNITIES: DemoCommunity[] = [
     id: 'global-church',
     name: 'Global.Church',
     description: 'Trust fabric for churches, denominations, mission agencies, and giving intermediaries',
-    color: '#7c3aed',
+    color: '#8b5e3c',
     users: [
       { key: 'gc-user-001', name: 'Pastor James', org: 'Grace Community Church', role: 'Senior Pastor' },
       { key: 'gc-user-002', name: 'Dr. Sarah Mitchell', org: 'Southern Baptist Convention', role: 'Executive Director' },
@@ -46,7 +46,7 @@ const COMMUNITIES: DemoCommunity[] = [
     id: 'cil',
     name: 'Collective Impact Labs',
     description: 'Revenue-sharing capital deployment — ILAD operations, Ravah model, business trust graph',
-    color: '#0d9488',
+    color: '#8b5e3c',
     users: [
       { key: 'cil-user-001', name: 'Cameron Henrion', org: 'ILAD', role: 'Operations Lead' },
       { key: 'cil-user-002', name: 'Nick Courchesne', org: 'ILAD', role: 'Reviewer' },

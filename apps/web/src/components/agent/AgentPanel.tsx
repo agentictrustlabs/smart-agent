@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useRef, useEffect, type FormEvent } from 'react'
+import { useState, useRef, useEffect, useCallback, type FormEvent } from 'react'
 import { usePathname } from 'next/navigation'
+import { getMyAgentSuggestions, type AgentSuggestion } from '@/lib/actions/agent-suggestions.action'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -46,22 +47,15 @@ const P = {
 }
 
 // ---------------------------------------------------------------------------
-// Hardcoded suggestions (placeholder)
+// Type icon map
 // ---------------------------------------------------------------------------
-const SUGGESTIONS = [
-  {
-    id: 's1',
-    text: "You haven't prayed for 2 contacts this week. Would you like me to set up reminders?",
-  },
-  {
-    id: 's2',
-    text: "Grace Community's youth ministry hasn't reported health metrics in 3 weeks.",
-  },
-  {
-    id: 's3',
-    text: 'Based on your activity pattern, consider scheduling a follow-up with the Wellington circle.',
-  },
-]
+const TYPE_ICONS: Record<string, string> = {
+  prayer: '\uD83D\uDE4F',
+  oikos: '\uD83D\uDC65',
+  coaching: '\uD83C\uDFAF',
+  training: '\uD83D\uDCDA',
+  circle: '\u2B55',
+}
 
 // ---------------------------------------------------------------------------
 // Component
@@ -70,10 +64,31 @@ export function AgentPanel({ open, onClose }: Props) {
   const pathname = usePathname()
   const agent = getContextAgent(pathname)
 
+  const [suggestions, setSuggestions] = useState<AgentSuggestion[]>([])
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false)
   const [dismissedSuggestions, setDismissedSuggestions] = useState<Set<string>>(new Set())
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
   const [inputValue, setInputValue] = useState('')
   const chatEndRef = useRef<HTMLDivElement>(null)
+
+  // Fetch suggestions on mount and when pathname changes
+  const fetchSuggestions = useCallback(async () => {
+    setLoadingSuggestions(true)
+    try {
+      const data = await getMyAgentSuggestions()
+      setSuggestions(data)
+    } catch {
+      // ignore
+    } finally {
+      setLoadingSuggestions(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (open) {
+      fetchSuggestions()
+    }
+  }, [open, pathname, fetchSuggestions])
 
   // Auto-scroll chat
   useEffect(() => {
@@ -103,7 +118,7 @@ export function AgentPanel({ open, onClose }: Props) {
     setInputValue('')
   }
 
-  const visibleSuggestions = SUGGESTIONS.filter(s => !dismissedSuggestions.has(s.id))
+  const visibleSuggestions = suggestions.filter(s => !dismissedSuggestions.has(s.id))
 
   return (
     <>
@@ -229,6 +244,11 @@ export function AgentPanel({ open, onClose }: Props) {
           }}
         >
           {/* Suggestions section */}
+          {loadingSuggestions && visibleSuggestions.length === 0 && (
+            <div style={{ fontSize: '0.8rem', color: P.textMuted, padding: '0.5rem 0' }}>
+              Loading suggestions...
+            </div>
+          )}
           {visibleSuggestions.length > 0 && (
             <div style={{ marginBottom: '0.5rem' }}>
               <div
@@ -241,7 +261,7 @@ export function AgentPanel({ open, onClose }: Props) {
                   marginBottom: '0.4rem',
                 }}
               >
-                Suggestions
+                Suggestions &middot; {visibleSuggestions.length}
               </div>
               {visibleSuggestions.map(s => (
                 <div
@@ -255,17 +275,29 @@ export function AgentPanel({ open, onClose }: Props) {
                     position: 'relative',
                   }}
                 >
-                  <p
-                    style={{
-                      fontSize: '0.8rem',
-                      color: P.text,
-                      margin: 0,
-                      lineHeight: 1.45,
-                      paddingRight: '1rem',
-                    }}
-                  >
-                    {s.text}
-                  </p>
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', paddingRight: '1rem' }}>
+                    <span style={{ fontSize: '1rem', flexShrink: 0, marginTop: 1 }}>
+                      {TYPE_ICONS[s.type] ?? '\u2728'}
+                    </span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{
+                        fontSize: '0.82rem',
+                        fontWeight: 600,
+                        color: P.text,
+                        lineHeight: 1.3,
+                        marginBottom: 2,
+                      }}>
+                        {s.title}
+                      </div>
+                      <div style={{
+                        fontSize: '0.75rem',
+                        color: P.textMuted,
+                        lineHeight: 1.4,
+                      }}>
+                        {s.description}
+                      </div>
+                    </div>
+                  </div>
 
                   {/* Dismiss X */}
                   <button
@@ -295,28 +327,53 @@ export function AgentPanel({ open, onClose }: Props) {
                       marginTop: '0.45rem',
                     }}
                   >
-                    {['View', 'Dismiss', 'Ask More'].map(label => (
-                      <button
-                        key={label}
-                        onClick={label === 'Dismiss' ? () => handleDismiss(s.id) : undefined}
-                        style={{
-                          border: `1px solid ${P.border}`,
-                          borderRadius: 14,
-                          padding: '0.2rem 0.55rem',
-                          fontSize: '0.7rem',
-                          fontWeight: 550,
-                          color: P.accent,
-                          background: P.bg,
-                          cursor: 'pointer',
-                          transition: 'background 0.15s',
-                        }}
-                      >
-                        {label}
-                      </button>
-                    ))}
+                    <a
+                      href={s.href}
+                      style={{
+                        border: `1px solid ${P.border}`,
+                        borderRadius: 14,
+                        padding: '0.2rem 0.55rem',
+                        fontSize: '0.7rem',
+                        fontWeight: 550,
+                        color: P.accent,
+                        background: P.bg,
+                        cursor: 'pointer',
+                        transition: 'background 0.15s',
+                        textDecoration: 'none',
+                      }}
+                    >
+                      View
+                    </a>
+                    <button
+                      onClick={() => handleDismiss(s.id)}
+                      style={{
+                        border: `1px solid ${P.border}`,
+                        borderRadius: 14,
+                        padding: '0.2rem 0.55rem',
+                        fontSize: '0.7rem',
+                        fontWeight: 550,
+                        color: P.accent,
+                        background: P.bg,
+                        cursor: 'pointer',
+                        transition: 'background 0.15s',
+                      }}
+                    >
+                      Dismiss
+                    </button>
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+          {!loadingSuggestions && visibleSuggestions.length === 0 && suggestions.length === 0 && (
+            <div style={{
+              fontSize: '0.8rem',
+              color: P.textMuted,
+              padding: '0.75rem 0',
+              textAlign: 'center',
+              fontStyle: 'italic',
+            }}>
+              No suggestions right now. You&apos;re doing great!
             </div>
           )}
 

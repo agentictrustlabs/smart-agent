@@ -5,6 +5,7 @@ import { getUserOrgs } from '@/lib/get-user-orgs'
 import { getConnectedOrgs } from '@/lib/get-org-members'
 import { getCoachRelationship, getTrainingProgress } from '@/lib/actions/grow.action'
 import { db, schema } from '@/db'
+import { NeedsAttentionCard, type AttentionItem } from '@/components/catalyst/NeedsAttentionCard'
 
 // ─── Colors ─────────────────────────────────────────────────────────
 
@@ -40,9 +41,15 @@ export default async function CatalystDashboardPage() {
     }
   }
 
-  // Activities this month
+  // Activities this month — match by org address OR by userId in the same network
+  const orgUserIds = new Set<string>()
+  orgUserIds.add(currentUser.id)
+  if (currentUser.id.startsWith('cat-')) { for (let i = 1; i <= 7; i++) orgUserIds.add(`cat-user-00${i}`) }
+  else if (currentUser.id.startsWith('gc-')) { for (let i = 1; i <= 5; i++) orgUserIds.add(`gc-user-00${i}`) }
+  else if (currentUser.id.startsWith('cil-')) { for (let i = 1; i <= 7; i++) orgUserIds.add(`cil-user-00${i}`) }
+
   const allActivities = await db.select().from(schema.activityLogs)
-  const activities = allActivities.filter((a) => orgAddresses.has(a.orgAddress.toLowerCase()))
+  const activities = allActivities.filter((a) => orgAddresses.has(a.orgAddress.toLowerCase()) || orgUserIds.has(a.userId))
   const thisMonth = new Date()
   thisMonth.setDate(1)
   thisMonth.setHours(0, 0, 0, 0)
@@ -65,11 +72,12 @@ export default async function CatalystDashboardPage() {
   const totalModules = 6 + 20 + 2 // 411(6) + commands(10*2) + 3thirds(2)
   const walkPct = totalModules > 0 ? Math.round((completedModules / totalModules) * 100) : 0
 
-  // Oikos count (circles of influence — personal relationships)
+  // Oikos rows (circles of influence — personal relationships)
   let oikosCount = 0
+  let oikosRows: (typeof schema.circles.$inferSelect)[] = []
   try {
     const { eq } = await import('drizzle-orm')
-    const oikosRows = await db.select().from(schema.circles)
+    oikosRows = await db.select().from(schema.circles)
       .where(eq(schema.circles.userId, currentUser.id))
     oikosCount = oikosRows.length
   } catch { /* table may not exist */ }
@@ -86,16 +94,79 @@ export default async function CatalystDashboardPage() {
   }
   totalCircles += userOrgs.length
 
-  // Prayer due count
+  // Prayer due count + overdue items
   let prayerDueCount = 0
+  let overduePrayers: (typeof schema.prayers.$inferSelect)[] = []
   try {
     const { eq } = await import('drizzle-orm')
     const allPrayers = await db.select().from(schema.prayers)
       .where(eq(schema.prayers.userId, currentUser.id))
     const days = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
     const today = days[new Date().getDay()]
-    prayerDueCount = allPrayers.filter(p => !p.answered && (p.schedule === 'daily' || p.schedule.includes(today))).length
+    const duePrayers = allPrayers.filter(p => !p.answered && (p.schedule === 'daily' || p.schedule.includes(today)))
+    prayerDueCount = duePrayers.length
+    // Overdue = scheduled for today but lastPrayed >3 days ago (or never)
+    const threeDaysAgo = new Date()
+    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3)
+    const threeDaysAgoStr = threeDaysAgo.toISOString()
+    overduePrayers = duePrayers.filter(p => !p.lastPrayed || p.lastPrayed < threeDaysAgoStr)
   } catch { /* table may not exist */ }
+
+  // ── Needs Attention items ──────────────────────────────────────────
+  const attentionItems: AttentionItem[] = []
+
+  // 1. Stale circles (no activity in 14+ days)
+  try {
+    const fourteenDaysAgo = new Date()
+    fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14)
+    const fourteenDaysAgoStr = fourteenDaysAgo.toISOString().split('T')[0]
+    // Group activities by relatedEntity
+    const actByEntity = new Map<string, string>()
+    for (const a of activities) {
+      if (a.relatedEntity) {
+        const existing = actByEntity.get(a.relatedEntity)
+        if (!existing || a.activityDate > existing) {
+          actByEntity.set(a.relatedEntity, a.activityDate)
+        }
+      }
+    }
+    // Check each org for staleness
+    for (const addr of orgAddresses) {
+      const lastDate = actByEntity.get(addr)
+      if (lastDate && lastDate < fourteenDaysAgoStr) {
+        const daysSince = Math.floor((Date.now() - new Date(lastDate).getTime()) / 86400000)
+        attentionItems.push({
+          type: 'circle',
+          label: `Circle ${addr.slice(0, 8)}...`,
+          detail: `No activity in ${daysSince} days`,
+          href: '/groups',
+        })
+      }
+    }
+  } catch { /* ignored */ }
+
+  // 2. Planned conversations from oikos
+  for (const o of oikosRows.filter(r => r.plannedConversation === 1)) {
+    attentionItems.push({
+      type: 'oikos',
+      label: o.personName,
+      detail: 'Planned conversation pending',
+      href: '/oikos',
+    })
+  }
+
+  // 3. Overdue prayers (active, scheduled for today, lastPrayed >3 days ago)
+  for (const p of overduePrayers.slice(0, 5)) {
+    const daysSince = p.lastPrayed
+      ? Math.floor((Date.now() - new Date(p.lastPrayed).getTime()) / 86400000)
+      : null
+    attentionItems.push({
+      type: 'prayer',
+      label: p.title,
+      detail: daysSince !== null ? `Last prayed ${daysSince} days ago` : 'Not yet prayed for',
+      href: '/nurture/prayer',
+    })
+  }
 
   // Greeting
   const hour = new Date().getHours()
@@ -141,6 +212,9 @@ export default async function CatalystDashboardPage() {
           </p>
         </div>
       )}
+
+      {/* Needs Attention */}
+      <NeedsAttentionCard items={attentionItems} />
 
       {/* KPI cards - 2 column grid */}
       <div style={{
@@ -207,7 +281,7 @@ export default async function CatalystDashboardPage() {
       {/* Quick actions */}
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
         <Link href="/activity" style={linkBtnStyle(true)}>Log Activity</Link>
-        <Link href="/groups" style={linkBtnStyle(false)}>View Circles</Link>
+        <Link href="/groups" style={linkBtnStyle(false)}>My Circles</Link>
         <Link href="/oikos" style={linkBtnStyle(false)}>Oikos</Link>
         <Link href="/nurture" style={linkBtnStyle(false)}>Nurture</Link>
         <Link href="/me" style={linkBtnStyle(false)}>Profile</Link>

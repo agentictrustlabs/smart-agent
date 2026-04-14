@@ -27,9 +27,13 @@ export function CircleMapView({ circles }: Props) {
 
     // Guard against double-init in React Strict Mode / HMR
     const container = mapRef.current as HTMLDivElement & { _leaflet_id?: number }
-    if (container._leaflet_id) return
+    if (container._leaflet_id) {
+      delete container._leaflet_id
+    }
 
+    let cancelled = false
     import('leaflet').then((L) => {
+      if (cancelled || !mapRef.current) return
       const defaultCenter: [number, number] = [40.58, -105.08]
       const defaultZoom = 10
 
@@ -108,11 +112,11 @@ export function CircleMapView({ circles }: Props) {
     })
 
     return () => {
+      cancelled = true
       if (mapInstance.current) {
         mapInstance.current.remove()
         mapInstance.current = null
       }
-      // Clear leaflet's internal ID so re-init works after HMR
       if (mapRef.current) {
         delete (mapRef.current as HTMLDivElement & { _leaflet_id?: number })._leaflet_id
       }

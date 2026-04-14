@@ -10,7 +10,13 @@ export default async function CatalystMembersPage() {
   if (!currentUser) redirect('/')
 
   const userOrgs = await getUserOrgs(currentUser.id)
-  if (userOrgs.length === 0) return <p>No organizations found.</p>
+  if (userOrgs.length === 0) return (
+    <div style={{ textAlign: 'center', padding: '3rem 1rem', color: '#9a8c7e' }}>
+      <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📋</div>
+      <p style={{ fontSize: '0.9rem', fontWeight: 500 }}>No members yet</p>
+      <p style={{ fontSize: '0.8rem' }}>Deploy an organization to start adding members.</p>
+    </div>
+  )
 
   // Aggregate members across orgs
   const allMembers: Array<{ address: string; name: string; roles: string[]; status: string; isPerson: boolean }> = []

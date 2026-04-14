@@ -52,6 +52,27 @@ export async function logActivity(data: {
   activities.push(entry)
   await setActivityLog(data.orgAddress, activities)
 
+  // Also write to DB for dashboard queries
+  try {
+    await db.insert(schema.activityLogs).values({
+      id,
+      orgAddress: data.orgAddress,
+      userId: user[0].id,
+      activityType: data.activityType as typeof schema.activityLogs.$inferInsert['activityType'],
+      title: data.title,
+      description: data.description || null,
+      participants: data.participants,
+      location: data.location || null,
+      lat: data.lat || null,
+      lng: data.lng || null,
+      durationMinutes: data.durationMinutes || null,
+      relatedEntity: data.relatedEntity || null,
+      activityDate: data.activityDate || new Date().toISOString().split('T')[0],
+    }).run()
+  } catch {
+    /* DB write is best-effort — on-chain is the source of truth */
+  }
+
   return { id }
 }
 

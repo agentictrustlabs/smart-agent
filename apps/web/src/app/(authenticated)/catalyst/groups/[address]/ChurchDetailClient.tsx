@@ -4,11 +4,21 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ChurchCircle, type HealthData, parseHealth } from '@/components/catalyst/ChurchCircle'
+import { MeetingLog } from '@/components/catalyst/MeetingLog'
 import { updateGroupHealth } from '@/lib/actions/update-group.action'
 import { createDetachedMember } from '@/lib/actions/members.action'
 import type { AgentMetadata } from '@/lib/agent-metadata'
 import type { OrgMember } from '@/lib/get-org-members'
 import type { TrackedMember } from '@/lib/agent-resolver'
+
+interface Meeting {
+  id: string
+  title: string
+  description: string | null
+  participants: number
+  activityDate: string
+  location: string | null
+}
 
 /* ── Props ──────────────────────────────────────────────────────────── */
 
@@ -19,6 +29,8 @@ interface Props {
   members: OrgMember[]
   partners: OrgMember[]
   trackedMembers: TrackedMember[]
+  meetings?: Meeting[]
+  orgAddress?: string
 }
 
 /* ── Constants ──────────────────────────────────────────────────────── */
@@ -143,7 +155,7 @@ function YesNo({ value, onChange }: { value: boolean; onChange: (v: boolean) => 
 
 /* ── Main Component ──────────────────────────────────────────────────── */
 
-export function ChurchDetailClient({ address, metadata, healthData, members, partners, trackedMembers }: Props) {
+export function ChurchDetailClient({ address, metadata, healthData, members, partners, trackedMembers, meetings, orgAddress }: Props) {
   const [activeTab, setActiveTab] = useState<'details' | 'members' | 'settings'>('details')
   const health = parseHealth(Object.keys(healthData).length > 0 ? JSON.stringify(healthData) : null)
 
@@ -209,6 +221,8 @@ export function ChurchDetailClient({ address, metadata, healthData, members, par
           address={address}
           health={health}
           healthData={healthData}
+          meetings={meetings ?? []}
+          orgAddress={orgAddress ?? address}
         />
       )}
 
@@ -247,10 +261,12 @@ export function ChurchDetailClient({ address, metadata, healthData, members, par
    DETAILS TAB
    ═════════════════════════════════════════════════════════════════════ */
 
-function DetailsTab({ address, health, healthData }: {
+function DetailsTab({ address, health, healthData, meetings, orgAddress }: {
   address: string
   health: HealthData
   healthData: Record<string, unknown>
+  meetings: Meeting[]
+  orgAddress: string
 }) {
   const leaderName = typeof healthData.leaderName === 'string' ? healthData.leaderName : ''
   const location = typeof healthData.location === 'string' ? healthData.location : ''
@@ -336,6 +352,11 @@ function DetailsTab({ address, health, healthData }: {
             )
           })}
         </div>
+      </div>
+
+      {/* ── Meeting Log ── */}
+      <div style={sectionBox}>
+        <MeetingLog meetings={meetings} circleAddress={address} orgAddress={orgAddress} />
       </div>
 
       {/* ── People Circles Attending ── */}
@@ -934,7 +955,7 @@ function SettingsTab({ address, metadata, health, healthData, showToast }: {
             <button onClick={() => setDeleteConfirm(false)} style={btnSecondary}>Cancel</button>
             <button onClick={() => {
               setDeleteConfirm(false)
-              showToast('Group deleted')
+              showToast('Circle deleted')
               router.push('/catalyst/groups')
             }} style={btnDanger}>Delete Circle</button>
           </div>

@@ -13,7 +13,13 @@ export default async function CatalystGroupsPage() {
   if (!currentUser) redirect('/')
 
   const userOrgs = await getUserOrgs(currentUser.id)
-  if (userOrgs.length === 0) return <p>No organizations found.</p>
+  if (userOrgs.length === 0) return (
+    <div style={{ textAlign: 'center', padding: '3rem 1rem', color: '#9a8c7e' }}>
+      <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📋</div>
+      <p style={{ fontSize: '0.9rem', fontWeight: 500 }}>No circles yet</p>
+      <p style={{ fontSize: '0.8rem' }}>Deploy an organization to get started.</p>
+    </div>
+  )
 
   const resolverAddr = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}`
   const client = getPublicClient()

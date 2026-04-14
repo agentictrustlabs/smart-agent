@@ -3,7 +3,7 @@
 import { randomUUID } from 'crypto'
 import { requireSession } from '@/lib/auth/session'
 import { db, schema } from '@/db'
-import { eq, and } from 'drizzle-orm'
+import { eq, and, desc } from 'drizzle-orm'
 
 // ─── Training Progress ─────────────────────────────────────────────
 
@@ -110,6 +110,45 @@ export async function getDisciples(userId: string) {
     })
   }
   return disciples
+}
+
+// ─── Day-since helper ───────────────────────────────────────────────
+
+function daysSince(dateStr: string): number {
+  const then = new Date(dateStr)
+  const now = new Date()
+  return Math.floor((now.getTime() - then.getTime()) / (1000 * 60 * 60 * 24))
+}
+
+// ─── Disciple Details (Coach Dashboard) ─────────────────────────────
+
+export async function getDiscipleDetails(discipleId: string) {
+  // Get recent activities (last 5)
+  const activities = await db.select().from(schema.activityLogs)
+    .where(eq(schema.activityLogs.userId, discipleId))
+    .orderBy(desc(schema.activityLogs.activityDate))
+    .limit(5)
+
+  // Get prayer count (unanswered)
+  const prayers = await db.select().from(schema.prayers)
+    .where(and(eq(schema.prayers.userId, discipleId), eq(schema.prayers.answered, 0)))
+
+  // Get training progress
+  const progress = await db.select().from(schema.trainingProgress)
+    .where(eq(schema.trainingProgress.userId, discipleId))
+  const completed = progress.filter(p => p.completed === 1).length
+  const total = 28 // 6 + 20 + 2
+
+  // Last activity date
+  const lastActivity = activities[0]?.activityDate ?? null
+
+  return {
+    recentActivities: activities,
+    prayerCount: prayers.length,
+    trainingPct: total > 0 ? Math.round((completed / total) * 100) : 0,
+    lastActivityDate: lastActivity,
+    needsAttention: !lastActivity || daysSince(lastActivity) > 7,
+  }
 }
 
 // ─── User Preferences ───────────────────────────────────────────────

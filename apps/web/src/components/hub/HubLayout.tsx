@@ -2,11 +2,13 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { useUserContext } from '@/components/user/UserContext'
 import { HubProvider, useHubContext } from '@/components/hub/HubContext'
 import { CatalystViewCtx } from '@/components/catalyst/CatalystViewContext'
 import type { ViewMode } from '@/components/catalyst/CatalystViewContext'
+import QuickActivityModal from '@/components/catalyst/QuickActivityModal'
+import { AgentPanel } from '@/components/agent/AgentPanel'
 
 // ---------------------------------------------------------------------------
 // Tab definitions — intent-based primary navigation
@@ -96,6 +98,11 @@ const PARENT_INTENT: Record<string, { label: string; href: string }> = {
   '/members': { label: 'Build', href: '/groups' },
   '/activities': { label: 'Activity', href: '/activity' },
   '/onboarding': { label: 'Home', href: '/catalyst' },
+  '/catalyst/prayer': { label: 'Nurture', href: '/nurture' },
+  '/catalyst/grow': { label: 'Nurture', href: '/nurture' },
+  '/catalyst/coach': { label: 'Nurture', href: '/nurture' },
+  '/prayer': { label: 'Nurture', href: '/nurture' },
+  '/grow': { label: 'Nurture', href: '/nurture' },
 }
 
 function deriveBreadcrumbs(
@@ -205,11 +212,26 @@ function HubLayoutInner({ children }: { children: React.ReactNode }) {
   const showBreadcrumbs = breadcrumbs.length > 1
 
   // Status bar items (hardcoded samples for now)
+  // Derive FAB defaults based on current route
+  const fabDefaults = useMemo(() => {
+    if (pathname.includes('/groups/0x')) {
+      const match = pathname.match(/(0x[a-fA-F0-9]+)/)
+      return {
+        defaultType: 'meeting' as const,
+        defaultRelatedEntity: match?.[1],
+      }
+    }
+    if (pathname.includes('/oikos') || pathname.includes('/circles')) {
+      return { defaultType: 'outreach' as const }
+    }
+    return {}
+  }, [pathname])
+
   const statusItems = [
-    { icon: '\uD83D\uDD14', label: '3 suggestions', href: '/catalyst' },
-    { icon: '\uD83D\uDE4F', label: '1 prayer due', href: '/nurture/prayer' },
-    { icon: '\uD83D\uDCCA', label: '2 circles flagged', href: '/groups' },
-    { icon: '\u2709', label: '1 message', href: '/activity' },
+    { icon: '\uD83D\uDD14', label: '3 agent insights', href: '/catalyst' },
+    { icon: '\uD83D\uDE4F', label: '1 prayer due today', href: '/nurture/prayer' },
+    { icon: '\uD83D\uDCCA', label: '2 circles need attention', href: '/groups' },
+    { icon: '\u2709', label: '1 follow-up pending', href: '/activity' },
   ]
 
   // Show a neutral loading shell until user context resolves.
@@ -686,55 +708,21 @@ function HubLayoutInner({ children }: { children: React.ReactNode }) {
             {children}
           </main>
 
-          {/* Agent panel */}
-          {agentPanelOpen && (
-            <aside style={{
-              width: 320,
-              flexShrink: 0,
-              borderLeft: `1px solid ${T.border}`,
-              background: '#fff',
-              display: 'flex',
-              flexDirection: 'column',
-              padding: '1rem',
-              gap: '0.75rem',
-            }}>
-              <div style={{
-                fontWeight: 700,
-                fontSize: '0.95rem',
-                color: T.text,
-              }}>
-                Agent Panel
-              </div>
-              <div style={{
-                fontSize: '0.82rem',
-                color: T.textMuted,
-                fontWeight: 500,
-              }}>
-                {personAgent?.name ? `${personAgent.name}'s Agent` : 'Your Agent'}
-              </div>
-              <div style={{
-                fontSize: '0.78rem',
-                color: T.textMuted,
-                fontStyle: 'italic',
-              }}>
-                &ldquo;Ask your agent...&rdquo;
-              </div>
-              <input
-                type="text"
-                placeholder="Type a question..."
-                style={{
-                  border: `1px solid ${T.border}`,
-                  borderRadius: 8,
-                  padding: '0.5rem 0.75rem',
-                  fontSize: '0.82rem',
-                  outline: 'none',
-                  background: T.bg,
-                  color: T.text,
-                }}
-              />
-            </aside>
-          )}
+          {/* Agent panel (slide-in with dynamic suggestions) */}
+          <AgentPanel
+            open={agentPanelOpen}
+            onClose={() => setAgentPanelOpen(false)}
+          />
         </div>
+
+        {/* ============================================================== */}
+        {/* Quick Activity FAB                                              */}
+        {/* ============================================================== */}
+        <QuickActivityModal
+          orgAddress={orgs[0]?.address ?? ''}
+          showFab={true}
+          {...fabDefaults}
+        />
 
         {/* ============================================================== */}
         {/* Bottom status bar                                               */}

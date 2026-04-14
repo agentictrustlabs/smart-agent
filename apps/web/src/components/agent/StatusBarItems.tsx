@@ -20,10 +20,10 @@ export function useStatusItems(): StatusItem[] {
   // Later this will read from agent suggestions, prayer counts, etc.
   return useMemo<StatusItem[]>(
     () => [
-      { icon: '\uD83D\uDD14', label: 'suggestions', href: '/catalyst', count: 3 },
-      { icon: '\uD83D\uDE4F', label: 'prayers due', href: '/nurture/prayer', count: 1 },
-      { icon: '\uD83D\uDCCA', label: 'circles flagged', href: '/groups', count: 2 },
-      { icon: '\u2709', label: 'messages', href: '/catalyst', count: 1 },
+      { icon: '\uD83D\uDD14', label: 'agent insights', href: '/catalyst', count: 3 },
+      { icon: '\uD83D\uDE4F', label: 'prayer due today', href: '/nurture/prayer', count: 1 },
+      { icon: '\uD83D\uDCCA', label: 'circles need attention', href: '/groups', count: 2 },
+      { icon: '\u2709', label: 'follow-up pending', href: '/activity', count: 1 },
     ],
     [],
   )

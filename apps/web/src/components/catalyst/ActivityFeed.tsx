@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { logActivity } from '@/lib/actions/activity.action'
-import { deleteActivity } from '@/lib/actions/genmap.action'
 
 interface Activity {
   id: string; userId: string; userName: string
@@ -18,19 +17,34 @@ interface Props {
   orgName: string
 }
 
-const FUNNEL = [
-  { key: 'outreach', label: 'Entry', desc: 'Outreach / Prayer Walk', color: '#7c3aed' },
-  { key: 'visit', label: 'Evangelism', desc: 'Gospel Conversation', color: '#1565c0' },
-  { key: 'training', label: 'Discipleship', desc: 'Study / Baptism', color: '#0d9488' },
-  { key: 'meeting', label: 'Formation', desc: 'Group Meeting', color: '#2e7d32' },
-  { key: 'coaching', label: 'Leadership', desc: 'Leadership Development', color: '#ea580c' },
+const TYPES: Array<{ key: string; label: string; icon: string; color: string }> = [
+  { key: 'outreach', label: 'Outreach', icon: '🚶', color: '#7c3aed' },
+  { key: 'visit', label: 'Visit', icon: '🏠', color: '#1565c0' },
+  { key: 'training', label: 'Training', icon: '📖', color: '#0d9488' },
+  { key: 'meeting', label: 'Meeting', icon: '🤝', color: '#2e7d32' },
+  { key: 'coaching', label: 'Coaching', icon: '🎯', color: '#ea580c' },
+  { key: 'follow-up', label: 'Follow-up', icon: '📞', color: '#8b5e3c' },
+  { key: 'prayer', label: 'Prayer', icon: '🙏', color: '#7c3aed' },
+  { key: 'service', label: 'Service', icon: '❤️', color: '#dc2626' },
+  { key: 'assessment', label: 'Review', icon: '📊', color: '#475569' },
+  { key: 'other', label: 'Other', icon: '📝', color: '#6b7280' },
 ]
 
-const CHAIN_NEXT: Record<string, string> = {
-  outreach: 'visit', visit: 'training', training: 'meeting', meeting: 'coaching',
+const TYPE_MAP = new Map(TYPES.map(t => [t.key, t]))
+
+// Warm palette
+const C = {
+  bg: '#faf8f3',
+  card: '#ffffff',
+  accent: '#8b5e3c',
+  accentLight: 'rgba(139,94,60,0.08)',
+  border: '#ece6db',
+  text: '#5c4a3a',
+  textMuted: '#9a8c7e',
 }
 
 export function ActivityFeed({ activities, orgAddress }: Props) {
+  const [filter, setFilter] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [formType, setFormType] = useState('outreach')
   const [formTitle, setFormTitle] = useState('')
@@ -40,16 +54,15 @@ export function ActivityFeed({ activities, orgAddress }: Props) {
   const [formDuration, setFormDuration] = useState(60)
   const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0])
   const [saving, setSaving] = useState(false)
-  const [chainPrompt, setChainPrompt] = useState<string | null>(null)
 
-  function resetForm(type?: string) {
-    setFormType(type ?? 'outreach')
-    setFormTitle('')
-    setFormDesc('')
-    setFormParticipants(1)
-    setFormDuration(60)
-    setFormDate(new Date().toISOString().split('T')[0])
-    setChainPrompt(null)
+  const filtered = filter
+    ? activities.filter(a => a.activityType === filter)
+    : activities
+
+  // Type counts for filter pills
+  const typeCounts: Record<string, number> = {}
+  for (const a of activities) {
+    typeCounts[a.activityType] = (typeCounts[a.activityType] ?? 0) + 1
   }
 
   async function handleSubmit() {
@@ -66,129 +79,208 @@ export function ActivityFeed({ activities, orgAddress }: Props) {
         durationMinutes: formDuration,
         activityDate: formDate,
       })
-      // Check for chain suggestion
-      const next = CHAIN_NEXT[formType]
-      if (next) {
-        setChainPrompt(next)
-      } else {
-        setShowForm(false)
-        resetForm()
-      }
+      setShowForm(false)
+      setFormTitle(''); setFormDesc(''); setFormParticipants(1); setFormLocation(''); setFormDuration(60)
       window.location.reload()
     } catch { alert('Failed to log activity') }
     setSaving(false)
   }
 
-  function handleChain(nextType: string) {
-    const prev = FUNNEL.find(f => f.key === formType)
-    resetForm(nextType)
-    setFormTitle(`${FUNNEL.find(f => f.key === nextType)?.label ?? nextType} (from ${prev?.label ?? formType})`)
-    setChainPrompt(null)
-  }
-
-  async function handleDelete(id: string) {
-    if (!confirm('Delete this activity?')) return
-    await deleteActivity(id)
-    window.location.reload()
-  }
-
-  const funnelItem = FUNNEL.find(f => f.key === formType)
+  const selectedType = TYPE_MAP.get(formType)
 
   return (
     <div>
-      {/* Funnel selector */}
-      <div style={{ display: 'flex', gap: '0.35rem', marginBottom: '1rem' }}>
-        {FUNNEL.map((f, i) => (
-          <button key={f.key}
-            onClick={() => { setFormType(f.key); setShowForm(true); resetForm(f.key) }}
+      {/* Type filter pills */}
+      <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+        <button
+          onClick={() => setFilter(null)}
+          style={{
+            padding: '0.35rem 0.75rem', borderRadius: 20, fontSize: '0.78rem', fontWeight: 600,
+            border: `1.5px solid ${filter === null ? C.accent : C.border}`,
+            background: filter === null ? C.accent : C.card,
+            color: filter === null ? '#fff' : C.text,
+            cursor: 'pointer',
+          }}
+        >
+          All ({activities.length})
+        </button>
+        {TYPES.filter(t => typeCounts[t.key]).map(t => (
+          <button
+            key={t.key}
+            onClick={() => setFilter(filter === t.key ? null : t.key)}
             style={{
-              flex: 1, padding: '0.5rem', borderRadius: 6, border: `1px solid ${f.color}30`,
-              background: `${f.color}08`, cursor: 'pointer', textAlign: 'center',
-            }}>
-            <div style={{ fontSize: '0.65rem', color: '#9e9e9e', marginBottom: '0.15rem' }}>Step {i + 1}</div>
-            <div style={{ fontSize: '0.8rem', fontWeight: 700, color: f.color }}>{f.label}</div>
-            <div style={{ fontSize: '0.6rem', color: '#616161' }}>{f.desc}</div>
+              padding: '0.35rem 0.75rem', borderRadius: 20, fontSize: '0.78rem', fontWeight: 600,
+              border: `1.5px solid ${filter === t.key ? t.color : C.border}`,
+              background: filter === t.key ? t.color : C.card,
+              color: filter === t.key ? '#fff' : C.text,
+              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem',
+            }}
+          >
+            <span>{t.icon}</span> {t.label} ({typeCounts[t.key]})
           </button>
         ))}
       </div>
 
+      {/* Log activity button */}
+      {!showForm && (
+        <button
+          onClick={() => setShowForm(true)}
+          style={{
+            width: '100%', padding: '0.75rem', borderRadius: 10,
+            border: `2px dashed ${C.border}`, background: C.card,
+            color: C.accent, fontSize: '0.9rem', fontWeight: 600,
+            cursor: 'pointer', marginBottom: '1rem',
+          }}
+        >
+          + Log New Activity
+        </button>
+      )}
+
       {/* Log form */}
       {showForm && (
-        <div style={{ padding: '1rem', background: '#fafafa', borderRadius: 8, border: `2px solid ${funnelItem?.color ?? '#0d9488'}20`, marginBottom: '1rem' }}>
+        <div style={{
+          padding: '1.25rem', background: C.card, borderRadius: 12,
+          border: `2px solid ${selectedType?.color ?? C.accent}20`,
+          marginBottom: '1rem', boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+        }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-            <h3 style={{ margin: 0, color: funnelItem?.color ?? '#1a1a2e', fontSize: '0.95rem' }}>
-              Log {funnelItem?.label ?? 'Activity'}
+            <h3 style={{ margin: 0, color: selectedType?.color ?? C.accent, fontSize: '1rem', fontWeight: 700 }}>
+              {selectedType?.icon} Log {selectedType?.label ?? 'Activity'}
             </h3>
-            <button onClick={() => { setShowForm(false); resetForm() }}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', color: '#616161' }}>✕</button>
+            <button onClick={() => setShowForm(false)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.1rem', color: C.textMuted }}>x</button>
           </div>
+
+          {/* Type selector */}
+          <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
+            {TYPES.slice(0, 8).map(t => (
+              <button key={t.key} onClick={() => setFormType(t.key)}
+                style={{
+                  padding: '0.3rem 0.6rem', borderRadius: 16, fontSize: '0.72rem', fontWeight: 600,
+                  border: `1.5px solid ${formType === t.key ? t.color : C.border}`,
+                  background: formType === t.key ? `${t.color}15` : C.card,
+                  color: formType === t.key ? t.color : C.textMuted,
+                  cursor: 'pointer',
+                }}
+              >
+                {t.icon} {t.label}
+              </button>
+            ))}
+          </div>
+
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '0.5rem' }}>
-            <label><span style={{ fontSize: '0.75rem', color: '#616161' }}>Title *</span>
-              <input value={formTitle} onChange={e => setFormTitle(e.target.value)} placeholder="What happened?" style={{ width: '100%', padding: '0.4rem', border: '1px solid #e2e4e8', borderRadius: 6, fontSize: '0.85rem' }} /></label>
-            <label><span style={{ fontSize: '0.75rem', color: '#616161' }}>Date</span>
-              <input type="date" value={formDate} onChange={e => setFormDate(e.target.value)} style={{ width: '100%', padding: '0.4rem', border: '1px solid #e2e4e8', borderRadius: 6, fontSize: '0.85rem' }} /></label>
-            <label><span style={{ fontSize: '0.75rem', color: '#616161' }}>Location</span>
-              <input value={formLocation} onChange={e => setFormLocation(e.target.value)} placeholder="Where?" style={{ width: '100%', padding: '0.4rem', border: '1px solid #e2e4e8', borderRadius: 6, fontSize: '0.85rem' }} /></label>
+            <label>
+              <span style={{ fontSize: '0.75rem', color: C.textMuted, fontWeight: 600 }}>Title *</span>
+              <input value={formTitle} onChange={e => setFormTitle(e.target.value)} placeholder="What happened?"
+                style={{ width: '100%', padding: '0.45rem 0.6rem', border: `1px solid ${C.border}`, borderRadius: 8, fontSize: '0.85rem', boxSizing: 'border-box' }} />
+            </label>
+            <label>
+              <span style={{ fontSize: '0.75rem', color: C.textMuted, fontWeight: 600 }}>Date</span>
+              <input type="date" value={formDate} onChange={e => setFormDate(e.target.value)}
+                style={{ width: '100%', padding: '0.45rem 0.6rem', border: `1px solid ${C.border}`, borderRadius: 8, fontSize: '0.85rem', boxSizing: 'border-box' }} />
+            </label>
+            <label>
+              <span style={{ fontSize: '0.75rem', color: C.textMuted, fontWeight: 600 }}>Location</span>
+              <input value={formLocation} onChange={e => setFormLocation(e.target.value)} placeholder="Where?"
+                style={{ width: '100%', padding: '0.45rem 0.6rem', border: `1px solid ${C.border}`, borderRadius: 8, fontSize: '0.85rem', boxSizing: 'border-box' }} />
+            </label>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <label style={{ flex: 1 }}><span style={{ fontSize: '0.75rem', color: '#616161' }}>Participants</span>
-                <input type="number" min={0} value={formParticipants} onChange={e => setFormParticipants(+e.target.value || 0)} style={{ width: '100%', padding: '0.4rem', border: '1px solid #e2e4e8', borderRadius: 6, fontSize: '0.85rem' }} /></label>
-              <label style={{ flex: 1 }}><span style={{ fontSize: '0.75rem', color: '#616161' }}>Minutes</span>
-                <input type="number" min={0} value={formDuration} onChange={e => setFormDuration(+e.target.value || 0)} style={{ width: '100%', padding: '0.4rem', border: '1px solid #e2e4e8', borderRadius: 6, fontSize: '0.85rem' }} /></label>
+              <label style={{ flex: 1 }}>
+                <span style={{ fontSize: '0.75rem', color: C.textMuted, fontWeight: 600 }}>People</span>
+                <input type="number" min={0} value={formParticipants} onChange={e => setFormParticipants(+e.target.value || 0)}
+                  style={{ width: '100%', padding: '0.45rem 0.6rem', border: `1px solid ${C.border}`, borderRadius: 8, fontSize: '0.85rem', boxSizing: 'border-box' }} />
+              </label>
+              <label style={{ flex: 1 }}>
+                <span style={{ fontSize: '0.75rem', color: C.textMuted, fontWeight: 600 }}>Minutes</span>
+                <input type="number" min={0} value={formDuration} onChange={e => setFormDuration(+e.target.value || 0)}
+                  style={{ width: '100%', padding: '0.45rem 0.6rem', border: `1px solid ${C.border}`, borderRadius: 8, fontSize: '0.85rem', boxSizing: 'border-box' }} />
+              </label>
             </div>
           </div>
-          <label><span style={{ fontSize: '0.75rem', color: '#616161' }}>Notes</span>
-            <textarea value={formDesc} onChange={e => setFormDesc(e.target.value)} rows={2} placeholder="Details..." style={{ width: '100%', padding: '0.4rem', border: '1px solid #e2e4e8', borderRadius: 6, fontSize: '0.85rem', resize: 'vertical' }} /></label>
-
-          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem' }}>
-            <button onClick={handleSubmit} disabled={saving || !formTitle.trim()}
-              style={{ padding: '0.5rem 1.25rem', background: funnelItem?.color ?? '#0d9488', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 600, cursor: 'pointer' }}>
-              {saving ? 'Saving...' : 'Log Activity'}
-            </button>
-          </div>
-
-          {/* Chain prompt */}
-          {chainPrompt && (() => {
-            const next = FUNNEL.find(f => f.key === chainPrompt)
-            return next ? (
-              <div style={{ marginTop: '0.75rem', padding: '0.5rem 0.75rem', background: `${next.color}10`, borderRadius: 6, border: `1px solid ${next.color}25`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: '0.85rem', color: next.color }}>Chain next: <strong>{next.label}</strong> ({next.desc})?</span>
-                <div style={{ display: 'flex', gap: '0.35rem' }}>
-                  <button onClick={() => handleChain(chainPrompt)} style={{ padding: '0.3rem 0.75rem', background: next.color, color: '#fff', border: 'none', borderRadius: 4, fontWeight: 600, cursor: 'pointer', fontSize: '0.8rem' }}>Chain</button>
-                  <button onClick={() => { setChainPrompt(null); setShowForm(false); resetForm() }} style={{ padding: '0.3rem 0.5rem', background: '#e0e0e0', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8rem' }}>Done</button>
-                </div>
-              </div>
-            ) : null
-          })()}
+          <label>
+            <span style={{ fontSize: '0.75rem', color: C.textMuted, fontWeight: 600 }}>Notes</span>
+            <textarea value={formDesc} onChange={e => setFormDesc(e.target.value)} rows={2} placeholder="Details..."
+              style={{ width: '100%', padding: '0.45rem 0.6rem', border: `1px solid ${C.border}`, borderRadius: 8, fontSize: '0.85rem', resize: 'vertical', boxSizing: 'border-box' }} />
+          </label>
+          <button onClick={handleSubmit} disabled={saving || !formTitle.trim()}
+            style={{
+              marginTop: '0.75rem', padding: '0.5rem 1.5rem',
+              background: selectedType?.color ?? C.accent, color: '#fff',
+              border: 'none', borderRadius: 8, fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer',
+            }}
+          >
+            {saving ? 'Saving...' : 'Log Activity'}
+          </button>
         </div>
       )}
 
-      {/* Feed */}
-      <div style={{ display: 'grid', gap: '0.5rem' }}>
-        {activities.length === 0 && (
-          <p style={{ color: '#616161', textAlign: 'center', padding: '2rem' }}>No activities yet. Use the funnel above to log your first activity.</p>
-        )}
-        {activities.map(a => {
-          const f = FUNNEL.find(f => f.key === a.activityType)
+      {/* Activity feed */}
+      {filtered.length === 0 && (
+        <div style={{ textAlign: 'center', padding: '3rem 1rem', color: C.textMuted }}>
+          <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📋</div>
+          <p style={{ fontSize: '0.9rem', fontWeight: 500 }}>
+            {filter ? `No ${TYPE_MAP.get(filter)?.label ?? filter} activities yet` : 'No activities yet'}
+          </p>
+          <p style={{ fontSize: '0.8rem' }}>Use the button above to log your first activity.</p>
+        </div>
+      )}
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+        {filtered.map(a => {
+          const t = TYPE_MAP.get(a.activityType)
+          const daysAgo = Math.floor((Date.now() - new Date(a.activityDate).getTime()) / 86400000)
+          const dateLabel = daysAgo === 0 ? 'Today' : daysAgo === 1 ? 'Yesterday' : `${daysAgo}d ago`
+
           return (
             <div key={a.id} style={{
-              display: 'flex', alignItems: 'center', gap: '0.6rem',
-              padding: '0.5rem 0.75rem', background: '#fff', borderRadius: 6,
-              border: '1px solid #f0f1f3', borderLeft: `3px solid ${f?.color ?? '#9e9e9e'}`,
+              display: 'flex', gap: '0.75rem', padding: '0.75rem 1rem',
+              background: C.card, borderRadius: 10,
+              border: `1px solid ${C.border}`, borderLeft: `4px solid ${t?.color ?? '#9e9e9e'}`,
             }}>
-              <div style={{ width: 60, textAlign: 'center', flexShrink: 0 }}>
-                <div style={{ fontSize: '0.65rem', fontWeight: 700, color: f?.color ?? '#616161' }}>{f?.label ?? a.activityType}</div>
+              {/* Type icon */}
+              <div style={{
+                width: 40, height: 40, borderRadius: 10,
+                background: `${t?.color ?? '#9e9e9e'}12`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '1.2rem', flexShrink: 0,
+              }}>
+                {t?.icon ?? '📝'}
               </div>
+
+              {/* Content */}
               <div style={{ flex: 1, minWidth: 0 }}>
-                <strong style={{ fontSize: '0.85rem' }}>{a.title}</strong>
-                {a.description && <p style={{ fontSize: '0.75rem', color: '#616161', margin: '0.1rem 0 0' }}>{a.description}</p>}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.15rem' }}>
+                  <span style={{
+                    fontSize: '0.65rem', fontWeight: 700, color: t?.color ?? C.textMuted,
+                    padding: '0.1rem 0.4rem', borderRadius: 4,
+                    background: `${t?.color ?? '#9e9e9e'}12`,
+                    textTransform: 'uppercase', letterSpacing: '0.03em',
+                  }}>
+                    {t?.label ?? a.activityType}
+                  </span>
+                  {a.location && (
+                    <span style={{ fontSize: '0.72rem', color: C.textMuted }}>
+                      📍 {a.location}
+                    </span>
+                  )}
+                </div>
+                <div style={{ fontWeight: 600, fontSize: '0.88rem', color: C.text, marginBottom: '0.1rem' }}>
+                  {a.title}
+                </div>
+                {a.description && (
+                  <p style={{ fontSize: '0.78rem', color: C.textMuted, margin: 0, lineHeight: 1.4 }}>
+                    {a.description.length > 120 ? a.description.slice(0, 120) + '...' : a.description}
+                  </p>
+                )}
               </div>
-              <div style={{ fontSize: '0.7rem', color: '#616161', flexShrink: 0, textAlign: 'right' }}>
+
+              {/* Meta */}
+              <div style={{ flexShrink: 0, textAlign: 'right', fontSize: '0.72rem', color: C.textMuted }}>
+                <div style={{ fontWeight: 600, color: C.text }}>{dateLabel}</div>
                 <div>{a.userName}</div>
-                <div>{a.activityDate}</div>
                 {a.participants > 0 && <div>{a.participants} people</div>}
+                {a.durationMinutes && <div>{a.durationMinutes}m</div>}
               </div>
-              <button onClick={() => handleDelete(a.id)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.7rem', color: '#b91c1c', flexShrink: 0 }}>✕</button>
             </div>
           )
         })}

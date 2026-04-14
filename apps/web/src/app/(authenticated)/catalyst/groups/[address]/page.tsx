@@ -5,6 +5,8 @@ import { getPublicClient } from '@/lib/contracts'
 import { agentAccountResolverAbi, ATL_GENMAP_DATA } from '@smart-agent/sdk'
 import { getOrgMembers } from '@/lib/get-org-members'
 import { getTrackedMembers } from '@/lib/agent-resolver'
+import { db, schema } from '@/db'
+import { and, eq } from 'drizzle-orm'
 import { ChurchDetailClient } from './ChurchDetailClient'
 
 interface Props {
@@ -42,6 +44,16 @@ export default async function ChurchDetailPage({ params }: Props) {
   // Load tracked members
   const trackedMembers = await getTrackedMembers(address)
 
+  // Load meetings (activity logs where relatedEntity = address and type = 'meeting')
+  const meetings = await db.select().from(schema.activityLogs)
+    .where(and(
+      eq(schema.activityLogs.relatedEntity, address),
+      eq(schema.activityLogs.activityType, 'meeting'),
+    ))
+
+  // Determine org address: use the parent org or fallback to the address itself
+  const orgAddress = (typeof healthData.orgAddress === 'string' ? healthData.orgAddress : address)
+
   return (
     <ChurchDetailClient
       address={address}
@@ -50,6 +62,15 @@ export default async function ChurchDetailPage({ params }: Props) {
       members={members}
       partners={partners}
       trackedMembers={trackedMembers}
+      meetings={meetings.map(m => ({
+        id: m.id,
+        title: m.title,
+        description: m.description,
+        participants: m.participants,
+        activityDate: m.activityDate,
+        location: m.location,
+      }))}
+      orgAddress={orgAddress}
     />
   )
 }

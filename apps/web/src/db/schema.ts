@@ -169,6 +169,8 @@ export const circles = sqliteTable('circles', {
   }).notNull().default('curious'),
   /** Planned conversation flag */
   plannedConversation: integer('planned_conversation').notNull().default(0),
+  /** Comma-separated tags: "ESL Student,Farm Worker,Youth" */
+  tags: text('tags'),
   notes: text('notes'),
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
 })
@@ -183,6 +185,8 @@ export const prayers = sqliteTable('prayers', {
   /** Comma-separated days: mon,wed,fri or 'daily' */
   schedule: text('schedule').notNull().default('daily'),
   lastPrayed: text('last_prayed'),
+  /** Link prayer to an oikos person */
+  linkedOikosId: text('linked_oikos_id'),
   /** 0 = active, 1 = answered */
   answered: integer('answered').notNull().default(0),
   answeredAt: text('answered_at'),

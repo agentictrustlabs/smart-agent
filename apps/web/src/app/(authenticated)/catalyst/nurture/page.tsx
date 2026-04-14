@@ -28,7 +28,7 @@ export default async function NurturePage() {
       <div style={{ marginBottom: '1.25rem' }}>
         <h1 style={{ fontSize: '1.25rem', margin: '0 0 0.25rem', color: '#5c4a3a' }}>Nurture</h1>
         <p style={{ fontSize: '0.85rem', color: '#9a8c7e', margin: 0 }}>
-          Your prayer life, training progress, and growth journey.
+          Your personal walk with Jesus — prayer, growth, and investing in others.
         </p>
       </div>
 
@@ -48,7 +48,7 @@ export default async function NurturePage() {
           </div>
           <strong style={{ fontSize: '0.95rem' }}>Prayer</strong>
           <p style={{ fontSize: '0.8rem', color: '#9a8c7e', margin: '0.25rem 0 0' }}>
-            Your prayer focuses, scheduled reminders, and answered prayers.
+            Deepen your prayer life — daily focuses, scheduled reminders, and celebrating answered prayers.
           </p>
         </Link>
 
@@ -65,7 +65,7 @@ export default async function NurturePage() {
           </div>
           <strong style={{ fontSize: '0.95rem' }}>Grow</strong>
           <p style={{ fontSize: '0.8rem', color: '#9a8c7e', margin: '0.25rem 0 0' }}>
-            411 Training, Commands of Christ, and personal development.
+            Your personal development — 411 Training, Commands of Christ, and walking in obedience.
           </p>
         </Link>
 
@@ -75,9 +75,9 @@ export default async function NurturePage() {
           display: 'block',
         }}>
           <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>🤝</div>
-          <strong style={{ fontSize: '0.95rem' }}>Coaching</strong>
+          <strong style={{ fontSize: '0.95rem' }}>Coaching Others</strong>
           <p style={{ fontSize: '0.8rem', color: '#9a8c7e', margin: '0.25rem 0 0' }}>
-            Coach and disciple relationships, shared progress tracking.
+            Invest in others — walk alongside disciples, track their progress, and celebrate their growth.
           </p>
         </Link>
       </div>

@@ -23,6 +23,8 @@ interface Props {
   answered: Prayer[]
   allActive: Prayer[]
   todayDay: string
+  oikosPeople?: Array<{id: string, personName: string}>
+  oikosNeedPrayer?: Array<{id: string, personName: string}>
 }
 
 /* ── Palette ────────────────────────────────────────────────────────── */
@@ -35,6 +37,9 @@ const CARD_BORDER = '#e8dfd4'
 const TEXT_MUTED = '#8a7e72'
 const GREEN = '#3a7d44'
 const GREEN_BG = '#eaf5ec'
+const TEAL = '#0d9488'
+const TEAL_BG = '#e6f7f5'
+const TEAL_BORDER = '#99e6df'
 
 /* ── Helpers ────────────────────────────────────────────────────────── */
 
@@ -218,7 +223,7 @@ function PrayerCard({ prayer, muted, onPrayed, onAnswered, onDelete }: {
 
 /* ── Main Component ─────────────────────────────────────────────────── */
 
-export function PrayerClient({ dueToday, notToday, answered, allActive, todayDay: _todayDay }: Props) {
+export function PrayerClient({ dueToday, notToday, answered, allActive, todayDay: _todayDay, oikosPeople = [], oikosNeedPrayer = [] }: Props) {
   type View = 'main' | 'history' | 'answered'
   const [view, setView] = useState<View>('main')
   const [addOpen, setAddOpen] = useState(false)
@@ -230,6 +235,7 @@ export function PrayerClient({ dueToday, notToday, answered, allActive, todayDay
   const [notes, setNotes] = useState('')
   const [selectedDays, setSelectedDays] = useState<Set<string>>(new Set())
   const [isDaily, setIsDaily] = useState(true)
+  const [linkedOikosId, setLinkedOikosId] = useState<string>('')
 
   const showToast = useCallback((msg: string) => setToast(msg), [])
 
@@ -260,11 +266,17 @@ export function PrayerClient({ dueToday, notToday, answered, allActive, todayDay
       const schedule = isDaily
         ? 'daily'
         : Array.from(selectedDays).join(',')
-      await addPrayer({ title: title.trim(), notes: notes.trim() || undefined, schedule: schedule || 'daily' })
+      await addPrayer({
+        title: title.trim(),
+        notes: notes.trim() || undefined,
+        schedule: schedule || 'daily',
+        linkedOikosId: linkedOikosId || undefined,
+      })
       setTitle('')
       setNotes('')
       setSelectedDays(new Set())
       setIsDaily(true)
+      setLinkedOikosId('')
       setAddOpen(false)
       showToast('Prayer focus added')
     } catch (err) {
@@ -357,6 +369,65 @@ export function PrayerClient({ dueToday, notToday, answered, allActive, todayDay
       {/* ── Main View ──────────────────────────────────────────────── */}
       {view === 'main' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          {/* Pray for Oikos */}
+          {oikosNeedPrayer.length > 0 && (
+            <div>
+              <div style={{
+                fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.05em',
+                color: TEAL, textTransform: 'uppercase', marginBottom: '0.5rem',
+              }}>
+                Pray for Oikos &middot; {oikosNeedPrayer.length}
+              </div>
+              <div style={{
+                display: 'flex', flexDirection: 'column', gap: '0.4rem',
+              }}>
+                {oikosNeedPrayer.map(person => (
+                  <div key={person.id} style={{
+                    background: TEAL_BG,
+                    border: `1px solid ${TEAL_BORDER}`,
+                    borderRadius: 10,
+                    padding: '0.75rem 1rem',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                  }}>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: '0.92rem', color: '#2d2418' }}>
+                        {person.personName}
+                      </div>
+                      <div style={{ fontSize: '0.78rem', color: TEAL, fontWeight: 500 }}>
+                        Needs prayer
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setTitle(`Pray for ${person.personName}`)
+                        setLinkedOikosId(person.id)
+                        setNotes('')
+                        setSelectedDays(new Set())
+                        setIsDaily(true)
+                        setAddOpen(true)
+                      }}
+                      style={{
+                        background: TEAL,
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: 20,
+                        padding: '0.35rem 0.85rem',
+                        fontSize: '0.8rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      + Add Prayer
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Due Today */}
           <div>
             <div style={{
@@ -517,6 +588,31 @@ export function PrayerClient({ dueToday, notToday, answered, allActive, todayDay
               boxSizing: 'border-box',
             }}
           />
+
+          {/* Link to Oikos person */}
+          {oikosPeople.length > 0 && (
+            <>
+              <label style={{ fontSize: '0.82rem', fontWeight: 600, color: '#2d2418', display: 'block', marginBottom: 4 }}>
+                Link to Oikos Person
+              </label>
+              <select
+                value={linkedOikosId}
+                onChange={e => setLinkedOikosId(e.target.value)}
+                style={{
+                  width: '100%', padding: '0.5rem 0.6rem',
+                  border: `1px solid ${CARD_BORDER}`, borderRadius: 8,
+                  fontSize: '0.9rem', marginBottom: '0.75rem',
+                  boxSizing: 'border-box', background: '#fff',
+                  color: linkedOikosId ? '#2d2418' : TEXT_MUTED,
+                }}
+              >
+                <option value="">-- None --</option>
+                {oikosPeople.map(p => (
+                  <option key={p.id} value={p.id}>{p.personName}</option>
+                ))}
+              </select>
+            </>
+          )}
 
           {/* Notes */}
           <label style={{ fontSize: '0.82rem', fontWeight: 600, color: '#2d2418', display: 'block', marginBottom: 4 }}>
