@@ -3,7 +3,24 @@ import Link from 'next/link'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { getUserOrgs } from '@/lib/get-user-orgs'
 import { getConnectedOrgs } from '@/lib/get-org-members'
+import { getCoachRelationship, getTrainingProgress } from '@/lib/actions/grow.action'
 import { db, schema } from '@/db'
+
+// ─── Colors ─────────────────────────────────────────────────────────
+
+const C = {
+  bg: '#faf8f3',
+  card: '#ffffff',
+  accent: '#8b5e3c',
+  accentLight: 'rgba(139,94,60,0.10)',
+  accentBorder: 'rgba(139,94,60,0.20)',
+  text: '#5c4a3a',
+  textMuted: '#9a8c7e',
+  border: '#ece6db',
+  green: '#2e7d32',
+  greenLight: 'rgba(46,125,50,0.08)',
+  greenBorder: 'rgba(46,125,50,0.20)',
+}
 
 export default async function CatalystDashboardPage() {
   const currentUser = await getCurrentUser()
@@ -13,99 +30,213 @@ export default async function CatalystDashboardPage() {
 
   // Aggregate stats
   let totalGroups = 0
-  let established = 0
-  const orgAddresses = new Set(userOrgs.map(o => o.address.toLowerCase()))
+  const orgAddresses = new Set(userOrgs.map((o) => o.address.toLowerCase()))
 
   for (const org of userOrgs) {
     try {
       const connected = await getConnectedOrgs(org.address)
       totalGroups += connected.length
-      established += connected.filter(c => Boolean(c.metadata?.isChurch)).length
       for (const c of connected) orgAddresses.add(c.address.toLowerCase())
-    } catch { /* ignored */ }
+    } catch {
+      /* ignored */
+    }
   }
 
+  // Activities this month
   const allActivities = await db.select().from(schema.activityLogs)
-  const activities = allActivities.filter(a => orgAddresses.has(a.orgAddress.toLowerCase()))
-  const thisWeek = new Date(); thisWeek.setDate(thisWeek.getDate() - 7)
-  const weekCount = activities.filter(a => new Date(a.activityDate) >= thisWeek).length
-  const totalParticipants = activities.reduce((s, a) => s + a.participants, 0)
+  const activities = allActivities.filter((a) => orgAddresses.has(a.orgAddress.toLowerCase()))
+  const thisMonth = new Date()
+  thisMonth.setDate(1)
+  thisMonth.setHours(0, 0, 0, 0)
+  const monthActivities = activities.filter((a) => new Date(a.activityDate) >= thisMonth)
 
-  const allUsers = await db.select().from(schema.users)
-  const userNames: Record<string, string> = {}
-  for (const u of allUsers) userNames[u.id] = u.name
+  const thisWeek = new Date()
+  thisWeek.setDate(thisWeek.getDate() - 7)
+  const weekCount = activities.filter((a) => new Date(a.activityDate) >= thisWeek).length
 
-  const recentActivities = activities
-    .sort((a, b) => b.activityDate.localeCompare(a.activityDate))
-    .slice(0, 5)
+  // Count prayers and outreach this month
+  const prayerCount = monthActivities.filter((a) => a.activityType === 'prayer').length
+  const outreachCount = monthActivities.filter((a) => a.activityType === 'outreach').length
+
+  // Coach info
+  const coachRel = await getCoachRelationship(currentUser.id)
+
+  // Training progress for personal walk
+  const progress = await getTrainingProgress(currentUser.id)
+  const completedModules = progress.filter((p) => p.completed === 1).length
+  const totalModules = 6 + 20 + 2 // 411(6) + commands(10*2) + 3thirds(2)
+  const walkPct = totalModules > 0 ? Math.round((completedModules / totalModules) * 100) : 0
+
+  // Greeting
+  const hour = new Date().getHours()
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
+  const firstName = currentUser.name.split(' ')[0]
+
+  // Linked names from recent activities (planned conversations)
+  const recentNames = [...new Set(activities.slice(0, 5).map((a) => a.title))].slice(0, 3)
 
   return (
     <div>
-      <div style={{ marginBottom: '1rem' }}>
-        <h1 style={{ fontSize: '1.25rem', margin: '0 0 0.25rem' }}>Catalyst Network</h1>
-        <p style={{ fontSize: '0.85rem', color: '#616161', margin: 0 }}>
-          Field overview for {currentUser.name}. {userOrgs.length} organization{userOrgs.length !== 1 ? 's' : ''}.
-        </p>
-      </div>
+      {/* Greeting */}
+      <h1 style={{
+        fontSize: '1.35rem',
+        fontWeight: 700,
+        color: C.text,
+        margin: '0 0 0.75rem',
+      }}>
+        {greeting}, {firstName}
+      </h1>
 
-      {/* KPI row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem', marginBottom: '1.5rem' }}>
-        {[
-          { label: 'Groups', value: totalGroups + userOrgs.length, color: '#0d9488' },
-          { label: 'Established', value: established, color: '#2e7d32' },
-          { label: 'This Week', value: weekCount, color: '#7c3aed' },
-          { label: 'Participants', value: totalParticipants, color: '#1565c0' },
-        ].map(s => (
-          <div key={s.label} style={{ padding: '0.75rem', borderRadius: 8, textAlign: 'center', background: `${s.color}08`, border: `1px solid ${s.color}20` }}>
-            <div style={{ fontSize: '1.75rem', fontWeight: 700, color: s.color }}>{s.value}</div>
-            <div style={{ fontSize: '0.75rem', color: '#616161' }}>{s.label}</div>
-          </div>
-        ))}
+      {/* Encouragement banner */}
+      {(prayerCount > 0 || outreachCount > 0) && (
+        <div style={{
+          background: C.greenLight,
+          border: `1px solid ${C.greenBorder}`,
+          borderRadius: 10,
+          padding: '0.75rem 1rem',
+          marginBottom: '1rem',
+        }}>
+          <p style={{
+            margin: 0,
+            fontSize: '0.85rem',
+            color: C.green,
+            fontWeight: 500,
+            lineHeight: 1.4,
+          }}>
+            God has been faithful &mdash;{' '}
+            {prayerCount > 0 && <>{prayerCount} prayer{prayerCount !== 1 ? 's' : ''}</>}
+            {prayerCount > 0 && outreachCount > 0 && ', '}
+            {outreachCount > 0 && <>{outreachCount} outreach{outreachCount !== 1 ? 's' : ''}</>}
+            {' '}this month
+          </p>
+        </div>
+      )}
+
+      {/* KPI cards - 2 column grid */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr',
+        gap: '0.6rem',
+        marginBottom: '1.5rem',
+      }}>
+        {/* MY CIRCLES */}
+        <KpiCard label="MY CIRCLES" href="/groups">
+          <span style={{ fontSize: '1.75rem', fontWeight: 700, color: C.accent }}>
+            {totalGroups + userOrgs.length}
+          </span>
+        </KpiCard>
+
+        {/* PRAY NOW */}
+        <KpiCard label="PRAY NOW" href="/nurture/prayer">
+          <span style={{ fontSize: '1.75rem', fontWeight: 700, color: C.accent }}>
+            {prayerCount}
+          </span>
+          <span style={{ fontSize: '0.72rem', color: C.textMuted }}>due</span>
+        </KpiCard>
+
+        {/* PLANNED CONVERSATIONS */}
+        <KpiCard label="PLANNED CONVERSATIONS" href="/activity">
+          {recentNames.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+              {recentNames.map((n) => (
+                <span key={n} style={{ fontSize: '0.78rem', color: C.accent, fontWeight: 500 }}>{n}</span>
+              ))}
+            </div>
+          ) : (
+            <span style={{ fontSize: '0.82rem', color: C.textMuted }}>None planned</span>
+          )}
+        </KpiCard>
+
+        {/* PERSONAL WALK */}
+        <KpiCard label="PERSONAL WALK" href="/nurture/grow">
+          <span style={{ fontSize: '1.75rem', fontWeight: 700, color: C.accent }}>
+            {walkPct}%
+          </span>
+        </KpiCard>
+
+        {/* SOW THIS WEEK */}
+        <KpiCard label="SOW THIS WEEK" href="/activity">
+          <span style={{ fontSize: '1.75rem', fontWeight: 700, color: C.accent }}>
+            {weekCount}
+          </span>
+          <span style={{ fontSize: '0.72rem', color: C.textMuted }}>activities</span>
+        </KpiCard>
+
+        {/* ACTIVE SHARES */}
+        <KpiCard label="ACTIVE SHARES" href="/me">
+          {coachRel ? (
+            <span style={{ fontSize: '0.85rem', color: C.accent, fontWeight: 600 }}>
+              {coachRel.coachName}
+            </span>
+          ) : (
+            <span style={{ fontSize: '0.82rem', color: C.textMuted }}>No coach</span>
+          )}
+        </KpiCard>
       </div>
 
       {/* Quick actions */}
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem' }}>
-        <Link href="/catalyst/activities" style={{ padding: '0.5rem 1rem', background: '#0d9488', color: '#fff', borderRadius: 6, fontWeight: 600, textDecoration: 'none', fontSize: '0.85rem' }}>Log Activity</Link>
-        <Link href="/catalyst/groups" style={{ padding: '0.5rem 1rem', background: '#fff', color: '#0d9488', border: '1px solid #0d9488', borderRadius: 6, fontWeight: 600, textDecoration: 'none', fontSize: '0.85rem' }}>View Groups</Link>
-        <Link href="/catalyst/members" style={{ padding: '0.5rem 1rem', background: '#fff', color: '#0d9488', border: '1px solid #0d9488', borderRadius: 6, fontWeight: 600, textDecoration: 'none', fontSize: '0.85rem' }}>Members</Link>
-        <Link href="/catalyst/map" style={{ padding: '0.5rem 1rem', background: '#fff', color: '#0d9488', border: '1px solid #0d9488', borderRadius: 6, fontWeight: 600, textDecoration: 'none', fontSize: '0.85rem' }}>Map</Link>
+      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+        <Link href="/activity" style={linkBtnStyle(true)}>Log Activity</Link>
+        <Link href="/groups" style={linkBtnStyle(false)}>View Circles</Link>
+        <Link href="/groups/members" style={linkBtnStyle(false)}>Members</Link>
+        <Link href="/nurture/grow" style={linkBtnStyle(false)}>Grow</Link>
+        <Link href="/me" style={linkBtnStyle(false)}>Profile</Link>
       </div>
-
-      {/* Recent activities */}
-      {recentActivities.length > 0 && (
-        <section style={{ marginBottom: '1.5rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-            <h2 style={{ fontSize: '1rem', margin: 0 }}>Recent Activities</h2>
-            <Link href="/catalyst/activities" style={{ color: '#0d9488', fontSize: '0.8rem', fontWeight: 600 }}>View all</Link>
-          </div>
-          <div style={{ display: 'grid', gap: '0.35rem' }}>
-            {recentActivities.map(a => (
-              <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.4rem 0.6rem', background: '#fafafa', borderRadius: 6, border: '1px solid #f0f1f3' }}>
-                <span style={{ fontSize: '0.65rem', fontWeight: 600, color: '#0d9488', width: 70, flexShrink: 0 }}>{a.activityType}</span>
-                <strong style={{ fontSize: '0.8rem', flex: 1 }}>{a.title}</strong>
-                <span style={{ fontSize: '0.7rem', color: '#616161' }}>{userNames[a.userId] ?? 'Unknown'}</span>
-                <span style={{ fontSize: '0.65rem', color: '#9e9e9e' }}>{a.activityDate}</span>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Your organizations */}
-      <section>
-        <h2 style={{ fontSize: '1rem', margin: '0 0 0.5rem' }}>Your Organizations</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '0.75rem' }}>
-          {userOrgs.map(org => (
-            <div key={org.address} style={{ padding: '0.75rem', background: '#fff', borderRadius: 8, border: '1px solid #e2e4e8', borderLeft: '4px solid #0d9488' }}>
-              <Link href={`/agents/${org.address}`} style={{ fontWeight: 700, color: '#1565c0', fontSize: '0.9rem' }}>{org.name}</Link>
-              {org.description && <p style={{ fontSize: '0.75rem', color: '#616161', margin: '0.25rem 0 0' }}>{org.description}</p>}
-              <div style={{ display: 'flex', gap: '0.25rem', marginTop: '0.35rem' }}>
-                {org.roles.map(r => <span key={r} style={{ fontSize: '0.6rem', padding: '0.1rem 0.3rem', background: '#0d948810', color: '#0d9488', borderRadius: 3, fontWeight: 600 }}>{r}</span>)}
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
     </div>
   )
+}
+
+// ─── KPI Card ───────────────────────────────────────────────────────
+
+function KpiCard({
+  label,
+  href,
+  children,
+}: {
+  label: string
+  href: string
+  children: React.ReactNode
+}) {
+  return (
+    <Link href={href} style={{ textDecoration: 'none' }}>
+      <div style={{
+        background: C.card,
+        border: `1px solid ${C.border}`,
+        borderRadius: 10,
+        padding: '0.75rem',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '0.25rem',
+        minHeight: 80,
+      }}>
+        <span style={{
+          fontSize: '0.6rem',
+          fontWeight: 700,
+          color: C.textMuted,
+          textTransform: 'uppercase',
+          letterSpacing: '0.06em',
+        }}>
+          {label}
+        </span>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.35rem', flex: 1 }}>
+          {children}
+        </div>
+      </div>
+    </Link>
+  )
+}
+
+// ─── Link Button Style ──────────────────────────────────────────────
+
+function linkBtnStyle(primary: boolean): React.CSSProperties {
+  return {
+    padding: '0.5rem 1rem',
+    background: primary ? C.accent : C.card,
+    color: primary ? '#fff' : C.accent,
+    border: primary ? 'none' : `1px solid ${C.accentBorder}`,
+    borderRadius: 6,
+    fontWeight: 600,
+    textDecoration: 'none',
+    fontSize: '0.85rem',
+  }
 }

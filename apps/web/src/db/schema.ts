@@ -155,6 +155,82 @@ export const pinnedItems = sqliteTable('pinned_items', {
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
 })
 
+// ─── Circles of Influence (Oikos) ───────────────────────────────────
+
+export const circles = sqliteTable('circles', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => users.id),
+  personName: text('person_name').notNull(),
+  /** Proximity ring: 1 = closest, 2 = near, 3 = acquaintance, 4 = outer */
+  proximity: integer('proximity').notNull().default(3),
+  /** Spiritual response: not-interested, curious, interested, seeking, decided, baptized */
+  response: text('response', {
+    enum: ['not-interested', 'curious', 'interested', 'seeking', 'decided', 'baptized'],
+  }).notNull().default('curious'),
+  /** Planned conversation flag */
+  plannedConversation: integer('planned_conversation').notNull().default(0),
+  notes: text('notes'),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+})
+
+// ─── Prayer Tracker ─────────────────────────────────────────────────
+
+export const prayers = sqliteTable('prayers', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => users.id),
+  title: text('title').notNull(),
+  notes: text('notes'),
+  /** Comma-separated days: mon,wed,fri or 'daily' */
+  schedule: text('schedule').notNull().default('daily'),
+  lastPrayed: text('last_prayed'),
+  /** 0 = active, 1 = answered */
+  answered: integer('answered').notNull().default(0),
+  answeredAt: text('answered_at'),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+})
+
+// ─── Training Progress ──────────────────────────────────────────────
+
+export const trainingProgress = sqliteTable('training_progress', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => users.id),
+  /** Module key: '411-1', '411-2', 'coc-love', 'coc-pray', '3thirds', etc. */
+  moduleKey: text('module_key').notNull(),
+  /** Program: '411', 'commands', '3thirds' */
+  program: text('program').notNull(),
+  /** Track: 'obeying' | 'teaching' | null */
+  track: text('track'),
+  /** 0 = not started, 1 = completed */
+  completed: integer('completed').notNull().default(0),
+  completedAt: text('completed_at'),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+})
+
+// ─── Coach Relationships ────────────────────────────────────────────
+
+export const coachRelationships = sqliteTable('coach_relationships', {
+  id: text('id').primaryKey(),
+  /** The disciple being coached */
+  discipleId: text('disciple_id').notNull().references(() => users.id),
+  /** The coach */
+  coachId: text('coach_id').notNull().references(() => users.id),
+  /** Sharing permissions: comma-separated categories */
+  sharePermissions: text('share_permissions').notNull().default(''),
+  status: text('status', { enum: ['active', 'paused', 'ended'] }).notNull().default('active'),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+})
+
+// ─── User Preferences (language, home church, etc.) ─────────────────
+
+export const userPreferences = sqliteTable('user_preferences', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => users.id).unique(),
+  language: text('language').notNull().default('en'),
+  homeChurch: text('home_church'),
+  location: text('location'),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+})
+
 // ─── Messages / Notifications ────────────────────────────────────────
 
 export const messages = sqliteTable('messages', {

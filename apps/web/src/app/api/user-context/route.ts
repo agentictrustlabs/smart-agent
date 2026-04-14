@@ -6,6 +6,8 @@ import { getPersonAgentForUser, getOrgsForPersonAgent, getAiAgentsForOrg } from 
 import { getAgentMetadata } from '@/lib/agent-metadata'
 import { getEdge, getEdgeRoles } from '@/lib/contracts'
 import { REVIEW_RELATIONSHIP, ROLE_REVIEWER } from '@smart-agent/sdk'
+import type { HubProfile } from '@/lib/hub-profiles'
+import { getHubProfileFromChain, getHubProfile, inferHubIdFromDemoKey } from '@/lib/hub-profiles'
 
 /**
  * User-centric context API.
@@ -42,6 +44,20 @@ export interface UserHub {
   description: string
 }
 
+export interface UserNavItem {
+  href: string
+  label: string
+  sublabel?: string
+  badge?: string
+  icon?: string // 'group' | 'person' | 'org' | 'ai'
+}
+
+export interface UserNavSection {
+  key: string       // 'my-groups', 'my-disciples', 'my-orgs', etc.
+  label: string     // "My Groups", "Coaching", "Organizations"
+  items: UserNavItem[]
+}
+
 export interface UserContextResponse {
   personAgent: { address: string; name: string } | null
   orgs: UserOrg[]
@@ -52,10 +68,14 @@ export interface UserContextResponse {
   capabilities: string[]
   /** Union of all roles across all orgs */
   roles: string[]
+  /** Resolved hub profile (on-chain data with static fallback) */
+  hubProfile: HubProfile | null
+  /** Personalized navigation sections based on user's agents and relationships */
+  personalNav: UserNavSection[]
 }
 
 export async function GET() {
-  const empty: UserContextResponse = { personAgent: null, orgs: [], delegations: [], hubs: [], capabilities: [], roles: [] }
+  const empty: UserContextResponse = { personAgent: null, orgs: [], delegations: [], hubs: [], capabilities: [], roles: [], hubProfile: null, personalNav: [] }
 
   try {
     const { getSession } = await import('@/lib/auth/session')
@@ -93,24 +113,24 @@ export async function GET() {
         })
       )
 
-      // Capabilities derived from roles + on-chain data
-      const caps: string[] = ['network', 'agents']
+      // Capabilities derived from role tools (SDK taxonomy)
+      const { getToolsForRoles: resolveTools } = await import('@smart-agent/sdk')
+      const roleKeys = orgEdge.roles.map(r => r.toLowerCase())
+      const roleTools = resolveTools(roleKeys)
+      const caps: string[] = [...roleTools]
+
+      // On-chain structural capabilities
       let hasChildren = false
       try {
         const outEdges = await getEdgesBySubject(orgEdge.address as `0x${string}`)
         if (outEdges.length > 0) {
           hasChildren = true
-          caps.push('genmap', 'activities', 'members')
+          if (!caps.includes('genmap')) caps.push('genmap')
+          if (!caps.includes('activities')) caps.push('activities')
+          if (!caps.includes('members')) caps.push('members')
         }
       } catch { /* ignored */ }
-      if (aiAgents.length > 0) caps.push('treasury')
-
-      // Role-derived capabilities
-      const roles = orgEdge.roles.map(r => r.toLowerCase())
-      if (roles.some(r => ['owner', 'admin', 'ceo'].includes(r))) caps.push('settings', 'governance')
-      if (roles.some(r => ['owner', 'treasurer', 'authorized-signer'].includes(r))) caps.push('treasury')
-      if (roles.some(r => ['reviewer', 'auditor', 'endorser'].includes(r))) caps.push('reviews')
-      if (roles.some(r => ['operator', 'member', 'owner'].includes(r))) caps.push('reviews')
+      if (aiAgents.length > 0 && !caps.includes('treasury')) caps.push('treasury')
 
       const uniqueCaps = [...new Set(caps)]
       for (const c of uniqueCaps) allCapabilities.add(c)
@@ -167,6 +187,113 @@ export async function GET() {
       } catch { /* ignored */ }
     }
 
+    // Resolve hub profile: try on-chain first, then static fallback
+    let hubProfile: HubProfile | null = null
+    if (hubs.length > 0) {
+      hubProfile = await getHubProfileFromChain(hubs[0].address)
+    }
+    if (!hubProfile) {
+      // Fall back to static profile: check demo user key, then hub name matching
+      const { cookies: getCookies } = await import('next/headers')
+      const cookieStore = await getCookies()
+      const demoKey = cookieStore.get('demo-user')?.value ?? null
+      const demoHubId = inferHubIdFromDemoKey(demoKey)
+      if (demoHubId) {
+        hubProfile = getHubProfile(demoHubId)
+      } else {
+        // Try to match by hub name
+        for (const hub of hubs) {
+          const name = hub.name.toLowerCase()
+          if (name.includes('catalyst')) { hubProfile = getHubProfile('catalyst'); break }
+          if (name.includes('global') && name.includes('church')) { hubProfile = getHubProfile('global-church'); break }
+          if (name.includes('collective') || name.includes('cil')) { hubProfile = getHubProfile('cil'); break }
+        }
+      }
+    }
+
+    // ─── Coach capability from DB relationships ──────────────────────
+    try {
+      const coachRows = await db.select().from(schema.coachRelationships)
+        .where(eq(schema.coachRelationships.coachId, users[0].id))
+      if (coachRows.length > 0) allCapabilities.add('coaching')
+    } catch { /* table might not exist */ }
+
+    // ─── Build personalNav sections ─────────────────────────────────
+    const personalNav: UserNavSection[] = []
+
+    // "My Groups" — orgs the user owns/operates that have children
+    const groupOrgs = orgs.filter(o =>
+      o.roles.some(r => ['owner', 'operator'].includes(r.toLowerCase())) && o.hasChildren
+    )
+    if (groupOrgs.length > 0) {
+      const groupLabel = hubProfile?.contextTerm === 'Operating Group' ? 'My Portfolio' : 'My Groups'
+      personalNav.push({
+        key: 'my-groups',
+        label: groupLabel,
+        items: groupOrgs.map(o => ({
+          href: `/catalyst/groups/${o.address}`,
+          label: o.name,
+          sublabel: o.roles[0],
+          icon: 'group',
+        })),
+      })
+    }
+
+    // "Coaching" — disciples the user coaches
+    try {
+      const coachRows = await db.select().from(schema.coachRelationships)
+        .where(eq(schema.coachRelationships.coachId, users[0].id))
+      if (coachRows.length > 0) {
+        const discipleItems: UserNavItem[] = []
+        for (const row of coachRows) {
+          const disciple = await db.select().from(schema.users)
+            .where(eq(schema.users.id, row.discipleId)).limit(1)
+          discipleItems.push({
+            href: '/catalyst/me',
+            label: disciple[0]?.name ?? 'Unknown',
+            sublabel: 'Disciple',
+            icon: 'person',
+          })
+        }
+        if (discipleItems.length > 0) {
+          personalNav.push({
+            key: 'coaching',
+            label: 'My Disciples',
+            items: discipleItems,
+          })
+        }
+      }
+    } catch { /* table might not exist */ }
+
+    // "Organizations" — all orgs the user belongs to
+    if (orgs.length > 0) {
+      personalNav.push({
+        key: 'my-orgs',
+        label: 'Organizations',
+        items: orgs.map(o => ({
+          href: `/agents/${o.address}`,
+          label: o.name,
+          sublabel: o.roles.join(', '),
+          icon: 'org',
+        })),
+      })
+    }
+
+    // "AI Agents" — AI agents across all orgs
+    const allAI = orgs.flatMap(o => o.aiAgents)
+    if (allAI.length > 0) {
+      personalNav.push({
+        key: 'my-agents',
+        label: 'AI Agents',
+        items: allAI.map(a => ({
+          href: `/agents/${a.address}`,
+          label: a.name,
+          sublabel: a.agentType,
+          icon: 'ai',
+        })),
+      })
+    }
+
     return NextResponse.json({
       personAgent,
       orgs,
@@ -174,6 +301,8 @@ export async function GET() {
       hubs,
       capabilities: [...allCapabilities],
       roles: [...allRoles],
+      hubProfile,
+      personalNav,
     } satisfies UserContextResponse)
   } catch {
     return NextResponse.json(empty)

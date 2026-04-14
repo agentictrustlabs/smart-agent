@@ -96,8 +96,10 @@ export {
   EdgeStatus, AssertionType, ResolutionMode,
   // Helpers
   roleName, relationshipTypeName, issuerTypeName, validationMethodName,
+  getToolsForRoles, getToolsForRoleHashes,
   toDidEthr,
 } from './relationship'
+export type { RoleTool } from './relationship-taxonomy'
 export type {
   RelationshipProtocolConfig,
   OnChainEdge,
@@ -117,6 +119,7 @@ export {
   ATL_LATITUDE, ATL_LONGITUDE, ATL_SPATIAL_CRS, ATL_SPATIAL_TYPE,
   ATL_HUB_NAV_CONFIG, ATL_HUB_NETWORK_LABEL, ATL_HUB_CONTEXT_TERM,
   ATL_HUB_OVERVIEW_LABEL, ATL_HUB_AGENT_LABEL,
+  ATL_HUB_FEATURES, ATL_HUB_THEME, ATL_HUB_VIEW_MODES, ATL_HUB_GREETING,
   ATL_HUB_VOCABULARY, ATL_HUB_ROLE_VOCABULARY, ATL_HUB_TYPE_VOCABULARY,
   ATL_GENMAP_DATA, ATL_ACTIVITY_LOG, ATL_TRACKED_MEMBERS, ATL_TEMPLATE_ID,
   ATL_ENTRY_POINT, ATL_IMPLEMENTATION, ATL_DELEGATION_MANAGER,

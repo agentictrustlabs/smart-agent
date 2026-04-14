@@ -21,6 +21,31 @@ const CPM = {
   grpSalt: addr(0xa10004),
 }
 
+// Global.Church addresses (must match seed-globalchurch-onchain.ts)
+const GC = {
+  network: addr(0xc10001),     // placeholder — actual addrs are CREATE2-derived
+  graceChurch: addr(0xc10002),
+  sbc: addr(0xc10003),
+  ecfa: addr(0xc10004),
+  wycliffe: addr(0xc10005),
+  ncf: addr(0xc10006),
+  youthMinistry: addr(0xc10007),
+  smallGroups: addr(0xc10008),
+  missionsTeam: addr(0xc10009),
+}
+
+// CIL addresses (must match seed-cil-onchain.ts)
+const CIL = {
+  cil: addr(0xd10001),           // placeholder — actual addrs are CREATE2-derived
+  ilad: addr(0xd10002),
+  ravah: addr(0xd10003),
+  afiaMarket: addr(0xd10004),
+  kossiRepair: addr(0xd10005),
+  lomeHub: addr(0xd10006),
+  wave1: addr(0xd10007),
+  wave2: addr(0xd10008),
+}
+
 // Catalyst addresses (must match seed-catalyst.ts)
 const CAT = {
   network: addr(0xb10001),
@@ -94,6 +119,53 @@ export function getDemoUserOrgRoles(userId: string): DemoOrgRole[] {
     'cat-user-007': [ // Duc Le — Circle Lead
       { orgAddress: CAT.circleHanhoa, roles: ['owner'] },
       { orgAddress: CAT.hubDanang, roles: ['member'] },
+    ],
+    // Global.Church community
+    'gc-user-001': [ // Pastor James — Senior Pastor
+      { orgAddress: GC.graceChurch, roles: ['owner'] },
+      { orgAddress: GC.network, roles: ['board-member'] },
+    ],
+    'gc-user-002': [ // Dr. Sarah Mitchell — Executive Director
+      { orgAddress: GC.sbc, roles: ['owner'] },
+      { orgAddress: GC.network, roles: ['operator'] },
+    ],
+    'gc-user-003': [ // Dan Busby — Executive Director
+      { orgAddress: GC.ecfa, roles: ['owner'] },
+      { orgAddress: GC.network, roles: ['member'] },
+    ],
+    'gc-user-004': [ // John Chesnut — Director
+      { orgAddress: GC.wycliffe, roles: ['owner'] },
+      { orgAddress: GC.network, roles: ['member'] },
+    ],
+    'gc-user-005': [ // David Wills — President
+      { orgAddress: GC.ncf, roles: ['owner'] },
+      { orgAddress: GC.network, roles: ['board-member'] },
+    ],
+    // Collective Impact Labs (CIL)
+    'cil-user-001': [ // Cameron Henrion — Operations Lead
+      { orgAddress: CIL.ilad, roles: ['owner'] },
+      { orgAddress: CIL.ravah, roles: ['operator'] },
+    ],
+    'cil-user-002': [ // Nick Courchesne — Reviewer
+      { orgAddress: CIL.ilad, roles: ['operator'] },
+    ],
+    'cil-user-003': [ // Afia Mensah — Business Owner
+      { orgAddress: CIL.afiaMarket, roles: ['owner'] },
+      { orgAddress: CIL.wave1, roles: ['member'] },
+    ],
+    'cil-user-004': [ // Kossi Agbeko — Business Owner
+      { orgAddress: CIL.kossiRepair, roles: ['owner'] },
+      { orgAddress: CIL.wave1, roles: ['member'] },
+    ],
+    'cil-user-005': [ // Yaw — Local Manager
+      { orgAddress: CIL.ilad, roles: ['operator'] },
+      { orgAddress: CIL.lomeHub, roles: ['owner'] },
+    ],
+    'cil-user-006': [ // John F. Kim — Admin
+      { orgAddress: CIL.cil, roles: ['owner'] },
+    ],
+    'cil-user-007': [ // Paul Martel — Funder
+      { orgAddress: CIL.cil, roles: ['board-member'] },
     ],
   }
   return map[userId] ?? []

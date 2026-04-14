@@ -15,6 +15,8 @@ export {
   getInviteRoleDefinition,
   relationshipTypeName,
   roleName,
+  getToolsForRoles,
+  getToolsForRoleHashes,
   ORGANIZATION_GOVERNANCE,
   ORGANIZATION_MEMBERSHIP,
   ALLIANCE,

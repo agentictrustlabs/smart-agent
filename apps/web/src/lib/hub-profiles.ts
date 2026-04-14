@@ -5,7 +5,52 @@ export type AgentContextKind = 'collection' | 'cohort' | 'network' | 'lineage' |
 export interface HubNavItem {
   href: string
   label: string
-  /** If true, only show when context has this capability */
+  /** Icon key for bottom/primary tabs */
+  icon?: string
+  /** If set, tab only shows when user has this capability */
+  requiresCapability?: string
+  /** If set, tab only shows when user has this role */
+  requiresRole?: string
+  /** Where this item appears in the layout */
+  section?: 'primary' | 'secondary' | 'admin' | 'personal'
+  /** Contextual sub-tabs shown when this nav item is active */
+  subTabs?: Array<{ href: string; label: string; exact?: boolean }>
+  /** If true, match exactly (don't match child routes) */
+  exact?: boolean
+  /** Additional prefixes that should also activate this tab */
+  activePrefixes?: string[]
+}
+
+export interface HubFeatures {
+  circles?: boolean
+  prayer?: boolean
+  grow?: boolean
+  coaching?: boolean
+  genmap?: boolean
+  activities?: boolean
+  treasury?: boolean
+  reviews?: boolean
+  members?: boolean
+  map?: boolean
+}
+
+export interface HubTheme {
+  accent: string
+  accentLight: string
+  bg: string
+  headerBg: string
+  text: string
+  textMuted: string
+  border: string
+  /** Secondary accent (e.g. teal for sub-tabs) */
+  secondary: string
+  secondaryLight: string
+}
+
+export interface HubViewMode {
+  key: string
+  label: string
+  requiresRole?: string
   requiresCapability?: string
 }
 
@@ -23,8 +68,16 @@ export interface HubProfile {
   contextsLabel: string
   agentLabel: string
   activityLabel: string
-  /** Hub-specific navigation items */
+  /** Hub-specific navigation items (all sections) */
   navItems: HubNavItem[]
+  /** Features/tools available in this hub */
+  features: HubFeatures
+  /** Color theme */
+  theme: HubTheme
+  /** Role-specific view modes (e.g., Disciple/Coach switcher) */
+  viewModes?: HubViewMode[]
+  /** Greeting template (e.g., "Good day, {name}") */
+  greetingTemplate?: string
 }
 
 export interface AgentContextView {
@@ -37,6 +90,16 @@ export interface AgentContextView {
   isDefault?: boolean
 }
 
+// ---------------------------------------------------------------------------
+// Helper: filter nav items by section
+// ---------------------------------------------------------------------------
+export function getNavBySection(profile: HubProfile, section: HubNavItem['section']): HubNavItem[] {
+  return profile.navItems.filter(item => item.section === section)
+}
+
+// ---------------------------------------------------------------------------
+// Hub Profiles
+// ---------------------------------------------------------------------------
 export const HUB_PROFILES: HubProfile[] = [
   {
     id: 'generic',
@@ -58,13 +121,25 @@ export const HUB_PROFILES: HubProfile[] = [
     contextsLabel: 'Contexts',
     agentLabel: 'Agents',
     activityLabel: 'Activity',
+    features: { members: true, reviews: true, treasury: true },
+    theme: {
+      accent: '#1565c0',
+      accentLight: 'rgba(21,101,192,0.10)',
+      bg: '#fafafa',
+      headerBg: '#ffffff',
+      text: '#37474f',
+      textMuted: '#90a4ae',
+      border: '#e0e0e0',
+      secondary: '#1565c0',
+      secondaryLight: 'rgba(21,101,192,0.08)',
+    },
     navItems: [
-      { href: '/dashboard', label: 'Overview' },
-      { href: '/agents', label: 'Agents' },
-      { href: '/network', label: 'Network' },
-      { href: '/treasury', label: 'Treasury' },
-      { href: '/reviews', label: 'Reviews' },
-      { href: '/settings', label: 'Admin' },
+      { href: '/catalyst', label: 'Home', section: 'primary', exact: true, activePrefixes: ['/', '/catalyst', '/dashboard'] },
+      { href: '/groups', label: 'Organizations', section: 'primary', activePrefixes: ['/groups', '/catalyst/groups', '/agents'] },
+      { href: '/steward', label: 'Manage', section: 'primary', activePrefixes: ['/steward', '/treasury', '/reviews', '/network', '/trust'] },
+      { href: '/activity', label: 'Activity', section: 'primary', activePrefixes: ['/activity', '/activities'] },
+      { href: '/settings', label: 'Settings', section: 'admin', requiresCapability: 'settings' },
+      { href: '/me', label: 'Profile', section: 'personal' },
     ],
   },
   {
@@ -88,13 +163,43 @@ export const HUB_PROFILES: HubProfile[] = [
     contextsLabel: 'Councils',
     agentLabel: 'Participants',
     activityLabel: 'Activity',
+    features: {
+      circles: true,
+      prayer: true,
+      grow: true,
+      coaching: true,
+      genmap: true,
+      activities: true,
+      members: true,
+      reviews: true,
+      treasury: true,
+    },
+    theme: {
+      accent: '#8b5e3c',
+      accentLight: 'rgba(139,94,60,0.10)',
+      bg: '#faf8f3',
+      headerBg: '#ffffff',
+      text: '#5c4a3a',
+      textMuted: '#9a8c7e',
+      border: '#ece6db',
+      secondary: '#0d9488',
+      secondaryLight: 'rgba(13,148,136,0.08)',
+    },
+    viewModes: [
+      { key: 'disciple', label: 'Disciple' },
+      { key: 'coach', label: 'Coach', requiresCapability: 'coaching' },
+    ],
+    greetingTemplate: 'Good day, {name}',
     navItems: [
-      { href: '/dashboard', label: 'Council View' },
-      { href: '/agents', label: 'Participants' },
-      { href: '/network', label: 'Church Network' },
-      { href: '/treasury', label: 'Treasury' },
-      { href: '/reviews', label: 'Endorsements' },
-      { href: '/team', label: 'Members' },
+      { href: '/catalyst', label: 'Home', section: 'primary', exact: true, activePrefixes: ['/', '/catalyst', '/dashboard'] },
+      { href: '/oikos', label: 'Oikos', section: 'primary', activePrefixes: ['/oikos', '/circles', '/catalyst/circles'] },
+      { href: '/nurture', label: 'Nurture', section: 'primary', activePrefixes: ['/nurture', '/catalyst/prayer', '/catalyst/grow', '/catalyst/coach'] },
+      { href: '/groups', label: 'Build', section: 'primary', activePrefixes: ['/groups', '/catalyst/groups', '/catalyst/members', '/catalyst/map'] },
+      { href: '/steward', label: 'Steward', section: 'primary', requiresCapability: 'governance', activePrefixes: ['/steward', '/treasury', '/reviews', '/network', '/trust'] },
+      { href: '/activity', label: 'Activity', section: 'primary', activePrefixes: ['/activity', '/catalyst/activities', '/activities'] },
+      { href: '/agents', label: 'Agents', section: 'admin', requiresCapability: 'agents' },
+      { href: '/settings', label: 'Settings', section: 'admin', requiresCapability: 'settings' },
+      { href: '/me', label: 'Profile', section: 'personal' },
     ],
   },
   {
@@ -114,14 +219,42 @@ export const HUB_PROFILES: HubProfile[] = [
     contextsLabel: 'Networks',
     agentLabel: 'Participants',
     activityLabel: 'Field Activity',
+    features: {
+      circles: true,
+      prayer: true,
+      grow: true,
+      coaching: true,
+      genmap: true,
+      activities: true,
+      members: true,
+      map: true,
+    },
+    theme: {
+      accent: '#8b5e3c',
+      accentLight: 'rgba(139,94,60,0.10)',
+      bg: '#faf8f3',
+      headerBg: '#ffffff',
+      text: '#5c4a3a',
+      textMuted: '#9a8c7e',
+      border: '#ece6db',
+      secondary: '#0d9488',
+      secondaryLight: 'rgba(13,148,136,0.08)',
+    },
+    viewModes: [
+      { key: 'disciple', label: 'Disciple' },
+      { key: 'coach', label: 'Coach', requiresCapability: 'coaching' },
+    ],
+    greetingTemplate: 'Good day, {name}',
     navItems: [
-      { href: '/dashboard', label: 'Network View' },
-      { href: '/agents', label: 'Participants' },
-      { href: '/network', label: 'Partner Network' },
-      { href: '/genmap', label: 'Lineage' },
-      { href: '/activities', label: 'Field Activity' },
-      { href: '/members', label: 'Members' },
-      { href: '/reviews', label: 'Reviews' },
+      { href: '/catalyst', label: 'Home', section: 'primary', exact: true, activePrefixes: ['/', '/catalyst', '/dashboard'] },
+      { href: '/oikos', label: 'Oikos', section: 'primary', activePrefixes: ['/oikos', '/circles', '/catalyst/circles'] },
+      { href: '/nurture', label: 'Nurture', section: 'primary', activePrefixes: ['/nurture', '/catalyst/prayer', '/catalyst/grow', '/catalyst/coach'] },
+      { href: '/groups', label: 'Build', section: 'primary', activePrefixes: ['/groups', '/catalyst/groups', '/catalyst/members', '/catalyst/map'] },
+      { href: '/steward', label: 'Steward', section: 'primary', requiresCapability: 'governance', activePrefixes: ['/steward', '/treasury', '/reviews', '/network', '/trust'] },
+      { href: '/activity', label: 'Activity', section: 'primary', activePrefixes: ['/activity', '/catalyst/activities', '/activities'] },
+      { href: '/agents', label: 'Agents', section: 'admin', requiresCapability: 'agents' },
+      { href: '/settings', label: 'Settings', section: 'admin', requiresCapability: 'settings' },
+      { href: '/me', label: 'Profile', section: 'personal' },
     ],
   },
   {
@@ -143,14 +276,34 @@ export const HUB_PROFILES: HubProfile[] = [
     contextsLabel: 'Groups',
     agentLabel: 'Participants',
     activityLabel: 'Operations',
+    features: {
+      activities: true,
+      members: true,
+      treasury: true,
+      reviews: true,
+      genmap: true,
+    },
+    theme: {
+      accent: '#0d6e6e',
+      accentLight: 'rgba(13,110,110,0.10)',
+      bg: '#f5f9f9',
+      headerBg: '#ffffff',
+      text: '#2d4a4a',
+      textMuted: '#7a9a9a',
+      border: '#d5e5e5',
+      secondary: '#0d6e6e',
+      secondaryLight: 'rgba(13,110,110,0.08)',
+    },
+    greetingTemplate: 'Welcome, {name}',
     navItems: [
-      { href: '/dashboard', label: 'Pilot View' },
-      { href: '/agents', label: 'Participants' },
-      { href: '/network', label: 'Trust Network' },
-      { href: '/activities', label: 'Operations' },
-      { href: '/members', label: 'Members' },
-      { href: '/reviews', label: 'Assertions' },
-      { href: '/treasury', label: 'Treasury' },
+      { href: '/catalyst', label: 'Home', section: 'primary', exact: true, activePrefixes: ['/', '/catalyst', '/dashboard'] },
+      { href: '/oikos', label: 'Oikos', section: 'primary', activePrefixes: ['/oikos', '/circles', '/catalyst/circles'] },
+      { href: '/groups', label: 'Portfolio', section: 'primary', activePrefixes: ['/groups', '/catalyst/groups', '/catalyst/members'] },
+      { href: '/steward', label: 'Steward', section: 'primary', activePrefixes: ['/steward', '/treasury', '/reviews', '/network', '/trust'] },
+      { href: '/activity', label: 'Operations', section: 'primary', activePrefixes: ['/activity', '/catalyst/activities', '/activities'] },
+      { href: '/agents', label: 'Agents', section: 'admin', requiresCapability: 'agents' },
+      { href: '/settings', label: 'Settings', section: 'admin', requiresCapability: 'settings' },
+      { href: '/me', label: 'Profile', section: 'personal' },
     ],
   },
 ]
@@ -162,7 +315,12 @@ export const HUB_PROFILES: HubProfile[] = [
 export async function getHubProfileFromChain(hubAddress: string): Promise<HubProfile | null> {
   try {
     const { getPublicClient } = await import('@/lib/contracts')
-    const { agentAccountResolverAbi, ATL_HUB_NAV_CONFIG, ATL_HUB_NETWORK_LABEL, ATL_HUB_CONTEXT_TERM, ATL_HUB_OVERVIEW_LABEL, ATL_HUB_AGENT_LABEL } = await import('@smart-agent/sdk')
+    const {
+      agentAccountResolverAbi,
+      ATL_HUB_NAV_CONFIG, ATL_HUB_NETWORK_LABEL, ATL_HUB_CONTEXT_TERM,
+      ATL_HUB_OVERVIEW_LABEL, ATL_HUB_AGENT_LABEL,
+      ATL_HUB_FEATURES, ATL_HUB_THEME, ATL_HUB_VIEW_MODES, ATL_HUB_GREETING,
+    } = await import('@smart-agent/sdk')
     const resolverAddr = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}`
     if (!resolverAddr) return null
 
@@ -178,31 +336,64 @@ export async function getHubProfileFromChain(hubAddress: string): Promise<HubPro
     const overviewLabel = await getString(ATL_HUB_OVERVIEW_LABEL as `0x${string}`) || 'Overview'
     const agentLabel = await getString(ATL_HUB_AGENT_LABEL as `0x${string}`) || 'Agents'
     const navJson = await getString(ATL_HUB_NAV_CONFIG as `0x${string}`)
+    const featuresJson = await getString(ATL_HUB_FEATURES as `0x${string}`)
+    const themeJson = await getString(ATL_HUB_THEME as `0x${string}`)
+    const viewModesJson = await getString(ATL_HUB_VIEW_MODES as `0x${string}`)
+    const greeting = await getString(ATL_HUB_GREETING as `0x${string}`)
 
-    let navItems: HubNavItem[] = [
-      { href: '/dashboard', label: overviewLabel },
-      { href: '/agents', label: agentLabel },
-      { href: '/network', label: networkLabel },
-    ]
+    // Try to find a matching static profile by hub name for fallback defaults
+    const nameLower = (core.displayName || '').toLowerCase()
+    let staticFallback: HubProfile | undefined
+    if (nameLower.includes('catalyst')) staticFallback = HUB_PROFILES.find(p => p.id === 'catalyst')
+    else if (nameLower.includes('global') && nameLower.includes('church')) staticFallback = HUB_PROFILES.find(p => p.id === 'global-church')
+    else if (nameLower.includes('collective') || nameLower.includes('cil')) staticFallback = HUB_PROFILES.find(p => p.id === 'cil')
+    const defaultProfile = staticFallback ?? HUB_PROFILES[0]
+
+    let navItems: HubNavItem[] = defaultProfile.navItems
     if (navJson) {
-      try { navItems = JSON.parse(navJson) } catch { /* use defaults */ }
+      try { navItems = JSON.parse(navJson) } catch { /* use static fallback */ }
     }
 
+    let features: HubFeatures = defaultProfile.features
+    if (featuresJson) {
+      try { features = JSON.parse(featuresJson) } catch { /* use static fallback */ }
+    }
+
+    let theme: HubTheme = defaultProfile.theme
+    if (themeJson) {
+      try {
+        const parsed = JSON.parse(themeJson)
+        // Merge with defaults so missing keys fall back gracefully
+        theme = { ...defaultProfile.theme, ...parsed }
+      } catch { /* use static fallback */ }
+    }
+
+    let viewModes: HubViewMode[] | undefined = defaultProfile.viewModes
+    if (viewModesJson) {
+      try { viewModes = JSON.parse(viewModesJson) } catch { /* use static fallback */ }
+    }
+
+    const greetingTemplate = greeting || defaultProfile.greetingTemplate
+
     return {
-      id: hubAddress.toLowerCase().slice(0, 10) as HubId,
-      name: core.displayName || 'Hub',
-      description: core.description || '',
-      templateIds: [],
-      contextTerm,
-      contextPlural: contextTerm + 's',
-      defaultContextKind: 'cohort',
-      networkLabel,
-      lineageLabel: 'Lineage',
-      overviewLabel,
-      contextsLabel: contextTerm + 's',
-      agentLabel,
-      activityLabel: 'Activity',
+      id: defaultProfile.id,
+      name: core.displayName || defaultProfile.name,
+      description: core.description || defaultProfile.description,
+      templateIds: defaultProfile.templateIds,
+      contextTerm: contextTerm || defaultProfile.contextTerm,
+      contextPlural: (contextTerm ? contextTerm + 's' : defaultProfile.contextPlural),
+      defaultContextKind: defaultProfile.defaultContextKind,
+      networkLabel: networkLabel || defaultProfile.networkLabel,
+      lineageLabel: defaultProfile.lineageLabel,
+      overviewLabel: overviewLabel || defaultProfile.overviewLabel,
+      contextsLabel: contextTerm ? contextTerm + 's' : defaultProfile.contextsLabel,
+      agentLabel: agentLabel || defaultProfile.agentLabel,
+      activityLabel: defaultProfile.activityLabel,
       navItems,
+      features,
+      theme,
+      viewModes,
+      greetingTemplate,
     }
   } catch { return null }
 }
@@ -223,6 +414,17 @@ export function getHubIdForTemplate(templateId: string | null | undefined): HubI
 
 export function inferHubId(templateId: string | null | undefined, _capabilities: string[]): HubId {
   if (templateId) return getHubIdForTemplate(templateId)
+  return 'generic'
+}
+
+/**
+ * Infer hub ID from a demo user key prefix.
+ */
+export function inferHubIdFromDemoKey(demoUserKey: string | null | undefined): HubId | null {
+  if (!demoUserKey) return null
+  if (demoUserKey.startsWith('gc-')) return 'global-church'
+  if (demoUserKey.startsWith('cat-')) return 'catalyst'
+  if (demoUserKey.startsWith('cil-')) return 'cil'
   return 'generic'
 }
 
@@ -263,7 +465,7 @@ export function buildDefaultAgentContexts(args: {
     },
   ]
 
-  // Note: network context already added above (line 236) — no duplicate needed
+  // Note: network context already added above — no duplicate needed
 
   if (args.capabilities.includes('genmap') && profile.defaultContextKind !== 'lineage') {
     contexts.push({

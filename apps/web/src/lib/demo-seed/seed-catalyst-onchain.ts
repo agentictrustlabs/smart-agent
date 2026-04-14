@@ -14,6 +14,7 @@ import {
   ROLE_OWNER, ROLE_BOARD_MEMBER, ROLE_OPERATOR, ROLE_MEMBER, ROLE_ADVISOR, ROLE_OPERATED_AGENT,
   ROLE_STRATEGIC_PARTNER, ROLE_UPSTREAM, ROLE_DOWNSTREAM,
   ATL_LATITUDE, ATL_LONGITUDE, ATL_SPATIAL_CRS, ATL_SPATIAL_TYPE, ATL_CONTROLLER,
+  ATL_HUB_NAV_CONFIG, ATL_HUB_FEATURES, ATL_HUB_THEME, ATL_HUB_VIEW_MODES, ATL_HUB_GREETING,
 } from '@smart-agent/sdk'
 import { agentAccountResolverAbi } from '@smart-agent/sdk'
 import { keccak256, toBytes } from 'viem'
@@ -58,6 +59,15 @@ async function setController(agentAddr: `0x${string}`, walletAddr: string) {
   try {
     await wc.writeContract({ address: res, abi: agentAccountResolverAbi, functionName: 'addMultiAddressProperty', args: [agentAddr, ATL_CONTROLLER as `0x${string}`, walletAddr as `0x${string}`] })
   } catch (_e) { console.warn(`[catalyst-seed] Controller failed:`, _e) }
+}
+
+async function setString(addr: `0x${string}`, predicate: `0x${string}`, value: string) {
+  const wc = getWalletClient()
+  const resolver = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}`
+  if (!resolver) return
+  try {
+    await wc.writeContract({ address: resolver, abi: agentAccountResolverAbi, functionName: 'setStringProperty', args: [addr, predicate, value] })
+  } catch (_e) { console.warn(`[catalyst-seed] setString failed for ${addr}:`, _e) }
 }
 
 async function setGeo(addr: `0x${string}`, lat: string, lon: string) {
@@ -172,6 +182,24 @@ async function doSeed() {
   await setGeo(grpLien, '16.0850', '108.1510')    // Lien Chieu district
   await setGeo(grpNgu, '16.0060', '108.2630')     // Ngu Hanh Son
   await setGeo(grpCam, '16.0200', '108.1950')     // Cam Le district
+
+  // ─── Hub Configuration (on-chain) ─────────────────────────────────
+  console.log('[catalyst-seed] Writing hub configuration on-chain...')
+  await setString(network, ATL_HUB_NAV_CONFIG as `0x${string}`, JSON.stringify([
+    { href: '/catalyst', label: 'Home', section: 'primary', exact: true, activePrefixes: ['/', '/catalyst', '/dashboard'] },
+    { href: '/circles', label: 'Connect', section: 'primary', activePrefixes: ['/circles', '/catalyst/circles'] },
+    { href: '/nurture', label: 'Nurture', section: 'primary', activePrefixes: ['/nurture', '/catalyst/prayer', '/catalyst/grow', '/catalyst/coach'] },
+    { href: '/groups', label: 'Build', section: 'primary', activePrefixes: ['/groups', '/catalyst/groups', '/catalyst/members', '/catalyst/map'] },
+    { href: '/steward', label: 'Steward', section: 'primary', requiresCapability: 'governance', activePrefixes: ['/steward', '/treasury', '/reviews', '/network', '/trust'] },
+    { href: '/activity', label: 'Activity', section: 'primary', activePrefixes: ['/activity', '/catalyst/activities', '/activities'] },
+    { href: '/agents', label: 'Agents', section: 'admin', requiresCapability: 'agents' },
+    { href: '/settings', label: 'Settings', section: 'admin', requiresCapability: 'settings' },
+    { href: '/me', label: 'Profile', section: 'personal' },
+  ]))
+  await setString(network, ATL_HUB_FEATURES as `0x${string}`, JSON.stringify({ circles: true, prayer: true, grow: true, coaching: true, genmap: true, activities: true, members: true, map: true }))
+  await setString(network, ATL_HUB_THEME as `0x${string}`, JSON.stringify({ accent: '#8b5e3c', accentLight: 'rgba(139,94,60,0.10)', bg: '#faf8f3', headerBg: '#ffffff', text: '#5c4a3a', textMuted: '#9a8c7e' }))
+  await setString(network, ATL_HUB_VIEW_MODES as `0x${string}`, JSON.stringify([{ key: 'disciple', label: 'Disciple' }, { key: 'coach', label: 'Coach', requiresCapability: 'coaching' }]))
+  await setString(network, ATL_HUB_GREETING as `0x${string}`, 'Good day, {name}')
 
   // No DB writes needed — all agent identity, relationships, and metadata are on-chain.
   // The only DB table used is `users` (for Privy auth → wallet mapping).

@@ -1,7 +1,8 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react'
-import type { UserContextResponse, UserOrg, UserDelegation, UserHub } from '@/app/api/user-context/route'
+import type { UserContextResponse, UserOrg, UserDelegation, UserHub, UserNavSection } from '@/app/api/user-context/route'
+import type { HubProfile } from '@/lib/hub-profiles'
 
 interface UserContextValue {
   /** Connected user's person agent */
@@ -16,6 +17,10 @@ interface UserContextValue {
   capabilities: string[]
   /** Union of all roles across all orgs */
   roles: string[]
+  /** Resolved hub profile (on-chain + static fallback), null if not yet loaded */
+  hubProfile: HubProfile | null
+  /** Personalized navigation sections based on user's agents and relationships */
+  personalNav: UserNavSection[]
   /** Loading state */
   loading: boolean
   /** Check if user has a specific capability (across any org) */
@@ -32,7 +37,7 @@ interface UserContextValue {
 
 const UserCtx = createContext<UserContextValue>({
   personAgent: null, orgs: [], delegations: [], hubs: [], capabilities: [], roles: [],
-  loading: true, hasCapability: () => false, hasRole: () => false,
+  hubProfile: null, personalNav: [], loading: true, hasCapability: () => false, hasRole: () => false,
   orgsWithRole: () => [], orgsWithCapability: () => [], primaryRole: '',
 })
 
@@ -44,7 +49,7 @@ const ROLE_PRIORITY = ['owner', 'ceo', 'treasurer', 'authorized-signer', 'board-
 
 export function UserContextProvider({ children }: { children: React.ReactNode }) {
   const [data, setData] = useState<UserContextResponse>({
-    personAgent: null, orgs: [], delegations: [], hubs: [], capabilities: [], roles: [],
+    personAgent: null, orgs: [], delegations: [], hubs: [], capabilities: [], roles: [], hubProfile: null, personalNav: [],
   })
   const [loading, setLoading] = useState(true)
 
@@ -78,6 +83,8 @@ export function UserContextProvider({ children }: { children: React.ReactNode })
       hubs: data.hubs,
       capabilities: data.capabilities,
       roles: data.roles,
+      hubProfile: data.hubProfile,
+      personalNav: data.personalNav ?? [],
       loading,
       hasCapability,
       hasRole,

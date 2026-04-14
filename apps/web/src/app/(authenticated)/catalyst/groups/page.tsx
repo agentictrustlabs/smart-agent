@@ -77,9 +77,9 @@ export default async function CatalystGroupsPage() {
   return (
     <div>
       <div style={{ marginBottom: '1rem' }}>
-        <h1 style={{ fontSize: '1.25rem', margin: '0 0 0.25rem' }}>Groups</h1>
+        <h1 style={{ fontSize: '1.25rem', margin: '0 0 0.25rem' }}>Circles</h1>
         <p style={{ fontSize: '0.85rem', color: '#616161', margin: 0 }}>
-          Hierarchy of groups and gatherings. Click a group to edit health metrics and practices.
+          Hierarchy of circles and gatherings. Click a circle to edit health metrics and practices.
         </p>
       </div>
       <GroupHierarchy groups={groups} orgAddress={userOrgs[0].address} />

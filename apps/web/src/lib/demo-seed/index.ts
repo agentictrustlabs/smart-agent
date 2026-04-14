@@ -2,6 +2,9 @@ import { DEMO_USERS } from '@/lib/auth/session'
 import { db, schema } from '@/db'
 import { eq } from 'drizzle-orm'
 import { seedCatalystOnChain } from './seed-catalyst-onchain'
+import { seedCILOnChain } from './seed-cil-onchain'
+import { seedGlobalChurchOnChain } from './seed-globalchurch-onchain'
+import { seedMultiplyData } from './seed-multiply-data'
 
 /**
  * Ensure demo community is fully seeded — DB user rows + on-chain agents.
@@ -31,8 +34,26 @@ export async function ensureDemoCommunitySeeded(demoUserKey: string) {
   }
 
   // Fire on-chain seeding in background — don't block the login response.
-  // seedCatalystOnChain is idempotent with its own concurrency lock.
-  seedCatalystOnChain().catch(err =>
-    console.warn('[demo-seed] Background on-chain seeding failed:', err)
-  )
+  // Each seed function is idempotent with its own concurrency lock.
+  if (demoUserKey.startsWith('gc-user-')) {
+    seedGlobalChurchOnChain().catch(err =>
+      console.warn('[demo-seed] Background Global.Church on-chain seeding failed:', err)
+    )
+  } else if (demoUserKey.startsWith('cil-user-')) {
+    seedCILOnChain().catch(err =>
+      console.warn('[demo-seed] Background CIL on-chain seeding failed:', err)
+    )
+  } else if (demoUserKey.startsWith('cat-user-')) {
+    seedCatalystOnChain().catch(err =>
+      console.warn('[demo-seed] Background Catalyst on-chain seeding failed:', err)
+    )
+  } else {
+    seedCatalystOnChain().catch(err =>
+      console.warn('[demo-seed] Background on-chain seeding failed:', err)
+    )
+  }
+
+  // Seed personal Multiply data (circles, prayers, training, coach relationships).
+  // Runs synchronously (DB-only, fast) and is idempotent.
+  seedMultiplyData()
 }

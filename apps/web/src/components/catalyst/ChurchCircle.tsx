@@ -41,6 +41,10 @@ export interface HealthData {
 
   // Languages used
   languages?: string[]
+
+  // Location coordinates
+  latitude?: number
+  longitude?: number
 }
 
 export const DEFAULT_HEALTH: HealthData = {

@@ -11,6 +11,13 @@ export interface RelationshipTypeDefinition {
   hubLabels?: Partial<Record<TaxonomyHubId, string>>
 }
 
+/** UI tools/capabilities that a role grants access to */
+export type RoleTool =
+  | 'settings' | 'governance' | 'treasury' | 'reviews'
+  | 'members' | 'activities' | 'genmap' | 'agents'
+  | 'network' | 'deploy' | 'delegations' | 'coaching'
+  | 'circles' | 'prayer' | 'grow' | 'map'
+
 export interface RoleDefinition {
   key: string
   term: string
@@ -21,6 +28,8 @@ export interface RoleDefinition {
   hubLabels?: Partial<Record<TaxonomyHubId, string>>
   delegationPolicyKey?: string
   inviteAliases?: string[]
+  /** UI tools this role grants access to */
+  tools?: RoleTool[]
 }
 
 export type DelegationEnforcerKey = 'timestamp' | 'value' | 'allowedTargets' | 'allowedMethods'
@@ -186,6 +195,7 @@ const roleDefinitions: Array<RoleDefinition & { hash: `0x${string}` }> = [
     relationshipTypeKeys: ['organization-governance'],
     parentTerm: 'atl:GovernanceRole',
     inviteAliases: ['owner'],
+    tools: ['settings', 'governance', 'treasury', 'members', 'activities', 'genmap', 'agents', 'network', 'deploy', 'delegations', 'reviews', 'map', 'circles', 'prayer', 'grow', 'coaching'],
   }),
   withHash({
     key: 'board-member',
@@ -194,6 +204,7 @@ const roleDefinitions: Array<RoleDefinition & { hash: `0x${string}` }> = [
     description: 'Member of the governing board.',
     relationshipTypeKeys: ['organization-governance'],
     parentTerm: 'atl:GovernanceRole',
+    tools: ['governance', 'treasury', 'reviews', 'network', 'agents', 'members', 'activities', 'circles', 'prayer', 'grow'],
   }),
   withHash({
     key: 'ceo',
@@ -204,6 +215,7 @@ const roleDefinitions: Array<RoleDefinition & { hash: `0x${string}` }> = [
     parentTerm: 'atl:GovernanceRole',
     delegationPolicyKey: 'ceo-treasury',
     inviteAliases: ['ceo'],
+    tools: ['settings', 'governance', 'treasury', 'members', 'activities', 'genmap', 'agents', 'network', 'deploy', 'delegations', 'reviews', 'map', 'circles', 'prayer', 'grow', 'coaching'],
   }),
   withHash({
     key: 'executive',
@@ -212,6 +224,7 @@ const roleDefinitions: Array<RoleDefinition & { hash: `0x${string}` }> = [
     description: 'Executive leadership role.',
     relationshipTypeKeys: ['organization-governance'],
     parentTerm: 'atl:GovernanceRole',
+    tools: ['governance', 'treasury', 'members', 'activities', 'agents', 'network', 'reviews'],
   }),
   withHash({
     key: 'treasurer',
@@ -221,6 +234,7 @@ const roleDefinitions: Array<RoleDefinition & { hash: `0x${string}` }> = [
     relationshipTypeKeys: ['organization-governance', 'organization-membership'],
     parentTerm: 'atl:GovernanceRole',
     inviteAliases: ['treasurer'],
+    tools: ['treasury', 'reviews'],
   }),
   withHash({
     key: 'authorized-signer',
@@ -230,6 +244,7 @@ const roleDefinitions: Array<RoleDefinition & { hash: `0x${string}` }> = [
     relationshipTypeKeys: ['organization-governance', 'organization-membership', 'delegation-authority'],
     parentTerm: 'atl:GovernanceRole',
     inviteAliases: ['authorized-signer'],
+    tools: ['treasury', 'delegations'],
   }),
   withHash({
     key: 'officer',
@@ -238,6 +253,7 @@ const roleDefinitions: Array<RoleDefinition & { hash: `0x${string}` }> = [
     description: 'Institutional officer role.',
     relationshipTypeKeys: ['organization-governance'],
     parentTerm: 'atl:GovernanceRole',
+    tools: ['governance', 'members', 'activities', 'reviews'],
   }),
   withHash({
     key: 'chair',
@@ -246,6 +262,7 @@ const roleDefinitions: Array<RoleDefinition & { hash: `0x${string}` }> = [
     description: 'Chair of a governing body or committee.',
     relationshipTypeKeys: ['organization-governance'],
     parentTerm: 'atl:GovernanceRole',
+    tools: ['governance', 'members', 'reviews'],
   }),
   withHash({
     key: 'advisor',
@@ -254,6 +271,7 @@ const roleDefinitions: Array<RoleDefinition & { hash: `0x${string}` }> = [
     description: 'Advisory role contributing guidance rather than direct control.',
     relationshipTypeKeys: ['organization-governance', 'organization-membership'],
     parentTerm: 'atl:AdvisoryRole',
+    tools: ['network', 'reviews', 'activities', 'circles', 'prayer', 'grow'],
   }),
   withHash({
     key: 'admin',
@@ -263,6 +281,7 @@ const roleDefinitions: Array<RoleDefinition & { hash: `0x${string}` }> = [
     relationshipTypeKeys: ['organization-membership'],
     parentTerm: 'atl:MembershipRole',
     inviteAliases: ['admin'],
+    tools: ['settings', 'members', 'activities', 'genmap', 'agents', 'network', 'map'],
   }),
   withHash({
     key: 'member',
@@ -272,6 +291,7 @@ const roleDefinitions: Array<RoleDefinition & { hash: `0x${string}` }> = [
     relationshipTypeKeys: ['organization-membership', 'has-member'],
     parentTerm: 'atl:MembershipRole',
     inviteAliases: ['member'],
+    tools: ['activities', 'members', 'circles', 'prayer', 'grow'],
   }),
   withHash({
     key: 'operator',
@@ -281,6 +301,7 @@ const roleDefinitions: Array<RoleDefinition & { hash: `0x${string}` }> = [
     relationshipTypeKeys: ['organization-membership'],
     parentTerm: 'atl:MembershipRole',
     delegationPolicyKey: 'operator-execution',
+    tools: ['activities', 'members', 'genmap', 'map', 'circles', 'prayer', 'grow', 'coaching'],
   }),
   withHash({
     key: 'employee',
@@ -289,6 +310,7 @@ const roleDefinitions: Array<RoleDefinition & { hash: `0x${string}` }> = [
     description: 'Employee participating in ongoing organizational work.',
     relationshipTypeKeys: ['organization-membership'],
     parentTerm: 'atl:MembershipRole',
+    tools: ['activities', 'members', 'circles', 'prayer', 'grow'],
   }),
   withHash({
     key: 'contractor',
@@ -297,6 +319,7 @@ const roleDefinitions: Array<RoleDefinition & { hash: `0x${string}` }> = [
     description: 'External contractor with a bounded service role.',
     relationshipTypeKeys: ['service-agreement'],
     parentTerm: 'atl:ServiceRole',
+    tools: ['activities'],
   }),
   withHash({
     key: 'auditor',
@@ -306,6 +329,7 @@ const roleDefinitions: Array<RoleDefinition & { hash: `0x${string}` }> = [
     relationshipTypeKeys: ['organization-membership', 'review', 'compliance'],
     parentTerm: 'atl:AssuranceRole',
     delegationPolicyKey: 'auditor-read',
+    tools: ['reviews', 'treasury', 'network'],
   }),
   withHash({
     key: 'validator',
@@ -314,6 +338,7 @@ const roleDefinitions: Array<RoleDefinition & { hash: `0x${string}` }> = [
     description: 'Validator confirming evidence, trust, or compliance.',
     relationshipTypeKeys: ['organization-membership', 'validation-trust', 'activity-validation'],
     parentTerm: 'atl:AssuranceRole',
+    tools: ['reviews', 'network'],
   }),
   withHash({
     key: 'insurer',
@@ -569,6 +594,7 @@ const roleDefinitions: Array<RoleDefinition & { hash: `0x${string}` }> = [
     relationshipTypeKeys: ['review'],
     parentTerm: 'atl:AssuranceRole',
     delegationPolicyKey: 'review-submission',
+    tools: ['reviews'],
   }),
   withHash({
     key: 'reviewed-agent',
@@ -740,6 +766,35 @@ export function roleName(
 
 export function getInviteRoleDefinition(inviteRole: string) {
   return roleDefinitions.find((role) => role.inviteAliases?.includes(inviteRole)) ?? null
+}
+
+/**
+ * Given a list of role keys (lowercase strings like 'owner', 'member', 'operator'),
+ * return the union of all UI tools those roles grant.
+ */
+export function getToolsForRoles(roleKeys: string[]): RoleTool[] {
+  const tools = new Set<RoleTool>()
+  for (const key of roleKeys) {
+    const def = getRoleDefinitionByKey(key) ?? getRoleDefinitionByHash(key as `0x${string}`)
+    if (def?.tools) {
+      for (const t of def.tools) tools.add(t)
+    }
+  }
+  return [...tools]
+}
+
+/**
+ * Given a list of role hashes (0x...), return the union of all UI tools.
+ */
+export function getToolsForRoleHashes(hashes: `0x${string}`[]): RoleTool[] {
+  const tools = new Set<RoleTool>()
+  for (const hash of hashes) {
+    const def = getRoleDefinitionByHash(hash)
+    if (def?.tools) {
+      for (const t of def.tools) tools.add(t)
+    }
+  }
+  return [...tools]
 }
 
 function requireRelationshipTypeHash(key: string): `0x${string}` {

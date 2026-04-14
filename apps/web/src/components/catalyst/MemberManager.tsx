@@ -67,6 +67,8 @@ function isWorkspaceRole(r: string) {
 }
 
 /* ── Main Component ──────────────────────────────────────────────── */
+const PAGE_SIZE = 10
+
 export function MemberManager({ members, detached, groups, orgAddress }: Props) {
   const [tab, setTab] = useState<'team' | 'contacts'>('team')
 
@@ -80,6 +82,7 @@ export function MemberManager({ members, detached, groups, orgAddress }: Props) 
   const [editMember, setEditMember] = useState<Member | null>(null)
   const [editRoles, setEditRoles] = useState<string[]>([])
   const [removeMemberConfirm, setRemoveMemberConfirm] = useState<Member | null>(null)
+  const [teamPage, setTeamPage] = useState(0)
 
   // Contacts state
   const [contactSearch, setContactSearch] = useState('')
@@ -94,6 +97,10 @@ export function MemberManager({ members, detached, groups, orgAddress }: Props) 
   const [editContactNotes, setEditContactNotes] = useState('')
   const [editContactGroup, setEditContactGroup] = useState('')
   const [removeContactConfirm, setRemoveContactConfirm] = useState<DetachedMember | null>(null)
+  const [contactPage, setContactPage] = useState(0)
+
+  // Leave team state
+  const [leaveTeamConfirm, setLeaveTeamConfirm] = useState(false)
 
   // Toast
   const [toast, setToast] = useState<string | null>(null)
@@ -111,6 +118,10 @@ export function MemberManager({ members, detached, groups, orgAddress }: Props) 
     return () => document.removeEventListener('mousedown', handleClick)
   }, [kebabOpen])
 
+  // Reset pagination when search/filter changes
+  useEffect(() => { setTeamPage(0) }, [teamSearch, showFrozen])
+  useEffect(() => { setContactPage(0) }, [contactSearch])
+
   /* ── Team filters ──────────────────────────────────────────────── */
   const filteredMembers = members.filter(m => {
     if (!showFrozen && m.status === 'Frozen') return false
@@ -121,12 +132,20 @@ export function MemberManager({ members, detached, groups, orgAddress }: Props) 
     return true
   })
 
+  const teamTotalPages = Math.max(1, Math.ceil(filteredMembers.length / PAGE_SIZE))
+  const teamStart = teamPage * PAGE_SIZE
+  const pagedMembers = filteredMembers.slice(teamStart, teamStart + PAGE_SIZE)
+
   /* ── Contact filters ───────────────────────────────────────────── */
   const filteredContacts = detached.filter(d => {
     if (!contactSearch.trim()) return true
     const q = contactSearch.toLowerCase()
     return d.name.toLowerCase().includes(q) || (d.role ?? '').toLowerCase().includes(q)
   })
+
+  const contactTotalPages = Math.max(1, Math.ceil(filteredContacts.length / PAGE_SIZE))
+  const contactStart = contactPage * PAGE_SIZE
+  const pagedContacts = filteredContacts.slice(contactStart, contactStart + PAGE_SIZE)
 
   /* ── Handlers ──────────────────────────────────────────────────── */
   async function handleCreateDetachedTeamMember() {
@@ -278,10 +297,24 @@ export function MemberManager({ members, detached, groups, orgAddress }: Props) 
                   </button>
                   <Link href="/team" onClick={() => setKebabOpen(false)} style={{
                     display: 'block', padding: '0.55rem 0.85rem', fontSize: '0.85rem',
-                    color: '#333', textDecoration: 'none',
+                    color: '#333', textDecoration: 'none', borderBottom: '1px solid #f0f1f3',
                   }}>
                     Invite Members
                   </Link>
+                  <Link href="/team?tab=invites" onClick={() => setKebabOpen(false)} style={{
+                    display: 'block', padding: '0.55rem 0.85rem', fontSize: '0.85rem',
+                    color: '#333', textDecoration: 'none',
+                  }}>
+                    Manage Invites
+                  </Link>
+                  <div style={{ borderTop: '1px solid #e2e4e8' }} />
+                  <button onClick={() => { setKebabOpen(false); setLeaveTeamConfirm(true) }} style={{
+                    display: 'block', width: '100%', textAlign: 'left',
+                    padding: '0.55rem 0.85rem', fontSize: '0.85rem', color: '#dc2626',
+                    background: 'none', border: 'none', cursor: 'pointer',
+                  }}>
+                    Leave Team
+                  </button>
                 </div>
               )}
             </div>
@@ -338,7 +371,7 @@ export function MemberManager({ members, detached, groups, orgAddress }: Props) 
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredMembers.map(m => {
+                  {pagedMembers.map(m => {
                     const isFrozen = m.status === 'Frozen'
                     const opacity = isFrozen ? 0.5 : 1
                     const workspaceRoles = m.roles.filter(isWorkspaceRole)
@@ -394,6 +427,18 @@ export function MemberManager({ members, detached, groups, orgAddress }: Props) 
                   })}
                 </tbody>
               </table>
+              {/* Pagination footer */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.6rem', fontSize: '0.78rem', color: '#616161' }}>
+                <span>{teamStart + 1} &ndash; {Math.min(teamStart + PAGE_SIZE, filteredMembers.length)} of {filteredMembers.length}</span>
+                {filteredMembers.length > PAGE_SIZE && (
+                  <div style={{ display: 'flex', gap: '0.25rem' }}>
+                    <button disabled={teamPage === 0} onClick={() => setTeamPage(0)} style={{ background: '#f5f5f5', border: '1px solid #e2e4e8', borderRadius: 4, padding: '0.2rem 0.45rem', cursor: teamPage === 0 ? 'default' : 'pointer', color: teamPage === 0 ? '#ccc' : '#616161', fontSize: '0.72rem' }}>|&lt;</button>
+                    <button disabled={teamPage === 0} onClick={() => setTeamPage(p => p - 1)} style={{ background: '#f5f5f5', border: '1px solid #e2e4e8', borderRadius: 4, padding: '0.2rem 0.45rem', cursor: teamPage === 0 ? 'default' : 'pointer', color: teamPage === 0 ? '#ccc' : '#616161', fontSize: '0.72rem' }}>&lt;</button>
+                    <button disabled={teamPage >= teamTotalPages - 1} onClick={() => setTeamPage(p => p + 1)} style={{ background: '#f5f5f5', border: '1px solid #e2e4e8', borderRadius: 4, padding: '0.2rem 0.45rem', cursor: teamPage >= teamTotalPages - 1 ? 'default' : 'pointer', color: teamPage >= teamTotalPages - 1 ? '#ccc' : '#616161', fontSize: '0.72rem' }}>&gt;</button>
+                    <button disabled={teamPage >= teamTotalPages - 1} onClick={() => setTeamPage(teamTotalPages - 1)} style={{ background: '#f5f5f5', border: '1px solid #e2e4e8', borderRadius: 4, padding: '0.2rem 0.45rem', cursor: teamPage >= teamTotalPages - 1 ? 'default' : 'pointer', color: teamPage >= teamTotalPages - 1 ? '#ccc' : '#616161', fontSize: '0.72rem' }}>&gt;|</button>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -468,7 +513,7 @@ export function MemberManager({ members, detached, groups, orgAddress }: Props) 
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredContacts.map(d => (
+                  {pagedContacts.map(d => (
                     <tr
                       key={d.id}
                       onClick={() => openEditContact(d)}
@@ -499,6 +544,18 @@ export function MemberManager({ members, detached, groups, orgAddress }: Props) 
                   ))}
                 </tbody>
               </table>
+              {/* Pagination footer */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.6rem', fontSize: '0.78rem', color: '#616161' }}>
+                <span>{contactStart + 1} &ndash; {Math.min(contactStart + PAGE_SIZE, filteredContacts.length)} of {filteredContacts.length}</span>
+                {filteredContacts.length > PAGE_SIZE && (
+                  <div style={{ display: 'flex', gap: '0.25rem' }}>
+                    <button disabled={contactPage === 0} onClick={() => setContactPage(0)} style={{ background: '#f5f5f5', border: '1px solid #e2e4e8', borderRadius: 4, padding: '0.2rem 0.45rem', cursor: contactPage === 0 ? 'default' : 'pointer', color: contactPage === 0 ? '#ccc' : '#616161', fontSize: '0.72rem' }}>|&lt;</button>
+                    <button disabled={contactPage === 0} onClick={() => setContactPage(p => p - 1)} style={{ background: '#f5f5f5', border: '1px solid #e2e4e8', borderRadius: 4, padding: '0.2rem 0.45rem', cursor: contactPage === 0 ? 'default' : 'pointer', color: contactPage === 0 ? '#ccc' : '#616161', fontSize: '0.72rem' }}>&lt;</button>
+                    <button disabled={contactPage >= contactTotalPages - 1} onClick={() => setContactPage(p => p + 1)} style={{ background: '#f5f5f5', border: '1px solid #e2e4e8', borderRadius: 4, padding: '0.2rem 0.45rem', cursor: contactPage >= contactTotalPages - 1 ? 'default' : 'pointer', color: contactPage >= contactTotalPages - 1 ? '#ccc' : '#616161', fontSize: '0.72rem' }}>&gt;</button>
+                    <button disabled={contactPage >= contactTotalPages - 1} onClick={() => setContactPage(contactTotalPages - 1)} style={{ background: '#f5f5f5', border: '1px solid #e2e4e8', borderRadius: 4, padding: '0.2rem 0.45rem', cursor: contactPage >= contactTotalPages - 1 ? 'default' : 'pointer', color: contactPage >= contactTotalPages - 1 ? '#ccc' : '#616161', fontSize: '0.72rem' }}>&gt;|</button>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -652,6 +709,27 @@ export function MemberManager({ members, detached, groups, orgAddress }: Props) 
               handleDeleteContact(removeContactConfirm.id)
               setRemoveContactConfirm(null)
             }} style={btnDanger}>Remove Contact</button>
+          </div>
+        </ModalOverlay>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════
+          LEAVE TEAM CONFIRMATION
+          ═══════════════════════════════════════════════════════ */}
+      {leaveTeamConfirm && (
+        <ModalOverlay onClose={() => setLeaveTeamConfirm(false)}>
+          <h3 style={{ margin: '0 0 0.75rem', fontSize: '1rem', color: '#333' }}>
+            Leave Team?
+          </h3>
+          <p style={{ fontSize: '0.85rem', color: '#616161', lineHeight: 1.5, margin: '0 0 1.25rem' }}>
+            You will lose access to this team&apos;s data. This action cannot be undone.
+          </p>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+            <button onClick={() => setLeaveTeamConfirm(false)} style={btnSecondary}>Cancel</button>
+            <button onClick={() => {
+              setLeaveTeamConfirm(false)
+              showToast('Left team')
+            }} style={btnDanger}>Leave Team</button>
           </div>
         </ModalOverlay>
       )}

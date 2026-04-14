@@ -61,6 +61,14 @@ export const ATL_HUB_NETWORK_LABEL = keccak256(toBytes('atl:hubNetworkLabel'))
 export const ATL_HUB_CONTEXT_TERM = keccak256(toBytes('atl:hubContextTerm'))
 export const ATL_HUB_OVERVIEW_LABEL = keccak256(toBytes('atl:hubOverviewLabel'))
 export const ATL_HUB_AGENT_LABEL = keccak256(toBytes('atl:hubAgentLabel'))
+/** JSON hub features flags (e.g. {"circles":true,"prayer":true}) */
+export const ATL_HUB_FEATURES = keccak256(toBytes('atl:hubFeatures'))
+/** JSON hub theme (e.g. {"accent":"#8b5e3c","bg":"#faf8f3"}) */
+export const ATL_HUB_THEME = keccak256(toBytes('atl:hubTheme'))
+/** JSON hub view modes (e.g. [{"key":"disciple","label":"Disciple"}]) */
+export const ATL_HUB_VIEW_MODES = keccak256(toBytes('atl:hubViewModes'))
+/** Hub greeting template (e.g. "Good day, {name}") */
+export const ATL_HUB_GREETING = keccak256(toBytes('atl:hubGreeting'))
 /** JSON map: relationship type hash → domain label */
 export const ATL_HUB_VOCABULARY = keccak256(toBytes('atl:hubVocabulary'))
 /** JSON map: role hash → domain label */

@@ -153,7 +153,7 @@ export function GroupHierarchy({ groups, orgAddress }: Props) {
           {/* Actions */}
           <div style={{ display: 'flex', gap: '0.2rem', flexShrink: 0 }} onClick={e => e.stopPropagation()}>
             <button onClick={() => setEditor({ mode: 'create', parentAddr: group.address.toLowerCase() })}
-              title="Add child group"
+              title="Add child circle"
               style={{ fontSize: '0.65rem', padding: '0.15rem 0.35rem', background: `${color}10`, border: `1px solid ${color}30`, borderRadius: 4, cursor: 'pointer', color }}>
               +
             </button>
@@ -195,10 +195,10 @@ export function GroupHierarchy({ groups, orgAddress }: Props) {
             </div>
           ))}
         </div>
-        <span style={{ fontSize: '0.8rem', color: '#616161' }}>{orgCount} groups · {established} established</span>
+        <span style={{ fontSize: '0.8rem', color: '#616161' }}>{orgCount} circles · {established} established</span>
         <button onClick={() => setEditor({ mode: 'create' })}
           style={{ marginLeft: 'auto', padding: '0.4rem 0.8rem', background: '#0d9488', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer' }}>
-          + New Root Group
+          + New Root Circle
         </button>
       </div>
 
@@ -214,10 +214,10 @@ export function GroupHierarchy({ groups, orgAddress }: Props) {
 
       {groups.length === 0 && !editor && (
         <div style={{ textAlign: 'center', padding: '3rem', color: '#616161' }}>
-          <p>No groups yet. Start by creating your first group.</p>
+          <p>No circles yet. Start by creating your first circle.</p>
           <button onClick={() => setEditor({ mode: 'create' })}
             style={{ marginTop: '0.5rem', padding: '0.5rem 1.5rem', background: '#0d9488', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 600, cursor: 'pointer' }}>
-            Create First Group
+            Create First Circle
           </button>
         </div>
       )}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { ChurchCircle, type HealthData, DEFAULT_HEALTH } from './ChurchCircle'
 
 export interface GroupData {
@@ -148,6 +148,8 @@ export function GroupEditor({ initial, parentName, onSave, onClose, mode }: Prop
   const [health, setHealth] = useState<HealthData>(initial?.health ?? { ...DEFAULT_HEALTH })
   const [status, setStatus] = useState(initial?.status ?? 'active')
   const [saving, setSaving] = useState(false)
+  const [locating, setLocating] = useState(false)
+  const commentsRef = useRef<HTMLDivElement>(null)
 
   const h = (patch: Partial<HealthData>) => setHealth(prev => ({ ...prev, ...patch }))
 
@@ -169,7 +171,7 @@ export function GroupEditor({ initial, parentName, onSave, onClose, mode }: Prop
       borderLeft: '3px solid #0d9488', padding: '1.25rem',
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-        <h2 style={{ margin: 0, fontSize: '1.1rem' }}>{mode === 'create' ? 'New Group' : 'Edit Group'}</h2>
+        <h2 style={{ margin: 0, fontSize: '1.1rem' }}>{mode === 'create' ? 'New Circle' : 'Edit Circle'}</h2>
         <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: '#616161' }}>{'\u2715'}</button>
       </div>
 
@@ -181,10 +183,37 @@ export function GroupEditor({ initial, parentName, onSave, onClose, mode }: Prop
 
       {/* ─── 1. Identity ─── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem', marginBottom: '0.75rem' }}>
-        <label><span style={lbl}>Name *</span><input value={name} onChange={e => setName(e.target.value)} placeholder="Group name" style={inp} /></label>
-        <label><span style={lbl}>Location</span><input value={location} onChange={e => setLocation(e.target.value)} placeholder="City or area" style={inp} /></label>
+        <label><span style={lbl}>Name *</span><input value={name} onChange={e => setName(e.target.value)} placeholder="Circle name" style={inp} /></label>
         <label><span style={lbl}>Leader</span><input value={leader} onChange={e => setLeader(e.target.value)} placeholder="Leader name" style={inp} /></label>
         <label><span style={lbl}>Start Date</span><input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} style={inp} /></label>
+      </div>
+
+      {/* ─── Location ─── */}
+      <div style={{ marginBottom: '0.75rem' }}>
+        <span style={lbl}>Location</span>
+        <input value={location} onChange={e => setLocation(e.target.value)} placeholder="City or area" style={{ ...inp, marginBottom: 6 }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button type="button" onClick={() => {
+            if (!navigator.geolocation) return
+            setLocating(true)
+            navigator.geolocation.getCurrentPosition(
+              pos => { h({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }); setLocating(false) },
+              () => setLocating(false),
+              { enableHighAccuracy: true, timeout: 10000 }
+            )
+          }} style={{
+            padding: '0.3rem 0.65rem', borderRadius: 6, fontSize: '0.78rem', fontWeight: 600,
+            border: '1.5px solid #0d9488', background: '#fff', color: '#0d9488', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', gap: 4,
+          }}>
+            {'\uD83D\uDCCD'} {locating ? 'Locating...' : 'Use Current Location'}
+          </button>
+          {health.latitude != null && health.longitude != null && (
+            <span style={{ fontSize: '0.75rem', color: '#9e9e9e' }}>
+              Coordinates: {health.latitude.toFixed(4)}, {health.longitude.toFixed(4)}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* ─── 2. Status ─── */}
@@ -263,7 +292,7 @@ export function GroupEditor({ initial, parentName, onSave, onClose, mode }: Prop
             <input type="number" min={0} value={health.baptized} onChange={e => h({ baptized: +e.target.value || 0 })} style={inp} /></label>
           <label><span style={{ ...lbl, color: '#7c3aed' }}>Leaders</span>
             <input type="number" min={0} value={health.leaders} onChange={e => h({ leaders: +e.target.value || 0 })} style={inp} /></label>
-          <label><span style={lbl}>Groups Started</span>
+          <label><span style={lbl}>Circles Started</span>
             <input type="number" min={0} value={health.groupsStarted} onChange={e => h({ groupsStarted: +e.target.value || 0 })} style={inp} /></label>
         </div>
       </div>
@@ -275,13 +304,13 @@ export function GroupEditor({ initial, parentName, onSave, onClose, mode }: Prop
           onChange={v => h({ languages: v as string[] })} />
       </div>
 
-      {/* ─── 5. People Groups Attending ─── */}
+      {/* ─── 5. People Circles Attending ─── */}
       <div style={sectionBox}>
-        <span style={sectionTitle}>People Groups Attending</span>
+        <span style={sectionTitle}>People Circles Attending</span>
         {peopleGroups.map((pg, i) => (
           <div key={i} style={{ padding: '0.6rem', background: '#fff', borderRadius: 8, border: '1px solid #e2e4e8', marginBottom: '0.5rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-              <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#334155' }}>Group {i + 1}</span>
+              <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#334155' }}>Circle {i + 1}</span>
               <button type="button" onClick={() => {
                 const next = [...peopleGroups]
                 next.splice(i, 1)
@@ -334,12 +363,28 @@ export function GroupEditor({ initial, parentName, onSave, onClose, mode }: Prop
           onChange={v => h({ globalSegments: v as string[] })} />
       </div>
 
-      {/* ─── 7. Comments ─── */}
+      {/* ─── 7. Comments (Rich Text) ─── */}
       <div style={{ marginBottom: '0.75rem' }}>
         <span style={sectionTitle}>Comments</span>
-        <textarea value={health.comments ?? ''} onChange={e => h({ comments: e.target.value })}
-          placeholder="Notes or comments..."
-          style={{ ...inp, minHeight: 72, resize: 'vertical' }} />
+        <div style={{ border: '1px solid #e2e4e8', borderRadius: 6, overflow: 'hidden' }}>
+          <div style={{ display: 'flex', gap: 2, padding: '3px 4px', background: '#f5f5f5', borderBottom: '1px solid #e2e4e8' }}>
+            <button type="button" onMouseDown={e => { e.preventDefault(); document.execCommand('bold') }}
+              style={{ width: 24, height: 24, border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: '0.78rem', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#334155' }}>B</button>
+            <button type="button" onMouseDown={e => { e.preventDefault(); document.execCommand('italic') }}
+              style={{ width: 24, height: 24, border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', cursor: 'pointer', fontStyle: 'italic', fontSize: '0.78rem', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#334155' }}>I</button>
+            <button type="button" onMouseDown={e => { e.preventDefault(); document.execCommand('hiliteColor', false, '#fef08a') }}
+              style={{ width: 24, height: 24, border: '1px solid #d1d5db', borderRadius: 4, background: '#fef9c3', cursor: 'pointer', fontSize: '0.78rem', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#334155' }}>{'\uD83D\uDD8D'}</button>
+          </div>
+          <div
+            ref={commentsRef}
+            contentEditable
+            suppressContentEditableWarning
+            onBlur={() => { if (commentsRef.current) h({ comments: commentsRef.current.innerHTML }) }}
+            onInput={() => { if (commentsRef.current) h({ comments: commentsRef.current.innerHTML }) }}
+            dangerouslySetInnerHTML={{ __html: health.comments ?? '' }}
+            style={{ minHeight: 72, padding: '0.45rem', fontSize: '0.85rem', outline: 'none', lineHeight: 1.5 }}
+          />
+        </div>
       </div>
 
       {/* ─── Legacy People Group field ─── */}
@@ -363,7 +408,7 @@ export function GroupEditor({ initial, parentName, onSave, onClose, mode }: Prop
       <div style={{ display: 'flex', gap: '0.5rem', paddingBottom: '1rem' }}>
         <button onClick={handleSave} disabled={saving || !name.trim()}
           style={{ flex: 1, padding: '0.6rem', background: '#0d9488', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 600, cursor: 'pointer' }}>
-          {saving ? 'Saving...' : mode === 'create' ? 'Create Group' : 'Save Changes'}
+          {saving ? 'Saving...' : mode === 'create' ? 'Create Circle' : 'Save Changes'}
         </button>
         <button onClick={onClose}
           style={{ padding: '0.6rem 1rem', background: '#e0e0e0', color: '#1a1a2e', border: 'none', borderRadius: 6, cursor: 'pointer' }}>
