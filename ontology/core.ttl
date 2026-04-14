@@ -232,6 +232,11 @@ atl:AllianceRelationship a rdfs:Class ;
     rdfs:subClassOf atl:NetworkRelationship ;
     rdfs:label "Alliance Relationship" .
 
+atl:GenerationalLineageRelationship a rdfs:Class ;
+    rdfs:subClassOf atl:NetworkRelationship ;
+    rdfs:label "Generational Lineage Relationship" ;
+    rdfs:comment "Generational multiplication lineage between groups — the upstream group planted or catalyzed the downstream group." .
+
 atl:ValidationTrustRelationship a rdfs:Class ;
     rdfs:subClassOf atl:AssuranceRelationship ;
     rdfs:label "Validation Trust Relationship" .
@@ -359,6 +364,16 @@ atl:ValidatorRole a rdfs:Class ;
 atl:StrategicPartnerRole a rdfs:Class ;
     rdfs:subClassOf atl:AllianceRole ;
     rdfs:label "Strategic Partner Role" .
+
+atl:UpstreamRole a rdfs:Class ;
+    rdfs:subClassOf atl:NetworkRole ;
+    rdfs:label "Upstream Role" ;
+    rdfs:comment "The originating or parent group in a generational lineage." .
+
+atl:DownstreamRole a rdfs:Class ;
+    rdfs:subClassOf atl:NetworkRole ;
+    rdfs:label "Downstream Role" ;
+    rdfs:comment "The spawned or daughter group in a generational lineage." .
 
 atl:ServiceProviderRole a rdfs:Class ;
     rdfs:subClassOf atl:ServiceRole ;

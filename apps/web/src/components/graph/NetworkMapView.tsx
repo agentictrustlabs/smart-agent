@@ -28,7 +28,8 @@ interface Props {
 }
 
 const EDGE_COLORS: Record<string, string> = {
-  Governance: '#f59e0b', Membership: '#1565c0', Alliance: '#ec4899',
+  Governance: '#f59e0b', Membership: '#1565c0', Alliance: '#ec4899', 'Church Lineage': '#ec4899',
+  'Generational Lineage': '#8b5cf6',
   Validation: '#06b6d4', Service: '#f97316', Delegation: '#ef4444',
   'Org Control': '#fb923c', 'Activity Validation': '#a3e635',
   'Hub Membership': '#7c3aed',

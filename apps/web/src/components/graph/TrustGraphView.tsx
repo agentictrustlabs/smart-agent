@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 
 interface GraphNode {
   id: string
@@ -45,7 +45,8 @@ interface GraphData {
 const NODE_COLORS: Record<string, string> = { person: '#1565c0', org: '#2e7d32', ai: '#f59e0b', eoa: '#94a3b8' }
 
 const EDGE_COLORS: Record<string, string> = {
-  Governance: '#f59e0b', Membership: '#1565c0', Alliance: '#ec4899',
+  Governance: '#f59e0b', Membership: '#1565c0', Alliance: '#ec4899', 'Church Lineage': '#ec4899',
+  'Generational Lineage': '#8b5cf6',
   Validation: '#06b6d4', Insurance: '#8b5cf6', 'Economic Security': '#14b8a6',
   Service: '#f97316', Delegation: '#ef4444', Compliance: '#a3e635',
   'Runtime/TEE': '#22d3ee', 'Build Provenance': '#94a3b8',
@@ -68,6 +69,65 @@ export function TrustGraphView({ orgAddress }: { orgAddress?: string }) {
   const [selectedEdge, setSelectedEdge] = useState<GraphEdge | null>(null)
   const [filter, setFilter] = useState<'all' | 'mine'>('mine')
   const [showLegend, setShowLegend] = useState(false)
+
+  // Zoom & pan state
+  const svgRef = useRef<SVGSVGElement>(null)
+  const [zoom, setZoom] = useState(1)
+  const [pan, setPan] = useState({ x: 0, y: 0 })
+  const isPanning = useRef(false)
+  const panStart = useRef({ x: 0, y: 0 })
+  const panOrigin = useRef({ x: 0, y: 0 })
+
+  const handleWheel = useCallback((e: React.WheelEvent<SVGSVGElement>) => {
+    e.preventDefault()
+    const svg = svgRef.current
+    if (!svg) return
+    const rect = svg.getBoundingClientRect()
+    // Mouse position in SVG-viewBox coordinates before zoom
+    const mx = ((e.clientX - rect.left) / rect.width) * W
+    const my = ((e.clientY - rect.top) / rect.height) * H
+    const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12
+    setZoom(prev => {
+      const next = Math.min(Math.max(prev * factor, 0.25), 8)
+      // Adjust pan so the point under the cursor stays fixed
+      const scale = next / prev
+      setPan(p => ({
+        x: mx - scale * (mx - p.x),
+        y: my - scale * (my - p.y),
+      }))
+      return next
+    })
+  }, [])
+
+  const handlePointerDown = useCallback((e: React.PointerEvent<SVGSVGElement>) => {
+    // Only pan on middle-click or when clicking the SVG background
+    const target = e.target as SVGElement
+    if (e.button !== 1 && target.tagName !== 'svg' && !target.closest('[data-graph-bg]')) return
+    e.preventDefault()
+    isPanning.current = true
+    panStart.current = { x: e.clientX, y: e.clientY }
+    panOrigin.current = { ...pan }
+    ;(e.target as Element).setPointerCapture(e.pointerId)
+  }, [pan])
+
+  const handlePointerMove = useCallback((e: React.PointerEvent<SVGSVGElement>) => {
+    if (!isPanning.current) return
+    const svg = svgRef.current
+    if (!svg) return
+    const rect = svg.getBoundingClientRect()
+    const dx = ((e.clientX - panStart.current.x) / rect.width) * W / zoom
+    const dy = ((e.clientY - panStart.current.y) / rect.height) * H / zoom
+    setPan({ x: panOrigin.current.x + dx, y: panOrigin.current.y + dy })
+  }, [zoom])
+
+  const handlePointerUp = useCallback(() => {
+    isPanning.current = false
+  }, [])
+
+  const resetView = useCallback(() => {
+    setZoom(1)
+    setPan({ x: 0, y: 0 })
+  }, [])
 
   useEffect(() => {
     const url = orgAddress ? `/api/graph?org=${encodeURIComponent(orgAddress)}` : '/api/graph'
@@ -180,12 +240,35 @@ export function TrustGraphView({ orgAddress }: { orgAddress?: string }) {
       </div>
 
       <div data-component="graph-layout">
-        <svg viewBox={`0 0 ${W} ${H}`} data-component="graph-svg">
+        {/* Zoom controls */}
+        <div data-component="graph-zoom-controls">
+          <button onClick={() => { setZoom(z => Math.min(z * 1.3, 8)); }} title="Zoom in">+</button>
+          <button onClick={() => { setZoom(z => Math.max(z / 1.3, 0.25)); }} title="Zoom out">−</button>
+          <button onClick={resetView} title="Reset view">⟲</button>
+          <span data-component="zoom-level">{Math.round(zoom * 100)}%</span>
+        </div>
+
+        <svg
+          ref={svgRef}
+          viewBox={`0 0 ${W} ${H}`}
+          data-component="graph-svg"
+          onWheel={handleWheel}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerLeave={handlePointerUp}
+          style={{ touchAction: 'none' }}
+        >
           <defs>
             <marker id="arrow" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto" fill="#888">
               <polygon points="0 0, 10 3.5, 0 7" />
             </marker>
           </defs>
+
+          {/* Invisible background rect for pan hit detection */}
+          <rect data-graph-bg="true" x="0" y="0" width={W} height={H} fill="transparent" />
+
+          <g transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`} style={{ transformOrigin: '0 0' }}>
 
           {data.edges.map((edge, i) => {
             const src = nodeMap.get(edge.source.toLowerCase())
@@ -248,6 +331,7 @@ export function TrustGraphView({ orgAddress }: { orgAddress?: string }) {
               </g>
             )
           })}
+          </g>
         </svg>
 
         {/* Detail Panel */}

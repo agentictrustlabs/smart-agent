@@ -30,6 +30,10 @@ export function GeoMapView({ agents }: Props) {
   useEffect(() => {
     if (!mapRef.current || mapInstance.current || agents.length === 0) return
 
+    // Guard against double-init in React Strict Mode / HMR
+    const container = mapRef.current as HTMLDivElement & { _leaflet_id?: number }
+    if (container._leaflet_id) return
+
     import('leaflet').then((L) => {
       const lats = agents.map(a => a.latitude)
       const lons = agents.map(a => a.longitude)

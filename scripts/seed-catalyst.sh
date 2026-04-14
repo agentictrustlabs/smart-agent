@@ -129,6 +129,9 @@ R_BOARD=$(hash_term "atl:BoardMemberRole")
 R_ADVISOR=$(hash_term "atl:AdvisorRole")
 R_OPERATED=$(hash_term "atl:OperatedAgentRole")
 R_PARTNER=$(hash_term "atl:StrategicPartnerRole")
+GEN_LINEAGE=$(hash_term "atl:GenerationalLineageRelationship")
+R_UPSTREAM=$(hash_term "atl:UpstreamRole")
+R_DOWNSTREAM=$(hash_term "atl:DownstreamRole")
 
 echo ""
 echo "=== Person → Org Relationships ==="
@@ -170,14 +173,16 @@ echo "Da Nang Hub → Thanh Khe Group (partner)"
 create_rel "$HUB_DANANG" "$CIRCLE_THANH" "$ALLIANCE" "" "$R_PARTNER"
 echo "Da Nang Hub → Cam Le Group (partner)"
 create_rel "$HUB_DANANG" "$CIRCLE_CAM" "$ALLIANCE" "" "$R_PARTNER"
-echo "Son Tra Group → Han Hoa Group (generational — started by Son Tra)"
-create_rel "$CIRCLE_SONTRA" "$CIRCLE_HANHOA" "$ALLIANCE" "" "$R_PARTNER"
-echo "Son Tra Group → My Khe Group (generational)"
-create_rel "$CIRCLE_SONTRA" "$CIRCLE_MYKE" "$ALLIANCE" "" "$R_PARTNER"
-echo "Thanh Khe → Lien Chieu Group (generational)"
-create_rel "$CIRCLE_THANH" "$CIRCLE_LIEN" "$ALLIANCE" "" "$R_PARTNER"
-echo "Han Hoa → Ngu Hanh Son Group (generational — G3)"
-create_rel "$CIRCLE_HANHOA" "$CIRCLE_NGU" "$ALLIANCE" "" "$R_PARTNER"
+echo ""
+echo "=== Generational Lineage (upstream → downstream) ==="
+echo "Son Tra → Han Hoa (generational — started by Son Tra)"
+create_rel "$CIRCLE_SONTRA" "$CIRCLE_HANHOA" "$GEN_LINEAGE" "$R_UPSTREAM" "$R_DOWNSTREAM"
+echo "Son Tra → My Khe (generational)"
+create_rel "$CIRCLE_SONTRA" "$CIRCLE_MYKE" "$GEN_LINEAGE" "$R_UPSTREAM" "$R_DOWNSTREAM"
+echo "Thanh Khe → Lien Chieu (generational)"
+create_rel "$CIRCLE_THANH" "$CIRCLE_LIEN" "$GEN_LINEAGE" "$R_UPSTREAM" "$R_DOWNSTREAM"
+echo "Han Hoa → Ngu Hanh Son (generational — G3)"
+create_rel "$CIRCLE_HANHOA" "$CIRCLE_NGU" "$GEN_LINEAGE" "$R_UPSTREAM" "$R_DOWNSTREAM"
 
 echo ""
 echo "=== AI Agent → Org ==="

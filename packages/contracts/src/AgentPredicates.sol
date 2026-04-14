@@ -76,6 +76,12 @@ library AgentPredicates {
     /// @notice JSON map of agent type hash → domain-specific label
     bytes32 constant ATL_HUB_TYPE_VOCABULARY = keccak256("atl:hubTypeVocabulary");
 
+    // ─── App data (JSON blobs stored per agent) ─────────────────────
+    bytes32 constant ATL_GENMAP_DATA = keccak256("atl:genMapData");
+    bytes32 constant ATL_ACTIVITY_LOG = keccak256("atl:activityLog");
+    bytes32 constant ATL_TRACKED_MEMBERS = keccak256("atl:trackedMembers");
+    bytes32 constant ATL_TEMPLATE_ID = keccak256("atl:templateId");
+
     // ─── ERC-4337 technical ─────────────────────────────────────────
     bytes32 constant ATL_ENTRY_POINT = keccak256("atl:entryPoint");
     bytes32 constant ATL_IMPLEMENTATION = keccak256("atl:implementation");

@@ -605,6 +605,12 @@ register_term "atl:hubVocabulary" "${BASE}hubVocabulary" "Hub Vocabulary" "strin
 register_term "atl:hubRoleVocabulary" "${BASE}hubRoleVocabulary" "Hub Role Vocabulary" "string"
 register_term "atl:hubTypeVocabulary" "${BASE}hubTypeVocabulary" "Hub Type Vocabulary" "string"
 
+# App data (JSON blobs per agent)
+register_term "atl:genMapData" "${BASE}genMapData" "Gen Map Data" "string"
+register_term "atl:activityLog" "${BASE}activityLog" "Activity Log" "string"
+register_term "atl:trackedMembers" "${BASE}trackedMembers" "Tracked Members" "string"
+register_term "atl:templateId" "${BASE}templateId" "Template ID" "string"
+
 echo "Ontology terms registered: $(cast call $ONTOLOGY 'termCount()(uint256)' --rpc-url $RPC)"
 
 # ─── Register Agents in Resolver ──────────────────────────────────

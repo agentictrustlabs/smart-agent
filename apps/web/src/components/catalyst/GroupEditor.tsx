@@ -22,9 +22,122 @@ interface Props {
   mode: 'create' | 'edit'
 }
 
+/* ── Shared styles ── */
 const lbl: React.CSSProperties = { fontSize: '0.8rem', color: '#616161', display: 'block', marginBottom: '0.15rem' }
 const inp: React.CSSProperties = { width: '100%', padding: '0.45rem', border: '1px solid #e2e4e8', borderRadius: 6, fontSize: '0.85rem' }
-const chk: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem', cursor: 'pointer' }
+const sectionTitle: React.CSSProperties = { fontSize: '0.85rem', fontWeight: 700, display: 'block', marginBottom: '0.5rem', color: '#334155' }
+const sectionBox: React.CSSProperties = { padding: '0.75rem', background: '#fafafa', borderRadius: 8, border: '1px solid #e2e4e8', marginBottom: '0.75rem' }
+
+/* ── Reusable sub-components ── */
+
+function YesNo({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
+  const base: React.CSSProperties = {
+    padding: '0.3rem 0.75rem', borderRadius: 999, fontSize: '0.78rem', fontWeight: 600,
+    border: 'none', cursor: 'pointer', transition: 'all 0.15s',
+  }
+  return (
+    <span style={{ display: 'inline-flex', gap: 4 }}>
+      <button type="button" style={{ ...base, background: value ? '#475569' : '#e2e4e8', color: value ? '#fff' : '#616161' }}
+        onClick={() => onChange(true)}>Yes</button>
+      <button type="button" style={{ ...base, background: !value ? '#475569' : '#e2e4e8', color: !value ? '#fff' : '#616161' }}
+        onClick={() => onChange(false)}>No</button>
+    </span>
+  )
+}
+
+function ChipSelect({ options, selected, onChange, multi = false }: {
+  options: string[]; selected: string | string[]; onChange: (v: string | string[]) => void; multi?: boolean
+}) {
+  const sel = Array.isArray(selected) ? selected : [selected]
+  const base: React.CSSProperties = {
+    padding: '0.3rem 0.65rem', borderRadius: 999, fontSize: '0.75rem', fontWeight: 500,
+    border: '1.5px solid', cursor: 'pointer', transition: 'all 0.15s',
+  }
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+      {options.map(o => {
+        const active = sel.includes(o)
+        return (
+          <button key={o} type="button" style={{
+            ...base,
+            background: active ? '#0d9488' : '#fff',
+            color: active ? '#fff' : '#64748b',
+            borderColor: active ? '#0d9488' : '#cbd5e1',
+          }} onClick={() => {
+            if (multi) {
+              const arr = [...sel]
+              if (active) onChange(arr.filter(x => x !== o))
+              else onChange([...arr, o])
+            } else {
+              onChange(o)
+            }
+          }}>{o}</button>
+        )
+      })}
+    </div>
+  )
+}
+
+function NumberStepper({ value, onChange, min = 0 }: { value: number; onChange: (v: number) => void; min?: number }) {
+  const btn: React.CSSProperties = {
+    width: 28, height: 28, borderRadius: 6, border: '1px solid #cbd5e1',
+    background: '#f8fafc', cursor: 'pointer', fontSize: '1rem', fontWeight: 600, color: '#334155',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+  }
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+      <button type="button" style={btn} onClick={() => onChange(Math.max(min, value - 1))}>-</button>
+      <span style={{ minWidth: 28, textAlign: 'center', fontSize: '0.85rem', fontWeight: 600 }}>{value}</span>
+      <button type="button" style={btn} onClick={() => onChange(value + 1)}>+</button>
+    </div>
+  )
+}
+
+function Slider({ value, max, onChange, color = '#0d9488' }: { value: number; max: number; onChange: (v: number) => void; color?: string }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <input type="range" min={0} max={Math.max(max, 1)} value={value}
+        onChange={e => onChange(+e.target.value)}
+        style={{ flex: 1, accentColor: color }} />
+      <span style={{ minWidth: 24, fontSize: '0.8rem', fontWeight: 600, color: '#334155' }}>{value}</span>
+    </div>
+  )
+}
+
+/* ── Preset data ── */
+const LANGUAGE_OPTIONS = ['Spanish', 'Levantine Arabic', 'Nepali', 'Unknown', 'Other']
+const PEOPLE_GROUP_OPTIONS = ['Mexican', 'Arab', 'Gurkha/Nepali', 'Unknown', 'Other']
+const RELIGION_OPTIONS = ['Sunni Islam', 'Roman Catholicism', 'Hinduism', 'Unknown', 'Other']
+const GLOBAL_SEGMENTS = [
+  'Children', 'Youth', 'College/University Students', 'Elderly', 'Men', 'Women',
+  'Business Professionals', 'Slum Dwellers', 'Urban Dwellers', 'Rural Dwellers',
+  'Refugees', 'Displaced Peoples', 'Widows', 'Orphans', 'Other',
+]
+const FREQUENCY_OPTIONS = [
+  { label: 'Less than once a week', value: 'less-weekly' },
+  { label: 'Once a week', value: 'weekly' },
+  { label: 'More than once a week', value: 'multiple' },
+]
+
+const HEALTH_INDICATORS: Array<{
+  key: keyof HealthData; icon: string; label: string
+  subKey?: keyof HealthData; subLabel?: string
+}> = [
+  { key: 'appointedLeaders', icon: '\u{1F465}', label: 'Appointed Leaders?' },
+  { key: 'practicesBaptism', icon: '\u{1F30A}', label: 'Practices Baptism?', subKey: 'doingOwnBaptism', subLabel: 'Doing own Baptism?' },
+  { key: 'lordsSupper', icon: '\u{1F35E}', label: "Lord's Supper?", subKey: 'servesLordsSupper', subLabel: "Serves Lord's Supper?" },
+  { key: 'makingDisciples', icon: '\u{1F6B6}', label: 'Making Disciples?' },
+  { key: 'practicesGiving', icon: '\u{1F4B0}', label: 'Practices Giving?' },
+  { key: 'regularTeaching', icon: '\u{1F4D6}', label: 'Regular Teaching?', subKey: 'givesOwnTeaching', subLabel: 'Gives own Teaching?' },
+  { key: 'practicesService', icon: '\u{2764}\u{FE0F}', label: 'Practices Service?' },
+  { key: 'accountability', icon: '\u{1F91D}', label: 'Accountability?' },
+  { key: 'practicesPrayer', icon: '\u{1F64F}', label: 'Practices Prayer?' },
+  { key: 'practicesPraising', icon: '\u{1F3B5}', label: 'Practices Praising?' },
+]
+
+const EMPTY_PEOPLE_GROUP = { name: 'Unknown', language: 'Unknown', religiousBackground: 'Unknown', numberAttending: 0, numberOfBelievers: 0, numberOfBaptizedBelievers: 0 }
+
+/* ── Main Component ── */
 
 export function GroupEditor({ initial, parentName, onSave, onClose, mode }: Props) {
   const [name, setName] = useState(initial?.name ?? '')
@@ -33,8 +146,10 @@ export function GroupEditor({ initial, parentName, onSave, onClose, mode }: Prop
   const [startDate, setStartDate] = useState(initial?.startDate ?? new Date().toISOString().split('T')[0])
   const [peoplGroup, setPeoplGroup] = useState(initial?.peoplGroup ?? '')
   const [health, setHealth] = useState<HealthData>(initial?.health ?? { ...DEFAULT_HEALTH })
-  const [status] = useState(initial?.status ?? 'active')
+  const [status, setStatus] = useState(initial?.status ?? 'active')
   const [saving, setSaving] = useState(false)
+
+  const h = (patch: Partial<HealthData>) => setHealth(prev => ({ ...prev, ...patch }))
 
   async function handleSave() {
     if (!name.trim()) return
@@ -45,15 +160,17 @@ export function GroupEditor({ initial, parentName, onSave, onClose, mode }: Prop
     setSaving(false)
   }
 
+  const peopleGroups = health.peopleGroups ?? []
+
   return (
     <div style={{
-      position: 'fixed', top: 0, right: 0, width: 420, height: '100vh', zIndex: 1100,
+      position: 'fixed', top: 0, right: 0, width: 480, height: '100vh', zIndex: 1100,
       background: 'white', boxShadow: '-4px 0 24px rgba(0,0,0,0.12)', overflowY: 'auto',
       borderLeft: '3px solid #0d9488', padding: '1.25rem',
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
         <h2 style={{ margin: 0, fontSize: '1.1rem' }}>{mode === 'create' ? 'New Group' : 'Edit Group'}</h2>
-        <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: '#616161' }}>✕</button>
+        <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: '#616161' }}>{'\u2715'}</button>
       </div>
 
       {parentName && (
@@ -62,7 +179,7 @@ export function GroupEditor({ initial, parentName, onSave, onClose, mode }: Prop
         </div>
       )}
 
-      {/* Identity */}
+      {/* ─── 1. Identity ─── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem', marginBottom: '0.75rem' }}>
         <label><span style={lbl}>Name *</span><input value={name} onChange={e => setName(e.target.value)} placeholder="Group name" style={inp} /></label>
         <label><span style={lbl}>Location</span><input value={location} onChange={e => setLocation(e.target.value)} placeholder="City or area" style={inp} /></label>
@@ -70,58 +187,168 @@ export function GroupEditor({ initial, parentName, onSave, onClose, mode }: Prop
         <label><span style={lbl}>Start Date</span><input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} style={inp} /></label>
       </div>
 
-      {/* Status */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem', marginBottom: '0.75rem' }}>
-        <label><span style={lbl}>Established?</span>
-          <select value={health.isChurch ? 'yes' : 'no'} onChange={e => setHealth({ ...health, isChurch: e.target.value === 'yes' })} style={inp}>
-            <option value="no">No (gathering)</option>
-            <option value="yes">Yes (established)</option>
-          </select>
-        </label>
-        <label><span style={lbl}>Meeting Frequency</span>
-          <select value={health.meetingFrequency ?? 'weekly'} onChange={e => setHealth({ ...health, meetingFrequency: e.target.value })} style={inp}>
-            <option value="weekly">Weekly</option>
-            <option value="biweekly">Bi-weekly</option>
-            <option value="monthly">Monthly</option>
-            <option value="multiple">Multiple/week</option>
-          </select>
-        </label>
+      {/* ─── 2. Status ─── */}
+      <div style={sectionBox}>
+        <span style={sectionTitle}>Status</span>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem', marginBottom: '0.6rem' }}>
+          <div>
+            <span style={lbl}>Is Church?</span>
+            <YesNo value={health.isChurch} onChange={v => h({ isChurch: v })} />
+          </div>
+          <div>
+            <span style={lbl}>Is Active?</span>
+            <YesNo value={status === 'active'} onChange={v => setStatus(v ? 'active' : 'inactive')} />
+          </div>
+        </div>
+        <div>
+          <span style={lbl}>Meeting Frequency</span>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+            {FREQUENCY_OPTIONS.map(f => {
+              const active = (health.meetingFrequency ?? 'weekly') === f.value
+              return (
+                <button key={f.value} type="button" onClick={() => h({ meetingFrequency: f.value })}
+                  style={{
+                    padding: '0.3rem 0.65rem', borderRadius: 999, fontSize: '0.73rem', fontWeight: 500,
+                    border: '1.5px solid', cursor: 'pointer', transition: 'all 0.15s',
+                    background: active ? '#0d9488' : '#fff',
+                    color: active ? '#fff' : '#64748b',
+                    borderColor: active ? '#0d9488' : '#cbd5e1',
+                  }}>{f.label}</button>
+              )
+            })}
+          </div>
+        </div>
       </div>
 
+      {/* ─── 3. Church Health Indicators ─── */}
+      <div style={sectionBox}>
+        <span style={sectionTitle}>Church Health Indicators</span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {HEALTH_INDICATORS.map(ind => {
+            const val = health[ind.key] as boolean
+            const subVal = ind.subKey ? (health[ind.subKey] as boolean) : false
+            return (
+              <div key={ind.key}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                  <span style={{ fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: '1rem' }}>{ind.icon}</span> {ind.label}
+                  </span>
+                  <YesNo value={val} onChange={v => {
+                    const patch: Partial<HealthData> = { [ind.key]: v }
+                    if (!v && ind.subKey) patch[ind.subKey] = false as never
+                    h(patch)
+                  }} />
+                </div>
+                {val && ind.subKey && ind.subLabel && (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, paddingLeft: '2rem', marginTop: 4 }}>
+                    <span style={{ fontSize: '0.78rem', color: '#64748b' }}>{ind.subLabel}</span>
+                    <YesNo value={subVal} onChange={v => h({ [ind.subKey!]: v } as Partial<HealthData>)} />
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* ─── Health Metrics (numbers) ─── */}
+      <div style={sectionBox}>
+        <span style={sectionTitle}>Health Metrics</span>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
+          <label><span style={{ ...lbl, color: '#1565c0' }}>Attenders</span>
+            <input type="number" min={0} value={health.attenders ?? health.seekers} onChange={e => h({ attenders: +e.target.value || 0, seekers: +e.target.value || 0 })} style={inp} /></label>
+          <label><span style={{ ...lbl, color: '#ea580c' }}>Believers</span>
+            <input type="number" min={0} value={health.believers} onChange={e => h({ believers: +e.target.value || 0 })} style={inp} /></label>
+          <label><span style={{ ...lbl, color: '#2e7d32' }}>Baptized</span>
+            <input type="number" min={0} value={health.baptized} onChange={e => h({ baptized: +e.target.value || 0 })} style={inp} /></label>
+          <label><span style={{ ...lbl, color: '#7c3aed' }}>Leaders</span>
+            <input type="number" min={0} value={health.leaders} onChange={e => h({ leaders: +e.target.value || 0 })} style={inp} /></label>
+          <label><span style={lbl}>Groups Started</span>
+            <input type="number" min={0} value={health.groupsStarted} onChange={e => h({ groupsStarted: +e.target.value || 0 })} style={inp} /></label>
+        </div>
+      </div>
+
+      {/* ─── 4. Languages Used ─── */}
+      <div style={sectionBox}>
+        <span style={sectionTitle}>Languages Used</span>
+        <ChipSelect options={LANGUAGE_OPTIONS} selected={health.languages ?? []} multi
+          onChange={v => h({ languages: v as string[] })} />
+      </div>
+
+      {/* ─── 5. People Groups Attending ─── */}
+      <div style={sectionBox}>
+        <span style={sectionTitle}>People Groups Attending</span>
+        {peopleGroups.map((pg, i) => (
+          <div key={i} style={{ padding: '0.6rem', background: '#fff', borderRadius: 8, border: '1px solid #e2e4e8', marginBottom: '0.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+              <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#334155' }}>Group {i + 1}</span>
+              <button type="button" onClick={() => {
+                const next = [...peopleGroups]
+                next.splice(i, 1)
+                h({ peopleGroups: next })
+              }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontSize: '0.9rem' }}>{'\u{1F5D1}'}</button>
+            </div>
+            <div style={{ marginBottom: 6 }}>
+              <span style={lbl}>People Group</span>
+              <ChipSelect options={PEOPLE_GROUP_OPTIONS} selected={pg.name}
+                onChange={v => { const next = [...peopleGroups]; next[i] = { ...pg, name: v as string }; h({ peopleGroups: next }) }} />
+            </div>
+            <div style={{ marginBottom: 6 }}>
+              <span style={lbl}>Language</span>
+              <ChipSelect options={LANGUAGE_OPTIONS} selected={pg.language}
+                onChange={v => { const next = [...peopleGroups]; next[i] = { ...pg, language: v as string }; h({ peopleGroups: next }) }} />
+            </div>
+            <div style={{ marginBottom: 6 }}>
+              <span style={lbl}>Religious Background</span>
+              <ChipSelect options={RELIGION_OPTIONS} selected={pg.religiousBackground}
+                onChange={v => { const next = [...peopleGroups]; next[i] = { ...pg, religiousBackground: v as string }; h({ peopleGroups: next }) }} />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
+              <div>
+                <span style={lbl}>Number Attending</span>
+                <NumberStepper value={pg.numberAttending} onChange={v => { const next = [...peopleGroups]; next[i] = { ...pg, numberAttending: v }; h({ peopleGroups: next }) }} />
+              </div>
+              <div>
+                <span style={lbl}>Believers</span>
+                <Slider value={pg.numberOfBelievers} max={pg.numberAttending}
+                  onChange={v => { const next = [...peopleGroups]; next[i] = { ...pg, numberOfBelievers: v }; h({ peopleGroups: next }) }} color="#ea580c" />
+              </div>
+              <div>
+                <span style={lbl}>Baptized</span>
+                <Slider value={pg.numberOfBaptizedBelievers} max={pg.numberOfBelievers}
+                  onChange={v => { const next = [...peopleGroups]; next[i] = { ...pg, numberOfBaptizedBelievers: v }; h({ peopleGroups: next }) }} color="#2e7d32" />
+              </div>
+            </div>
+          </div>
+        ))}
+        <button type="button" onClick={() => h({ peopleGroups: [...peopleGroups, { ...EMPTY_PEOPLE_GROUP }] })}
+          style={{ width: '100%', padding: '0.4rem', background: '#fff', border: '1.5px dashed #cbd5e1', borderRadius: 8, cursor: 'pointer', fontSize: '0.8rem', color: '#0d9488', fontWeight: 600 }}>
+          + Add Another
+        </button>
+      </div>
+
+      {/* ─── 6. Global Segments ─── */}
+      <div style={sectionBox}>
+        <span style={sectionTitle}>Global Segments</span>
+        <ChipSelect options={GLOBAL_SEGMENTS} selected={health.globalSegments ?? []} multi
+          onChange={v => h({ globalSegments: v as string[] })} />
+      </div>
+
+      {/* ─── 7. Comments ─── */}
+      <div style={{ marginBottom: '0.75rem' }}>
+        <span style={sectionTitle}>Comments</span>
+        <textarea value={health.comments ?? ''} onChange={e => h({ comments: e.target.value })}
+          placeholder="Notes or comments..."
+          style={{ ...inp, minHeight: 72, resize: 'vertical' }} />
+      </div>
+
+      {/* ─── Legacy People Group field ─── */}
       <label style={{ display: 'block', marginBottom: '0.75rem' }}>
-        <span style={lbl}>People Group</span>
+        <span style={lbl}>People Group (legacy)</span>
         <input value={peoplGroup} onChange={e => setPeoplGroup(e.target.value)} placeholder="e.g. Vietnamese" style={inp} />
       </label>
 
-      {/* Health Metrics */}
-      <div style={{ padding: '0.75rem', background: '#fafafa', borderRadius: 8, border: '1px solid #e2e4e8', marginBottom: '0.75rem' }}>
-        <strong style={{ fontSize: '0.85rem', display: 'block', marginBottom: '0.5rem' }}>Health Metrics</strong>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
-          <label><span style={{ ...lbl, color: '#1565c0' }}>Attenders</span>
-            <input type="number" min={0} value={health.attenders ?? health.seekers} onChange={e => setHealth({ ...health, attenders: +e.target.value || 0, seekers: +e.target.value || 0 })} style={inp} /></label>
-          <label><span style={{ ...lbl, color: '#ea580c' }}>Believers</span>
-            <input type="number" min={0} value={health.believers} onChange={e => setHealth({ ...health, believers: +e.target.value || 0 })} style={inp} /></label>
-          <label><span style={{ ...lbl, color: '#2e7d32' }}>Baptized</span>
-            <input type="number" min={0} value={health.baptized} onChange={e => setHealth({ ...health, baptized: +e.target.value || 0 })} style={inp} /></label>
-          <label><span style={{ ...lbl, color: '#7c3aed' }}>Leaders</span>
-            <input type="number" min={0} value={health.leaders} onChange={e => setHealth({ ...health, leaders: +e.target.value || 0 })} style={inp} /></label>
-          <label><span style={lbl}>Groups Started</span>
-            <input type="number" min={0} value={health.groupsStarted} onChange={e => setHealth({ ...health, groupsStarted: +e.target.value || 0 })} style={inp} /></label>
-        </div>
-      </div>
-
-      {/* Practices */}
-      <div style={{ padding: '0.75rem', background: '#fafafa', borderRadius: 8, border: '1px solid #e2e4e8', marginBottom: '0.75rem' }}>
-        <strong style={{ fontSize: '0.85rem', display: 'block', marginBottom: '0.5rem' }}>Practices</strong>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.4rem' }}>
-          <label style={chk}><input type="checkbox" checked={health.baptismSelf} onChange={e => setHealth({ ...health, baptismSelf: e.target.checked })} /> Baptism (self)</label>
-          <label style={chk}><input type="checkbox" checked={health.teachingSelf} onChange={e => setHealth({ ...health, teachingSelf: e.target.checked })} /> Teaching (self)</label>
-          <label style={chk}><input type="checkbox" checked={health.giving} onChange={e => setHealth({ ...health, giving: e.target.checked })} /> Practicing giving</label>
-          <label style={chk}><input type="checkbox" checked={health.givingSelf} onChange={e => setHealth({ ...health, givingSelf: e.target.checked })} /> Giving (self-directed)</label>
-        </div>
-      </div>
-
-      {/* Preview */}
+      {/* ─── 8. Church Circle Preview ─── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem', padding: '0.75rem', background: '#f5f5f5', borderRadius: 8 }}>
         <ChurchCircle health={health} size={80} />
         <div style={{ fontSize: '0.75rem', color: '#616161' }}>
@@ -132,8 +359,8 @@ export function GroupEditor({ initial, parentName, onSave, onClose, mode }: Prop
         </div>
       </div>
 
-      {/* Actions */}
-      <div style={{ display: 'flex', gap: '0.5rem' }}>
+      {/* ─── Actions ─── */}
+      <div style={{ display: 'flex', gap: '0.5rem', paddingBottom: '1rem' }}>
         <button onClick={handleSave} disabled={saving || !name.trim()}
           style={{ flex: 1, padding: '0.6rem', background: '#0d9488', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 600, cursor: 'pointer' }}>
           {saving ? 'Saving...' : mode === 'create' ? 'Create Group' : 'Save Changes'}

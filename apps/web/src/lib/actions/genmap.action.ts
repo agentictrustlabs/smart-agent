@@ -2,6 +2,7 @@
 
 import { db, schema } from '@/db'
 import { eq } from 'drizzle-orm'
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { randomUUID } from 'crypto'
 import { requireSession } from '@/lib/auth/session'
 import {

@@ -2,8 +2,7 @@ import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { getUserOrgs } from '@/lib/get-user-orgs'
 import { getOrgMembers } from '@/lib/get-org-members'
-import { db, schema } from '@/db'
-import { eq } from 'drizzle-orm'
+import { getTrackedMembers } from '@/lib/agent-resolver'
 import { MemberManager } from '@/components/catalyst/MemberManager'
 
 export default async function CatalystMembersPage() {
@@ -27,9 +26,14 @@ export default async function CatalystMembersPage() {
       }
     }
     try {
-      const detached = await db.select().from(schema.detachedMembers)
-        .where(eq(schema.detachedMembers.orgAddress, org.address.toLowerCase()))
-      allDetached.push(...detached)
+      const tracked = await getTrackedMembers(org.address)
+      allDetached.push(...tracked.map(m => ({
+        id: m.id,
+        name: m.name,
+        role: m.role ?? null,
+        assignedNodeId: m.assignedNode ?? null,
+        notes: m.notes ?? null,
+      })))
     } catch { /* ignored */ }
   }
 

@@ -1563,6 +1563,53 @@ textarea { resize: vertical; }
   background: var(--bg-card);
   border: none;
   border-radius: 0;
+  cursor: grab;
+  overflow: hidden;
+}
+
+[data-component="graph-svg"]:active {
+  cursor: grabbing;
+}
+
+[data-component="graph-zoom-controls"] {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  z-index: 10;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.2rem 0.4rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+[data-component="graph-zoom-controls"] button {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-page);
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-primary);
+}
+
+[data-component="graph-zoom-controls"] button:hover {
+  background: var(--border);
+}
+
+[data-component="zoom-level"] {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  min-width: 2.5rem;
+  text-align: center;
 }
 
 [data-component="graph-legend"] {
@@ -1730,6 +1777,7 @@ textarea { resize: vertical; }
   gap: 0;
   align-items: stretch;
   height: 100%;
+  position: relative;
 }
 
 @media (max-width: 900px) {

@@ -61,10 +61,10 @@ export default async function CatalystMapPage() {
         const edge = await getEdge(edgeId)
         if (!geoAddrs.has(edge.object_.toLowerCase())) continue
         seenEdges.add(edgeId)
-        const roles = (await getEdgeRoles(edgeId)).map(r => roleName(r))
+        const roles = (await getEdgeRoles(edgeId)).map(r => roleName(r, undefined, 'catalyst'))
         edges.push({
           sourceAddr: edge.subject, targetAddr: edge.object_,
-          roles, relationshipType: relationshipTypeName(edge.relationshipType),
+          roles, relationshipType: relationshipTypeName(edge.relationshipType, undefined, 'catalyst'),
           status: STATUS_NAMES[edge.status] ?? 'Unknown', edgeId,
         })
       }

@@ -71,8 +71,8 @@ const relationshipTypeDefinitions: Array<RelationshipTypeDefinition & { hash: `0
     description: 'Strategic alignment or generative linkage between organizations, groups, or networks.',
     parentTerm: 'atl:NetworkRelationship',
     hubLabels: {
-      catalyst: 'Lineage Link',
-      'global-church': 'Ministry Link',
+      catalyst: 'Church Lineage',
+      'global-church': 'Ministry Lineage',
       cil: 'Trust Link',
     },
   }),
@@ -164,7 +164,18 @@ const relationshipTypeDefinitions: Array<RelationshipTypeDefinition & { hash: `0
     description: 'Membership of an agent within a portal, cohort, hub, or network context.',
     parentTerm: 'atl:NetworkRelationship',
   }),
-] 
+  withHash({
+    key: 'generational-lineage',
+    term: 'atl:GenerationalLineageRelationship',
+    label: 'Generational Lineage',
+    description: 'Generational multiplication lineage between groups — the upstream group planted or catalyzed the downstream group.',
+    parentTerm: 'atl:NetworkRelationship',
+    hubLabels: {
+      catalyst: 'Generational Lineage',
+      'global-church': 'Church Planting Lineage',
+    },
+  }),
+]
 
 const roleDefinitions: Array<RoleDefinition & { hash: `0x${string}` }> = [
   withHash({
@@ -385,7 +396,8 @@ const roleDefinitions: Array<RoleDefinition & { hash: `0x${string}` }> = [
     relationshipTypeKeys: ['alliance'],
     parentTerm: 'atl:AllianceRole',
     hubLabels: {
-      catalyst: 'parent-circle',
+      catalyst: 'parent-church',
+      'global-church': 'parent-church',
     },
   }),
   withHash({
@@ -411,6 +423,10 @@ const roleDefinitions: Array<RoleDefinition & { hash: `0x${string}` }> = [
     description: 'Subsidiary organizational role.',
     relationshipTypeKeys: ['alliance'],
     parentTerm: 'atl:AllianceRole',
+    hubLabels: {
+      catalyst: 'daughter-church',
+      'global-church': 'daughter-church',
+    },
   }),
   withHash({
     key: 'parent-org',
@@ -419,6 +435,10 @@ const roleDefinitions: Array<RoleDefinition & { hash: `0x${string}` }> = [
     description: 'Parent organization role.',
     relationshipTypeKeys: ['alliance'],
     parentTerm: 'atl:AllianceRole',
+    hubLabels: {
+      catalyst: 'parent-church',
+      'global-church': 'parent-church',
+    },
   }),
   withHash({
     key: 'vendor',
@@ -558,7 +578,31 @@ const roleDefinitions: Array<RoleDefinition & { hash: `0x${string}` }> = [
     relationshipTypeKeys: ['review'],
     parentTerm: 'atl:AssuranceRole',
   }),
-] 
+  withHash({
+    key: 'upstream',
+    term: 'atl:UpstreamRole',
+    label: 'upstream',
+    description: 'The originating or parent group in a generational lineage — the group that planted or catalyzed the downstream group.',
+    relationshipTypeKeys: ['generational-lineage'],
+    parentTerm: 'atl:NetworkRole',
+    hubLabels: {
+      catalyst: 'parent-group',
+      'global-church': 'sending-church',
+    },
+  }),
+  withHash({
+    key: 'downstream',
+    term: 'atl:DownstreamRole',
+    label: 'downstream',
+    description: 'The spawned or daughter group in a generational lineage — the group that was planted by the upstream group.',
+    relationshipTypeKeys: ['generational-lineage'],
+    parentTerm: 'atl:NetworkRole',
+    hubLabels: {
+      catalyst: 'daughter-group',
+      'global-church': 'planted-church',
+    },
+  }),
+]
 
 const delegationPolicyDefinitions: DelegationPolicyDefinition[] = [
   {
@@ -725,6 +769,7 @@ export const ORGANIZATIONAL_CONTROL = requireRelationshipTypeHash('organizationa
 export const ACTIVITY_VALIDATION = requireRelationshipTypeHash('activity-validation')
 export const REVIEW_RELATIONSHIP = requireRelationshipTypeHash('review')
 export const HAS_MEMBER = requireRelationshipTypeHash('has-member')
+export const GENERATIONAL_LINEAGE = requireRelationshipTypeHash('generational-lineage')
 
 export const ROLE_OWNER = requireRoleHash('owner')
 export const ROLE_BOARD_MEMBER = requireRoleHash('board-member')
@@ -773,3 +818,5 @@ export const ROLE_ACTIVITY_VALIDATOR = requireRoleHash('activity-validator')
 export const ROLE_VALIDATED_PERFORMER = requireRoleHash('validated-performer')
 export const ROLE_REVIEWER = requireRoleHash('reviewer')
 export const ROLE_REVIEWED_AGENT = requireRoleHash('reviewed-agent')
+export const ROLE_UPSTREAM = requireRoleHash('upstream')
+export const ROLE_DOWNSTREAM = requireRoleHash('downstream')

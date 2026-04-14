@@ -4,6 +4,7 @@ import { getEdgesByObject, getEdgesBySubject, getEdge, getEdgeRoles } from '@/li
 import { roleName, relationshipTypeName, toDidEthr } from '@smart-agent/sdk'
 import { RelationshipsClient } from './RelationshipsClient'
 import { PendingActions } from './PendingActions'
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { db, schema } from '@/db'
 import { getControlledAgentsForUser, listRegisteredAgents } from '@/lib/agent-resolver'
 
@@ -85,8 +86,8 @@ export default async function RelationshipsPage() {
         existingEdges.push({
           subject: e.subject, subjectName: getName(e.subject),
           object: e.object_, objectName: getName(e.object_),
-          roles: roleHashes.map((r) => roleName(r)),
-          relType: relationshipTypeName(e.relationshipType),
+          roles: roleHashes.map((r) => roleName(r, undefined, 'catalyst')),
+          relType: relationshipTypeName(e.relationshipType, undefined, 'catalyst'),
           status: STATUS_LABELS[e.status] ?? 'unknown',
           statusNum: e.status,
           edgeId,
@@ -103,8 +104,8 @@ export default async function RelationshipsPage() {
         existingEdges.push({
           subject: e.subject, subjectName: getName(e.subject),
           object: e.object_, objectName: getName(e.object_),
-          roles: roleHashes.map((r) => roleName(r)),
-          relType: relationshipTypeName(e.relationshipType),
+          roles: roleHashes.map((r) => roleName(r, undefined, 'catalyst')),
+          relType: relationshipTypeName(e.relationshipType, undefined, 'catalyst'),
           status: STATUS_LABELS[e.status] ?? 'unknown',
           statusNum: e.status,
           edgeId,

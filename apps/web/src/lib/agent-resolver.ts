@@ -4,15 +4,17 @@ import { getPublicClient, getWalletClient } from '@/lib/contracts'
 import {
   agentAccountResolverAbi,
   ATL_CONTROLLER,
+  ATL_GENMAP_DATA,
+  ATL_ACTIVITY_LOG,
+  ATL_TRACKED_MEMBERS,
+  ATL_TEMPLATE_ID,
   TYPE_AI_AGENT,
   TYPE_ORGANIZATION,
   TYPE_PERSON,
 } from '@smart-agent/sdk'
-import { keccak256, toBytes } from 'viem'
 
-export const ATL_TEMPLATE_ID = keccak256(toBytes('smart-agent:template-id'))
-export const ATL_GENMAP_DATA = keccak256(toBytes('smart-agent:genmap-data'))
-export const ATL_HEALTH_DATA = keccak256(toBytes('atl:healthData'))
+// Re-export for app code
+export { ATL_GENMAP_DATA, ATL_ACTIVITY_LOG, ATL_TRACKED_MEMBERS, ATL_TEMPLATE_ID }
 
 type AgentKind = 'person' | 'org' | 'ai' | 'unknown'
 
@@ -177,16 +179,75 @@ export async function setAgentTemplateId(agentAddress: string, templateId: strin
 }
 
 export async function getAgentGenMapData(agentAddress: string): Promise<Record<string, unknown> | null> {
-  const value = await getAgentStringProperty(agentAddress, ATL_GENMAP_DATA)
-  const fallback = value || await getAgentStringProperty(agentAddress, ATL_HEALTH_DATA)
-  if (!fallback) return null
+  const value = await getAgentStringProperty(agentAddress, ATL_GENMAP_DATA as `0x${string}`)
+  if (!value) return null
   try {
-    return JSON.parse(fallback) as Record<string, unknown>
+    return JSON.parse(value) as Record<string, unknown>
   } catch {
     return null
   }
 }
 
 export async function setAgentGenMapData(agentAddress: string, data: Record<string, unknown>) {
-  await setAgentStringProperty(agentAddress, ATL_GENMAP_DATA, JSON.stringify(data))
+  await setAgentStringProperty(agentAddress, ATL_GENMAP_DATA as `0x${string}`, JSON.stringify(data))
+}
+
+// ─── Activity Log (JSON array per org agent) ────────────────────────
+
+export interface ActivityEntry {
+  id: string
+  type: 'entry' | 'evangelism' | 'discipleship' | 'formation' | 'leadership' | 'prayer' | 'service' | 'other'
+  title: string
+  description?: string
+  date: string
+  duration?: number
+  participants?: number
+  location?: string
+  lat?: number
+  lng?: number
+  contributors?: string[]
+  chainedFrom?: string
+  peopleGroup?: string
+  notes?: string
+  createdBy: string
+  createdAt: string
+}
+
+export async function getActivityLog(orgAddress: string): Promise<ActivityEntry[]> {
+  const value = await getAgentStringProperty(orgAddress, ATL_ACTIVITY_LOG as `0x${string}`)
+  if (!value) return []
+  try {
+    return JSON.parse(value) as ActivityEntry[]
+  } catch {
+    return []
+  }
+}
+
+export async function setActivityLog(orgAddress: string, activities: ActivityEntry[]) {
+  await setAgentStringProperty(orgAddress, ATL_ACTIVITY_LOG as `0x${string}`, JSON.stringify(activities))
+}
+
+// ─── Tracked Members (JSON object per org agent) ────────────────────
+
+export interface TrackedMember {
+  id: string
+  name: string
+  role?: string
+  assignedNode?: string
+  notes?: string
+  createdAt: string
+}
+
+export async function getTrackedMembers(orgAddress: string): Promise<TrackedMember[]> {
+  const value = await getAgentStringProperty(orgAddress, ATL_TRACKED_MEMBERS as `0x${string}`)
+  if (!value) return []
+  try {
+    return JSON.parse(value) as TrackedMember[]
+  } catch {
+    return []
+  }
+}
+
+export async function setTrackedMembers(orgAddress: string, members: TrackedMember[]) {
+  await setAgentStringProperty(orgAddress, ATL_TRACKED_MEMBERS as `0x${string}`, JSON.stringify(members))
 }

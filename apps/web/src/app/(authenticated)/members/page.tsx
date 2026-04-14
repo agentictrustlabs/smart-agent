@@ -1,10 +1,9 @@
 import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { getUserOrgs } from '@/lib/get-user-orgs'
-import { db, schema } from '@/db'
-import { eq } from 'drizzle-orm'
 import { getOrgMembers } from '@/lib/get-org-members'
 import { getConnectedOrgs } from '@/lib/get-org-members'
+import { getTrackedMembers } from '@/lib/agent-resolver'
 import { MembersClient } from './MembersClient'
 
 export default async function MembersPage() {
@@ -25,7 +24,6 @@ export default async function MembersPage() {
   const allMembers: Array<{ address: string; name: string; roles: string[]; status: string; isPerson: boolean }> = []
   const seenMembers = new Set<string>()
   const allDetached: Array<{ id: string; name: string; role: string | null; assignedNodeId: string | null; notes: string | null }> = []
-  const orgAddresses = userOrgs.map(o => o.address.toLowerCase())
 
   for (const org of userOrgs) {
     const { members } = await getOrgMembers(org.address)
@@ -37,10 +35,15 @@ export default async function MembersPage() {
     }
 
     try {
-      const detached = await db.select().from(schema.detachedMembers)
-        .where(eq(schema.detachedMembers.orgAddress, org.address.toLowerCase()))
-      allDetached.push(...detached)
-    } catch { /* table may not exist */ }
+      const tracked = await getTrackedMembers(org.address)
+      allDetached.push(...tracked.map(m => ({
+        id: m.id,
+        name: m.name,
+        role: m.role ?? null,
+        assignedNodeId: m.assignedNode ?? null,
+        notes: m.notes ?? null,
+      })))
+    } catch { /* resolver may not be available */ }
   }
 
   // Gen map nodes for assignment dropdown

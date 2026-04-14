@@ -34,8 +34,8 @@ export default async function NetworkPage() {
         const roles = await getEdgeRoles(edgeId)
         relationships.push({
           edgeId, direction: 'outgoing', counterparty: getName(edge.object_),
-          counterpartyAddr: edge.object_, type: relationshipTypeName(edge.relationshipType),
-          roles: roles.map(r => roleName(r)), status: STATUS_NAMES[edge.status] ?? 'Unknown',
+          counterpartyAddr: edge.object_, type: relationshipTypeName(edge.relationshipType, undefined, 'catalyst'),
+          roles: roles.map(r => roleName(r, undefined, 'catalyst')), status: STATUS_NAMES[edge.status] ?? 'Unknown',
           orgName: org.name,
         })
       }
@@ -46,8 +46,8 @@ export default async function NetworkPage() {
         const roles = await getEdgeRoles(edgeId)
         relationships.push({
           edgeId, direction: 'incoming', counterparty: getName(edge.subject),
-          counterpartyAddr: edge.subject, type: relationshipTypeName(edge.relationshipType),
-          roles: roles.map(r => roleName(r)), status: STATUS_NAMES[edge.status] ?? 'Unknown',
+          counterpartyAddr: edge.subject, type: relationshipTypeName(edge.relationshipType, undefined, 'catalyst'),
+          roles: roles.map(r => roleName(r, undefined, 'catalyst')), status: STATUS_NAMES[edge.status] ?? 'Unknown',
           orgName: org.name,
         })
       }

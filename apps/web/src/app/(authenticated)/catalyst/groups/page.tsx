@@ -4,10 +4,7 @@ import { getUserOrgs } from '@/lib/get-user-orgs'
 import { getEdgesBySubject, getEdge, getPublicClient } from '@/lib/contracts'
 import { getAgentMetadata } from '@/lib/agent-metadata'
 import { GroupHierarchy, type GroupNode } from '@/components/catalyst/GroupHierarchy'
-import { agentAccountResolverAbi } from '@smart-agent/sdk'
-import { keccak256, toBytes } from 'viem'
-
-const ATL_HEALTH_DATA = keccak256(toBytes('atl:healthData'))
+import { agentAccountResolverAbi, ATL_GENMAP_DATA } from '@smart-agent/sdk'
 
 export default async function CatalystGroupsPage() {
   const currentUser = await getCurrentUser()
@@ -26,7 +23,7 @@ export default async function CatalystGroupsPage() {
       const json = await client.readContract({
         address: resolverAddr, abi: agentAccountResolverAbi,
         functionName: 'getStringProperty',
-        args: [addr as `0x${string}`, ATL_HEALTH_DATA],
+        args: [addr as `0x${string}`, ATL_GENMAP_DATA as `0x${string}`],
       }) as string
       if (json) return JSON.parse(json)
     } catch { /* no health data */ }

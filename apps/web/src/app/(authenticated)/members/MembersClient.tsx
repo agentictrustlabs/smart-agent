@@ -53,7 +53,7 @@ export function MembersClient({ members, detachedMembers, genNodes, orgAddress, 
 
   async function handleDeleteDetached(id: string) {
     if (!confirm('Remove this tracked contact?')) return
-    try { await deleteDetachedMember(id); window.location.reload() } catch { alert('Failed') }
+    try { await deleteDetachedMember(id, orgAddress); window.location.reload() } catch { alert('Failed') }
   }
 
   return (

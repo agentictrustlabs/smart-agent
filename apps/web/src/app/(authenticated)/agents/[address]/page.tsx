@@ -177,12 +177,12 @@ export default async function AgentSettingsPage({
     for (const edgeId of await getEdgesBySubject(agentAddress)) {
       const edge = await getEdge(edgeId)
       const roles = await getEdgeRoles(edgeId)
-      relationships.push({ edgeId, direction: '→', counterparty: getName(edge.object_), counterpartyAddr: edge.object_, type: relationshipTypeName(edge.relationshipType), roles: roles.map(r => roleName(r)), status: STATUS_NAMES[edge.status] ?? 'Unknown' })
+      relationships.push({ edgeId, direction: '→', counterparty: getName(edge.object_), counterpartyAddr: edge.object_, type: relationshipTypeName(edge.relationshipType, undefined, 'catalyst'), roles: roles.map(r => roleName(r, undefined, 'catalyst')), status: STATUS_NAMES[edge.status] ?? 'Unknown' })
     }
     for (const edgeId of await getEdgesByObject(agentAddress)) {
       const edge = await getEdge(edgeId)
       const roles = await getEdgeRoles(edgeId)
-      relationships.push({ edgeId, direction: '←', counterparty: getName(edge.subject), counterpartyAddr: edge.subject, type: relationshipTypeName(edge.relationshipType), roles: roles.map(r => roleName(r)), status: STATUS_NAMES[edge.status] ?? 'Unknown' })
+      relationships.push({ edgeId, direction: '←', counterparty: getName(edge.subject), counterpartyAddr: edge.subject, type: relationshipTypeName(edge.relationshipType, undefined, 'catalyst'), roles: roles.map(r => roleName(r, undefined, 'catalyst')), status: STATUS_NAMES[edge.status] ?? 'Unknown' })
     }
   } catch { /* not deployed */ }
 
@@ -228,7 +228,7 @@ export default async function AgentSettingsPage({
   const timestampEnforcer = (process.env.TIMESTAMP_ENFORCER_ADDRESS ?? '').toLowerCase()
   const methodsEnforcer = (process.env.ALLOWED_METHODS_ENFORCER_ADDRESS ?? '').toLowerCase()
   const targetsEnforcer = (process.env.ALLOWED_TARGETS_ENFORCER_ADDRESS ?? '').toLowerCase()
-  const enforcerNames: Record<string, string> = {
+  const enforcerNames: Record<string, string> = { // eslint-disable-line @typescript-eslint/no-unused-vars
     [timestampEnforcer]: 'Time Window',
     [methodsEnforcer]: 'Allowed Methods',
     [targetsEnforcer]: 'Allowed Targets',

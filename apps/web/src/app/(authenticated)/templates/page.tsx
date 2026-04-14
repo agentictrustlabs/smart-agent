@@ -20,8 +20,8 @@ export default async function TemplatesPage() {
         id: Number(t.id),
         name: t.name,
         description: t.description,
-        role: roleName(t.role),
-        relationshipType: relationshipTypeName(t.relationshipType),
+        role: roleName(t.role, undefined, 'catalyst'),
+        relationshipType: relationshipTypeName(t.relationshipType, undefined, 'catalyst'),
         active: t.active,
         createdBy: t.createdBy,
       })

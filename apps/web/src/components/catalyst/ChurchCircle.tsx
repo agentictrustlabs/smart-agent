@@ -1,11 +1,46 @@
 'use client'
 
 export interface HealthData {
+  // Existing metrics
   seekers: number; believers: number; baptized: number; leaders: number
   giving: boolean; isChurch: boolean; groupsStarted: number
   meetingFrequency?: string
   baptismSelf: boolean; teachingSelf: boolean; givingSelf: boolean
   peoplGroup?: string; attenders?: number
+
+  // GAPP health indicators (Yes/No)
+  appointedLeaders?: boolean
+  practicesBaptism?: boolean
+  doingOwnBaptism?: boolean
+  lordsSupper?: boolean
+  servesLordsSupper?: boolean
+  makingDisciples?: boolean
+  practicesGiving?: boolean
+  regularTeaching?: boolean
+  givesOwnTeaching?: boolean
+  practicesService?: boolean
+  accountability?: boolean
+  practicesPrayer?: boolean
+  practicesPraising?: boolean
+
+  // People Group tracking
+  peopleGroups?: Array<{
+    name: string
+    language: string
+    religiousBackground: string
+    numberAttending: number
+    numberOfBelievers: number
+    numberOfBaptizedBelievers: number
+  }>
+
+  // Global Segments
+  globalSegments?: string[]
+
+  // Comments
+  comments?: string
+
+  // Languages used
+  languages?: string[]
 }
 
 export const DEFAULT_HEALTH: HealthData = {
@@ -13,6 +48,12 @@ export const DEFAULT_HEALTH: HealthData = {
   giving: false, isChurch: false, groupsStarted: 0,
   meetingFrequency: 'weekly', baptismSelf: false, teachingSelf: false, givingSelf: false,
   peoplGroup: '', attenders: 0,
+  appointedLeaders: false, practicesBaptism: false, doingOwnBaptism: false,
+  lordsSupper: false, servesLordsSupper: false, makingDisciples: false,
+  practicesGiving: false, regularTeaching: false, givesOwnTeaching: false,
+  practicesService: false, accountability: false,
+  practicesPrayer: false, practicesPraising: false,
+  peopleGroups: [], globalSegments: [], comments: '', languages: [],
 }
 
 export function parseHealth(json: string | null | undefined): HealthData {
@@ -25,12 +66,30 @@ interface Props {
   size?: number
 }
 
+// Practice indicators positioned clockwise around the circle perimeter
+const PRACTICE_INDICATORS: Array<{
+  key: keyof HealthData
+  angle: number // degrees, 0 = top, clockwise
+  color: string
+  label: string
+}> = [
+  { key: 'appointedLeaders', angle: 0, color: '#7c3aed', label: 'Leaders' },
+  { key: 'practicesBaptism', angle: 45, color: '#2e7d32', label: 'Baptism' },
+  { key: 'lordsSupper', angle: 90, color: '#2e7d32', label: "Lord's Supper" },
+  { key: 'makingDisciples', angle: 135, color: '#2e7d32', label: 'Disciples' },
+  { key: 'practicesGiving', angle: 180, color: '#ea580c', label: 'Giving' },
+  { key: 'regularTeaching', angle: 225, color: '#ea580c', label: 'Teaching' },
+  { key: 'practicesService', angle: 270, color: '#ea580c', label: 'Service' },
+  { key: 'practicesPrayer', angle: 315, color: '#1565c0', label: 'Prayer' },
+]
+
 export function ChurchCircle({ health, size = 64 }: Props) {
   const r = size / 2 - 3
   const cx = size / 2
   const cy = size / 2
   const isDashed = !health.isChurch
   const strokeColor = health.isChurch ? '#2e7d32' : '#9e9e9e'
+  const dotRadius = Math.max(1.5, size / 26)
 
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
@@ -58,7 +117,33 @@ export function ChurchCircle({ health, size = 64 }: Props) {
           fill="#0d9488" fontWeight="bold">{health.groupsStarted}</text>
       )}
 
-      {/* Self-functioning dots */}
+      {/* GAPP practice indicator dots around the perimeter */}
+      {PRACTICE_INDICATORS.map(({ key, angle, color }) => {
+        const active = !!health[key]
+        const rad = ((angle - 90) * Math.PI) / 180
+        const dotCx = cx + (r + dotRadius + 1) * Math.cos(rad)
+        const dotCy = cy + (r + dotRadius + 1) * Math.sin(rad)
+        return (
+          <circle
+            key={key}
+            cx={dotCx}
+            cy={dotCy}
+            r={dotRadius}
+            fill={active ? color : '#e0e0e0'}
+            opacity={active ? 1 : 0.3}
+          />
+        )
+      })}
+
+      {/* Additional practice indicators: accountability (inner, top) and praising (inner, bottom) */}
+      {health.accountability && (
+        <circle cx={cx} cy={cy - r + dotRadius + 3} r={dotRadius} fill="#7c3aed" opacity={0.85} />
+      )}
+      {health.practicesPraising && (
+        <circle cx={cx} cy={cy + r - dotRadius - 3} r={dotRadius} fill="#1565c0" opacity={0.85} />
+      )}
+
+      {/* Legacy self-functioning dots (backward compat) */}
       {health.baptismSelf && <circle cx={cx + r - 4} cy={cy - r + 4} r={3} fill="#2e7d32" />}
       {!health.baptismSelf && health.baptized > 0 && <circle cx={cx + r - 1} cy={cy - r + 1} r={3} fill="#2e7d32" opacity={0.3} />}
       {health.teachingSelf && <circle cx={cx - r + 4} cy={cy - r + 4} r={3} fill="#1565c0" />}

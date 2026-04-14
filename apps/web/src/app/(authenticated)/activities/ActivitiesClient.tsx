@@ -1,13 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { logActivity } from '@/lib/actions/activity.action'
-import { deleteActivity, updateActivity } from '@/lib/actions/genmap.action'
+import { logActivity, updateActivityOnChain, deleteActivityOnChain } from '@/lib/actions/activity.action'
 
 interface ActivityView {
   id: string; userId: string; userName: string; activityType: string; typeLabel: string
   title: string; description: string | null; participants: number; location: string | null
   durationMinutes: number | null; activityDate: string; createdAt: string
+  chainedFrom: string | null; peopleGroup: string | null
 }
 
 interface Props {
@@ -77,8 +77,8 @@ export function ActivitiesClient({ activities, orgAddress, orgName: _orgName }: 
     e.preventDefault(); setLoading(true)
     try {
       if (editingId) {
-        await updateActivity({
-          id: editingId, title, description, participants: parseInt(participants) || 0,
+        await updateActivityOnChain({
+          orgAddress, id: editingId, title, description, participants: parseInt(participants) || 0,
           location: location || undefined, durationMinutes: durationMinutes ? parseInt(durationMinutes) : undefined,
           activityType,
         })
@@ -105,7 +105,7 @@ export function ActivitiesClient({ activities, orgAddress, orgName: _orgName }: 
 
   async function handleDelete(id: string) {
     if (!confirm('Delete this activity?')) return
-    try { await deleteActivity(id); window.location.reload() } catch { alert('Failed to delete') }
+    try { await deleteActivityOnChain(orgAddress, id); window.location.reload() } catch { alert('Failed to delete') }
   }
 
   const sorted = [...activities].sort((a, b) => b.activityDate.localeCompare(a.activityDate))

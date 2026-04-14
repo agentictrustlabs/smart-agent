@@ -10,8 +10,9 @@ import {
 // getPublicClient used by register() for isRegistered check
 import {
   ORGANIZATION_GOVERNANCE, ORGANIZATION_MEMBERSHIP, ALLIANCE, ORGANIZATIONAL_CONTROL,
+  GENERATIONAL_LINEAGE,
   ROLE_OWNER, ROLE_BOARD_MEMBER, ROLE_OPERATOR, ROLE_MEMBER, ROLE_ADVISOR, ROLE_OPERATED_AGENT,
-  ROLE_STRATEGIC_PARTNER,
+  ROLE_STRATEGIC_PARTNER, ROLE_UPSTREAM, ROLE_DOWNSTREAM,
   ATL_LATITUDE, ATL_LONGITUDE, ATL_SPATIAL_CRS, ATL_SPATIAL_TYPE, ATL_CONTROLLER,
 } from '@smart-agent/sdk'
 import { agentAccountResolverAbi } from '@smart-agent/sdk'
@@ -206,15 +207,17 @@ async function doSeed() {
   await createEdge(paTran, grpHanhoa, ORGANIZATION_MEMBERSHIP, [ROLE_ADVISOR])
   await createEdge(paTran, grpCam, ORGANIZATION_MEMBERSHIP, [ROLE_ADVISOR])
 
-  // Org → Org ALLIANCE (8 edges — network hierarchy + generational chain)
+  // Org → Org ALLIANCE (network hierarchy)
   await createEdge(network, hub, ALLIANCE, [ROLE_STRATEGIC_PARTNER])
   await createEdge(hub, grpSontra, ALLIANCE, [ROLE_STRATEGIC_PARTNER])
   await createEdge(hub, grpThanh, ALLIANCE, [ROLE_STRATEGIC_PARTNER])
   await createEdge(hub, grpCam, ALLIANCE, [ROLE_STRATEGIC_PARTNER])
-  await createEdge(grpSontra, grpHanhoa, ALLIANCE, [ROLE_STRATEGIC_PARTNER])
-  await createEdge(grpSontra, grpMyke, ALLIANCE, [ROLE_STRATEGIC_PARTNER])
-  await createEdge(grpThanh, grpLien, ALLIANCE, [ROLE_STRATEGIC_PARTNER])
-  await createEdge(grpHanhoa, grpNgu, ALLIANCE, [ROLE_STRATEGIC_PARTNER])
+
+  // Group → Group GENERATIONAL LINEAGE (upstream planted downstream)
+  await createEdge(grpSontra, grpHanhoa, GENERATIONAL_LINEAGE, [ROLE_UPSTREAM, ROLE_DOWNSTREAM])
+  await createEdge(grpSontra, grpMyke, GENERATIONAL_LINEAGE, [ROLE_UPSTREAM, ROLE_DOWNSTREAM])
+  await createEdge(grpThanh, grpLien, GENERATIONAL_LINEAGE, [ROLE_UPSTREAM, ROLE_DOWNSTREAM])
+  await createEdge(grpHanhoa, grpNgu, GENERATIONAL_LINEAGE, [ROLE_UPSTREAM, ROLE_DOWNSTREAM])
 
   // AI → Org (1 edge)
   await createEdge(analytics, network, ORGANIZATIONAL_CONTROL, [ROLE_OPERATED_AGENT])

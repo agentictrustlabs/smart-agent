@@ -4,6 +4,7 @@ import { db, schema } from '@/db'
 import { eq, and } from 'drizzle-orm'
 import { randomUUID } from 'crypto'
 import { requireSession } from '@/lib/auth/session'
+import { getTrackedMembers, setTrackedMembers, type TrackedMember } from '@/lib/agent-resolver'
 
 export async function createDetachedMember(data: {
   orgAddress: string
@@ -12,32 +13,42 @@ export async function createDetachedMember(data: {
   role?: string
   notes?: string
 }) {
-  const session = await requireSession()
-  const user = await db.select().from(schema.users)
-    .where(eq(schema.users.walletAddress, session.walletAddress ?? '')).limit(1)
-  if (!user[0]) throw new Error('User not found')
+  await requireSession()
 
   const id = randomUUID()
-  await db.insert(schema.detachedMembers).values({
+  const existing = await getTrackedMembers(data.orgAddress)
+
+  const newMember: TrackedMember = {
     id,
-    orgAddress: data.orgAddress.toLowerCase(),
     name: data.name,
-    assignedNodeId: data.assignedNodeId ?? null,
-    role: data.role ?? null,
-    notes: data.notes ?? null,
-    createdBy: user[0].id,
-  })
+    role: data.role,
+    assignedNode: data.assignedNodeId,
+    notes: data.notes,
+    createdAt: new Date().toISOString(),
+  }
+
+  await setTrackedMembers(data.orgAddress, [...existing, newMember])
   return { id }
 }
 
 export async function getDetachedMembers(orgAddress: string) {
-  return db.select().from(schema.detachedMembers)
-    .where(eq(schema.detachedMembers.orgAddress, orgAddress.toLowerCase()))
+  const members = await getTrackedMembers(orgAddress)
+  // Map to the shape the UI expects
+  return members.map(m => ({
+    id: m.id,
+    name: m.name,
+    role: m.role ?? null,
+    assignedNodeId: m.assignedNode ?? null,
+    notes: m.notes ?? null,
+  }))
 }
 
-export async function deleteDetachedMember(id: string) {
+export async function deleteDetachedMember(id: string, orgAddress: string) {
   await requireSession()
-  await db.delete(schema.detachedMembers).where(eq(schema.detachedMembers.id, id))
+
+  const existing = await getTrackedMembers(orgAddress)
+  const filtered = existing.filter(m => m.id !== id)
+  await setTrackedMembers(orgAddress, filtered)
 }
 
 export async function pinItem(data: { itemType: 'node' | 'org'; itemId: string }) {

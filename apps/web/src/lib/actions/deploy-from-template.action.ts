@@ -12,10 +12,13 @@ import {
 } from '@/lib/contracts'
 import {
   agentControlAbi,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   agentAccountResolverAbi,
   ORGANIZATIONAL_CONTROL,
   ROLE_OPERATED_AGENT,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   TYPE_ORGANIZATION,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   TYPE_AI_AGENT,
   CLASS_EXECUTOR,
   CLASS_VALIDATOR,
@@ -23,7 +26,9 @@ import {
   CLASS_DISCOVERY,
   CLASS_ORACLE,
   CLASS_CUSTOM,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   ATL_CAPABILITY,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   ATL_SUPPORTED_TRUST,
 } from '@smart-agent/sdk'
 import { addAgentController, setAgentTemplateId } from '@/lib/agent-resolver'
@@ -31,6 +36,7 @@ import { addAgentController, setAgentTemplateId } from '@/lib/agent-resolver'
 import type { OrgTemplate } from '@/lib/org-templates'
 import { registerAgentMetadata } from '@/lib/actions/agent-metadata.action'
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const AI_CLASS_MAP: Record<string, `0x${string}`> = {
   executor: CLASS_EXECUTOR as `0x${string}`,
   validator: CLASS_VALIDATOR as `0x${string}`,
@@ -79,7 +85,7 @@ export async function deployFromTemplate(
     const users = await db.select().from(schema.users)
       .where(eq(schema.users.privyUserId, session.userId)).limit(1)
     if (!users[0]) return { success: false, error: 'User not found' }
-    const userId = users[0].id
+    const _userId = users[0].id // eslint-disable-line @typescript-eslint/no-unused-vars
 
     // ─── Step 1: Deploy Org Smart Account ────────────────────────────
     const orgSalt = BigInt(Date.now())

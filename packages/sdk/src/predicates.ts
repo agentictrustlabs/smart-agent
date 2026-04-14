@@ -68,6 +68,12 @@ export const ATL_HUB_ROLE_VOCABULARY = keccak256(toBytes('atl:hubRoleVocabulary'
 /** JSON map: agent type hash → domain label */
 export const ATL_HUB_TYPE_VOCABULARY = keccak256(toBytes('atl:hubTypeVocabulary'))
 
+// ─── App data (JSON blobs stored per agent) ────────────────────────
+export const ATL_GENMAP_DATA = keccak256(toBytes('atl:genMapData'))
+export const ATL_ACTIVITY_LOG = keccak256(toBytes('atl:activityLog'))
+export const ATL_TRACKED_MEMBERS = keccak256(toBytes('atl:trackedMembers'))
+export const ATL_TEMPLATE_ID = keccak256(toBytes('atl:templateId'))
+
 // ─── ERC-4337 technical ─────────────────────────────────────────────
 export const ATL_ENTRY_POINT = keccak256(toBytes('atl:entryPoint'))
 export const ATL_IMPLEMENTATION = keccak256(toBytes('atl:implementation'))

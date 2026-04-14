@@ -80,7 +80,7 @@ export function RelationshipsClient({ myAgents, allAgents }: RelationshipsClient
     if (result.success) {
       const status = result.autoConfirmed ? 'Created and auto-confirmed (you own both agents)' : 'Created as PROPOSED — awaiting counterparty confirmation'
       setSuccess(
-        `${fromInfo?.name} → ${toInfo?.name} [${roleName(effectiveSelectedRole)} in ${relationshipTypeName(selectedRelationshipType)}]\n${status}`
+        `${fromInfo?.name} → ${toInfo?.name} [${roleName(effectiveSelectedRole, undefined, 'catalyst')} in ${relationshipTypeName(selectedRelationshipType, undefined, 'catalyst')}]\n${status}`
       )
       router.refresh()
     } else {

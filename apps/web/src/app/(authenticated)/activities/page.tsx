@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { getUserOrgs } from '@/lib/get-user-orgs'
-import { db, schema } from '@/db'
+import { getActivityLog, type ActivityEntry } from '@/lib/agent-resolver'
 import { ActivitiesClient } from './ActivitiesClient'
 
 export default async function ActivitiesPage() {
@@ -21,7 +21,6 @@ export default async function ActivitiesPage() {
   // Load activities across all user orgs + child orgs
   const orgAddresses = new Set(userOrgs.map(o => o.address.toLowerCase()))
 
-  // Include child orgs via on-chain edges
   const { getConnectedOrgs } = await import('@/lib/get-org-members')
   for (const org of userOrgs) {
     try {
@@ -30,28 +29,31 @@ export default async function ActivitiesPage() {
     } catch { /* ignored */ }
   }
 
-  const allActivities = await db.select().from(schema.activityLogs)
-  const activities = allActivities.filter(a => orgAddresses.has(a.orgAddress.toLowerCase()))
-
-  // User names
-  const allUsers = await db.select().from(schema.users)
-  const userNames: Record<string, string> = {}
-  for (const u of allUsers) userNames[u.id] = u.name
+  // Fetch activities from on-chain resolver (per-org JSON property)
+  const allActivities: (ActivityEntry & { orgAddress: string })[] = []
+  for (const addr of orgAddresses) {
+    try {
+      const orgActivities = await getActivityLog(addr)
+      for (const a of orgActivities) allActivities.push({ ...a, orgAddress: addr })
+    } catch { /* ignored */ }
+  }
 
   const TYPE_LABELS: Record<string, string> = {
+    entry: 'Entry', evangelism: 'Evangelism', discipleship: 'Discipleship',
+    formation: 'Formation', leadership: 'Leadership', prayer: 'Prayer',
+    service: 'Service', other: 'Other',
+    // Legacy labels
     meeting: 'Meeting', visit: 'Visit', training: 'Training', outreach: 'Outreach',
     'follow-up': 'Follow-up', assessment: 'Assessment', coaching: 'Coaching',
-    prayer: 'Prayer', service: 'Service', other: 'Other',
   }
 
   // Summary stats
   const thisWeek = new Date()
   thisWeek.setDate(thisWeek.getDate() - 7)
-  const recentActivities = activities.filter(a => new Date(a.activityDate) >= thisWeek)
-  const totalParticipants = activities.reduce((s, a) => s + a.participants, 0)
-  const totalHours = Math.round(activities.reduce((s, a) => s + (a.durationMinutes ?? 0), 0) / 60)
+  const recentActivities = allActivities.filter(a => new Date(a.date) >= thisWeek)
+  const totalParticipants = allActivities.reduce((s, a) => s + (a.participants ?? 0), 0)
+  const totalHours = Math.round(allActivities.reduce((s, a) => s + (a.duration ?? 0), 0) / 60)
 
-  // Use first org for activity logging
   const primaryOrg = userOrgs[0]
 
   return (
@@ -63,7 +65,7 @@ export default async function ActivitiesPage() {
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
         <div data-component="protocol-info" style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '2rem', fontWeight: 700, color: '#1565c0' }}>{activities.length}</div>
+          <div style={{ fontSize: '2rem', fontWeight: 700, color: '#1565c0' }}>{allActivities.length}</div>
           <div style={{ fontSize: '0.8rem', color: '#616161' }}>Total Activities</div>
         </div>
         <div data-component="protocol-info" style={{ textAlign: 'center' }}>
@@ -81,10 +83,21 @@ export default async function ActivitiesPage() {
       </div>
 
       <ActivitiesClient
-        activities={activities.map(a => ({
-          ...a,
-          userName: userNames[a.userId] ?? 'Unknown',
-          typeLabel: TYPE_LABELS[a.activityType] ?? a.activityType,
+        activities={allActivities.map(a => ({
+          id: a.id,
+          userId: a.createdBy,
+          userName: a.createdBy,
+          activityType: a.type,
+          typeLabel: TYPE_LABELS[a.type] ?? a.type,
+          title: a.title,
+          description: a.notes ?? a.description ?? null,
+          participants: a.participants ?? 0,
+          location: a.location ?? null,
+          durationMinutes: a.duration ?? null,
+          activityDate: a.date,
+          createdAt: a.createdAt,
+          chainedFrom: a.chainedFrom ?? null,
+          peopleGroup: a.peopleGroup ?? null,
         }))}
         orgAddress={primaryOrg.address}
         orgName={primaryOrg.name}
