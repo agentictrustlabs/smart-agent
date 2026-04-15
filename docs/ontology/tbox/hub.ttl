@@ -1,0 +1,159 @@
+@prefix sa:    <https://smartagent.io/ontology/core#> .
+@prefix sah:   <https://smartagent.io/ontology/hub#> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl:   <http://www.w3.org/2002/07/owl#> .
+@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
+@prefix skos:  <http://www.w3.org/2004/02/skos/core#> .
+@prefix dul:   <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#> .
+
+# =============================================================================
+# Smart Agent Hub Ontology  (T-Box)
+# =============================================================================
+#
+# Hub profiles, organization templates, features, themes, and view modes.
+#
+# Source: apps/web/src/lib/hub-profiles.ts, apps/web/src/lib/org-templates.data.ts
+# Version: 0.1.0
+# =============================================================================
+
+<https://smartagent.io/ontology/hub>
+    a owl:Ontology ;
+    rdfs:label "Smart Agent Hub Ontology" ;
+    rdfs:comment "T-Box: hub profiles, templates, features, and navigation." ;
+    owl:versionInfo "0.1.0" ;
+    owl:imports <https://smartagent.io/ontology/core> .
+
+
+# =============================================================================
+# Hub Profile
+# =============================================================================
+
+sah:HubProfile
+    a owl:Class ;
+    rdfs:subClassOf dul:Configuration ;
+    rdfs:label "Hub Profile" ;
+    rdfs:comment "A network hub configuration: navigation, features, theme, terminology." ;
+    owl:equivalentClass sa:HubProfile .
+
+sah:hubId
+    a owl:DatatypeProperty ;
+    rdfs:label "Hub ID" ;
+    rdfs:comment "Unique identifier (generic, global-church, catalyst, cil)." ;
+    rdfs:domain sah:HubProfile ;
+    rdfs:range xsd:string .
+
+sah:contextTerm
+    a owl:DatatypeProperty ;
+    rdfs:label "Context Term" ;
+    rdfs:comment "Domain term for agent contexts (Council, Network, Operating Group)." ;
+    rdfs:domain sah:HubProfile ;
+    rdfs:range xsd:string .
+
+sah:networkLabel
+    a owl:DatatypeProperty ;
+    rdfs:label "Network Label" ;
+    rdfs:domain sah:HubProfile ;
+    rdfs:range xsd:string .
+
+sah:greetingTemplate
+    a owl:DatatypeProperty ;
+    rdfs:label "Greeting Template" ;
+    rdfs:domain sah:HubProfile ;
+    rdfs:range xsd:string .
+
+
+# =============================================================================
+# Hub Features
+# =============================================================================
+
+sah:HubFeature
+    a owl:Class ;
+    rdfs:subClassOf skos:Concept ;
+    rdfs:label "Hub Feature" ;
+    rdfs:comment "A feature or tool available in a hub." .
+
+sah:hasFeature
+    a owl:ObjectProperty ;
+    rdfs:label "Has Feature" ;
+    rdfs:domain sah:HubProfile ;
+    rdfs:range sah:HubFeature .
+
+sah:FeatureCircles     a sah:HubFeature ; rdfs:label "Circles"     ; skos:notation "circles" .
+sah:FeaturePrayer      a sah:HubFeature ; rdfs:label "Prayer"      ; skos:notation "prayer" .
+sah:FeatureGrow        a sah:HubFeature ; rdfs:label "Grow"        ; skos:notation "grow" .
+sah:FeatureCoaching    a sah:HubFeature ; rdfs:label "Coaching"    ; skos:notation "coaching" .
+sah:FeatureGenmap      a sah:HubFeature ; rdfs:label "GenMap"      ; skos:notation "genmap" .
+sah:FeatureActivities  a sah:HubFeature ; rdfs:label "Activities"  ; skos:notation "activities" .
+sah:FeatureTreasury    a sah:HubFeature ; rdfs:label "Treasury"    ; skos:notation "treasury" .
+sah:FeatureReviews     a sah:HubFeature ; rdfs:label "Reviews"     ; skos:notation "reviews" .
+sah:FeatureMembers     a sah:HubFeature ; rdfs:label "Members"     ; skos:notation "members" .
+sah:FeatureMap         a sah:HubFeature ; rdfs:label "Map"         ; skos:notation "map" .
+
+
+# =============================================================================
+# Organization Template
+# =============================================================================
+
+sah:OrganizationTemplate
+    a owl:Class ;
+    rdfs:subClassOf dul:Design ;
+    rdfs:label "Organization Template" ;
+    rdfs:comment "A pre-configured setup template: default roles, governance, AI agents." ;
+    owl:equivalentClass sa:OrganizationTemplate .
+
+sah:templateId
+    a owl:DatatypeProperty ;
+    rdfs:label "Template ID" ;
+    rdfs:domain sah:OrganizationTemplate ;
+    rdfs:range xsd:string .
+
+sah:defaultMinOwners
+    a owl:DatatypeProperty ;
+    rdfs:label "Default Min Owners" ;
+    rdfs:domain sah:OrganizationTemplate ;
+    rdfs:range xsd:integer .
+
+sah:defaultQuorum
+    a owl:DatatypeProperty ;
+    rdfs:label "Default Quorum" ;
+    rdfs:domain sah:OrganizationTemplate ;
+    rdfs:range xsd:integer .
+
+sah:belongsToHub
+    a owl:ObjectProperty ;
+    rdfs:label "Belongs To Hub" ;
+    rdfs:domain sah:OrganizationTemplate ;
+    rdfs:range sah:HubProfile .
+
+sah:hasTemplateRole
+    a owl:ObjectProperty ;
+    rdfs:label "Has Template Role" ;
+    rdfs:comment "A role pre-configured in this template." ;
+    rdfs:domain sah:OrganizationTemplate .
+
+sah:hasTemplateAgent
+    a owl:ObjectProperty ;
+    rdfs:label "Has Template Agent" ;
+    rdfs:comment "An AI agent definition auto-deployed by this template." ;
+    rdfs:domain sah:OrganizationTemplate .
+
+
+# =============================================================================
+# View Modes
+# =============================================================================
+
+sah:ViewMode
+    a owl:Class ;
+    rdfs:label "View Mode" ;
+    rdfs:comment "A role-specific UI view mode (e.g., Disciple/Coach switcher)." .
+
+sah:viewModeKey
+    a owl:DatatypeProperty ;
+    rdfs:domain sah:ViewMode ;
+    rdfs:range xsd:string .
+
+sah:hasViewMode
+    a owl:ObjectProperty ;
+    rdfs:domain sah:HubProfile ;
+    rdfs:range sah:ViewMode .

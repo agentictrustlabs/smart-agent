@@ -12,8 +12,10 @@ pnpm monorepo, Next.js 15, Foundry, TypeScript strict.
 apps/web/              Next.js 15 App Router (Privy auth, agent deployment UI)
 packages/types/        Shared TypeScript types
 packages/sdk/          TypeScript SDK (viem-based, no external smart account deps)
+packages/discovery/    Knowledge base SDK (GraphDB SPARQL data access)
 packages/contracts/    Foundry smart contracts (our own ERC-4337 + delegation)
 docs/agents/           Role-specific agent guides
+docs/ontology/         Agentic trust ontology (T-Box/C-Box/A-Box turtle files)
 docs/specs/            Architecture spec and roadmap
 ```
 
@@ -55,6 +57,24 @@ forge test             # Run Forge tests
 | `encodeAllowedMethodsTerms` | Build allowed methods terms |
 | `buildCaveat` | Build Caveat struct from enforcer + terms |
 
+## Discovery SDK (packages/discovery)
+
+All reads from the GraphDB knowledge base go through `DiscoveryService` — no raw SPARQL in app code.
+
+| Export | Purpose |
+|--------|---------|
+| `DiscoveryService` | High-level data access: `listAgents()`, `getAgentDetail()`, `getOutgoingEdges()`, etc. |
+| `GraphDBClient` | Low-level SPARQL query/update/upload client |
+| `PREFIXES` / `DATA_GRAPH` | Standard SPARQL namespace prefixes and named graph URI |
+| `KBAgent` / `KBAgentDetail` / `KBRelationshipEdge` | Typed response interfaces |
+| `AgentQueryOptions` | Filter/sort/paginate options for `listAgents()` |
+
+```typescript
+import { DiscoveryService } from '@smart-agent/discovery'
+const discovery = DiscoveryService.fromEnv()
+const agents = await discovery.listAgents({ agentType: 'org', search: 'church' })
+```
+
 ## Coding Standards
 - TypeScript strict — no `any`, no `@ts-ignore` without explanation
 - Solidity `^0.8.28` — optimizer ON, 200 runs
@@ -79,8 +99,14 @@ Orchestrator + Sub-agent model. See `docs/agents/` for role guides.
 | Infra        | docs/agents/infra.md           |
 | Test User    | docs/agents/user.md            |
 | Documentarian| docs/agents/documentarian.md   |
+| Ontologist   | docs/agents/ontologist.md      |
 
 ### Feature Pipeline
 ```
 PM → Developer → Tester → Reviewer → QA → Test User → merge
+```
+
+### Ontology Pipeline
+```
+SDK taxonomy change → Ontologist updates T-Box .ttl → Sync to GraphDB → SPARQL validation
 ```

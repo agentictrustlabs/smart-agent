@@ -1,10 +1,61 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
+import { db, schema } from '@/db'
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import { eq } from 'drizzle-orm'
+import { getMCRole } from '@/lib/mc-roles'
+import GovernancePageClient from '@/components/mc/GovernancePageClient'
+import type { Proposal } from '@/components/mc/GovernancePageClient'
 
 export default async function StewardPage() {
   const currentUser = await getCurrentUser()
   if (!currentUser) redirect('/')
+
+  const isCIL = currentUser.id.startsWith('cil-')
+
+  if (isCIL) {
+    // ── CIL Governance View ──────────────────────────────────────────
+    const role = getMCRole(currentUser.id)
+
+    let allProposals: Proposal[] = []
+    try {
+      const rows = await db.select().from(schema.proposals)
+      // Get proposer names
+      const _userIds = [...new Set(rows.map((r) => r.proposer))] // eslint-disable-line @typescript-eslint/no-unused-vars
+      const users = await db.select().from(schema.users)
+      const nameMap = new Map(users.map((u) => [u.id, u.name]))
+
+      allProposals = rows.map((r) => ({
+        id: r.id,
+        title: r.title,
+        description: r.description,
+        actionType: r.actionType,
+        proposerName: nameMap.get(r.proposer) ?? 'Unknown',
+        votesFor: r.votesFor,
+        votesAgainst: r.votesAgainst,
+        quorumRequired: r.quorumRequired,
+        status: r.status,
+        executedAt: r.executedAt ?? null,
+        createdAt: r.createdAt,
+      }))
+    } catch { /* table may not exist */ }
+
+    const openProposals = allProposals.filter((p) => p.status === 'open')
+    const completedProposals = allProposals.filter((p) => p.status !== 'open')
+
+    // Use the first CIL org address as the governance org
+    const orgAddress = '0x00000000000000000000000000000000000c0001'
+
+    return (
+      <GovernancePageClient
+        openProposals={openProposals}
+        completedProposals={completedProposals}
+        role={role}
+        orgAddress={orgAddress}
+      />
+    )
+  }
 
   return (
     <div>

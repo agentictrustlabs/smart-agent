@@ -12,7 +12,7 @@ export default function HomePage() {
         {/* Logo */}
         <div data-component="hero-logo">
           <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-            <rect width="48" height="48" rx="12" fill="#1565c0" />
+            <rect width="48" height="48" rx="12" fill="#8b5e3c" />
             <path d="M14 24L20 18L26 24L32 18L38 24" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
             <path d="M14 32L20 26L26 32L32 26L38 32" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.5" />
             <circle cx="24" cy="14" r="3" fill="white" />
@@ -44,8 +44,23 @@ export default function HomePage() {
           </span>
         </div>
 
-        {!SKIP_AUTH && <ConnectWalletButton />}
-        {SKIP_AUTH && <DemoLoginPicker />}
+        {/* Wallet connect — always available */}
+        <ConnectWalletButton />
+
+        {/* Demo communities — available in demo mode */}
+        {SKIP_AUTH && (
+          <>
+            <div data-component="hero-divider" style={{
+              display: 'flex', alignItems: 'center', gap: '1rem',
+              margin: '1.5rem 0', color: '#9a8c7e', fontSize: '0.8rem',
+            }}>
+              <span style={{ flex: 1, height: 1, background: '#e0dbd4' }} />
+              or explore a demo community
+              <span style={{ flex: 1, height: 1, background: '#e0dbd4' }} />
+            </div>
+            <DemoLoginPicker />
+          </>
+        )}
       </div>
     </main>
   )

@@ -3,10 +3,9 @@
 import { PrivyProvider } from '@privy-io/react-auth'
 
 const PRIVY_APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID ?? ''
-const SKIP_AUTH = process.env.NEXT_PUBLIC_SKIP_AUTH === 'true'
 
 export function Providers({ children }: { children: React.ReactNode }) {
-  if (!PRIVY_APP_ID || SKIP_AUTH) {
+  if (!PRIVY_APP_ID) {
     return <>{children}</>
   }
 

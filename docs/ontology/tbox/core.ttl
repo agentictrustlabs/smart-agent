@@ -1,0 +1,251 @@
+@prefix sa:      <https://smartagent.io/ontology/core#> .
+@prefix sai:     <https://smartagent.io/ontology/identity#> .
+@prefix sar:     <https://smartagent.io/ontology/relationships#> .
+@prefix sad:     <https://smartagent.io/ontology/delegation#> .
+@prefix sag:     <https://smartagent.io/ontology/governance#> .
+@prefix sah:     <https://smartagent.io/ontology/hub#> .
+@prefix atl:     <https://agentictrust.io/ontology/core#> .
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+@prefix skos:    <http://www.w3.org/2004/02/skos/core#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix prov:    <http://www.w3.org/ns/prov#> .
+@prefix p-plan:  <http://purl.org/net/p-plan#> .
+@prefix dul:     <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#> .
+
+# =============================================================================
+# Smart Agent Core Ontology  (T-Box)
+# =============================================================================
+#
+# Foundational classes for the Smart Agent ERC-4337 framework.
+#
+# The Agent node is the top-level discoverable entity carrying:
+#   - UAID (Universal Agent ID based on smart account address)
+#   - displayName, description, agentType, isActive
+#   - hasIdentity → one or more identity facets (SmartAgentIdentity,
+#     ERC8004Identity, ENSIdentity, HOLIdentity, etc.)
+#
+# Most metadata lives on the identity facets, NOT on the Agent node.
+# This allows an agent to aggregate data from multiple registries.
+#
+# Upper ontology anchoring:
+#   - W3C PROV-O  (provenance)
+#   - P-Plan      (deployment workflows)
+#   - DOLCE-DNS / DUL (foundational classification)
+#
+# Source: packages/sdk/src/predicates.ts
+# Version: 0.2.0
+# =============================================================================
+
+<https://smartagent.io/ontology/core>
+    a owl:Ontology ;
+    rdfs:label "Smart Agent Core Ontology" ;
+    rdfs:comment "T-Box: agent types, UAID, and identity linking for the Smart Agent ERC-4337 framework." ;
+    owl:versionInfo "0.2.0" ;
+    dcterms:creator "Smart Agent Team" ;
+    owl:imports <http://www.w3.org/ns/prov#> ,
+                <http://purl.org/net/p-plan#> .
+
+
+# =============================================================================
+# Agent Type Hierarchy
+# =============================================================================
+
+sa:Agent
+    a owl:Class ;
+    rdfs:subClassOf prov:Agent , dul:Agent ;
+    rdfs:label "Agent" ;
+    rdfs:comment "Top-level discoverable entity in the Smart Agent trust graph. Carries a UAID and links to one or more identity facets via sa:hasIdentity." ;
+    rdfs:subClassOf atl:AIAgent .
+
+sa:PersonAgent
+    a owl:Class ;
+    rdfs:subClassOf sa:Agent ;
+    rdfs:label "Person Agent" ;
+    rdfs:comment "An agent representing a human user." ;
+    sa:onChainTypeHash "TYPE_PERSON" .
+
+sa:OrganizationAgent
+    a owl:Class ;
+    rdfs:subClassOf sa:Agent , dul:Organization ;
+    rdfs:label "Organization" ;
+    rdfs:comment "An agent representing an organization -- church, business, collective, or agency." ;
+    sa:onChainTypeHash "TYPE_ORGANIZATION" .
+
+sa:AIAgentAccount
+    a owl:Class ;
+    rdfs:subClassOf sa:Agent ;
+    rdfs:label "AI Agent" ;
+    rdfs:comment "An autonomous AI agent operating under organizational control." ;
+    sa:onChainTypeHash "TYPE_AI_AGENT" .
+
+sa:HubAgent
+    a owl:Class ;
+    rdfs:subClassOf sa:Agent ;
+    rdfs:label "Hub" ;
+    rdfs:comment "A network hub aggregating member organizations." ;
+    sa:onChainTypeHash "TYPE_HUB" .
+
+
+# =============================================================================
+# AI Agent Classification
+# =============================================================================
+
+sa:AIAgentClass
+    a owl:Class ;
+    rdfs:subClassOf skos:Concept ;
+    rdfs:label "AI Agent Class" ;
+    rdfs:comment "Classification of an AI agent's operational role." .
+
+sa:DiscoveryClass   a sa:AIAgentClass ; rdfs:label "Discovery"  ; sa:onChainClassHash "CLASS_DISCOVERY" .
+sa:ValidatorClass   a sa:AIAgentClass ; rdfs:label "Validator"   ; sa:onChainClassHash "CLASS_VALIDATOR" .
+sa:ExecutorClass    a sa:AIAgentClass ; rdfs:label "Executor"    ; sa:onChainClassHash "CLASS_EXECUTOR" .
+sa:AssistantClass   a sa:AIAgentClass ; rdfs:label "Assistant"   ; sa:onChainClassHash "CLASS_ASSISTANT" .
+sa:OracleClass      a sa:AIAgentClass ; rdfs:label "Oracle"      ; sa:onChainClassHash "CLASS_ORACLE" .
+sa:CustomClass      a sa:AIAgentClass ; rdfs:label "Custom"      ; sa:onChainClassHash "CLASS_CUSTOM" .
+
+
+# =============================================================================
+# Agent Properties (identity-independent — live on the Agent node)
+# =============================================================================
+
+sa:uaid
+    a owl:DatatypeProperty ;
+    rdfs:label "UAID" ;
+    rdfs:comment "Universal Agent ID for discovery. Format: did:sa:{chainId}:{address}. Analogous to ATL core:uaid." ;
+    rdfs:domain sa:Agent ;
+    rdfs:range xsd:string .
+
+sa:displayName
+    a owl:DatatypeProperty ;
+    rdfs:label "Display Name" ;
+    rdfs:comment "Human-readable display name." ;
+    rdfs:domain sa:Agent ;
+    rdfs:range xsd:string .
+
+sa:description
+    a owl:DatatypeProperty ;
+    rdfs:label "Description" ;
+    rdfs:comment "Free-text description of purpose." ;
+    rdfs:domain sa:Agent ;
+    rdfs:range xsd:string .
+
+sa:agentType
+    a owl:DatatypeProperty ;
+    rdfs:label "Agent Type" ;
+    rdfs:comment "On-chain type identifier (person, org, ai, hub)." ;
+    rdfs:domain sa:Agent ;
+    rdfs:range xsd:string .
+
+sa:isActive
+    a owl:DatatypeProperty ;
+    rdfs:label "Is Active" ;
+    rdfs:comment "Whether the agent is currently active." ;
+    rdfs:domain sa:Agent ;
+    rdfs:range xsd:boolean .
+
+sa:onChainAddress
+    a owl:DatatypeProperty ;
+    rdfs:label "On-Chain Address" ;
+    rdfs:comment "Ethereum address of this agent's smart account." ;
+    rdfs:domain sa:Agent ;
+    rdfs:range xsd:string .
+
+sa:createdAtTime
+    a owl:DatatypeProperty ;
+    rdfs:label "Created At" ;
+    rdfs:comment "Timestamp when this agent was first synced to the knowledge base." ;
+    rdfs:domain sa:Agent ;
+    rdfs:range xsd:dateTime .
+
+# NOTE: Controller, capability, trust model, endpoint, template, AI class
+# properties are defined on sai:SmartAgentIdentity in identity.ttl.
+# The Agent node links to them via sa:hasIdentity → sai:SmartAgentIdentity.
+
+
+# =============================================================================
+# Annotation Properties (for ontology metadata)
+# =============================================================================
+
+sa:onChainTypeHash
+    a owl:AnnotationProperty ;
+    rdfs:label "On-Chain Type Hash" ;
+    rdfs:comment "keccak256 hash used as the on-chain type identifier." .
+
+sa:onChainClassHash
+    a owl:AnnotationProperty ;
+    rdfs:label "On-Chain Class Hash" ;
+    rdfs:comment "keccak256 hash used as the on-chain AI class identifier." .
+
+sa:onChainTermHash
+    a owl:AnnotationProperty ;
+    rdfs:label "On-Chain Term Hash" ;
+    rdfs:comment "keccak256(toBytes(term)) for relationship types and roles." .
+
+sa:EthereumAddress
+    a rdfs:Datatype ;
+    rdfs:label "Ethereum Address" ;
+    rdfs:comment "A 20-byte Ethereum address encoded as 0x-prefixed hex string." .
+
+
+# =============================================================================
+# Deployment Provenance (PROV-O + P-Plan)
+# =============================================================================
+
+sa:Deployment
+    a owl:Class ;
+    rdfs:subClassOf prov:Activity ;
+    rdfs:label "Agent Deployment" ;
+    rdfs:comment "The activity of deploying an agent smart account on-chain." .
+
+sa:DeploymentPlan
+    a owl:Class ;
+    rdfs:subClassOf p-plan:Plan ;
+    rdfs:label "Deployment Plan" ;
+    rdfs:comment "Setup wizard plan of ordered deployment steps." .
+
+sa:DeploymentStep
+    a owl:Class ;
+    rdfs:subClassOf p-plan:Step ;
+    rdfs:label "Deployment Step" ;
+    rdfs:comment "A single step in a deployment plan." .
+
+sa:deployedBy
+    a owl:ObjectProperty ;
+    rdfs:subPropertyOf prov:wasAssociatedWith ;
+    rdfs:label "Deployed By" ;
+    rdfs:domain sa:Deployment ;
+    rdfs:range sa:Agent .
+
+sa:deployedAt
+    a owl:DatatypeProperty ;
+    rdfs:subPropertyOf prov:endedAtTime ;
+    rdfs:label "Deployed At" ;
+    rdfs:domain sa:Deployment ;
+    rdfs:range xsd:dateTime .
+
+sa:deploymentGenerated
+    a owl:ObjectProperty ;
+    rdfs:subPropertyOf prov:generated ;
+    rdfs:label "Generated" ;
+    rdfs:domain sa:Deployment ;
+    rdfs:range sa:Agent .
+
+
+# =============================================================================
+# ERC-4337 Infrastructure
+# =============================================================================
+
+sa:AgentAccountFactory
+    a owl:Class ;
+    rdfs:subClassOf prov:SoftwareAgent ;
+    rdfs:label "Agent Account Factory" ;
+    rdfs:comment "Factory contract for deterministic CREATE2 deployment." .
+
+sa:AgentAccountResolver
+    a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "Agent Account Resolver" ;
+    rdfs:comment "On-chain registry storing agent metadata." .

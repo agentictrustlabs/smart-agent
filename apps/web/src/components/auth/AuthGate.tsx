@@ -4,21 +4,22 @@ import { useAuth } from '@/hooks/use-auth'
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef } from 'react'
 
-const SKIP_AUTH = process.env.NEXT_PUBLIC_SKIP_AUTH === 'true'
+const PRIVY_CONNECT_INTENT_KEY = 'smart-agent:privy-connect-intent'
 
 export function AuthGate() {
-  const { authenticated, ready, user } = useAuth()
+  const { authenticated, ready, user, authMethod } = useAuth()
   const router = useRouter()
   const hasRedirected = useRef(false)
 
   useEffect(() => {
-    // In demo mode, don't auto-redirect — let user pick from DemoLoginPicker
-    if (SKIP_AUTH) return
-
     if (!ready || !authenticated || !user || hasRedirected.current) return
+    if (authMethod !== 'privy') return
     if (!user.wallet?.address) return
+    if (typeof window === 'undefined') return
+    if (window.sessionStorage.getItem(PRIVY_CONNECT_INTENT_KEY) !== 'true') return
 
     hasRedirected.current = true
+    window.sessionStorage.removeItem(PRIVY_CONNECT_INTENT_KEY)
 
     const googleUser = user as unknown as Record<string, { name?: string } | undefined>
 
@@ -42,10 +43,10 @@ export function AuthGate() {
         if (!profile.name || profile.name === 'Agent User' || !profile.email) {
           router.push('/onboarding')
         } else {
-          router.push('/dashboard')
+          router.push('/catalyst')
         }
       })
-  }, [ready, authenticated, user, router])
+  }, [ready, authenticated, user, authMethod, router])
 
   return null
 }

@@ -14,6 +14,25 @@ function getPrivyClient(): PrivyClient {
   return privyClient
 }
 
+function getDemoSessionFromCookie(
+  demoUser: string | undefined,
+): AuthSession | null {
+  if (!demoUser) {
+    return null
+  }
+
+  const user = DEMO_USERS[demoUser]
+  if (!user) {
+    return null
+  }
+
+  return {
+    userId: user.userId,
+    walletAddress: user.walletAddress,
+    email: user.email,
+  }
+}
+
 export interface AuthSession {
   userId: string
   walletAddress: string | null
@@ -47,22 +66,14 @@ export const DEMO_USERS: Record<string, { userId: string; walletAddress: string;
 }
 
 export async function getSession(): Promise<AuthSession | null> {
-  if (SKIP_AUTH) {
-    const cookieStore = await cookies()
-    const demoUser = cookieStore.get('demo-user')?.value ?? 'gc-user-001'
-    const user = DEMO_USERS[demoUser] ?? DEMO_USERS['gc-user-001']
-    return {
-      userId: user.userId,
-      walletAddress: user.walletAddress,
-      email: user.email,
-    }
-  }
-
   const cookieStore = await cookies()
+  const demoSession = SKIP_AUTH
+    ? getDemoSessionFromCookie(cookieStore.get('demo-user')?.value)
+    : null
   const authToken = cookieStore.get('privy-token')?.value
 
   if (!authToken) {
-    return null
+    return demoSession
   }
 
   try {
@@ -87,7 +98,7 @@ export async function getSession(): Promise<AuthSession | null> {
     }
   } catch (err) {
     console.warn('[auth] Session verification failed:', err)
-    return null
+    return demoSession
   }
 }
 

@@ -8,6 +8,93 @@ export default async function CatalystActivitiesPage() {
   const currentUser = await getCurrentUser()
   if (!currentUser) redirect('/')
 
+  // ── CIL Revenue branch ───────────────────────────────────────────────
+  const isCIL = currentUser.id.startsWith('cil-')
+  if (isCIL) {
+    const { getMCRole, getBusinessOrgAddressesForUser } = await import('@/lib/mc-roles')
+    const { RevenuePageClient } = await import('@/components/mc/RevenuePageClient')
+    const { getAgentMetadata } = await import('@/lib/agent-metadata')
+
+    const role = getMCRole(currentUser.id)
+    const allowedAddrs = getBusinessOrgAddressesForUser(currentUser.id)
+
+    // Get all revenue reports
+    let allReports = await db.select().from(schema.revenueReports)
+
+    // Role-based filtering
+    if (role === 'business-owner' && allowedAddrs) {
+      // Business owners see only their own
+      const lowerAddrs = new Set(allowedAddrs.map(a => a.toLowerCase()))
+      allReports = allReports.filter(r => lowerAddrs.has(r.orgAddress.toLowerCase()))
+    } else if (role === 'funder') {
+      // Funders see only verified reports
+      allReports = allReports.filter(r => r.status === 'verified')
+    }
+    // ilad-ops, admin, reviewer, local-manager see all
+
+    // User names
+    const allUsers = await db.select().from(schema.users)
+    const userNames: Record<string, string> = {}
+    for (const u of allUsers) userNames[u.id] = u.name
+
+    // Business names from agent metadata
+    const bizNames: Record<string, string> = {}
+    const uniqueAddrs = new Set(allReports.map(r => r.orgAddress.toLowerCase()))
+    for (const addr of uniqueAddrs) {
+      try {
+        const meta = await getAgentMetadata(addr)
+        bizNames[addr] = meta.displayName
+      } catch {
+        bizNames[addr] = addr.slice(0, 10) + '...'
+      }
+    }
+
+    // Compute stats
+    const now = new Date()
+    const currentPeriod = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+    const thisMonthReports = allReports.filter(r => r.period === currentPeriod)
+    const pendingCount = allReports.filter(r => r.status === 'submitted').length
+    const totalRevenue = allReports.reduce((s, r) => s + r.grossRevenue, 0)
+    const totalSharePayments = allReports.reduce((s, r) => s + r.sharePayment, 0)
+
+    const reports = allReports
+      .sort((a, b) => b.period.localeCompare(a.period))
+      .map(r => ({
+        id: r.id,
+        orgAddress: r.orgAddress,
+        businessName: bizNames[r.orgAddress.toLowerCase()] ?? r.orgAddress.slice(0, 10) + '...',
+        period: r.period,
+        grossRevenue: r.grossRevenue,
+        expenses: r.expenses,
+        netRevenue: r.netRevenue,
+        sharePayment: r.sharePayment,
+        currency: r.currency,
+        status: r.status,
+        submittedBy: r.submittedBy,
+        submitterName: userNames[r.submittedBy] ?? 'Unknown',
+        notes: r.notes,
+      }))
+
+    // User org address for submit form
+    const userOrgs = await getUserOrgs(currentUser.id)
+    const userOrgAddress = allowedAddrs?.[0] ?? userOrgs[0]?.address ?? ''
+
+    return (
+      <RevenuePageClient
+        reports={reports}
+        stats={{
+          total: thisMonthReports.length,
+          pending: pendingCount,
+          totalRevenue,
+          totalSharePayments,
+        }}
+        role={role}
+        userOrgAddress={userOrgAddress}
+      />
+    )
+  }
+  // ── End CIL Revenue branch ───────────────────────────────────────────
+
   const userOrgs = await getUserOrgs(currentUser.id)
   if (userOrgs.length === 0) return <p>No organizations found.</p>
 

@@ -1,0 +1,311 @@
+@prefix sa:      <https://smartagent.io/ontology/core#> .
+@prefix sai:     <https://smartagent.io/ontology/identity#> .
+@prefix eth:     <https://smartagent.io/ontology/eth#> .
+@prefix atl:     <https://agentictrust.io/ontology/core#> .
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+@prefix skos:    <http://www.w3.org/2004/02/skos/core#> .
+@prefix prov:    <http://www.w3.org/ns/prov#> .
+
+# =============================================================================
+# Smart Agent Identity Ontology  (T-Box)
+# =============================================================================
+#
+# Multi-facet identity model following the legacy ATL pattern.
+# An Agent can have multiple identity facets simultaneously:
+#
+#   Agent (UAID, displayName, type)
+#     ├── hasIdentity → SmartAgentIdentity  (on-chain resolver data)
+#     ├── hasIdentity → ERC8004Identity     (future: ERC-8004 registry)
+#     ├── hasIdentity → ENSIdentity         (future: ENS name)
+#     └── hasIdentity → HOLIdentity         (future: Holder-of-Label)
+#
+# Each identity facet follows the quad pattern:
+#   Registry → Registration → Identity → Identifier + Descriptor
+#
+# The SmartAgentIdentity facet carries the metadata from our on-chain
+# AgentAccountResolver: controllers, capabilities, trust models,
+# endpoints, template, AI class, and governance config.
+#
+# Source: packages/sdk/src/predicates.ts, legacy ATL identity.ttl
+# Version: 0.2.0
+# =============================================================================
+
+<https://smartagent.io/ontology/identity>
+    a owl:Ontology ;
+    rdfs:label "Smart Agent Identity Ontology" ;
+    rdfs:comment "T-Box: multi-facet identity model — SmartAgentIdentity, Ethereum accounts, descriptors." ;
+    owl:versionInfo "0.2.0" ;
+    owl:imports <https://smartagent.io/ontology/core> .
+
+
+# =============================================================================
+# Abstract Identity Framework (mirrors ATL identity.ttl)
+# =============================================================================
+
+sai:Identity
+    a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "Identity" ;
+    rdfs:comment "A protocol-scoped identity entity." ;
+    owl:equivalentClass atl:Identity .
+
+sai:AgentRegistry
+    a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "Agent Registry" ;
+    rdfs:comment "Registry/namespace that anchors identity registrations for agents." ;
+    owl:equivalentClass atl:AgentRegistry .
+
+sai:AgentIdentityRegistration
+    a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "Agent Identity Registration" ;
+    rdfs:comment "Registration record anchoring an agent identity within a registry." ;
+    owl:equivalentClass atl:AgentIdentityRegistration .
+
+sai:AgentIdentity
+    a owl:Class ;
+    rdfs:subClassOf sai:Identity ;
+    rdfs:label "Agent Identity" ;
+    rdfs:comment "Agent identity entity (protocol-scoped). An Agent may have multiple AgentIdentity facets from different registries." ;
+    owl:equivalentClass atl:AgentIdentity .
+
+sai:Identifier
+    a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "Identifier" ;
+    rdfs:comment "An identifier artifact (DID, address, name) and its metadata." ;
+    owl:equivalentClass atl:Identifier .
+
+sai:UniversalIdentifier
+    a owl:Class ;
+    rdfs:subClassOf sai:Identifier ;
+    rdfs:label "Universal Identifier" ;
+    rdfs:comment "A normalized identifier carrying routing metadata." ;
+    owl:equivalentClass atl:UniversalIdentifier .
+
+sai:Descriptor
+    a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "Descriptor" ;
+    rdfs:comment "Resolver-produced normalized metadata view for discovery/validation." ;
+    owl:equivalentClass atl:Descriptor .
+
+sai:AgentIdentityDescriptor
+    a owl:Class ;
+    rdfs:subClassOf sai:Descriptor ;
+    rdfs:label "Agent Identity Descriptor" ;
+    owl:equivalentClass atl:AgentIdentityDescriptor .
+
+# ─── Core linking properties ─────────────────────────────────────────
+
+sa:hasIdentity
+    a owl:ObjectProperty ;
+    rdfs:label "has identity" ;
+    rdfs:comment "Links an Agent to one of its identity facets. An Agent may have multiple identities from different registries." ;
+    rdfs:domain sa:Agent ;
+    rdfs:range sai:AgentIdentity .
+
+sa:identityOf
+    a owl:ObjectProperty ;
+    rdfs:label "identity of" ;
+    rdfs:comment "Inverse of hasIdentity — links an identity back to its agent." ;
+    rdfs:domain sai:AgentIdentity ;
+    rdfs:range sa:Agent ;
+    owl:inverseOf sa:hasIdentity .
+
+sai:identityRegistry
+    a owl:ObjectProperty ;
+    rdfs:label "identity registry" ;
+    rdfs:comment "The registry this identity is registered in." ;
+    rdfs:domain sai:AgentIdentity ;
+    rdfs:range sai:AgentRegistry .
+
+sai:hasIdentifier
+    a owl:ObjectProperty ;
+    rdfs:label "has identifier" ;
+    rdfs:comment "Links an identity to its identifier artifact." ;
+    rdfs:domain sai:AgentIdentity ;
+    rdfs:range sai:Identifier .
+
+sai:hasDescriptor
+    a owl:ObjectProperty ;
+    rdfs:label "has descriptor" ;
+    rdfs:comment "Links an identity to its resolver-produced descriptor." ;
+    rdfs:domain sai:AgentIdentity ;
+    rdfs:range sai:Descriptor .
+
+
+# =============================================================================
+# Ethereum Account Model
+# =============================================================================
+
+eth:Account
+    a owl:Class ;
+    rdfs:subClassOf prov:SoftwareAgent ;
+    rdfs:label "Ethereum Account" ;
+    rdfs:comment "Ethereum account (EOA or Smart Account) identified by chainId and address." .
+
+eth:SmartAccount
+    a owl:Class ;
+    rdfs:subClassOf eth:Account ;
+    rdfs:label "Smart Account" ;
+    rdfs:comment "ERC-4337 smart account (contract account)." .
+
+eth:EOAAccount
+    a owl:Class ;
+    rdfs:subClassOf eth:Account ;
+    rdfs:label "EOA Account" ;
+    rdfs:comment "Externally Owned Account." .
+
+eth:accountChainId
+    a owl:DatatypeProperty ;
+    rdfs:label "Chain ID" ;
+    rdfs:domain eth:Account ;
+    rdfs:range xsd:integer .
+
+eth:accountAddress
+    a owl:DatatypeProperty ;
+    rdfs:label "Account Address" ;
+    rdfs:domain eth:Account ;
+    rdfs:range xsd:string .
+
+eth:hasEOAOwner
+    a owl:ObjectProperty ;
+    rdfs:label "has EOA Owner" ;
+    rdfs:comment "Links a smart account to its controlling EOA." ;
+    rdfs:domain eth:Account ;
+    rdfs:range eth:Account .
+
+
+# =============================================================================
+# Smart Agent Identity Facet
+# =============================================================================
+# This is the primary identity facet for agents in our system.
+# Data comes from the on-chain AgentAccountResolver.
+
+sai:SmartAgentIdentity
+    a owl:Class ;
+    rdfs:subClassOf sai:AgentIdentity ;
+    rdfs:label "Smart Agent Identity" ;
+    rdfs:comment "Identity facet from the Smart Agent on-chain AgentAccountResolver. Carries controllers, capabilities, trust models, endpoints, template, and AI class." .
+
+sai:SmartAgentRegistry
+    a owl:Class ;
+    rdfs:subClassOf sai:AgentRegistry ;
+    rdfs:label "Smart Agent Registry" ;
+    rdfs:comment "The AgentAccountResolver on-chain registry." .
+
+sai:SmartAgentIdentifier
+    a owl:Class ;
+    rdfs:subClassOf sai:UniversalIdentifier ;
+    rdfs:label "Smart Agent Identifier" ;
+    rdfs:comment "Identifier for a Smart Agent identity (did:sa:{chainId}:{address})." .
+
+sai:SmartAgentDescriptor
+    a owl:Class ;
+    rdfs:subClassOf sai:AgentIdentityDescriptor ;
+    rdfs:label "Smart Agent Descriptor" ;
+    rdfs:comment "Descriptor carrying resolver metadata for a Smart Agent identity." .
+
+# ─── SmartAgentIdentity Properties ───────────────────────────────────
+
+sai:hasAgentAccount
+    a owl:ObjectProperty ;
+    rdfs:label "has agent account" ;
+    rdfs:comment "Links a SmartAgentIdentity to its ERC-4337 smart account." ;
+    rdfs:domain sai:SmartAgentIdentity ;
+    rdfs:range eth:SmartAccount .
+
+sai:hasOwnerAccount
+    a owl:ObjectProperty ;
+    rdfs:label "has owner account" ;
+    rdfs:comment "Links a SmartAgentIdentity to the EOA that controls it." ;
+    rdfs:domain sai:SmartAgentIdentity ;
+    rdfs:range eth:Account .
+
+sai:aiAgentClass
+    a owl:ObjectProperty ;
+    rdfs:label "AI Agent Class" ;
+    rdfs:comment "Classification of an AI agent (executor, validator, etc.)." ;
+    rdfs:domain sai:SmartAgentIdentity ;
+    rdfs:range sa:AIAgentClass .
+
+sai:capability
+    a owl:DatatypeProperty ;
+    rdfs:label "Capability" ;
+    rdfs:comment "A capability this agent supports (multi-valued)." ;
+    rdfs:domain sai:SmartAgentIdentity ;
+    rdfs:range xsd:string .
+
+sai:supportedTrustModel
+    a owl:DatatypeProperty ;
+    rdfs:label "Supported Trust Model" ;
+    rdfs:comment "A trust model this agent supports (multi-valued)." ;
+    rdfs:domain sai:SmartAgentIdentity ;
+    rdfs:range xsd:string .
+
+sai:a2aEndpoint
+    a owl:DatatypeProperty ;
+    rdfs:label "A2A Endpoint" ;
+    rdfs:domain sai:SmartAgentIdentity ;
+    rdfs:range xsd:anyURI .
+
+sai:mcpServer
+    a owl:DatatypeProperty ;
+    rdfs:label "MCP Server" ;
+    rdfs:domain sai:SmartAgentIdentity ;
+    rdfs:range xsd:anyURI .
+
+sai:templateId
+    a owl:DatatypeProperty ;
+    rdfs:label "Template ID" ;
+    rdfs:comment "Organization template used during setup." ;
+    rdfs:domain sai:SmartAgentIdentity ;
+    rdfs:range xsd:string .
+
+sai:metadataURI
+    a owl:DatatypeProperty ;
+    rdfs:label "Metadata URI" ;
+    rdfs:domain sai:SmartAgentIdentity ;
+    rdfs:range xsd:anyURI .
+
+sai:registeredAtTime
+    a owl:DatatypeProperty ;
+    rdfs:label "Registered At" ;
+    rdfs:comment "Timestamp when this identity was registered on-chain." ;
+    rdfs:domain sai:SmartAgentIdentity ;
+    rdfs:range xsd:dateTime .
+
+
+# =============================================================================
+# Future Identity Facet Stubs
+# =============================================================================
+# These will be fleshed out when we integrate with external registries.
+
+sai:ERC8004Identity
+    a owl:Class ;
+    rdfs:subClassOf sai:AgentIdentity ;
+    rdfs:label "ERC-8004 Identity" ;
+    rdfs:comment "Future: identity facet from an ERC-8004 registry." .
+
+sai:ENSIdentity
+    a owl:Class ;
+    rdfs:subClassOf sai:AgentIdentity ;
+    rdfs:label "ENS Identity" ;
+    rdfs:comment "Future: identity facet from ENS." .
+
+sai:HOLIdentity
+    a owl:Class ;
+    rdfs:subClassOf sai:AgentIdentity ;
+    rdfs:label "HOL Identity" ;
+    rdfs:comment "Future: identity facet from Holder-of-Label registry." .
+
+sai:NANDAIdentity
+    a owl:Class ;
+    rdfs:subClassOf sai:AgentIdentity ;
+    rdfs:label "NANDA Identity" ;
+    rdfs:comment "Future: identity facet from Name-and-Address (NANDA) registry." .

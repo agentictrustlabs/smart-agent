@@ -192,12 +192,8 @@ export const HUB_PROFILES: HubProfile[] = [
     greetingTemplate: 'Good day, {name}',
     navItems: [
       { href: '/catalyst', label: 'Home', section: 'primary', exact: true, activePrefixes: ['/', '/catalyst', '/dashboard'] },
-      { href: '/oikos', label: 'Oikos', section: 'primary', activePrefixes: ['/oikos', '/circles', '/catalyst/circles'] },
-      { href: '/nurture', label: 'Nurture', section: 'primary', activePrefixes: ['/nurture', '/catalyst/prayer', '/catalyst/grow', '/catalyst/coach'] },
-      { href: '/groups', label: 'Build', section: 'primary', activePrefixes: ['/groups', '/catalyst/groups', '/catalyst/members', '/catalyst/map'] },
-      { href: '/steward', label: 'Steward', section: 'primary', requiresCapability: 'governance', activePrefixes: ['/steward', '/treasury', '/reviews', '/network', '/trust'] },
-      { href: '/activity', label: 'Activity', section: 'primary', activePrefixes: ['/activity', '/catalyst/activities', '/activities'] },
-      { href: '/agents', label: 'Agents', section: 'admin', requiresCapability: 'agents' },
+      { href: '/agents', label: 'Agents', section: 'primary', activePrefixes: ['/agents'] },
+      { href: '/steward', label: 'Management', section: 'primary', activePrefixes: ['/steward', '/treasury', '/reviews', '/network', '/trust', '/groups', '/activity', '/nurture', '/oikos'] },
       { href: '/settings', label: 'Settings', section: 'admin', requiresCapability: 'settings' },
       { href: '/me', label: 'Profile', section: 'personal' },
     ],
@@ -247,8 +243,8 @@ export const HUB_PROFILES: HubProfile[] = [
     greetingTemplate: 'Good day, {name}',
     navItems: [
       { href: '/catalyst', label: 'Home', section: 'primary', exact: true, activePrefixes: ['/', '/catalyst', '/dashboard'] },
-      { href: '/oikos', label: 'Oikos', section: 'primary', activePrefixes: ['/oikos', '/circles', '/catalyst/circles'] },
       { href: '/nurture', label: 'Nurture', section: 'primary', activePrefixes: ['/nurture', '/catalyst/prayer', '/catalyst/grow', '/catalyst/coach'] },
+      { href: '/oikos', label: 'Oikos', section: 'primary', activePrefixes: ['/oikos', '/circles', '/catalyst/circles'] },
       { href: '/groups', label: 'Build', section: 'primary', activePrefixes: ['/groups', '/catalyst/groups', '/catalyst/members', '/catalyst/map'] },
       { href: '/steward', label: 'Steward', section: 'primary', requiresCapability: 'governance', activePrefixes: ['/steward', '/treasury', '/reviews', '/network', '/trust'] },
       { href: '/activity', label: 'Activity', section: 'primary', activePrefixes: ['/activity', '/catalyst/activities', '/activities'] },
@@ -259,8 +255,8 @@ export const HUB_PROFILES: HubProfile[] = [
   },
   {
     id: 'cil',
-    name: 'Collective Impact Labs',
-    description: 'Revenue-sharing capital deployment with trust graph, assertions, and conflict resolution.',
+    name: 'Mission Collective',
+    description: 'Revenue-sharing capital deployment — ILAD operations, Ravah model, business trust graph.',
     templateIds: [
       'cil-operator',
       'cil-funder',
@@ -272,35 +268,41 @@ export const HUB_PROFILES: HubProfile[] = [
     defaultContextKind: 'cohort',
     networkLabel: 'Trust Network',
     lineageLabel: 'Capital Flow',
-    overviewLabel: 'Pilot View',
+    overviewLabel: 'Command Center',
     contextsLabel: 'Groups',
     agentLabel: 'Participants',
-    activityLabel: 'Operations',
+    activityLabel: 'Revenue',
     features: {
       activities: true,
       members: true,
       treasury: true,
       reviews: true,
       genmap: true,
+      map: false,
+      circles: false,
+      prayer: false,
+      grow: false,
+      coaching: false,
     },
     theme: {
-      accent: '#0d6e6e',
-      accentLight: 'rgba(13,110,110,0.10)',
-      bg: '#f5f9f9',
+      accent: '#2563EB',
+      accentLight: 'rgba(37,99,235,0.08)',
+      bg: '#f8fafc',
       headerBg: '#ffffff',
-      text: '#2d4a4a',
-      textMuted: '#7a9a9a',
-      border: '#d5e5e5',
-      secondary: '#0d6e6e',
-      secondaryLight: 'rgba(13,110,110,0.08)',
+      text: '#1e293b',
+      textMuted: '#64748b',
+      border: '#e2e8f0',
+      secondary: '#10B981',
+      secondaryLight: 'rgba(16,185,129,0.08)',
     },
     greetingTemplate: 'Welcome, {name}',
+    viewModes: [],
     navItems: [
-      { href: '/catalyst', label: 'Home', section: 'primary', exact: true, activePrefixes: ['/', '/catalyst', '/dashboard'] },
-      { href: '/oikos', label: 'Oikos', section: 'primary', activePrefixes: ['/oikos', '/circles', '/catalyst/circles'] },
+      { href: '/catalyst', label: 'Command Center', section: 'primary', exact: true, activePrefixes: ['/', '/catalyst', '/dashboard'] },
       { href: '/groups', label: 'Portfolio', section: 'primary', activePrefixes: ['/groups', '/catalyst/groups', '/catalyst/members'] },
-      { href: '/steward', label: 'Steward', section: 'primary', activePrefixes: ['/steward', '/treasury', '/reviews', '/network', '/trust'] },
-      { href: '/activity', label: 'Operations', section: 'primary', activePrefixes: ['/activity', '/catalyst/activities', '/activities'] },
+      { href: '/activity', label: 'Revenue', section: 'primary', activePrefixes: ['/activity', '/catalyst/activities', '/activities'] },
+      { href: '/steward', label: 'Governance', section: 'primary', activePrefixes: ['/steward', '/treasury', '/reviews', '/network', '/trust'] },
+      { href: '/nurture', label: 'Training', section: 'primary', activePrefixes: ['/nurture', '/catalyst/grow'] },
       { href: '/agents', label: 'Agents', section: 'admin', requiresCapability: 'agents' },
       { href: '/settings', label: 'Settings', section: 'admin', requiresCapability: 'settings' },
       { href: '/me', label: 'Profile', section: 'personal' },
@@ -317,7 +319,7 @@ export async function getHubProfileFromChain(hubAddress: string): Promise<HubPro
     const { getPublicClient } = await import('@/lib/contracts')
     const {
       agentAccountResolverAbi,
-      ATL_HUB_NAV_CONFIG, ATL_HUB_NETWORK_LABEL, ATL_HUB_CONTEXT_TERM,
+      ATL_HUB_NETWORK_LABEL, ATL_HUB_CONTEXT_TERM,
       ATL_HUB_OVERVIEW_LABEL, ATL_HUB_AGENT_LABEL,
       ATL_HUB_FEATURES, ATL_HUB_THEME, ATL_HUB_VIEW_MODES, ATL_HUB_GREETING,
     } = await import('@smart-agent/sdk')
@@ -335,7 +337,7 @@ export async function getHubProfileFromChain(hubAddress: string): Promise<HubPro
     const contextTerm = await getString(ATL_HUB_CONTEXT_TERM as `0x${string}`) || 'Context'
     const overviewLabel = await getString(ATL_HUB_OVERVIEW_LABEL as `0x${string}`) || 'Overview'
     const agentLabel = await getString(ATL_HUB_AGENT_LABEL as `0x${string}`) || 'Agents'
-    const navJson = await getString(ATL_HUB_NAV_CONFIG as `0x${string}`)
+    // navJson read removed — static profiles are authoritative for nav items
     const featuresJson = await getString(ATL_HUB_FEATURES as `0x${string}`)
     const themeJson = await getString(ATL_HUB_THEME as `0x${string}`)
     const viewModesJson = await getString(ATL_HUB_VIEW_MODES as `0x${string}`)
@@ -349,10 +351,9 @@ export async function getHubProfileFromChain(hubAddress: string): Promise<HubPro
     else if (nameLower.includes('collective') || nameLower.includes('cil')) staticFallback = HUB_PROFILES.find(p => p.id === 'cil')
     const defaultProfile = staticFallback ?? HUB_PROFILES[0]
 
-    let navItems: HubNavItem[] = defaultProfile.navItems
-    if (navJson) {
-      try { navItems = JSON.parse(navJson) } catch { /* use static fallback */ }
-    }
+    // Always use static navItems — on-chain nav config may lack required fields (section, activePrefixes).
+    // The static profiles in HUB_PROFILES are the authoritative nav source.
+    const navItems: HubNavItem[] = defaultProfile.navItems
 
     let features: HubFeatures = defaultProfile.features
     if (featuresJson) {

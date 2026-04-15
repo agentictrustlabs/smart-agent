@@ -17,7 +17,7 @@ const COMMUNITIES: DemoCommunity[] = [
   {
     id: 'global-church',
     name: 'Global.Church',
-    description: 'Trust fabric for churches, denominations, mission agencies, and giving intermediaries',
+    description: 'Trust and stewardship portal — churches, denominations, mission agencies, and endorsers working together',
     color: '#8b5e3c',
     users: [
       { key: 'gc-user-001', name: 'Pastor James', org: 'Grace Community Church', role: 'Senior Pastor' },
@@ -44,9 +44,9 @@ const COMMUNITIES: DemoCommunity[] = [
   },
   {
     id: 'cil',
-    name: 'Collective Impact Labs',
-    description: 'Revenue-sharing capital deployment — ILAD operations, Ravah model, business trust graph',
-    color: '#8b5e3c',
+    name: 'Mission Collective',
+    description: 'Revenue-sharing capital deployment in Togo — ILAD operations, Ravah model, business health monitoring',
+    color: '#2563EB',
     users: [
       { key: 'cil-user-001', name: 'Cameron Henrion', org: 'ILAD', role: 'Operations Lead' },
       { key: 'cil-user-002', name: 'Nick Courchesne', org: 'ILAD', role: 'Reviewer' },
@@ -79,7 +79,7 @@ export function DemoLoginPicker() {
   // Community selection view
   if (!community) {
     return (
-      <div data-component="demo-picker">
+      <div id="demo-login-picker" data-component="demo-picker">
         <p data-component="demo-picker-eyebrow">
           Select a community
         </p>
@@ -113,7 +113,7 @@ export function DemoLoginPicker() {
 
   // User selection view
   return (
-    <div data-component="demo-picker">
+    <div id="demo-login-picker" data-component="demo-picker">
       <button
         onClick={() => setSelectedCommunity(null)}
         data-component="demo-picker-back"

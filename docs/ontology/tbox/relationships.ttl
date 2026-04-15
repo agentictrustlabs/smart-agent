@@ -1,0 +1,212 @@
+@prefix sa:      <https://smartagent.io/ontology/core#> .
+@prefix sar:     <https://smartagent.io/ontology/relationships#> .
+@prefix atl:     <https://agentictrust.io/ontology/core#> .
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+@prefix skos:    <http://www.w3.org/2004/02/skos/core#> .
+@prefix prov:    <http://www.w3.org/ns/prov#> .
+@prefix dul:     <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#> .
+
+# =============================================================================
+# Smart Agent Relationships Ontology  (T-Box)
+# =============================================================================
+#
+# Directed trust graph: edge model, 16 relationship types, and assertion model.
+# Each edge is a prov:Entity with full provenance tracking.
+#
+# Source: packages/sdk/src/relationship-taxonomy.ts (relationshipTypeDefinitions)
+# Version: 0.1.0
+# =============================================================================
+
+<https://smartagent.io/ontology/relationships>
+    a owl:Ontology ;
+    rdfs:label "Smart Agent Relationships Ontology" ;
+    rdfs:comment "T-Box: relationship type hierarchy and directed edge model for the trust graph." ;
+    owl:versionInfo "0.1.0" ;
+    owl:imports <https://smartagent.io/ontology/core> .
+
+
+# =============================================================================
+# Edge Model (PROV-O aligned)
+# =============================================================================
+
+sar:RelationshipEdge
+    a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "Relationship Edge" ;
+    rdfs:comment "A directed edge in the trust graph. Subject agent relates to object agent via a typed relationship with roles. Created as a prov:Entity so its provenance (who created, when, assertions) is tracked." .
+
+sar:subject
+    a owl:ObjectProperty ;
+    rdfs:label "Subject" ;
+    rdfs:comment "Source agent of the edge." ;
+    rdfs:domain sar:RelationshipEdge ;
+    rdfs:range sa:Agent .
+
+sar:object
+    a owl:ObjectProperty ;
+    rdfs:label "Object" ;
+    rdfs:comment "Target agent of the edge." ;
+    rdfs:domain sar:RelationshipEdge ;
+    rdfs:range sa:Agent .
+
+sar:relationshipType
+    a owl:ObjectProperty ;
+    rdfs:label "Relationship Type" ;
+    rdfs:comment "The type classification of this edge." ;
+    rdfs:domain sar:RelationshipEdge ;
+    rdfs:range sar:RelationshipType .
+
+sar:hasRole
+    a owl:ObjectProperty ;
+    rdfs:label "Has Role" ;
+    rdfs:comment "A role assigned to the subject in this relationship (multi-valued)." ;
+    rdfs:domain sar:RelationshipEdge ;
+    rdfs:range sar:Role .
+
+sar:edgeStatus
+    a owl:ObjectProperty ;
+    rdfs:label "Edge Status" ;
+    rdfs:comment "Lifecycle status of this edge." ;
+    rdfs:domain sar:RelationshipEdge ;
+    rdfs:range sar:EdgeStatus .
+
+sar:edgeId
+    a owl:DatatypeProperty ;
+    rdfs:label "Edge ID" ;
+    rdfs:comment "On-chain computed ID: keccak256(subject, object, relationshipType)." ;
+    rdfs:domain sar:RelationshipEdge ;
+    rdfs:range xsd:string .
+
+sar:createdBy
+    a owl:ObjectProperty ;
+    rdfs:subPropertyOf prov:wasAttributedTo ;
+    rdfs:label "Created By" ;
+    rdfs:comment "The wallet that created this edge." ;
+    rdfs:domain sar:RelationshipEdge ;
+    rdfs:range sa:EthereumAddress .
+
+
+# =============================================================================
+# Edge Status (SKOS enumeration)
+# =============================================================================
+
+sar:EdgeStatus       a owl:Class ; rdfs:subClassOf skos:Concept ; rdfs:label "Edge Status" .
+sar:StatusNone       a sar:EdgeStatus ; rdfs:label "None"      ; skos:notation "0" .
+sar:StatusProposed   a sar:EdgeStatus ; rdfs:label "Proposed"   ; skos:notation "1" .
+sar:StatusConfirmed  a sar:EdgeStatus ; rdfs:label "Confirmed"  ; skos:notation "2" .
+sar:StatusActive     a sar:EdgeStatus ; rdfs:label "Active"     ; skos:notation "3" .
+sar:StatusSuspended  a sar:EdgeStatus ; rdfs:label "Suspended"  ; skos:notation "4" .
+sar:StatusRevoked    a sar:EdgeStatus ; rdfs:label "Revoked"    ; skos:notation "5" .
+sar:StatusRejected   a sar:EdgeStatus ; rdfs:label "Rejected"   ; skos:notation "6" .
+
+
+# =============================================================================
+# Assertion Model (PROV-O provenance)
+# =============================================================================
+
+sar:Assertion
+    a owl:Class ;
+    rdfs:subClassOf prov:Activity ;
+    rdfs:label "Assertion" ;
+    rdfs:comment "A provenance assertion attached to a relationship edge -- who asserted, how, and when." .
+
+sar:assertionType
+    a owl:ObjectProperty ;
+    rdfs:label "Assertion Type" ;
+    rdfs:domain sar:Assertion ;
+    rdfs:range sar:AssertionType .
+
+sar:assertsEdge
+    a owl:ObjectProperty ;
+    rdfs:label "Asserts Edge" ;
+    rdfs:domain sar:Assertion ;
+    rdfs:range sar:RelationshipEdge .
+
+sar:AssertionType      a owl:Class ; rdfs:subClassOf skos:Concept ; rdfs:label "Assertion Type" .
+sar:SelfAsserted       a sar:AssertionType ; rdfs:label "Self-Asserted"        ; skos:notation "1" .
+sar:ObjectAsserted     a sar:AssertionType ; rdfs:label "Object-Asserted"      ; skos:notation "2" .
+sar:MutualConfirmation a sar:AssertionType ; rdfs:label "Mutual Confirmation"  ; skos:notation "3" .
+sar:ValidatorAsserted  a sar:AssertionType ; rdfs:label "Validator-Asserted"   ; skos:notation "4" .
+sar:OrgAsserted        a sar:AssertionType ; rdfs:label "Org-Asserted"         ; skos:notation "5" .
+sar:AppAsserted        a sar:AssertionType ; rdfs:label "App-Asserted"         ; skos:notation "6" .
+
+
+# =============================================================================
+# Relationship Type Hierarchy
+# =============================================================================
+
+sar:RelationshipType
+    a owl:Class ;
+    rdfs:subClassOf dul:Role ;
+    rdfs:label "Relationship Type" ;
+    rdfs:comment "Base class for all edge type categories." .
+
+# ─── Abstract Categories ─────────────────────────────────────────────
+
+sar:InstitutionalRelationship   a owl:Class ; rdfs:subClassOf sar:RelationshipType ; rdfs:label "Institutional"    ; rdfs:comment "Governance and membership." .
+sar:NetworkRelationship         a owl:Class ; rdfs:subClassOf sar:RelationshipType ; rdfs:label "Network"           ; rdfs:comment "Alliance, lineage, and hub membership." .
+sar:AssuranceRelationship       a owl:Class ; rdfs:subClassOf sar:RelationshipType ; rdfs:label "Assurance"         ; rdfs:comment "Validation, insurance, compliance, and review." .
+sar:CapitalRelationship         a owl:Class ; rdfs:subClassOf sar:RelationshipType ; rdfs:label "Capital"           ; rdfs:comment "Economic security and staking." .
+sar:ExecutionRelationship       a owl:Class ; rdfs:subClassOf sar:RelationshipType ; rdfs:label "Execution"         ; rdfs:comment "Delegation, service, and operational control." .
+sar:InfrastructureRelationship  a owl:Class ; rdfs:subClassOf sar:RelationshipType ; rdfs:label "Infrastructure"    ; rdfs:comment "Runtime attestation and build provenance." .
+
+# ─── Concrete Types (16) ─────────────────────────────────────────────
+
+sar:OrganizationGovernance
+    a sar:InstitutionalRelationship ;
+    rdfs:label "Governance" ;
+    rdfs:comment "Governance, fiduciary, and executive authority between an agent and an organization." ;
+    sa:onChainTermHash "keccak256('atl:OrganizationGovernanceRelationship')" ;
+    skos:notation "organization-governance" .
+
+sar:OrganizationMembership
+    a sar:InstitutionalRelationship ;
+    rdfs:label "Membership" ;
+    rdfs:comment "Membership, staffing, or operating participation within an organization or group." ;
+    sa:onChainTermHash "keccak256('atl:OrganizationMembershipRelationship')" ;
+    skos:notation "organization-membership" .
+
+sar:Alliance
+    a sar:NetworkRelationship ;
+    rdfs:label "Alliance" ;
+    rdfs:comment "Strategic alignment or generative linkage between organizations." ;
+    sa:onChainTermHash "keccak256('atl:AllianceRelationship')" ;
+    skos:notation "alliance" ;
+    skos:altLabel "Church Lineage"@en-catalyst ;
+    skos:altLabel "Ministry Lineage"@en-global-church ;
+    skos:altLabel "Trust Link"@en-cil .
+
+sar:ValidationTrust       a sar:AssuranceRelationship       ; rdfs:label "Validation"          ; skos:notation "validation-trust"       ; sa:onChainTermHash "keccak256('atl:ValidationTrustRelationship')" .
+sar:InsuranceCoverage     a sar:AssuranceRelationship       ; rdfs:label "Insurance"            ; skos:notation "insurance-coverage"     ; sa:onChainTermHash "keccak256('atl:InsuranceCoverageRelationship')" .
+sar:Compliance            a sar:AssuranceRelationship       ; rdfs:label "Compliance"           ; skos:notation "compliance"             ; sa:onChainTermHash "keccak256('atl:ComplianceRelationship')" .
+sar:EconomicSecurity      a sar:CapitalRelationship         ; rdfs:label "Economic Security"    ; skos:notation "economic-security"      ; sa:onChainTermHash "keccak256('atl:EconomicSecurityRelationship')" .
+sar:ServiceAgreement      a sar:ExecutionRelationship       ; rdfs:label "Service"              ; skos:notation "service-agreement"      ; sa:onChainTermHash "keccak256('atl:ServiceAgreementRelationship')" .
+sar:DelegationAuthority   a sar:ExecutionRelationship       ; rdfs:label "Delegation"           ; skos:notation "delegation-authority"   ; sa:onChainTermHash "keccak256('atl:DelegationAuthorityRelationship')" .
+sar:RuntimeAttestation    a sar:InfrastructureRelationship  ; rdfs:label "Runtime/TEE"          ; skos:notation "runtime-attestation"    ; sa:onChainTermHash "keccak256('atl:RuntimeAttestationRelationship')" .
+sar:BuildProvenance       a sar:InfrastructureRelationship  ; rdfs:label "Build Provenance"     ; skos:notation "build-provenance"       ; sa:onChainTermHash "keccak256('atl:BuildProvenanceRelationship')" .
+sar:OrganizationalControl a sar:ExecutionRelationship       ; rdfs:label "Org Control"          ; skos:notation "organizational-control" ; sa:onChainTermHash "keccak256('atl:OrganizationalControlRelationship')" .
+sar:ActivityValidation    a sar:AssuranceRelationship       ; rdfs:label "Activity Validation"  ; skos:notation "activity-validation"    ; sa:onChainTermHash "keccak256('atl:ActivityValidationRelationship')" .
+sar:Review                a sar:AssuranceRelationship       ; rdfs:label "Review"               ; skos:notation "review"                 ; sa:onChainTermHash "keccak256('atl:ReviewRelationship')" ; skos:altLabel "Endorsement"@en-global-church ; skos:altLabel "Assertion"@en-cil .
+sar:HasMember             a sar:NetworkRelationship         ; rdfs:label "Hub Membership"       ; skos:notation "has-member"             ; sa:onChainTermHash "keccak256('atl:HasMemberRelationship')" .
+sar:GenerationalLineage   a sar:NetworkRelationship         ; rdfs:label "Generational Lineage" ; skos:notation "generational-lineage"   ; sa:onChainTermHash "keccak256('atl:GenerationalLineageRelationship')" ; skos:altLabel "Church Planting Lineage"@en-global-church .
+
+
+# =============================================================================
+# Role (stub -- full hierarchy in roles.ttl)
+# =============================================================================
+
+sar:Role
+    a owl:Class ;
+    rdfs:subClassOf dul:Role ;
+    rdfs:label "Role" ;
+    rdfs:comment "Base class for all roles an agent can hold in a relationship. See roles.ttl for the full hierarchy." .
+
+sar:applicableToRelationshipType
+    a owl:ObjectProperty ;
+    rdfs:label "Applicable To Relationship Type" ;
+    rdfs:comment "Links a role to relationship types it can participate in." ;
+    rdfs:domain sar:Role ;
+    rdfs:range sar:RelationshipType .

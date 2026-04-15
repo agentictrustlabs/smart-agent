@@ -1,0 +1,130 @@
+@prefix sa:    <https://smartagent.io/ontology/core#> .
+@prefix sag:   <https://smartagent.io/ontology/governance#> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl:   <http://www.w3.org/2002/07/owl#> .
+@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
+@prefix prov:  <http://www.w3.org/ns/prov#> .
+@prefix dul:   <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#> .
+
+# =============================================================================
+# Smart Agent Governance Ontology  (T-Box)
+# =============================================================================
+#
+# Multi-sig quorum governance: proposals, voting, agent initialization.
+# Managed by AgentControl contract on-chain.
+#
+# Source: packages/contracts/src/AgentControl.sol, apps/web DB schema
+# Version: 0.1.0
+# =============================================================================
+
+<https://smartagent.io/ontology/governance>
+    a owl:Ontology ;
+    rdfs:label "Smart Agent Governance Ontology" ;
+    rdfs:comment "T-Box: multi-sig governance structures -- proposals, voting, quorum." ;
+    owl:versionInfo "0.1.0" ;
+    owl:imports <https://smartagent.io/ontology/core> .
+
+
+# =============================================================================
+# Governance Configuration
+# =============================================================================
+
+sag:GovernanceConfig
+    a owl:Class ;
+    rdfs:subClassOf dul:Configuration ;
+    rdfs:label "Governance Configuration" ;
+    rdfs:comment "Quorum and owner requirements for an organization's on-chain governance." .
+
+sag:minOwners
+    a owl:DatatypeProperty ;
+    rdfs:label "Minimum Owners" ;
+    rdfs:comment "Required number of signers before org is fully active." ;
+    rdfs:domain sag:GovernanceConfig ;
+    rdfs:range xsd:integer .
+
+sag:quorum
+    a owl:DatatypeProperty ;
+    rdfs:label "Approval Quorum" ;
+    rdfs:comment "Number of approvals needed per proposal." ;
+    rdfs:domain sag:GovernanceConfig ;
+    rdfs:range xsd:integer .
+
+sag:governsOrg
+    a owl:ObjectProperty ;
+    rdfs:label "Governs Organization" ;
+    rdfs:domain sag:GovernanceConfig ;
+    rdfs:range sa:OrganizationAgent .
+
+
+# =============================================================================
+# Proposals
+# =============================================================================
+
+sag:Proposal
+    a owl:Class ;
+    rdfs:subClassOf prov:Activity ;
+    rdfs:label "Proposal" ;
+    rdfs:comment "A governance proposal requiring quorum approval. Tracks votes, status, and execution." .
+
+sag:proposalTitle
+    a owl:DatatypeProperty ;
+    rdfs:label "Title" ;
+    rdfs:domain sag:Proposal ;
+    rdfs:range xsd:string .
+
+sag:proposalDescription
+    a owl:DatatypeProperty ;
+    rdfs:label "Description" ;
+    rdfs:domain sag:Proposal ;
+    rdfs:range xsd:string .
+
+sag:actionType
+    a owl:DatatypeProperty ;
+    rdfs:label "Action Type" ;
+    rdfs:comment "Type of action (transfer, config-change, etc.)." ;
+    rdfs:domain sag:Proposal ;
+    rdfs:range xsd:string .
+
+sag:proposer
+    a owl:ObjectProperty ;
+    rdfs:subPropertyOf prov:wasAssociatedWith ;
+    rdfs:label "Proposer" ;
+    rdfs:domain sag:Proposal ;
+    rdfs:range sa:Agent .
+
+sag:votesFor
+    a owl:DatatypeProperty ;
+    rdfs:label "Votes For" ;
+    rdfs:domain sag:Proposal ;
+    rdfs:range xsd:integer .
+
+sag:votesAgainst
+    a owl:DatatypeProperty ;
+    rdfs:label "Votes Against" ;
+    rdfs:domain sag:Proposal ;
+    rdfs:range xsd:integer .
+
+sag:quorumRequired
+    a owl:DatatypeProperty ;
+    rdfs:label "Quorum Required" ;
+    rdfs:domain sag:Proposal ;
+    rdfs:range xsd:integer .
+
+sag:proposalStatus
+    a owl:ObjectProperty ;
+    rdfs:label "Status" ;
+    rdfs:domain sag:Proposal ;
+    rdfs:range sag:ProposalStatus .
+
+sag:executedAt
+    a owl:DatatypeProperty ;
+    rdfs:label "Executed At" ;
+    rdfs:domain sag:Proposal ;
+    rdfs:range xsd:dateTime .
+
+sag:ProposalStatus     a owl:Class ; rdfs:label "Proposal Status" .
+sag:StatusOpen         a sag:ProposalStatus ; rdfs:label "Open" .
+sag:StatusApproved     a sag:ProposalStatus ; rdfs:label "Approved" .
+sag:StatusRejected     a sag:ProposalStatus ; rdfs:label "Rejected" .
+sag:StatusExecuted     a sag:ProposalStatus ; rdfs:label "Executed" .

@@ -7,7 +7,7 @@ import { getAgentMetadata } from '@/lib/agent-metadata'
 import { getEdge, getEdgeRoles } from '@/lib/contracts'
 import { REVIEW_RELATIONSHIP, ROLE_REVIEWER } from '@smart-agent/sdk'
 import type { HubProfile } from '@/lib/hub-profiles'
-import { getHubProfileFromChain, getHubProfile, inferHubIdFromDemoKey } from '@/lib/hub-profiles'
+import { getHubProfile, getHubIdForTemplate, inferHubIdFromDemoKey } from '@/lib/hub-profiles'
 
 /**
  * User-centric context API.
@@ -187,13 +187,10 @@ export async function GET() {
       } catch { /* ignored */ }
     }
 
-    // Resolve hub profile: try on-chain first, then static fallback
+    // Resolve hub profile from static profiles (authoritative source for nav, features, theme).
+    // On-chain hub config is not used — the resolver access control prevents writes after initial deploy.
     let hubProfile: HubProfile | null = null
-    if (hubs.length > 0) {
-      hubProfile = await getHubProfileFromChain(hubs[0].address)
-    }
-    if (!hubProfile) {
-      // Fall back to static profile: check demo user key, then hub name matching
+    {
       const { cookies: getCookies } = await import('next/headers')
       const cookieStore = await getCookies()
       const demoKey = cookieStore.get('demo-user')?.value ?? null
@@ -201,12 +198,29 @@ export async function GET() {
       if (demoHubId) {
         hubProfile = getHubProfile(demoHubId)
       } else {
-        // Try to match by hub name
+        // Try to match by hub name from on-chain hub agents
         for (const hub of hubs) {
           const name = hub.name.toLowerCase()
           if (name.includes('catalyst')) { hubProfile = getHubProfile('catalyst'); break }
           if (name.includes('global') && name.includes('church')) { hubProfile = getHubProfile('global-church'); break }
-          if (name.includes('collective') || name.includes('cil')) { hubProfile = getHubProfile('cil'); break }
+          if (name.includes('collective') || name.includes('cil') || name.includes('mission')) { hubProfile = getHubProfile('cil'); break }
+        }
+        // If no hub match, infer from org template ID (set during org creation)
+        if (!hubProfile && orgs.length > 0) {
+          const { getAgentTemplateId } = await import('@/lib/agent-resolver')
+          for (const org of orgs) {
+            try {
+              const templateId = await getAgentTemplateId(org.address)
+              if (templateId) {
+                hubProfile = getHubProfile(getHubIdForTemplate(templateId))
+                break
+              }
+            } catch { /* ignored */ }
+          }
+        }
+        // Final fallback: generic hub (no assumption about user's context)
+        if (!hubProfile) {
+          hubProfile = getHubProfile('generic')
         }
       }
     }

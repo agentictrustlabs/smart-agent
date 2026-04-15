@@ -12,6 +12,127 @@ export default async function CatalystGroupsPage() {
   const currentUser = await getCurrentUser()
   if (!currentUser) redirect('/')
 
+  // ── CIL Portfolio branch ─────────────────────────────────────────────
+  const isCIL = currentUser.id.startsWith('cil-')
+  if (isCIL) {
+    const { db, schema } = await import('@/db')
+    const { getMCRole, getBusinessOrgAddressesForUser } = await import('@/lib/mc-roles')
+    const { PortfolioPageClient } = await import('@/components/mc/PortfolioPageClient')
+    const { getConnectedOrgs } = await import('@/lib/get-org-members')
+
+    const role = getMCRole(currentUser.id)
+    const allowedAddrs = getBusinessOrgAddressesForUser(currentUser.id)
+
+    // Get all revenue reports
+    const allReports = await db.select().from(schema.revenueReports)
+
+    // Get all users for name lookup
+    const allUsers = await db.select().from(schema.users)
+    const userNames: Record<string, string> = {}
+    for (const u of allUsers) userNames[u.id] = u.name
+
+    // Build business org address → name mapping from on-chain data
+    const userOrgs = await getUserOrgs(currentUser.id)
+    const businessAddrs = new Set<string>()
+    for (const org of userOrgs) {
+      try {
+        const connected = await getConnectedOrgs(org.address)
+        for (const c of connected) businessAddrs.add(c.address.toLowerCase())
+      } catch { /* ignored */ }
+    }
+
+    // Collect all unique org addresses from revenue reports
+    const reportOrgAddrs = new Set(allReports.map(r => r.orgAddress.toLowerCase()))
+    for (const addr of reportOrgAddrs) businessAddrs.add(addr)
+
+    // Build metadata for each business
+    const bizMeta: Record<string, { name: string; ownerName: string }> = {}
+    for (const addr of businessAddrs) {
+      try {
+        const meta = await getAgentMetadata(addr)
+        // Find owner from reports
+        const ownerReport = allReports.find(r => r.orgAddress.toLowerCase() === addr)
+        const ownerName = ownerReport ? (userNames[ownerReport.submittedBy] ?? 'Unknown') : 'Unknown'
+        bizMeta[addr] = { name: meta.displayName, ownerName }
+      } catch {
+        bizMeta[addr] = { name: addr.slice(0, 10) + '...', ownerName: 'Unknown' }
+      }
+    }
+
+    // Determine wave cohorts (from seed data pattern: wave1 businesses vs wave2)
+    // For demo: Afia and Kossi are Wave 1, others Wave 2
+    const wave1Addrs = new Set([
+      '0x00000000000000000000000000000000000c0003',
+      '0x00000000000000000000000000000000000c0004',
+    ])
+
+    // Build portfolio businesses from revenue report data
+    type PortfolioBusiness = {
+      address: string; name: string; ownerName: string
+      healthStatus: 'green' | 'yellow' | 'red' | 'unknown'
+      latestRevenue: number | null; totalSharePayments: number
+      lastReportDate: string | null; waveCohort: string
+    }
+
+    const bizGrouped = new Map<string, typeof allReports>()
+    for (const r of allReports) {
+      const key = r.orgAddress.toLowerCase()
+      if (!bizGrouped.has(key)) bizGrouped.set(key, [])
+      bizGrouped.get(key)!.push(r)
+    }
+
+    const businesses: PortfolioBusiness[] = []
+    for (const [addr, reports] of bizGrouped) {
+      // Role filter: business owners see only their own
+      if (allowedAddrs && !allowedAddrs.some(a => a.toLowerCase() === addr)) continue
+
+      const sorted = reports.sort((a, b) => b.period.localeCompare(a.period))
+      const latest = sorted[0]
+      const prev = sorted[1]
+
+      let healthStatus: 'green' | 'yellow' | 'red' | 'unknown' = 'unknown'
+      if (latest) {
+        if (latest.netRevenue < 0) {
+          healthStatus = 'red'
+        } else if (prev && latest.netRevenue < prev.netRevenue) {
+          healthStatus = 'yellow'
+        } else if (latest.netRevenue > 0) {
+          healthStatus = 'green'
+        }
+      }
+
+      const totalShare = reports.reduce((s, r) => s + r.sharePayment, 0)
+      const meta = bizMeta[addr] ?? { name: addr.slice(0, 10) + '...', ownerName: 'Unknown' }
+
+      businesses.push({
+        address: addr,
+        name: meta.name,
+        ownerName: meta.ownerName,
+        healthStatus,
+        latestRevenue: latest?.grossRevenue ?? null,
+        totalSharePayments: totalShare,
+        lastReportDate: latest?.createdAt ?? null,
+        waveCohort: wave1Addrs.has(addr) ? 'Wave 1' : 'Wave 2',
+      })
+    }
+
+    businesses.sort((a, b) => a.waveCohort.localeCompare(b.waveCohort) || a.name.localeCompare(b.name))
+
+    // Capital totals (hardcoded for now)
+    const totalDeployed = 12500
+    const totalRecovered = businesses.reduce((s, b) => s + b.totalSharePayments, 0)
+
+    return (
+      <PortfolioPageClient
+        businesses={businesses}
+        totalDeployed={totalDeployed}
+        totalRecovered={totalRecovered}
+        role={role}
+      />
+    )
+  }
+  // ── End CIL Portfolio branch ─────────────────────────────────────────
+
   const userOrgs = await getUserOrgs(currentUser.id)
   if (userOrgs.length === 0) return (
     <div style={{ textAlign: 'center', padding: '3rem 1rem', color: '#9a8c7e' }}>

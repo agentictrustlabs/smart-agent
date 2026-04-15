@@ -10,51 +10,7 @@ import type { ViewMode } from '@/components/catalyst/CatalystViewContext'
 import QuickActivityModal from '@/components/catalyst/QuickActivityModal'
 import { AgentPanel } from '@/components/agent/AgentPanel'
 
-// ---------------------------------------------------------------------------
-// Tab definitions — intent-based primary navigation
-// ---------------------------------------------------------------------------
-interface IntentTab {
-  label: string
-  href: string
-  matchPaths: string[]
-}
-
-const INTENT_TABS: IntentTab[] = [
-  {
-    label: 'Home',
-    href: '/catalyst',
-    matchPaths: ['/', '/catalyst', '/dashboard'],
-  },
-  {
-    label: 'Nurture',
-    href: '/nurture',
-    matchPaths: ['/nurture', '/catalyst/prayer', '/catalyst/grow', '/catalyst/coach', '/nurture/prayer', '/nurture/grow', '/nurture/coaching'],
-  },
-  {
-    label: 'Oikos',
-    href: '/oikos',
-    matchPaths: ['/oikos', '/circles', '/catalyst/circles'],
-  },
-  {
-    label: 'Build',
-    href: '/groups',
-    matchPaths: ['/groups', '/catalyst/groups', '/catalyst/members', '/catalyst/map', '/catalyst/activities'],
-  },
-  {
-    label: 'Steward',
-    href: '/steward',
-    matchPaths: ['/steward', '/treasury', '/reviews', '/network', '/trust', '/steward/treasury', '/steward/reviews', '/steward/network', '/steward/governance'],
-  },
-  {
-    label: 'Activity',
-    href: '/activity',
-    matchPaths: ['/activity', '/catalyst/activities', '/activities'],
-  },
-]
-
-function isTabActive(pathname: string, tab: IntentTab): boolean {
-  return tab.matchPaths.some(p => pathname === p || pathname.startsWith(p + '/'))
-}
+// No hardcoded tabs — primary navigation comes from the hub profile via HubContext
 
 // ---------------------------------------------------------------------------
 // Breadcrumb derivation
@@ -82,6 +38,11 @@ const SEGMENT_LABELS: Record<string, string> = {
   'activities': 'Activities',
   'governance': 'Governance',
   'coaching': 'Coaching',
+  'revenue': 'Revenue',
+  'portfolio': 'Portfolio',
+  'command-center': 'Command Center',
+  'training': 'Training',
+  'reports': 'Reports',
   'dashboard': 'Dashboard',
 }
 
@@ -171,7 +132,7 @@ function HubLayoutInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const { personAgent, orgs, hasRole, loading } = useUserContext()
   const hub = useHubContext()
-  const { profile, adminNav, availableViewModes, viewMode, setViewMode, userNav } = hub
+  const { profile, primaryNav, adminNav, availableViewModes, viewMode, setViewMode, userNav } = hub
   const T = profile.theme
 
   const [userMenuOpen, setUserMenuOpen] = useState(false)
@@ -227,7 +188,14 @@ function HubLayoutInner({ children }: { children: React.ReactNode }) {
     return {}
   }, [pathname])
 
-  const statusItems = [
+  // Hub-specific status bar items
+  const isCILHub = profile.id === 'cil'
+  const statusItems = isCILHub ? [
+    { icon: '\uD83D\uDD14', label: '2 agent insights', href: '/catalyst' },
+    { icon: '\uD83D\uDCB0', label: '1 report pending', href: '/activity' },
+    { icon: '\uD83D\uDFE1', label: '1 business at risk', href: '/groups' },
+    { icon: '\uD83D\uDCC8', label: '34% recovered', href: '/steward' },
+  ] : [
     { icon: '\uD83D\uDD14', label: '3 agent insights', href: '/catalyst' },
     { icon: '\uD83D\uDE4F', label: '1 prayer due today', href: '/nurture/prayer' },
     { icon: '\uD83D\uDCCA', label: '2 circles need attention', href: '/groups' },
@@ -292,7 +260,7 @@ function HubLayoutInner({ children }: { children: React.ReactNode }) {
                 color: T.text,
                 letterSpacing: '-0.01em',
               }}>
-                Smart Agent
+                {loading ? 'Loading...' : profile.name}
               </span>
             </Link>
 
@@ -306,8 +274,10 @@ function HubLayoutInner({ children }: { children: React.ReactNode }) {
               flex: 1,
               minWidth: 0,
             }}>
-              {INTENT_TABS.map(tab => {
-                const active = isTabActive(pathname, tab)
+              {primaryNav.map(tab => {
+                const active = tab.activePrefixes
+                  ? tab.activePrefixes.some(p => pathname === p || pathname.startsWith(p + '/'))
+                  : (tab.exact ? pathname === tab.href : pathname.startsWith(tab.href + '/'))
                 return (
                   <Link
                     key={tab.href}

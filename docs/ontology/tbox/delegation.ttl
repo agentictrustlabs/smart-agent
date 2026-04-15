@@ -1,0 +1,256 @@
+@prefix sa:    <https://smartagent.io/ontology/core#> .
+@prefix sar:   <https://smartagent.io/ontology/relationships#> .
+@prefix sad:   <https://smartagent.io/ontology/delegation#> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl:   <http://www.w3.org/2002/07/owl#> .
+@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
+@prefix skos:  <http://www.w3.org/2004/02/skos/core#> .
+@prefix prov:  <http://www.w3.org/ns/prov#> .
+@prefix p-plan: <http://purl.org/net/p-plan#> .
+
+# =============================================================================
+# Smart Agent Delegation Ontology  (T-Box)
+# =============================================================================
+#
+# ERC-7710 / DeleGator-aligned delegation model: delegation chains, caveat
+# enforcers, and pre-defined delegation policy templates.
+#
+# Source: packages/sdk/src/delegation.ts, relationship-taxonomy.ts (delegationPolicyDefinitions)
+# Version: 0.1.0
+# =============================================================================
+
+<https://smartagent.io/ontology/delegation>
+    a owl:Ontology ;
+    rdfs:label "Smart Agent Delegation Ontology" ;
+    rdfs:comment "T-Box: delegation authority, caveat enforcers, and policy templates." ;
+    owl:versionInfo "0.1.0" ;
+    owl:imports <https://smartagent.io/ontology/relationships> .
+
+
+# =============================================================================
+# Delegation Model
+# =============================================================================
+
+sad:Delegation
+    a owl:Class ;
+    rdfs:subClassOf prov:Activity ;
+    rdfs:label "Delegation" ;
+    rdfs:comment "An EIP-712 signed delegation of authority from delegator to delegate, scoped by caveats." .
+
+sad:delegator
+    a owl:ObjectProperty ;
+    rdfs:subPropertyOf prov:wasAssociatedWith ;
+    rdfs:label "Delegator" ;
+    rdfs:comment "The agent granting authority." ;
+    rdfs:domain sad:Delegation ;
+    rdfs:range sa:Agent .
+
+sad:delegate
+    a owl:ObjectProperty ;
+    rdfs:label "Delegate" ;
+    rdfs:comment "The agent receiving authority." ;
+    rdfs:domain sad:Delegation ;
+    rdfs:range sa:Agent .
+
+sad:authority
+    a owl:ObjectProperty ;
+    rdfs:label "Authority" ;
+    rdfs:comment "Parent delegation hash (ROOT_AUTHORITY for top-level) enabling delegation chains." ;
+    rdfs:domain sad:Delegation ;
+    rdfs:range xsd:string .
+
+sad:hasCaveat
+    a owl:ObjectProperty ;
+    rdfs:label "Has Caveat" ;
+    rdfs:comment "A caveat enforcer constraining this delegation." ;
+    rdfs:domain sad:Delegation ;
+    rdfs:range sad:Caveat .
+
+sad:salt
+    a owl:DatatypeProperty ;
+    rdfs:label "Salt" ;
+    rdfs:comment "Unique nonce for delegation uniqueness." ;
+    rdfs:domain sad:Delegation ;
+    rdfs:range xsd:integer .
+
+sad:signature
+    a owl:DatatypeProperty ;
+    rdfs:label "Signature" ;
+    rdfs:comment "EIP-712 signature from the delegator." ;
+    rdfs:domain sad:Delegation ;
+    rdfs:range xsd:string .
+
+sad:isRevoked
+    a owl:DatatypeProperty ;
+    rdfs:label "Is Revoked" ;
+    rdfs:comment "Whether this delegation has been revoked." ;
+    rdfs:domain sad:Delegation ;
+    rdfs:range xsd:boolean .
+
+
+# =============================================================================
+# Caveat Enforcer Model
+# =============================================================================
+
+sad:Caveat
+    a owl:Class ;
+    rdfs:label "Caveat" ;
+    rdfs:comment "A constraint applied to a delegation -- enforced on-chain by a caveat enforcer contract." .
+
+sad:enforcerAddress
+    a owl:DatatypeProperty ;
+    rdfs:label "Enforcer Address" ;
+    rdfs:comment "Address of the caveat enforcer contract." ;
+    rdfs:domain sad:Caveat ;
+    rdfs:range sa:EthereumAddress .
+
+sad:terms
+    a owl:DatatypeProperty ;
+    rdfs:label "Terms" ;
+    rdfs:comment "ABI-encoded enforcer terms (params specific to enforcer type)." ;
+    rdfs:domain sad:Caveat ;
+    rdfs:range xsd:hexBinary .
+
+# ─── Enforcer Types ──────────────────────────────────────────────────
+
+sad:CaveatEnforcerType
+    a owl:Class ;
+    rdfs:subClassOf skos:Concept ;
+    rdfs:label "Caveat Enforcer Type" ;
+    rdfs:comment "Classification of caveat enforcer contracts." .
+
+sad:TimestampEnforcer
+    a sad:CaveatEnforcerType ;
+    rdfs:label "Timestamp Enforcer" ;
+    rdfs:comment "Time-window caveat: validAfter and validUntil bounds." ;
+    skos:notation "timestamp" .
+
+sad:ValueEnforcer
+    a sad:CaveatEnforcerType ;
+    rdfs:label "Value Enforcer" ;
+    rdfs:comment "Maximum ETH value per call." ;
+    skos:notation "value" .
+
+sad:AllowedTargetsEnforcer
+    a sad:CaveatEnforcerType ;
+    rdfs:label "Allowed Targets Enforcer" ;
+    rdfs:comment "Restrict to specific target contract addresses." ;
+    skos:notation "allowedTargets" .
+
+sad:AllowedMethodsEnforcer
+    a sad:CaveatEnforcerType ;
+    rdfs:label "Allowed Methods Enforcer" ;
+    rdfs:comment "Restrict to specific function selectors." ;
+    skos:notation "allowedMethods" .
+
+sad:enforcerType
+    a owl:ObjectProperty ;
+    rdfs:label "Enforcer Type" ;
+    rdfs:domain sad:Caveat ;
+    rdfs:range sad:CaveatEnforcerType .
+
+
+# =============================================================================
+# Delegation Policy Templates (P-Plan aligned)
+# =============================================================================
+
+sad:DelegationPolicy
+    a owl:Class ;
+    rdfs:subClassOf p-plan:Plan ;
+    rdfs:label "Delegation Policy" ;
+    rdfs:comment "A pre-defined template for creating delegations. Specifies required relationship type, role, enforcers, and defaults." .
+
+sad:requiresRelationshipType
+    a owl:ObjectProperty ;
+    rdfs:label "Requires Relationship Type" ;
+    rdfs:domain sad:DelegationPolicy ;
+    rdfs:range sar:RelationshipType .
+
+sad:requiresRole
+    a owl:ObjectProperty ;
+    rdfs:label "Requires Role" ;
+    rdfs:domain sad:DelegationPolicy ;
+    rdfs:range sar:Role .
+
+sad:requiredEnforcer
+    a owl:ObjectProperty ;
+    rdfs:label "Required Enforcer" ;
+    rdfs:comment "Enforcer type that MUST be included." ;
+    rdfs:domain sad:DelegationPolicy ;
+    rdfs:range sad:CaveatEnforcerType .
+
+sad:optionalEnforcer
+    a owl:ObjectProperty ;
+    rdfs:label "Optional Enforcer" ;
+    rdfs:comment "Enforcer type that MAY be included." ;
+    rdfs:domain sad:DelegationPolicy ;
+    rdfs:range sad:CaveatEnforcerType .
+
+sad:defaultDurationSeconds
+    a owl:DatatypeProperty ;
+    rdfs:label "Default Duration" ;
+    rdfs:comment "Default duration in seconds for delegations created from this policy." ;
+    rdfs:domain sad:DelegationPolicy ;
+    rdfs:range xsd:integer .
+
+# ─── Policy Individuals (6 defined in SDK) ───────────────────────────
+
+sad:CEOTreasuryPolicy
+    a sad:DelegationPolicy ;
+    rdfs:label "CEO Treasury" ;
+    rdfs:comment "CEO can execute treasury operations with timestamp + value bounds." ;
+    skos:notation "ceo-treasury" ;
+    sad:requiresRelationshipType sar:OrganizationGovernance ;
+    sad:requiresRole sar:ChiefExecutive ;
+    sad:requiredEnforcer sad:TimestampEnforcer , sad:ValueEnforcer ;
+    sad:optionalEnforcer sad:AllowedTargetsEnforcer .
+
+sad:OperatorExecutionPolicy
+    a sad:DelegationPolicy ;
+    rdfs:label "Operator Execution" ;
+    rdfs:comment "Operators call approved methods on approved targets with value limits." ;
+    skos:notation "operator-execution" ;
+    sad:requiresRelationshipType sar:OrganizationMembership ;
+    sad:requiresRole sar:Operator ;
+    sad:requiredEnforcer sad:TimestampEnforcer , sad:AllowedTargetsEnforcer , sad:AllowedMethodsEnforcer ;
+    sad:optionalEnforcer sad:ValueEnforcer .
+
+sad:AuditorReadPolicy
+    a sad:DelegationPolicy ;
+    rdfs:label "Auditor Read" ;
+    rdfs:comment "Auditors get read-only access with time limits." ;
+    skos:notation "auditor-read" ;
+    sad:requiresRelationshipType sar:OrganizationMembership ;
+    sad:requiresRole sar:Auditor ;
+    sad:requiredEnforcer sad:TimestampEnforcer .
+
+sad:StakerBondPolicy
+    a sad:DelegationPolicy ;
+    rdfs:label "Staker Bond" ;
+    rdfs:comment "Stakers have bonded authority with time bounds." ;
+    skos:notation "staker-bond" ;
+    sad:requiresRelationshipType sar:EconomicSecurity ;
+    sad:requiresRole sar:Staker ;
+    sad:requiredEnforcer sad:TimestampEnforcer ;
+    sad:optionalEnforcer sad:ValueEnforcer .
+
+sad:ServiceProviderExecutionPolicy
+    a sad:DelegationPolicy ;
+    rdfs:label "Service Provider Execution" ;
+    rdfs:comment "Service providers call bounded targets with time + value limits." ;
+    skos:notation "service-provider-execution" ;
+    sad:requiresRelationshipType sar:ServiceAgreement ;
+    sad:requiresRole sar:ServiceProvider ;
+    sad:requiredEnforcer sad:TimestampEnforcer , sad:AllowedTargetsEnforcer ;
+    sad:optionalEnforcer sad:ValueEnforcer .
+
+sad:ReviewSubmissionPolicy
+    a sad:DelegationPolicy ;
+    rdfs:label "Review Submission" ;
+    rdfs:comment "Reviewers submit reviews through delegated execution." ;
+    skos:notation "review-submission" ;
+    sad:requiresRelationshipType sar:Review ;
+    sad:requiresRole sar:Reviewer ;
+    sad:requiredEnforcer sad:TimestampEnforcer , sad:AllowedTargetsEnforcer , sad:AllowedMethodsEnforcer ;
+    sad:defaultDurationSeconds 604800 .

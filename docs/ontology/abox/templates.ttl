@@ -1,0 +1,163 @@
+@prefix sa:    <https://smartagent.io/ontology/core#> .
+@prefix sah:   <https://smartagent.io/ontology/hub#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
+
+# =============================================================================
+# Smart Agent Template & Hub Instances  (A-Box)
+# =============================================================================
+#
+# Concrete organization templates and hub profile instances.
+# Source: apps/web/src/lib/org-templates.data.ts, apps/web/src/lib/hub-profiles.ts
+# Version: 0.1.0
+# =============================================================================
+
+
+# =============================================================================
+# Hub Profile Instances
+# =============================================================================
+
+sah:GenericHub
+    a sah:HubProfile ;
+    sah:hubId "generic" ;
+    rdfs:label "Trust Workspace" ;
+    rdfs:comment "General trust, organization, and agent management workspace." ;
+    sah:contextTerm "Agent Context" ;
+    sah:networkLabel "Network" ;
+    sah:hasFeature sah:FeatureMembers , sah:FeatureReviews , sah:FeatureTreasury .
+
+sah:GlobalChurchHub
+    a sah:HubProfile ;
+    sah:hubId "global-church" ;
+    rdfs:label "Global Church" ;
+    rdfs:comment "Trust and stewardship portal for churches, agencies, and endorsers." ;
+    sah:contextTerm "Council" ;
+    sah:networkLabel "Church Network" ;
+    sah:greetingTemplate "Good day, {name}" ;
+    sah:hasFeature sah:FeatureCircles , sah:FeaturePrayer , sah:FeatureGrow ,
+                   sah:FeatureCoaching , sah:FeatureGenmap , sah:FeatureActivities ,
+                   sah:FeatureMembers , sah:FeatureReviews , sah:FeatureTreasury .
+
+sah:CatalystHub
+    a sah:HubProfile ;
+    sah:hubId "catalyst" ;
+    rdfs:label "Catalyst NoCo Network" ;
+    rdfs:comment "Northern Colorado church planting and Hispanic outreach." ;
+    sah:contextTerm "Network" ;
+    sah:networkLabel "Partner Network" ;
+    sah:greetingTemplate "Good day, {name}" ;
+    sah:hasFeature sah:FeatureCircles , sah:FeaturePrayer , sah:FeatureGrow ,
+                   sah:FeatureCoaching , sah:FeatureGenmap , sah:FeatureActivities ,
+                   sah:FeatureMembers , sah:FeatureMap .
+
+sah:CILHub
+    a sah:HubProfile ;
+    sah:hubId "cil" ;
+    rdfs:label "Mission Collective" ;
+    rdfs:comment "Revenue-sharing capital deployment -- ILAD operations, Ravah model, business trust graph." ;
+    sah:contextTerm "Operating Group" ;
+    sah:networkLabel "Trust Network" ;
+    sah:greetingTemplate "Welcome, {name}" ;
+    sah:hasFeature sah:FeatureActivities , sah:FeatureMembers , sah:FeatureTreasury ,
+                   sah:FeatureReviews , sah:FeatureGenmap .
+
+
+# =============================================================================
+# Organization Template Instances
+# =============================================================================
+
+sah:ChurchTemplate
+    a sah:OrganizationTemplate ;
+    sah:templateId "church" ;
+    rdfs:label "Church" ;
+    sah:defaultMinOwners 2 ;
+    sah:defaultQuorum 2 ;
+    sah:belongsToHub sah:GlobalChurchHub .
+
+sah:DenominationTemplate
+    a sah:OrganizationTemplate ;
+    sah:templateId "denomination" ;
+    rdfs:label "Denomination" ;
+    sah:defaultMinOwners 3 ;
+    sah:defaultQuorum 2 ;
+    sah:belongsToHub sah:GlobalChurchHub .
+
+sah:MissionAgencyTemplate
+    a sah:OrganizationTemplate ;
+    sah:templateId "mission-agency" ;
+    rdfs:label "Mission Agency" ;
+    sah:defaultMinOwners 2 ;
+    sah:defaultQuorum 2 ;
+    sah:belongsToHub sah:GlobalChurchHub .
+
+sah:GrantOrgTemplate
+    a sah:OrganizationTemplate ;
+    sah:templateId "grant-org" ;
+    rdfs:label "Grant Organization" ;
+    sah:defaultMinOwners 2 ;
+    sah:defaultQuorum 2 ;
+    sah:belongsToHub sah:GenericHub .
+
+sah:ServiceBusinessTemplate
+    a sah:OrganizationTemplate ;
+    sah:templateId "service-business" ;
+    rdfs:label "Service Business" ;
+    sah:defaultMinOwners 1 ;
+    sah:defaultQuorum 1 ;
+    sah:belongsToHub sah:GenericHub .
+
+sah:ProductCollectiveTemplate
+    a sah:OrganizationTemplate ;
+    sah:templateId "product-collective" ;
+    rdfs:label "Product Collective" ;
+    sah:defaultMinOwners 2 ;
+    sah:defaultQuorum 2 ;
+    sah:belongsToHub sah:GenericHub .
+
+sah:InvestmentClubTemplate
+    a sah:OrganizationTemplate ;
+    sah:templateId "investment-club" ;
+    rdfs:label "Investment Club" ;
+    sah:defaultMinOwners 2 ;
+    sah:defaultQuorum 2 ;
+    sah:belongsToHub sah:GenericHub .
+
+sah:CILOperatorTemplate
+    a sah:OrganizationTemplate ;
+    sah:templateId "cil-operator" ;
+    rdfs:label "CIL Operator" ;
+    sah:defaultMinOwners 2 ;
+    sah:defaultQuorum 2 ;
+    sah:belongsToHub sah:CILHub .
+
+sah:CILFunderTemplate
+    a sah:OrganizationTemplate ;
+    sah:templateId "cil-funder" ;
+    rdfs:label "CIL Funder" ;
+    sah:defaultMinOwners 2 ;
+    sah:defaultQuorum 2 ;
+    sah:belongsToHub sah:CILHub .
+
+sah:CILPilotTemplate
+    a sah:OrganizationTemplate ;
+    sah:templateId "cil-pilot" ;
+    rdfs:label "CIL Pilot" ;
+    sah:defaultMinOwners 1 ;
+    sah:defaultQuorum 1 ;
+    sah:belongsToHub sah:CILHub .
+
+sah:CILBusinessTemplate
+    a sah:OrganizationTemplate ;
+    sah:templateId "cil-business" ;
+    rdfs:label "CIL Business" ;
+    sah:defaultMinOwners 1 ;
+    sah:defaultQuorum 1 ;
+    sah:belongsToHub sah:CILHub .
+
+sah:CatalystNetworkTemplate
+    a sah:OrganizationTemplate ;
+    sah:templateId "catalyst-network" ;
+    rdfs:label "Catalyst Network" ;
+    sah:defaultMinOwners 2 ;
+    sah:defaultQuorum 2 ;
+    sah:belongsToHub sah:CatalystHub .

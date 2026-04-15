@@ -32,15 +32,17 @@ export async function POST(request: Request) {
 
 export async function GET() {
   const cookieStore = await cookies()
-  const current = cookieStore.get('demo-user')?.value ?? 'test-user-001'
-  const demoUser = DEMO_USERS[current]
+  const current = cookieStore.get('demo-user')?.value ?? null
+  const demoUser = current ? DEMO_USERS[current] : null
 
   // Look up person agent from on-chain registry
   let smartAccountAddress: string | null = null
-  try {
-    const { getPersonAgentForUser } = await import('@/lib/agent-registry')
-    smartAccountAddress = await getPersonAgentForUser(current)
-  } catch { /* ignored */ }
+  if (current) {
+    try {
+      const { getPersonAgentForUser } = await import('@/lib/agent-registry')
+      smartAccountAddress = await getPersonAgentForUser(current)
+    } catch { /* ignored */ }
+  }
 
   return NextResponse.json({
     current,

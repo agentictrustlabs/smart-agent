@@ -11,9 +11,9 @@
   --text: #212121;
   --text-secondary: #616161;
   --text-muted: #9e9e9e;
-  --accent: #1565c0;
-  --accent-hover: #0d47a1;
-  --accent-light: #e3f2fd;
+  --accent: #8b5e3c;
+
+  --accent-light: rgba(139, 94, 60, 0.08);
   --success: #2e7d32;
   --success-light: #e8f5e9;
   --warning: #e65100;
@@ -221,9 +221,7 @@ a:hover { color: var(--accent-hover); text-decoration: underline; }
 
 [data-component="demo-community-card"]:hover,
 [data-component="demo-user-card"]:hover {
-  border-color: var(--demo-community-color, var(--accent));
-  box-shadow: 0 8px 18px color-mix(in srgb, var(--demo-community-color, var(--accent)) 12%, transparent);
-  transform: translateY(-1px);
+  cursor: pointer;
 }
 
 [data-component="demo-community-head"] {

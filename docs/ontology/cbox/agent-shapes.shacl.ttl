@@ -1,0 +1,156 @@
+@prefix sa:    <https://smartagent.io/ontology/core#> .
+@prefix sar:   <https://smartagent.io/ontology/relationships#> .
+@prefix sh:    <http://www.w3.org/ns/shacl#> .
+@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+
+# =============================================================================
+# Smart Agent SHACL Shapes  (C-Box)
+# =============================================================================
+#
+# Validation constraints for agent instances and relationship edges.
+# Run against the A-Box to ensure data quality after on-chain sync.
+#
+# Version: 0.1.0
+# =============================================================================
+
+# ─── Agent Shape ──────────────────────────────────────────────────────
+
+sa:AgentShape
+    a sh:NodeShape ;
+    sh:targetClass sa:Agent ;
+    rdfs:label "Agent Shape" ;
+    rdfs:comment "Validates that agent instances have required identity properties." ;
+
+    sh:property [
+        sh:path sa:onChainAddress ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:pattern "^0x[a-fA-F0-9]{40}$" ;
+        sh:name "on-chain address" ;
+        sh:message "Agent must have exactly one valid Ethereum address." ;
+    ] ;
+
+    sh:property [
+        sh:path sa:displayName ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:minLength 1 ;
+        sh:name "display name" ;
+        sh:message "Agent must have a non-empty display name." ;
+    ] ;
+
+    sh:property [
+        sh:path sa:agentType ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:in ( "person" "org" "ai" "hub" ) ;
+        sh:name "agent type" ;
+        sh:message "Agent type must be one of: person, org, ai, hub." ;
+    ] ;
+
+    sh:property [
+        sh:path sa:isActive ;
+        sh:datatype xsd:boolean ;
+        sh:maxCount 1 ;
+        sh:name "is active" ;
+    ] ;
+
+    sh:property [
+        sh:path sa:hasController ;
+        sh:minCount 1 ;
+        sh:name "controller" ;
+        sh:message "Agent must have at least one controller." ;
+    ] .
+
+
+# ─── AI Agent Shape ──────────────────────────────────────────────────
+
+sa:AIAgentShape
+    a sh:NodeShape ;
+    sh:targetClass sa:AIAgentAccount ;
+    rdfs:label "AI Agent Shape" ;
+
+    sh:property [
+        sh:path sa:aiAgentClass ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:name "AI agent class" ;
+        sh:message "AI Agent must have exactly one agent class." ;
+    ] .
+
+
+# ─── Organization Shape ──────────────────────────────────────────────
+
+sa:OrganizationShape
+    a sh:NodeShape ;
+    sh:targetClass sa:OrganizationAgent ;
+    rdfs:label "Organization Shape" ;
+
+    sh:property [
+        sh:path sa:templateId ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+        sh:name "template ID" ;
+    ] .
+
+
+# ─── Relationship Edge Shape ─────────────────────────────────────────
+
+sar:EdgeShape
+    a sh:NodeShape ;
+    sh:targetClass sar:RelationshipEdge ;
+    rdfs:label "Relationship Edge Shape" ;
+
+    sh:property [
+        sh:path sar:subject ;
+        sh:class sa:Agent ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:name "subject" ;
+        sh:message "Edge must have exactly one subject agent." ;
+    ] ;
+
+    sh:property [
+        sh:path sar:object ;
+        sh:class sa:Agent ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:name "object" ;
+        sh:message "Edge must have exactly one object agent." ;
+    ] ;
+
+    sh:property [
+        sh:path sar:relationshipType ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:name "relationship type" ;
+        sh:message "Edge must have exactly one relationship type." ;
+    ] ;
+
+    sh:property [
+        sh:path sar:edgeStatus ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:name "edge status" ;
+    ] ;
+
+    sh:property [
+        sh:path sar:hasRole ;
+        sh:minCount 1 ;
+        sh:name "role" ;
+        sh:message "Edge must have at least one role." ;
+    ] ;
+
+    sh:property [
+        sh:path sar:edgeId ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:pattern "^0x[a-fA-F0-9]{64}$" ;
+        sh:name "edge ID" ;
+        sh:message "Edge must have a valid keccak256 edge ID." ;
+    ] .

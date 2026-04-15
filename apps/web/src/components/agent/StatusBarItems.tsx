@@ -15,17 +15,20 @@ export interface StatusItem {
 // ---------------------------------------------------------------------------
 // Hook
 // ---------------------------------------------------------------------------
-export function useStatusItems(): StatusItem[] {
-  // For now, return sample items.
-  // Later this will read from agent suggestions, prayer counts, etc.
+export function useStatusItems(hubId?: string): StatusItem[] {
   return useMemo<StatusItem[]>(
-    () => [
+    () => hubId === 'cil' ? [
+      { icon: '\uD83D\uDD14', label: 'agent insights', href: '/catalyst', count: 2 },
+      { icon: '\uD83D\uDCB0', label: 'report pending', href: '/activity', count: 1 },
+      { icon: '\uD83D\uDFE1', label: 'business at risk', href: '/groups', count: 1 },
+      { icon: '\uD83D\uDCC8', label: 'recovered', href: '/steward', count: 34 },
+    ] : [
       { icon: '\uD83D\uDD14', label: 'agent insights', href: '/catalyst', count: 3 },
       { icon: '\uD83D\uDE4F', label: 'prayer due today', href: '/nurture/prayer', count: 1 },
       { icon: '\uD83D\uDCCA', label: 'circles need attention', href: '/groups', count: 2 },
       { icon: '\u2709', label: 'follow-up pending', href: '/activity', count: 1 },
     ],
-    [],
+    [hubId],
   )
 }
 

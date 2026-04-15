@@ -1,13 +1,24 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import type { OrgTemplate } from '@/lib/org-templates'
-import { deployFromTemplate } from '@/lib/actions/deploy-from-template.action'
+import {
+  getDeploySteps,
+  runDeployStep,
+  type DeployStepId,
+} from '@/lib/actions/deploy-from-template.action'
 
 type Step = 'template' | 'configure' | 'deploying' | 'complete'
 
 interface DeployedAgent { name: string; address: string; type: string }
+
+interface ProgressStep {
+  id: DeployStepId
+  label: string
+  status: 'pending' | 'running' | 'done' | 'failed'
+  error?: string
+}
 
 export function SetupWizardClient({ templates }: { templates: OrgTemplate[] }) {
   const router = useRouter()
@@ -18,9 +29,9 @@ export function SetupWizardClient({ templates }: { templates: OrgTemplate[] }) {
   const [minOwners, setMinOwners] = useState(1)
   const [quorum, setQuorum] = useState(1)
   const [error, setError] = useState('')
-  const [deploying, setDeploying] = useState(false)
   const [orgAddress, setOrgAddress] = useState('')
   const [deployedAgents, setDeployedAgents] = useState<DeployedAgent[]>([])
+  const [progressSteps, setProgressSteps] = useState<ProgressStep[]>([])
 
   function selectTemplate(t: OrgTemplate) {
     setSelectedTemplate(t)
@@ -29,30 +40,66 @@ export function SetupWizardClient({ templates }: { templates: OrgTemplate[] }) {
     setStep('configure')
   }
 
+  const updateStepStatus = useCallback(
+    (id: DeployStepId, status: ProgressStep['status'], err?: string) => {
+      setProgressSteps(prev =>
+        prev.map(s => (s.id === id ? { ...s, status, error: err } : s)),
+      )
+    },
+    [],
+  )
+
   async function handleDeploy() {
     if (!selectedTemplate || !orgName.trim()) return
-    setDeploying(true)
     setError('')
     setStep('deploying')
 
-    const result = await deployFromTemplate({
+    // Build the step list for the progress bar
+    const steps = await getDeploySteps(selectedTemplate)
+    setProgressSteps(steps.map(s => ({ ...s, status: 'pending' as const })))
+
+    const input = {
       template: selectedTemplate,
       orgName: orgName.trim(),
       orgDescription: orgDescription.trim(),
       minOwners,
       quorum,
-    })
-
-    setDeploying(false)
-
-    if (result.success) {
-      setOrgAddress(result.orgAddress ?? '')
-      setDeployedAgents(result.deployedAgents ?? [])
-      setStep('complete')
-    } else {
-      setError(result.error ?? 'Deployment failed')
-      setStep('configure')
     }
+
+    // Accumulated context passed between steps
+    const ctx: { orgAddress?: string; personAgentAddress?: string } = {}
+    const agents: DeployedAgent[] = []
+
+    for (const s of steps) {
+      updateStepStatus(s.id, 'running')
+
+      const result = await runDeployStep(s.id, input, ctx)
+
+      if (!result.success) {
+        updateStepStatus(s.id, 'failed', result.error)
+        setError(result.error ?? 'Deployment failed')
+        // Don't abort — mark remaining as pending and go to configure
+        setStep('configure')
+        return
+      }
+
+      // Accumulate context from step results
+      if (result.data?.orgAddress) ctx.orgAddress = result.data.orgAddress
+      if (result.data?.personAgentAddress) ctx.personAgentAddress = result.data.personAgentAddress
+      if (result.data?.agentAddress && result.data?.agentName) {
+        agents.push({
+          name: result.data.agentName,
+          address: result.data.agentAddress,
+          type: result.data.agentType ?? 'custom',
+        })
+      }
+
+      updateStepStatus(s.id, 'done')
+    }
+
+    setOrgAddress(ctx.orgAddress ?? '')
+    setDeployedAgents(agents)
+    setStep('complete')
   }
 
   // ─── Step 1: Template Selection ────────────────────────────────────
@@ -191,7 +238,7 @@ export function SetupWizardClient({ templates }: { templates: OrgTemplate[] }) {
 
           {error && <p role="alert" data-component="error-message">{error}</p>}
 
-          <button type="submit" disabled={deploying || !orgName.trim()}>
+          <button type="submit" disabled={!orgName.trim()}>
             Create Organization
           </button>
         </form>
@@ -199,16 +246,108 @@ export function SetupWizardClient({ templates }: { templates: OrgTemplate[] }) {
     )
   }
 
-  // ─── Step 3: Deploying ─────────────────────────────────────────────
+  // ─── Step 3: Deploying (with progress bar) ─────────────────────────
   if (step === 'deploying') {
+    const doneCount = progressSteps.filter(s => s.status === 'done').length
+    const totalCount = progressSteps.length
+    const pct = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0
+
     return (
-      <div style={{ textAlign: 'center', padding: '3rem 0' }}>
-        <h1 style={{ fontSize: '1.8rem', marginBottom: '1rem' }}>Setting Up Your Organization</h1>
-        <p style={{ color: '#616161', marginBottom: '2rem' }}>
-          Creating accounts, configuring governance, launching AI assistants...
+      <div style={{ padding: '2rem 0' }}>
+        <h1 style={{ fontSize: '1.8rem', marginBottom: '0.5rem', textAlign: 'center' }}>
+          Setting Up Your Organization
+        </h1>
+        <p style={{ color: '#616161', marginBottom: '1.5rem', textAlign: 'center' }}>
+          Deploying smart accounts, configuring governance, and launching AI assistants on-chain.
         </p>
-        <div style={{ width: 40, height: 40, border: '3px solid #333', borderTopColor: '#1565c0', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto' }} />
-        <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+
+        {/* Progress bar */}
+        <div style={{
+          background: '#e0e0e0',
+          borderRadius: 8,
+          height: 8,
+          marginBottom: '1.5rem',
+          overflow: 'hidden',
+        }}>
+          <div style={{
+            background: '#1565c0',
+            height: '100%',
+            borderRadius: 8,
+            width: `${pct}%`,
+            transition: 'width 0.4s ease',
+          }} />
+        </div>
+
+        <p style={{
+          textAlign: 'center',
+          fontSize: '0.82rem',
+          color: '#616161',
+          marginBottom: '1.5rem',
+        }}>
+          {doneCount} of {totalCount} steps complete ({pct}%)
+        </p>
+
+        {/* Step list */}
+        <div style={{
+          background: '#ffffff',
+          border: '1px solid #e0e0e0',
+          borderRadius: 12,
+          padding: '1rem',
+        }}>
+          {progressSteps.map((s) => (
+            <div key={s.id} style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.75rem',
+              padding: '0.5rem 0',
+              borderBottom: '1px solid #f5f5f5',
+            }}>
+              {/* Status indicator */}
+              <span style={{
+                width: 24,
+                height: 24,
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '0.75rem',
+                flexShrink: 0,
+                ...(s.status === 'done'
+                  ? { background: '#e8f5e9', color: '#2e7d32' }
+                  : s.status === 'running'
+                    ? { background: '#e3f2fd', color: '#1565c0', animation: 'pulse 1.5s infinite' }
+                    : s.status === 'failed'
+                      ? { background: '#ffebee', color: '#c62828' }
+                      : { background: '#f5f5f5', color: '#bdbdbd' }),
+              }}>
+                {s.status === 'done' && '\u2713'}
+                {s.status === 'running' && '\u25CF'}
+                {s.status === 'failed' && '\u2717'}
+                {s.status === 'pending' && '\u25CB'}
+              </span>
+
+              {/* Label */}
+              <span style={{
+                fontSize: '0.85rem',
+                fontWeight: s.status === 'running' ? 600 : 400,
+                color: s.status === 'pending' ? '#9e9e9e'
+                  : s.status === 'failed' ? '#c62828'
+                    : '#333',
+              }}>
+                {s.label}
+              </span>
+
+              {/* Error detail */}
+              {s.error && (
+                <span style={{ fontSize: '0.75rem', color: '#c62828', marginLeft: 'auto' }}>
+                  {s.error}
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <style>{`@keyframes pulse { 0%, 100% { opacity: 1 } 50% { opacity: 0.4 } }`}</style>
       </div>
     )
   }
@@ -266,7 +405,7 @@ export function SetupWizardClient({ templates }: { templates: OrgTemplate[] }) {
         )}
 
         <div style={{ marginTop: '1.5rem', display: 'flex', gap: '0.5rem' }}>
-          <button onClick={() => router.push('/dashboard')}>Go to Home</button>
+          <button onClick={() => router.push('/catalyst')}>Go to Home</button>
           <button onClick={() => router.push('/team')} style={{ background: '#e0e0e0', color: '#1a1a2e' }}>Invite People</button>
           <button onClick={() => router.push('/agents')} style={{ background: '#e0e0e0', color: '#1a1a2e' }}>View Agents</button>
         </div>

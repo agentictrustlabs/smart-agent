@@ -12,29 +12,23 @@ import {
 } from '@/lib/contracts'
 import {
   agentControlAbi,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  agentAccountResolverAbi,
   ORGANIZATIONAL_CONTROL,
+  ORGANIZATION_GOVERNANCE,
   ROLE_OPERATED_AGENT,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  TYPE_ORGANIZATION,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  TYPE_AI_AGENT,
+  ROLE_OWNER,
   CLASS_EXECUTOR,
   CLASS_VALIDATOR,
   CLASS_ASSISTANT,
   CLASS_DISCOVERY,
   CLASS_ORACLE,
   CLASS_CUSTOM,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  ATL_CAPABILITY,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  ATL_SUPPORTED_TRUST,
 } from '@smart-agent/sdk'
 import { addAgentController, setAgentTemplateId } from '@/lib/agent-resolver'
+import { keccak256, encodePacked } from 'viem'
 
 import type { OrgTemplate } from '@/lib/org-templates'
 import { registerAgentMetadata } from '@/lib/actions/agent-metadata.action'
+import { getPersonAgentForUser } from '@/lib/agent-registry'
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const AI_CLASS_MAP: Record<string, `0x${string}`> = {
@@ -54,10 +48,20 @@ export interface DeployFromTemplateInput {
   quorum: number
 }
 
-export interface DeployStep {
-  label: string
-  status: 'pending' | 'running' | 'done' | 'failed'
-  detail?: string
+/** Identifies a deployment step for the progress UI. */
+export type DeployStepId =
+  | 'org-account'
+  | 'governance'
+  | 'org-metadata'
+  | 'person-agent'
+  | 'ownership-edge'
+  | `ai-agent:${string}`
+
+export interface DeployStepResult {
+  stepId: DeployStepId
+  success: boolean
+  error?: string
+  data?: Record<string, string>
 }
 
 export interface DeployFromTemplateResult {
@@ -66,14 +70,45 @@ export interface DeployFromTemplateResult {
   orgAddress?: string
   orgId?: string
   deployedAgents?: Array<{ name: string; address: string; type: string }>
+  personAgentAddress?: string
 }
 
-export async function deployFromTemplate(
+/**
+ * Returns the list of step IDs/labels for a given template so the client
+ * can render the full progress bar before deployment starts.
+ */
+export async function getDeploySteps(
+  template: OrgTemplate,
+): Promise<Array<{ id: DeployStepId; label: string }>> {
+  const steps: Array<{ id: DeployStepId; label: string }> = [
+    { id: 'org-account', label: 'Deploying organization account' },
+    { id: 'governance', label: 'Initializing governance' },
+    { id: 'org-metadata', label: 'Registering organization metadata' },
+    { id: 'person-agent', label: 'Setting up your personal agent' },
+    { id: 'ownership-edge', label: 'Linking you as owner' },
+  ]
+  for (const agent of template.aiAgents) {
+    if (!agent.autoDeploy) continue
+    steps.push({ id: `ai-agent:${agent.name}`, label: `Deploying ${agent.name}` })
+  }
+  return steps
+}
+
+/**
+ * Run a single deployment step. The client calls this sequentially,
+ * updating the progress bar after each step completes.
+ */
+export async function runDeployStep(
+  stepId: DeployStepId,
   input: DeployFromTemplateInput,
-): Promise<DeployFromTemplateResult> {
+  context: {
+    orgAddress?: string
+    personAgentAddress?: string
+  },
+): Promise<DeployStepResult> {
   try {
     const session = await requireSession()
-    if (!session.walletAddress) return { success: false, error: 'Not connected' }
+    if (!session.walletAddress) return { stepId, success: false, error: 'Not connected' }
 
     const walletAddress = session.walletAddress as `0x${string}`
     const walletClient = getWalletClient()
@@ -81,67 +116,103 @@ export async function deployFromTemplate(
     const controlAddr = process.env.AGENT_CONTROL_ADDRESS as `0x${string}`
     const resolverAddr = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}`
 
-    // Get or create user
+    // Get user
     const users = await db.select().from(schema.users)
       .where(eq(schema.users.privyUserId, session.userId)).limit(1)
-    if (!users[0]) return { success: false, error: 'User not found' }
-    const _userId = users[0].id // eslint-disable-line @typescript-eslint/no-unused-vars
+    if (!users[0]) return { stepId, success: false, error: 'User not found' }
+    const user = users[0]
 
-    // ─── Step 1: Deploy Org Smart Account ────────────────────────────
-    const orgSalt = BigInt(Date.now())
-    const orgAddress = await deploySmartAccount(walletAddress, orgSalt)
+    switch (stepId) {
+      case 'org-account': {
+        const orgSalt = BigInt(Date.now())
+        const orgAddress = await deploySmartAccount(walletAddress, orgSalt)
+        return { stepId, success: true, data: { orgAddress } }
+      }
 
-    // ─── Step 2: Initialize Governance ───────────────────────────────
-    if (controlAddr) {
-      try {
-        const hash = await walletClient.writeContract({
-          address: controlAddr,
-          abi: agentControlAbi,
-          functionName: 'initializeAgent',
-          args: [orgAddress, BigInt(input.minOwners), BigInt(input.quorum)],
-        })
-        await publicClient.waitForTransactionReceipt({ hash })
-      } catch { /* may already be initialized */ }
-    }
+      case 'governance': {
+        if (controlAddr && context.orgAddress) {
+          try {
+            const hash = await walletClient.writeContract({
+              address: controlAddr,
+              abi: agentControlAbi,
+              functionName: 'initializeAgent',
+              args: [context.orgAddress as `0x${string}`, BigInt(input.minOwners), BigInt(input.quorum)],
+            })
+            await publicClient.waitForTransactionReceipt({ hash })
+          } catch { /* may already be initialized */ }
+        }
+        return { stepId, success: true }
+      }
 
-    // ─── Step 3: Register Org in Resolver ────────────────────────────
-    if (resolverAddr) {
-      try {
+      case 'org-metadata': {
+        if (resolverAddr && context.orgAddress) {
+          await registerAgentMetadata({
+            agentAddress: context.orgAddress,
+            displayName: input.orgName,
+            description: input.orgDescription,
+            agentType: 'org',
+          })
+          await addAgentController(context.orgAddress, walletAddress)
+          await setAgentTemplateId(context.orgAddress, input.template.id)
+        }
+        return { stepId, success: true }
+      }
+
+      case 'person-agent': {
+        // Reuse existing person agent or deploy a new one
+        const existingAddr = await getPersonAgentForUser(user.id)
+        if (existingAddr) {
+          return { stepId, success: true, data: { personAgentAddress: existingAddr } }
+        }
+        const saltHash = keccak256(encodePacked(['string', 'address'], ['person', walletAddress]))
+        const salt = BigInt(saltHash)
+        const personAddr = await deploySmartAccount(walletAddress, salt)
         await registerAgentMetadata({
-          agentAddress: orgAddress,
-          displayName: input.orgName,
-          description: input.orgDescription,
-          agentType: 'org',
+          agentAddress: personAddr,
+          displayName: `${user.name}'s Agent`,
+          description: '',
+          agentType: 'person',
         })
-        await addAgentController(orgAddress, walletAddress)
-        await setAgentTemplateId(orgAddress, input.template.id)
-      } catch { /* resolver may not be deployed */ }
-    }
+        await addAgentController(personAddr, walletAddress)
+        return { stepId, success: true, data: { personAgentAddress: personAddr } }
+      }
 
-    // ─── Step 4: Deploy AI Agents from Template ──────────────────────
-    const deployedAgents: Array<{ name: string; address: string; type: string }> = []
-
-    for (const agentDef of input.template.aiAgents) {
-      if (!agentDef.autoDeploy) continue
-
-      try {
-        const agentSalt = BigInt(Date.now() + Math.floor(Math.random() * 10000))
-        const agentAddress = await deploySmartAccount(walletAddress, agentSalt)
-
-        // Create Org Control relationship (AI → Org)
-        try {
+      case 'ownership-edge': {
+        if (context.personAgentAddress && context.orgAddress) {
           const edgeId = await createRelationship({
-            subject: agentAddress as `0x${string}`,
-            object: orgAddress as `0x${string}`,
-            roles: [ROLE_OPERATED_AGENT],
-            relationshipType: ORGANIZATIONAL_CONTROL,
+            subject: context.personAgentAddress as `0x${string}`,
+            object: context.orgAddress as `0x${string}`,
+            roles: [ROLE_OWNER as `0x${string}`],
+            relationshipType: ORGANIZATION_GOVERNANCE as `0x${string}`,
           })
           await confirmRelationship(edgeId)
-        } catch { /* relationship creation may fail */ }
+        }
+        return { stepId, success: true }
+      }
 
-        // Register in resolver
-        if (resolverAddr) {
+      default: {
+        // AI agent steps: "ai-agent:AgentName"
+        if (stepId.startsWith('ai-agent:') && context.orgAddress) {
+          const agentName = stepId.replace('ai-agent:', '')
+          const agentDef = input.template.aiAgents.find(a => a.name === agentName)
+          if (!agentDef) return { stepId, success: false, error: `Agent definition not found: ${agentName}` }
+
+          const agentSalt = BigInt(Date.now() + Math.floor(Math.random() * 10000))
+          const agentAddress = await deploySmartAccount(walletAddress, agentSalt)
+
+          // Create Org Control relationship (AI → Org)
           try {
+            const edgeId = await createRelationship({
+              subject: agentAddress as `0x${string}`,
+              object: context.orgAddress as `0x${string}`,
+              roles: [ROLE_OPERATED_AGENT],
+              relationshipType: ORGANIZATIONAL_CONTROL,
+            })
+            await confirmRelationship(edgeId)
+          } catch { /* relationship creation may fail */ }
+
+          // Register in resolver
+          if (resolverAddr) {
             await registerAgentMetadata({
               agentAddress,
               displayName: agentDef.name,
@@ -152,29 +223,22 @@ export async function deployFromTemplate(
               trustModels: agentDef.trustModels,
             })
             await addAgentController(agentAddress, walletAddress)
-          } catch { /* resolver registration may fail */ }
+          }
+
+          return {
+            stepId,
+            success: true,
+            data: { agentAddress, agentName: agentDef.name, agentType: agentDef.agentType },
+          }
         }
-
-        deployedAgents.push({
-          name: agentDef.name,
-          address: agentAddress,
-          type: agentDef.agentType,
-        })
-      } catch (e) {
-        console.error(`Failed to deploy AI agent ${agentDef.name}:`, e)
+        return { stepId, success: false, error: 'Unknown step' }
       }
-    }
-
-    return {
-      success: true,
-      orgAddress,
-      orgId: orgAddress,
-      deployedAgents,
     }
   } catch (error) {
     return {
+      stepId,
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to deploy from template',
+      error: error instanceof Error ? error.message : 'Step failed',
     }
   }
 }

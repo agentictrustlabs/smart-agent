@@ -345,6 +345,147 @@ function seedCIL() {
     insertCOC(u4, 2) // 2/10 obeying
     insertPreferences(u4, 'en', 'Kossi Mobile Repairs', 'Lom\u00e9, Togo')
   }
+
+  // ─── Mission Collective data (revenue, BDC training, proposals) ────
+  seedMCData()
+}
+
+// ─── MC (Mission Collective) seed data ────────────────────────────────
+
+const BDC_MODULES = [
+  { key: 'bdc-1', name: 'Business Basics', hours: 2, sortOrder: 1 },
+  { key: 'bdc-2', name: 'Financial Record Keeping', hours: 3, sortOrder: 2 },
+  { key: 'bdc-3', name: 'Market Analysis', hours: 2, sortOrder: 3 },
+  { key: 'bdc-4', name: 'Pricing Strategy', hours: 2, sortOrder: 4 },
+  { key: 'bdc-5', name: 'Customer Relations', hours: 2, sortOrder: 5 },
+  { key: 'bdc-6', name: 'Growth Planning', hours: 3, sortOrder: 6 },
+]
+
+function hasMCData(): boolean {
+  try {
+    const row = db.select().from(schema.revenueReports)
+      .where(eq(schema.revenueReports.orgAddress, '0x00000000000000000000000000000000000c0003'))
+      .get()
+    return !!row
+  } catch { return false }
+}
+
+function seedMCData() {
+  if (hasMCData()) return
+
+  // ─── Revenue reports ───────────────────────────────────────────────
+  const afiaAddr = '0x00000000000000000000000000000000000c0003'
+  const kossiAddr = '0x00000000000000000000000000000000000c0004'
+
+  const revenueRows: Array<{
+    orgAddress: string; submittedBy: string; period: string
+    grossRevenue: number; expenses: number; netRevenue: number
+    sharePayment: number; status: 'draft' | 'submitted' | 'verified' | 'disputed'
+    verifiedBy?: string; verifiedAt?: string
+  }> = [
+    { orgAddress: afiaAddr, submittedBy: 'cil-user-003', period: '2026-01', grossRevenue: 450000, expenses: 280000, netRevenue: 170000, sharePayment: 25500, status: 'verified', verifiedBy: 'cil-user-001', verifiedAt: daysAgo(60) },
+    { orgAddress: afiaAddr, submittedBy: 'cil-user-003', period: '2026-02', grossRevenue: 520000, expenses: 310000, netRevenue: 210000, sharePayment: 31500, status: 'verified', verifiedBy: 'cil-user-001', verifiedAt: daysAgo(30) },
+    { orgAddress: afiaAddr, submittedBy: 'cil-user-003', period: '2026-03', grossRevenue: 480000, expenses: 295000, netRevenue: 185000, sharePayment: 27750, status: 'submitted' },
+    { orgAddress: kossiAddr, submittedBy: 'cil-user-004', period: '2026-01', grossRevenue: 180000, expenses: 95000, netRevenue: 85000, sharePayment: 12750, status: 'verified', verifiedBy: 'cil-user-001', verifiedAt: daysAgo(60) },
+    { orgAddress: kossiAddr, submittedBy: 'cil-user-004', period: '2026-02', grossRevenue: 210000, expenses: 110000, netRevenue: 100000, sharePayment: 15000, status: 'verified', verifiedBy: 'cil-user-001', verifiedAt: daysAgo(30) },
+    { orgAddress: kossiAddr, submittedBy: 'cil-user-004', period: '2026-03', grossRevenue: 150000, expenses: 120000, netRevenue: 30000, sharePayment: 4500, status: 'draft' },
+  ]
+
+  for (const r of revenueRows) {
+    db.insert(schema.revenueReports).values({
+      id: randomUUID(),
+      orgAddress: r.orgAddress,
+      submittedBy: r.submittedBy,
+      period: r.period,
+      grossRevenue: r.grossRevenue,
+      expenses: r.expenses,
+      netRevenue: r.netRevenue,
+      sharePayment: r.sharePayment,
+      currency: 'XOF',
+      notes: null,
+      verifiedBy: r.verifiedBy ?? null,
+      verifiedAt: r.verifiedAt ?? null,
+      status: r.status,
+    }).run()
+  }
+
+  // ─── BDC Training modules ─────────────────────────────────────────
+  for (const m of BDC_MODULES) {
+    try {
+      db.insert(schema.trainingModules).values({
+        id: randomUUID(),
+        name: m.name,
+        description: null,
+        program: 'bdc',
+        hours: m.hours,
+        sortOrder: m.sortOrder,
+      }).run()
+    } catch { /* already exists */ }
+  }
+
+  // ─── BDC Training progress ────────────────────────────────────────
+  // Afia: bdc-1 thru bdc-4 completed, bdc-5 and bdc-6 not started
+  for (let i = 0; i < BDC_MODULES.length; i++) {
+    const done = i < 4
+    db.insert(schema.trainingProgress).values({
+      id: randomUUID(),
+      userId: 'cil-user-003',
+      moduleKey: BDC_MODULES[i].key,
+      program: 'bdc',
+      track: null,
+      completed: done ? 1 : 0,
+      completedAt: done ? daysAgo(60 - i * 7) : null,
+    }).run()
+  }
+
+  // Kossi: bdc-1 and bdc-2 completed, rest not started
+  for (let i = 0; i < BDC_MODULES.length; i++) {
+    const done = i < 2
+    db.insert(schema.trainingProgress).values({
+      id: randomUUID(),
+      userId: 'cil-user-004',
+      moduleKey: BDC_MODULES[i].key,
+      program: 'bdc',
+      track: null,
+      completed: done ? 1 : 0,
+      completedAt: done ? daysAgo(45 - i * 7) : null,
+    }).run()
+  }
+
+  // ─── Governance proposals ─────────────────────────────────────────
+  const cilOrgAddr = '0x00000000000000000000000000000000000c0006'
+
+  db.insert(schema.proposals).values({
+    id: randomUUID(),
+    orgAddress: cilOrgAddr,
+    proposer: 'cil-user-001',
+    title: 'Graduate Wave 1 to Phase 2',
+    description: 'Promote Wave 1 businesses that have completed BDC training and submitted 3 monthly revenue reports to Phase 2 capital access.',
+    actionType: 'graduate-wave',
+    targetAddress: null,
+    quorumRequired: 2,
+    votesFor: 1,
+    votesAgainst: 0,
+    status: 'open',
+    executedAt: null,
+  }).run()
+
+  db.insert(schema.proposals).values({
+    id: randomUUID(),
+    orgAddress: cilOrgAddr,
+    proposer: 'cil-user-001',
+    title: "Approve Afia's Market capital increase",
+    description: "Increase capital allocation for Afia's Market based on consistent revenue growth and verified monthly reports.",
+    actionType: 'general',
+    targetAddress: afiaAddr,
+    quorumRequired: 2,
+    votesFor: 2,
+    votesAgainst: 0,
+    status: 'passed',
+    executedAt: daysAgo(14),
+  }).run()
+
+  console.log('[mc-seed] Mission Collective data seeded')
 }
 
 // ═══════════════════════════════════════════════════════════════════════

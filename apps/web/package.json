@@ -16,6 +16,7 @@
   "dependencies": {
     "@privy-io/react-auth": "^1.92.0",
     "@privy-io/server-auth": "^1.32.0",
+    "@smart-agent/discovery": "workspace:*",
     "@smart-agent/sdk": "workspace:*",
     "@smart-agent/types": "workspace:*",
     "better-sqlite3": "^11.0.0",
