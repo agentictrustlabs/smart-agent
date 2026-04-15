@@ -3,7 +3,7 @@ import Link from 'next/link'
 // ─── Types ──────────────────────────────────────────────────────────
 
 export interface AttentionItem {
-  type: 'circle' | 'oikos' | 'prayer' | 'revenue-report' | 'escalation' | 'governance'
+  type: 'group' | 'oikos' | 'prayer' | 'revenue-report' | 'escalation' | 'governance'
   label: string
   detail: string
   href: string
@@ -12,7 +12,7 @@ export interface AttentionItem {
 // ─── Icon per type ──────────────────────────────────────────────────
 
 const TYPE_ICONS: Record<AttentionItem['type'], string> = {
-  circle: '\u{1F4CA}',          // 📊
+  group: '\u{1F4CA}',           // 📊
   oikos: '\u{1F4AC}',           // 💬
   prayer: '\u{1F64F}',          // 🙏
   'revenue-report': '\u{1F4B0}', // 💰

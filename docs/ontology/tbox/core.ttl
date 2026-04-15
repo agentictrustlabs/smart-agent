@@ -71,7 +71,7 @@ sa:OrganizationAgent
     a owl:Class ;
     rdfs:subClassOf sa:Agent , dul:Organization ;
     rdfs:label "Organization" ;
-    rdfs:comment "An agent representing an organization -- church, business, collective, or agency." ;
+    rdfs:comment "An agent representing an organization. Governed by multi-sig quorum via AgentControl." ;
     sa:onChainTypeHash "TYPE_ORGANIZATION" .
 
 sa:AIAgentAccount
@@ -99,12 +99,8 @@ sa:AIAgentClass
     rdfs:label "AI Agent Class" ;
     rdfs:comment "Classification of an AI agent's operational role." .
 
-sa:DiscoveryClass   a sa:AIAgentClass ; rdfs:label "Discovery"  ; sa:onChainClassHash "CLASS_DISCOVERY" .
-sa:ValidatorClass   a sa:AIAgentClass ; rdfs:label "Validator"   ; sa:onChainClassHash "CLASS_VALIDATOR" .
-sa:ExecutorClass    a sa:AIAgentClass ; rdfs:label "Executor"    ; sa:onChainClassHash "CLASS_EXECUTOR" .
-sa:AssistantClass   a sa:AIAgentClass ; rdfs:label "Assistant"   ; sa:onChainClassHash "CLASS_ASSISTANT" .
-sa:OracleClass      a sa:AIAgentClass ; rdfs:label "Oracle"      ; sa:onChainClassHash "CLASS_ORACLE" .
-sa:CustomClass      a sa:AIAgentClass ; rdfs:label "Custom"      ; sa:onChainClassHash "CLASS_CUSTOM" .
+# NOTE: Concrete AIAgentClass individuals (DiscoveryClass, ExecutorClass, etc.)
+# are in cbox/controlled-vocabularies.ttl as SKOS concept vocabulary.
 
 
 # =============================================================================

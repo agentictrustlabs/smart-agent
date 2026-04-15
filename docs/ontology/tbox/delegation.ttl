@@ -120,29 +120,8 @@ sad:CaveatEnforcerType
     rdfs:label "Caveat Enforcer Type" ;
     rdfs:comment "Classification of caveat enforcer contracts." .
 
-sad:TimestampEnforcer
-    a sad:CaveatEnforcerType ;
-    rdfs:label "Timestamp Enforcer" ;
-    rdfs:comment "Time-window caveat: validAfter and validUntil bounds." ;
-    skos:notation "timestamp" .
-
-sad:ValueEnforcer
-    a sad:CaveatEnforcerType ;
-    rdfs:label "Value Enforcer" ;
-    rdfs:comment "Maximum ETH value per call." ;
-    skos:notation "value" .
-
-sad:AllowedTargetsEnforcer
-    a sad:CaveatEnforcerType ;
-    rdfs:label "Allowed Targets Enforcer" ;
-    rdfs:comment "Restrict to specific target contract addresses." ;
-    skos:notation "allowedTargets" .
-
-sad:AllowedMethodsEnforcer
-    a sad:CaveatEnforcerType ;
-    rdfs:label "Allowed Methods Enforcer" ;
-    rdfs:comment "Restrict to specific function selectors." ;
-    skos:notation "allowedMethods" .
+# Enforcer type individuals (TimestampEnforcer, ValueEnforcer, etc.)
+# are in cbox/controlled-vocabularies.ttl as SKOS concept vocabulary.
 
 sad:enforcerType
     a owl:ObjectProperty ;
@@ -194,63 +173,5 @@ sad:defaultDurationSeconds
     rdfs:domain sad:DelegationPolicy ;
     rdfs:range xsd:integer .
 
-# ─── Policy Individuals (6 defined in SDK) ───────────────────────────
-
-sad:CEOTreasuryPolicy
-    a sad:DelegationPolicy ;
-    rdfs:label "CEO Treasury" ;
-    rdfs:comment "CEO can execute treasury operations with timestamp + value bounds." ;
-    skos:notation "ceo-treasury" ;
-    sad:requiresRelationshipType sar:OrganizationGovernance ;
-    sad:requiresRole sar:ChiefExecutive ;
-    sad:requiredEnforcer sad:TimestampEnforcer , sad:ValueEnforcer ;
-    sad:optionalEnforcer sad:AllowedTargetsEnforcer .
-
-sad:OperatorExecutionPolicy
-    a sad:DelegationPolicy ;
-    rdfs:label "Operator Execution" ;
-    rdfs:comment "Operators call approved methods on approved targets with value limits." ;
-    skos:notation "operator-execution" ;
-    sad:requiresRelationshipType sar:OrganizationMembership ;
-    sad:requiresRole sar:Operator ;
-    sad:requiredEnforcer sad:TimestampEnforcer , sad:AllowedTargetsEnforcer , sad:AllowedMethodsEnforcer ;
-    sad:optionalEnforcer sad:ValueEnforcer .
-
-sad:AuditorReadPolicy
-    a sad:DelegationPolicy ;
-    rdfs:label "Auditor Read" ;
-    rdfs:comment "Auditors get read-only access with time limits." ;
-    skos:notation "auditor-read" ;
-    sad:requiresRelationshipType sar:OrganizationMembership ;
-    sad:requiresRole sar:Auditor ;
-    sad:requiredEnforcer sad:TimestampEnforcer .
-
-sad:StakerBondPolicy
-    a sad:DelegationPolicy ;
-    rdfs:label "Staker Bond" ;
-    rdfs:comment "Stakers have bonded authority with time bounds." ;
-    skos:notation "staker-bond" ;
-    sad:requiresRelationshipType sar:EconomicSecurity ;
-    sad:requiresRole sar:Staker ;
-    sad:requiredEnforcer sad:TimestampEnforcer ;
-    sad:optionalEnforcer sad:ValueEnforcer .
-
-sad:ServiceProviderExecutionPolicy
-    a sad:DelegationPolicy ;
-    rdfs:label "Service Provider Execution" ;
-    rdfs:comment "Service providers call bounded targets with time + value limits." ;
-    skos:notation "service-provider-execution" ;
-    sad:requiresRelationshipType sar:ServiceAgreement ;
-    sad:requiresRole sar:ServiceProvider ;
-    sad:requiredEnforcer sad:TimestampEnforcer , sad:AllowedTargetsEnforcer ;
-    sad:optionalEnforcer sad:ValueEnforcer .
-
-sad:ReviewSubmissionPolicy
-    a sad:DelegationPolicy ;
-    rdfs:label "Review Submission" ;
-    rdfs:comment "Reviewers submit reviews through delegated execution." ;
-    skos:notation "review-submission" ;
-    sad:requiresRelationshipType sar:Review ;
-    sad:requiresRole sar:Reviewer ;
-    sad:requiredEnforcer sad:TimestampEnforcer , sad:AllowedTargetsEnforcer , sad:AllowedMethodsEnforcer ;
-    sad:defaultDurationSeconds 604800 .
+# 6 delegation policy individuals (CEOTreasuryPolicy, OperatorExecutionPolicy, etc.)
+# are in cbox/controlled-vocabularies.ttl as SKOS concept vocabulary.

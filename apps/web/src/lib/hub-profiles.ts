@@ -201,7 +201,7 @@ export const HUB_PROFILES: HubProfile[] = [
   {
     id: 'catalyst',
     name: 'Catalyst NoCo Network',
-    description: 'Northern Colorado church planting and Hispanic outreach — circles, discipleship, and community development.',
+    description: 'Northern Colorado church planting and Hispanic outreach — oikos, discipleship, and community development.',
     templateIds: [
       'catalyst-network',
       'facilitator-hub',

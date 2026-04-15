@@ -14,14 +14,14 @@ function today(): string {
   return new Date().toISOString()
 }
 
-function hasCircles(userId: string): boolean {
+function hasOikosContacts(userId: string): boolean {
   const row = db.select().from(schema.circles).where(eq(schema.circles.userId, userId)).get()
   return !!row
 }
 
-// ─── Circle helper ────────────────────────────────────────────────────
+// ─── Oikos helper ─────────────────────────────────────────────────────
 
-interface CircleEntry {
+interface OikosEntry {
   personName: string
   proximity: number
   response: 'not-interested' | 'curious' | 'interested' | 'seeking' | 'decided' | 'baptized'
@@ -29,7 +29,7 @@ interface CircleEntry {
   notes?: string
 }
 
-function insertCircles(userId: string, entries: CircleEntry[]) {
+function insertOikosContacts(userId: string, entries: OikosEntry[]) {
   for (const e of entries) {
     db.insert(schema.circles).values({
       id: randomUUID(),
@@ -148,8 +148,8 @@ function insertPreferences(userId: string, language: string, homeChurch: string,
 function seedGlobalChurch() {
   // ─── gc-user-001: Pastor James (Coach) ────────────────────────────
   const u1 = 'gc-user-001'
-  if (!hasCircles(u1)) {
-    insertCircles(u1, [
+  if (!hasOikosContacts(u1)) {
+    insertOikosContacts(u1, [
       { personName: 'Maria Chen', proximity: 1, response: 'decided' },
       { personName: 'Tom & Lisa', proximity: 2, response: 'interested' },
       { personName: 'Youth Group', proximity: 2, response: 'seeking' },
@@ -170,8 +170,8 @@ function seedGlobalChurch() {
 
   // ─── gc-user-002: Dr. Sarah Mitchell (Disciple + Coach) ──────────
   const u2 = 'gc-user-002'
-  if (!hasCircles(u2)) {
-    insertCircles(u2, [
+  if (!hasOikosContacts(u2)) {
+    insertOikosContacts(u2, [
       { personName: 'Board members', proximity: 1, response: 'decided' },
       { personName: 'Seminary students', proximity: 2, response: 'interested' },
       { personName: 'Interfaith council', proximity: 3, response: 'curious' },
@@ -189,8 +189,8 @@ function seedGlobalChurch() {
 function seedCatalystNetwork() {
   // ─── cat-user-001: Maria Gonzalez (Coach — NoCo Hispanic outreach) ─
   const u1 = 'cat-user-001'
-  if (!hasCircles(u1)) {
-    insertCircles(u1, [
+  if (!hasOikosContacts(u1)) {
+    insertOikosContacts(u1, [
       { personName: 'Pastor David', proximity: 1, response: 'decided' },
       { personName: 'Rosa Martinez', proximity: 1, response: 'decided' },
       { personName: 'Familia Lopez (Wellington)', proximity: 2, response: 'seeking' },
@@ -213,8 +213,8 @@ function seedCatalystNetwork() {
 
   // ─── cat-user-002: Pastor David Chen (Hub Lead — Disciple) ────────
   const u2 = 'cat-user-002'
-  if (!hasCircles(u2)) {
-    insertCircles(u2, [
+  if (!hasOikosContacts(u2)) {
+    insertOikosContacts(u2, [
       { personName: 'Ana Reyes (Wellington)', proximity: 1, response: 'decided' },
       { personName: 'Miguel Santos (Laporte)', proximity: 1, response: 'decided' },
       { personName: 'Rosa Martinez', proximity: 1, response: 'seeking' },
@@ -233,8 +233,8 @@ function seedCatalystNetwork() {
 
   // ─── cat-user-003: Rosa Martinez (Hispanic Outreach Coordinator) ──
   const u3 = 'cat-user-003'
-  if (!hasCircles(u3)) {
-    insertCircles(u3, [
+  if (!hasOikosContacts(u3)) {
+    insertOikosContacts(u3, [
       { personName: 'Familia Herrera', proximity: 1, response: 'decided' },
       { personName: 'ESL students (Tue/Thu class)', proximity: 2, response: 'seeking', plannedConversation: true },
       { personName: 'Meat packing plant workers', proximity: 3, response: 'curious' },
@@ -253,8 +253,8 @@ function seedCatalystNetwork() {
 
   // ─── cat-user-006: Ana Reyes (Circle Leader — Wellington) ─────────
   const u6 = 'cat-user-006'
-  if (!hasCircles(u6)) {
-    insertCircles(u6, [
+  if (!hasOikosContacts(u6)) {
+    insertOikosContacts(u6, [
       { personName: 'Familia Morales', proximity: 1, response: 'seeking' },
       { personName: 'Youth group teens (5)', proximity: 2, response: 'interested' },
       { personName: 'Wellington Elementary parents', proximity: 3, response: 'curious' },
@@ -272,8 +272,8 @@ function seedCatalystNetwork() {
 
   // ─── cat-user-007: Miguel Santos (Circle Leader — Laporte) ────────
   const u7 = 'cat-user-007'
-  if (!hasCircles(u7)) {
-    insertCircles(u7, [
+  if (!hasOikosContacts(u7)) {
+    insertOikosContacts(u7, [
       { personName: 'Farm crew (8 men)', proximity: 1, response: 'interested' },
       { personName: 'Foreman Ricardo', proximity: 1, response: 'seeking', plannedConversation: true },
       { personName: 'Familia Santos extended', proximity: 2, response: 'decided' },
@@ -292,8 +292,8 @@ function seedCatalystNetwork() {
 function seedCIL() {
   // ─── cil-user-001: Cameron Henrion (Coach) ────────────────────────
   const u1 = 'cil-user-001'
-  if (!hasCircles(u1)) {
-    insertCircles(u1, [
+  if (!hasOikosContacts(u1)) {
+    insertOikosContacts(u1, [
       { personName: 'Afia', proximity: 1, response: 'decided' },
       { personName: 'Kossi', proximity: 1, response: 'seeking' },
       { personName: 'Local government', proximity: 3, response: 'interested' },
@@ -313,8 +313,8 @@ function seedCIL() {
 
   // ─── cil-user-003: Afia Mensah (Disciple) ────────────────────────
   const u3 = 'cil-user-003'
-  if (!hasCircles(u3)) {
-    insertCircles(u3, [
+  if (!hasOikosContacts(u3)) {
+    insertOikosContacts(u3, [
       { personName: 'Market neighbors', proximity: 1, response: 'interested' },
       { personName: 'Supplier Kokou', proximity: 2, response: 'curious' },
       { personName: 'Church friends', proximity: 2, response: 'decided' },
@@ -331,8 +331,8 @@ function seedCIL() {
 
   // ─── cil-user-004: Kossi Agbeko (Disciple) ───────────────────────
   const u4 = 'cil-user-004'
-  if (!hasCircles(u4)) {
-    insertCircles(u4, [
+  if (!hasOikosContacts(u4)) {
+    insertOikosContacts(u4, [
       { personName: 'Customers', proximity: 2, response: 'curious' },
       { personName: 'Apprentice Yao', proximity: 1, response: 'seeking' },
       { personName: 'Family', proximity: 1, response: 'decided' },

@@ -93,14 +93,8 @@ sar:createdBy
 # Edge Status (SKOS enumeration)
 # =============================================================================
 
-sar:EdgeStatus       a owl:Class ; rdfs:subClassOf skos:Concept ; rdfs:label "Edge Status" .
-sar:StatusNone       a sar:EdgeStatus ; rdfs:label "None"      ; skos:notation "0" .
-sar:StatusProposed   a sar:EdgeStatus ; rdfs:label "Proposed"   ; skos:notation "1" .
-sar:StatusConfirmed  a sar:EdgeStatus ; rdfs:label "Confirmed"  ; skos:notation "2" .
-sar:StatusActive     a sar:EdgeStatus ; rdfs:label "Active"     ; skos:notation "3" .
-sar:StatusSuspended  a sar:EdgeStatus ; rdfs:label "Suspended"  ; skos:notation "4" .
-sar:StatusRevoked    a sar:EdgeStatus ; rdfs:label "Revoked"    ; skos:notation "5" .
-sar:StatusRejected   a sar:EdgeStatus ; rdfs:label "Rejected"   ; skos:notation "6" .
+sar:EdgeStatus  a owl:Class ; rdfs:subClassOf skos:Concept ; rdfs:label "Edge Status" ; rdfs:comment "Lifecycle status of a relationship edge." .
+# Concept individuals (StatusNone..StatusRejected) in cbox/controlled-vocabularies.ttl
 
 
 # =============================================================================
@@ -125,13 +119,8 @@ sar:assertsEdge
     rdfs:domain sar:Assertion ;
     rdfs:range sar:RelationshipEdge .
 
-sar:AssertionType      a owl:Class ; rdfs:subClassOf skos:Concept ; rdfs:label "Assertion Type" .
-sar:SelfAsserted       a sar:AssertionType ; rdfs:label "Self-Asserted"        ; skos:notation "1" .
-sar:ObjectAsserted     a sar:AssertionType ; rdfs:label "Object-Asserted"      ; skos:notation "2" .
-sar:MutualConfirmation a sar:AssertionType ; rdfs:label "Mutual Confirmation"  ; skos:notation "3" .
-sar:ValidatorAsserted  a sar:AssertionType ; rdfs:label "Validator-Asserted"   ; skos:notation "4" .
-sar:OrgAsserted        a sar:AssertionType ; rdfs:label "Org-Asserted"         ; skos:notation "5" .
-sar:AppAsserted        a sar:AssertionType ; rdfs:label "App-Asserted"         ; skos:notation "6" .
+sar:AssertionType  a owl:Class ; rdfs:subClassOf skos:Concept ; rdfs:label "Assertion Type" ; rdfs:comment "Classification of how a relationship was asserted." .
+# Concept individuals (SelfAsserted..AppAsserted) in cbox/controlled-vocabularies.ttl
 
 
 # =============================================================================
@@ -153,45 +142,8 @@ sar:CapitalRelationship         a owl:Class ; rdfs:subClassOf sar:RelationshipTy
 sar:ExecutionRelationship       a owl:Class ; rdfs:subClassOf sar:RelationshipType ; rdfs:label "Execution"         ; rdfs:comment "Delegation, service, and operational control." .
 sar:InfrastructureRelationship  a owl:Class ; rdfs:subClassOf sar:RelationshipType ; rdfs:label "Infrastructure"    ; rdfs:comment "Runtime attestation and build provenance." .
 
-# ─── Concrete Types (16) ─────────────────────────────────────────────
-
-sar:OrganizationGovernance
-    a sar:InstitutionalRelationship ;
-    rdfs:label "Governance" ;
-    rdfs:comment "Governance, fiduciary, and executive authority between an agent and an organization." ;
-    sa:onChainTermHash "keccak256('atl:OrganizationGovernanceRelationship')" ;
-    skos:notation "organization-governance" .
-
-sar:OrganizationMembership
-    a sar:InstitutionalRelationship ;
-    rdfs:label "Membership" ;
-    rdfs:comment "Membership, staffing, or operating participation within an organization or group." ;
-    sa:onChainTermHash "keccak256('atl:OrganizationMembershipRelationship')" ;
-    skos:notation "organization-membership" .
-
-sar:Alliance
-    a sar:NetworkRelationship ;
-    rdfs:label "Alliance" ;
-    rdfs:comment "Strategic alignment or generative linkage between organizations." ;
-    sa:onChainTermHash "keccak256('atl:AllianceRelationship')" ;
-    skos:notation "alliance" ;
-    skos:altLabel "Church Lineage"@en-catalyst ;
-    skos:altLabel "Ministry Lineage"@en-global-church ;
-    skos:altLabel "Trust Link"@en-cil .
-
-sar:ValidationTrust       a sar:AssuranceRelationship       ; rdfs:label "Validation"          ; skos:notation "validation-trust"       ; sa:onChainTermHash "keccak256('atl:ValidationTrustRelationship')" .
-sar:InsuranceCoverage     a sar:AssuranceRelationship       ; rdfs:label "Insurance"            ; skos:notation "insurance-coverage"     ; sa:onChainTermHash "keccak256('atl:InsuranceCoverageRelationship')" .
-sar:Compliance            a sar:AssuranceRelationship       ; rdfs:label "Compliance"           ; skos:notation "compliance"             ; sa:onChainTermHash "keccak256('atl:ComplianceRelationship')" .
-sar:EconomicSecurity      a sar:CapitalRelationship         ; rdfs:label "Economic Security"    ; skos:notation "economic-security"      ; sa:onChainTermHash "keccak256('atl:EconomicSecurityRelationship')" .
-sar:ServiceAgreement      a sar:ExecutionRelationship       ; rdfs:label "Service"              ; skos:notation "service-agreement"      ; sa:onChainTermHash "keccak256('atl:ServiceAgreementRelationship')" .
-sar:DelegationAuthority   a sar:ExecutionRelationship       ; rdfs:label "Delegation"           ; skos:notation "delegation-authority"   ; sa:onChainTermHash "keccak256('atl:DelegationAuthorityRelationship')" .
-sar:RuntimeAttestation    a sar:InfrastructureRelationship  ; rdfs:label "Runtime/TEE"          ; skos:notation "runtime-attestation"    ; sa:onChainTermHash "keccak256('atl:RuntimeAttestationRelationship')" .
-sar:BuildProvenance       a sar:InfrastructureRelationship  ; rdfs:label "Build Provenance"     ; skos:notation "build-provenance"       ; sa:onChainTermHash "keccak256('atl:BuildProvenanceRelationship')" .
-sar:OrganizationalControl a sar:ExecutionRelationship       ; rdfs:label "Org Control"          ; skos:notation "organizational-control" ; sa:onChainTermHash "keccak256('atl:OrganizationalControlRelationship')" .
-sar:ActivityValidation    a sar:AssuranceRelationship       ; rdfs:label "Activity Validation"  ; skos:notation "activity-validation"    ; sa:onChainTermHash "keccak256('atl:ActivityValidationRelationship')" .
-sar:Review                a sar:AssuranceRelationship       ; rdfs:label "Review"               ; skos:notation "review"                 ; sa:onChainTermHash "keccak256('atl:ReviewRelationship')" ; skos:altLabel "Endorsement"@en-global-church ; skos:altLabel "Assertion"@en-cil .
-sar:HasMember             a sar:NetworkRelationship         ; rdfs:label "Hub Membership"       ; skos:notation "has-member"             ; sa:onChainTermHash "keccak256('atl:HasMemberRelationship')" .
-sar:GenerationalLineage   a sar:NetworkRelationship         ; rdfs:label "Generational Lineage" ; skos:notation "generational-lineage"   ; sa:onChainTermHash "keccak256('atl:GenerationalLineageRelationship')" ; skos:altLabel "Church Planting Lineage"@en-global-church .
+# 16 concrete relationship type individuals (OrganizationGovernance, Alliance, etc.)
+# are in cbox/controlled-vocabularies.ttl as SKOS concept vocabulary.
 
 
 # =============================================================================

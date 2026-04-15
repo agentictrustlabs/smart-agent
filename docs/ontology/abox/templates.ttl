@@ -13,6 +13,10 @@
 # =============================================================================
 
 
+# NOTE: HubFeature SKOS concepts and HubVocabularyMapping entries are in
+# cbox/hub-vocabulary.ttl (controlled vocabulary = C-Box, not A-Box).
+
+
 # =============================================================================
 # Hub Profile Instances
 # =============================================================================

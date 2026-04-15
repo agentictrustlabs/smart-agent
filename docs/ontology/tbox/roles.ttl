@@ -3,7 +3,6 @@
 @prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix owl:   <http://www.w3.org/2002/07/owl#> .
-@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
 @prefix skos:  <http://www.w3.org/2004/02/skos/core#> .
 @prefix dul:   <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#> .
 
@@ -11,23 +10,24 @@
 # Smart Agent Roles Ontology  (T-Box)
 # =============================================================================
 #
-# Complete role hierarchy: 10 abstract categories, 50+ concrete roles.
-# Each role links to applicable relationship types via sar:applicableToRelationshipType.
+# Role category class hierarchy only. Concrete role individuals (Owner,
+# Auditor, Operator, etc.) are SKOS concept vocabulary and live in
+# cbox/controlled-vocabularies.ttl.
 #
 # Source: packages/sdk/src/relationship-taxonomy.ts (roleDefinitions)
-# Version: 0.1.0
+# Version: 0.2.0
 # =============================================================================
 
 <https://smartagent.io/ontology/roles>
     a owl:Ontology ;
     rdfs:label "Smart Agent Roles Ontology" ;
-    rdfs:comment "T-Box: role hierarchy for trust graph participation." ;
-    owl:versionInfo "0.1.0" ;
+    rdfs:comment "T-Box: role category classes. Concept individuals in C-Box." ;
+    owl:versionInfo "0.2.0" ;
     owl:imports <https://smartagent.io/ontology/relationships> .
 
 
 # =============================================================================
-# Role Categories (abstract parents)
+# Role Categories (abstract class hierarchy)
 # =============================================================================
 
 sar:GovernanceRole      a owl:Class ; rdfs:subClassOf sar:Role ; rdfs:label "Governance Role"      ; rdfs:comment "Governance, fiduciary, or executive authority." .
@@ -41,153 +41,5 @@ sar:ExecutionRole       a owl:Class ; rdfs:subClassOf sar:Role ; rdfs:label "Exe
 sar:InfrastructureRole  a owl:Class ; rdfs:subClassOf sar:Role ; rdfs:label "Infrastructure Role"  ; rdfs:comment "Runtime, build, and infrastructure trust." .
 sar:NetworkRole         a owl:Class ; rdfs:subClassOf sar:Role ; rdfs:label "Network Role"         ; rdfs:comment "Upstream/downstream network positions." .
 
-
-# =============================================================================
-# Governance Roles
-# =============================================================================
-
-sar:Owner
-    a sar:GovernanceRole ;
-    rdfs:label "owner" ;
-    rdfs:comment "Primary governing authority for an organization or agent." ;
-    skos:notation "owner" ;
-    sa:onChainTermHash "keccak256('atl:OwnerRole')" ;
-    sar:applicableToRelationshipType sar:OrganizationGovernance .
-
-sar:BoardMember
-    a sar:GovernanceRole ;
-    rdfs:label "board-member" ;
-    rdfs:comment "Member of the governing board." ;
-    skos:notation "board-member" ;
-    sa:onChainTermHash "keccak256('atl:BoardMemberRole')" ;
-    sar:applicableToRelationshipType sar:OrganizationGovernance .
-
-sar:ChiefExecutive
-    a sar:GovernanceRole ;
-    rdfs:label "ceo" ;
-    rdfs:comment "Chief executive responsible for organizational leadership." ;
-    skos:notation "ceo" ;
-    sa:onChainTermHash "keccak256('atl:ChiefExecutiveRole')" ;
-    sar:applicableToRelationshipType sar:OrganizationGovernance .
-
-sar:Executive
-    a sar:GovernanceRole ;
-    rdfs:label "executive" ;
-    rdfs:comment "Executive leadership role." ;
-    skos:notation "executive" ;
-    sa:onChainTermHash "keccak256('atl:ExecutiveRole')" ;
-    sar:applicableToRelationshipType sar:OrganizationGovernance .
-
-sar:Treasurer
-    a sar:GovernanceRole ;
-    rdfs:label "treasurer" ;
-    rdfs:comment "Treasury or financial oversight responsibilities." ;
-    skos:notation "treasurer" ;
-    sa:onChainTermHash "keccak256('atl:TreasurerRole')" ;
-    sar:applicableToRelationshipType sar:OrganizationGovernance , sar:OrganizationMembership .
-
-sar:AuthorizedSigner
-    a sar:GovernanceRole ;
-    rdfs:label "authorized-signer" ;
-    rdfs:comment "Allowed to sign or approve bounded transactions." ;
-    skos:notation "authorized-signer" ;
-    sa:onChainTermHash "keccak256('atl:AuthorizedSignerRole')" ;
-    sar:applicableToRelationshipType sar:OrganizationGovernance , sar:OrganizationMembership , sar:DelegationAuthority .
-
-sar:Officer    a sar:GovernanceRole ; rdfs:label "officer"   ; skos:notation "officer"   ; sa:onChainTermHash "keccak256('atl:OfficerRole')"   ; sar:applicableToRelationshipType sar:OrganizationGovernance .
-sar:Chair      a sar:GovernanceRole ; rdfs:label "chair"     ; skos:notation "chair"     ; sa:onChainTermHash "keccak256('atl:ChairRole')"     ; sar:applicableToRelationshipType sar:OrganizationGovernance .
-
-
-# =============================================================================
-# Advisory Roles
-# =============================================================================
-
-sar:Advisor    a sar:AdvisoryRole ;  rdfs:label "advisor"    ; skos:notation "advisor"    ; sa:onChainTermHash "keccak256('atl:AdvisorRole')"    ; sar:applicableToRelationshipType sar:OrganizationGovernance , sar:OrganizationMembership .
-
-
-# =============================================================================
-# Membership Roles
-# =============================================================================
-
-sar:Administrator a sar:MembershipRole ; rdfs:label "admin"    ; skos:notation "admin"    ; sa:onChainTermHash "keccak256('atl:AdministratorRole')" ; sar:applicableToRelationshipType sar:OrganizationMembership .
-sar:Member        a sar:MembershipRole ; rdfs:label "member"   ; skos:notation "member"   ; sa:onChainTermHash "keccak256('atl:MemberRole')"        ; sar:applicableToRelationshipType sar:OrganizationMembership , sar:HasMember .
-sar:Operator      a sar:MembershipRole ; rdfs:label "operator" ; skos:notation "operator" ; sa:onChainTermHash "keccak256('atl:OperatorRole')"      ; sar:applicableToRelationshipType sar:OrganizationMembership .
-sar:Employee      a sar:MembershipRole ; rdfs:label "employee" ; skos:notation "employee" ; sa:onChainTermHash "keccak256('atl:EmployeeRole')"      ; sar:applicableToRelationshipType sar:OrganizationMembership .
-
-
-# =============================================================================
-# Service Roles
-# =============================================================================
-
-sar:Contractor      a sar:ServiceRole ; rdfs:label "contractor"       ; skos:notation "contractor"       ; sa:onChainTermHash "keccak256('atl:ContractorRole')"      ; sar:applicableToRelationshipType sar:ServiceAgreement .
-sar:Vendor          a sar:ServiceRole ; rdfs:label "vendor"           ; skos:notation "vendor"           ; sa:onChainTermHash "keccak256('atl:VendorRole')"          ; sar:applicableToRelationshipType sar:ServiceAgreement .
-sar:ServiceProvider a sar:ServiceRole ; rdfs:label "service-provider" ; skos:notation "service-provider" ; sa:onChainTermHash "keccak256('atl:ServiceProviderRole')" ; sar:applicableToRelationshipType sar:ServiceAgreement .
-
-
-# =============================================================================
-# Assurance Roles
-# =============================================================================
-
-sar:Auditor            a sar:AssuranceRole ; rdfs:label "auditor"             ; skos:notation "auditor"             ; sa:onChainTermHash "keccak256('atl:AuditorRole')"            ; sar:applicableToRelationshipType sar:OrganizationMembership , sar:Review , sar:Compliance .
-sar:Validator          a sar:AssuranceRole ; rdfs:label "validator"           ; skos:notation "validator"           ; sa:onChainTermHash "keccak256('atl:ValidatorRole')"          ; sar:applicableToRelationshipType sar:OrganizationMembership , sar:ValidationTrust , sar:ActivityValidation .
-sar:Insurer            a sar:AssuranceRole ; rdfs:label "insurer"             ; skos:notation "insurer"             ; sa:onChainTermHash "keccak256('atl:InsurerRole')"            ; sar:applicableToRelationshipType sar:InsuranceCoverage .
-sar:InsuredParty       a sar:AssuranceRole ; rdfs:label "insured-party"       ; skos:notation "insured-party"       ; sa:onChainTermHash "keccak256('atl:InsuredPartyRole')"       ; sar:applicableToRelationshipType sar:InsuranceCoverage .
-sar:Underwriter        a sar:AssuranceRole ; rdfs:label "underwriter"         ; skos:notation "underwriter"         ; sa:onChainTermHash "keccak256('atl:UnderwriterRole')"        ; sar:applicableToRelationshipType sar:InsuranceCoverage .
-sar:CertifiedBy        a sar:AssuranceRole ; rdfs:label "certified-by"        ; skos:notation "certified-by"        ; sa:onChainTermHash "keccak256('atl:CertifiedByRole')"        ; sar:applicableToRelationshipType sar:ValidationTrust , sar:Compliance .
-sar:LicensedBy         a sar:AssuranceRole ; rdfs:label "licensed-by"         ; skos:notation "licensed-by"         ; sa:onChainTermHash "keccak256('atl:LicensedByRole')"         ; sar:applicableToRelationshipType sar:Compliance .
-sar:ActivityValidator  a sar:AssuranceRole ; rdfs:label "activity-validator"   ; skos:notation "activity-validator"  ; sa:onChainTermHash "keccak256('atl:ActivityValidatorRole')"  ; sar:applicableToRelationshipType sar:ActivityValidation .
-sar:ValidatedPerformer a sar:AssuranceRole ; rdfs:label "validated-performer"  ; skos:notation "validated-performer" ; sa:onChainTermHash "keccak256('atl:ValidatedPerformerRole')" ; sar:applicableToRelationshipType sar:ActivityValidation .
-sar:Reviewer           a sar:AssuranceRole ; rdfs:label "reviewer"            ; skos:notation "reviewer"            ; sa:onChainTermHash "keccak256('atl:ReviewerRole')"           ; sar:applicableToRelationshipType sar:Review .
-sar:ReviewedAgent      a sar:AssuranceRole ; rdfs:label "reviewed-agent"      ; skos:notation "reviewed-agent"      ; sa:onChainTermHash "keccak256('atl:ReviewedAgentRole')"      ; sar:applicableToRelationshipType sar:Review .
-
-
-# =============================================================================
-# Economic Roles
-# =============================================================================
-
-sar:Staker             a sar:EconomicRole ; rdfs:label "staker"              ; skos:notation "staker"              ; sa:onChainTermHash "keccak256('atl:StakerRole')"             ; sar:applicableToRelationshipType sar:EconomicSecurity .
-sar:Guarantor          a sar:EconomicRole ; rdfs:label "guarantor"           ; skos:notation "guarantor"           ; sa:onChainTermHash "keccak256('atl:GuarantorRole')"          ; sar:applicableToRelationshipType sar:EconomicSecurity .
-sar:Backer             a sar:EconomicRole ; rdfs:label "backer"              ; skos:notation "backer"              ; sa:onChainTermHash "keccak256('atl:BackerRole')"             ; sar:applicableToRelationshipType sar:EconomicSecurity .
-sar:CollateralProvider a sar:EconomicRole ; rdfs:label "collateral-provider" ; skos:notation "collateral-provider" ; sa:onChainTermHash "keccak256('atl:CollateralProviderRole')" ; sar:applicableToRelationshipType sar:EconomicSecurity .
-
-
-# =============================================================================
-# Alliance Roles
-# =============================================================================
-
-sar:StrategicPartner a sar:AllianceRole ; rdfs:label "strategic-partner" ; skos:notation "strategic-partner" ; sa:onChainTermHash "keccak256('atl:StrategicPartnerRole')" ; sar:applicableToRelationshipType sar:Alliance .
-sar:Affiliate        a sar:AllianceRole ; rdfs:label "affiliate"         ; skos:notation "affiliate"         ; sa:onChainTermHash "keccak256('atl:AffiliateRole')"        ; sar:applicableToRelationshipType sar:Alliance .
-sar:EndorsedBy       a sar:AllianceRole ; rdfs:label "endorsed-by"       ; skos:notation "endorsed-by"       ; sa:onChainTermHash "keccak256('atl:EndorsedByRole')"       ; sar:applicableToRelationshipType sar:Alliance .
-sar:Subsidiary       a sar:AllianceRole ; rdfs:label "subsidiary"        ; skos:notation "subsidiary"        ; sa:onChainTermHash "keccak256('atl:SubsidiaryRole')"       ; sar:applicableToRelationshipType sar:Alliance .
-sar:ParentOrg        a sar:AllianceRole ; rdfs:label "parent-org"        ; skos:notation "parent-org"        ; sa:onChainTermHash "keccak256('atl:ParentOrgRole')"        ; sar:applicableToRelationshipType sar:Alliance .
-
-
-# =============================================================================
-# Execution Roles
-# =============================================================================
-
-sar:DelegatedOperator a sar:ExecutionRole ; rdfs:label "delegated-operator" ; skos:notation "delegated-operator" ; sa:onChainTermHash "keccak256('atl:DelegatedOperatorRole')" ; sar:applicableToRelationshipType sar:DelegationAuthority .
-sar:OperatedAgent     a sar:ExecutionRole ; rdfs:label "operated-agent"     ; skos:notation "operated-agent"     ; sa:onChainTermHash "keccak256('atl:OperatedAgentRole')"     ; sar:applicableToRelationshipType sar:OrganizationalControl .
-sar:ManagedAgent      a sar:ExecutionRole ; rdfs:label "managed-agent"      ; skos:notation "managed-agent"      ; sa:onChainTermHash "keccak256('atl:ManagedAgentRole')"      ; sar:applicableToRelationshipType sar:OrganizationalControl .
-sar:Administers       a sar:ExecutionRole ; rdfs:label "administers"        ; skos:notation "administers"        ; sa:onChainTermHash "keccak256('atl:AdministerRole')"        ; sar:applicableToRelationshipType sar:OrganizationalControl .
-
-
-# =============================================================================
-# Infrastructure Roles
-# =============================================================================
-
-sar:RunsInTEE       a sar:InfrastructureRole ; rdfs:label "runs-in-tee"      ; skos:notation "runs-in-tee"      ; sar:applicableToRelationshipType sar:RuntimeAttestation .
-sar:AttestedBy      a sar:InfrastructureRole ; rdfs:label "attested-by"      ; skos:notation "attested-by"      ; sar:applicableToRelationshipType sar:RuntimeAttestation .
-sar:VerifiedBy      a sar:InfrastructureRole ; rdfs:label "verified-by"      ; skos:notation "verified-by"      ; sar:applicableToRelationshipType sar:RuntimeAttestation .
-sar:BoundToKMS      a sar:InfrastructureRole ; rdfs:label "bound-to-kms"     ; skos:notation "bound-to-kms"     ; sar:applicableToRelationshipType sar:RuntimeAttestation .
-sar:ControlsRuntime a sar:InfrastructureRole ; rdfs:label "controls-runtime" ; skos:notation "controls-runtime" ; sar:applicableToRelationshipType sar:RuntimeAttestation .
-sar:BuiltFrom       a sar:InfrastructureRole ; rdfs:label "built-from"       ; skos:notation "built-from"       ; sar:applicableToRelationshipType sar:BuildProvenance .
-sar:DeployedFrom    a sar:InfrastructureRole ; rdfs:label "deployed-from"    ; skos:notation "deployed-from"    ; sar:applicableToRelationshipType sar:BuildProvenance .
-
-
-# =============================================================================
-# Network Roles
-# =============================================================================
-
-sar:Upstream   a sar:NetworkRole ; rdfs:label "upstream"   ; skos:notation "upstream"   ; sar:applicableToRelationshipType sar:GenerationalLineage .
-sar:Downstream a sar:NetworkRole ; rdfs:label "downstream" ; skos:notation "downstream" ; sar:applicableToRelationshipType sar:GenerationalLineage .
+# 50+ concrete role individuals (Owner, BoardMember, Auditor, Operator, etc.)
+# are in cbox/controlled-vocabularies.ttl as SKOS concept vocabulary.

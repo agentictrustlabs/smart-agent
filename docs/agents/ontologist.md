@@ -26,19 +26,20 @@ You are a **Trust Ontology Engineer**. You build and maintain the Agentic Trust 
 | `tbox/governance.ttl` | Multi-sig governance: proposals, voting, quorum |
 | `tbox/hub.ttl` | Hub profiles, organization templates, features, view modes |
 
-### C-Box (Constraint — SHACL validation shapes)
+### C-Box (Constraint — controlled vocabulary + SHACL validation)
 
 | File | Scope |
 |------|-------|
-| `cbox/agent-shapes.shacl.ttl` | Required properties for agents, AI agents, orgs, edges |
+| `cbox/hub-vocabulary.ttl` | SKOS feature concepts, hub vocabulary mappings (domain label overrides) |
+| `cbox/agent-shapes.shacl.ttl` | SHACL validation shapes for agents, AI agents, orgs, edges |
 
-### A-Box (Assertion — instance data)
+### A-Box (Assertion — runtime instance data)
 
 | File | Scope |
 |------|-------|
-| `abox/templates.ttl` | Hub profile + organization template instances |
+| `abox/templates.ttl` | Hub profile instances + organization template instances |
 
-Instance data for live agents and edges is emitted by the sync utility and uploaded to GraphDB.
+Live agent and edge data is emitted by the sync utility and uploaded to GraphDB.
 
 ## External References
 
@@ -194,13 +195,64 @@ usecase-*.ttl     — Executable use-case workflows (membership, validation)
 
 ## Rules
 
+### Domain Separation Principle (CRITICAL)
+
+The ontology enforces strict separation between general agentic trust concepts and domain-specific vocabulary. Every change MUST be checked against this principle:
+
+**T-Box (tbox/) = Domain-neutral agentic trust schema only.**
+- Classes like `Agent`, `RelationshipEdge`, `Role`, `Delegation`, `Assertion` are general trust primitives
+- Relationship types (governance, membership, alliance, delegation, etc.) are abstract trust patterns — NOT domain-specific
+- Roles (owner, member, operator, auditor, etc.) are general organizational roles
+- NO church, ministry, denomination, pastor, elder, disciple, prayer, oikos, or CIL business terms
+- NO hub-specific label overrides in T-Box — use `skos:notation` for the canonical key only
+
+**C-Box (cbox/) = Controlled vocabulary + validation constraints.**
+
+The C-Box holds everything that defines "what values are VALID" — not schema structure (T-Box) and not runtime data (A-Box). The key test: **if something has `skos:notation`, `skos:inScheme`, or is a member of a finite enumeration, it's C-Box.**
+
+What belongs in C-Box:
+- **SKOS concept individuals** — any individual typed as both `SomeClass` and `skos:Concept` with `skos:inScheme`
+- **Enumeration members** — EdgeStatus values (StatusActive, StatusProposed...), AssertionType values, ProposalStatus values
+- **Controlled vocabulary schemes** — `skos:ConceptScheme` instances that organize concept individuals
+- **Classification individuals** — AIAgentClass members (ExecutorClass, ValidatorClass...), CaveatEnforcerType members
+- **Policy templates** — DelegationPolicy individuals that define "what policies are available" (not actual delegations)
+- **Role individuals** — all 50+ concrete roles (Owner, Auditor, Operator...) with their `applicableToRelationshipType` links
+- **Relationship type individuals** — all 16 concrete types (OrganizationGovernance, Alliance...) with on-chain hashes
+- **Hub vocabulary mappings** — domain-specific label overrides for T-Box terms
+- **SHACL shapes** — validation constraints for agent/edge/identity instances
+
+What does NOT belong in C-Box:
+- `owl:Class` and `owl:ObjectProperty` definitions → T-Box
+- Concrete hub profile instances (GlobalChurchHub) → A-Box
+- Organization template instances (ChurchTemplate) → A-Box
+- Runtime agent/edge data emitted by sync → A-Box (GraphDB)
+
+**A-Box (abox/) = Runtime instance data.**
+- Hub profile instances (GlobalChurchHub, CatalystHub, CILHub) — concrete configurations
+- Organization template instances (ChurchTemplate, CILOperatorTemplate) — concrete configurations
+- Live agent/edge data emitted by the sync utility to GraphDB
+- Rule of thumb: if it describes "this specific thing exists" → A-Box
+
+**Known violations to watch for:**
+- SDK `RoleTool` enum contains domain UI terms (`circles`, `prayer`, `grow`) — these are app-layer, NOT ontology
+- SDK `hubLabels` on relationship types and roles — these MUST be in A-Box, not T-Box
+- Organization template role names ("Senior Pastor", "Elder") — these are A-Box instances, not T-Box classes
+- Contract code (Solidity) is clean — no domain terms there
+
+**When reviewing changes, ask:**
+1. Would this concept make sense for a non-church, non-CIL organization? → T-Box
+2. Is this a label or configuration specific to a hub? → A-Box hub vocabulary
+3. Is this a constraint that only applies in certain contexts? → C-Box
+
 ### Ontology Authoring
 - Every class and property MUST have `rdfs:label` and `rdfs:comment`
 - Use `rdfs:subClassOf` hierarchies that mirror the SDK `parentTerm` chains
-- Include `sa:keccak256Hash` on every class/property that has an on-chain hash
-- Use `skos:altLabel` for hub-specific label overrides
+- Include `sa:onChainTermHash` on classes/properties with on-chain hashes
+- Use `skos:notation` for the canonical key — NOT `skos:altLabel` for domain labels in T-Box
+- Domain label overrides go in `abox/hub-vocabulary.ttl`, not in T-Box files
 - Predicates in turtle MUST match the `ATL_*` constants in `predicates.ts`
 - Relationship types, roles, and delegation policies MUST be 1:1 with `relationship-taxonomy.ts`
+- ALL 42 SDK predicates from `predicates.ts` MUST have corresponding ontology properties
 
 ### Sync Integrity
 - On-chain resolver data is source of truth — never invent agent instances

@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { getUserOrgs } from '@/lib/get-user-orgs'
-import { getCircles } from '@/lib/actions/circles.action'
+import { getOikosContacts as getCircles } from '@/lib/actions/oikos.action'
 import { db, schema } from '@/db'
 import { CirclesClient } from './CirclesClient'
 

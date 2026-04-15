@@ -2,6 +2,7 @@
 
 import { useState, type CSSProperties } from 'react'
 import { useRouter } from 'next/navigation'
+import { useAuth } from '@/hooks/use-auth'
 
 interface DemoUser { key: string; name: string; org: string; role: string }
 
@@ -61,17 +62,25 @@ const COMMUNITIES: DemoCommunity[] = [
 
 export function DemoLoginPicker() {
   const router = useRouter()
+  const { privyAuthenticated, resetPrivySession } = useAuth()
   const [selectedCommunity, setSelectedCommunity] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
   async function selectUser(key: string) {
     setLoading(true)
+
+    // Clear any active Privy/wallet session before switching to demo user
+    if (privyAuthenticated) {
+      await resetPrivySession()
+    }
+
     await fetch('/api/demo-login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId: key }),
     })
-    router.push('/dashboard')
+    // Full page reload to clear all client state
+    window.location.href = '/catalyst'
   }
 
   const community = COMMUNITIES.find(c => c.id === selectedCommunity)

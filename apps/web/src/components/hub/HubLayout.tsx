@@ -9,6 +9,7 @@ import { CatalystViewCtx } from '@/components/catalyst/CatalystViewContext'
 import type { ViewMode } from '@/components/catalyst/CatalystViewContext'
 import QuickActivityModal from '@/components/catalyst/QuickActivityModal'
 import { AgentPanel } from '@/components/agent/AgentPanel'
+import { useAuth } from '@/hooks/use-auth'
 
 // No hardcoded tabs — primary navigation comes from the hub profile via HubContext
 
@@ -134,6 +135,7 @@ function HubLayoutInner({ children }: { children: React.ReactNode }) {
   const hub = useHubContext()
   const { profile, primaryNav, adminNav, availableViewModes, viewMode, setViewMode, userNav } = hub
   const T = profile.theme
+  const { logout } = useAuth()
 
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [agentPanelOpen, setAgentPanelOpen] = useState(false)
@@ -189,17 +191,20 @@ function HubLayoutInner({ children }: { children: React.ReactNode }) {
   }, [pathname])
 
   // Hub-specific status bar items
-  const isCILHub = profile.id === 'cil'
-  const statusItems = isCILHub ? [
+  const statusItems = profile.id === 'cil' ? [
     { icon: '\uD83D\uDD14', label: '2 agent insights', href: '/catalyst' },
     { icon: '\uD83D\uDCB0', label: '1 report pending', href: '/activity' },
     { icon: '\uD83D\uDFE1', label: '1 business at risk', href: '/groups' },
     { icon: '\uD83D\uDCC8', label: '34% recovered', href: '/steward' },
-  ] : [
+  ] : profile.id === 'catalyst' ? [
     { icon: '\uD83D\uDD14', label: '3 agent insights', href: '/catalyst' },
     { icon: '\uD83D\uDE4F', label: '1 prayer due today', href: '/nurture/prayer' },
     { icon: '\uD83D\uDCCA', label: '2 circles need attention', href: '/groups' },
     { icon: '\u2709', label: '1 follow-up pending', href: '/activity' },
+  ] : [
+    { icon: '\uD83D\uDD14', label: `${orgs.length} organization${orgs.length !== 1 ? 's' : ''}`, href: '/agents' },
+    { icon: '\uD83E\uDD16', label: 'Agent registry', href: '/agents' },
+    { icon: '\uD83D\uDD17', label: 'Trust graph', href: '/steward' },
   ]
 
   // Show a neutral loading shell until user context resolves.
@@ -594,10 +599,9 @@ function HubLayoutInner({ children }: { children: React.ReactNode }) {
 
                     <div style={{ borderTop: `1px solid ${T.border}`, margin: '0.3rem 0' }} />
                     <button
-                      onClick={() => {
+                      onClick={async () => {
                         setUserMenuOpen(false)
-                        // Clear demo cookie and redirect to landing
-                        document.cookie = 'demo-user=; path=/; max-age=0'
+                        await logout()
                         window.location.href = '/'
                       }}
                       style={{

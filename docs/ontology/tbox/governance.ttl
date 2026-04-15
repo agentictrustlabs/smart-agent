@@ -123,8 +123,5 @@ sag:executedAt
     rdfs:domain sag:Proposal ;
     rdfs:range xsd:dateTime .
 
-sag:ProposalStatus     a owl:Class ; rdfs:label "Proposal Status" .
-sag:StatusOpen         a sag:ProposalStatus ; rdfs:label "Open" .
-sag:StatusApproved     a sag:ProposalStatus ; rdfs:label "Approved" .
-sag:StatusRejected     a sag:ProposalStatus ; rdfs:label "Rejected" .
-sag:StatusExecuted     a sag:ProposalStatus ; rdfs:label "Executed" .
+sag:ProposalStatus  a owl:Class ; rdfs:label "Proposal Status" ; rdfs:comment "Lifecycle status of a governance proposal." .
+# Status individuals (StatusOpen, StatusApproved, etc.) in cbox/controlled-vocabularies.ttl

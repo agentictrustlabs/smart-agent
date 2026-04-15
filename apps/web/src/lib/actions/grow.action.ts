@@ -63,52 +63,73 @@ export async function toggleModule(moduleKey: string, program: string, track?: s
   return { completed: true }
 }
 
-// ─── Coach Relationships ────────────────────────────────────────────
+// ─── Coach Relationships (on-chain edges) ──────────────────────────
 
 export async function getCoachRelationship(userId: string) {
-  const rows = await db
-    .select()
-    .from(schema.coachRelationships)
-    .where(and(eq(schema.coachRelationships.discipleId, userId), eq(schema.coachRelationships.status, 'active')))
-    .limit(1)
-  if (!rows[0]) return null
+  const { getPersonAgentForUser } = await import('@/lib/agent-registry')
+  const { getEdgesByObject, getEdge, getEdgeRoles } = await import('@/lib/contracts')
+  const { COACHING_MENTORSHIP, ROLE_COACH, roleName } = await import('@smart-agent/sdk')
+  const { getAgentMetadata } = await import('@/lib/agent-metadata')
 
-  // Get coach name
-  const coach = await db
-    .select()
-    .from(schema.users)
-    .where(eq(schema.users.id, rows[0].coachId))
-    .limit(1)
+  const personAddr = await getPersonAgentForUser(userId)
+  if (!personAddr) return null
 
-  return {
-    id: rows[0].id,
-    coachId: rows[0].coachId,
-    coachName: coach[0]?.name ?? 'Unknown',
-    sharePermissions: rows[0].sharePermissions,
-    status: rows[0].status,
-  }
+  // Find incoming coaching edges where this user is the disciple (object)
+  try {
+    const edgeIds = await getEdgesByObject(personAddr as `0x${string}`)
+    for (const edgeId of edgeIds) {
+      const edge = await getEdge(edgeId)
+      if (edge.status < 2) continue
+      if (edge.relationshipType !== COACHING_MENTORSHIP) continue
+
+      const roles = await getEdgeRoles(edgeId)
+      const hasCoachRole = roles.some(r => roleName(r) === 'coach')
+      if (!hasCoachRole) continue
+
+      const coachMeta = await getAgentMetadata(edge.subject)
+      return {
+        id: edgeId,
+        coachId: edge.subject,
+        coachName: coachMeta.displayName,
+        sharePermissions: '',
+        status: 'active' as const,
+      }
+    }
+  } catch { /* ignored */ }
+  return null
 }
 
 export async function getDisciples(userId: string) {
-  const rows = await db
-    .select()
-    .from(schema.coachRelationships)
-    .where(and(eq(schema.coachRelationships.coachId, userId), eq(schema.coachRelationships.status, 'active')))
+  const { getPersonAgentForUser } = await import('@/lib/agent-registry')
+  const { getEdgesBySubject, getEdge, getEdgeRoles } = await import('@/lib/contracts')
+  const { COACHING_MENTORSHIP, ROLE_COACH, roleName } = await import('@smart-agent/sdk')
+  const { getAgentMetadata } = await import('@/lib/agent-metadata')
 
-  const disciples = []
-  for (const row of rows) {
-    const user = await db
-      .select()
-      .from(schema.users)
-      .where(eq(schema.users.id, row.discipleId))
-      .limit(1)
-    disciples.push({
-      id: row.id,
-      discipleId: row.discipleId,
-      discipleName: user[0]?.name ?? 'Unknown',
-      sharePermissions: row.sharePermissions,
-    })
-  }
+  const personAddr = await getPersonAgentForUser(userId)
+  if (!personAddr) return []
+
+  const disciples: Array<{ id: string; discipleId: string; discipleName: string; sharePermissions: string }> = []
+
+  try {
+    const edgeIds = await getEdgesBySubject(personAddr as `0x${string}`)
+    for (const edgeId of edgeIds) {
+      const edge = await getEdge(edgeId)
+      if (edge.status < 2) continue
+      if (edge.relationshipType !== COACHING_MENTORSHIP) continue
+
+      const roles = await getEdgeRoles(edgeId)
+      const hasCoachRole = roles.some(r => roleName(r) === 'coach')
+      if (!hasCoachRole) continue
+
+      const discipleMeta = await getAgentMetadata(edge.object_)
+      disciples.push({
+        id: edgeId,
+        discipleId: edge.object_,
+        discipleName: discipleMeta.displayName,
+        sharePermissions: '',
+      })
+    }
+  } catch { /* ignored */ }
   return disciples
 }
 

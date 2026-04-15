@@ -184,6 +184,20 @@ const relationshipTypeDefinitions: Array<RelationshipTypeDefinition & { hash: `0
       'global-church': 'Church Planting Lineage',
     },
   }),
+  withHash({
+    key: 'coaching-mentorship',
+    term: 'atl:CoachingMentorshipRelationship',
+    label: 'Coaching',
+    description: 'Coaching or mentorship relationship between two person agents — one guides and tracks the development of the other.',
+    parentTerm: 'atl:AssuranceRelationship',
+  }),
+  withHash({
+    key: 'personal-influence',
+    term: 'atl:PersonalInfluenceRelationship',
+    label: 'Personal Influence',
+    description: 'Person-to-person relational influence link — tracks proximity and engagement between a person agent and individuals in their relational network (oikos).',
+    parentTerm: 'atl:NetworkRelationship',
+  }),
 ]
 
 const roleDefinitions: Array<RoleDefinition & { hash: `0x${string}` }> = [
@@ -628,6 +642,42 @@ const roleDefinitions: Array<RoleDefinition & { hash: `0x${string}` }> = [
       'global-church': 'planted-church',
     },
   }),
+  // ─── Coaching Roles ─────────────────────────────────────────────────
+  withHash({
+    key: 'coach',
+    term: 'atl:CoachRole',
+    label: 'coach',
+    description: 'The guiding agent in a coaching or mentorship relationship.',
+    relationshipTypeKeys: ['coaching-mentorship'],
+    parentTerm: 'atl:AssuranceRole',
+    tools: ['coaching', 'activities'],
+  }),
+  withHash({
+    key: 'disciple',
+    term: 'atl:DiscipleRole',
+    label: 'disciple',
+    description: 'The agent being coached or mentored.',
+    relationshipTypeKeys: ['coaching-mentorship'],
+    parentTerm: 'atl:AssuranceRole',
+    tools: ['activities'],
+  }),
+  // ─── Personal Influence Roles ───────────────────────────────────────
+  withHash({
+    key: 'influencer',
+    term: 'atl:InfluencerRole',
+    label: 'influencer',
+    description: 'The person agent who maintains a relational network (oikos).',
+    relationshipTypeKeys: ['personal-influence'],
+    parentTerm: 'atl:NetworkRole',
+  }),
+  withHash({
+    key: 'influence-contact',
+    term: 'atl:InfluenceContactRole',
+    label: 'influence-contact',
+    description: 'A person in the relational network of an influencer — tracked for proximity, engagement, and spiritual response.',
+    relationshipTypeKeys: ['personal-influence'],
+    parentTerm: 'atl:NetworkRole',
+  }),
 ]
 
 const delegationPolicyDefinitions: DelegationPolicyDefinition[] = [
@@ -875,3 +925,9 @@ export const ROLE_REVIEWER = requireRoleHash('reviewer')
 export const ROLE_REVIEWED_AGENT = requireRoleHash('reviewed-agent')
 export const ROLE_UPSTREAM = requireRoleHash('upstream')
 export const ROLE_DOWNSTREAM = requireRoleHash('downstream')
+export const COACHING_MENTORSHIP = requireRelationshipTypeHash('coaching-mentorship')
+export const PERSONAL_INFLUENCE = requireRelationshipTypeHash('personal-influence')
+export const ROLE_COACH = requireRoleHash('coach')
+export const ROLE_DISCIPLE = requireRoleHash('disciple')
+export const ROLE_INFLUENCER = requireRoleHash('influencer')
+export const ROLE_INFLUENCE_CONTACT = requireRoleHash('influence-contact')

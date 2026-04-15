@@ -6,7 +6,7 @@ import { requireSession } from '@/lib/auth/session'
 
 export interface AgentSuggestion {
   id: string
-  type: 'circle' | 'prayer' | 'coaching' | 'oikos' | 'training'
+  type: 'prayer' | 'coaching' | 'oikos' | 'training'
   title: string
   description: string
   href: string
@@ -92,23 +92,21 @@ export async function getAgentSuggestions(userId: string): Promise<AgentSuggesti
       })
     }
 
-    // 4. Coach: check disciples needing attention
-    const coachRels = await db.select().from(schema.coachRelationships).where(eq(schema.coachRelationships.coachId, userId))
-    for (const rel of coachRels) {
-      const activities = await db.select().from(schema.activityLogs).where(eq(schema.activityLogs.userId, rel.discipleId))
-      const latest = activities.sort((a, b) => b.activityDate.localeCompare(a.activityDate))[0]
-      if (!latest || daysSince(latest.activityDate) > 7) {
-        const disciple = await db.select().from(schema.users).where(eq(schema.users.id, rel.discipleId)).limit(1)
+    // 4. Coach: check disciples needing attention (on-chain edges)
+    try {
+      const { getDisciples } = await import('@/lib/actions/grow.action')
+      const disciples = await getDisciples(userId)
+      for (const d of disciples) {
         suggestions.push({
-          id: `coach-${rel.id}`,
+          id: `coach-${d.id}`,
           type: 'coaching',
-          title: `Check in with ${disciple[0]?.name ?? 'disciple'}`,
-          description: latest ? `Last activity ${daysSince(latest.activityDate)} days ago` : 'No activities logged',
+          title: `Check in with ${d.discipleName}`,
+          description: 'Review disciple progress',
           href: '/catalyst/coach',
           priority: 1,
         })
       }
-    }
+    } catch { /* ignored */ }
   } catch { /* tables may not exist */ }
 
   return suggestions.sort((a, b) => a.priority - b.priority).slice(0, 8)

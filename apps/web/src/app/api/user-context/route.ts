@@ -225,12 +225,19 @@ export async function GET() {
       }
     }
 
-    // ─── Coach capability from DB relationships ──────────────────────
-    try {
-      const coachRows = await db.select().from(schema.coachRelationships)
-        .where(eq(schema.coachRelationships.coachId, users[0].id))
-      if (coachRows.length > 0) allCapabilities.add('coaching')
-    } catch { /* table might not exist */ }
+    // ─── Coach capability from on-chain coaching edges ────────────────
+    if (personAddr) {
+      try {
+        const { COACHING_MENTORSHIP } = await import('@smart-agent/sdk')
+        const coachEdges = await getEdgesBySubject(personAddr as `0x${string}`)
+        for (const edgeId of coachEdges) {
+          const edge = await getEdge(edgeId)
+          if (edge.status < 2 || edge.relationshipType !== COACHING_MENTORSHIP) continue
+          allCapabilities.add('coaching')
+          break
+        }
+      } catch { /* ignored */ }
+    }
 
     // ─── Build personalNav sections ─────────────────────────────────
     const personalNav: UserNavSection[] = []
@@ -253,18 +260,19 @@ export async function GET() {
       })
     }
 
-    // "Coaching" — disciples the user coaches
-    try {
-      const coachRows = await db.select().from(schema.coachRelationships)
-        .where(eq(schema.coachRelationships.coachId, users[0].id))
-      if (coachRows.length > 0) {
+    // "Coaching" — disciples the user coaches (from on-chain edges)
+    if (personAddr) {
+      try {
+        const { COACHING_MENTORSHIP } = await import('@smart-agent/sdk')
+        const coachEdges = await getEdgesBySubject(personAddr as `0x${string}`)
         const discipleItems: UserNavItem[] = []
-        for (const row of coachRows) {
-          const disciple = await db.select().from(schema.users)
-            .where(eq(schema.users.id, row.discipleId)).limit(1)
+        for (const edgeId of coachEdges) {
+          const edge = await getEdge(edgeId)
+          if (edge.status < 2 || edge.relationshipType !== COACHING_MENTORSHIP) continue
+          const discipleMeta = await getAgentMetadata(edge.object_)
           discipleItems.push({
             href: '/catalyst/me',
-            label: disciple[0]?.name ?? 'Unknown',
+            label: discipleMeta.displayName,
             sublabel: 'Disciple',
             icon: 'person',
           })
@@ -276,8 +284,8 @@ export async function GET() {
             items: discipleItems,
           })
         }
-      }
-    } catch { /* table might not exist */ }
+      } catch { /* ignored */ }
+    }
 
     // "Organizations" — all orgs the user belongs to
     if (orgs.length > 0) {

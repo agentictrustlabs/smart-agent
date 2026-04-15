@@ -39,7 +39,7 @@ sah:HubProfile
 sah:hubId
     a owl:DatatypeProperty ;
     rdfs:label "Hub ID" ;
-    rdfs:comment "Unique identifier (generic, global-church, catalyst, cil)." ;
+    rdfs:comment "Unique hub identifier string." ;
     rdfs:domain sah:HubProfile ;
     rdfs:range xsd:string .
 
@@ -62,6 +62,34 @@ sah:greetingTemplate
     rdfs:domain sah:HubProfile ;
     rdfs:range xsd:string .
 
+sah:overviewLabel
+    a owl:DatatypeProperty ;
+    rdfs:label "Overview Label" ;
+    rdfs:comment "Display label for the overview page in this hub (ATL_HUB_OVERVIEW_LABEL)." ;
+    rdfs:domain sah:HubProfile ;
+    rdfs:range xsd:string .
+
+sah:agentLabel
+    a owl:DatatypeProperty ;
+    rdfs:label "Agent Label" ;
+    rdfs:comment "Display label for agents/participants in this hub (ATL_HUB_AGENT_LABEL)." ;
+    rdfs:domain sah:HubProfile ;
+    rdfs:range xsd:string .
+
+sah:navConfig
+    a owl:DatatypeProperty ;
+    rdfs:label "Nav Config" ;
+    rdfs:comment "JSON navigation configuration for this hub (ATL_HUB_NAV_CONFIG)." ;
+    rdfs:domain sah:HubProfile ;
+    rdfs:range xsd:string .
+
+sah:theme
+    a owl:DatatypeProperty ;
+    rdfs:label "Theme" ;
+    rdfs:comment "JSON theme colors for this hub (ATL_HUB_THEME)." ;
+    rdfs:domain sah:HubProfile ;
+    rdfs:range xsd:string .
+
 
 # =============================================================================
 # Hub Features
@@ -79,16 +107,38 @@ sah:hasFeature
     rdfs:domain sah:HubProfile ;
     rdfs:range sah:HubFeature .
 
-sah:FeatureCircles     a sah:HubFeature ; rdfs:label "Circles"     ; skos:notation "circles" .
-sah:FeaturePrayer      a sah:HubFeature ; rdfs:label "Prayer"      ; skos:notation "prayer" .
-sah:FeatureGrow        a sah:HubFeature ; rdfs:label "Grow"        ; skos:notation "grow" .
-sah:FeatureCoaching    a sah:HubFeature ; rdfs:label "Coaching"    ; skos:notation "coaching" .
-sah:FeatureGenmap      a sah:HubFeature ; rdfs:label "GenMap"      ; skos:notation "genmap" .
-sah:FeatureActivities  a sah:HubFeature ; rdfs:label "Activities"  ; skos:notation "activities" .
-sah:FeatureTreasury    a sah:HubFeature ; rdfs:label "Treasury"    ; skos:notation "treasury" .
-sah:FeatureReviews     a sah:HubFeature ; rdfs:label "Reviews"     ; skos:notation "reviews" .
-sah:FeatureMembers     a sah:HubFeature ; rdfs:label "Members"     ; skos:notation "members" .
-sah:FeatureMap         a sah:HubFeature ; rdfs:label "Map"         ; skos:notation "map" .
+# NOTE: Concrete HubFeature SKOS concept individuals and HubVocabularyMapping
+# instances are defined in cbox/hub-vocabulary.ttl (controlled vocabulary).
+
+
+# =============================================================================
+# Hub Vocabulary Mapping (domain-specific label overrides — instances in A-Box)
+# =============================================================================
+
+sah:HubVocabularyMapping
+    a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "Hub Vocabulary Mapping" ;
+    rdfs:comment "Maps a generic T-Box term (relationship type or role) to a domain-specific label for a specific hub. Instances live in abox/hub-vocabulary.ttl." .
+
+sah:forHub
+    a owl:ObjectProperty ;
+    rdfs:label "For Hub" ;
+    rdfs:domain sah:HubVocabularyMapping ;
+    rdfs:range sah:HubProfile .
+
+sah:mapsTerm
+    a owl:ObjectProperty ;
+    rdfs:label "Maps Term" ;
+    rdfs:comment "The generic T-Box individual being relabeled." ;
+    rdfs:domain sah:HubVocabularyMapping .
+
+sah:domainLabel
+    a owl:DatatypeProperty ;
+    rdfs:label "Domain Label" ;
+    rdfs:comment "The domain-specific display label for this term in this hub." ;
+    rdfs:domain sah:HubVocabularyMapping ;
+    rdfs:range xsd:string .
 
 
 # =============================================================================
@@ -146,7 +196,7 @@ sah:hasTemplateAgent
 sah:ViewMode
     a owl:Class ;
     rdfs:label "View Mode" ;
-    rdfs:comment "A role-specific UI view mode (e.g., Disciple/Coach switcher)." .
+    rdfs:comment "A role-specific UI view mode." .
 
 sah:viewModeKey
     a owl:DatatypeProperty ;

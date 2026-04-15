@@ -3,11 +3,11 @@
 import { useState, useCallback, useTransition, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  addCirclePerson,
-  updateCirclePerson,
-  deleteCirclePerson,
+  addOikosPerson as addCirclePerson,
+  updateOikosPerson as updateCirclePerson,
+  deleteOikosPerson as deleteCirclePerson,
   togglePlannedConversation,
-} from '@/lib/actions/circles.action'
+} from '@/lib/actions/oikos.action'
 import QuickActivityModal from '@/components/catalyst/QuickActivityModal'
 
 // ─── Types ──────────────────────────────────────────────────────────

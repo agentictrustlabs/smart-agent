@@ -1,0 +1,153 @@
+@prefix sa:    <https://smartagent.io/ontology/core#> .
+@prefix sah:   <https://smartagent.io/ontology/hub#> .
+@prefix sar:   <https://smartagent.io/ontology/relationships#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
+@prefix skos:  <http://www.w3.org/2004/02/skos/core#> .
+
+# =============================================================================
+# Hub Controlled Vocabulary  (C-Box)
+# =============================================================================
+#
+# SKOS concept individuals and hub vocabulary mappings.
+# These are controlled vocabulary / taxonomic constraints — NOT runtime
+# instance data. They define the allowed values and domain-specific
+# label overrides that govern what configurations are valid.
+#
+# C-Box holds:
+#   - SKOS concept individuals (HubFeature enumerations)
+#   - Hub vocabulary mappings (domain label overrides for T-Box terms)
+#   - Anything that constrains or classifies rather than describes instances
+#
+# A-Box holds:
+#   - Hub profile instances (GenericHub, GlobalChurchHub, etc.)
+#   - Organization template instances (ChurchTemplate, etc.)
+#   - Runtime agent/edge data emitted by sync
+#
+# Version: 0.2.0
+# =============================================================================
+
+
+# =============================================================================
+# Hub Feature Concept Scheme (SKOS controlled vocabulary)
+# =============================================================================
+
+sah:HubFeatureScheme
+    a skos:ConceptScheme ;
+    rdfs:label "Hub Feature Scheme" ;
+    rdfs:comment "Controlled vocabulary of features available to hub profiles." .
+
+sah:FeatureCircles     a sah:HubFeature, skos:Concept ; skos:inScheme sah:HubFeatureScheme ; rdfs:label "Circles"    ; skos:notation "circles" .
+sah:FeaturePrayer      a sah:HubFeature, skos:Concept ; skos:inScheme sah:HubFeatureScheme ; rdfs:label "Prayer"     ; skos:notation "prayer" .
+sah:FeatureGrow        a sah:HubFeature, skos:Concept ; skos:inScheme sah:HubFeatureScheme ; rdfs:label "Grow"       ; skos:notation "grow" .
+sah:FeatureCoaching    a sah:HubFeature, skos:Concept ; skos:inScheme sah:HubFeatureScheme ; rdfs:label "Coaching"   ; skos:notation "coaching" .
+sah:FeatureGenmap      a sah:HubFeature, skos:Concept ; skos:inScheme sah:HubFeatureScheme ; rdfs:label "GenMap"     ; skos:notation "genmap" .
+sah:FeatureActivities  a sah:HubFeature, skos:Concept ; skos:inScheme sah:HubFeatureScheme ; rdfs:label "Activities" ; skos:notation "activities" .
+sah:FeatureTreasury    a sah:HubFeature, skos:Concept ; skos:inScheme sah:HubFeatureScheme ; rdfs:label "Treasury"   ; skos:notation "treasury" .
+sah:FeatureReviews     a sah:HubFeature, skos:Concept ; skos:inScheme sah:HubFeatureScheme ; rdfs:label "Reviews"    ; skos:notation "reviews" .
+sah:FeatureMembers     a sah:HubFeature, skos:Concept ; skos:inScheme sah:HubFeatureScheme ; rdfs:label "Members"    ; skos:notation "members" .
+sah:FeatureMap         a sah:HubFeature, skos:Concept ; skos:inScheme sah:HubFeatureScheme ; rdfs:label "Map"        ; skos:notation "map" .
+
+
+# =============================================================================
+# Hub Vocabulary Mappings (domain-specific label overrides)
+# =============================================================================
+#
+# Maps generic T-Box terms to domain labels for specific hubs.
+# These are classification constraints, not runtime data.
+
+# ─── Global Church Hub ───────────────────────────────────────────────
+
+_:gc-alliance-label a sah:HubVocabularyMapping ;
+    sah:forHub sah:GlobalChurchHub ;
+    sah:mapsTerm sar:Alliance ;
+    sah:domainLabel "Ministry Lineage" .
+
+_:gc-review-label a sah:HubVocabularyMapping ;
+    sah:forHub sah:GlobalChurchHub ;
+    sah:mapsTerm sar:Review ;
+    sah:domainLabel "Endorsement" .
+
+_:gc-lineage-label a sah:HubVocabularyMapping ;
+    sah:forHub sah:GlobalChurchHub ;
+    sah:mapsTerm sar:GenerationalLineage ;
+    sah:domainLabel "Church Planting Lineage" .
+
+_:gc-strategic-partner-label a sah:HubVocabularyMapping ;
+    sah:forHub sah:GlobalChurchHub ;
+    sah:mapsTerm sar:StrategicPartner ;
+    sah:domainLabel "parent-church" .
+
+_:gc-subsidiary-label a sah:HubVocabularyMapping ;
+    sah:forHub sah:GlobalChurchHub ;
+    sah:mapsTerm sar:Subsidiary ;
+    sah:domainLabel "daughter-church" .
+
+_:gc-parent-org-label a sah:HubVocabularyMapping ;
+    sah:forHub sah:GlobalChurchHub ;
+    sah:mapsTerm sar:ParentOrg ;
+    sah:domainLabel "parent-church" .
+
+_:gc-upstream-label a sah:HubVocabularyMapping ;
+    sah:forHub sah:GlobalChurchHub ;
+    sah:mapsTerm sar:Upstream ;
+    sah:domainLabel "sending-church" .
+
+_:gc-downstream-label a sah:HubVocabularyMapping ;
+    sah:forHub sah:GlobalChurchHub ;
+    sah:mapsTerm sar:Downstream ;
+    sah:domainLabel "planted-church" .
+
+
+# ─── Catalyst Hub ────────────────────────────────────────────────────
+
+_:cat-alliance-label a sah:HubVocabularyMapping ;
+    sah:forHub sah:CatalystHub ;
+    sah:mapsTerm sar:Alliance ;
+    sah:domainLabel "Church Lineage" .
+
+_:cat-lineage-label a sah:HubVocabularyMapping ;
+    sah:forHub sah:CatalystHub ;
+    sah:mapsTerm sar:GenerationalLineage ;
+    sah:domainLabel "Generational Lineage" .
+
+_:cat-strategic-partner-label a sah:HubVocabularyMapping ;
+    sah:forHub sah:CatalystHub ;
+    sah:mapsTerm sar:StrategicPartner ;
+    sah:domainLabel "parent-church" .
+
+_:cat-subsidiary-label a sah:HubVocabularyMapping ;
+    sah:forHub sah:CatalystHub ;
+    sah:mapsTerm sar:Subsidiary ;
+    sah:domainLabel "daughter-church" .
+
+_:cat-parent-org-label a sah:HubVocabularyMapping ;
+    sah:forHub sah:CatalystHub ;
+    sah:mapsTerm sar:ParentOrg ;
+    sah:domainLabel "parent-church" .
+
+_:cat-upstream-label a sah:HubVocabularyMapping ;
+    sah:forHub sah:CatalystHub ;
+    sah:mapsTerm sar:Upstream ;
+    sah:domainLabel "parent-group" .
+
+_:cat-downstream-label a sah:HubVocabularyMapping ;
+    sah:forHub sah:CatalystHub ;
+    sah:mapsTerm sar:Downstream ;
+    sah:domainLabel "daughter-group" .
+
+
+# ─── CIL Hub ────────────────────────────────────────────────────────
+
+_:cil-alliance-label a sah:HubVocabularyMapping ;
+    sah:forHub sah:CILHub ;
+    sah:mapsTerm sar:Alliance ;
+    sah:domainLabel "Trust Link" .
+
+_:cil-review-label a sah:HubVocabularyMapping ;
+    sah:forHub sah:CILHub ;
+    sah:mapsTerm sar:Review ;
+    sah:domainLabel "Assertion" .
+
+
+# ─── Generic Hub — uses T-Box labels as-is, no overrides needed ──────

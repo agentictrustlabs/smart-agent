@@ -1,0 +1,224 @@
+@prefix sa:    <https://smartagent.io/ontology/core#> .
+@prefix sai:   <https://smartagent.io/ontology/identity#> .
+@prefix sar:   <https://smartagent.io/ontology/relationships#> .
+@prefix sad:   <https://smartagent.io/ontology/delegation#> .
+@prefix sag:   <https://smartagent.io/ontology/governance#> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl:   <http://www.w3.org/2002/07/owl#> .
+@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
+@prefix skos:  <http://www.w3.org/2004/02/skos/core#> .
+
+# =============================================================================
+# Controlled Vocabularies  (C-Box)
+# =============================================================================
+#
+# Enumeration members and SKOS concept individuals that define what values
+# are VALID for each classification in the T-Box. These constrain what
+# instances in the A-Box can reference.
+#
+# T-Box defines the class (e.g., sa:AIAgentClass).
+# C-Box defines the allowed members (e.g., sa:ExecutorClass).
+# A-Box assigns them to instances (e.g., agent X sai:aiAgentClass sa:ExecutorClass).
+#
+# Version: 0.2.0
+# =============================================================================
+
+
+# =============================================================================
+# AI Agent Class Vocabulary
+# =============================================================================
+# Class sa:AIAgentClass defined in tbox/core.ttl
+
+sa:AIAgentClassScheme  a skos:ConceptScheme ; rdfs:label "AI Agent Class Scheme" .
+
+sa:DiscoveryClass   a sa:AIAgentClass, skos:Concept ; skos:inScheme sa:AIAgentClassScheme ; rdfs:label "Discovery"  ; rdfs:comment "Search, indexing, and knowledge discovery."                     ; sa:onChainClassHash "CLASS_DISCOVERY" .
+sa:ValidatorClass   a sa:AIAgentClass, skos:Concept ; skos:inScheme sa:AIAgentClassScheme ; rdfs:label "Validator"   ; rdfs:comment "Verification, validation, and assurance."                       ; sa:onChainClassHash "CLASS_VALIDATOR" .
+sa:ExecutorClass    a sa:AIAgentClass, skos:Concept ; skos:inScheme sa:AIAgentClassScheme ; rdfs:label "Executor"    ; rdfs:comment "Transaction execution within delegated bounds."                 ; sa:onChainClassHash "CLASS_EXECUTOR" .
+sa:AssistantClass   a sa:AIAgentClass, skos:Concept ; skos:inScheme sa:AIAgentClassScheme ; rdfs:label "Assistant"   ; rdfs:comment "Advisory, planning, or conversational assistance."              ; sa:onChainClassHash "CLASS_ASSISTANT" .
+sa:OracleClass      a sa:AIAgentClass, skos:Concept ; skos:inScheme sa:AIAgentClassScheme ; rdfs:label "Oracle"      ; rdfs:comment "External data feeds, price oracles, or off-chain attestations." ; sa:onChainClassHash "CLASS_ORACLE" .
+sa:CustomClass      a sa:AIAgentClass, skos:Concept ; skos:inScheme sa:AIAgentClassScheme ; rdfs:label "Custom"      ; rdfs:comment "Application-specific classification."                           ; sa:onChainClassHash "CLASS_CUSTOM" .
+
+
+# =============================================================================
+# Edge Status Vocabulary
+# =============================================================================
+# Class sar:EdgeStatus defined in tbox/relationships.ttl
+
+sar:EdgeStatusScheme  a skos:ConceptScheme ; rdfs:label "Edge Status Scheme" .
+
+sar:StatusNone       a sar:EdgeStatus, skos:Concept ; skos:inScheme sar:EdgeStatusScheme ; rdfs:label "None"      ; skos:notation "0" .
+sar:StatusProposed   a sar:EdgeStatus, skos:Concept ; skos:inScheme sar:EdgeStatusScheme ; rdfs:label "Proposed"   ; skos:notation "1" .
+sar:StatusConfirmed  a sar:EdgeStatus, skos:Concept ; skos:inScheme sar:EdgeStatusScheme ; rdfs:label "Confirmed"  ; skos:notation "2" .
+sar:StatusActive     a sar:EdgeStatus, skos:Concept ; skos:inScheme sar:EdgeStatusScheme ; rdfs:label "Active"     ; skos:notation "3" .
+sar:StatusSuspended  a sar:EdgeStatus, skos:Concept ; skos:inScheme sar:EdgeStatusScheme ; rdfs:label "Suspended"  ; skos:notation "4" .
+sar:StatusRevoked    a sar:EdgeStatus, skos:Concept ; skos:inScheme sar:EdgeStatusScheme ; rdfs:label "Revoked"    ; skos:notation "5" .
+sar:StatusRejected   a sar:EdgeStatus, skos:Concept ; skos:inScheme sar:EdgeStatusScheme ; rdfs:label "Rejected"   ; skos:notation "6" .
+
+
+# =============================================================================
+# Assertion Type Vocabulary
+# =============================================================================
+# Class sar:AssertionType defined in tbox/relationships.ttl
+
+sar:AssertionTypeScheme  a skos:ConceptScheme ; rdfs:label "Assertion Type Scheme" .
+
+sar:SelfAsserted       a sar:AssertionType, skos:Concept ; skos:inScheme sar:AssertionTypeScheme ; rdfs:label "Self-Asserted"        ; skos:notation "1" .
+sar:ObjectAsserted     a sar:AssertionType, skos:Concept ; skos:inScheme sar:AssertionTypeScheme ; rdfs:label "Object-Asserted"      ; skos:notation "2" .
+sar:MutualConfirmation a sar:AssertionType, skos:Concept ; skos:inScheme sar:AssertionTypeScheme ; rdfs:label "Mutual Confirmation"  ; skos:notation "3" .
+sar:ValidatorAsserted  a sar:AssertionType, skos:Concept ; skos:inScheme sar:AssertionTypeScheme ; rdfs:label "Validator-Asserted"   ; skos:notation "4" .
+sar:OrgAsserted        a sar:AssertionType, skos:Concept ; skos:inScheme sar:AssertionTypeScheme ; rdfs:label "Org-Asserted"         ; skos:notation "5" .
+sar:AppAsserted        a sar:AssertionType, skos:Concept ; skos:inScheme sar:AssertionTypeScheme ; rdfs:label "App-Asserted"         ; skos:notation "6" .
+
+
+# =============================================================================
+# Relationship Type Vocabulary
+# =============================================================================
+# Abstract classes (InstitutionalRelationship, etc.) stay in T-Box.
+# Concrete type individuals moved here as controlled vocabulary.
+
+sar:RelationshipTypeScheme  a skos:ConceptScheme ; rdfs:label "Relationship Type Scheme" .
+
+sar:OrganizationGovernance  a sar:InstitutionalRelationship, skos:Concept ; skos:inScheme sar:RelationshipTypeScheme ; rdfs:label "Governance"            ; skos:notation "organization-governance"  ; sa:onChainTermHash "keccak256('atl:OrganizationGovernanceRelationship')" .
+sar:OrganizationMembership  a sar:InstitutionalRelationship, skos:Concept ; skos:inScheme sar:RelationshipTypeScheme ; rdfs:label "Membership"            ; skos:notation "organization-membership"  ; sa:onChainTermHash "keccak256('atl:OrganizationMembershipRelationship')" .
+sar:Alliance                a sar:NetworkRelationship,       skos:Concept ; skos:inScheme sar:RelationshipTypeScheme ; rdfs:label "Alliance"              ; skos:notation "alliance"                 ; sa:onChainTermHash "keccak256('atl:AllianceRelationship')" .
+sar:ValidationTrust         a sar:AssuranceRelationship,     skos:Concept ; skos:inScheme sar:RelationshipTypeScheme ; rdfs:label "Validation"            ; skos:notation "validation-trust"         ; sa:onChainTermHash "keccak256('atl:ValidationTrustRelationship')" .
+sar:InsuranceCoverage       a sar:AssuranceRelationship,     skos:Concept ; skos:inScheme sar:RelationshipTypeScheme ; rdfs:label "Insurance"             ; skos:notation "insurance-coverage"       ; sa:onChainTermHash "keccak256('atl:InsuranceCoverageRelationship')" .
+sar:Compliance              a sar:AssuranceRelationship,     skos:Concept ; skos:inScheme sar:RelationshipTypeScheme ; rdfs:label "Compliance"            ; skos:notation "compliance"               ; sa:onChainTermHash "keccak256('atl:ComplianceRelationship')" .
+sar:EconomicSecurity        a sar:CapitalRelationship,       skos:Concept ; skos:inScheme sar:RelationshipTypeScheme ; rdfs:label "Economic Security"     ; skos:notation "economic-security"        ; sa:onChainTermHash "keccak256('atl:EconomicSecurityRelationship')" .
+sar:ServiceAgreement        a sar:ExecutionRelationship,     skos:Concept ; skos:inScheme sar:RelationshipTypeScheme ; rdfs:label "Service"               ; skos:notation "service-agreement"        ; sa:onChainTermHash "keccak256('atl:ServiceAgreementRelationship')" .
+sar:DelegationAuthority     a sar:ExecutionRelationship,     skos:Concept ; skos:inScheme sar:RelationshipTypeScheme ; rdfs:label "Delegation"            ; skos:notation "delegation-authority"     ; sa:onChainTermHash "keccak256('atl:DelegationAuthorityRelationship')" .
+sar:RuntimeAttestation      a sar:InfrastructureRelationship, skos:Concept ; skos:inScheme sar:RelationshipTypeScheme ; rdfs:label "Runtime/TEE"          ; skos:notation "runtime-attestation"     ; sa:onChainTermHash "keccak256('atl:RuntimeAttestationRelationship')" .
+sar:BuildProvenance         a sar:InfrastructureRelationship, skos:Concept ; skos:inScheme sar:RelationshipTypeScheme ; rdfs:label "Build Provenance"     ; skos:notation "build-provenance"        ; sa:onChainTermHash "keccak256('atl:BuildProvenanceRelationship')" .
+sar:OrganizationalControl   a sar:ExecutionRelationship,     skos:Concept ; skos:inScheme sar:RelationshipTypeScheme ; rdfs:label "Org Control"           ; skos:notation "organizational-control"  ; sa:onChainTermHash "keccak256('atl:OrganizationalControlRelationship')" .
+sar:ActivityValidation      a sar:AssuranceRelationship,     skos:Concept ; skos:inScheme sar:RelationshipTypeScheme ; rdfs:label "Activity Validation"   ; skos:notation "activity-validation"     ; sa:onChainTermHash "keccak256('atl:ActivityValidationRelationship')" .
+sar:Review                  a sar:AssuranceRelationship,     skos:Concept ; skos:inScheme sar:RelationshipTypeScheme ; rdfs:label "Review"                ; skos:notation "review"                  ; sa:onChainTermHash "keccak256('atl:ReviewRelationship')" .
+sar:HasMember               a sar:NetworkRelationship,       skos:Concept ; skos:inScheme sar:RelationshipTypeScheme ; rdfs:label "Hub Membership"        ; skos:notation "has-member"              ; sa:onChainTermHash "keccak256('atl:HasMemberRelationship')" .
+sar:GenerationalLineage     a sar:NetworkRelationship,       skos:Concept ; skos:inScheme sar:RelationshipTypeScheme ; rdfs:label "Generational Lineage"  ; skos:notation "generational-lineage"    ; sa:onChainTermHash "keccak256('atl:GenerationalLineageRelationship')" .
+sar:CoachingMentorship      a sar:AssuranceRelationship,     skos:Concept ; skos:inScheme sar:RelationshipTypeScheme ; rdfs:label "Coaching"              ; skos:notation "coaching-mentorship"     ; sa:onChainTermHash "keccak256('atl:CoachingMentorshipRelationship')" .
+sar:PersonalInfluence       a sar:NetworkRelationship,       skos:Concept ; skos:inScheme sar:RelationshipTypeScheme ; rdfs:label "Personal Influence"    ; skos:notation "personal-influence"      ; sa:onChainTermHash "keccak256('atl:PersonalInfluenceRelationship')" .
+
+
+# =============================================================================
+# Role Vocabulary
+# =============================================================================
+# Role category classes (GovernanceRole, etc.) stay in T-Box.
+# Concrete role individuals moved here as controlled vocabulary.
+
+sar:RoleScheme  a skos:ConceptScheme ; rdfs:label "Role Scheme" .
+
+# ─── Governance ──────────────────────────────────────────────────────
+sar:Owner             a sar:GovernanceRole, skos:Concept ; skos:inScheme sar:RoleScheme ; rdfs:label "owner"            ; skos:notation "owner"            ; sa:onChainTermHash "keccak256('atl:OwnerRole')"           ; sar:applicableToRelationshipType sar:OrganizationGovernance .
+sar:BoardMember       a sar:GovernanceRole, skos:Concept ; skos:inScheme sar:RoleScheme ; rdfs:label "board-member"     ; skos:notation "board-member"     ; sa:onChainTermHash "keccak256('atl:BoardMemberRole')"     ; sar:applicableToRelationshipType sar:OrganizationGovernance .
+sar:ChiefExecutive    a sar:GovernanceRole, skos:Concept ; skos:inScheme sar:RoleScheme ; rdfs:label "ceo"              ; skos:notation "ceo"              ; sa:onChainTermHash "keccak256('atl:ChiefExecutiveRole')"  ; sar:applicableToRelationshipType sar:OrganizationGovernance .
+sar:Executive         a sar:GovernanceRole, skos:Concept ; skos:inScheme sar:RoleScheme ; rdfs:label "executive"        ; skos:notation "executive"        ; sa:onChainTermHash "keccak256('atl:ExecutiveRole')"       ; sar:applicableToRelationshipType sar:OrganizationGovernance .
+sar:Treasurer         a sar:GovernanceRole, skos:Concept ; skos:inScheme sar:RoleScheme ; rdfs:label "treasurer"        ; skos:notation "treasurer"        ; sa:onChainTermHash "keccak256('atl:TreasurerRole')"       ; sar:applicableToRelationshipType sar:OrganizationGovernance , sar:OrganizationMembership .
+sar:AuthorizedSigner  a sar:GovernanceRole, skos:Concept ; skos:inScheme sar:RoleScheme ; rdfs:label "authorized-signer" ; skos:notation "authorized-signer" ; sa:onChainTermHash "keccak256('atl:AuthorizedSignerRole')" ; sar:applicableToRelationshipType sar:OrganizationGovernance , sar:OrganizationMembership , sar:DelegationAuthority .
+sar:Officer           a sar:GovernanceRole, skos:Concept ; skos:inScheme sar:RoleScheme ; rdfs:label "officer"          ; skos:notation "officer"          ; sa:onChainTermHash "keccak256('atl:OfficerRole')"         ; sar:applicableToRelationshipType sar:OrganizationGovernance .
+sar:Chair             a sar:GovernanceRole, skos:Concept ; skos:inScheme sar:RoleScheme ; rdfs:label "chair"            ; skos:notation "chair"            ; sa:onChainTermHash "keccak256('atl:ChairRole')"           ; sar:applicableToRelationshipType sar:OrganizationGovernance .
+
+# ─── Advisory ────────────────────────────────────────────────────────
+sar:Advisor    a sar:AdvisoryRole, skos:Concept ; skos:inScheme sar:RoleScheme ; rdfs:label "advisor"  ; skos:notation "advisor" ; sa:onChainTermHash "keccak256('atl:AdvisorRole')" ; sar:applicableToRelationshipType sar:OrganizationGovernance , sar:OrganizationMembership .
+
+# ─── Membership ──────────────────────────────────────────────────────
+sar:Administrator a sar:MembershipRole, skos:Concept ; skos:inScheme sar:RoleScheme ; rdfs:label "admin"    ; skos:notation "admin"    ; sa:onChainTermHash "keccak256('atl:AdministratorRole')" ; sar:applicableToRelationshipType sar:OrganizationMembership .
+sar:Member        a sar:MembershipRole, skos:Concept ; skos:inScheme sar:RoleScheme ; rdfs:label "member"   ; skos:notation "member"   ; sa:onChainTermHash "keccak256('atl:MemberRole')"        ; sar:applicableToRelationshipType sar:OrganizationMembership , sar:HasMember .
+sar:Operator      a sar:MembershipRole, skos:Concept ; skos:inScheme sar:RoleScheme ; rdfs:label "operator" ; skos:notation "operator" ; sa:onChainTermHash "keccak256('atl:OperatorRole')"      ; sar:applicableToRelationshipType sar:OrganizationMembership .
+sar:Employee      a sar:MembershipRole, skos:Concept ; skos:inScheme sar:RoleScheme ; rdfs:label "employee" ; skos:notation "employee" ; sa:onChainTermHash "keccak256('atl:EmployeeRole')"      ; sar:applicableToRelationshipType sar:OrganizationMembership .
+
+# ─── Service ─────────────────────────────────────────────────────────
+sar:Contractor      a sar:ServiceRole, skos:Concept ; skos:inScheme sar:RoleScheme ; rdfs:label "contractor"       ; skos:notation "contractor"       ; sa:onChainTermHash "keccak256('atl:ContractorRole')"      ; sar:applicableToRelationshipType sar:ServiceAgreement .
+sar:Vendor          a sar:ServiceRole, skos:Concept ; skos:inScheme sar:RoleScheme ; rdfs:label "vendor"           ; skos:notation "vendor"           ; sa:onChainTermHash "keccak256('atl:VendorRole')"          ; sar:applicableToRelationshipType sar:ServiceAgreement .
+sar:ServiceProvider a sar:ServiceRole, skos:Concept ; skos:inScheme sar:RoleScheme ; rdfs:label "service-provider" ; skos:notation "service-provider" ; sa:onChainTermHash "keccak256('atl:ServiceProviderRole')" ; sar:applicableToRelationshipType sar:ServiceAgreement .
+
+# ─── Assurance ───────────────────────────────────────────────────────
+sar:Auditor            a sar:AssuranceRole, skos:Concept ; skos:inScheme sar:RoleScheme ; rdfs:label "auditor"             ; skos:notation "auditor"             ; sa:onChainTermHash "keccak256('atl:AuditorRole')"            ; sar:applicableToRelationshipType sar:OrganizationMembership , sar:Review , sar:Compliance .
+sar:Validator          a sar:AssuranceRole, skos:Concept ; skos:inScheme sar:RoleScheme ; rdfs:label "validator"           ; skos:notation "validator"           ; sa:onChainTermHash "keccak256('atl:ValidatorRole')"          ; sar:applicableToRelationshipType sar:OrganizationMembership , sar:ValidationTrust , sar:ActivityValidation .
+sar:Insurer            a sar:AssuranceRole, skos:Concept ; skos:inScheme sar:RoleScheme ; rdfs:label "insurer"             ; skos:notation "insurer"             ; sa:onChainTermHash "keccak256('atl:InsurerRole')"            ; sar:applicableToRelationshipType sar:InsuranceCoverage .
+sar:InsuredParty       a sar:AssuranceRole, skos:Concept ; skos:inScheme sar:RoleScheme ; rdfs:label "insured-party"       ; skos:notation "insured-party"       ; sa:onChainTermHash "keccak256('atl:InsuredPartyRole')"       ; sar:applicableToRelationshipType sar:InsuranceCoverage .
+sar:Underwriter        a sar:AssuranceRole, skos:Concept ; skos:inScheme sar:RoleScheme ; rdfs:label "underwriter"         ; skos:notation "underwriter"         ; sa:onChainTermHash "keccak256('atl:UnderwriterRole')"        ; sar:applicableToRelationshipType sar:InsuranceCoverage .
+sar:CertifiedBy        a sar:AssuranceRole, skos:Concept ; skos:inScheme sar:RoleScheme ; rdfs:label "certified-by"        ; skos:notation "certified-by"        ; sa:onChainTermHash "keccak256('atl:CertifiedByRole')"        ; sar:applicableToRelationshipType sar:ValidationTrust , sar:Compliance .
+sar:LicensedBy         a sar:AssuranceRole, skos:Concept ; skos:inScheme sar:RoleScheme ; rdfs:label "licensed-by"         ; skos:notation "licensed-by"         ; sa:onChainTermHash "keccak256('atl:LicensedByRole')"         ; sar:applicableToRelationshipType sar:Compliance .
+sar:ActivityValidator  a sar:AssuranceRole, skos:Concept ; skos:inScheme sar:RoleScheme ; rdfs:label "activity-validator"  ; skos:notation "activity-validator"  ; sa:onChainTermHash "keccak256('atl:ActivityValidatorRole')"  ; sar:applicableToRelationshipType sar:ActivityValidation .
+sar:ValidatedPerformer a sar:AssuranceRole, skos:Concept ; skos:inScheme sar:RoleScheme ; rdfs:label "validated-performer" ; skos:notation "validated-performer" ; sa:onChainTermHash "keccak256('atl:ValidatedPerformerRole')" ; sar:applicableToRelationshipType sar:ActivityValidation .
+sar:Reviewer           a sar:AssuranceRole, skos:Concept ; skos:inScheme sar:RoleScheme ; rdfs:label "reviewer"            ; skos:notation "reviewer"            ; sa:onChainTermHash "keccak256('atl:ReviewerRole')"           ; sar:applicableToRelationshipType sar:Review .
+sar:ReviewedAgent      a sar:AssuranceRole, skos:Concept ; skos:inScheme sar:RoleScheme ; rdfs:label "reviewed-agent"      ; skos:notation "reviewed-agent"      ; sa:onChainTermHash "keccak256('atl:ReviewedAgentRole')"      ; sar:applicableToRelationshipType sar:Review .
+
+# ─── Economic ────────────────────────────────────────────────────────
+sar:Staker             a sar:EconomicRole, skos:Concept ; skos:inScheme sar:RoleScheme ; rdfs:label "staker"              ; skos:notation "staker"              ; sa:onChainTermHash "keccak256('atl:StakerRole')"             ; sar:applicableToRelationshipType sar:EconomicSecurity .
+sar:Guarantor          a sar:EconomicRole, skos:Concept ; skos:inScheme sar:RoleScheme ; rdfs:label "guarantor"           ; skos:notation "guarantor"           ; sa:onChainTermHash "keccak256('atl:GuarantorRole')"          ; sar:applicableToRelationshipType sar:EconomicSecurity .
+sar:Backer             a sar:EconomicRole, skos:Concept ; skos:inScheme sar:RoleScheme ; rdfs:label "backer"              ; skos:notation "backer"              ; sa:onChainTermHash "keccak256('atl:BackerRole')"             ; sar:applicableToRelationshipType sar:EconomicSecurity .
+sar:CollateralProvider a sar:EconomicRole, skos:Concept ; skos:inScheme sar:RoleScheme ; rdfs:label "collateral-provider" ; skos:notation "collateral-provider" ; sa:onChainTermHash "keccak256('atl:CollateralProviderRole')" ; sar:applicableToRelationshipType sar:EconomicSecurity .
+
+# ─── Alliance ────────────────────────────────────────────────────────
+sar:StrategicPartner a sar:AllianceRole, skos:Concept ; skos:inScheme sar:RoleScheme ; rdfs:label "strategic-partner" ; skos:notation "strategic-partner" ; sa:onChainTermHash "keccak256('atl:StrategicPartnerRole')" ; sar:applicableToRelationshipType sar:Alliance .
+sar:Affiliate        a sar:AllianceRole, skos:Concept ; skos:inScheme sar:RoleScheme ; rdfs:label "affiliate"         ; skos:notation "affiliate"         ; sa:onChainTermHash "keccak256('atl:AffiliateRole')"        ; sar:applicableToRelationshipType sar:Alliance .
+sar:EndorsedBy       a sar:AllianceRole, skos:Concept ; skos:inScheme sar:RoleScheme ; rdfs:label "endorsed-by"       ; skos:notation "endorsed-by"       ; sa:onChainTermHash "keccak256('atl:EndorsedByRole')"       ; sar:applicableToRelationshipType sar:Alliance .
+sar:Subsidiary       a sar:AllianceRole, skos:Concept ; skos:inScheme sar:RoleScheme ; rdfs:label "subsidiary"        ; skos:notation "subsidiary"        ; sa:onChainTermHash "keccak256('atl:SubsidiaryRole')"       ; sar:applicableToRelationshipType sar:Alliance .
+sar:ParentOrg        a sar:AllianceRole, skos:Concept ; skos:inScheme sar:RoleScheme ; rdfs:label "parent-org"        ; skos:notation "parent-org"        ; sa:onChainTermHash "keccak256('atl:ParentOrgRole')"        ; sar:applicableToRelationshipType sar:Alliance .
+
+# ─── Execution ───────────────────────────────────────────────────────
+sar:DelegatedOperator a sar:ExecutionRole, skos:Concept ; skos:inScheme sar:RoleScheme ; rdfs:label "delegated-operator" ; skos:notation "delegated-operator" ; sa:onChainTermHash "keccak256('atl:DelegatedOperatorRole')" ; sar:applicableToRelationshipType sar:DelegationAuthority .
+sar:OperatedAgent     a sar:ExecutionRole, skos:Concept ; skos:inScheme sar:RoleScheme ; rdfs:label "operated-agent"     ; skos:notation "operated-agent"     ; sa:onChainTermHash "keccak256('atl:OperatedAgentRole')"     ; sar:applicableToRelationshipType sar:OrganizationalControl .
+sar:ManagedAgent      a sar:ExecutionRole, skos:Concept ; skos:inScheme sar:RoleScheme ; rdfs:label "managed-agent"      ; skos:notation "managed-agent"      ; sa:onChainTermHash "keccak256('atl:ManagedAgentRole')"      ; sar:applicableToRelationshipType sar:OrganizationalControl .
+sar:Administers       a sar:ExecutionRole, skos:Concept ; skos:inScheme sar:RoleScheme ; rdfs:label "administers"        ; skos:notation "administers"        ; sa:onChainTermHash "keccak256('atl:AdministerRole')"        ; sar:applicableToRelationshipType sar:OrganizationalControl .
+
+# ─── Infrastructure ──────────────────────────────────────────────────
+sar:RunsInTEE       a sar:InfrastructureRole, skos:Concept ; skos:inScheme sar:RoleScheme ; rdfs:label "runs-in-tee"      ; skos:notation "runs-in-tee"      ; sar:applicableToRelationshipType sar:RuntimeAttestation .
+sar:AttestedBy      a sar:InfrastructureRole, skos:Concept ; skos:inScheme sar:RoleScheme ; rdfs:label "attested-by"      ; skos:notation "attested-by"      ; sar:applicableToRelationshipType sar:RuntimeAttestation .
+sar:VerifiedBy      a sar:InfrastructureRole, skos:Concept ; skos:inScheme sar:RoleScheme ; rdfs:label "verified-by"      ; skos:notation "verified-by"      ; sar:applicableToRelationshipType sar:RuntimeAttestation .
+sar:BoundToKMS      a sar:InfrastructureRole, skos:Concept ; skos:inScheme sar:RoleScheme ; rdfs:label "bound-to-kms"     ; skos:notation "bound-to-kms"     ; sar:applicableToRelationshipType sar:RuntimeAttestation .
+sar:ControlsRuntime a sar:InfrastructureRole, skos:Concept ; skos:inScheme sar:RoleScheme ; rdfs:label "controls-runtime" ; skos:notation "controls-runtime" ; sar:applicableToRelationshipType sar:RuntimeAttestation .
+sar:BuiltFrom       a sar:InfrastructureRole, skos:Concept ; skos:inScheme sar:RoleScheme ; rdfs:label "built-from"       ; skos:notation "built-from"       ; sar:applicableToRelationshipType sar:BuildProvenance .
+sar:DeployedFrom    a sar:InfrastructureRole, skos:Concept ; skos:inScheme sar:RoleScheme ; rdfs:label "deployed-from"    ; skos:notation "deployed-from"    ; sar:applicableToRelationshipType sar:BuildProvenance .
+
+# ─── Network ─────────────────────────────────────────────────────────
+sar:Upstream         a sar:NetworkRole, skos:Concept ; skos:inScheme sar:RoleScheme ; rdfs:label "upstream"          ; skos:notation "upstream"          ; sar:applicableToRelationshipType sar:GenerationalLineage .
+sar:Downstream       a sar:NetworkRole, skos:Concept ; skos:inScheme sar:RoleScheme ; rdfs:label "downstream"        ; skos:notation "downstream"        ; sar:applicableToRelationshipType sar:GenerationalLineage .
+sar:Influencer       a sar:NetworkRole, skos:Concept ; skos:inScheme sar:RoleScheme ; rdfs:label "influencer"        ; skos:notation "influencer"        ; sa:onChainTermHash "keccak256('atl:InfluencerRole')"       ; sar:applicableToRelationshipType sar:PersonalInfluence .
+sar:InfluenceContact a sar:NetworkRole, skos:Concept ; skos:inScheme sar:RoleScheme ; rdfs:label "influence-contact" ; skos:notation "influence-contact" ; sa:onChainTermHash "keccak256('atl:InfluenceContactRole')" ; sar:applicableToRelationshipType sar:PersonalInfluence .
+
+# ─── Coaching ────────────────────────────────────────────────────────
+sar:Coach    a sar:AssuranceRole, skos:Concept ; skos:inScheme sar:RoleScheme ; rdfs:label "coach"    ; skos:notation "coach"    ; sa:onChainTermHash "keccak256('atl:CoachRole')"    ; sar:applicableToRelationshipType sar:CoachingMentorship .
+sar:Disciple a sar:AssuranceRole, skos:Concept ; skos:inScheme sar:RoleScheme ; rdfs:label "disciple" ; skos:notation "disciple" ; sa:onChainTermHash "keccak256('atl:DiscipleRole')" ; sar:applicableToRelationshipType sar:CoachingMentorship .
+
+
+# =============================================================================
+# Caveat Enforcer Type Vocabulary
+# =============================================================================
+# Class sad:CaveatEnforcerType defined in tbox/delegation.ttl
+
+sad:CaveatEnforcerScheme  a skos:ConceptScheme ; rdfs:label "Caveat Enforcer Scheme" .
+
+sad:TimestampEnforcer        a sad:CaveatEnforcerType, skos:Concept ; skos:inScheme sad:CaveatEnforcerScheme ; rdfs:label "Timestamp Enforcer"        ; skos:notation "timestamp"      ; rdfs:comment "Time-window caveat: validAfter and validUntil bounds." .
+sad:ValueEnforcer            a sad:CaveatEnforcerType, skos:Concept ; skos:inScheme sad:CaveatEnforcerScheme ; rdfs:label "Value Enforcer"            ; skos:notation "value"          ; rdfs:comment "Maximum ETH value per call." .
+sad:AllowedTargetsEnforcer   a sad:CaveatEnforcerType, skos:Concept ; skos:inScheme sad:CaveatEnforcerScheme ; rdfs:label "Allowed Targets Enforcer"  ; skos:notation "allowedTargets" ; rdfs:comment "Restrict to specific target contract addresses." .
+sad:AllowedMethodsEnforcer   a sad:CaveatEnforcerType, skos:Concept ; skos:inScheme sad:CaveatEnforcerScheme ; rdfs:label "Allowed Methods Enforcer"  ; skos:notation "allowedMethods" ; rdfs:comment "Restrict to specific function selectors." .
+
+
+# =============================================================================
+# Delegation Policy Vocabulary
+# =============================================================================
+# Class sad:DelegationPolicy defined in tbox/delegation.ttl
+
+sad:DelegationPolicyScheme  a skos:ConceptScheme ; rdfs:label "Delegation Policy Scheme" .
+
+sad:CEOTreasuryPolicy              a sad:DelegationPolicy, skos:Concept ; skos:inScheme sad:DelegationPolicyScheme ; rdfs:label "CEO Treasury"              ; skos:notation "ceo-treasury"              ; sad:requiresRelationshipType sar:OrganizationGovernance ; sad:requiresRole sar:ChiefExecutive    ; sad:requiredEnforcer sad:TimestampEnforcer , sad:ValueEnforcer ; sad:optionalEnforcer sad:AllowedTargetsEnforcer .
+sad:OperatorExecutionPolicy        a sad:DelegationPolicy, skos:Concept ; skos:inScheme sad:DelegationPolicyScheme ; rdfs:label "Operator Execution"        ; skos:notation "operator-execution"        ; sad:requiresRelationshipType sar:OrganizationMembership ; sad:requiresRole sar:Operator          ; sad:requiredEnforcer sad:TimestampEnforcer , sad:AllowedTargetsEnforcer , sad:AllowedMethodsEnforcer ; sad:optionalEnforcer sad:ValueEnforcer .
+sad:AuditorReadPolicy              a sad:DelegationPolicy, skos:Concept ; skos:inScheme sad:DelegationPolicyScheme ; rdfs:label "Auditor Read"              ; skos:notation "auditor-read"              ; sad:requiresRelationshipType sar:OrganizationMembership ; sad:requiresRole sar:Auditor           ; sad:requiredEnforcer sad:TimestampEnforcer .
+sad:StakerBondPolicy               a sad:DelegationPolicy, skos:Concept ; skos:inScheme sad:DelegationPolicyScheme ; rdfs:label "Staker Bond"               ; skos:notation "staker-bond"               ; sad:requiresRelationshipType sar:EconomicSecurity       ; sad:requiresRole sar:Staker            ; sad:requiredEnforcer sad:TimestampEnforcer ; sad:optionalEnforcer sad:ValueEnforcer .
+sad:ServiceProviderExecutionPolicy a sad:DelegationPolicy, skos:Concept ; skos:inScheme sad:DelegationPolicyScheme ; rdfs:label "Service Provider Execution" ; skos:notation "service-provider-execution" ; sad:requiresRelationshipType sar:ServiceAgreement      ; sad:requiresRole sar:ServiceProvider   ; sad:requiredEnforcer sad:TimestampEnforcer , sad:AllowedTargetsEnforcer ; sad:optionalEnforcer sad:ValueEnforcer .
+sad:ReviewSubmissionPolicy         a sad:DelegationPolicy, skos:Concept ; skos:inScheme sad:DelegationPolicyScheme ; rdfs:label "Review Submission"         ; skos:notation "review-submission"          ; sad:requiresRelationshipType sar:Review                 ; sad:requiresRole sar:Reviewer          ; sad:requiredEnforcer sad:TimestampEnforcer , sad:AllowedTargetsEnforcer , sad:AllowedMethodsEnforcer ; sad:defaultDurationSeconds 604800 .
+
+
+# =============================================================================
+# Proposal Status Vocabulary
+# =============================================================================
+# Class sag:ProposalStatus defined in tbox/governance.ttl
+
+sag:ProposalStatusScheme  a skos:ConceptScheme ; rdfs:label "Proposal Status Scheme" .
+
+sag:StatusOpen      a sag:ProposalStatus, skos:Concept ; skos:inScheme sag:ProposalStatusScheme ; rdfs:label "Open" .
+sag:StatusApproved  a sag:ProposalStatus, skos:Concept ; skos:inScheme sag:ProposalStatusScheme ; rdfs:label "Approved" .
+sag:StatusRejected  a sag:ProposalStatus, skos:Concept ; skos:inScheme sag:ProposalStatusScheme ; rdfs:label "Rejected" .
+sag:StatusExecuted  a sag:ProposalStatus, skos:Concept ; skos:inScheme sag:ProposalStatusScheme ; rdfs:label "Executed" .

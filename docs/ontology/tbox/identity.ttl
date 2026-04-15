@@ -280,6 +280,117 @@ sai:registeredAtTime
     rdfs:domain sai:SmartAgentIdentity ;
     rdfs:range xsd:dateTime .
 
+sai:serviceEndpoint
+    a owl:DatatypeProperty ;
+    rdfs:label "Service Endpoint" ;
+    rdfs:comment "General service endpoint URL (ATL_SERVICE_ENDPOINT)." ;
+    rdfs:domain sai:SmartAgentIdentity ;
+    rdfs:range xsd:anyURI .
+
+sai:version
+    a owl:DatatypeProperty ;
+    rdfs:label "Version" ;
+    rdfs:comment "Agent version number (ATL_VERSION)." ;
+    rdfs:domain sai:SmartAgentIdentity ;
+    rdfs:range xsd:integer .
+
+sai:metadataHash
+    a owl:DatatypeProperty ;
+    rdfs:label "Metadata Hash" ;
+    rdfs:comment "Hash of off-chain metadata for integrity verification (ATL_METADATA_HASH)." ;
+    rdfs:domain sai:SmartAgentIdentity ;
+    rdfs:range xsd:string .
+
+sai:schemaURI
+    a owl:DatatypeProperty ;
+    rdfs:label "Schema URI" ;
+    rdfs:comment "URI of the metadata schema (ATL_SCHEMA_URI)." ;
+    rdfs:domain sai:SmartAgentIdentity ;
+    rdfs:range xsd:anyURI .
+
+sai:operatedBy
+    a owl:ObjectProperty ;
+    rdfs:label "Operated By" ;
+    rdfs:comment "Address of the operator managing this agent (ATL_OPERATED_BY)." ;
+    rdfs:domain sai:SmartAgentIdentity ;
+    rdfs:range eth:Account .
+
+# ─── Geospatial (GeoSPARQL-aligned) ─────────────────────────────────
+
+sai:latitude
+    a owl:DatatypeProperty ;
+    rdfs:label "Latitude" ;
+    rdfs:comment "Geographic latitude (ATL_LATITUDE)." ;
+    rdfs:domain sai:SmartAgentIdentity ;
+    rdfs:range xsd:decimal .
+
+sai:longitude
+    a owl:DatatypeProperty ;
+    rdfs:label "Longitude" ;
+    rdfs:comment "Geographic longitude (ATL_LONGITUDE)." ;
+    rdfs:domain sai:SmartAgentIdentity ;
+    rdfs:range xsd:decimal .
+
+sai:spatialCRS
+    a owl:DatatypeProperty ;
+    rdfs:label "Spatial CRS" ;
+    rdfs:comment "Coordinate reference system (ATL_SPATIAL_CRS, default EPSG:4326)." ;
+    rdfs:domain sai:SmartAgentIdentity ;
+    rdfs:range xsd:string .
+
+sai:spatialType
+    a owl:DatatypeProperty ;
+    rdfs:label "Spatial Type" ;
+    rdfs:comment "Spatial geometry type (ATL_SPATIAL_TYPE, e.g. Point)." ;
+    rdfs:domain sai:SmartAgentIdentity ;
+    rdfs:range xsd:string .
+
+# ─── ERC-4337 Technical ─────────────────────────────────────────────
+
+sai:entryPoint
+    a owl:DatatypeProperty ;
+    rdfs:label "Entry Point" ;
+    rdfs:comment "ERC-4337 EntryPoint contract address (ATL_ENTRY_POINT)." ;
+    rdfs:domain sai:SmartAgentIdentity ;
+    rdfs:range xsd:string .
+
+sai:implementation
+    a owl:DatatypeProperty ;
+    rdfs:label "Implementation" ;
+    rdfs:comment "Proxy implementation contract address (ATL_IMPLEMENTATION)." ;
+    rdfs:domain sai:SmartAgentIdentity ;
+    rdfs:range xsd:string .
+
+sai:delegationManager
+    a owl:DatatypeProperty ;
+    rdfs:label "Delegation Manager" ;
+    rdfs:comment "Delegation Manager contract address (ATL_DELEGATION_MANAGER)." ;
+    rdfs:domain sai:SmartAgentIdentity ;
+    rdfs:range xsd:string .
+
+# ─── App Data (JSON blobs stored on identity) ────────────────────────
+
+sai:genmapData
+    a owl:DatatypeProperty ;
+    rdfs:label "GenMap Data" ;
+    rdfs:comment "JSON blob of generational map data (ATL_GENMAP_DATA)." ;
+    rdfs:domain sai:SmartAgentIdentity ;
+    rdfs:range xsd:string .
+
+sai:activityLog
+    a owl:DatatypeProperty ;
+    rdfs:label "Activity Log" ;
+    rdfs:comment "JSON blob of activity log data (ATL_ACTIVITY_LOG)." ;
+    rdfs:domain sai:SmartAgentIdentity ;
+    rdfs:range xsd:string .
+
+sai:trackedMembers
+    a owl:DatatypeProperty ;
+    rdfs:label "Tracked Members" ;
+    rdfs:comment "JSON blob of tracked member addresses (ATL_TRACKED_MEMBERS)." ;
+    rdfs:domain sai:SmartAgentIdentity ;
+    rdfs:range xsd:string .
+
 
 # =============================================================================
 # Future Identity Facet Stubs
