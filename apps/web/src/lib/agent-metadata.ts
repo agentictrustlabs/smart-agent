@@ -4,6 +4,7 @@ import {
   AGENT_TYPE_LABELS, AI_CLASS_LABELS,
   ATL_CAPABILITY, ATL_SUPPORTED_TRUST, ATL_A2A_ENDPOINT, ATL_MCP_SERVER,
   ATL_LATITUDE, ATL_LONGITUDE, ATL_SPATIAL_CRS, ATL_SPATIAL_TYPE,
+  ATL_PRIMARY_NAME, ATL_NAME_LABEL,
   TYPE_PERSON, TYPE_ORGANIZATION, TYPE_AI_AGENT,
 } from '@smart-agent/sdk'
 import { db, schema } from '@/db'
@@ -16,6 +17,10 @@ export interface AgentMetadata {
   address: string
   displayName: string
   description: string
+  /** Primary .agent name (e.g., "david.fortcollins.catalyst.agent") */
+  primaryName: string
+  /** Name label at this level (e.g., "david") */
+  nameLabel: string
   agentType: 'person' | 'org' | 'ai' | 'unknown'
   agentTypeLabel: string
   aiAgentClass: string
@@ -49,6 +54,8 @@ export async function getAgentMetadata(agentAddress: string): Promise<AgentMetad
     address: agentAddress,
     displayName: `${agentAddress.slice(0, 6)}...${agentAddress.slice(-4)}`,
     description: '',
+    primaryName: '',
+    nameLabel: '',
     agentType: 'unknown',
     agentTypeLabel: 'Unknown',
     aiAgentClass: '',
@@ -95,6 +102,8 @@ export async function getAgentMetadata(agentAddress: string): Promise<AgentMetad
 
         meta.capabilities = await client.readContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'getMultiStringProperty', args: [addr, ATL_CAPABILITY as `0x${string}`] }) as string[]
         meta.trustModels = await client.readContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'getMultiStringProperty', args: [addr, ATL_SUPPORTED_TRUST as `0x${string}`] }) as string[]
+        meta.primaryName = await client.readContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'getStringProperty', args: [addr, ATL_PRIMARY_NAME as `0x${string}`] }) as string
+        meta.nameLabel = await client.readContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'getStringProperty', args: [addr, ATL_NAME_LABEL as `0x${string}`] }) as string
         meta.a2aEndpoint = await client.readContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'getStringProperty', args: [addr, ATL_A2A_ENDPOINT as `0x${string}`] }) as string
         meta.mcpServer = await client.readContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'getStringProperty', args: [addr, ATL_MCP_SERVER as `0x${string}`] }) as string
         meta.latitude = await client.readContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'getStringProperty', args: [addr, ATL_LATITUDE as `0x${string}`] }) as string

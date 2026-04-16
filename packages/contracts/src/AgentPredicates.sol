@@ -82,6 +82,10 @@ library AgentPredicates {
     bytes32 constant ATL_TRACKED_MEMBERS = keccak256("atl:trackedMembers");
     bytes32 constant ATL_TEMPLATE_ID = keccak256("atl:templateId");
 
+    // ─── Naming (.agent namespace) ───────────────────────────────────
+    bytes32 constant ATL_PRIMARY_NAME = keccak256("atl:primaryName");
+    bytes32 constant ATL_NAME_LABEL = keccak256("atl:nameLabel");
+
     // ─── ERC-4337 technical ─────────────────────────────────────────
     bytes32 constant ATL_ENTRY_POINT = keccak256("atl:entryPoint");
     bytes32 constant ATL_IMPLEMENTATION = keccak256("atl:implementation");

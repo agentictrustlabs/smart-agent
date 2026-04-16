@@ -44,6 +44,7 @@ AV=$(cast keccak "atl:ActivityValidationRelationship")
 RR=$(cast keccak "atl:ReviewRelationship")
 HM=$(cast keccak "atl:HasMemberRelationship")
 GL=$(cast keccak "atl:GenerationalLineageRelationship")
+NC=$(cast keccak "atl:NamespaceContainsRelationship")
 
 # Register all types with semantic properties
 # Args: hash, label, isHierarchical, isTransitive, isSymmetric
@@ -64,5 +65,6 @@ register_type "$AV" "Activity Validation"     false false false
 register_type "$RR" "Review Relationship"     false false false
 register_type "$HM" "Hub Membership"          true  true  false
 register_type "$GL" "Generational Lineage"   true  true  false
+register_type "$NC" "Namespace Contains"    true  true  false
 
-echo "=== Type Registry seeded: 16 relationship types ==="
+echo "=== Type Registry seeded: 17 relationship types ==="

@@ -11,9 +11,11 @@ import {
 import {
   ORGANIZATION_GOVERNANCE, ORGANIZATION_MEMBERSHIP, ALLIANCE, ORGANIZATIONAL_CONTROL,
   GENERATIONAL_LINEAGE, HAS_MEMBER, COACHING_MENTORSHIP,
+  NAMESPACE_CONTAINS, ROLE_NAMESPACE_PARENT, ROLE_NAMESPACE_CHILD,
   ROLE_OWNER, ROLE_BOARD_MEMBER, ROLE_OPERATOR, ROLE_MEMBER, ROLE_ADVISOR, ROLE_OPERATED_AGENT,
   ROLE_STRATEGIC_PARTNER, ROLE_UPSTREAM, ROLE_DOWNSTREAM, ROLE_COACH, ROLE_DISCIPLE,
   ATL_LATITUDE, ATL_LONGITUDE, ATL_SPATIAL_CRS, ATL_SPATIAL_TYPE, ATL_CONTROLLER,
+  ATL_PRIMARY_NAME, ATL_NAME_LABEL,
 } from '@smart-agent/sdk'
 import { agentAccountResolverAbi } from '@smart-agent/sdk'
 import { keccak256, toBytes } from 'viem'
@@ -230,6 +232,154 @@ async function doSeed() {
   for (const agent of allAgents) {
     await createEdge(hubCatalyst, agent, HAS_MEMBER as `0x${string}`, [ROLE_MEMBER])
   }
+
+  // ─── Agent Naming (.agent namespace) ─────────────────────────────
+  console.log('[catalyst-seed] Setting up .agent naming hierarchy...')
+
+  async function setNameProps(addr: `0x${string}`, label: string, fullName: string) {
+    const wc = getWalletClient()
+    const resolver = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}`
+    if (!resolver) return
+    try {
+      await wc.writeContract({ address: resolver, abi: agentAccountResolverAbi, functionName: 'setStringProperty', args: [addr, ATL_NAME_LABEL as `0x${string}`, label] })
+      await wc.writeContract({ address: resolver, abi: agentAccountResolverAbi, functionName: 'setStringProperty', args: [addr, ATL_PRIMARY_NAME as `0x${string}`, fullName] })
+    } catch (_e) { console.warn(`[catalyst-seed] Name props failed for ${label}:`, _e) }
+  }
+
+  const NS = NAMESPACE_CONTAINS as `0x${string}`
+  const NS_ROLES = [ROLE_NAMESPACE_PARENT as `0x${string}`, ROLE_NAMESPACE_CHILD as `0x${string}`]
+
+  // ─── Register names in AgentNameRegistry ─────────────────────────
+  const nameRegistryAddr = process.env.AGENT_NAME_REGISTRY_ADDRESS as `0x${string}`
+  const nameResolverAddr = process.env.AGENT_NAME_RESOLVER_ADDRESS as `0x${string}`
+
+  async function registerName(parentNode: `0x${string}`, label: string, ownerAddr: `0x${string}`) {
+    if (!nameRegistryAddr) return null
+    const wc = getWalletClient()
+    const pc = getPublicClient()
+    try {
+      const { agentNameRegistryAbi, agentNameResolverAbi } = await import('@smart-agent/sdk')
+      // Register in name registry
+      const hash = await wc.writeContract({
+        address: nameRegistryAddr,
+        abi: agentNameRegistryAbi,
+        functionName: 'register',
+        args: [parentNode, label, ownerAddr, nameResolverAddr, 0n],
+      })
+      const receipt = await pc.waitForTransactionReceipt({ hash })
+
+      // Compute child node to set addr record
+      const { namehash: computeNamehash } = await import('@smart-agent/sdk')
+      // Read the child node from the registry
+      const { keccak256: k256, toBytes: tb, encodePacked: ep } = await import('viem')
+      const lh = k256(tb(label))
+      const childNode = k256(ep(['bytes32', 'bytes32'], [parentNode, lh]))
+
+      // Set addr record in name resolver
+      await wc.writeContract({
+        address: nameResolverAddr,
+        abi: agentNameResolverAbi,
+        functionName: 'setAddr',
+        args: [childNode, ownerAddr],
+      })
+
+      return childNode as `0x${string}`
+    } catch (e) {
+      console.warn(`[catalyst-seed] Name registration failed for ${label}:`, e)
+      return null
+    }
+  }
+
+  // Get the .agent root node from the registry
+  let agentRoot: `0x${string}` = '0x0000000000000000000000000000000000000000000000000000000000000000'
+  if (nameRegistryAddr) {
+    try {
+      const { agentNameRegistryAbi } = await import('@smart-agent/sdk')
+      agentRoot = await getPublicClient().readContract({
+        address: nameRegistryAddr, abi: agentNameRegistryAbi, functionName: 'AGENT_ROOT',
+      }) as `0x${string}`
+      console.log('[catalyst-seed] .agent root:', agentRoot)
+    } catch { /* registry not deployed */ }
+  }
+
+  // Register catalyst.agent under root
+  const catalystNode = await registerName(agentRoot, 'catalyst', hubCatalyst)
+  console.log('[catalyst-seed] catalyst.agent registered:', catalystNode ? 'yes' : 'no')
+
+  if (catalystNode) {
+    // Register direct children under catalyst.agent
+    const fcNode = await registerName(catalystNode, 'fortcollins', hub)
+    const welNode = await registerName(catalystNode, 'wellington', grpWellington)
+    const lapNode = await registerName(catalystNode, 'laporte', grpLaporte)
+    await registerName(catalystNode, 'timnath', grpTimnath)
+    await registerName(catalystNode, 'loveland', grpLoveland)
+    await registerName(catalystNode, 'berthoud', grpBerthoud)
+    await registerName(catalystNode, 'johnstown', grpJohnstown)
+    await registerName(catalystNode, 'redfeather', grpRedFeather)
+    await registerName(catalystNode, 'network', network)
+    await registerName(catalystNode, 'analytics', analytics)
+    await registerName(catalystNode, 'maria', paMaria)
+    await registerName(catalystNode, 'sarah', paSarah)
+
+    // Register people under their orgs
+    if (fcNode) {
+      await registerName(fcNode, 'david', paDavid)
+      await registerName(fcNode, 'rosa', paRosa)
+      await registerName(fcNode, 'carlos', paCarlos)
+    }
+    if (welNode) await registerName(welNode, 'ana', paAna)
+    if (lapNode) await registerName(lapNode, 'miguel', paMiguel)
+
+    console.log('[catalyst-seed] Name registry populated')
+  }
+
+  // Set labels + primary names on AgentAccountResolver
+  await setNameProps(hubCatalyst, 'catalyst', 'catalyst.agent')
+  await setNameProps(network, 'network', 'network.catalyst.agent')
+  await setNameProps(hub, 'fortcollins', 'fortcollins.catalyst.agent')
+  await setNameProps(grpWellington, 'wellington', 'wellington.catalyst.agent')
+  await setNameProps(grpLaporte, 'laporte', 'laporte.catalyst.agent')
+  await setNameProps(grpTimnath, 'timnath', 'timnath.catalyst.agent')
+  await setNameProps(grpLoveland, 'loveland', 'loveland.catalyst.agent')
+  await setNameProps(grpBerthoud, 'berthoud', 'berthoud.catalyst.agent')
+  await setNameProps(grpJohnstown, 'johnstown', 'johnstown.catalyst.agent')
+  await setNameProps(grpRedFeather, 'redfeather', 'redfeather.catalyst.agent')
+  await setNameProps(analytics, 'analytics', 'analytics.catalyst.agent')
+  await setNameProps(paMaria, 'maria', 'maria.catalyst.agent')
+  await setNameProps(paDavid, 'david', 'david.fortcollins.catalyst.agent')
+  await setNameProps(paRosa, 'rosa', 'rosa.fortcollins.catalyst.agent')
+  await setNameProps(paCarlos, 'carlos', 'carlos.fortcollins.catalyst.agent')
+  await setNameProps(paSarah, 'sarah', 'sarah.catalyst.agent')
+  await setNameProps(paAna, 'ana', 'ana.wellington.catalyst.agent')
+  await setNameProps(paMiguel, 'miguel', 'miguel.laporte.catalyst.agent')
+
+  // NAMESPACE_CONTAINS edges: hub → orgs, orgs → people
+  // catalyst.agent contains everything at the top level
+  const nsEdgeMeta = (label: string) => JSON.stringify({ label })
+
+  await createEdge(hubCatalyst, network, NS, NS_ROLES, nsEdgeMeta('network'))
+  await createEdge(hubCatalyst, hub, NS, NS_ROLES, nsEdgeMeta('fortcollins'))
+  await createEdge(hubCatalyst, grpWellington, NS, NS_ROLES, nsEdgeMeta('wellington'))
+  await createEdge(hubCatalyst, grpLaporte, NS, NS_ROLES, nsEdgeMeta('laporte'))
+  await createEdge(hubCatalyst, grpTimnath, NS, NS_ROLES, nsEdgeMeta('timnath'))
+  await createEdge(hubCatalyst, grpLoveland, NS, NS_ROLES, nsEdgeMeta('loveland'))
+  await createEdge(hubCatalyst, grpBerthoud, NS, NS_ROLES, nsEdgeMeta('berthoud'))
+  await createEdge(hubCatalyst, grpJohnstown, NS, NS_ROLES, nsEdgeMeta('johnstown'))
+  await createEdge(hubCatalyst, grpRedFeather, NS, NS_ROLES, nsEdgeMeta('redfeather'))
+  await createEdge(hubCatalyst, analytics, NS, NS_ROLES, nsEdgeMeta('analytics'))
+  await createEdge(hubCatalyst, paMaria, NS, NS_ROLES, nsEdgeMeta('maria'))
+  await createEdge(hubCatalyst, paSarah, NS, NS_ROLES, nsEdgeMeta('sarah'))
+
+  // Fort Collins Hub contains its people
+  await createEdge(hub, paDavid, NS, NS_ROLES, nsEdgeMeta('david'))
+  await createEdge(hub, paRosa, NS, NS_ROLES, nsEdgeMeta('rosa'))
+  await createEdge(hub, paCarlos, NS, NS_ROLES, nsEdgeMeta('carlos'))
+
+  // Circles contain their leaders
+  await createEdge(grpWellington, paAna, NS, NS_ROLES, nsEdgeMeta('ana'))
+  await createEdge(grpLaporte, paMiguel, NS, NS_ROLES, nsEdgeMeta('miguel'))
+
+  console.log('[catalyst-seed] Naming hierarchy created: 17 NAMESPACE_CONTAINS edges')
 
   // ─── Helper: Build and sign a data access delegation ──────────────
   async function buildSignedDelegation(

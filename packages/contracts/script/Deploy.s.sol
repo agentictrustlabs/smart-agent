@@ -25,6 +25,10 @@ import "../src/MockTeeVerifier.sol";
 import "../src/OntologyTermRegistry.sol";
 import "../src/AgentAccountResolver.sol";
 import "../src/AgentUniversalResolver.sol";
+import "../src/AgentNameRegistry.sol";
+import "../src/AgentNameResolver.sol";
+import "../src/AgentNameUniversalResolver.sol";
+import "../src/enforcers/NameScopeEnforcer.sol";
 import "account-abstraction/interfaces/IEntryPoint.sol";
 import "account-abstraction/core/EntryPoint.sol";
 
@@ -162,6 +166,24 @@ contract Deploy is Script {
         );
         console.log("AgentUniversalResolver:", address(universalResolver));
 
+        // 9. Agent Naming System
+        AgentNameRegistry nameRegistry = new AgentNameRegistry(agentRelationship);
+        console.log("AgentNameRegistry:", address(nameRegistry));
+
+        AgentNameResolver nameResolver = new AgentNameResolver(nameRegistry);
+        console.log("AgentNameResolver:", address(nameResolver));
+
+        AgentNameUniversalResolver nameUniversalResolver = new AgentNameUniversalResolver(
+            nameRegistry, nameResolver, accountResolver
+        );
+        console.log("AgentNameUniversalResolver:", address(nameUniversalResolver));
+
+        NameScopeEnforcer nameScopeEnforcer = new NameScopeEnforcer();
+        console.log("NameScopeEnforcer:", address(nameScopeEnforcer));
+
+        // Initialize .agent root and set default resolver
+        nameRegistry.initializeRoot(deployer, address(nameResolver));
+
         vm.stopBroadcast();
 
         // Print env vars for copy-paste into apps/web/.env
@@ -191,6 +213,10 @@ contract Deploy is Script {
         _logEnv("UNIVERSAL_RESOLVER_ADDRESS", address(universalResolver));
         _logEnv("RELATIONSHIP_TYPE_REGISTRY_ADDRESS", address(typeRegistry));
         _logEnv("AGENT_RELATIONSHIP_QUERY_ADDRESS", address(relQuery));
+        _logEnv("AGENT_NAME_REGISTRY_ADDRESS", address(nameRegistry));
+        _logEnv("AGENT_NAME_RESOLVER_ADDRESS", address(nameResolver));
+        _logEnv("AGENT_NAME_UNIVERSAL_RESOLVER_ADDRESS", address(nameUniversalResolver));
+        _logEnv("NAME_SCOPE_ENFORCER_ADDRESS", address(nameScopeEnforcer));
     }
 
     function _logEnv(string memory key, address addr) internal pure {

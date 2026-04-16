@@ -19,6 +19,9 @@ export {
   agentUniversalResolverAbi,
   relationshipTypeRegistryAbi,
   agentRelationshipQueryAbi,
+  agentNameRegistryAbi,
+  agentNameResolverAbi,
+  agentNameUniversalResolverAbi,
 } from './abi'
 
 // ─── Account Client ──────────────────────────────────────────────────
@@ -111,6 +114,8 @@ export {
   ROLE_COACH, ROLE_DISCIPLE, ROLE_INFLUENCER, ROLE_INFLUENCE_CONTACT,
   // Data access delegation
   DATA_ACCESS_DELEGATION, ROLE_DATA_GRANTOR, ROLE_DATA_GRANTEE,
+  // Naming hierarchy
+  NAMESPACE_CONTAINS, ROLE_NAMESPACE_PARENT, ROLE_NAMESPACE_CHILD,
   // Service roles
   ROLE_VENDOR, ROLE_SERVICE_PROVIDER, ROLE_DELEGATED_OPERATOR,
   // TEE/Runtime roles
@@ -159,9 +164,18 @@ export {
   ATL_HUB_FEATURES, ATL_HUB_THEME, ATL_HUB_VIEW_MODES, ATL_HUB_GREETING,
   ATL_HUB_VOCABULARY, ATL_HUB_ROLE_VOCABULARY, ATL_HUB_TYPE_VOCABULARY,
   ATL_GENMAP_DATA, ATL_ACTIVITY_LOG, ATL_TRACKED_MEMBERS, ATL_TEMPLATE_ID,
+  ATL_PRIMARY_NAME, ATL_NAME_LABEL,
   ATL_ENTRY_POINT, ATL_IMPLEMENTATION, ATL_DELEGATION_MANAGER,
   AGENT_TYPE_LABELS, AI_CLASS_LABELS,
 } from './predicates'
+
+// ─── Agent Naming (.agent namespace) ─────────────────────────────────
+export {
+  AGENT_TLD,
+  namehash, labelhash, normalize, splitName, buildName,
+  resolveName, reverseResolve, listSubnames, getNamePath, getNameTree,
+} from './naming'
+export type { NameResolutionConfig, NameTreeNode } from './naming'
 
 // ─── Re-export types ─────────────────────────────────────────────────
 export type {

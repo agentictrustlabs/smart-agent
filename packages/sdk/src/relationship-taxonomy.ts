@@ -205,6 +205,13 @@ const relationshipTypeDefinitions: Array<RelationshipTypeDefinition & { hash: `0
     description: 'Person-to-person data access grant — subject allows object to read specified data from MCP backends per the scope defined in the delegation caveats and metadataURI.',
     parentTerm: 'atl:NetworkRelationship',
   }),
+  withHash({
+    key: 'namespace-contains',
+    term: 'atl:NamespaceContainsRelationship',
+    label: 'Namespace',
+    description: 'Parent namespace contains child agent — forms the .agent hierarchical naming tree. The edge metadataURI carries the label for this level.',
+    parentTerm: 'atl:NetworkRelationship',
+  }),
 ]
 
 const roleDefinitions: Array<RoleDefinition & { hash: `0x${string}` }> = [
@@ -701,6 +708,22 @@ const roleDefinitions: Array<RoleDefinition & { hash: `0x${string}` }> = [
     relationshipTypeKeys: ['data-access-delegation'],
     parentTerm: 'atl:NetworkRole',
   }),
+  withHash({
+    key: 'namespace-parent',
+    term: 'atl:NamespaceParentRole',
+    label: 'namespace-parent',
+    description: 'The parent agent in the .agent naming hierarchy — contains child agents as subnames.',
+    relationshipTypeKeys: ['namespace-contains'],
+    parentTerm: 'atl:NetworkRole',
+  }),
+  withHash({
+    key: 'namespace-child',
+    term: 'atl:NamespaceChildRole',
+    label: 'namespace-child',
+    description: 'The child agent in the .agent naming hierarchy — a subname of the parent.',
+    relationshipTypeKeys: ['namespace-contains'],
+    parentTerm: 'atl:NetworkRole',
+  }),
 ]
 
 const delegationPolicyDefinitions: DelegationPolicyDefinition[] = [
@@ -957,3 +980,6 @@ export const ROLE_INFLUENCER = requireRoleHash('influencer')
 export const ROLE_INFLUENCE_CONTACT = requireRoleHash('influence-contact')
 export const ROLE_DATA_GRANTOR = requireRoleHash('data-grantor')
 export const ROLE_DATA_GRANTEE = requireRoleHash('data-grantee')
+export const NAMESPACE_CONTAINS = requireRelationshipTypeHash('namespace-contains')
+export const ROLE_NAMESPACE_PARENT = requireRoleHash('namespace-parent')
+export const ROLE_NAMESPACE_CHILD = requireRoleHash('namespace-child')

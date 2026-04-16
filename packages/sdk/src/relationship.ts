@@ -91,6 +91,9 @@ export {
   ROLE_INFLUENCE_CONTACT,
   ROLE_DATA_GRANTOR,
   ROLE_DATA_GRANTEE,
+  NAMESPACE_CONTAINS,
+  ROLE_NAMESPACE_PARENT,
+  ROLE_NAMESPACE_CHILD,
 } from './relationship-taxonomy'
 
 // Issuer types

@@ -59,7 +59,7 @@ export interface UserNavSection {
 }
 
 export interface UserContextResponse {
-  personAgent: { address: string; name: string } | null
+  personAgent: { address: string; name: string; primaryName: string } | null
   orgs: UserOrg[]
   delegations: UserDelegation[]
   /** Hub agents the user belongs to (via HAS_MEMBER edges) */
@@ -91,7 +91,7 @@ export async function GET() {
     let personAgent: UserContextResponse['personAgent'] = null
     if (personAddr) {
       const meta = await getAgentMetadata(personAddr)
-      personAgent = { address: personAddr, name: meta.displayName }
+      personAgent = { address: personAddr, name: meta.displayName, primaryName: meta.primaryName }
     }
 
     // All orgs via on-chain edges

@@ -71,6 +71,10 @@ register_term "atl:activityLog" "${BASE}activityLog" "Activity Log" "string"
 register_term "atl:trackedMembers" "${BASE}trackedMembers" "Tracked Members" "string"
 register_term "atl:templateId" "${BASE}templateId" "Template ID" "string"
 
+# Naming (.agent namespace)
+register_term "atl:primaryName" "${BASE}primaryName" "Primary Name" "string"
+register_term "atl:nameLabel" "${BASE}nameLabel" "Name Label" "string"
+
 # Hub configuration
 register_term "atl:hubNavConfig" "${BASE}hubNavConfig" "Hub Navigation Config" "string"
 register_term "atl:hubNetworkLabel" "${BASE}hubNetworkLabel" "Hub Network Label" "string"

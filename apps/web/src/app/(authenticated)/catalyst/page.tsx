@@ -70,9 +70,11 @@ export default async function CatalystDashboardPage() {
   // Person agent
   const personAgentAddr = await getPersonAgentForUser(currentUser.id)
   let personAgentName = ''
+  let personPrimaryName = ''
   if (personAgentAddr) {
     const meta = await getAgentMetadata(personAgentAddr)
     personAgentName = meta.displayName
+    personPrimaryName = meta.primaryName
   }
 
   // All roles across orgs
@@ -81,14 +83,20 @@ export default async function CatalystDashboardPage() {
     for (const r of org.roles) allRoles.add(r)
   }
 
-  // AI agents across user's orgs
-  type AIAgentInfo = { name: string; type: string; orgName: string; address: string }
+  // Enrich orgs with .agent names
+  const orgsMeta = await Promise.all(userOrgs.map(async (org) => {
+    const meta = await getAgentMetadata(org.address)
+    return { ...org, primaryName: meta.primaryName }
+  }))
+
+  // AI agents across user's orgs (with .agent names)
+  type AIAgentInfo = { name: string; primaryName: string; type: string; orgName: string; address: string }
   const aiAgents: AIAgentInfo[] = []
   for (const org of userOrgs) {
     const aiAddrs = await getAiAgentsForOrg(org.address)
     for (const addr of aiAddrs) {
       const meta = await getAgentMetadata(addr)
-      aiAgents.push({ name: meta.displayName, type: meta.aiAgentClass || 'custom', orgName: org.name, address: addr })
+      aiAgents.push({ name: meta.displayName, primaryName: meta.primaryName, type: meta.aiAgentClass || 'custom', orgName: org.name, address: addr })
     }
   }
 
@@ -147,8 +155,17 @@ export default async function CatalystDashboardPage() {
 
         {personAgentAddr && (
           <div style={{ fontSize: '0.78rem', color: C.textMuted, marginBottom: '0.5rem' }}>
-            <span style={{ fontWeight: 600, color: C.text }}>Person Agent:</span>{' '}
-            <Link href={`/agents/${personAgentAddr}`} style={{ color: C.accent }}>{personAgentName}</Link>
+            {personPrimaryName ? (
+              <>
+                <span style={{ fontWeight: 600, color: C.accent, fontFamily: 'monospace', fontSize: '0.82rem' }}>{personPrimaryName}</span>
+                <span style={{ marginLeft: '0.5rem', color: C.textMuted }}>({personAgentName})</span>
+              </>
+            ) : (
+              <>
+                <span style={{ fontWeight: 600, color: C.text }}>Person Agent:</span>{' '}
+                <Link href={`/agents/${personAgentAddr}`} style={{ color: C.accent }}>{personAgentName}</Link>
+              </>
+            )}
           </div>
         )}
 
@@ -219,7 +236,7 @@ export default async function CatalystDashboardPage() {
           <h2 style={{ fontSize: '0.7rem', fontWeight: 700, color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.6rem' }}>
             My Organizations
           </h2>
-          {userOrgs.map(org => (
+          {orgsMeta.map(org => (
             <div key={org.address} style={{
               display: 'flex', alignItems: 'center', gap: '0.75rem',
               padding: '0.5rem 0', borderBottom: `1px solid ${C.border}`,
@@ -232,11 +249,18 @@ export default async function CatalystDashboardPage() {
                 {org.name.charAt(0)}
               </span>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <Link href={`/agents/${org.address}`} style={{
-                  fontWeight: 600, fontSize: '0.85rem', color: C.text, textDecoration: 'none',
-                }}>
-                  {org.name}
-                </Link>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                  <Link href={`/agents/${org.address}`} style={{
+                    fontWeight: 600, fontSize: '0.85rem', color: C.text, textDecoration: 'none',
+                  }}>
+                    {org.name}
+                  </Link>
+                  {org.primaryName && (
+                    <span style={{ fontFamily: 'monospace', fontSize: '0.68rem', color: C.accent, background: C.accentLight, padding: '0.05rem 0.35rem', borderRadius: 6, border: `1px solid ${C.accentBorder}` }}>
+                      {org.primaryName}
+                    </span>
+                  )}
+                </div>
                 <div style={{ display: 'flex', gap: '0.25rem', marginTop: '0.15rem' }}>
                   {org.roles.map(r => (
                     <span key={r} style={{
@@ -248,9 +272,6 @@ export default async function CatalystDashboardPage() {
                   ))}
                 </div>
               </div>
-              <span style={{ fontSize: '0.7rem', fontFamily: 'monospace', color: C.textMuted }}>
-                {org.address.slice(0, 6)}...{org.address.slice(-4)}
-              </span>
             </div>
           ))}
         </div>
@@ -281,11 +302,18 @@ export default async function CatalystDashboardPage() {
                 AI
               </span>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <Link href={`/agents/${agent.address}`} style={{
-                  fontWeight: 600, fontSize: '0.85rem', color: C.text, textDecoration: 'none',
-                }}>
-                  {agent.name}
-                </Link>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                  <Link href={`/agents/${agent.address}`} style={{
+                    fontWeight: 600, fontSize: '0.85rem', color: C.text, textDecoration: 'none',
+                  }}>
+                    {agent.name}
+                  </Link>
+                  {agent.primaryName && (
+                    <span style={{ fontFamily: 'monospace', fontSize: '0.68rem', color: '#7b1fa2', background: '#f3e5f5', padding: '0.05rem 0.35rem', borderRadius: 6, border: '1px solid #e1bee7' }}>
+                      {agent.primaryName}
+                    </span>
+                  )}
+                </div>
                 <div style={{ fontSize: '0.72rem', color: C.textMuted }}>
                   {agent.type} &middot; {agent.orgName}
                 </div>
@@ -454,14 +482,20 @@ async function CatalystFieldDashboard({
   const progress = await getTrainingProgress(currentUser.id)
   const walkPct = Math.round((progress.filter(p => p.completed === 1).length / 28) * 100)
 
+  // Enrich orgs with .agent names
+  const orgsMeta = await Promise.all(userOrgs.map(async (org) => {
+    const meta = await getAgentMetadata(org.address)
+    return { ...org, primaryName: meta.primaryName }
+  }))
+
   // AI agents across user's orgs
-  type AIAgentInfo = { name: string; type: string; orgName: string; address: string }
+  type AIAgentInfo = { name: string; primaryName: string; type: string; orgName: string; address: string }
   const aiAgents: AIAgentInfo[] = []
   for (const org of userOrgs) {
     const aiAddrs = await getAiAgentsForOrg(org.address)
     for (const addr of aiAddrs) {
       const meta = await getAgentMetadata(addr)
-      aiAgents.push({ name: meta.displayName, type: meta.aiAgentClass || 'custom', orgName: org.name, address: addr })
+      aiAgents.push({ name: meta.displayName, primaryName: meta.primaryName, type: meta.aiAgentClass || 'custom', orgName: org.name, address: addr })
     }
   }
 
@@ -487,7 +521,7 @@ async function CatalystFieldDashboard({
           <h2 style={{ fontSize: '0.7rem', fontWeight: 700, color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.6rem' }}>
             My Organizations
           </h2>
-          {userOrgs.map(org => (
+          {orgsMeta.map(org => (
             <div key={org.address} style={{
               display: 'flex', alignItems: 'center', gap: '0.75rem',
               padding: '0.5rem 0', borderBottom: `1px solid ${C.border}`,
@@ -500,11 +534,18 @@ async function CatalystFieldDashboard({
                 {org.name.charAt(0)}
               </span>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <Link href={`/agents/${org.address}`} style={{
-                  fontWeight: 600, fontSize: '0.85rem', color: C.text, textDecoration: 'none',
-                }}>
-                  {org.name}
-                </Link>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                  <Link href={`/agents/${org.address}`} style={{
+                    fontWeight: 600, fontSize: '0.85rem', color: C.text, textDecoration: 'none',
+                  }}>
+                    {org.name}
+                  </Link>
+                  {org.primaryName && (
+                    <span style={{ fontFamily: 'monospace', fontSize: '0.68rem', color: C.accent, background: C.accentLight, padding: '0.05rem 0.35rem', borderRadius: 6, border: `1px solid ${C.accentBorder}` }}>
+                      {org.primaryName}
+                    </span>
+                  )}
+                </div>
                 <div style={{ display: 'flex', gap: '0.25rem', marginTop: '0.15rem' }}>
                   {org.roles.map(r => (
                     <span key={r} style={{
@@ -543,11 +584,18 @@ async function CatalystFieldDashboard({
                 AI
               </span>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <Link href={`/agents/${agent.address}`} style={{
-                  fontWeight: 600, fontSize: '0.85rem', color: C.text, textDecoration: 'none',
-                }}>
-                  {agent.name}
-                </Link>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                  <Link href={`/agents/${agent.address}`} style={{
+                    fontWeight: 600, fontSize: '0.85rem', color: C.text, textDecoration: 'none',
+                  }}>
+                    {agent.name}
+                  </Link>
+                  {agent.primaryName && (
+                    <span style={{ fontFamily: 'monospace', fontSize: '0.68rem', color: '#7b1fa2', background: '#f3e5f5', padding: '0.05rem 0.35rem', borderRadius: 6, border: '1px solid #e1bee7' }}>
+                      {agent.primaryName}
+                    </span>
+                  )}
+                </div>
                 <div style={{ fontSize: '0.72rem', color: C.textMuted }}>
                   {agent.type} &middot; {agent.orgName}
                 </div>
@@ -565,6 +613,7 @@ async function CatalystFieldDashboard({
 async function DelegationSection({ userId }: { userId: string }) {
   const { getIncomingDelegations, getOutgoingDelegations } = await import('@/lib/actions/data-delegation.action')
   const { getCoachRelationship, getDisciples } = await import('@/lib/actions/grow.action')
+  const { getAgentMetadata: getMeta } = await import('@/lib/agent-metadata')
 
   const incoming = await getIncomingDelegations(userId)
   const outgoing = await getOutgoingDelegations(userId)
@@ -572,6 +621,24 @@ async function DelegationSection({ userId }: { userId: string }) {
   const disciples = await getDisciples(userId)
 
   if (!coachRel && disciples.length === 0 && incoming.length === 0 && outgoing.length === 0) return null
+
+  // Resolve .agent names for all addresses we'll display
+  const nameCache = new Map<string, string>()
+  async function agentName(addr: string): Promise<string> {
+    if (nameCache.has(addr)) return nameCache.get(addr)!
+    try {
+      const meta = await getMeta(addr)
+      const name = meta.primaryName || ''
+      nameCache.set(addr, name)
+      return name
+    } catch { return '' }
+  }
+
+  // Pre-fetch names
+  if (coachRel) await agentName(coachRel.coachId)
+  for (const d of disciples) await agentName(d.discipleId)
+  for (const d of incoming) await agentName(d.grantor)
+  for (const d of outgoing) await agentName(d.grantee)
 
   return (
     <div style={{
@@ -583,11 +650,11 @@ async function DelegationSection({ userId }: { userId: string }) {
       </h2>
 
       {coachRel && (
-        <DelegationRow icon="Coach" iconBg="#7c3aed12" iconColor="#7c3aed" name={coachRel.coachName} detail="Coaching you" tooltip="Your mentor in this community" />
+        <DelegationRow icon="Coach" iconBg="#7c3aed12" iconColor="#7c3aed" name={coachRel.coachName} agentName={nameCache.get(coachRel.coachId)} detail="Coaching you" tooltip="Your mentor in this community" />
       )}
 
       {disciples.map(d => (
-        <DelegationRow key={d.id} icon="Disciple" iconBg="#7c3aed12" iconColor="#7c3aed" name={d.discipleName} detail="You coach" badgeLabel="data shared" badgeColor="#2e7d32" tooltip="You are coaching this person. They have shared personal data with you." />
+        <DelegationRow key={d.id} icon="Disciple" iconBg="#7c3aed12" iconColor="#7c3aed" name={d.discipleName} agentName={nameCache.get(d.discipleId)} detail="You coach" badgeLabel="data shared" badgeColor="#2e7d32" tooltip="You are coaching this person. They have shared personal data with you." />
       ))}
 
       {incoming.map(d => {
@@ -595,7 +662,7 @@ async function DelegationSection({ userId }: { userId: string }) {
         return (
           <DelegationRow
             key={d.edgeId} icon="Received" iconBg="rgba(139,94,60,0.10)" iconColor="#8b5e3c"
-            name={d.grantorName}
+            name={d.grantorName} agentName={nameCache.get(d.grantor)}
             detail={`Shared with you: ${fields.map(f => fieldLabel(f)).join(', ')}`}
             href="/catalyst/me/sharing" linkLabel="view"
             tooltip="This person has granted you access to their personal data"
@@ -608,7 +675,7 @@ async function DelegationSection({ userId }: { userId: string }) {
         return (
           <DelegationRow
             key={d.edgeId} icon="Shared" iconBg="#ec489912" iconColor="#ec4899"
-            name={d.granteeName}
+            name={d.granteeName} agentName={nameCache.get(d.grantee)}
             detail={`You shared: ${fields.map(f => fieldLabel(f)).join(', ')}`}
             href="/catalyst/me/sharing" linkLabel="manage" linkColor="#ec4899" linkBorder="#ec489930" linkBg="#ec489912"
             tooltip="You have granted this person access to your personal data"
@@ -627,8 +694,8 @@ const FIELD_LABELS: Record<string, string> = {
 }
 function fieldLabel(f: string) { return FIELD_LABELS[f] ?? f }
 
-function DelegationRow({ icon, iconBg, iconColor, name, detail, tooltip, badgeLabel, badgeColor, href, linkLabel, linkColor, linkBorder, linkBg }: {
-  icon: string; iconBg: string; iconColor: string; name: string; detail: string; tooltip?: string
+function DelegationRow({ icon, iconBg, iconColor, name, agentName, detail, tooltip, badgeLabel, badgeColor, href, linkLabel, linkColor, linkBorder, linkBg }: {
+  icon: string; iconBg: string; iconColor: string; name: string; agentName?: string; detail: string; tooltip?: string
   badgeLabel?: string; badgeColor?: string
   href?: string; linkLabel?: string; linkColor?: string; linkBorder?: string; linkBg?: string
 }) {
@@ -639,7 +706,14 @@ function DelegationRow({ icon, iconBg, iconColor, name, detail, tooltip, badgeLa
         fontSize: '0.6rem', fontWeight: 700, whiteSpace: 'nowrap', border: `1px solid ${iconColor}25`,
       }}>{icon}</span>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <span style={{ fontWeight: 600, fontSize: '0.85rem', color: '#5c4a3a' }}>{name}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+          <span style={{ fontWeight: 600, fontSize: '0.85rem', color: '#5c4a3a' }}>{name}</span>
+          {agentName && (
+            <span style={{ fontFamily: 'monospace', fontSize: '0.68rem', color: '#8b5e3c', background: 'rgba(139,94,60,0.06)', padding: '0.05rem 0.35rem', borderRadius: 6, border: '1px solid rgba(139,94,60,0.12)' }}>
+              {agentName}
+            </span>
+          )}
+        </div>
         <div style={{ fontSize: '0.7rem', color: '#9a8c7e', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{detail}</div>
       </div>
       {badgeLabel && (

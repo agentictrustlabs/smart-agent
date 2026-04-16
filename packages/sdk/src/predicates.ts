@@ -82,6 +82,12 @@ export const ATL_ACTIVITY_LOG = keccak256(toBytes('atl:activityLog'))
 export const ATL_TRACKED_MEMBERS = keccak256(toBytes('atl:trackedMembers'))
 export const ATL_TEMPLATE_ID = keccak256(toBytes('atl:templateId'))
 
+// ─── Naming (.agent namespace) ─────────────────────────────────────
+/** The agent's primary fully-qualified name (e.g., "david.fortcollins.catalyst.agent") */
+export const ATL_PRIMARY_NAME = keccak256(toBytes('atl:primaryName'))
+/** The label for this agent at its level in the namespace (e.g., "david") */
+export const ATL_NAME_LABEL = keccak256(toBytes('atl:nameLabel'))
+
 // ─── ERC-4337 technical ─────────────────────────────────────────────
 export const ATL_ENTRY_POINT = keccak256(toBytes('atl:entryPoint'))
 export const ATL_IMPLEMENTATION = keccak256(toBytes('atl:implementation'))
