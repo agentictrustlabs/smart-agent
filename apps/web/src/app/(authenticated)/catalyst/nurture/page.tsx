@@ -6,12 +6,13 @@ import { eq } from 'drizzle-orm'
 import { getMCRole } from '@/lib/mc-roles'
 import TrainingPageClient from '@/components/mc/TrainingPageClient'
 import type { TrainingModule, UserProgress } from '@/components/mc/TrainingPageClient'
+import { getUserHubId } from '@/lib/get-user-hub'
 
 export default async function NurturePage() {
   const currentUser = await getCurrentUser()
   if (!currentUser) redirect('/')
 
-  const isCIL = currentUser.id.startsWith('cil-')
+  const isCIL = (await getUserHubId(currentUser.id)) === 'cil'
 
   if (isCIL) {
     // ── CIL Training View ────────────────────────────────────────────

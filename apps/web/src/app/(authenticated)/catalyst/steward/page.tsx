@@ -7,12 +7,13 @@ import { eq } from 'drizzle-orm'
 import { getMCRole } from '@/lib/mc-roles'
 import GovernancePageClient from '@/components/mc/GovernancePageClient'
 import type { Proposal } from '@/components/mc/GovernancePageClient'
+import { getUserHubId } from '@/lib/get-user-hub'
 
 export default async function StewardPage() {
   const currentUser = await getCurrentUser()
   if (!currentUser) redirect('/')
 
-  const isCIL = currentUser.id.startsWith('cil-')
+  const isCIL = (await getUserHubId(currentUser.id)) === 'cil'
 
   if (isCIL) {
     // ── CIL Governance View ──────────────────────────────────────────

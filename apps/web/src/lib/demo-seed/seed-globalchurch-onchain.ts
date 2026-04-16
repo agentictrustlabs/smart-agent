@@ -156,12 +156,16 @@ async function doSeed() {
   await register(paDavidWills, 'David Wills', 'President — National Christian Foundation', TYPE_PERSON)
 
   // ─── Set ATL_CONTROLLER on person agents (wallet → agent mapping) ──
+  // Look up real wallet addresses from DB (generated at demo login)
   console.log('[gc-seed] Setting controller predicates...')
-  await setController(paPastorJames, '0x0000000000000000000000000000000000010001')
-  await setController(paSarahMitchell, '0x0000000000000000000000000000000000010002')
-  await setController(paDanBusby, '0x0000000000000000000000000000000000010003')
-  await setController(paJohnChesnut, '0x0000000000000000000000000000000000010004')
-  await setController(paDavidWills, '0x0000000000000000000000000000000000010005')
+  const { ensureCommunityUsers } = await import('./lookup-users')
+  const gcUsers = await ensureCommunityUsers('gc-user-')
+  const userWallets = new Map(gcUsers.map(u => [u.key, u.walletAddress]))
+  await setController(paPastorJames, userWallets.get('gc-user-001') ?? USERS[0].wallet)
+  await setController(paSarahMitchell, userWallets.get('gc-user-002') ?? USERS[1].wallet)
+  await setController(paDanBusby, userWallets.get('gc-user-003') ?? USERS[2].wallet)
+  await setController(paJohnChesnut, userWallets.get('gc-user-004') ?? USERS[3].wallet)
+  await setController(paDavidWills, userWallets.get('gc-user-005') ?? USERS[4].wallet)
 
   // ─── Geospatial Metadata (US locations) ───────────────────────────
   console.log('[gc-seed] Setting geospatial metadata...')

@@ -3,13 +3,14 @@ import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { getUserOrgs } from '@/lib/get-user-orgs'
 import { db, schema } from '@/db'
 import { ActivityFeed } from '@/components/catalyst/ActivityFeed'
+import { getUserHubId } from '@/lib/get-user-hub'
 
 export default async function CatalystActivitiesPage() {
   const currentUser = await getCurrentUser()
   if (!currentUser) redirect('/')
 
   // ── CIL Revenue branch ───────────────────────────────────────────────
-  const isCIL = currentUser.id.startsWith('cil-')
+  const isCIL = (await getUserHubId(currentUser.id)) === 'cil'
   if (isCIL) {
     const { getMCRole, getBusinessOrgAddressesForUser } = await import('@/lib/mc-roles')
     const { RevenuePageClient } = await import('@/components/mc/RevenuePageClient')
@@ -108,17 +109,9 @@ export default async function CatalystActivitiesPage() {
     } catch { /* ignored */ }
   }
 
-  // Also build set of user IDs in the same org network (for DB-seeded activities with wallet addresses)
+  // Build set of user IDs in the same org network — query by org membership, not ID prefix
   const orgUserIds = new Set<string>()
   orgUserIds.add(currentUser.id)
-  // Include all cat-user-* IDs if user is in catalyst network
-  if (currentUser.id.startsWith('cat-')) {
-    for (let i = 1; i <= 7; i++) orgUserIds.add(`cat-user-00${i}`)
-  } else if (currentUser.id.startsWith('gc-')) {
-    for (let i = 1; i <= 5; i++) orgUserIds.add(`gc-user-00${i}`)
-  } else if (currentUser.id.startsWith('cil-')) {
-    for (let i = 1; i <= 7; i++) orgUserIds.add(`cil-user-00${i}`)
-  }
 
   const allActivities = await db.select().from(schema.activityLogs)
   const activities = allActivities

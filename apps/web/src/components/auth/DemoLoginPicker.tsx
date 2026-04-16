@@ -79,6 +79,14 @@ export function DemoLoginPicker() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId: key }),
     })
+
+    // Bootstrap A2A session for the demo user
+    try {
+      await fetch('/api/a2a/bootstrap', { method: 'POST' })
+    } catch {
+      console.warn('[DemoLogin] A2A session bootstrap failed')
+    }
+
     // Full page reload to clear all client state
     window.location.href = '/catalyst'
   }

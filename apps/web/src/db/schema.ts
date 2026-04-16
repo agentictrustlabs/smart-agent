@@ -8,6 +8,10 @@ export const users = sqliteTable('users', {
   name: text('name').notNull(),
   walletAddress: text('wallet_address').notNull().unique(),
   privyUserId: text('privy_user_id').unique(),
+  /** Private key for demo users (hex, 0x-prefixed). Null for Privy users. */
+  privateKey: text('private_key'),
+  /** Smart account address deployed for this user. Null until deployed. */
+  smartAccountAddress: text('smart_account_address'),
   createdAt: text('created_at')
     .notNull()
     .$defaultFn(() => new Date().toISOString()),

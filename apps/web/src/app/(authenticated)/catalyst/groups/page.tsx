@@ -7,13 +7,14 @@ import { type GroupNode } from '@/components/catalyst/GroupHierarchy'
 import { type CircleMapNode } from '@/components/catalyst/CircleMapView'
 import { GroupsPageClient } from './GroupsPageClient'
 import { agentAccountResolverAbi, ATL_GENMAP_DATA } from '@smart-agent/sdk'
+import { getUserHubId } from '@/lib/get-user-hub'
 
 export default async function CatalystGroupsPage() {
   const currentUser = await getCurrentUser()
   if (!currentUser) redirect('/')
 
   // ── CIL Portfolio branch ─────────────────────────────────────────────
-  const isCIL = currentUser.id.startsWith('cil-')
+  const isCIL = (await getUserHubId(currentUser.id)) === 'cil'
   if (isCIL) {
     const { db, schema } = await import('@/db')
     const { getMCRole, getBusinessOrgAddressesForUser } = await import('@/lib/mc-roles')

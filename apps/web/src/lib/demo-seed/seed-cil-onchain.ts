@@ -161,13 +161,16 @@ async function doSeed() {
 
   // ─── Set ATL_CONTROLLER on person agents (wallet → agent mapping) ──
   console.log('[cil-seed] Setting controller predicates...')
-  await setController(paCameron, '0x00000000000000000000000000000000000c0001')
-  await setController(paNick,    '0x00000000000000000000000000000000000c0002')
-  await setController(paAfia,    '0x00000000000000000000000000000000000c0003')
-  await setController(paKossi,   '0x00000000000000000000000000000000000c0004')
-  await setController(paYaw,     '0x00000000000000000000000000000000000c0005')
-  await setController(paJohn,    '0x00000000000000000000000000000000000c0006')
-  await setController(paPaul,    '0x00000000000000000000000000000000000c0007')
+  const { ensureCommunityUsers } = await import('./lookup-users')
+  const cilUsers = await ensureCommunityUsers('cil-user-')
+  const cilWallets = new Map(cilUsers.map(u => [u.key, u.walletAddress]))
+  await setController(paCameron, cilWallets.get('cil-user-001') ?? USERS[0].wallet)
+  await setController(paNick,    cilWallets.get('cil-user-002') ?? USERS[1].wallet)
+  await setController(paAfia,    cilWallets.get('cil-user-003') ?? USERS[2].wallet)
+  await setController(paKossi,   cilWallets.get('cil-user-004') ?? USERS[3].wallet)
+  await setController(paYaw,     cilWallets.get('cil-user-005') ?? USERS[4].wallet)
+  await setController(paJohn,    cilWallets.get('cil-user-006') ?? USERS[5].wallet)
+  await setController(paPaul,    cilWallets.get('cil-user-007') ?? USERS[6].wallet)
 
   // ─── Geospatial Metadata ──────────────────────────────────────────
   console.log('[cil-seed] Setting geospatial metadata...')

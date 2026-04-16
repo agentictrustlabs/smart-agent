@@ -156,13 +156,16 @@ async function doSeed() {
 
   // ─── Set ATL_CONTROLLER on person agents (wallet → agent mapping) ──
   console.log('[catalyst-seed] Setting controller predicates...')
-  await setController(paMaria, '0x00000000000000000000000000000000000b0001')
-  await setController(paDavid, '0x00000000000000000000000000000000000b0002')
-  await setController(paRosa, '0x00000000000000000000000000000000000b0003')
-  await setController(paCarlos, '0x00000000000000000000000000000000000b0004')
-  await setController(paSarah, '0x00000000000000000000000000000000000b0005')
-  await setController(paAna, '0x00000000000000000000000000000000000b0006')
-  await setController(paMiguel, '0x00000000000000000000000000000000000b0007')
+  const { ensureCommunityUsers } = await import('./lookup-users')
+  const catUsers = await ensureCommunityUsers('cat-user-')
+  const catWallets = new Map(catUsers.map(u => [u.key, u.walletAddress]))
+  await setController(paMaria, catWallets.get('cat-user-001') ?? USERS[0].wallet)
+  await setController(paDavid, catWallets.get('cat-user-002') ?? USERS[1].wallet)
+  await setController(paRosa, catWallets.get('cat-user-003') ?? USERS[2].wallet)
+  await setController(paCarlos, catWallets.get('cat-user-004') ?? USERS[3].wallet)
+  await setController(paSarah, catWallets.get('cat-user-005') ?? USERS[4].wallet)
+  await setController(paAna, catWallets.get('cat-user-006') ?? USERS[5].wallet)
+  await setController(paMiguel, catWallets.get('cat-user-007') ?? USERS[6].wallet)
 
   // ─── Geospatial Metadata (Northern Colorado) ──────────────────────
   console.log('[catalyst-seed] Setting geospatial metadata...')

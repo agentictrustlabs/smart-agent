@@ -10,8 +10,10 @@ pnpm monorepo, Next.js 15, Foundry, TypeScript strict.
 ## Structure
 ```
 apps/web/              Next.js 15 App Router (Privy auth, agent deployment UI)
+apps/a2a-agent/        A2A protocol agent (Hono server, challenge auth, delegation minting)
+apps/person-mcp/       Person MCP server (PII storage, delegation-verified tools)
 packages/types/        Shared TypeScript types
-packages/sdk/          TypeScript SDK (viem-based, no external smart account deps)
+packages/sdk/          TypeScript SDK (viem-based, delegation, sessions, crypto)
 packages/discovery/    Knowledge base SDK (GraphDB SPARQL data access)
 packages/contracts/    Foundry smart contracts (our own ERC-4337 + delegation)
 docs/agents/           Role-specific agent guides
@@ -100,6 +102,7 @@ Orchestrator + Sub-agent model. See `docs/agents/` for role guides.
 | Test User    | docs/agents/user.md            |
 | Documentarian| docs/agents/documentarian.md   |
 | Ontologist   | docs/agents/ontologist.md      |
+| Security     | docs/agents/security.md        |
 
 ### Feature Pipeline
 ```

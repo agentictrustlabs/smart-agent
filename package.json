@@ -3,7 +3,10 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "dev": "pnpm --filter @smart-agent/web dev",
+    "dev": "pnpm --filter @smart-agent/web dev & pnpm --filter @smart-agent/a2a-agent dev & wait",
+    "dev:web": "pnpm --filter @smart-agent/web dev",
+    "dev:a2a": "pnpm --filter @smart-agent/a2a-agent dev",
+    "dev:mcp": "pnpm --filter @smart-agent/person-mcp dev",
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "test:coverage": "pnpm --filter @smart-agent/web test:coverage",

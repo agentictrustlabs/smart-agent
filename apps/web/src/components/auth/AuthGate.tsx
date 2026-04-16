@@ -35,11 +35,22 @@ export function AuthGate() {
     })
       .then((r) => r.json())
       .then((_data) => {
-        // Check if profile is complete
         return fetch('/api/auth/profile')
       })
       .then((r) => r.json())
-      .then((profile) => {
+      .then(async (profile) => {
+        // Clear stale demo session cookies when Privy user logs in
+        document.cookie = 'demo-user=; path=/; max-age=0'
+        document.cookie = 'a2a-session=; path=/; max-age=0'
+
+        // Bootstrap A2A session (will fail gracefully for Privy users
+        // since they need client-side wallet signing, not yet implemented)
+        try {
+          await fetch('/api/a2a/bootstrap', { method: 'POST' })
+        } catch {
+          console.warn('[AuthGate] A2A session bootstrap not available')
+        }
+
         if (!profile.name || profile.name === 'Agent User' || !profile.email) {
           router.push('/onboarding')
         } else {

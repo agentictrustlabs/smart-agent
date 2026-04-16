@@ -34,11 +34,37 @@ export {
   encodeAllowedTargetsTerms,
   encodeAllowedMethodsTerms,
   buildCaveat,
+  // EIP-712 delegation hashing (matches DelegationManager contract)
+  hashDelegation,
+  hashCaveats,
+  delegationDomainSeparator,
+  // Caveat term decoders
+  decodeTimestampTerms,
+  decodeValueTerms,
+  decodeAllowedTargetsTerms,
+  decodeAllowedMethodsTerms,
+  // MCP tool scope caveat
+  MCP_TOOL_SCOPE_ENFORCER,
+  encodeMcpToolScopeTerms,
+  decodeMcpToolScopeTerms,
+  buildMcpToolScopeCaveat,
 } from './delegation'
 export type { DelegationClientConfig } from './delegation'
 
 // ─── Sessions ────────────────────────────────────────────────────────
 export { createAgentSession, isSessionValid } from './session'
+
+// ─── Crypto (session encryption, HMAC) ──────────────────────────────
+export { encryptPayload, decryptPayload, randomHex, hmacSign, hmacVerify } from './crypto'
+export type { EncryptedPayload } from './crypto'
+
+// ─── Challenge Authentication ───────────────────────────────────────
+export { createChallenge, isChallengeExpired, hashChallenge, A2A_AUTH_DOMAIN, CHALLENGE_TYPES } from './challenge'
+export type { ChallengeData } from './challenge'
+
+// ─── Delegation Tokens (A2A → MCP) ─────────────────────────────────
+export { mintDelegationToken, verifyDelegationToken, claimsCanonicalString } from './delegation-token'
+export type { DelegationTokenClaims, DelegationTokenEnvelope, DelegationTokenVerification } from './delegation-token'
 
 // ─── Relationship Protocol (3-contract) ──────────────────────────────
 export {

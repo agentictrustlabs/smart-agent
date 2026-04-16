@@ -119,6 +119,7 @@ export function useAuth() {
     },
     logout: async () => {
       document.cookie = 'demo-user=; path=/; max-age=0'
+      document.cookie = 'a2a-session=; path=/; max-age=0'
       setDemoAuthenticated(false)
       setDemoUser(null)
 

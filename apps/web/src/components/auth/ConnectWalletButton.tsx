@@ -9,12 +9,15 @@ export function ConnectWalletButton() {
   const { login, ready, privyAuthenticated, canLoginWithPrivy, resetPrivySession } = useAuth()
 
   async function handleClick() {
-    if (privyAuthenticated) {
-      window.sessionStorage.removeItem(PRIVY_CONNECT_INTENT_KEY)
-      await resetPrivySession()
-    }
-
     if (canLoginWithPrivy && typeof window !== 'undefined') {
+      // If already authenticated with a stale session, logout first and
+      // wait a tick for Privy to settle before opening the login modal.
+      if (privyAuthenticated) {
+        window.sessionStorage.removeItem(PRIVY_CONNECT_INTENT_KEY)
+        await resetPrivySession()
+        // Give Privy one render cycle to tear down before re-opening login
+        await new Promise(resolve => setTimeout(resolve, 300))
+      }
       window.sessionStorage.setItem(PRIVY_CONNECT_INTENT_KEY, 'true')
       login()
       return

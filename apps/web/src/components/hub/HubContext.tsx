@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useUserContext } from '@/components/user/UserContext'
 import type { UserNavSection } from '@/app/api/user-context/route'
 import type { HubId, HubProfile, HubNavItem, HubViewMode } from '@/lib/hub-profiles'
-import { getHubProfile, getNavBySection, inferHubIdFromDemoKey } from '@/lib/hub-profiles'
+import { getHubProfile, getNavBySection } from '@/lib/hub-profiles'
 
 // ---------------------------------------------------------------------------
 // Context value
@@ -67,17 +67,12 @@ function getDemoUserKey(): string | null {
   return match ? decodeURIComponent(match[1]) : null
 }
 
-/** Determine hubId from user context + demo key */
+/** Determine hubId from user context — no demo key prefix checks */
 function resolveHubId(
   hubs: Array<{ address: string; name: string }>,
   _orgs: Array<{ address: string; name: string }>,
 ): HubId {
-  // 1. Demo mode: infer from cookie
-  const demoKey = getDemoUserKey()
-  const demoHubId = inferHubIdFromDemoKey(demoKey)
-  if (demoHubId) return demoHubId
-
-  // 2. If user has hubs, try to match by name
+  // 1. If user has hubs, match by name
   for (const hub of hubs) {
     const name = hub.name.toLowerCase()
     if (name.includes('catalyst')) return 'catalyst'
@@ -85,7 +80,7 @@ function resolveHubId(
     if (name.includes('collective') || name.includes('cil')) return 'cil'
   }
 
-  // 3. Default
+  // 2. Default
   return 'generic'
 }
 

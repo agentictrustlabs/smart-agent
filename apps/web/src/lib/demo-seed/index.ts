@@ -1,59 +1,53 @@
-import { DEMO_USERS } from '@/lib/auth/session'
-import { db, schema } from '@/db'
-import { eq } from 'drizzle-orm'
+import { DEMO_USER_META } from '@/lib/auth/session'
 import { seedCatalystOnChain } from './seed-catalyst-onchain'
 import { seedCILOnChain } from './seed-cil-onchain'
 import { seedGlobalChurchOnChain } from './seed-globalchurch-onchain'
 import { seedMultiplyData } from './seed-multiply-data'
+import { ensureCommunityUsers } from './lookup-users'
 
 /**
- * Ensure demo community is fully seeded — DB user rows + on-chain agents.
- * Called on first demo login. seedCatalystOnChain() is idempotent and
- * has its own concurrency guard, so safe to call on every login.
+ * Ensure demo community is fully seeded — real wallets + on-chain agents.
+ * Called on first demo login.
  *
- * On-chain seeding is fired in the background so the login response
- * returns immediately. The dashboard will pick up agents once seeding
- * completes (or they can be pre-seeded via scripts/seed-catalyst.sh).
+ * Flow:
+ *   1. Ensure all users in the community have real wallets + deployed AgentAccounts
+ *   2. Fire on-chain seeding (orgs, relationships, edges) in background
+ *   3. Seed personal app data (oikos, prayers, training)
  */
 export async function ensureDemoCommunitySeeded(demoUserKey: string) {
-  const demo = DEMO_USERS[demoUserKey]
-  if (!demo) return
+  const meta = DEMO_USER_META[demoUserKey]
+  if (!meta) return
 
-  // Ensure user row exists (the only DB table we need)
-  const existing = db.select().from(schema.users).where(eq(schema.users.privyUserId, demo.userId)).get()
-  if (!existing) {
+  // Determine community prefix from hubId
+  const communityPrefix = meta.hubId === 'global-church' ? 'gc-user-'
+    : meta.hubId === 'catalyst' ? 'cat-user-'
+    : meta.hubId === 'cil' ? 'cil-user-'
+    : null
+
+  // Ensure all users in this community have real wallets
+  if (communityPrefix) {
     try {
-      db.insert(schema.users).values({
-        id: demoUserKey,
-        email: demo.email,
-        name: demo.name,
-        walletAddress: demo.walletAddress,
-        privyUserId: demo.userId,
-      }).run()
-    } catch { /* already exists */ }
+      await ensureCommunityUsers(communityPrefix)
+    } catch (err) {
+      console.warn('[demo-seed] Community wallet provisioning failed:', err)
+    }
   }
 
-  // Fire on-chain seeding in background — don't block the login response.
-  // Each seed function is idempotent with its own concurrency lock.
-  if (demoUserKey.startsWith('gc-user-')) {
+  // Fire on-chain seeding in background (idempotent, concurrent-safe)
+  if (meta.hubId === 'global-church') {
     seedGlobalChurchOnChain().catch(err =>
-      console.warn('[demo-seed] Background Global.Church on-chain seeding failed:', err)
+      console.warn('[demo-seed] Global.Church on-chain seeding failed:', err)
     )
-  } else if (demoUserKey.startsWith('cil-user-')) {
+  } else if (meta.hubId === 'cil') {
     seedCILOnChain().catch(err =>
-      console.warn('[demo-seed] Background CIL on-chain seeding failed:', err)
+      console.warn('[demo-seed] CIL on-chain seeding failed:', err)
     )
-  } else if (demoUserKey.startsWith('cat-user-')) {
+  } else if (meta.hubId === 'catalyst') {
     seedCatalystOnChain().catch(err =>
-      console.warn('[demo-seed] Background Catalyst on-chain seeding failed:', err)
-    )
-  } else {
-    seedCatalystOnChain().catch(err =>
-      console.warn('[demo-seed] Background on-chain seeding failed:', err)
+      console.warn('[demo-seed] Catalyst on-chain seeding failed:', err)
     )
   }
 
-  // Seed personal Multiply data (circles, prayers, training, coach relationships).
-  // Runs synchronously (DB-only, fast) and is idempotent.
+  // Seed personal app data (oikos, prayers, training) — DB-only, fast, idempotent
   seedMultiplyData()
 }

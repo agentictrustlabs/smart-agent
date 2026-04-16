@@ -21,6 +21,7 @@ export default async function ProfilePage() {
       <ProfileClient
         userId={currentUser.id}
         userName={currentUser.name}
+        email={currentUser.email}
         location={prefs?.location ?? null}
         homeChurch={prefs?.homeChurch ?? null}
         language={prefs?.language ?? 'en'}

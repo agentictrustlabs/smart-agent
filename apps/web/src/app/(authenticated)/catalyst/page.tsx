@@ -8,6 +8,7 @@ import { NeedsAttentionCard, type AttentionItem } from '@/components/catalyst/Ne
 import { DiscoveryService } from '@smart-agent/discovery'
 import { getPersonAgentForUser, getAiAgentsForOrg } from '@/lib/agent-registry'
 import { getAgentMetadata } from '@/lib/agent-metadata'
+import { getUserHubId } from '@/lib/get-user-hub'
 
 // ─── Colors ─────────────────────────────────────────────────────────
 
@@ -45,8 +46,9 @@ export default async function CatalystDashboardPage() {
   if (!currentUser) redirect('/')
 
   const userOrgs = await getUserOrgs(currentUser.id)
-  const isCIL = currentUser.id.startsWith('cil-')
-  const isCatalyst = currentUser.id.startsWith('cat-')
+  const hubId = await getUserHubId(currentUser.id)
+  const isCIL = hubId === 'cil'
+  const isCatalyst = hubId === 'catalyst'
 
   const firstName = currentUser.name.split(' ')[0]
   const hour = new Date().getHours()

@@ -7,7 +7,7 @@ import { getAgentMetadata } from '@/lib/agent-metadata'
 import { getEdge, getEdgeRoles } from '@/lib/contracts'
 import { REVIEW_RELATIONSHIP, ROLE_REVIEWER } from '@smart-agent/sdk'
 import type { HubProfile } from '@/lib/hub-profiles'
-import { getHubProfile, getHubIdForTemplate, inferHubIdFromDemoKey } from '@/lib/hub-profiles'
+import { getHubProfile, getHubIdForTemplate } from '@/lib/hub-profiles'
 
 /**
  * User-centric context API.
@@ -86,7 +86,7 @@ export async function GET() {
       .where(eq(schema.users.privyUserId, session.userId)).limit(1)
     if (!users[0]) return NextResponse.json(empty)
 
-    // Person agent from on-chain
+    // Person agent from on-chain — must be deployed (no fallback)
     const personAddr = await getPersonAgentForUser(users[0].id)
     let personAgent: UserContextResponse['personAgent'] = null
     if (personAddr) {
@@ -191,37 +191,29 @@ export async function GET() {
     // On-chain hub config is not used — the resolver access control prevents writes after initial deploy.
     let hubProfile: HubProfile | null = null
     {
-      const { cookies: getCookies } = await import('next/headers')
-      const cookieStore = await getCookies()
-      const demoKey = cookieStore.get('demo-user')?.value ?? null
-      const demoHubId = inferHubIdFromDemoKey(demoKey)
-      if (demoHubId) {
-        hubProfile = getHubProfile(demoHubId)
-      } else {
-        // Try to match by hub name from on-chain hub agents
-        for (const hub of hubs) {
-          const name = hub.name.toLowerCase()
-          if (name.includes('catalyst')) { hubProfile = getHubProfile('catalyst'); break }
-          if (name.includes('global') && name.includes('church')) { hubProfile = getHubProfile('global-church'); break }
-          if (name.includes('collective') || name.includes('cil') || name.includes('mission')) { hubProfile = getHubProfile('cil'); break }
+      // Try to match by hub name from on-chain hub agents
+      for (const hub of hubs) {
+        const name = hub.name.toLowerCase()
+        if (name.includes('catalyst')) { hubProfile = getHubProfile('catalyst'); break }
+        if (name.includes('global') && name.includes('church')) { hubProfile = getHubProfile('global-church'); break }
+        if (name.includes('collective') || name.includes('cil') || name.includes('mission')) { hubProfile = getHubProfile('cil'); break }
+      }
+      // If no hub match, infer from org template ID (set during org creation)
+      if (!hubProfile && orgs.length > 0) {
+        const { getAgentTemplateId } = await import('@/lib/agent-resolver')
+        for (const org of orgs) {
+          try {
+            const templateId = await getAgentTemplateId(org.address)
+            if (templateId) {
+              hubProfile = getHubProfile(getHubIdForTemplate(templateId))
+              break
+            }
+          } catch { /* ignored */ }
         }
-        // If no hub match, infer from org template ID (set during org creation)
-        if (!hubProfile && orgs.length > 0) {
-          const { getAgentTemplateId } = await import('@/lib/agent-resolver')
-          for (const org of orgs) {
-            try {
-              const templateId = await getAgentTemplateId(org.address)
-              if (templateId) {
-                hubProfile = getHubProfile(getHubIdForTemplate(templateId))
-                break
-              }
-            } catch { /* ignored */ }
-          }
-        }
-        // Final fallback: generic hub (no assumption about user's context)
-        if (!hubProfile) {
-          hubProfile = getHubProfile('generic')
-        }
+      }
+      // Final fallback: generic hub
+      if (!hubProfile) {
+        hubProfile = getHubProfile('generic')
       }
     }
 

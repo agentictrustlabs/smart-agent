@@ -419,15 +419,10 @@ export function inferHubId(templateId: string | null | undefined, _capabilities:
 }
 
 /**
- * Infer hub ID from a demo user key prefix.
+ * @deprecated Hub ID is now derived from on-chain org template, not user key prefix.
+ * Use getUserHubId() from '@/lib/get-user-hub' for server-side,
+ * or the hub profile from user-context API for client-side.
  */
-export function inferHubIdFromDemoKey(demoUserKey: string | null | undefined): HubId | null {
-  if (!demoUserKey) return null
-  if (demoUserKey.startsWith('gc-')) return 'global-church'
-  if (demoUserKey.startsWith('cat-')) return 'catalyst'
-  if (demoUserKey.startsWith('cil-')) return 'cil'
-  return 'generic'
-}
 
 export function buildDefaultAgentContexts(args: {
   orgAddress: string
