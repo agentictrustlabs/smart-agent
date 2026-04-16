@@ -21,14 +21,17 @@ export async function GET(request: Request) {
     const a2aToken = cookieStore.get('a2a-session')?.value
     if (!a2aToken) return NextResponse.json({ success: false, error: 'No A2A session' })
 
-    // Resolve current user's person agent address
-    const users = await db.select().from(schema.users)
-      .where(eq(schema.users.privyUserId, session.userId)).limit(1)
-    const user = users[0]
-    const myPersonAgent = user ? await getPersonAgentForUser(user.id) : null
+    // Use explicit grantee from query if provided, otherwise resolve from user
+    let grantee = searchParams.get('grantee')
+    if (!grantee) {
+      const users = await db.select().from(schema.users)
+        .where(eq(schema.users.privyUserId, session.userId)).limit(1)
+      const user = users[0]
+      grantee = user ? await getPersonAgentForUser(user.id) : null
+    }
 
     let url = `${A2A_AGENT_URL}/profile/delegated?target=${encodeURIComponent(targetPrincipal)}`
-    if (myPersonAgent) url += `&grantee=${encodeURIComponent(myPersonAgent)}`
+    if (grantee) url += `&grantee=${encodeURIComponent(grantee)}`
 
     console.log(`[delegated-profile] Fetching: ${url}`)
 

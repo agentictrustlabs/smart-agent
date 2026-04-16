@@ -1,10 +1,15 @@
 import { Hono } from 'hono'
-import { eq, and } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
+import { createPublicClient, http } from 'viem'
+import { localhost } from 'viem/chains'
 import { privateKeyToAccount } from 'viem/accounts'
-import { decryptPayload, mintDelegationToken } from '@smart-agent/sdk'
+import {
+  decryptPayload, mintDelegationToken,
+  agentRelationshipAbi, DATA_ACCESS_DELEGATION,
+} from '@smart-agent/sdk'
 import type { DelegationTokenClaims } from '@smart-agent/sdk'
 import { db } from '../db'
-import { sessions, dataDelegations } from '../db/schema'
+import { sessions } from '../db/schema'
 import { config } from '../config'
 import { requireSession } from '../middleware/require-session'
 
@@ -93,6 +98,83 @@ async function callMcpTool(
   return { ok: true, data: await mcpRes.json() }
 }
 
+/**
+ * Read a cross-principal delegation from an on-chain relationship edge.
+ * The full signed delegation is stored in the edge's metadataURI.
+ * Any A2A agent can read this — the delegation is self-authenticating.
+ */
+async function readDelegationFromEdge(
+  grantor: string,
+  grantee: string,
+): Promise<{ delegation: Record<string, unknown> } | { error: string }> {
+  const relAddr = config.AGENT_RELATIONSHIP_ADDRESS
+  if (!relAddr || relAddr === '0x0000000000000000000000000000000000000000') {
+    return { error: 'AGENT_RELATIONSHIP_ADDRESS not configured' }
+  }
+
+  const publicClient = createPublicClient({
+    chain: { ...localhost, id: config.CHAIN_ID },
+    transport: http(config.RPC_URL),
+  })
+
+  // Compute edge ID: keccak256(subject, object, relationshipType)
+  // subject = grantor (data owner), object = grantee (reader)
+  const edgeId = await publicClient.readContract({
+    address: relAddr,
+    abi: agentRelationshipAbi,
+    functionName: 'computeEdgeId',
+    args: [grantor as `0x${string}`, grantee as `0x${string}`, DATA_ACCESS_DELEGATION as `0x${string}`],
+  }) as `0x${string}`
+
+  // Check if edge exists
+  const exists = await publicClient.readContract({
+    address: relAddr,
+    abi: agentRelationshipAbi,
+    functionName: 'edgeExists',
+    args: [edgeId],
+  }) as boolean
+
+  if (!exists) {
+    return { error: 'No data access delegation edge found on-chain' }
+  }
+
+  // Read the edge — viem returns named fields matching the ABI struct
+  const edge = await publicClient.readContract({
+    address: relAddr,
+    abi: agentRelationshipAbi,
+    functionName: 'getEdge',
+    args: [edgeId],
+  }) as {
+    edgeId: `0x${string}`; subject: `0x${string}`; object_: `0x${string}`
+    relationshipType: `0x${string}`; status: number
+    createdBy: `0x${string}`; createdAt: bigint; updatedAt: bigint
+    metadataURI: string
+  }
+
+  const status = Number(edge.status)
+
+  // Reject if not CONFIRMED(2) or ACTIVE(3)
+  if (status < 2 || status >= 4) {
+    return { error: `Data access delegation edge is not active (status: ${status})` }
+  }
+
+  const metadataURI = edge.metadataURI
+  if (!metadataURI) {
+    return { error: 'Edge has no metadataURI — delegation not stored' }
+  }
+
+  // Parse metadataURI — contains { delegation: {...}, delegationHash, grants, expiresAt }
+  try {
+    const meta = JSON.parse(edge.metadataURI)
+    if (!meta.delegation) {
+      return { error: 'Edge metadataURI does not contain a delegation' }
+    }
+    return { delegation: meta.delegation }
+  } catch {
+    return { error: 'Failed to parse edge metadataURI' }
+  }
+}
+
 const profile = new Hono()
 
 // ─── GET /profile ───────────────────────────────────────────────────
@@ -113,90 +195,29 @@ profile.put('/', requireSession, async (c) => {
 })
 
 // ─── GET /profile/delegated?target=<addr>&grantee=<addr> ───────────
+// Reads the cross-delegation from on-chain (AgentRelationship edge metadataURI).
+// Any A2A agent can call this — the delegation is self-authenticating.
 profile.get('/delegated', requireSession, async (c) => {
   const sess = c.get('session')
   const targetPrincipal = c.req.query('target')
-  const granteeAddr = c.req.query('grantee') // person agent address of the reader
+  const granteeAddr = c.req.query('grantee')
   if (!targetPrincipal) return c.json({ error: 'Missing target query parameter' }, 400)
+  if (!granteeAddr) return c.json({ error: 'Missing grantee query parameter' }, 400)
 
-  // Look up cross-delegation by grantor + grantee (person agent addresses)
-  // The session uses the smart account address, but delegations use person agent addresses.
-  // The web app passes the grantee's person agent address explicitly.
-  const queryConditions = granteeAddr
-    ? and(eq(dataDelegations.grantee, granteeAddr.toLowerCase()), eq(dataDelegations.grantor, targetPrincipal.toLowerCase()), eq(dataDelegations.status, 'active'))
-    : and(eq(dataDelegations.grantor, targetPrincipal.toLowerCase()), eq(dataDelegations.status, 'active'))
-
-  const rows = db.select().from(dataDelegations).where(queryConditions).all()
-
-  if (rows.length === 0) {
-    return c.json({ error: 'No active data delegation found for this target' }, 404)
+  // Read the signed delegation from the on-chain edge
+  const edgeResult = await readDelegationFromEdge(targetPrincipal, granteeAddr)
+  if ('error' in edgeResult) {
+    return c.json({ error: edgeResult.error }, 404)
   }
 
-  const crossDelegation = JSON.parse(rows[0].delegationJson)
-
-  // Call MCP with the cross-delegation included in the args
+  // Call MCP with the cross-delegation from on-chain
   const result = await callMcpTool(sess.accountAddress, 'get_delegated_profile', {
     targetPrincipal,
-    crossDelegation,
+    crossDelegation: edgeResult.delegation,
   })
 
   if (!result.ok) return c.json({ error: result.error }, 502)
   return c.json(result.data)
-})
-
-// ─── POST /profile/delegations — store a cross-delegation ──────────
-// No session auth — this is called during seeding and by the web app server.
-// The delegation data is cryptographically verified by MCP at read time.
-profile.post('/delegations', async (c) => {
-  const body = await c.req.json() as {
-    grantor: string
-    grantee: string
-    delegationJson: string
-    delegationHash: string
-  }
-
-  if (!body.grantor || !body.grantee || !body.delegationJson || !body.delegationHash) {
-    return c.json({ error: 'Missing required fields' }, 400)
-  }
-
-  // Upsert — if delegation hash already exists, update it
-  const existing = db.select().from(dataDelegations)
-    .where(eq(dataDelegations.delegationHash, body.delegationHash))
-    .all()
-
-  if (existing.length > 0) {
-    db.update(dataDelegations)
-      .set({ status: 'active', delegationJson: body.delegationJson })
-      .where(eq(dataDelegations.delegationHash, body.delegationHash))
-      .run()
-  } else {
-    db.insert(dataDelegations).values({
-      id: crypto.randomUUID(),
-      grantor: body.grantor.toLowerCase(),
-      grantee: body.grantee.toLowerCase(),
-      delegationJson: body.delegationJson,
-      delegationHash: body.delegationHash,
-      status: 'active',
-    }).run()
-  }
-
-  return c.json({ success: true })
-})
-
-// ─── GET /profile/delegations — list delegations for this account ──
-profile.get('/delegations', requireSession, async (c) => {
-  const sess = c.get('session')
-  const direction = c.req.query('direction') ?? 'incoming' // 'incoming' | 'outgoing'
-
-  const rows = direction === 'outgoing'
-    ? db.select().from(dataDelegations)
-        .where(and(eq(dataDelegations.grantor, sess.accountAddress.toLowerCase()), eq(dataDelegations.status, 'active')))
-        .all()
-    : db.select().from(dataDelegations)
-        .where(and(eq(dataDelegations.grantee, sess.accountAddress.toLowerCase()), eq(dataDelegations.status, 'active')))
-        .all()
-
-  return c.json({ delegations: rows })
 })
 
 export { profile }

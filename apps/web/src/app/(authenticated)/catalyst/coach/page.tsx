@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { getCoachRelationship, getDisciples, getDiscipleDetails } from '@/lib/actions/grow.action'
+import { getPersonAgentForUser } from '@/lib/agent-registry'
+import { CoachActions } from './CoachActions'
 
 const TYPE_BADGES: Record<string, { label: string; bg: string; color: string }> = {
   meeting: { label: 'Meeting', bg: '#0d948818', color: '#0d9488' },
@@ -28,6 +30,7 @@ export default async function CoachPage() {
 
   const coachRel = await getCoachRelationship(currentUser.id)
   const disciples = await getDisciples(currentUser.id)
+  const myPersonAgent = await getPersonAgentForUser(currentUser.id)
 
   // Enrich each disciple with details
   const enrichedDisciples = await Promise.all(
@@ -180,6 +183,17 @@ export default async function CoachPage() {
                         )
                       })}
                     </div>
+                  )}
+
+                  {/* Coach actions: view delegated profile, remove relationship */}
+                  {myPersonAgent && (
+                    <CoachActions
+                      edgeId={d.id}
+                      coachPersonAgent={myPersonAgent}
+                      disciplePersonAgent={d.discipleId}
+                      discipleName={d.discipleName}
+                      perspective="coach"
+                    />
                   )}
                 </div>
               )

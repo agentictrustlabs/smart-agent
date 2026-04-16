@@ -179,8 +179,10 @@ export async function createDataDelegation(
     caveats: caveats.map(c => ({ enforcer: c.enforcer, terms: c.terms })),
   }
 
-  // Create on-chain relationship edge for discovery
+  // Store full signed delegation in on-chain edge's metadataURI.
+  // Any A2A agent can read this and present it to MCP for verification.
   const metadataURI = JSON.stringify({
+    delegation: signedDelegation,
     delegationHash: delHash,
     grants,
     expiresAt: new Date(expiresAt * 1000).toISOString(),
@@ -200,27 +202,8 @@ export async function createDataDelegation(
     // Continue — delegation still works without the edge
   }
 
-  // Store in A2A agent
-  const a2aToken = await getA2ASessionToken()
-  if (a2aToken) {
-    try {
-      await fetch(`${A2A_AGENT_URL}/profile/delegations`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${a2aToken}`,
-        },
-        body: JSON.stringify({
-          grantor: granterPersonAgent,
-          grantee: recipientPersonAgent,
-          delegationJson: JSON.stringify(signedDelegation),
-          delegationHash: delHash,
-        }),
-      })
-    } catch (err) {
-      console.warn('[data-delegation] A2A storage failed:', err)
-    }
-  }
+  // Delegation is stored in the on-chain edge's metadataURI — any A2A agent
+  // can read it. No need to store separately in the A2A agent's local DB.
 
   // Create notification for the recipient
   try {
@@ -291,6 +274,117 @@ export async function revokeDataDelegation(
   }
 
   return { success: true }
+}
+
+// ─── Revoke relationship with cascade ──────────────────────────────
+
+/**
+ * Revoke a relationship edge AND cascade-revoke any associated data delegations.
+ * For example, revoking a COACHING_MENTORSHIP edge between David→Ana also
+ * revokes the DATA_ACCESS_DELEGATION from Ana→David.
+ */
+export async function revokeRelationshipWithCascade(
+  edgeId: string,
+  subject: string,
+  object_: string,
+): Promise<{ success: boolean; error?: string; revokedDelegations: number }> {
+  const session = await requireSession()
+  if (!session) return { success: false, error: 'Not authenticated', revokedDelegations: 0 }
+
+  const walletClient = getWalletClient()
+  const publicClient = getPublicClient()
+  const relAddr = process.env.AGENT_RELATIONSHIP_ADDRESS as `0x${string}`
+  const delegationManagerAddr = process.env.DELEGATION_MANAGER_ADDRESS as `0x${string}`
+
+  if (!relAddr) return { success: false, error: 'Relationship contract not configured', revokedDelegations: 0 }
+
+  // 1. Revoke the relationship edge itself
+  try {
+    const { agentRelationshipAbi } = await import('@smart-agent/sdk')
+    const hash = await walletClient.writeContract({
+      address: relAddr,
+      abi: agentRelationshipAbi,
+      functionName: 'setEdgeStatus',
+      args: [edgeId as `0x${string}`, 5], // REVOKED
+    })
+    await publicClient.waitForTransactionReceipt({ hash })
+  } catch (err) {
+    return { success: false, error: `Relationship revocation failed: ${err instanceof Error ? err.message : String(err)}`, revokedDelegations: 0 }
+  }
+
+  // 2. Cascade: find DATA_ACCESS_DELEGATION edges between these principals (both directions)
+  let revokedDelegations = 0
+  const pairsToCheck = [
+    [subject, object_],  // e.g., Ana→David delegation
+    [object_, subject],  // e.g., David→Ana delegation (if any)
+  ]
+
+  for (const [grantor, grantee] of pairsToCheck) {
+    try {
+      const { agentRelationshipAbi: relAbi } = await import('@smart-agent/sdk')
+
+      // Compute the DATA_ACCESS_DELEGATION edge ID
+      const delEdgeId = await publicClient.readContract({
+        address: relAddr,
+        abi: relAbi,
+        functionName: 'computeEdgeId',
+        args: [grantor as `0x${string}`, grantee as `0x${string}`, DATA_ACCESS_DELEGATION as `0x${string}`],
+      }) as `0x${string}`
+
+      const exists = await publicClient.readContract({
+        address: relAddr, abi: relAbi,
+        functionName: 'edgeExists', args: [delEdgeId],
+      }) as boolean
+
+      if (!exists) continue
+
+      const edge = await publicClient.readContract({
+        address: relAddr, abi: relAbi,
+        functionName: 'getEdge', args: [delEdgeId],
+      }) as { status: number; metadataURI: string }
+
+      if (edge.status >= 5) continue // already revoked
+
+      // Extract delegation hash from metadataURI
+      let delegationHash: string | null = null
+      try {
+        const meta = JSON.parse(edge.metadataURI)
+        delegationHash = meta.delegationHash ?? null
+      } catch { /* no metadata */ }
+
+      // Revoke the delegation via DelegationManager
+      if (delegationHash && delegationManagerAddr) {
+        try {
+          const dHash = await walletClient.writeContract({
+            address: delegationManagerAddr,
+            abi: delegationManagerAbi,
+            functionName: 'revokeDelegation',
+            args: [delegationHash as `0x${string}`],
+          })
+          await publicClient.waitForTransactionReceipt({ hash: dHash })
+        } catch (err) {
+          console.warn('[cascade-revoke] DelegationManager revocation failed:', err)
+        }
+      }
+
+      // Revoke the delegation edge
+      try {
+        const eHash = await walletClient.writeContract({
+          address: relAddr, abi: relAbi,
+          functionName: 'setEdgeStatus',
+          args: [delEdgeId, 5],
+        })
+        await publicClient.waitForTransactionReceipt({ hash: eHash })
+        revokedDelegations++
+      } catch (err) {
+        console.warn('[cascade-revoke] Delegation edge revocation failed:', err)
+      }
+    } catch (err) {
+      console.warn('[cascade-revoke] Cascade check failed for pair:', grantor, grantee, err)
+    }
+  }
+
+  return { success: true, revokedDelegations }
 }
 
 // ─── Load delegated profile ────────────────────────────────────────

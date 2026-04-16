@@ -10,9 +10,9 @@ import {
 // getPublicClient used by register() for isRegistered check
 import {
   ORGANIZATION_GOVERNANCE, ORGANIZATION_MEMBERSHIP, ALLIANCE, ORGANIZATIONAL_CONTROL,
-  GENERATIONAL_LINEAGE, HAS_MEMBER,
+  GENERATIONAL_LINEAGE, HAS_MEMBER, COACHING_MENTORSHIP,
   ROLE_OWNER, ROLE_BOARD_MEMBER, ROLE_OPERATOR, ROLE_MEMBER, ROLE_ADVISOR, ROLE_OPERATED_AGENT,
-  ROLE_STRATEGIC_PARTNER, ROLE_UPSTREAM, ROLE_DOWNSTREAM,
+  ROLE_STRATEGIC_PARTNER, ROLE_UPSTREAM, ROLE_DOWNSTREAM, ROLE_COACH, ROLE_DISCIPLE,
   ATL_LATITUDE, ATL_LONGITUDE, ATL_SPATIAL_CRS, ATL_SPATIAL_TYPE, ATL_CONTROLLER,
 } from '@smart-agent/sdk'
 import { agentAccountResolverAbi } from '@smart-agent/sdk'
@@ -231,83 +231,101 @@ async function doSeed() {
     await createEdge(hubCatalyst, agent, HAS_MEMBER as `0x${string}`, [ROLE_MEMBER])
   }
 
-  // ─── Data Access Delegation: Ana → Maria ─────────────────────────
-  console.log('[catalyst-seed] Creating data access delegation: Ana → Maria')
-  try {
+  // ─── Helper: Build and sign a data access delegation ──────────────
+  async function buildSignedDelegation(
+    grantorAgent: `0x${string}`,
+    granteeAgent: `0x${string}`,
+    grantorUserId: string,
+    grants: Array<{ server: string; resources: string[]; fields: string[] }>,
+  ) {
     const {
       DATA_ACCESS_DELEGATION: DAD, ROLE_DATA_GRANTOR, ROLE_DATA_GRANTEE,
       hashDelegation: hashDel, encodeTimestampTerms: encTimestamp,
       buildCaveat: bCaveat, buildDataScopeCaveat: bDataScope,
       ROOT_AUTHORITY: ROOT,
     } = await import('@smart-agent/sdk')
-
     const { privateKeyToAccount } = await import('viem/accounts')
 
-    // Find Ana's private key from DB
-    const anaUser = db.select().from(schema.users).where(eq(schema.users.id, 'cat-user-006')).get()
-    if (anaUser?.privateKey) {
-      const grants = [{
-        server: 'urn:mcp:server:person',
-        resources: ['profile'],
-        fields: ['email', 'phone', 'city', 'stateProvince', 'country', 'displayName'],
-      }]
+    const grantorUser = db.select().from(schema.users).where(eq(schema.users.id, grantorUserId)).get()
+    if (!grantorUser?.privateKey) return null
 
-      const now = Math.floor(Date.now() / 1000)
-      const expiresAt = now + 90 * 24 * 60 * 60
-      const salt = BigInt(Date.now() + 999)
-      const timestampAddr = process.env.TIMESTAMP_ENFORCER_ADDRESS as `0x${string}`
-      const delegationManagerAddr = process.env.DELEGATION_MANAGER_ADDRESS as `0x${string}`
-      const chainId = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? '31337')
+    const now = Math.floor(Date.now() / 1000)
+    const expiresAt = now + 90 * 24 * 60 * 60
+    const salt = BigInt(Date.now() + Math.floor(Math.random() * 100000))
+    const timestampAddr = process.env.TIMESTAMP_ENFORCER_ADDRESS as `0x${string}`
+    const delegationManagerAddr = process.env.DELEGATION_MANAGER_ADDRESS as `0x${string}`
+    const chainId = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? '31337')
 
-      const caveats = [
-        bCaveat(timestampAddr, encTimestamp(now, expiresAt)),
-        bDataScope(grants),
-      ]
+    const caveats = [
+      bCaveat(timestampAddr, encTimestamp(now, expiresAt)),
+      bDataScope(grants),
+    ]
 
-      const delegation = {
-        delegator: paAna,
-        delegate: paMaria,
-        authority: ROOT as `0x${string}`,
-        caveats: caveats.map(c => ({ enforcer: c.enforcer, terms: c.terms })),
-        salt: salt.toString(),
-      }
-
-      const delHash = hashDel(delegation, chainId, delegationManagerAddr)
-      const anaAccount = privateKeyToAccount(anaUser.privateKey as `0x${string}`)
-      const signature = await anaAccount.signMessage({ message: { raw: delHash } })
-
-      const signedDelegation = { ...delegation, signature }
-
-      // Create on-chain edge for discovery
-      const edgeMeta = JSON.stringify({
-        delegationHash: delHash,
-        grants,
-        expiresAt: new Date(expiresAt * 1000).toISOString(),
-      })
-      await createEdge(paAna, paMaria, DAD as `0x${string}`, [ROLE_DATA_GRANTOR as `0x${string}`, ROLE_DATA_GRANTEE as `0x${string}`], edgeMeta)
-
-      // Store delegation in A2A agent
-      try {
-        const a2aUrl = process.env.A2A_AGENT_URL ?? 'http://localhost:3100'
-        await fetch(`${a2aUrl}/profile/delegations`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            grantor: paAna.toLowerCase(),
-            grantee: paMaria.toLowerCase(),
-            delegationJson: JSON.stringify(signedDelegation),
-            delegationHash: delHash,
-          }),
-        })
-      } catch (e) {
-        console.warn('[catalyst-seed] A2A delegation storage failed:', e)
-      }
-
-      console.log('[catalyst-seed] Data delegation created: Ana → Maria')
+    const delegation = {
+      delegator: grantorAgent,
+      delegate: granteeAgent,
+      authority: ROOT as `0x${string}`,
+      caveats: caveats.map(c => ({ enforcer: c.enforcer, terms: c.terms })),
+      salt: salt.toString(),
     }
-  } catch (err) {
-    console.warn('[catalyst-seed] Data delegation seed failed:', err)
+
+    const delHash = hashDel(delegation, chainId, delegationManagerAddr)
+    const account = privateKeyToAccount(grantorUser.privateKey as `0x${string}`)
+    const signature = await account.signMessage({ message: { raw: delHash } })
+
+    const signedDelegation = { ...delegation, signature }
+
+    // Full metadataURI: delegation + hash + grants + expiry
+    // Any A2A agent can read this from on-chain and present to MCP
+    const metadataURI = JSON.stringify({
+      delegation: signedDelegation,
+      delegationHash: delHash,
+      grants,
+      expiresAt: new Date(expiresAt * 1000).toISOString(),
+    })
+
+    return { DAD, ROLE_DATA_GRANTOR, ROLE_DATA_GRANTEE, metadataURI }
   }
 
-  console.log('[catalyst-seed] NoCo Catalyst community deployed: 17 agents, 23 on-chain edges')
+  // ─── Data Access Delegation: Ana → Maria (standalone sharing) ────
+  console.log('[catalyst-seed] Creating data access delegation: Ana → Maria')
+  try {
+    const piiGrants = [{
+      server: 'urn:mcp:server:person',
+      resources: ['profile'],
+      fields: ['email', 'phone', 'city', 'stateProvince', 'country', 'displayName'],
+    }]
+
+    const result = await buildSignedDelegation(paAna, paMaria, 'cat-user-006', piiGrants)
+    if (result) {
+      await createEdge(paAna, paMaria, result.DAD as `0x${string}`, [result.ROLE_DATA_GRANTOR as `0x${string}`, result.ROLE_DATA_GRANTEE as `0x${string}`], result.metadataURI)
+      console.log('[catalyst-seed] Data delegation created: Ana → Maria (on-chain)')
+    }
+  } catch (err) {
+    console.warn('[catalyst-seed] Ana→Maria delegation failed:', err)
+  }
+
+  // ─── Coaching: David coaches Ana + auto-delegation ───────────────
+  console.log('[catalyst-seed] Creating coaching relationship: David → Ana')
+  try {
+    // 1. Coaching edge: David (coach) → Ana (disciple)
+    await createEdge(paDavid, paAna, COACHING_MENTORSHIP as `0x${string}`, [ROLE_COACH as `0x${string}`, ROLE_DISCIPLE as `0x${string}`])
+
+    // 2. Data delegation: Ana → David (disciple shares PII with coach)
+    const coachGrants = [{
+      server: 'urn:mcp:server:person',
+      resources: ['profile'],
+      fields: ['email', 'phone', 'displayName', 'language', 'city', 'stateProvince'],
+    }]
+
+    const result = await buildSignedDelegation(paAna, paDavid, 'cat-user-006', coachGrants)
+    if (result) {
+      await createEdge(paAna, paDavid, result.DAD as `0x${string}`, [result.ROLE_DATA_GRANTOR as `0x${string}`, result.ROLE_DATA_GRANTEE as `0x${string}`], result.metadataURI)
+      console.log('[catalyst-seed] Coaching delegation created: Ana → David (on-chain)')
+    }
+  } catch (err) {
+    console.warn('[catalyst-seed] Coaching delegation failed:', err)
+  }
+
+  console.log('[catalyst-seed] NoCo Catalyst community deployed: 18 agents, 25+ on-chain edges')
 }
