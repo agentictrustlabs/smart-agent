@@ -1,18 +1,19 @@
 /**
- * Dual-Signed Delegation Token
+ * Delegation Token
  *
  * Mints and verifies delegation tokens for A2A agent → MCP server
- * communication. Each token has three security layers:
+ * communication. Security comes from two layers:
  *
- *   Layer 1: On-chain delegation data (EIP-712 signed by root account owner)
- *   Layer 2: Session key ECDSA signature (proves session key holder authorized)
- *   Layer 3: HMAC-SHA256 integrity seal (proves token not tampered)
+ *   Layer 1: Session key ECDSA signature over canonical claims
+ *            (proves the session key holder authorized this token)
+ *   Layer 2: On-chain ERC-1271 verification of the delegation signature
+ *            (proves the root account authorized the session key)
+ *
+ * No shared secrets between A2A and MCP. The MCP server verifies
+ * the token using only cryptographic proofs and on-chain state.
  *
  * See docs/agents/security.md for the full threat model.
  */
-
-import type { Delegation } from '@smart-agent/types'
-import { hmacSign, hmacVerify } from './crypto'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -52,17 +53,15 @@ export interface DelegationTokenClaims {
 
 export interface DelegationTokenEnvelope {
   /** Envelope version */
-  v: 2
+  v: 3
   /** Token type URN */
   typ: 'urn:smart-agent:mcp-delegation-envelope'
-  /** Algorithm description */
-  alg: 'session-ecdsa+hmac-sha256'
+  /** Algorithm — session ECDSA only (no HMAC) */
+  alg: 'session-ecdsa'
   /** Claims */
   claims: DelegationTokenClaims
   /** Session key ECDSA signature over canonical claims string */
   sessionSignature: `0x${string}`
-  /** HMAC-SHA256 over canonical claims + sessionSignature */
-  issuerSignature: string
 }
 
 // ---------------------------------------------------------------------------
@@ -72,6 +71,7 @@ export interface DelegationTokenEnvelope {
 /**
  * Build canonical string representation of claims for signing.
  * Deterministic serialization — no JSON.stringify (key order matters).
+ * The session ECDSA signature covers this entire string.
  */
 export function claimsCanonicalString(claims: DelegationTokenClaims): string {
   return [
@@ -84,6 +84,7 @@ export function claimsCanonicalString(claims: DelegationTokenClaims): string {
     `delegate=${claims.delegation.delegate}`,
     `authority=${claims.delegation.authority}`,
     `salt=${claims.delegation.salt}`,
+    `sig=${claims.delegation.signature}`,
     `sessionKey=${claims.sessionKeyAddress}`,
     `iat=${claims.issuedAtISO}`,
     `exp=${claims.expiresAtISO}`,
@@ -100,34 +101,24 @@ export function claimsCanonicalString(claims: DelegationTokenClaims): string {
  * Mint a delegation token.
  *
  * @param claims - Token claims
- * @param signMessage - Function that signs a message with the session key (returns 0x-prefixed sig)
- * @param hmacSecret - Hex-encoded HMAC secret shared with the MCP server
+ * @param signMessage - Signs with the session key (returns 0x-prefixed sig)
  * @returns Encoded token string (base64url JSON)
  */
 export async function mintDelegationToken(
   claims: DelegationTokenClaims,
   signMessage: (message: string) => Promise<`0x${string}`>,
-  hmacSecret: string,
 ): Promise<{ envelope: DelegationTokenEnvelope; token: string }> {
   const canonical = claimsCanonicalString(claims)
-
-  // Layer 2: Session key ECDSA
   const sessionSignature = await signMessage(canonical)
 
-  // Layer 3: HMAC over (canonical + sessionSignature)
-  const hmacPayload = `${canonical}|sig=${sessionSignature}`
-  const issuerSignature = await hmacSign(hmacPayload, hmacSecret)
-
   const envelope: DelegationTokenEnvelope = {
-    v: 2,
+    v: 3,
     typ: 'urn:smart-agent:mcp-delegation-envelope',
-    alg: 'session-ecdsa+hmac-sha256',
+    alg: 'session-ecdsa',
     claims,
     sessionSignature,
-    issuerSignature,
   }
 
-  // Encode as base64url JSON
   const json = JSON.stringify(envelope)
   const token = btoa(unescape(encodeURIComponent(json)))
     .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
@@ -147,19 +138,23 @@ export interface DelegationTokenVerification {
 }
 
 /**
- * Verify a delegation token's integrity and signatures.
+ * Verify a delegation token.
  *
- * This verifies Layer 2 (HMAC) and Layer 3 (session ECDSA recovery).
- * Layer 1 (on-chain ERC-1271) must be verified separately by the consumer
- * by calling AgentAccount.isValidSignature() on the delegator.
+ * Checks:
+ *   1. Session key ECDSA — recovers signer, must match claims.sessionKeyAddress
+ *   2. delegate == sessionKeyAddress
+ *   3. Token not expired
+ *
+ * The consumer must ALSO verify on-chain:
+ *   - ERC-1271 on delegator (proves delegation was signed by root account)
+ *   - DelegationManager.isRevoked() (proves delegation not revoked)
+ *   - Caveat enforcement (timestamp bounds, tool scope, etc.)
  *
  * @param token - Base64url-encoded token string
- * @param hmacSecret - Hex-encoded HMAC secret
- * @param recoverAddress - Function that recovers signer address from (message, signature)
+ * @param recoverAddress - Recovers signer address from (message, signature)
  */
 export async function verifyDelegationToken(
   token: string,
-  hmacSecret: string,
   recoverAddress: (message: string, signature: `0x${string}`) => Promise<`0x${string}`>,
 ): Promise<DelegationTokenVerification> {
   // Decode
@@ -173,21 +168,19 @@ export async function verifyDelegationToken(
     return { valid: false, error: 'Invalid token encoding' }
   }
 
-  if (envelope.v !== 2 || envelope.typ !== 'urn:smart-agent:mcp-delegation-envelope') {
-    return { valid: false, error: 'Invalid token type or version' }
+  if (envelope.typ !== 'urn:smart-agent:mcp-delegation-envelope') {
+    return { valid: false, error: 'Invalid token type' }
   }
 
-  const { claims, sessionSignature, issuerSignature } = envelope
+  // Accept both v2 (legacy with HMAC) and v3 (ECDSA only)
+  if (envelope.v !== 3 && envelope.v !== 2) {
+    return { valid: false, error: 'Unsupported token version' }
+  }
+
+  const { claims, sessionSignature } = envelope
   const canonical = claimsCanonicalString(claims)
 
-  // Verify Layer 3: HMAC
-  const hmacPayload = `${canonical}|sig=${sessionSignature}`
-  const hmacValid = await hmacVerify(hmacPayload, issuerSignature, hmacSecret)
-  if (!hmacValid) {
-    return { valid: false, error: 'HMAC verification failed' }
-  }
-
-  // Verify Layer 2: Session key ECDSA
+  // Verify session key ECDSA
   let recoveredAddress: `0x${string}`
   try {
     recoveredAddress = await recoverAddress(canonical, sessionSignature)
@@ -199,12 +192,10 @@ export async function verifyDelegationToken(
     return { valid: false, error: 'Session key address mismatch' }
   }
 
-  // Check delegation.delegate matches session key
   if (claims.delegation.delegate.toLowerCase() !== claims.sessionKeyAddress.toLowerCase()) {
     return { valid: false, error: 'Delegation delegate does not match session key' }
   }
 
-  // Check expiry
   if (new Date(claims.expiresAtISO) < new Date()) {
     return { valid: false, error: 'Token expired' }
   }

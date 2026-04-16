@@ -36,7 +36,7 @@ async function callMcpTool(
   // Find active session with package
   const rows = await db.select().from(sessions)
     .where(eq(sessions.accountAddress, accountAddress))
-  const active = rows.find(r => r.encryptedPackage && r.iv && r.hmacSecret && r.status === 'active')
+  const active = rows.find(r => r.encryptedPackage && r.iv && r.status === 'active')
 
   if (!active) return { ok: false, error: 'No active agent session' }
   if (new Date(active.expiresAt) < new Date()) return { ok: false, error: 'Session expired' }
@@ -76,7 +76,6 @@ async function callMcpTool(
   const { token } = await mintDelegationToken(
     claims,
     async (msg) => sessionAccount.signMessage({ message: msg }),
-    config.MCP_DELEGATION_SHARED_SECRET,
   )
 
   // Call person-mcp tool with the delegation token

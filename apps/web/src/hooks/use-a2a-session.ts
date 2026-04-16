@@ -3,13 +3,8 @@
 import { useState, useCallback } from 'react'
 import { useWallets } from '@privy-io/react-auth'
 
-const A2A_SESSION_COOKIE = 'a2a-session'
-
-function getTokenFromCookie(): string | null {
-  if (typeof document === 'undefined') return null
-  const match = document.cookie.match(/(?:^|;\s*)a2a-session=([^;]*)/)
-  return match ? decodeURIComponent(match[1]) : null
-}
+// Cookie is now httpOnly — client can't read it directly.
+// Token is received from API responses and stored in React state.
 
 /**
  * Client-side A2A session management for Privy/MetaMask users.
@@ -27,9 +22,9 @@ export function useA2ASession() {
   const { wallets, ready: walletsReady } = useWallets()
   const [bootstrapping, setBootstrapping] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [sessionToken, setSessionToken] = useState<string | null>(getTokenFromCookie)
+  const [sessionToken, setSessionToken] = useState<string | null>(null)
 
-  const bootstrap = useCallback(async () => {
+  const bootstrap = useCallback(async (onPhase?: (phase: string) => void) => {
     if (!walletsReady || wallets.length === 0) {
       setError('No wallet connected')
       return null
@@ -55,6 +50,7 @@ export function useA2ASession() {
       const { challengeId, challengeHash, accountAddress } = await initRes.json()
 
       // ─── Phase 2: Sign challenge with MetaMask ──────────────────
+      onPhase?.('signing-challenge')
       const challengeSig = await provider.request({
         method: 'personal_sign',
         params: [challengeHash, wallet.address],
@@ -77,14 +73,13 @@ export function useA2ASession() {
       const phase2Data = await phase2Res.json()
 
       if (!phase2Data.needsDelegationSignature) {
-        // Session already active (shouldn't happen, but handle it)
-        document.cookie = `${A2A_SESSION_COOKIE}=${phase2Data.sessionToken}; path=/; max-age=${60 * 60 * 24}`
         setSessionToken(phase2Data.sessionToken)
         setBootstrapping(false)
         return phase2Data.sessionToken
       }
 
       // ─── Phase 4: Sign delegation with MetaMask ─────────────────
+      onPhase?.('signing-delegation')
       const delegationSig = await provider.request({
         method: 'personal_sign',
         params: [phase2Data.delegationHash, wallet.address],
@@ -108,8 +103,8 @@ export function useA2ASession() {
       }
       const { sessionToken: token } = await phase3Res.json()
 
-      // Store in cookie
-      document.cookie = `${A2A_SESSION_COOKIE}=${token}; path=/; max-age=${60 * 60 * 24}`
+      // Cookie is set server-side by the /complete endpoint (httpOnly).
+      // Store token in React state for this session.
       setSessionToken(token)
       setBootstrapping(false)
       return token
@@ -127,6 +122,6 @@ export function useA2ASession() {
     error,
     bootstrap,
     hasSession: !!sessionToken,
-    refreshToken: () => setSessionToken(getTokenFromCookie()),
+    refreshToken: (token?: string) => { if (token) setSessionToken(token) },
   }
 }

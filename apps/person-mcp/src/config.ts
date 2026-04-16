@@ -23,8 +23,8 @@ function requireEnv(name: string): string {
 }
 
 export const config = {
-  /** Shared HMAC secret for delegation token verification */
-  mcpDelegationSharedSecret: requireEnv('MCP_DELEGATION_SHARED_SECRET'),
+  /** DelegationManager contract address — REQUIRED for on-chain delegation verification */
+  delegationManagerAddress: requireEnv('DELEGATION_MANAGER_ADDRESS') as `0x${string}`,
 
   /** JSON-RPC URL for on-chain verification */
   rpcUrl: process.env.RPC_URL ?? 'http://127.0.0.1:8545',

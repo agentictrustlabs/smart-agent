@@ -137,7 +137,8 @@ session.post('/package', requireSession, async (c) => {
 
 // ─── GET /session/:id ───────────────────────────────────────────────
 
-session.get('/:id', async (c) => {
+session.get('/:id', requireSession, async (c) => {
+  const authSession = c.get('session')
   const id = c.req.param('id')
 
   const [row] = await db
@@ -148,6 +149,11 @@ session.get('/:id', async (c) => {
 
   if (!row) {
     return c.json({ error: 'Session not found' }, 404)
+  }
+
+  // Only allow reading your own sessions
+  if (row.accountAddress !== authSession.accountAddress) {
+    return c.json({ error: 'Forbidden' }, 403)
   }
 
   return c.json({
@@ -162,7 +168,8 @@ session.get('/:id', async (c) => {
 
 // ─── DELETE /session/:id ────────────────────────────────────────────
 
-session.delete('/:id', async (c) => {
+session.delete('/:id', requireSession, async (c) => {
+  const authSession = c.get('session')
   const id = c.req.param('id')
 
   const [row] = await db
@@ -173,6 +180,11 @@ session.delete('/:id', async (c) => {
 
   if (!row) {
     return c.json({ error: 'Session not found' }, 404)
+  }
+
+  // Only allow revoking your own sessions
+  if (row.accountAddress !== authSession.accountAddress) {
+    return c.json({ error: 'Forbidden' }, 403)
   }
 
   await db

@@ -1,6 +1,7 @@
 'use server'
 
 import { requireSession } from '@/lib/auth/session'
+import { getA2ASessionToken } from '@/lib/actions/a2a-session.action'
 
 const A2A_AGENT_URL = process.env.A2A_AGENT_URL ?? 'http://localhost:3100'
 
@@ -33,7 +34,9 @@ export async function saveProfileViaDelegation(
 ): Promise<{ success: boolean; error?: string; profile?: unknown }> {
   await requireSession()
 
-  if (!a2aSessionToken) {
+  // Read token from httpOnly cookie if not provided
+  const token = a2aSessionToken ?? await getA2ASessionToken()
+  if (!token) {
     return { success: false, error: 'No A2A session. Connect your agent to save personal data.' }
   }
 
@@ -42,7 +45,7 @@ export async function saveProfileViaDelegation(
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${a2aSessionToken}`,
+        'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify(data),
     })
@@ -68,14 +71,16 @@ export async function loadProfileViaDelegation(
 ): Promise<{ success: boolean; error?: string; profile?: unknown }> {
   await requireSession()
 
-  if (!a2aSessionToken) {
+  // Read token from httpOnly cookie if not provided
+  const token = a2aSessionToken ?? await getA2ASessionToken()
+  if (!token) {
     return { success: false, error: 'No A2A session' }
   }
 
   try {
     const res = await fetch(`${A2A_AGENT_URL}/profile`, {
       method: 'GET',
-      headers: { 'Authorization': `Bearer ${a2aSessionToken}` },
+      headers: { 'Authorization': `Bearer ${token}` },
     })
 
     if (!res.ok) return { success: false, error: 'Profile fetch failed' }

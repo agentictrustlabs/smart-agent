@@ -41,7 +41,7 @@ delegation.post('/mint', requireSession, async (c) => {
     .where(eq(sessions.accountAddress, authSession.accountAddress))
 
   const activeSession = sessionRows.find(
-    (row) => row.encryptedPackage && row.iv && row.hmacSecret && row.status === 'active',
+    (row) => row.encryptedPackage && row.iv && row.status === 'active',
   )
 
   if (!activeSession) {
@@ -95,7 +95,6 @@ delegation.post('/mint', requireSession, async (c) => {
   const { token } = await mintDelegationToken(
     claims,
     signMessage,
-    config.MCP_DELEGATION_SHARED_SECRET,
   )
 
   return c.json({

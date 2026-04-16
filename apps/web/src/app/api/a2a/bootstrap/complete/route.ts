@@ -149,7 +149,8 @@ export async function POST(request: Request) {
     cookieStore.set(A2A_SESSION_COOKIE, sessionToken, {
       path: '/',
       maxAge: 60 * 60 * 24,
-      httpOnly: false,
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
     })
 
     return NextResponse.json({ success: true, sessionToken })

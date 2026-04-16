@@ -22,12 +22,22 @@ function env(key: string, defaultValue?: string): string {
   return value
 }
 
+function requireSecret(key: string): string {
+  const value = process.env[key]
+  if (!value) {
+    throw new Error(`Missing required secret: ${key}. The A2A agent will not start without it.`)
+  }
+  if (value.includes('change-in-production') || value.length < 16) {
+    throw new Error(`Weak secret detected for ${key}. Use a strong random value (32+ hex chars).`)
+  }
+  return value
+}
+
 export const config = {
   PORT: parseInt(env('PORT', '3100'), 10),
   RPC_URL: env('RPC_URL', 'http://127.0.0.1:8545'),
   CHAIN_ID: parseInt(env('CHAIN_ID', '31337'), 10),
-  A2A_SESSION_SECRET: env('A2A_SESSION_SECRET', 'dev-session-secret-change-in-production'),
-  MCP_DELEGATION_SHARED_SECRET: env('MCP_DELEGATION_SHARED_SECRET', 'dev-mcp-secret-change-in-production'),
+  A2A_SESSION_SECRET: requireSecret('A2A_SESSION_SECRET'),
   AGENT_ACCOUNT_RESOLVER_ADDRESS: env('AGENT_ACCOUNT_RESOLVER_ADDRESS', '0x0000000000000000000000000000000000000000') as `0x${string}`,
   DELEGATION_MANAGER_ADDRESS: env('DELEGATION_MANAGER_ADDRESS', '0x0000000000000000000000000000000000000000') as `0x${string}`,
   TIMESTAMP_ENFORCER_ADDRESS: env('TIMESTAMP_ENFORCER_ADDRESS', '0x0000000000000000000000000000000000000000') as `0x${string}`,

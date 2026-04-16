@@ -29,8 +29,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
   }
 
-  const body = await request.json()
-  const walletAddress = body.walletAddress ?? session.walletAddress
+  // Always use the authenticated session's wallet — never trust client-supplied address
+  const walletAddress = session.walletAddress
 
   // Look up user to get smart account address
   const users = await db.select().from(schema.users)

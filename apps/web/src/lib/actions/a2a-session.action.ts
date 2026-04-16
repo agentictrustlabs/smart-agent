@@ -161,7 +161,8 @@ export async function bootstrapA2ASession(): Promise<{
     cookieStore.set(A2A_SESSION_COOKIE, sessionToken, {
       path: '/',
       maxAge: 60 * 60 * 24,
-      httpOnly: false,
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
     })
 
     return { success: true, sessionToken }

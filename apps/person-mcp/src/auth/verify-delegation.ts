@@ -34,10 +34,9 @@ export async function verifyDelegationAndExtractPrincipal(
   toolName?: string,
 ): Promise<{ principal: string } | { error: string }> {
 
-  // ─── Layer 1 (HMAC) + Layer 2 (ECDSA) + expiry ────────────────
+  // ─── Session key ECDSA verification + expiry ───────────────────
   const result = await verifyDelegationToken(
     token,
-    config.mcpDelegationSharedSecret,
     async (message: string, signature: `0x${string}`) => {
       return recoverMessageAddress({ message, signature })
     },
@@ -49,15 +48,20 @@ export async function verifyDelegationAndExtractPrincipal(
 
   const { claims } = result
 
+  // ─── Audience check ───────────────────────────────────────────
+  if (claims.aud !== 'urn:mcp:server:person') {
+    return { error: `Invalid audience: ${claims.aud}` }
+  }
+
   // ─── Layer 3: delegate == session key ──────────────────────────
   if (claims.delegation.delegate.toLowerCase() !== claims.sessionKeyAddress.toLowerCase()) {
     return { error: 'Delegation delegate does not match session key' }
   }
 
   // ─── Layer 4: Compute EIP-712 delegation hash ─────────────────
-  const delegationManagerAddr = process.env.DELEGATION_MANAGER_ADDRESS as `0x${string}` | undefined
+  const delegationManagerAddr = config.delegationManagerAddress
 
-  if (delegationManagerAddr) {
+  {
     const publicClient = createPublicClient({
       chain: { ...localhost, id: config.chainId },
       transport: http(config.rpcUrl),
@@ -88,7 +92,7 @@ export async function verifyDelegationAndExtractPrincipal(
         return { error: 'Delegation has been revoked' }
       }
     } catch (err) {
-      console.warn('[verify] Revocation check failed:', err instanceof Error ? err.message : err)
+      return { error: `Revocation check failed — cannot verify on-chain state: ${err instanceof Error ? err.message : String(err)}` }
     }
 
     // ─── Layer 6: ERC-1271 signature verification ─────────────────

@@ -138,7 +138,7 @@ export function ProfileClient({
   const [sessionValid, setSessionValid] = useState<boolean | null>(null) // null = unknown
 
   // Load profile from MCP via delegation chain. Returns true if successful.
-  async function loadProfile(token: string): Promise<boolean> {
+  async function loadProfile(token: string | null): Promise<boolean> {
     setLoadingProfile(true)
     try {
       const result = await loadProfileViaDelegation(token)
@@ -170,15 +170,10 @@ export function ProfileClient({
   // On mount: try to load profile. If session is invalid, auto-bootstrap for demo users.
   useEffect(() => {
     async function init() {
-      const token = getA2AToken() ?? a2a.sessionToken
-
-      // Try existing token first
-      if (token) {
-        const ok = await loadProfile(token)
-        if (ok) return
-        // Stale cookie — clear it
-        document.cookie = 'a2a-session=; path=/; max-age=0'
-      }
+      // Try loading with existing session (server reads httpOnly cookie)
+      const token = a2a.sessionToken
+      const ok = await loadProfile(token ?? null)
+      if (ok) return
 
       // No valid session — try server-side bootstrap (works for demo users)
       try {
@@ -196,12 +191,8 @@ export function ProfileClient({
     init()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Read A2A session token from cookie
-  function getA2AToken(): string | null {
-    if (typeof document === 'undefined') return null
-    const match = document.cookie.match(/(?:^|;\s*)a2a-session=([^;]*)/)
-    return match ? decodeURIComponent(match[1]) : null
-  }
+  // Token comes from server actions (httpOnly cookie) or from the a2a hook (React state).
+  // Client cannot read httpOnly cookies directly — this is intentional for security.
 
   async function handleBootstrapSession() {
     setError(null)
@@ -210,9 +201,9 @@ export function ProfileClient({
     try {
       const res = await fetch('/api/a2a/bootstrap', { method: 'POST' })
       const data = await res.json()
-      if (data.success && data.sessionToken) {
-        a2a.refreshToken()
-        await loadProfile(data.sessionToken)
+      if (data.success) {
+        // Server set the httpOnly cookie — load profile using it
+        await loadProfile(data.sessionToken ?? null)
         return
       }
     } catch { /* not available */ }
@@ -228,7 +219,7 @@ export function ProfileClient({
 
   function handleSave() {
     setError(null)
-    const token = getA2AToken() ?? a2a.sessionToken
+    const token = a2a.sessionToken
     startTransition(async () => {
       const result = await saveProfileViaDelegation(token, {
         displayName: name || undefined,
