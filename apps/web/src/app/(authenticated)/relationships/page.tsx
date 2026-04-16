@@ -19,22 +19,28 @@ export default async function RelationshipsPage() {
   const myRegisteredAgents = await getControlledAgentsForUser(currentUser.id)
   const allRegisteredAgents = await listRegisteredAgents()
 
-  const myAgents: Array<{ address: string; name: string; did: string; type: string }> = []
+  const { getAgentMetadata } = await import('@/lib/agent-metadata')
+
+  const myAgents: Array<{ address: string; name: string; did: string; agentName: string; type: string }> = []
   for (const a of myRegisteredAgents) {
+    const meta = await getAgentMetadata(a.address)
     myAgents.push({
       address: a.address,
       name: a.name,
-      did: toDidEthr(CHAIN_ID, a.address as `0x${string}`),
+      did: meta.primaryName || toDidEthr(CHAIN_ID, a.address as `0x${string}`),
+      agentName: meta.primaryName,
       type: a.kind,
     })
   }
 
-  const allAgents: Array<{ address: string; name: string; did: string; type: string }> = []
+  const allAgents: Array<{ address: string; name: string; did: string; agentName: string; type: string }> = []
   for (const a of allRegisteredAgents) {
+    const meta = await getAgentMetadata(a.address)
     allAgents.push({
       name: a.name,
       address: a.address,
-      did: toDidEthr(CHAIN_ID, a.address as `0x${string}`),
+      did: meta.primaryName || toDidEthr(CHAIN_ID, a.address as `0x${string}`),
+      agentName: meta.primaryName,
       type: a.kind,
     })
   }

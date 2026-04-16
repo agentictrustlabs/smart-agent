@@ -357,7 +357,10 @@ export default async function AgentSettingsPage({
       <div data-component="protocol-info">
         <dl>
           <dt>Smart Account</dt><dd data-component="address">{agentAddress}</dd>
-          <dt>DID</dt><dd style={{ fontSize: '0.8rem', fontFamily: 'monospace' }}>{toDidEthr(CHAIN_ID, agentAddress)}</dd>
+          {agentMeta.primaryName && (
+            <><dt>.agent Name</dt><dd style={{ fontSize: '0.85rem', fontFamily: 'monospace', color: '#8b5e3c', fontWeight: 600 }}>{agentMeta.primaryName}</dd></>
+          )}
+          <dt>DID</dt><dd style={{ fontSize: '0.8rem', fontFamily: 'monospace' }}>{agentMeta.primaryName || toDidEthr(CHAIN_ID, agentAddress)}</dd>
           <dt>On-Chain Owners</dt><dd>{ownerCount}</dd>
           {/* Operated-by relationship is shown in the Relationships section below */}
         </dl>

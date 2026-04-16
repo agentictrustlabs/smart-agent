@@ -56,6 +56,7 @@ export function AgentRegistryList({ agents }: { agents: AgentCardData[] }) {
       const q = search.toLowerCase()
       list = list.filter(a =>
         a.displayName.toLowerCase().includes(q) ||
+        a.primaryName.toLowerCase().includes(q) ||
         a.address.toLowerCase().includes(q) ||
         a.description.toLowerCase().includes(q) ||
         a.aiAgentClass.toLowerCase().includes(q) ||
@@ -233,6 +234,22 @@ export function AgentRegistryList({ agents }: { agents: AgentCardData[] }) {
                   }}>
                     {agent.agentTypeLabel}
                   </span>
+                </div>
+                {/* .agent name */}
+                {agent.primaryName && (
+                  <div style={{ marginBottom: '0.3rem' }}>
+                    <span style={{
+                      fontFamily: 'monospace', fontSize: '0.72rem', color: '#8b5e3c',
+                      background: 'rgba(139,94,60,0.06)', padding: '0.1rem 0.4rem',
+                      borderRadius: 6, border: '1px solid rgba(139,94,60,0.12)',
+                    }}>
+                      {agent.primaryName}
+                    </span>
+                  </div>
+                )}
+
+                {/* Sub-badges row */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap', marginBottom: '0.25rem' }}>
                   {agent.aiAgentClass && (
                     <span style={{
                       padding: '0.15rem 0.45rem',

@@ -8,17 +8,18 @@ import {
 } from '@/lib/contracts'
 import {
   ORGANIZATION_GOVERNANCE, ORGANIZATION_MEMBERSHIP, ALLIANCE,
-  GENERATIONAL_LINEAGE,
+  GENERATIONAL_LINEAGE, HAS_MEMBER,
   ROLE_OWNER, ROLE_BOARD_MEMBER, ROLE_OPERATOR, ROLE_MEMBER,
   ROLE_STRATEGIC_PARTNER, ROLE_UPSTREAM, ROLE_DOWNSTREAM,
   ATL_LATITUDE, ATL_LONGITUDE, ATL_SPATIAL_CRS, ATL_SPATIAL_TYPE, ATL_CONTROLLER,
-  ATL_GENMAP_DATA,
+  ATL_GENMAP_DATA, ATL_PRIMARY_NAME, ATL_NAME_LABEL,
+  agentNameRegistryAbi, agentNameResolverAbi,
 } from '@smart-agent/sdk'
 import { agentAccountResolverAbi } from '@smart-agent/sdk'
-import { keccak256, toBytes } from 'viem'
+import { keccak256, toBytes, encodePacked } from 'viem'
 
 const TYPE_ORGANIZATION = keccak256(toBytes('atl:OrganizationAgent'))
-// TYPE_PERSON no longer needed — person agents deployed by generateDemoWallet
+const TYPE_HUB = keccak256(toBytes('atl:HubAgent'))
 const ZERO_HASH = '0x0000000000000000000000000000000000000000000000000000000000000000' as `0x${string}`
 
 async function deploy(salt: number): Promise<`0x${string}`> {
@@ -190,10 +191,8 @@ async function doSeed() {
   } catch { /* ignored */ }
 
   if (edgesComplete) {
-    console.log('[cil-seed] On-chain relationships already complete')
-    return
-  }
-
+    console.log('[cil-seed] On-chain relationships already complete — skipping edges')
+  } else {
   console.log('[cil-seed] Creating on-chain relationships...')
 
   // Person → Org (11 edges)
@@ -219,6 +218,74 @@ async function doSeed() {
   // Org → Business GENERATIONAL_LINEAGE (2 edges)
   await createEdge(wave1, afiaMarket,  GENERATIONAL_LINEAGE, [ROLE_UPSTREAM, ROLE_DOWNSTREAM])
   await createEdge(wave1, kossiRepair, GENERATIONAL_LINEAGE, [ROLE_UPSTREAM, ROLE_DOWNSTREAM])
+  } // end of edge creation else block
 
-  console.log('[cil-seed] CIL community deployed: 15 agents, 18 on-chain edges')
+  // ─── Hub Agent ─────────────────────────────────────────────���────
+  console.log('[cil-seed] Deploying hub agent...')
+  const hubMission = await deploy(490001)
+  await register(hubMission, 'Mission Collective Hub', 'Mission Collective — revenue-sharing capital deployment, ILAD operations, business health monitoring', TYPE_HUB)
+
+  // HAS_MEMBER edges — connect all agents to the hub
+  console.log('[cil-seed] Creating HAS_MEMBER edges...')
+  const allCilAgents = [cil, ilad, ravah, afiaMarket, kossiRepair, lomeHub, wave1, wave2, paCameron, paNick, paAfia, paKossi, paYaw, paJohn, paPaul]
+  for (const agent of allCilAgents) {
+    await createEdge(hubMission, agent, HAS_MEMBER as `0x${string}`, [ROLE_MEMBER])
+  }
+
+  // ─── Agent Naming (.agent namespace) ─────────────────────────────
+  const nameRegistryAddr = process.env.AGENT_NAME_REGISTRY_ADDRESS as `0x${string}`
+  const nameResolverAddr = process.env.AGENT_NAME_RESOLVER_ADDRESS as `0x${string}`
+  const resolverAddr = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}`
+
+  if (nameRegistryAddr && nameResolverAddr) {
+    console.log('[cil-seed] Registering .agent names...')
+    const wc = getWalletClient()
+    const pc = getPublicClient()
+
+    async function regName(parentNode: `0x${string}`, label: string, ownerAddr: `0x${string}`, fullName: string) {
+      const lh = keccak256(toBytes(label))
+      const cn = keccak256(encodePacked(['bytes32', 'bytes32'], [parentNode, lh]))
+      try {
+        // Idempotent: skip if already registered
+        const exists = await pc.readContract({ address: nameRegistryAddr, abi: agentNameRegistryAbi, functionName: 'recordExists', args: [cn] }) as boolean
+        if (!exists) {
+          const h = await wc.writeContract({ address: nameRegistryAddr, abi: agentNameRegistryAbi, functionName: 'register', args: [parentNode, label, ownerAddr, nameResolverAddr, 0n] })
+          await pc.waitForTransactionReceipt({ hash: h })
+        }
+        // Always set addr + name props
+        try { await wc.writeContract({ address: nameResolverAddr, abi: agentNameResolverAbi, functionName: 'setAddr', args: [cn, ownerAddr] }) } catch { /* */ }
+        if (resolverAddr) {
+          try { await wc.writeContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'setStringProperty', args: [ownerAddr, ATL_NAME_LABEL as `0x${string}`, label] }) } catch { /* */ }
+          try { await wc.writeContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'setStringProperty', args: [ownerAddr, ATL_PRIMARY_NAME as `0x${string}`, fullName] }) } catch { /* */ }
+        }
+        return cn
+      } catch (e) { console.warn(`[cil-seed] Name reg failed for ${label}:`, e); return cn }
+    }
+
+    // Get root node
+    const agentRoot = await pc.readContract({ address: nameRegistryAddr, abi: agentNameRegistryAbi, functionName: 'AGENT_ROOT' }) as `0x${string}`
+
+    // Register mission.agent under root
+    const missionNode = await regName(agentRoot, 'mission', hubMission, 'mission.agent')
+    if (missionNode) {
+      await regName(missionNode, 'cil', cil, 'cil.mission.agent')
+      await regName(missionNode, 'ilad', ilad, 'ilad.mission.agent')
+      await regName(missionNode, 'ravah', ravah, 'ravah.mission.agent')
+      await regName(missionNode, 'afia', afiaMarket, 'afia.mission.agent')
+      await regName(missionNode, 'kossi', kossiRepair, 'kossi.mission.agent')
+      await regName(missionNode, 'lome', lomeHub, 'lome.mission.agent')
+      await regName(missionNode, 'wave1', wave1, 'wave1.mission.agent')
+      await regName(missionNode, 'wave2', wave2, 'wave2.mission.agent')
+      await regName(missionNode, 'cameron', paCameron, 'cameron.mission.agent')
+      await regName(missionNode, 'nick', paNick, 'nick.mission.agent')
+      await regName(missionNode, 'afia-m', paAfia, 'afia-m.mission.agent')
+      await regName(missionNode, 'kossi-a', paKossi, 'kossi-a.mission.agent')
+      await regName(missionNode, 'yaw', paYaw, 'yaw.mission.agent')
+      await regName(missionNode, 'john', paJohn, 'john.mission.agent')
+      await regName(missionNode, 'paul', paPaul, 'paul.mission.agent')
+      console.log('[cil-seed] Names registered under mission.agent')
+    }
+  }
+
+  console.log('[cil-seed] CIL community deployed: 16 agents, 33+ on-chain edges')
 }

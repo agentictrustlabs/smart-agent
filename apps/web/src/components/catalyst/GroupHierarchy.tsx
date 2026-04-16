@@ -76,6 +76,7 @@ export function GroupHierarchy({ groups, orgAddress }: Props) {
         parentId: editor.parentAddr ?? null,
         generation: parentGen + 1,
         name: data.name,
+        nameLabel: data.nameLabel || undefined,
         leaderName: data.leaderName || undefined,
         location: data.location || undefined,
         healthData: { ...data.health } as Record<string, unknown>,

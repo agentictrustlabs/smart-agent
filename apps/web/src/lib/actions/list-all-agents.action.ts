@@ -9,6 +9,8 @@ import type { KBAgent } from '@smart-agent/discovery'
 export interface AgentCardData {
   address: string
   displayName: string
+  /** .agent primary name (e.g., "david.fortcollins.catalyst.agent") */
+  primaryName: string
   description: string
   agentType: 'person' | 'org' | 'ai' | 'hub' | 'unknown'
   agentTypeLabel: string
@@ -47,6 +49,7 @@ function kbAgentToCardData(agent: KBAgent): AgentCardData {
   return {
     address: agent.address,
     displayName: agent.displayName,
+    primaryName: '',  // populated later from on-chain resolver
     description: agent.description,
     agentType: agent.agentType,
     agentTypeLabel: TYPE_LABELS[agent.agentType] ?? 'Unknown',
@@ -100,6 +103,17 @@ export async function listAllAgents(): Promise<AgentCardData[]> {
         return card
       }),
     )
+
+    // Enrich with .agent names from on-chain resolver
+    try {
+      const { getAgentMetadata } = await import('@/lib/agent-metadata')
+      await Promise.all(results.map(async (card) => {
+        try {
+          const meta = await getAgentMetadata(card.address)
+          if (meta.primaryName) card.primaryName = meta.primaryName
+        } catch { /* resolver may not have this agent */ }
+      }))
+    } catch { /* resolver unavailable */ }
 
     return results
   } catch (error) {

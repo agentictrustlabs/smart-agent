@@ -82,6 +82,8 @@ export async function createGenMapNode(data: {
   parentId: string | null
   generation: number
   name: string
+  /** .agent name label for this circle (e.g., "newcircle") */
+  nameLabel?: string
   leaderName?: string
   location?: string
   healthData?: Record<string, unknown>
@@ -148,6 +150,59 @@ export async function createGenMapNode(data: {
       })
       await confirmRelationship(edgeId)
     } catch { /* ignored */ }
+  }
+
+  // 4. Register .agent name if label provided
+  if (data.nameLabel) {
+    try {
+      const nameRegistryAddr = process.env.AGENT_NAME_REGISTRY_ADDRESS as `0x${string}`
+      const nameResolverAddr = process.env.AGENT_NAME_RESOLVER_ADDRESS as `0x${string}`
+      if (nameRegistryAddr && nameResolverAddr) {
+        const { agentNameRegistryAbi, agentNameResolverAbi, namehash: computeNamehash } = await import('@smart-agent/sdk')
+        const { getAgentMetadata: getMeta } = await import('@/lib/agent-metadata')
+
+        // Find the parent's .agent name to compute the parent node
+        const parentAddr = (data.parentId || data.networkAddress).toLowerCase()
+        const parentMeta = await getMeta(parentAddr)
+        if (parentMeta.primaryName) {
+          const parentNode = computeNamehash(parentMeta.primaryName)
+          const walletClient = getWalletClient()
+          const publicClient = getPublicClient()
+
+          // Register in name registry
+          const regHash = await walletClient.writeContract({
+            address: nameRegistryAddr,
+            abi: agentNameRegistryAbi,
+            functionName: 'register',
+            args: [parentNode, data.nameLabel, orgAddress as `0x${string}`, nameResolverAddr, 0n],
+          })
+          await publicClient.waitForTransactionReceipt({ hash: regHash })
+
+          // Set addr record
+          const childNode = computeNamehash(`${data.nameLabel}.${parentMeta.primaryName}`)
+          const addrHash = await walletClient.writeContract({
+            address: nameResolverAddr,
+            abi: agentNameResolverAbi,
+            functionName: 'setAddr',
+            args: [childNode, orgAddress as `0x${string}`],
+          })
+          await publicClient.waitForTransactionReceipt({ hash: addrHash })
+
+          // Set ATL_PRIMARY_NAME + ATL_NAME_LABEL on the agent
+          const { ATL_PRIMARY_NAME: PN, ATL_NAME_LABEL: NL, agentAccountResolverAbi: resAbi } = await import('@smart-agent/sdk')
+          const resolverAddr = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}`
+          if (resolverAddr) {
+            const fullName = `${data.nameLabel}.${parentMeta.primaryName}`
+            await walletClient.writeContract({ address: resolverAddr, abi: resAbi, functionName: 'setStringProperty', args: [orgAddress as `0x${string}`, NL as `0x${string}`, data.nameLabel] })
+            await walletClient.writeContract({ address: resolverAddr, abi: resAbi, functionName: 'setStringProperty', args: [orgAddress as `0x${string}`, PN as `0x${string}`, fullName] })
+          }
+
+          console.log(`[genmap] Registered name: ${data.nameLabel}.${parentMeta.primaryName}`)
+        }
+      }
+    } catch (err) {
+      console.warn('[genmap] Name registration failed:', err)
+    }
   }
 
   return { id: orgAddress.toLowerCase(), orgAddress }

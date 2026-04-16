@@ -185,10 +185,8 @@ async function doSeed() {
   } catch { /* ignored */ }
 
   if (edgesComplete) {
-    console.log('[catalyst-seed] On-chain relationships already complete')
-    return
-  }
-
+    console.log('[catalyst-seed] On-chain relationships already complete — skipping edges')
+  } else {
   console.log('[catalyst-seed] Creating on-chain relationships (this takes ~60 seconds)...')
 
   // Person → Org (13 edges)
@@ -220,6 +218,7 @@ async function doSeed() {
 
   // AI → Org (1 edge)
   await createEdge(analytics, network, ORGANIZATIONAL_CONTROL, [ROLE_OPERATED_AGENT])
+  } // end of edge creation else block
 
   // ─── Hub Agent ──────────────────────────────────────────────────
   console.log('[catalyst-seed] Deploying hub agent...')
@@ -257,36 +256,22 @@ async function doSeed() {
     if (!nameRegistryAddr) return null
     const wc = getWalletClient()
     const pc = getPublicClient()
+    const { agentNameRegistryAbi: nrAbi, agentNameResolverAbi: nresAbi } = await import('@smart-agent/sdk')
+    const { keccak256: k256, toBytes: tb, encodePacked: ep } = await import('viem')
+    const lh = k256(tb(label))
+    const childNode = k256(ep(['bytes32', 'bytes32'], [parentNode, lh]))
     try {
-      const { agentNameRegistryAbi, agentNameResolverAbi } = await import('@smart-agent/sdk')
-      // Register in name registry
-      const hash = await wc.writeContract({
-        address: nameRegistryAddr,
-        abi: agentNameRegistryAbi,
-        functionName: 'register',
-        args: [parentNode, label, ownerAddr, nameResolverAddr, 0n],
-      })
-      const receipt = await pc.waitForTransactionReceipt({ hash })
-
-      // Compute child node to set addr record
-      const { namehash: computeNamehash } = await import('@smart-agent/sdk')
-      // Read the child node from the registry
-      const { keccak256: k256, toBytes: tb, encodePacked: ep } = await import('viem')
-      const lh = k256(tb(label))
-      const childNode = k256(ep(['bytes32', 'bytes32'], [parentNode, lh]))
-
-      // Set addr record in name resolver
-      await wc.writeContract({
-        address: nameResolverAddr,
-        abi: agentNameResolverAbi,
-        functionName: 'setAddr',
-        args: [childNode, ownerAddr],
-      })
-
+      // Idempotent: skip if already registered
+      const exists = await pc.readContract({ address: nameRegistryAddr, abi: nrAbi, functionName: 'recordExists', args: [childNode] }) as boolean
+      if (!exists) {
+        const hash = await wc.writeContract({ address: nameRegistryAddr, abi: nrAbi, functionName: 'register', args: [parentNode, label, ownerAddr, nameResolverAddr, 0n] })
+        await pc.waitForTransactionReceipt({ hash })
+      }
+      try { await wc.writeContract({ address: nameResolverAddr, abi: nresAbi, functionName: 'setAddr', args: [childNode, ownerAddr] }) } catch { /* */ }
       return childNode as `0x${string}`
     } catch (e) {
       console.warn(`[catalyst-seed] Name registration failed for ${label}:`, e)
-      return null
+      return childNode as `0x${string}`
     }
   }
 

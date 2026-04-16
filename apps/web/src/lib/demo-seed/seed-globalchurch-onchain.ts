@@ -8,17 +8,18 @@ import {
 } from '@/lib/contracts'
 import {
   ORGANIZATION_GOVERNANCE, ORGANIZATION_MEMBERSHIP, ALLIANCE,
-  GENERATIONAL_LINEAGE,
+  GENERATIONAL_LINEAGE, HAS_MEMBER,
   ROLE_OWNER, ROLE_BOARD_MEMBER, ROLE_OPERATOR, ROLE_MEMBER,
   ROLE_UPSTREAM, ROLE_DOWNSTREAM,
   ATL_LATITUDE, ATL_LONGITUDE, ATL_SPATIAL_CRS, ATL_SPATIAL_TYPE, ATL_CONTROLLER,
-  ATL_GENMAP_DATA,
+  ATL_GENMAP_DATA, ATL_PRIMARY_NAME, ATL_NAME_LABEL,
+  agentNameRegistryAbi, agentNameResolverAbi,
 } from '@smart-agent/sdk'
 import { agentAccountResolverAbi } from '@smart-agent/sdk'
-import { keccak256, toBytes } from 'viem'
+import { keccak256, toBytes, encodePacked } from 'viem'
 
 const TYPE_ORGANIZATION = keccak256(toBytes('atl:OrganizationAgent'))
-// TYPE_PERSON no longer needed — person agents deployed by generateDemoWallet
+const TYPE_HUB = keccak256(toBytes('atl:HubAgent'))
 const ZERO_HASH = '0x0000000000000000000000000000000000000000000000000000000000000000' as `0x${string}`
 
 async function deploy(salt: number): Promise<`0x${string}`> {
@@ -189,10 +190,8 @@ async function doSeed() {
   } catch { /* ignored */ }
 
   if (edgesComplete) {
-    console.log('[gc-seed] On-chain relationships already complete')
-    return
-  }
-
+    console.log('[gc-seed] On-chain relationships already complete — skipping edges, continuing to hub + naming')
+  } else {
   console.log('[gc-seed] Creating on-chain relationships...')
 
   // Person → Org governance/membership (10 edges)
@@ -218,6 +217,69 @@ async function doSeed() {
   await createEdge(graceChurch, youthMinistry, GENERATIONAL_LINEAGE, [ROLE_UPSTREAM, ROLE_DOWNSTREAM])
   await createEdge(graceChurch, smallGroups, GENERATIONAL_LINEAGE, [ROLE_UPSTREAM, ROLE_DOWNSTREAM])
   await createEdge(graceChurch, missionsTeam, GENERATIONAL_LINEAGE, [ROLE_UPSTREAM, ROLE_DOWNSTREAM])
+  } // end of edge creation else block
 
-  console.log('[gc-seed] Global.Church community deployed: 14 agents, 18 on-chain edges')
+  // ─── Hub Agent ──────────────────────────────────────────────────
+  console.log('[gc-seed] Deploying hub agent...')
+  const hubGC = await deploy(390001)
+  await register(hubGC, 'Global.Church Hub', 'Global.Church network hub — church collaboration, stewardship, mission agencies', TYPE_HUB)
+
+  // HAS_MEMBER edges
+  console.log('[gc-seed] Creating HAS_MEMBER edges...')
+  const allGcAgents = [gcNetwork, graceChurch, sbc, ecfa, wycliffe, ncf, youthMinistry, smallGroups, missionsTeam, paPastorJames, paSarahMitchell, paDanBusby, paJohnChesnut, paDavidWills]
+  for (const agent of allGcAgents) {
+    await createEdge(hubGC, agent, HAS_MEMBER as `0x${string}`, [ROLE_MEMBER])
+  }
+
+  // ─── Agent Naming (.agent namespace) ─────────────────────────────
+  const nameRegistryAddr = process.env.AGENT_NAME_REGISTRY_ADDRESS as `0x${string}`
+  const nameResolverAddr = process.env.AGENT_NAME_RESOLVER_ADDRESS as `0x${string}`
+  const resolverAddr = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}`
+
+  if (nameRegistryAddr && nameResolverAddr) {
+    console.log('[gc-seed] Registering .agent names...')
+    const wc = getWalletClient()
+    const pc = getPublicClient()
+
+    async function regName(parentNode: `0x${string}`, label: string, ownerAddr: `0x${string}`, fullName: string) {
+      const lh = keccak256(toBytes(label))
+      const cn = keccak256(encodePacked(['bytes32', 'bytes32'], [parentNode, lh]))
+      try {
+        const exists = await pc.readContract({ address: nameRegistryAddr, abi: agentNameRegistryAbi, functionName: 'recordExists', args: [cn] }) as boolean
+        if (!exists) {
+          const h = await wc.writeContract({ address: nameRegistryAddr, abi: agentNameRegistryAbi, functionName: 'register', args: [parentNode, label, ownerAddr, nameResolverAddr, 0n] })
+          await pc.waitForTransactionReceipt({ hash: h })
+        }
+        try { await wc.writeContract({ address: nameResolverAddr, abi: agentNameResolverAbi, functionName: 'setAddr', args: [cn, ownerAddr] }) } catch { /* */ }
+        if (resolverAddr) {
+          try { await wc.writeContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'setStringProperty', args: [ownerAddr, ATL_NAME_LABEL as `0x${string}`, label] }) } catch { /* */ }
+          try { await wc.writeContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'setStringProperty', args: [ownerAddr, ATL_PRIMARY_NAME as `0x${string}`, fullName] }) } catch { /* */ }
+        }
+        return cn
+      } catch (e) { console.warn(`[gc-seed] Name reg failed for ${label}:`, e); return cn }
+    }
+
+    const agentRoot = await pc.readContract({ address: nameRegistryAddr, abi: agentNameRegistryAbi, functionName: 'AGENT_ROOT' }) as `0x${string}`
+
+    const gcNode = await regName(agentRoot, 'globalchurch', hubGC, 'globalchurch.agent')
+    if (gcNode) {
+      await regName(gcNode, 'network', gcNetwork, 'network.globalchurch.agent')
+      await regName(gcNode, 'grace', graceChurch, 'grace.globalchurch.agent')
+      await regName(gcNode, 'sbc', sbc, 'sbc.globalchurch.agent')
+      await regName(gcNode, 'ecfa', ecfa, 'ecfa.globalchurch.agent')
+      await regName(gcNode, 'wycliffe', wycliffe, 'wycliffe.globalchurch.agent')
+      await regName(gcNode, 'ncf', ncf, 'ncf.globalchurch.agent')
+      await regName(gcNode, 'youth', youthMinistry, 'youth.globalchurch.agent')
+      await regName(gcNode, 'smallgroups', smallGroups, 'smallgroups.globalchurch.agent')
+      await regName(gcNode, 'missions', missionsTeam, 'missions.globalchurch.agent')
+      await regName(gcNode, 'james', paPastorJames, 'james.globalchurch.agent')
+      await regName(gcNode, 'sarah', paSarahMitchell, 'sarah.globalchurch.agent')
+      await regName(gcNode, 'dan', paDanBusby, 'dan.globalchurch.agent')
+      await regName(gcNode, 'chesnut', paJohnChesnut, 'chesnut.globalchurch.agent')
+      await regName(gcNode, 'wills', paDavidWills, 'wills.globalchurch.agent')
+      console.log('[gc-seed] Names registered under globalchurch.agent')
+    }
+  }
+
+  console.log('[gc-seed] Global.Church community deployed: 15 agents, 32+ on-chain edges')
 }

@@ -48,13 +48,19 @@ export async function GET(request: Request) {
     const allUsers = await db.select().from(schema.users)
 
     // Build name + type map from on-chain resolver
-    const { buildAgentNameMap } = await import('@/lib/agent-metadata')
+    const { buildAgentNameMap, getAgentMetadata: getMetaForGraph } = await import('@/lib/agent-metadata')
     const resolverNames = await buildAgentNameMap()
     const nameMap = new Map<string, string>()
     const typeMap = new Map<string, string>()
+    const agentNameMap = new Map<string, string>() // .agent names
     for (const [addr, info] of resolverNames) {
       nameMap.set(addr, info.name)
       typeMap.set(addr, info.type)
+      // Fetch .agent name
+      try {
+        const m = await getMetaForGraph(addr)
+        if (m.primaryName) agentNameMap.set(addr, m.primaryName)
+      } catch { /* ignored */ }
     }
 
     const nodes: GraphNode[] = []
@@ -70,7 +76,7 @@ export async function GET(request: Request) {
         id: address,
         label: nameMap.get(key) ?? `${address.slice(0, 6)}...${address.slice(-4)}`,
         type,
-        did: type === 'eoa' ? `eoa:${address}` : toDidEthr(CHAIN_ID, address as `0x${string}`),
+        did: type === 'eoa' ? `eoa:${address}` : (agentNameMap.get(key) || toDidEthr(CHAIN_ID, address as `0x${string}`)),
         address,
       })
     }
