@@ -49,7 +49,7 @@ export function WalletEventListener() {
 
   useEffect(() => {
     if (!ready) return
-    if (!authenticated && pathname !== '/' && !pathname.startsWith('/invite')) {
+    if (!authenticated && pathname !== '/' && !pathname.startsWith('/invite') && !pathname.startsWith('/h/')) {
       router.push('/')
     }
   }, [ready, authenticated, pathname, router])

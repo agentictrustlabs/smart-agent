@@ -1,0 +1,68 @@
+{
+  "@context": {
+    "sa": "https://smartagent.io/ontology/core#",
+    "sai": "https://smartagent.io/ontology/identity#",
+    "sar": "https://smartagent.io/ontology/relationships#",
+    "eth": "https://smartagent.io/ontology/eth#",
+    "sad": "https://smartagent.io/ontology/delegation#",
+    "sah": "https://smartagent.io/ontology/hub#",
+    "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+    "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+    "xsd": "http://www.w3.org/2001/XMLSchema#",
+    "prov": "http://www.w3.org/ns/prov#",
+    "skos": "http://www.w3.org/2004/02/skos/core#",
+
+    "Agent": "sa:Agent",
+    "PersonAgent": "sa:PersonAgent",
+    "OrganizationAgent": "sa:OrganizationAgent",
+    "AIAgentAccount": "sa:AIAgentAccount",
+    "HubAgent": "sa:HubAgent",
+
+    "DiscoveryAgent": "sa:DiscoveryClass",
+    "ValidatorAgent": "sa:ValidatorClass",
+    "ExecutorAgent": "sa:ExecutorClass",
+    "AssistantAgent": "sa:AssistantClass",
+    "OracleAgent": "sa:OracleClass",
+
+    "accountAddress": "sa:onChainAddress",
+    "displayName": "sa:displayName",
+    "description": "sa:description",
+    "isActive": { "@id": "sa:isActive", "@type": "xsd:boolean" },
+    "uaid": "sa:uaid",
+
+    "agentType": "sa:agentType",
+    "aiAgentClass": { "@id": "sai:aiAgentClass", "@type": "@id" },
+
+    "primaryName": "sa:primaryName",
+    "nameLabel": "sa:nameLabel",
+
+    "hasA2AEndpoint": "sai:a2aEndpoint",
+    "hasMCPServer": "sai:mcpServer",
+    "hasServiceEndpoint": "sai:serviceEndpoint",
+
+    "supportedTrustModel": "sai:supportedTrustModel",
+    "hasCapability": "sai:capability",
+
+    "hasController": "sai:hasOwnerAccount",
+    "operatedBy": { "@id": "sa:operatedBy", "@type": "@id" },
+
+    "metadataURI": "sai:metadataURI",
+    "schemaURI": "sai:schemaURI",
+
+    "entryPoint": "sai:entryPoint",
+    "delegationManager": "sai:delegationManager",
+
+    "latitude": "sa:latitude",
+    "longitude": "sa:longitude",
+    "spatialCRS": "sa:spatialCRS",
+    "spatialType": "sa:spatialType",
+
+    "RelationshipEdge": "sar:RelationshipEdge",
+    "subject": { "@id": "sar:subject", "@type": "@id" },
+    "object": { "@id": "sar:object", "@type": "@id" },
+    "relationshipType": { "@id": "sar:relationshipType", "@type": "@id" },
+    "hasRole": { "@id": "sar:hasRole", "@type": "@id" },
+    "edgeStatus": { "@id": "sar:edgeStatus", "@type": "@id" },
+    "edgeId": "sar:edgeId"
+  }
+}

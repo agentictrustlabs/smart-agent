@@ -1,18 +1,15 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
-const AUTH_COOKIE = 'privy-token'
-const SKIP_AUTH = process.env.NEXT_PUBLIC_SKIP_AUTH === 'true'
-
-const PUBLIC_PATHS = ['/', '/onboarding', '/dashboard', '/invite', '/setup']
+const PUBLIC_PATHS = ['/', '/h', '/onboarding', '/dashboard', '/invite', '/setup']
 
 export function middleware(request: NextRequest) {
-  if (SKIP_AUTH) {
-    return NextResponse.next()
-  }
-
   const { pathname } = request.nextUrl
-  const hasToken = request.cookies.has(AUTH_COOKIE)
+
+  // Check for either Privy or demo auth
+  const hasPrivyToken = request.cookies.has('privy-token')
+  const hasDemoCookie = request.cookies.has('demo-user')
+  const isAuthenticated = hasPrivyToken || hasDemoCookie
 
   const isPublicPath = PUBLIC_PATHS.some(
     (p) => pathname === p || pathname.startsWith(`${p}/`),
@@ -24,7 +21,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  if (!hasToken) {
+  if (!isAuthenticated) {
     const url = request.nextUrl.clone()
     url.pathname = '/'
     return NextResponse.redirect(url)

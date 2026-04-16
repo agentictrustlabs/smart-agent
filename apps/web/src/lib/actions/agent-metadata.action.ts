@@ -187,9 +187,9 @@ export async function generateMetadataJsonLd(agentAddress: string) {
 
     // Map bytes32 type/class to readable strings
     const typeLabels: Record<string, string> = {
-      [TYPE_PERSON]: 'atl:PersonAgent',
-      [TYPE_ORGANIZATION]: 'atl:OrganizationAgent',
-      [TYPE_AI_AGENT]: 'atl:AIAgent',
+      [TYPE_PERSON]: 'sa:PersonAgent',
+      [TYPE_ORGANIZATION]: 'sa:OrganizationAgent',
+      [TYPE_AI_AGENT]: 'sa:AIAgentAccount',
     }
     const classLabels: Record<string, string> = {
       [CLASS_DISCOVERY]: 'atl:DiscoveryAgent',
@@ -199,12 +199,22 @@ export async function generateMetadataJsonLd(agentAddress: string) {
       [CLASS_ORACLE]: 'atl:OracleAgent',
     }
 
-    const agentTypeName = typeLabels[core.agentType] ?? 'atl:AgentAccount'
+    const agentTypeName = typeLabels[core.agentType] ?? 'sa:Agent'
     const rdfType = classLabels[core.agentClass] || agentTypeName
 
+    // Read .agent name for the JSON-LD document
+    let primaryName = ''
+    try {
+      const { ATL_PRIMARY_NAME: PN } = await import('@smart-agent/sdk')
+      primaryName = await client.readContract({
+        address: resolverAddr, abi: agentAccountResolverAbi,
+        functionName: 'getStringProperty', args: [agentAddr, PN as `0x${string}`],
+      }) as string
+    } catch { /* */ }
+
     const doc: Record<string, unknown> = {
-      '@context': 'https://agentictrust.io/ontology/context.jsonld',
-      '@id': `did:ethr:${chainId}:${agentAddress}`,
+      '@context': 'https://smartagent.io/ontology/context.jsonld',
+      '@id': primaryName || `did:ethr:${chainId}:${agentAddress}`,
       '@type': rdfType,
       accountAddress: agentAddress,
       displayName: core.displayName,
@@ -212,6 +222,7 @@ export async function generateMetadataJsonLd(agentAddress: string) {
       agentType: agentTypeName,
     }
 
+    if (primaryName) doc.primaryName = primaryName
     if (core.description) doc.description = core.description
     if (core.agentClass !== ZERO_BYTES32) doc.aiAgentClass = classLabels[core.agentClass]
     if (capabilities.length > 0) doc.hasCapability = capabilities

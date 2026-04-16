@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import { usePrivy } from '@privy-io/react-auth'
 
-const SKIP_AUTH = process.env.NEXT_PUBLIC_SKIP_AUTH === 'true'
 const PRIVY_APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID ?? ''
 
 type PrivyUser = ReturnType<typeof usePrivy>['user']
@@ -31,12 +30,12 @@ function buildDemoUser(data: NonNullable<DemoAuthResponse['user']>): PrivyUser {
 
 export function useAuth() {
   const privy = usePrivy()
-  const [demoReady, setDemoReady] = useState(!SKIP_AUTH)
+  const [demoReady, setDemoReady] = useState(false)
   const [demoAuthenticated, setDemoAuthenticated] = useState(false)
   const [demoUser, setDemoUser] = useState<PrivyUser>(null)
 
+  // Always check for demo user cookie (demo users have real wallets)
   useEffect(() => {
-    if (!SKIP_AUTH) return
 
     let cancelled = false
 
@@ -114,9 +113,6 @@ export function useAuth() {
       }
     },
     logout: async () => {
-      // Clear demo cookie. Keep a2a-session — it's tied to the smart account
-      // and stays valid across reconnects (24h TTL). Only cleared when
-      // switching demo users (see DemoLoginPicker).
       // Clear httpOnly cookies via server
       await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {})
       setDemoAuthenticated(false)
@@ -124,6 +120,21 @@ export function useAuth() {
 
       if (privyAuthenticated) {
         await privy.logout()
+      }
+
+      // Disconnect wallet from site (revoke MetaMask permissions)
+      if (typeof window !== 'undefined') {
+        try {
+          const ethereum = (window as unknown as { ethereum?: { request?: (args: { method: string; params?: unknown[] }) => Promise<unknown> } }).ethereum
+          if (ethereum?.request) {
+            await ethereum.request({
+              method: 'wallet_revokePermissions',
+              params: [{ eth_accounts: {} }],
+            })
+          }
+        } catch {
+          // wallet_revokePermissions not supported by all wallets
+        }
       }
     },
   }

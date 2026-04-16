@@ -51,7 +51,8 @@ export function listAgentsQuery(opts: AgentQueryOptions = {}): string {
     filters.push(`FILTER(
       CONTAINS(LCASE(?name), "${escaped}") ||
       CONTAINS(LCASE(?address), "${escaped}") ||
-      CONTAINS(LCASE(COALESCE(?desc, "")), "${escaped}")
+      CONTAINS(LCASE(COALESCE(?desc, "")), "${escaped}") ||
+      CONTAINS(LCASE(COALESCE(?primaryNameVal, "")), "${escaped}")
     )`)
   }
   if (opts.capability) {
@@ -79,6 +80,8 @@ SELECT
   (SAMPLE(?classLocal) AS ?aiClass)
   (SAMPLE(?activeVal) AS ?isActive)
   (SAMPLE(?uaidVal) AS ?uaid)
+  (SAMPLE(?primaryNameVal) AS ?primaryName)
+  (SAMPLE(?nameLabelVal) AS ?nameLabel)
   (SAMPLE(?tmplVal) AS ?templateId)
   (SAMPLE(?a2aVal) AS ?a2aEndpoint)
   (SAMPLE(?mcpVal) AS ?mcpServer)
@@ -101,6 +104,8 @@ WHERE {
     OPTIONAL { ?agent sa:agentType ?typeVal }
     OPTIONAL { ?agent sa:isActive ?activeVal }
     OPTIONAL { ?agent sa:uaid ?uaidVal }
+    OPTIONAL { ?agent sa:primaryName ?primaryNameVal }
+    OPTIONAL { ?agent sa:nameLabel ?nameLabelVal }
 
     # Traverse into SmartAgentIdentity for metadata
     OPTIONAL {

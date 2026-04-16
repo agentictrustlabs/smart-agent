@@ -420,3 +420,39 @@ sai:NANDAIdentity
     rdfs:subClassOf sai:AgentIdentity ;
     rdfs:label "NANDA Identity" ;
     rdfs:comment "Future: identity facet from Name-and-Address (NANDA) registry." .
+
+# ─── Agent Naming (.agent namespace) ───────────────────────────────
+
+sa:AgentName
+    a owl:Class ;
+    rdfs:subClassOf sai:AgentIdentity ;
+    rdfs:label "Agent Name" ;
+    rdfs:comment "A hierarchical name in the .agent namespace. Names are paths through NAMESPACE_CONTAINS relationship edges." .
+
+sa:primaryName
+    a rdf:Property ;
+    rdfs:domain sa:Agent ;
+    rdfs:range xsd:string ;
+    rdfs:label "Primary Name" ;
+    rdfs:comment "The agent's primary fully-qualified .agent name (e.g., david.fortcollins.catalyst.agent)." ;
+    sa:onChainTermHash "keccak256('atl:primaryName')" .
+
+sa:nameLabel
+    a rdf:Property ;
+    rdfs:domain sa:Agent ;
+    rdfs:range xsd:string ;
+    rdfs:label "Name Label" ;
+    rdfs:comment "The label for this agent at its level in the .agent namespace (e.g., 'david')." ;
+    sa:onChainTermHash "keccak256('atl:nameLabel')" .
+
+sa:NamespaceContainsRelationship
+    a owl:Class ;
+    rdfs:subClassOf sar:RelationshipEdge ;
+    rdfs:label "Namespace Contains" ;
+    rdfs:comment "Parent namespace contains child agent — forms the .agent hierarchical naming tree. The edge metadataURI carries the label for this level." .
+
+sa:DataAccessDelegationRelationship
+    a owl:Class ;
+    rdfs:subClassOf sar:RelationshipEdge ;
+    rdfs:label "Data Access Delegation" ;
+    rdfs:comment "Person-to-person data access grant — subject allows object to read specified data from MCP backends per the scope defined in the delegation caveats and metadataURI." .

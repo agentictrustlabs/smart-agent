@@ -49,7 +49,7 @@ function kbAgentToCardData(agent: KBAgent): AgentCardData {
   return {
     address: agent.address,
     displayName: agent.displayName,
-    primaryName: '',  // populated later from on-chain resolver
+    primaryName: agent.primaryName,  // from GraphDB (synced from on-chain)
     description: agent.description,
     agentType: agent.agentType,
     agentTypeLabel: TYPE_LABELS[agent.agentType] ?? 'Unknown',
@@ -104,16 +104,19 @@ export async function listAllAgents(): Promise<AgentCardData[]> {
       }),
     )
 
-    // Enrich with .agent names from on-chain resolver
-    try {
-      const { getAgentMetadata } = await import('@/lib/agent-metadata')
-      await Promise.all(results.map(async (card) => {
-        try {
-          const meta = await getAgentMetadata(card.address)
-          if (meta.primaryName) card.primaryName = meta.primaryName
-        } catch { /* resolver may not have this agent */ }
-      }))
-    } catch { /* resolver unavailable */ }
+    // Enrich agents missing primaryName from GraphDB with on-chain data
+    const missingNames = results.filter(r => !r.primaryName)
+    if (missingNames.length > 0) {
+      try {
+        const { getAgentMetadata } = await import('@/lib/agent-metadata')
+        await Promise.all(missingNames.map(async (card) => {
+          try {
+            const meta = await getAgentMetadata(card.address)
+            if (meta.primaryName) card.primaryName = meta.primaryName
+          } catch { /* resolver may not have this agent */ }
+        }))
+      } catch { /* resolver unavailable */ }
+    }
 
     return results
   } catch (error) {

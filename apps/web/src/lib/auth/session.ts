@@ -3,7 +3,6 @@ import { cookies } from 'next/headers'
 
 const PRIVY_APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID ?? ''
 const PRIVY_APP_SECRET = process.env.PRIVY_APP_SECRET ?? ''
-const SKIP_AUTH = process.env.NEXT_PUBLIC_SKIP_AUTH === 'true'
 
 let privyClient: PrivyClient | null = null
 
@@ -112,9 +111,8 @@ export const DEMO_USERS: Record<string, { userId: string; walletAddress: string;
 
 export async function getSession(): Promise<AuthSession | null> {
   const cookieStore = await cookies()
-  const demoSession = SKIP_AUTH
-    ? await getDemoSessionFromCookie(cookieStore.get('demo-user')?.value)
-    : null
+  // Always check demo cookie — demo users have real wallets and valid sessions
+  const demoSession = await getDemoSessionFromCookie(cookieStore.get('demo-user')?.value)
   const authToken = cookieStore.get('privy-token')?.value
 
   if (!authToken) {

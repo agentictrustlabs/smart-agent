@@ -97,6 +97,8 @@ sar:HasMember               a sar:NetworkRelationship,       skos:Concept ; skos
 sar:GenerationalLineage     a sar:NetworkRelationship,       skos:Concept ; skos:inScheme sar:RelationshipTypeScheme ; rdfs:label "Generational Lineage"  ; skos:notation "generational-lineage"    ; sa:onChainTermHash "keccak256('atl:GenerationalLineageRelationship')" .
 sar:CoachingMentorship      a sar:AssuranceRelationship,     skos:Concept ; skos:inScheme sar:RelationshipTypeScheme ; rdfs:label "Coaching"              ; skos:notation "coaching-mentorship"     ; sa:onChainTermHash "keccak256('atl:CoachingMentorshipRelationship')" .
 sar:PersonalInfluence       a sar:NetworkRelationship,       skos:Concept ; skos:inScheme sar:RelationshipTypeScheme ; rdfs:label "Personal Influence"    ; skos:notation "personal-influence"      ; sa:onChainTermHash "keccak256('atl:PersonalInfluenceRelationship')" .
+sar:DataAccessDelegation    a sar:NetworkRelationship,       skos:Concept ; skos:inScheme sar:RelationshipTypeScheme ; rdfs:label "Data Access Delegation" ; skos:notation "data-access-delegation" ; sa:onChainTermHash "keccak256('atl:DataAccessDelegationRelationship')" .
+sar:NamespaceContains       a sar:NetworkRelationship,       skos:Concept ; skos:inScheme sar:RelationshipTypeScheme ; rdfs:label "Namespace Contains"    ; skos:notation "namespace-contains"      ; sa:onChainTermHash "keccak256('atl:NamespaceContainsRelationship')" .
 
 
 # =============================================================================
@@ -182,6 +184,14 @@ sar:InfluenceContact a sar:NetworkRole, skos:Concept ; skos:inScheme sar:RoleSch
 sar:Coach    a sar:AssuranceRole, skos:Concept ; skos:inScheme sar:RoleScheme ; rdfs:label "coach"    ; skos:notation "coach"    ; sa:onChainTermHash "keccak256('atl:CoachRole')"    ; sar:applicableToRelationshipType sar:CoachingMentorship .
 sar:Disciple a sar:AssuranceRole, skos:Concept ; skos:inScheme sar:RoleScheme ; rdfs:label "disciple" ; skos:notation "disciple" ; sa:onChainTermHash "keccak256('atl:DiscipleRole')" ; sar:applicableToRelationshipType sar:CoachingMentorship .
 
+# ─── Data Access Delegation ─────────────────────────────────────────
+sar:DataGrantor a sar:NetworkRole, skos:Concept ; skos:inScheme sar:RoleScheme ; rdfs:label "data-grantor" ; skos:notation "data-grantor" ; sa:onChainTermHash "keccak256('atl:DataGrantorRole')" ; sar:applicableToRelationshipType sar:DataAccessDelegation .
+sar:DataGrantee a sar:NetworkRole, skos:Concept ; skos:inScheme sar:RoleScheme ; rdfs:label "data-grantee" ; skos:notation "data-grantee" ; sa:onChainTermHash "keccak256('atl:DataGranteeRole')" ; sar:applicableToRelationshipType sar:DataAccessDelegation .
+
+# ─── Namespace Hierarchy ────────────────────────────────────────────
+sar:NamespaceParent a sar:NetworkRole, skos:Concept ; skos:inScheme sar:RoleScheme ; rdfs:label "namespace-parent" ; skos:notation "namespace-parent" ; sa:onChainTermHash "keccak256('atl:NamespaceParentRole')" ; sar:applicableToRelationshipType sar:NamespaceContains .
+sar:NamespaceChild  a sar:NetworkRole, skos:Concept ; skos:inScheme sar:RoleScheme ; rdfs:label "namespace-child"  ; skos:notation "namespace-child"  ; sa:onChainTermHash "keccak256('atl:NamespaceChildRole')"  ; sar:applicableToRelationshipType sar:NamespaceContains .
+
 
 # =============================================================================
 # Caveat Enforcer Type Vocabulary
@@ -194,6 +204,8 @@ sad:TimestampEnforcer        a sad:CaveatEnforcerType, skos:Concept ; skos:inSch
 sad:ValueEnforcer            a sad:CaveatEnforcerType, skos:Concept ; skos:inScheme sad:CaveatEnforcerScheme ; rdfs:label "Value Enforcer"            ; skos:notation "value"          ; rdfs:comment "Maximum ETH value per call." .
 sad:AllowedTargetsEnforcer   a sad:CaveatEnforcerType, skos:Concept ; skos:inScheme sad:CaveatEnforcerScheme ; rdfs:label "Allowed Targets Enforcer"  ; skos:notation "allowedTargets" ; rdfs:comment "Restrict to specific target contract addresses." .
 sad:AllowedMethodsEnforcer   a sad:CaveatEnforcerType, skos:Concept ; skos:inScheme sad:CaveatEnforcerScheme ; rdfs:label "Allowed Methods Enforcer"  ; skos:notation "allowedMethods" ; rdfs:comment "Restrict to specific function selectors." .
+sad:DataScopeEnforcer        a sad:CaveatEnforcerType, skos:Concept ; skos:inScheme sad:CaveatEnforcerScheme ; rdfs:label "Data Scope Enforcer"       ; skos:notation "dataScope"      ; rdfs:comment "Data isolation boundaries for cross-principal access." .
+sad:NameScopeEnforcer        a sad:CaveatEnforcerType, skos:Concept ; skos:inScheme sad:CaveatEnforcerScheme ; rdfs:label "Name Scope Enforcer"       ; skos:notation "nameScope"      ; rdfs:comment "Constrain delegation to a .agent name subtree." .
 
 
 # =============================================================================

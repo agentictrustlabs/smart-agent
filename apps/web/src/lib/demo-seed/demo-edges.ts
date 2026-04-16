@@ -7,8 +7,6 @@ import { db, schema } from '@/db'
 import { listRegisteredAgents } from '@/lib/agent-resolver'
 import { ORGANIZATION_MEMBERSHIP, relationshipTypeName } from '@smart-agent/sdk'
 
-const SKIP_AUTH = process.env.NEXT_PUBLIC_SKIP_AUTH === 'true'
-
 export interface DemoEdge {
   subjectAddress: string
   objectAddress: string
@@ -22,8 +20,6 @@ export interface DemoEdge {
  * Returns both person→org and org→org edges.
  */
 export async function getDemoEdgesForOrg(orgAddress: string): Promise<{ incoming: DemoEdge[]; outgoing: DemoEdge[] }> {
-  if (!SKIP_AUTH) return { incoming: [], outgoing: [] }
-
   const addr = orgAddress.toLowerCase()
   const incoming: DemoEdge[] = []
   const outgoing: DemoEdge[] = []
@@ -58,8 +54,6 @@ export async function getDemoEdgesForOrg(orgAddress: string): Promise<{ incoming
  * Get the user's roles on a specific org from demo edges.
  */
 export async function getDemoUserRolesOnOrg(personAgentAddress: string, orgAddress: string): Promise<string[]> {
-  if (!SKIP_AUTH) return []
-
   const { incoming } = await getDemoEdgesForOrg(orgAddress)
   const edge = incoming.find(entry => entry.subjectAddress === personAgentAddress.toLowerCase())
   return edge?.roles ?? []

@@ -12,6 +12,10 @@ export interface KBAgent {
   iri: string
   address: string
   displayName: string
+  /** .agent primary name (e.g., "david.fortcollins.catalyst.agent") */
+  primaryName: string
+  /** Name label at this level (e.g., "david") */
+  nameLabel: string
   description: string
   agentType: 'person' | 'org' | 'ai' | 'hub' | 'unknown'
   aiAgentClass: string

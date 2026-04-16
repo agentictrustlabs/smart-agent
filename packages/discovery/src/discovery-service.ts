@@ -56,6 +56,8 @@ function parseAgentRow(row: Record<string, { value: string }>): KBAgent {
     iri: str(row, 'agent'),
     address: str(row, 'address'),
     displayName: str(row, 'name'),
+    primaryName: str(row, 'primaryName'),
+    nameLabel: str(row, 'nameLabel'),
     description: str(row, 'description'),
     agentType: (str(row, 'agentType') || 'unknown') as KBAgent['agentType'],
     aiAgentClass: stripClassSuffix(str(row, 'aiClass')),

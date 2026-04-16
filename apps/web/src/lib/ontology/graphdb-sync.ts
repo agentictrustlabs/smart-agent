@@ -27,6 +27,8 @@ import {
   agentAccountResolverAbi,
   ATL_CONTROLLER, ATL_CAPABILITY, ATL_SUPPORTED_TRUST,
   ATL_A2A_ENDPOINT, ATL_MCP_SERVER,
+  ATL_PRIMARY_NAME, ATL_NAME_LABEL,
+  ATL_LATITUDE, ATL_LONGITUDE,
   TYPE_PERSON, TYPE_ORGANIZATION, TYPE_AI_AGENT, TYPE_HUB,
   AGENT_TYPE_LABELS, AI_CLASS_LABELS,
   roleName, relationshipTypeName,
@@ -145,11 +147,21 @@ export async function emitAgentsTurtle(): Promise<string> {
       const classLabel = AI_CLASS_LABELS[core.agentClass]
 
       // ─── Agent Node ─────────────────────────────────────────────
+      // Read .agent name early so we can emit on the agent node
+      let primaryName = ''
+      let nameLabel = ''
+      try {
+        primaryName = await client.readContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'getStringProperty', args: [agentAddr, ATL_PRIMARY_NAME as `0x${string}`] }) as string
+        nameLabel = await client.readContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'getStringProperty', args: [agentAddr, ATL_NAME_LABEL as `0x${string}`] }) as string
+      } catch { /* */ }
+
       const a = agentIRI(agentAddr)
       lines.push(`${a} a sa:${typeName} ;`)
       lines.push(`    sa:uaid ${lit(uaid(agentAddr))} ;`)
       lines.push(`    sa:onChainAddress ${lit(agentAddr)} ;`)
       lines.push(`    sa:displayName ${lit(displayName)} ;`)
+      if (primaryName) lines.push(`    sa:primaryName ${lit(primaryName)} ;`)
+      if (nameLabel) lines.push(`    sa:nameLabel ${lit(nameLabel)} ;`)
       if (core.description) lines.push(`    sa:description ${lit(core.description)} ;`)
       if (typeLabel) lines.push(`    sa:agentType ${lit(typeLabel.toLowerCase())} ;`)
       lines.push(`    sa:isActive ${litTyped(String(core.active), 'http://www.w3.org/2001/XMLSchema#boolean')} ;`)
@@ -214,6 +226,18 @@ export async function emitAgentsTurtle(): Promise<string> {
 
       // Metadata URI
       if (core.metadataURI) lines.push(`    sai:metadataURI ${lit(core.metadataURI)} ;`)
+
+      // .agent naming (values already read above for the Agent node)
+      if (primaryName) lines.push(`    sa:primaryName ${lit(primaryName)} ;`)
+      if (nameLabel) lines.push(`    sa:nameLabel ${lit(nameLabel)} ;`)
+
+      // Geospatial
+      try {
+        const lat = await client.readContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'getStringProperty', args: [agentAddr, ATL_LATITUDE as `0x${string}`] }) as string
+        const lon = await client.readContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'getStringProperty', args: [agentAddr, ATL_LONGITUDE as `0x${string}`] }) as string
+        if (lat) lines.push(`    sa:latitude ${lit(lat)} ;`)
+        if (lon) lines.push(`    sa:longitude ${lit(lon)} ;`)
+      } catch { /* geo not set */ }
 
       closeBlock(lines)
 
@@ -305,6 +329,9 @@ export async function emitAgentsTurtle(): Promise<string> {
 // GraphDB Sync (via @smart-agent/discovery)
 // ---------------------------------------------------------------------------
 
+const TBOX_GRAPH = 'https://smartagent.io/graph/schema/tbox'
+const CBOX_GRAPH = 'https://smartagent.io/graph/schema/cbox'
+
 export async function syncOnChainToGraphDB(): Promise<{ success: boolean; message: string; agentCount?: number }> {
   console.log('[ontology-sync] Starting on-chain → GraphDB sync...')
 
@@ -317,10 +344,51 @@ export async function syncOnChainToGraphDB(): Promise<{ success: boolean; messag
   console.log(`[ontology-sync] Emitted ${agentCount} agents. Uploading to GraphDB...`)
 
   const discovery = DiscoveryService.fromEnv()
+  const client = discovery.getClient()
+
   try {
-    await discovery.getClient().uploadTurtle(turtle, DATA_GRAPH)
-    console.log(`[ontology-sync] Sync complete: ${agentCount} agents uploaded.`)
-    return { success: true, message: `Uploaded ${agentCount} agents to ${DATA_GRAPH}`, agentCount }
+    // Upload agent data
+    await client.uploadTurtle(turtle, DATA_GRAPH)
+    console.log(`[ontology-sync] Agent data uploaded: ${agentCount} agents`)
+
+    // Upload T-Box (ontology schema) from docs/ontology/tbox/*.ttl
+    try {
+      const fs = await import('fs')
+      const path = await import('path')
+      const tboxDir = path.resolve(process.cwd(), '../../docs/ontology/tbox')
+      const cboxDir = path.resolve(process.cwd(), '../../docs/ontology/cbox')
+
+      // Collect T-Box files
+      if (fs.existsSync(tboxDir)) {
+        const tboxFiles = fs.readdirSync(tboxDir).filter((f: string) => f.endsWith('.ttl'))
+        let tboxTurtle = ''
+        for (const file of tboxFiles) {
+          tboxTurtle += fs.readFileSync(path.join(tboxDir, file), 'utf-8') + '\n'
+        }
+        if (tboxTurtle) {
+          await client.uploadTurtle(tboxTurtle, TBOX_GRAPH)
+          console.log(`[ontology-sync] T-Box uploaded: ${tboxFiles.length} files to ${TBOX_GRAPH}`)
+        }
+      }
+
+      // Collect C-Box files
+      if (fs.existsSync(cboxDir)) {
+        const cboxFiles = fs.readdirSync(cboxDir).filter((f: string) => f.endsWith('.ttl'))
+        let cboxTurtle = ''
+        for (const file of cboxFiles) {
+          cboxTurtle += fs.readFileSync(path.join(cboxDir, file), 'utf-8') + '\n'
+        }
+        if (cboxTurtle) {
+          await client.uploadTurtle(cboxTurtle, CBOX_GRAPH)
+          console.log(`[ontology-sync] C-Box uploaded: ${cboxFiles.length} files to ${CBOX_GRAPH}`)
+        }
+      }
+    } catch (schemaErr) {
+      console.warn('[ontology-sync] Schema upload failed (non-fatal):', schemaErr instanceof Error ? schemaErr.message : schemaErr)
+    }
+
+    console.log(`[ontology-sync] Sync complete: ${agentCount} agents + schema uploaded.`)
+    return { success: true, message: `Uploaded ${agentCount} agents + ontology schema to GraphDB`, agentCount }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'GraphDB upload failed'
     console.error(`[ontology-sync] Upload failed: ${message}`)

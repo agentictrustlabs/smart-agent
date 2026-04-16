@@ -193,6 +193,7 @@ export const HUB_PROFILES: HubProfile[] = [
     navItems: [
       { href: '/catalyst', label: 'Home', section: 'primary', exact: true, activePrefixes: ['/', '/catalyst', '/dashboard'] },
       { href: '/agents', label: 'Agents', section: 'primary', activePrefixes: ['/agents'] },
+      { href: '/explorer', label: 'Explorer', section: 'primary', activePrefixes: ['/explorer'] },
       { href: '/steward', label: 'Management', section: 'primary', activePrefixes: ['/steward', '/treasury', '/reviews', '/network', '/trust', '/groups', '/activity', '/nurture', '/oikos'] },
       { href: '/settings', label: 'Settings', section: 'admin', requiresCapability: 'settings' },
       { href: '/me', label: 'Profile', section: 'personal' },

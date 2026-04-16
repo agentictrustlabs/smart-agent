@@ -1,16 +1,13 @@
-import { ConnectWalletButton } from '@/components/auth/ConnectWalletButton'
-import { AuthGate } from '@/components/auth/AuthGate'
-import { DemoLoginPicker } from '@/components/auth/DemoLoginPicker'
-
-const SKIP_AUTH = process.env.NEXT_PUBLIC_SKIP_AUTH === 'true'
+import Link from 'next/link'
+import { HUB_LANDING_CONFIGS } from '@/lib/hub-routes'
 
 export default function HomePage() {
   return (
-    <main data-page="home">
-      <AuthGate />
-      <div data-component="hero">
-        {/* Logo */}
-        <div data-component="hero-logo">
+    <main style={{ minHeight: '100vh', background: '#faf8f3', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+
+      {/* Hero */}
+      <div style={{ textAlign: 'center', padding: '3rem 2rem 1.5rem', maxWidth: 600 }}>
+        <div style={{ marginBottom: '1rem' }}>
           <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
             <rect width="48" height="48" rx="12" fill="#8b5e3c" />
             <path d="M14 24L20 18L26 24L32 18L38 24" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -19,48 +16,44 @@ export default function HomePage() {
           </svg>
         </div>
 
-        <h1>Smart Agent</h1>
-        <p data-component="hero-tagline">
-          Intelligent organization management with AI-powered agents, delegated authority, and verifiable trust
+        <h1 style={{ fontSize: '2rem', fontWeight: 800, color: '#3a3028', margin: '0 0 0.5rem' }}>
+          Smart Agent
+        </h1>
+        <p style={{ fontSize: '1rem', color: '#9a8c7e', margin: '0 0 0.5rem', lineHeight: 1.6 }}>
+          Agent Smart Account Kit — ERC-4337 identity, delegated authority, and the .agent namespace for the agentic web
         </p>
+      </div>
 
-        {/* Feature pills */}
-        <div data-component="hero-features">
-          <span data-component="feature-pill">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="1" width="12" height="12" rx="3" stroke="currentColor" strokeWidth="1.5"/><path d="M5 7L6.5 8.5L9 5.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-            ERC-4337 Accounts
-          </span>
-          <span data-component="feature-pill">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.5"/><path d="M7 4.5V7L9 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-            On-Chain Trust
-          </span>
-          <span data-component="feature-pill">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 7.5L5.5 10L11 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            Delegated Authority
-          </span>
-          <span data-component="feature-pill">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2L9 5H12L9.5 7.5L10.5 11L7 9L3.5 11L4.5 7.5L2 5H5L7 2Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/></svg>
-            AI Agents
-          </span>
+      {/* Hub selector */}
+      <div style={{ maxWidth: 700, width: '100%', padding: '0 2rem 3rem' }}>
+        <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#9a8c7e', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.75rem', textAlign: 'center' }}>
+          Select a Hub
         </div>
 
-        {/* Wallet connect — always available */}
-        <ConnectWalletButton />
-
-        {/* Demo communities — available in demo mode */}
-        {SKIP_AUTH && (
-          <>
-            <div data-component="hero-divider" style={{
-              display: 'flex', alignItems: 'center', gap: '1rem',
-              margin: '1.5rem 0', color: '#9a8c7e', fontSize: '0.8rem',
-            }}>
-              <span style={{ flex: 1, height: 1, background: '#e0dbd4' }} />
-              or explore a demo community
-              <span style={{ flex: 1, height: 1, background: '#e0dbd4' }} />
-            </div>
-            <DemoLoginPicker />
-          </>
-        )}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.75rem' }}>
+          {HUB_LANDING_CONFIGS.map(hub => (
+            <Link
+              key={hub.slug}
+              href={`/h/${hub.slug}`}
+              style={{
+                display: 'block',
+                padding: '1.25rem', background: '#fff', border: '1px solid #ece6db',
+                borderRadius: 12, textDecoration: 'none', transition: 'all 0.15s',
+                borderLeft: `4px solid ${hub.color}`,
+              }}
+            >
+              <div style={{ fontWeight: 700, fontSize: '1rem', color: '#3a3028', marginBottom: '0.35rem' }}>
+                {hub.name}
+              </div>
+              <p style={{ fontSize: '0.78rem', color: '#9a8c7e', margin: '0 0 0.5rem', lineHeight: 1.5 }}>
+                {hub.description}
+              </p>
+              <div style={{ fontSize: '0.7rem', color: hub.color, fontWeight: 600 }}>
+                {hub.demoUsers.length} demo users →
+              </div>
+            </Link>
+          ))}
+        </div>
       </div>
     </main>
   )
