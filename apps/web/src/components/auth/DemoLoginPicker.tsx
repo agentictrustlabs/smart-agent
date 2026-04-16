@@ -69,7 +69,8 @@ export function DemoLoginPicker() {
   async function selectUser(key: string) {
     setLoading(true)
 
-    // Clear any active Privy/wallet session before switching to demo user
+    // Clear any active sessions before switching to demo user
+    document.cookie = 'a2a-session=; path=/; max-age=0'
     if (privyAuthenticated) {
       await resetPrivySession()
     }

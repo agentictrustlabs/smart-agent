@@ -39,17 +39,16 @@ export function AuthGate() {
       })
       .then((r) => r.json())
       .then(async (profile) => {
-        // Clear stale demo session cookies when Privy user logs in
+        // Clear stale demo cookies (but NOT a2a-session — it may still be valid
+        // for this wallet, and re-bootstrapping requires MetaMask popups)
         document.cookie = 'demo-user=; path=/; max-age=0'
-        document.cookie = 'a2a-session=; path=/; max-age=0'
 
-        // Bootstrap A2A session (will fail gracefully for Privy users
-        // since they need client-side wallet signing, not yet implemented)
+        // Try server-side A2A bootstrap (works for demo users).
+        // For Privy users this will fail gracefully — they bootstrap
+        // via the "Connect Agent Session" button on the profile page.
         try {
           await fetch('/api/a2a/bootstrap', { method: 'POST' })
-        } catch {
-          console.warn('[AuthGate] A2A session bootstrap not available')
-        }
+        } catch { /* expected for Privy users */ }
 
         if (!profile.name || profile.name === 'Agent User' || !profile.email) {
           router.push('/onboarding')

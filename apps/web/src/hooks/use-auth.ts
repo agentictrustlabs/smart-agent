@@ -118,8 +118,10 @@ export function useAuth() {
       }
     },
     logout: async () => {
+      // Clear demo cookie. Keep a2a-session — it's tied to the smart account
+      // and stays valid across reconnects (24h TTL). Only cleared when
+      // switching demo users (see DemoLoginPicker).
       document.cookie = 'demo-user=; path=/; max-age=0'
-      document.cookie = 'a2a-session=; path=/; max-age=0'
       setDemoAuthenticated(false)
       setDemoUser(null)
 

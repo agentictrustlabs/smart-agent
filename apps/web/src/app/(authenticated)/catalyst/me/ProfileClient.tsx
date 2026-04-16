@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useEffect } from 'react'
 import { saveProfileViaDelegation, loadProfileViaDelegation } from '@/lib/actions/profile.action'
+import { useA2ASession } from '@/hooks/use-a2a-session'
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -130,16 +131,17 @@ export function ProfileClient({
   const [pending, startTransition] = useTransition()
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [bootstrapping, setBootstrapping] = useState(false)
   const [loadingProfile, setLoadingProfile] = useState(false)
 
-  // Load existing profile from MCP via delegation chain on mount
-  useEffect(() => {
-    const token = getA2AToken()
-    if (!token) return
+  // Client-side A2A session for Privy/MetaMask users
+  const a2a = useA2ASession()
+  const [sessionValid, setSessionValid] = useState<boolean | null>(null) // null = unknown
 
+  // Load profile from MCP via delegation chain. Returns true if successful.
+  async function loadProfile(token: string): Promise<boolean> {
     setLoadingProfile(true)
-    loadProfileViaDelegation(token).then((result) => {
+    try {
+      const result = await loadProfileViaDelegation(token)
       if (result.success && result.profile) {
         const p = result.profile as Record<string, string | null>
         if (p.displayName) setName(p.displayName)
@@ -155,9 +157,43 @@ export function ProfileClient({
         if (p.postalCode) setPostalCode(p.postalCode)
         if (p.country) setCountry(p.country)
         if (p.location) setLocation(p.location)
+        setSessionValid(true)
+        setLoadingProfile(false)
+        return true
       }
-      setLoadingProfile(false)
-    }).catch(() => setLoadingProfile(false))
+    } catch { /* load failed */ }
+    setSessionValid(false)
+    setLoadingProfile(false)
+    return false
+  }
+
+  // On mount: try to load profile. If session is invalid, auto-bootstrap for demo users.
+  useEffect(() => {
+    async function init() {
+      const token = getA2AToken() ?? a2a.sessionToken
+
+      // Try existing token first
+      if (token) {
+        const ok = await loadProfile(token)
+        if (ok) return
+        // Stale cookie — clear it
+        document.cookie = 'a2a-session=; path=/; max-age=0'
+      }
+
+      // No valid session — try server-side bootstrap (works for demo users)
+      try {
+        const res = await fetch('/api/a2a/bootstrap', { method: 'POST' })
+        const data = await res.json()
+        if (data.success && data.sessionToken) {
+          const ok = await loadProfile(data.sessionToken)
+          if (ok) return
+        }
+      } catch { /* server bootstrap not available */ }
+
+      // Both failed — Privy users need to click "Connect Agent Session"
+      setSessionValid(false)
+    }
+    init()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Read A2A session token from cookie
@@ -168,23 +204,31 @@ export function ProfileClient({
   }
 
   async function handleBootstrapSession() {
-    setBootstrapping(true)
     setError(null)
+
+    // Try server-side bootstrap first (demo users with stored keys)
     try {
       const res = await fetch('/api/a2a/bootstrap', { method: 'POST' })
       const data = await res.json()
-      if (!data.success) {
-        setError(`Agent session failed: ${data.error}`)
+      if (data.success && data.sessionToken) {
+        a2a.refreshToken()
+        await loadProfile(data.sessionToken)
+        return
       }
-    } catch (e) {
-      setError('Failed to connect agent session')
+    } catch { /* not available */ }
+
+    // Server-side failed — client-side MetaMask signing
+    const token = await a2a.bootstrap()
+    if (token) {
+      await loadProfile(token)
+    } else if (a2a.error) {
+      setError(a2a.error)
     }
-    setBootstrapping(false)
   }
 
   function handleSave() {
     setError(null)
-    const token = getA2AToken()
+    const token = getA2AToken() ?? a2a.sessionToken
     startTransition(async () => {
       const result = await saveProfileViaDelegation(token, {
         displayName: name || undefined,
@@ -348,7 +392,7 @@ export function ProfileClient({
       </div>
 
       {/* Agent session status + connect button */}
-      {!getA2AToken() && (
+      {sessionValid === false && (
         <div style={{
           background: '#e3f2fd', border: '1px solid #90caf9', borderRadius: 8,
           padding: '0.75rem', marginBottom: '0.75rem',
@@ -361,19 +405,19 @@ export function ProfileClient({
           </p>
           <button
             onClick={handleBootstrapSession}
-            disabled={bootstrapping}
+            disabled={a2a.bootstrapping}
             style={{
               padding: '0.45rem 1rem', background: '#1565c0', color: '#fff',
               border: 'none', borderRadius: 6, fontWeight: 600, fontSize: '0.82rem',
-              cursor: bootstrapping ? 'wait' : 'pointer', opacity: bootstrapping ? 0.7 : 1,
+              cursor: a2a.bootstrapping ? 'wait' : 'pointer', opacity: a2a.bootstrapping ? 0.7 : 1,
             }}
           >
-            {bootstrapping ? 'Connecting...' : 'Connect Agent Session'}
+            {a2a.bootstrapping ? 'Connecting...' : 'Connect Agent Session'}
           </button>
         </div>
       )}
 
-      {getA2AToken() && (
+      {sessionValid === true && (
         <div style={{
           background: '#e8f5e9', border: '1px solid #a5d6a7', borderRadius: 8,
           padding: '0.6rem 0.8rem', marginBottom: '0.75rem',
@@ -384,13 +428,13 @@ export function ProfileClient({
       )}
 
       {/* Error display */}
-      {error && (
+      {(error || a2a.error) && (
         <div style={{
           background: '#ffebee', border: '1px solid #ef9a9a', borderRadius: 8,
           padding: '0.6rem 0.8rem', marginBottom: '0.75rem',
           fontSize: '0.78rem', color: '#c62828', lineHeight: 1.4,
         }}>
-          <strong>Save failed:</strong> {error}
+          <strong>{error ? 'Save failed:' : 'Session error:'}</strong> {error || a2a.error}
         </div>
       )}
 
