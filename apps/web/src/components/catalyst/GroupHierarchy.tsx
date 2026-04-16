@@ -11,6 +11,8 @@ export interface GroupNode {
   id: string
   address: string
   name: string
+  /** .agent primary name (e.g., "wellington.catalyst.agent") */
+  primaryName: string
   description: string
   parentAddress: string | null
   depth: number
@@ -132,6 +134,11 @@ export function GroupHierarchy({ groups, orgAddress }: Props) {
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
               <strong style={{ fontSize: '0.85rem', color: '#1a1a2e' }}>{group.name}</strong>
+              {group.primaryName && (
+                <span style={{ fontFamily: 'monospace', fontSize: '0.62rem', color: '#8b5e3c', background: 'rgba(139,94,60,0.06)', padding: '0.05rem 0.3rem', borderRadius: 5, border: '1px solid rgba(139,94,60,0.12)' }}>
+                  {group.primaryName}
+                </span>
+              )}
               {group.isEstablished && <span style={{ fontSize: '0.55rem', padding: '0.1rem 0.3rem', background: '#2e7d3215', color: '#2e7d32', borderRadius: 3, fontWeight: 600 }}>established</span>}
               {children.length > 0 && <span style={{ fontSize: '0.6rem', color: '#9e9e9e' }}>{children.length} sub</span>}
             </div>
@@ -227,9 +234,11 @@ export function GroupHierarchy({ groups, orgAddress }: Props) {
         <GroupEditor
           mode={editor.mode}
           parentName={editor.parentAddr ? groups.find(g => g.address.toLowerCase() === editor.parentAddr)?.name : undefined}
+          parentAgentName={editor.parentAddr ? groups.find(g => g.address.toLowerCase() === editor.parentAddr)?.primaryName : (groups[0]?.primaryName || undefined)}
           initial={editor.group ? {
             id: editor.group.id,
             name: editor.group.name,
+            nameLabel: editor.group.primaryName ? editor.group.primaryName.split('.')[0] : undefined,
             location: editor.group.location ?? '',
             leaderName: editor.group.leaderName ?? '',
             startDate: '',

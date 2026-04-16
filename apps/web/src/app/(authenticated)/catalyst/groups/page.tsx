@@ -176,6 +176,7 @@ export default async function CatalystGroupsPage() {
       id: `org-${key.slice(2, 10)}`,
       address: addr,
       name: meta.displayName,
+      primaryName: meta.primaryName,
       description: meta.description,
       parentAddress: parentAddr, depth,
       leaderName: typeof health.leaderName === 'string' ? health.leaderName : null,

@@ -6,6 +6,8 @@ import { ChurchCircle, type HealthData, DEFAULT_HEALTH } from './ChurchCircle'
 export interface GroupData {
   id?: string
   name: string
+  /** .agent name label for this circle (e.g., "wellington") */
+  nameLabel?: string
   location: string
   leaderName: string
   startDate: string
@@ -17,6 +19,8 @@ export interface GroupData {
 interface Props {
   initial?: GroupData
   parentName?: string
+  /** Parent's .agent name (e.g., "catalyst.agent") for building the full path */
+  parentAgentName?: string
   onSave: (data: GroupData) => Promise<void>
   onClose: () => void
   mode: 'create' | 'edit'
@@ -139,8 +143,11 @@ const EMPTY_PEOPLE_GROUP = { name: 'Unknown', language: 'Unknown', religiousBack
 
 /* ── Main Component ── */
 
-export function GroupEditor({ initial, parentName, onSave, onClose, mode }: Props) {
+export function GroupEditor({ initial, parentName, parentAgentName, onSave, onClose, mode }: Props) {
   const [name, setName] = useState(initial?.name ?? '')
+  const [nameLabel, setNameLabel] = useState(initial?.nameLabel ?? '')
+  const [nameLabelError, setNameLabelError] = useState<string | null>(null)
+  const [nameLabelChecking, setNameLabelChecking] = useState(false)
   const [location, setLocation] = useState(initial?.location ?? '')
   const [leader, setLeader] = useState(initial?.leaderName ?? '')
   const [startDate, setStartDate] = useState(initial?.startDate ?? new Date().toISOString().split('T')[0])
@@ -150,14 +157,53 @@ export function GroupEditor({ initial, parentName, onSave, onClose, mode }: Prop
   const [saving, setSaving] = useState(false)
   const [locating, setLocating] = useState(false)
   const commentsRef = useRef<HTMLDivElement>(null)
+  const checkTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Derive the full .agent name from label + parent
+  const fullAgentName = nameLabel && parentAgentName
+    ? `${nameLabel}.${parentAgentName}`
+    : nameLabel
+      ? `${nameLabel}.agent`
+      : ''
+
+  // Check name availability (debounced)
+  function handleNameLabelChange(val: string) {
+    const cleaned = val.toLowerCase().replace(/[^a-z0-9-]/g, '')
+    setNameLabel(cleaned)
+    setNameLabelError(null)
+
+    if (!cleaned) return
+
+    // Validate format
+    if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/.test(cleaned)) {
+      setNameLabelError('Must be alphanumeric with optional hyphens')
+      return
+    }
+
+    // Debounced availability check
+    if (checkTimer.current) clearTimeout(checkTimer.current)
+    setNameLabelChecking(true)
+    checkTimer.current = setTimeout(async () => {
+      try {
+        const checkName = parentAgentName ? `${cleaned}.${parentAgentName}` : `${cleaned}.agent`
+        const res = await fetch(`/api/naming/check?name=${encodeURIComponent(checkName)}`)
+        const data = await res.json()
+        if (data.exists) {
+          setNameLabelError(`"${checkName}" is already registered`)
+        }
+      } catch { /* availability check failed — allow proceeding */ }
+      setNameLabelChecking(false)
+    }, 500)
+  }
 
   const h = (patch: Partial<HealthData>) => setHealth(prev => ({ ...prev, ...patch }))
 
   async function handleSave() {
     if (!name.trim()) return
+    if (mode === 'create' && nameLabelError) return
     setSaving(true)
     try {
-      await onSave({ id: initial?.id, name, location, leaderName: leader, startDate, peoplGroup, health, status })
+      await onSave({ id: initial?.id, name, nameLabel: nameLabel || undefined, location, leaderName: leader, startDate, peoplGroup, health, status })
     } catch { /* handled by parent */ }
     setSaving(false)
   }
@@ -187,6 +233,39 @@ export function GroupEditor({ initial, parentName, onSave, onClose, mode }: Prop
         <label><span style={lbl}>Leader</span><input value={leader} onChange={e => setLeader(e.target.value)} placeholder="Leader name" style={inp} /></label>
         <label><span style={lbl}>Start Date</span><input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} style={inp} /></label>
       </div>
+
+      {/* ─── .agent Name ─── */}
+      {mode === 'create' && (
+        <div style={{ marginBottom: '0.75rem', padding: '0.65rem', background: '#faf8f3', borderRadius: 8, border: '1px solid #ece6db' }}>
+          <span style={{ ...lbl, color: '#8b5e3c', fontWeight: 600 }}>.agent Name</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 0, marginBottom: 4 }}>
+            <input
+              value={nameLabel}
+              onChange={e => handleNameLabelChange(e.target.value)}
+              placeholder="label"
+              style={{
+                ...inp, borderTopRightRadius: 0, borderBottomRightRadius: 0, borderRight: 'none',
+                fontFamily: 'monospace', width: 120, flexShrink: 0,
+              }}
+            />
+            <span style={{
+              padding: '0.45rem 0.5rem', background: '#f0ebe3', border: '1px solid #e2e4e8',
+              borderTopRightRadius: 6, borderBottomRightRadius: 6,
+              fontSize: '0.82rem', color: '#9a8c7e', fontFamily: 'monospace', whiteSpace: 'nowrap',
+            }}>
+              .{parentAgentName || 'agent'}
+            </span>
+          </div>
+          {fullAgentName && !nameLabelError && (
+            <div style={{ fontSize: '0.72rem', color: '#8b5e3c', fontFamily: 'monospace' }}>
+              {nameLabelChecking ? 'Checking...' : `✓ ${fullAgentName}`}
+            </div>
+          )}
+          {nameLabelError && (
+            <div style={{ fontSize: '0.72rem', color: '#c62828' }}>{nameLabelError}</div>
+          )}
+        </div>
+      )}
 
       {/* ─── Location ─── */}
       <div style={{ marginBottom: '0.75rem' }}>
