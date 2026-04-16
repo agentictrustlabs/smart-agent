@@ -142,21 +142,25 @@ export function ProfileClient({
     setLoadingProfile(true)
     try {
       const result = await loadProfileViaDelegation(token)
-      if (result.success && result.profile) {
-        const p = result.profile as Record<string, string | null>
-        if (p.displayName) setName(p.displayName)
-        if (p.email) setEmail(p.email)
-        if (p.phone) setPhone(p.phone)
-        if (p.dateOfBirth) setDateOfBirth(p.dateOfBirth)
-        if (p.gender) setGender(p.gender)
-        if (p.language) setLanguage(p.language)
-        if (p.addressLine1) setAddressLine1(p.addressLine1)
-        if (p.addressLine2) setAddressLine2(p.addressLine2)
-        if (p.city) setCity(p.city)
-        if (p.stateProvince) setStateProvince(p.stateProvince)
-        if (p.postalCode) setPostalCode(p.postalCode)
-        if (p.country) setCountry(p.country)
-        if (p.location) setLocation(p.location)
+      if (result.success) {
+        // Session is valid — populate fields if profile data exists
+        if (result.profile) {
+          const p = result.profile as Record<string, string | null>
+          if (p.displayName) setName(p.displayName)
+          if (p.email) setEmail(p.email)
+          if (p.phone) setPhone(p.phone)
+          if (p.dateOfBirth) setDateOfBirth(p.dateOfBirth)
+          if (p.gender) setGender(p.gender)
+          if (p.language) setLanguage(p.language)
+          if (p.addressLine1) setAddressLine1(p.addressLine1)
+          if (p.addressLine2) setAddressLine2(p.addressLine2)
+          if (p.city) setCity(p.city)
+          if (p.stateProvince) setStateProvince(p.stateProvince)
+          if (p.postalCode) setPostalCode(p.postalCode)
+          if (p.country) setCountry(p.country)
+          if (p.location) setLocation(p.location)
+        }
+        // Session valid even if no profile data yet (first visit)
         setSessionValid(true)
         setLoadingProfile(false)
         return true

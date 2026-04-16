@@ -85,8 +85,8 @@ export async function loadProfileViaDelegation(
 
     if (!res.ok) return { success: false, error: 'Profile fetch failed' }
     const data = await res.json()
-    // A2A returns { profile: { ... } } — unwrap
-    return { success: true, profile: data.profile ?? data }
+    // A2A returns { profile: { ... } } or { profile: null }
+    return { success: true, profile: data.profile ?? null }
   } catch {
     return { success: false, error: 'A2A agent unreachable' }
   }
