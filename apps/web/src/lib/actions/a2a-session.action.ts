@@ -2,7 +2,7 @@
 
 import { cookies } from 'next/headers'
 import { requireSession } from '@/lib/auth/session'
-import { hashChallenge, encodeTimestampTerms, buildCaveat, ROOT_AUTHORITY, hashDelegation } from '@smart-agent/sdk'
+import { hashDelegation, encodeTimestampTerms, buildCaveat, ROOT_AUTHORITY } from '@smart-agent/sdk'
 import { db, schema } from '@/db'
 import { eq } from 'drizzle-orm'
 
@@ -10,19 +10,14 @@ const A2A_AGENT_URL = process.env.A2A_AGENT_URL ?? 'http://localhost:3100'
 const A2A_SESSION_COOKIE = 'a2a-session'
 
 /**
- * Bootstrap a full A2A session.
+ * Bootstrap a full A2A session for demo users (server-side signing).
  *
- * Flow:
- *   1. Request challenge from A2A agent
- *   2. Sign challenge with user's own private key (from DB)
- *   3. Verify challenge → get auth token
- *   4. Request session init from A2A → A2A generates session keypair, returns public key
- *   5. Build delegation: delegator=user's SmartAccount, delegate=session public key
- *   6. Sign delegation with user's private key
- *   7. Send signed delegation back to A2A /session/package → session activated
- *
- * The A2A agent NEVER sees the user's private key.
- * It only holds the ephemeral session private key.
+ * No challenge needed. No deployer key.
+ *   1. Call A2A /session/init (unauthenticated)
+ *   2. Build delegation hash
+ *   3. Sign delegation with user's stored private key
+ *   4. Submit to A2A /session/package (self-authenticating via ERC-1271)
+ *   5. Store session ID in httpOnly cookie
  */
 export async function bootstrapA2ASession(): Promise<{
   success: boolean
@@ -34,18 +29,13 @@ export async function bootstrapA2ASession(): Promise<{
     return { success: false, error: 'No wallet address' }
   }
 
-  // Load user's private key and smart account from DB
   const users = await db.select().from(schema.users)
     .where(eq(schema.users.walletAddress, session.walletAddress))
     .limit(1)
 
   const user = users[0]
   if (!user?.privateKey) {
-    // Privy/MetaMask users don't have server-side keys.
-    // Clear any stale demo session cookie.
-    const cookieStore = await cookies()
-    cookieStore.set(A2A_SESSION_COOKIE, '', { path: '/', maxAge: 0 })
-    return { success: false, error: 'Client-side wallet signing required for Privy users. A2A session bootstrap only available for demo users.' }
+    return { success: false, error: 'Client-side signing required' }
   }
   if (!user?.smartAccountAddress) {
     return { success: false, error: 'No smart account deployed' }
@@ -56,116 +46,64 @@ export async function bootstrapA2ASession(): Promise<{
   const userAccount = privateKeyToAccount(user.privateKey as `0x${string}`)
 
   try {
-    // ─── Step 1: Request challenge ────────────────────────────────
-    const challengeRes = await fetch(`${A2A_AGENT_URL}/auth/challenge`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ accountAddress: user.smartAccountAddress }),
-    })
-    if (!challengeRes.ok) return { success: false, error: `Challenge: ${challengeRes.statusText}` }
-    const { challengeId, typedData } = await challengeRes.json()
-
-    // ─── Step 2: Sign challenge with user's key ──────────────────
-    const challengeData = {
-      id: typedData.message.challengeId as string,
-      nonce: typedData.message.nonce as `0x${string}`,
-      accountAddress: typedData.message.accountAddress as `0x${string}`,
-      origin: typedData.message.origin as string,
-      issuedAt: typedData.message.issuedAt as string,
-      expiresAt: typedData.message.expiresAt as string,
-    }
-    const challengeHash = hashChallenge(challengeData, chainId)
-    const challengeSig = await userAccount.signMessage({ message: { raw: challengeHash } })
-
-    // ─── Step 3: Verify → get auth token ─────────────────────────
-    const verifyRes = await fetch(`${A2A_AGENT_URL}/auth/verify`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ challengeId, signature: challengeSig }),
-    })
-    if (!verifyRes.ok) {
-      const err = await verifyRes.json().catch(() => ({}))
-      return { success: false, error: `Verify: ${err.error ?? verifyRes.statusText}` }
-    }
-    const { sessionToken } = await verifyRes.json()
-
-    // ─── Step 4: Session init → A2A generates session keypair ────
+    // ─── Step 1: Session init (unauthenticated) ─────────────────
     const initRes = await fetch(`${A2A_AGENT_URL}/session/init`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${sessionToken}`,
-      },
-      body: JSON.stringify({ durationSeconds: 86400 }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ accountAddress: user.smartAccountAddress, durationSeconds: 86400 }),
     })
     if (!initRes.ok) {
       const err = await initRes.json().catch(() => ({}))
       return { success: false, error: `Init: ${err.error ?? initRes.statusText}` }
     }
-    const { sessionId, sessionKeyAddress, durationSeconds } = await initRes.json()
+    const { sessionId, sessionKeyAddress } = await initRes.json()
 
-    // ─── Step 5: Build delegation ────────────────────────────────
+    // ─── Step 2: Build and sign delegation ───────────────────────
     const now = Math.floor(Date.now() / 1000)
-    const expiresAt = now + (durationSeconds ?? 86400)
-
+    const expiresAt = now + 86400
     const timestampEnforcerAddr = process.env.TIMESTAMP_ENFORCER_ADDRESS as `0x${string}`
-    const timeCaveat = buildCaveat(
-      timestampEnforcerAddr,
-      encodeTimestampTerms(now, expiresAt),
-    )
-
-    const delegator = user.smartAccountAddress as `0x${string}`
-    const delegate = sessionKeyAddress as `0x${string}`
-    const salt = BigInt(Date.now() + Math.floor(Math.random() * 100000))
     const delegationManagerAddr = process.env.DELEGATION_MANAGER_ADDRESS as `0x${string}`
+    const timeCaveat = buildCaveat(timestampEnforcerAddr, encodeTimestampTerms(now, expiresAt))
+    const salt = BigInt(Date.now() + Math.floor(Math.random() * 100000))
 
-    // Compute EIP-712 delegation hash (matches DelegationManager contract exactly)
     const delegationData = {
-      delegator,
-      delegate,
+      delegator: user.smartAccountAddress as `0x${string}`,
+      delegate: sessionKeyAddress as `0x${string}`,
       authority: ROOT_AUTHORITY as `0x${string}`,
       caveats: [{ enforcer: timeCaveat.enforcer as `0x${string}`, terms: timeCaveat.terms as `0x${string}` }],
       salt,
     }
     const delegationHash = hashDelegation(delegationData, chainId, delegationManagerAddr)
-
-    // ─── Step 6: Sign delegation with user's key ─────────────────
-    // DelegationManager._validateSignature converts to ethSignedMessageHash for EOAs
     const delegationSig = await userAccount.signMessage({ message: { raw: delegationHash } })
 
-    const delegation = {
-      delegator,
-      delegate,
-      authority: ROOT_AUTHORITY,
-      caveats: [{ enforcer: timeCaveat.enforcer, terms: timeCaveat.terms }],
-      salt: salt.toString(),
-      signature: delegationSig,
-    }
-
-    // ─── Step 7: Send delegation to A2A → activates session ──────
+    // ─── Step 3: Submit to A2A (self-authenticating via ERC-1271) ─
     const pkgRes = await fetch(`${A2A_AGENT_URL}/session/package`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${sessionToken}`,
-      },
-      body: JSON.stringify({ sessionId, delegation }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sessionId,
+        delegation: {
+          ...delegationData,
+          salt: salt.toString(),
+          signature: delegationSig,
+        },
+      }),
     })
     if (!pkgRes.ok) {
       const err = await pkgRes.json().catch(() => ({}))
       return { success: false, error: `Package: ${err.error ?? pkgRes.statusText}` }
     }
 
-    // ─── Step 8: Store auth token in cookie ──────────────────────
+    // ─── Step 4: Store session ID in httpOnly cookie ─────────────
     const cookieStore = await cookies()
-    cookieStore.set(A2A_SESSION_COOKIE, sessionToken, {
+    cookieStore.set(A2A_SESSION_COOKIE, sessionId, {
       path: '/',
       maxAge: 60 * 60 * 24,
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
     })
 
-    return { success: true, sessionToken }
+    return { success: true, sessionToken: sessionId }
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : 'Bootstrap failed' }
   }

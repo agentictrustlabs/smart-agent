@@ -3,7 +3,6 @@ import { getSession } from '@/lib/auth/session'
 import { db, schema } from '@/db'
 import { eq } from 'drizzle-orm'
 import {
-  hashChallenge,
   hashDelegation,
   encodeTimestampTerms,
   buildCaveat,
@@ -15,31 +14,32 @@ const A2A_AGENT_URL = process.env.A2A_AGENT_URL ?? 'http://localhost:3100'
 /**
  * POST /api/a2a/bootstrap/client
  *
- * Phase 1 of client-side A2A bootstrap:
- *   1. Request challenge from A2A agent
- *   2. Request session init from A2A agent (generates session keypair)
- *   3. Compute challenge hash and delegation hash
- *   4. Return both hashes for the client to sign with MetaMask
+ * Single-signature A2A bootstrap — no deployer key, no challenge.
  *
- * The client signs both hashes and sends them to /api/a2a/bootstrap/complete.
+ *   1. Deploy smart account if needed
+ *   2. Call A2A /session/init (unauthenticated — just generates keypair)
+ *   3. Build delegation hash (delegator=user, delegate=session key)
+ *   4. Return delegation hash for ONE MetaMask signature
+ *
+ * The delegation signature IS the authentication (verified via ERC-1271
+ * in the A2A agent's /session/package endpoint).
  */
-export async function POST(request: Request) {
+export async function POST() {
   const session = await getSession()
   if (!session?.walletAddress) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
   }
 
-  // Always use the authenticated session's wallet — never trust client-supplied address
   const walletAddress = session.walletAddress
+  const chainId = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? '31337')
 
-  // Look up user to get smart account address
+  // Look up user
   const users = await db.select().from(schema.users)
     .where(eq(schema.users.walletAddress, walletAddress))
     .limit(1)
-
   let user = users[0]
 
-  // If Privy user has no smart account yet, deploy one
+  // Deploy smart account if needed
   if (user && !user.smartAccountAddress) {
     try {
       const { deploySmartAccount } = await import('@/lib/contracts')
@@ -49,83 +49,53 @@ export async function POST(request: Request) {
         .set({ smartAccountAddress: smartAcct })
         .where(eq(schema.users.id, user.id))
       user = { ...user, smartAccountAddress: smartAcct }
-      console.log(`[bootstrap/client] Deployed AgentAccount for ${walletAddress}: ${smartAcct}`)
     } catch (err) {
-      console.warn('[bootstrap/client] AgentAccount deployment failed:', err)
+      return NextResponse.json({ error: `Smart account deployment failed: ${err instanceof Error ? err.message : 'unknown'}` }, { status: 500 })
     }
   }
 
-  const accountAddress = (user?.smartAccountAddress ?? walletAddress) as string
-
-  const chainId = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? '31337')
+  const accountAddress = (user?.smartAccountAddress ?? walletAddress) as `0x${string}`
 
   try {
-    // ─── Step 1: Get challenge from A2A agent ─────────────────────
-    const challengeRes = await fetch(`${A2A_AGENT_URL}/auth/challenge`, {
+    // ─── Step 1: Session init (unauthenticated — just generates keypair) ─
+    const initRes = await fetch(`${A2A_AGENT_URL}/session/init`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ accountAddress }),
+      body: JSON.stringify({ accountAddress, durationSeconds: 86400 }),
     })
-    if (!challengeRes.ok) {
-      return NextResponse.json({ error: 'Challenge request failed' }, { status: 502 })
+    if (!initRes.ok) {
+      const err = await initRes.json().catch(() => ({}))
+      return NextResponse.json({ error: `Session init: ${err.error ?? initRes.statusText}` }, { status: 502 })
     }
-    const { challengeId, typedData } = await challengeRes.json()
+    const { sessionId, sessionKeyAddress } = await initRes.json()
 
-    // Compute challenge hash (what the user needs to sign)
-    const challengeData = {
-      id: typedData.message.challengeId as string,
-      nonce: typedData.message.nonce as `0x${string}`,
-      accountAddress: typedData.message.accountAddress as `0x${string}`,
-      origin: typedData.message.origin as string,
-      issuedAt: typedData.message.issuedAt as string,
-      expiresAt: typedData.message.expiresAt as string,
-    }
-    const challengeHash = hashChallenge(challengeData, chainId)
-
-    // ─── Step 2: Temporarily verify with a placeholder to get auth token
-    // We need a session token to call /session/init. For client-side flow,
-    // we'll return the challenge hash for the client to sign, then complete
-    // everything in the /complete endpoint.
-
-    // ─── Step 3: Compute delegation data ──────────────────────────
-    // We need to know the session key address to build the delegation,
-    // but that comes from /session/init which requires auth.
-    // Solution: return the challenge hash now, do session init in /complete.
-
-    // Build delegation params (for the hash computation)
+    // ─── Step 2: Build delegation hash ────────────────────────────
     const now = Math.floor(Date.now() / 1000)
-    const durationSeconds = 86400
-    const expiresAt = now + durationSeconds
+    const expiresAt = now + 86400
     const timestampEnforcerAddr = process.env.TIMESTAMP_ENFORCER_ADDRESS as `0x${string}`
     const delegationManagerAddr = process.env.DELEGATION_MANAGER_ADDRESS as `0x${string}`
-
-    const timeCaveat = buildCaveat(
-      timestampEnforcerAddr,
-      encodeTimestampTerms(now, expiresAt),
-    )
+    const timeCaveat = buildCaveat(timestampEnforcerAddr, encodeTimestampTerms(now, expiresAt))
     const salt = BigInt(Date.now() + Math.floor(Math.random() * 100000))
 
+    const delegation = {
+      delegator: accountAddress,
+      delegate: sessionKeyAddress as `0x${string}`,
+      authority: ROOT_AUTHORITY as `0x${string}`,
+      caveats: [{ enforcer: timeCaveat.enforcer as `0x${string}`, terms: timeCaveat.terms as `0x${string}` }],
+      salt,
+    }
+
+    const delegationHash = hashDelegation(delegation, chainId, delegationManagerAddr)
+
     return NextResponse.json({
-      challengeId,
-      challengeHash,
+      delegationHash,
+      sessionId,
+      delegation: { ...delegation, salt: salt.toString() },
       accountAddress,
-      // Delegation params for the client to know what will be signed
-      delegationParams: {
-        delegator: accountAddress,
-        authority: ROOT_AUTHORITY,
-        caveats: [{ enforcer: timeCaveat.enforcer, terms: timeCaveat.terms }],
-        salt: salt.toString(),
-        timestampEnforcerAddr,
-        delegationManagerAddr,
-        chainId,
-        durationSeconds,
-        now,
-        expiresAt,
-      },
     })
   } catch (e) {
     return NextResponse.json(
-      { error: e instanceof Error ? e.message : 'Bootstrap client init failed' },
+      { error: e instanceof Error ? e.message : 'Bootstrap failed' },
       { status: 500 },
     )
   }

@@ -12,7 +12,6 @@ type SetupPhase =
   | 'ensuring-user'
   | 'checking-profile'
   | 'bootstrapping-agent'
-  | 'signing-challenge'
   | 'signing-delegation'
   | 'done'
 
@@ -21,8 +20,7 @@ const PHASE_LABELS: Record<SetupPhase, string> = {
   'ensuring-user': 'Creating your account...',
   'checking-profile': 'Checking profile...',
   'bootstrapping-agent': 'Setting up your agent...',
-  'signing-challenge': 'Sign the challenge in your wallet...',
-  'signing-delegation': 'Sign the delegation in your wallet...',
+  'signing-delegation': 'Authorize your agent in your wallet...',
   'done': 'Ready!',
 }
 
@@ -86,8 +84,8 @@ export function AuthGate() {
           return
         }
 
-        // Server-side failed — need client-side MetaMask signing
-        setPhase('signing-challenge')
+        // Server-side failed — need client-side MetaMask signing (one signature)
+        setPhase('bootstrapping-agent')
         const token = await a2a.bootstrap((p) => setPhase(p as SetupPhase))
 
         if (token) {
@@ -148,7 +146,7 @@ export function AuthGate() {
       </div>
 
       {/* Subtitle */}
-      {(phase === 'signing-challenge' || phase === 'signing-delegation') && (
+      {phase === 'signing-delegation' && (
         <div style={{
           fontSize: '0.82rem',
           color: '#9a8c7e',
