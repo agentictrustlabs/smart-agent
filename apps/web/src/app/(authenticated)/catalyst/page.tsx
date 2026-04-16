@@ -295,6 +295,9 @@ export default async function CatalystDashboardPage() {
         </div>
       )}
 
+      {/* Data Delegations */}
+      <DelegationSection userId={currentUser.id} />
+
       {/* No orgs state */}
       {userOrgs.length === 0 && (
         <div style={{
@@ -451,16 +454,200 @@ async function CatalystFieldDashboard({
   const progress = await getTrainingProgress(currentUser.id)
   const walkPct = Math.round((progress.filter(p => p.completed === 1).length / 28) * 100)
 
+  // AI agents across user's orgs
+  type AIAgentInfo = { name: string; type: string; orgName: string; address: string }
+  const aiAgents: AIAgentInfo[] = []
+  for (const org of userOrgs) {
+    const aiAddrs = await getAiAgentsForOrg(org.address)
+    for (const addr of aiAddrs) {
+      const meta = await getAgentMetadata(addr)
+      aiAgents.push({ name: meta.displayName, type: meta.aiAgentClass || 'custom', orgName: org.name, address: addr })
+    }
+  }
+
   return (
     <div>
       <h1 style={{ fontSize: '1.35rem', fontWeight: 700, color: C.text, margin: '0 0 0.75rem' }}>{greeting}, {firstName}</h1>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem', marginBottom: '1rem' }}>
         <KpiCard label="MY OIKOS" href="/oikos"><span style={{ fontSize: '1.75rem', fontWeight: 700, color: C.accent }}>{oikosCount}</span><span style={{ fontSize: '0.72rem', color: C.textMuted }}>people</span></KpiCard>
         <KpiCard label="PRAY NOW" href="/nurture/prayer"><span style={{ fontSize: '1.75rem', fontWeight: 700, color: C.accent }}>{prayerDueCount}</span><span style={{ fontSize: '0.72rem', color: C.textMuted }}>due today</span></KpiCard>
         <KpiCard label="MY CIRCLES" href="/groups"><span style={{ fontSize: '1.75rem', fontWeight: 700, color: C.accent }}>{totalCircles}</span><span style={{ fontSize: '0.72rem', color: C.textMuted }}>gatherings</span></KpiCard>
         <KpiCard label="PERSONAL WALK" href="/nurture/grow"><span style={{ fontSize: '1.75rem', fontWeight: 700, color: C.accent }}>{walkPct}%</span></KpiCard>
         <KpiCard label="SOW THIS WEEK" href="/activity"><span style={{ fontSize: '1.75rem', fontWeight: 700, color: C.accent }}>{weekCount}</span><span style={{ fontSize: '0.72rem', color: C.textMuted }}>activities</span></KpiCard>
       </div>
+
+      <DelegationSection userId={currentUser.id} />
+
+      {/* Organizations */}
+      {userOrgs.length > 0 && (
+        <div style={{
+          background: C.card, border: `1px solid ${C.border}`,
+          borderRadius: 12, padding: '1rem 1.25rem', marginBottom: '1rem',
+        }}>
+          <h2 style={{ fontSize: '0.7rem', fontWeight: 700, color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.6rem' }}>
+            My Organizations
+          </h2>
+          {userOrgs.map(org => (
+            <div key={org.address} style={{
+              display: 'flex', alignItems: 'center', gap: '0.75rem',
+              padding: '0.5rem 0', borderBottom: `1px solid ${C.border}`,
+            }}>
+              <span style={{
+                width: 32, height: 32, borderRadius: 8, background: C.accentLight,
+                color: C.accent, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontWeight: 700, fontSize: '0.75rem', flexShrink: 0,
+              }}>
+                {org.name.charAt(0)}
+              </span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <Link href={`/agents/${org.address}`} style={{
+                  fontWeight: 600, fontSize: '0.85rem', color: C.text, textDecoration: 'none',
+                }}>
+                  {org.name}
+                </Link>
+                <div style={{ display: 'flex', gap: '0.25rem', marginTop: '0.15rem' }}>
+                  {org.roles.map(r => (
+                    <span key={r} style={{
+                      fontSize: '0.6rem', padding: '0.1rem 0.35rem', borderRadius: 4,
+                      background: '#f5f5f5', color: '#616161', textTransform: 'capitalize',
+                    }}>
+                      {r}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* AI Agents */}
+      {aiAgents.length > 0 && (
+        <div style={{
+          background: C.card, border: `1px solid ${C.border}`,
+          borderRadius: 12, padding: '1rem 1.25rem', marginBottom: '1rem',
+        }}>
+          <h2 style={{ fontSize: '0.7rem', fontWeight: 700, color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.6rem' }}>
+            AI Agents
+          </h2>
+          {aiAgents.map(agent => (
+            <div key={agent.address} style={{
+              display: 'flex', alignItems: 'center', gap: '0.75rem',
+              padding: '0.5rem 0', borderBottom: `1px solid ${C.border}`,
+            }}>
+              <span style={{
+                width: 32, height: 32, borderRadius: 8, background: '#f3e5f5',
+                color: '#7b1fa2', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontWeight: 700, fontSize: '0.65rem', flexShrink: 0,
+              }}>
+                AI
+              </span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <Link href={`/agents/${agent.address}`} style={{
+                  fontWeight: 600, fontSize: '0.85rem', color: C.text, textDecoration: 'none',
+                }}>
+                  {agent.name}
+                </Link>
+                <div style={{ fontSize: '0.72rem', color: C.textMuted }}>
+                  {agent.type} &middot; {agent.orgName}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Delegation Section (shared across all dashboard types) ─────────
+
+async function DelegationSection({ userId }: { userId: string }) {
+  const { getIncomingDelegations, getOutgoingDelegations } = await import('@/lib/actions/data-delegation.action')
+  const { getCoachRelationship, getDisciples } = await import('@/lib/actions/grow.action')
+
+  const incoming = await getIncomingDelegations(userId)
+  const outgoing = await getOutgoingDelegations(userId)
+  const coachRel = await getCoachRelationship(userId)
+  const disciples = await getDisciples(userId)
+
+  if (!coachRel && disciples.length === 0 && incoming.length === 0 && outgoing.length === 0) return null
+
+  return (
+    <div style={{
+      background: '#ffffff', border: '1px solid #ece6db',
+      borderRadius: 12, padding: '1rem 1.25rem', marginBottom: '1rem',
+    }}>
+      <h2 style={{ fontSize: '0.7rem', fontWeight: 700, color: '#9a8c7e', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.6rem' }}>
+        Relationships & Data Delegations
+      </h2>
+
+      {coachRel && (
+        <DelegationRow icon="Coach" iconBg="#7c3aed12" iconColor="#7c3aed" name={coachRel.coachName} detail="Coaching you" tooltip="Your mentor in this community" />
+      )}
+
+      {disciples.map(d => (
+        <DelegationRow key={d.id} icon="Disciple" iconBg="#7c3aed12" iconColor="#7c3aed" name={d.discipleName} detail="You coach" badgeLabel="data shared" badgeColor="#2e7d32" tooltip="You are coaching this person. They have shared personal data with you." />
+      ))}
+
+      {incoming.map(d => {
+        const fields = d.grants.flatMap(g => g.fields)
+        return (
+          <DelegationRow
+            key={d.edgeId} icon="Received" iconBg="rgba(139,94,60,0.10)" iconColor="#8b5e3c"
+            name={d.grantorName}
+            detail={`Shared with you: ${fields.map(f => fieldLabel(f)).join(', ')}`}
+            href="/catalyst/me/sharing" linkLabel="view"
+            tooltip="This person has granted you access to their personal data"
+          />
+        )
+      })}
+
+      {outgoing.map(d => {
+        const fields = d.grants.flatMap(g => g.fields)
+        return (
+          <DelegationRow
+            key={d.edgeId} icon="Shared" iconBg="#ec489912" iconColor="#ec4899"
+            name={d.granteeName}
+            detail={`You shared: ${fields.map(f => fieldLabel(f)).join(', ')}`}
+            href="/catalyst/me/sharing" linkLabel="manage" linkColor="#ec4899" linkBorder="#ec489930" linkBg="#ec489912"
+            tooltip="You have granted this person access to your personal data"
+          />
+        )
+      })}
+    </div>
+  )
+}
+
+const FIELD_LABELS: Record<string, string> = {
+  email: 'Email', phone: 'Phone', dateOfBirth: 'DOB', gender: 'Gender',
+  language: 'Language', displayName: 'Name', bio: 'Bio',
+  city: 'City', stateProvince: 'State', postalCode: 'ZIP', country: 'Country',
+  addressLine1: 'Address', addressLine2: 'Address 2', location: 'Location',
+}
+function fieldLabel(f: string) { return FIELD_LABELS[f] ?? f }
+
+function DelegationRow({ icon, iconBg, iconColor, name, detail, tooltip, badgeLabel, badgeColor, href, linkLabel, linkColor, linkBorder, linkBg }: {
+  icon: string; iconBg: string; iconColor: string; name: string; detail: string; tooltip?: string
+  badgeLabel?: string; badgeColor?: string
+  href?: string; linkLabel?: string; linkColor?: string; linkBorder?: string; linkBg?: string
+}) {
+  return (
+    <div title={tooltip} style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', padding: '0.5rem 0', borderBottom: '1px solid #ece6db', cursor: tooltip ? 'help' : undefined }}>
+      <span style={{
+        padding: '0.15rem 0.4rem', borderRadius: 10, background: iconBg, color: iconColor,
+        fontSize: '0.6rem', fontWeight: 700, whiteSpace: 'nowrap', border: `1px solid ${iconColor}25`,
+      }}>{icon}</span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <span style={{ fontWeight: 600, fontSize: '0.85rem', color: '#5c4a3a' }}>{name}</span>
+        <div style={{ fontSize: '0.7rem', color: '#9a8c7e', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{detail}</div>
+      </div>
+      {badgeLabel && (
+        <span style={{ fontSize: '0.6rem', padding: '0.1rem 0.4rem', borderRadius: 10, background: `${badgeColor}12`, color: badgeColor, fontWeight: 600, border: `1px solid ${badgeColor}30` }}>{badgeLabel}</span>
+      )}
+      {href && linkLabel && (
+        <Link href={href} style={{ fontSize: '0.65rem', padding: '0.15rem 0.5rem', borderRadius: 10, background: linkBg ?? 'rgba(139,94,60,0.10)', color: linkColor ?? '#8b5e3c', fontWeight: 600, border: `1px solid ${linkBorder ?? 'rgba(139,94,60,0.20)'}`, textDecoration: 'none' }}>{linkLabel}</Link>
+      )}
     </div>
   )
 }
