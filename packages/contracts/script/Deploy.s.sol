@@ -8,6 +8,7 @@ import "../src/enforcers/TimestampEnforcer.sol";
 import "../src/enforcers/ValueEnforcer.sol";
 import "../src/enforcers/AllowedTargetsEnforcer.sol";
 import "../src/enforcers/AllowedMethodsEnforcer.sol";
+import "../src/enforcers/DataScopeEnforcer.sol";
 import "../src/AgentRelationship.sol";
 import "../src/AgentAssertion.sol";
 import "../src/AgentRelationshipResolver.sol";
@@ -83,6 +84,8 @@ contract Deploy is Script {
 
         AllowedMethodsEnforcer allowedMethodsEnforcer = new AllowedMethodsEnforcer();
         console.log("AllowedMethodsEnforcer:", address(allowedMethodsEnforcer));
+        DataScopeEnforcer dataScopeEnforcer = new DataScopeEnforcer();
+        console.log("DataScopeEnforcer:", address(dataScopeEnforcer));
 
         // 5. Relationship Protocol (3 contracts)
         AgentRelationship agentRelationship = new AgentRelationship();
@@ -174,6 +177,7 @@ contract Deploy is Script {
         _logEnv("VALUE_ENFORCER_ADDRESS", address(valueEnforcer));
         _logEnv("ALLOWED_TARGETS_ENFORCER_ADDRESS", address(allowedTargetsEnforcer));
         _logEnv("ALLOWED_METHODS_ENFORCER_ADDRESS", address(allowedMethodsEnforcer));
+        _logEnv("DATA_SCOPE_ENFORCER_ADDRESS", address(dataScopeEnforcer));
         _logEnv("AGENT_TEMPLATE_ADDRESS", address(agentTemplate));
         _logEnv("AGENT_ISSUER_ADDRESS", address(issuerProfile));
         _logEnv("AGENT_VALIDATION_ADDRESS", address(validationProfile));

@@ -447,6 +447,18 @@ export function ProfileClient({
       >
         {saved ? 'Saved!' : pending ? 'Saving...' : 'Save Profile'}
       </button>
+
+      {/* DATA SHARING LINK */}
+      <a
+        href="/catalyst/me/sharing"
+        style={{
+          display: 'block', textAlign: 'center', marginTop: '0.75rem',
+          color: C.accent, fontSize: '0.85rem', fontWeight: 600,
+          textDecoration: 'none',
+        }}
+      >
+        Manage Data Sharing →
+      </a>
     </div>
   )
 }

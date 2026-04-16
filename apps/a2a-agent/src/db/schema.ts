@@ -34,6 +34,27 @@ export const sessions = sqliteTable('sessions', {
     .$defaultFn(() => new Date().toISOString()),
 })
 
+// ─── Data Access Delegations (cross-principal grants) ────────────────
+
+export const dataDelegations = sqliteTable('data_delegations', {
+  id: text('id').primaryKey(),
+  /** Person agent address of the data owner (delegator) */
+  grantor: text('grantor').notNull(),
+  /** Person agent address of the reader (delegate) */
+  grantee: text('grantee').notNull(),
+  /** Full delegation struct as JSON (includes caveats, salt, signature) */
+  delegationJson: text('delegation_json').notNull(),
+  /** EIP-712 delegation hash (for revocation tracking) */
+  delegationHash: text('delegation_hash').notNull().unique(),
+  /** active | revoked */
+  status: text('status', { enum: ['active', 'revoked'] })
+    .notNull()
+    .default('active'),
+  createdAt: text('created_at')
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+})
+
 // ─── Handles ─────────────────────────────────────────────────────────
 
 export const handles = sqliteTable('handles', {

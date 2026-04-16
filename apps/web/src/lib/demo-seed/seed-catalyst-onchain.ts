@@ -10,7 +10,7 @@ import {
 // getPublicClient used by register() for isRegistered check
 import {
   ORGANIZATION_GOVERNANCE, ORGANIZATION_MEMBERSHIP, ALLIANCE, ORGANIZATIONAL_CONTROL,
-  GENERATIONAL_LINEAGE,
+  GENERATIONAL_LINEAGE, HAS_MEMBER,
   ROLE_OWNER, ROLE_BOARD_MEMBER, ROLE_OPERATOR, ROLE_MEMBER, ROLE_ADVISOR, ROLE_OPERATED_AGENT,
   ROLE_STRATEGIC_PARTNER, ROLE_UPSTREAM, ROLE_DOWNSTREAM,
   ATL_LATITUDE, ATL_LONGITUDE, ATL_SPATIAL_CRS, ATL_SPATIAL_TYPE, ATL_CONTROLLER,
@@ -21,6 +21,7 @@ import { keccak256, toBytes } from 'viem'
 const TYPE_ORGANIZATION = keccak256(toBytes('atl:OrganizationAgent'))
 // TYPE_PERSON no longer needed — person agents deployed by generateDemoWallet
 const TYPE_AI = keccak256(toBytes('atl:AIAgent'))
+const TYPE_HUB = keccak256(toBytes('atl:HubAgent'))
 const ZERO_HASH = '0x0000000000000000000000000000000000000000000000000000000000000000' as `0x${string}`
 
 async function deploy(salt: number): Promise<`0x${string}`> {
@@ -43,9 +44,9 @@ async function register(addr: `0x${string}`, name: string, desc: string, agentTy
   } catch (_e) { console.warn(`[catalyst-seed] Failed to register ${name}:`, _e) }
 }
 
-async function createEdge(subject: `0x${string}`, object: `0x${string}`, relType: `0x${string}`, roles: `0x${string}`[]) {
+async function createEdge(subject: `0x${string}`, object: `0x${string}`, relType: `0x${string}`, roles: `0x${string}`[], metadataURI?: string) {
   try {
-    const edgeId = await createRelationship({ subject, object, roles, relationshipType: relType })
+    const edgeId = await createRelationship({ subject, object, roles, relationshipType: relType, metadataURI })
     await confirmRelationship(edgeId)
     return edgeId
   } catch (_e) { console.warn(`[catalyst-seed] Edge failed:`, _e); return null }
@@ -218,5 +219,95 @@ async function doSeed() {
   // AI → Org (1 edge)
   await createEdge(analytics, network, ORGANIZATIONAL_CONTROL, [ROLE_OPERATED_AGENT])
 
-  console.log('[catalyst-seed] NoCo Catalyst community deployed: 17 agents, 22 on-chain edges')
+  // ─── Hub Agent ──────────────────────────────────────────────────
+  console.log('[catalyst-seed] Deploying hub agent...')
+  const hubCatalyst = await deploy(290001)
+  await register(hubCatalyst, 'Catalyst Hub', 'Catalyst NoCo Network hub — Hispanic outreach, activity tracking, multiplication mapping', TYPE_HUB)
+
+  // HAS_MEMBER edges — connect all agents to the hub
+  console.log('[catalyst-seed] Creating HAS_MEMBER edges...')
+  const allAgents = [network, hub, grpWellington, grpLaporte, grpTimnath, grpLoveland, grpBerthoud, grpJohnstown, grpRedFeather, analytics, paMaria, paDavid, paRosa, paCarlos, paSarah, paAna, paMiguel]
+  for (const agent of allAgents) {
+    await createEdge(hubCatalyst, agent, HAS_MEMBER as `0x${string}`, [ROLE_MEMBER])
+  }
+
+  // ─── Data Access Delegation: Ana → Maria ─────────────────────────
+  console.log('[catalyst-seed] Creating data access delegation: Ana → Maria')
+  try {
+    const {
+      DATA_ACCESS_DELEGATION: DAD, ROLE_DATA_GRANTOR, ROLE_DATA_GRANTEE,
+      hashDelegation: hashDel, encodeTimestampTerms: encTimestamp,
+      buildCaveat: bCaveat, buildDataScopeCaveat: bDataScope,
+      ROOT_AUTHORITY: ROOT,
+    } = await import('@smart-agent/sdk')
+
+    const { privateKeyToAccount } = await import('viem/accounts')
+
+    // Find Ana's private key from DB
+    const anaUser = db.select().from(schema.users).where(eq(schema.users.id, 'cat-user-006')).get()
+    if (anaUser?.privateKey) {
+      const grants = [{
+        server: 'urn:mcp:server:person',
+        resources: ['profile'],
+        fields: ['email', 'phone', 'city', 'stateProvince', 'country', 'displayName'],
+      }]
+
+      const now = Math.floor(Date.now() / 1000)
+      const expiresAt = now + 90 * 24 * 60 * 60
+      const salt = BigInt(Date.now() + 999)
+      const timestampAddr = process.env.TIMESTAMP_ENFORCER_ADDRESS as `0x${string}`
+      const delegationManagerAddr = process.env.DELEGATION_MANAGER_ADDRESS as `0x${string}`
+      const chainId = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? '31337')
+
+      const caveats = [
+        bCaveat(timestampAddr, encTimestamp(now, expiresAt)),
+        bDataScope(grants),
+      ]
+
+      const delegation = {
+        delegator: paAna,
+        delegate: paMaria,
+        authority: ROOT as `0x${string}`,
+        caveats: caveats.map(c => ({ enforcer: c.enforcer, terms: c.terms })),
+        salt: salt.toString(),
+      }
+
+      const delHash = hashDel(delegation, chainId, delegationManagerAddr)
+      const anaAccount = privateKeyToAccount(anaUser.privateKey as `0x${string}`)
+      const signature = await anaAccount.signMessage({ message: { raw: delHash } })
+
+      const signedDelegation = { ...delegation, signature }
+
+      // Create on-chain edge for discovery
+      const edgeMeta = JSON.stringify({
+        delegationHash: delHash,
+        grants,
+        expiresAt: new Date(expiresAt * 1000).toISOString(),
+      })
+      await createEdge(paAna, paMaria, DAD as `0x${string}`, [ROLE_DATA_GRANTOR as `0x${string}`, ROLE_DATA_GRANTEE as `0x${string}`], edgeMeta)
+
+      // Store delegation in A2A agent
+      try {
+        const a2aUrl = process.env.A2A_AGENT_URL ?? 'http://localhost:3100'
+        await fetch(`${a2aUrl}/profile/delegations`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            grantor: paAna.toLowerCase(),
+            grantee: paMaria.toLowerCase(),
+            delegationJson: JSON.stringify(signedDelegation),
+            delegationHash: delHash,
+          }),
+        })
+      } catch (e) {
+        console.warn('[catalyst-seed] A2A delegation storage failed:', e)
+      }
+
+      console.log('[catalyst-seed] Data delegation created: Ana → Maria')
+    }
+  } catch (err) {
+    console.warn('[catalyst-seed] Data delegation seed failed:', err)
+  }
+
+  console.log('[catalyst-seed] NoCo Catalyst community deployed: 17 agents, 23 on-chain edges')
 }

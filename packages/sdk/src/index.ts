@@ -48,7 +48,13 @@ export {
   encodeMcpToolScopeTerms,
   decodeMcpToolScopeTerms,
   buildMcpToolScopeCaveat,
+  // Data scope caveat (cross-principal data access)
+  DATA_SCOPE_ENFORCER,
+  encodeDataScopeTerms,
+  decodeDataScopeTerms,
+  buildDataScopeCaveat,
 } from './delegation'
+export type { DataScopeGrant } from './delegation'
 export type { DelegationClientConfig } from './delegation'
 
 // ─── Sessions ────────────────────────────────────────────────────────
@@ -103,6 +109,8 @@ export {
   // Coaching & influence
   COACHING_MENTORSHIP, PERSONAL_INFLUENCE,
   ROLE_COACH, ROLE_DISCIPLE, ROLE_INFLUENCER, ROLE_INFLUENCE_CONTACT,
+  // Data access delegation
+  DATA_ACCESS_DELEGATION, ROLE_DATA_GRANTOR, ROLE_DATA_GRANTEE,
   // Service roles
   ROLE_VENDOR, ROLE_SERVICE_PROVIDER, ROLE_DELEGATED_OPERATOR,
   // TEE/Runtime roles

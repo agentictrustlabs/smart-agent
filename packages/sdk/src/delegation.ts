@@ -266,3 +266,39 @@ export function decodeMcpToolScopeTerms(terms: `0x${string}`): { allowedTools: s
 export function buildMcpToolScopeCaveat(allowedTools: string[]): Caveat {
   return buildCaveat(MCP_TOOL_SCOPE_ENFORCER, encodeMcpToolScopeTerms(allowedTools))
 }
+
+// ─── Data Scope Caveat (cross-principal data access) ──────────────
+
+/**
+ * Sentinel enforcer address for data scope restrictions.
+ * Validated off-chain by MCP servers — specifies which server, resources,
+ * and fields a cross-principal delegation grants access to.
+ */
+export const DATA_SCOPE_ENFORCER = keccak256(toBytes('urn:smart-agent:data-scope')).slice(0, 42) as `0x${string}`
+
+export interface DataScopeGrant {
+  /** MCP server audience URN (e.g., 'urn:mcp:server:person') */
+  server: string
+  /** Resource types (e.g., ['profile']) */
+  resources: string[]
+  /** Specific fields within the resource (e.g., ['email', 'phone']) */
+  fields: string[]
+}
+
+/** Encode data scope terms — server, resources, fields */
+export function encodeDataScopeTerms(grants: DataScopeGrant[]): `0x${string}` {
+  // Encode as JSON string wrapped in ABI encoding for consistency with other caveats
+  const json = JSON.stringify(grants)
+  return encodeAbiParameters([{ type: 'string' }], [json])
+}
+
+/** Decode data scope terms → DataScopeGrant[] */
+export function decodeDataScopeTerms(terms: `0x${string}`): DataScopeGrant[] {
+  const [json] = decodeAbiParameters([{ type: 'string' }], terms)
+  return JSON.parse(json as string) as DataScopeGrant[]
+}
+
+/** Build a caveat that restricts cross-principal data access to specific MCP resources/fields */
+export function buildDataScopeCaveat(grants: DataScopeGrant[]): Caveat {
+  return buildCaveat(DATA_SCOPE_ENFORCER, encodeDataScopeTerms(grants))
+}

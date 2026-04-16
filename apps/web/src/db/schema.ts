@@ -253,6 +253,7 @@ export const messages = sqliteTable('messages', {
       'review_received', 'dispute_filed',
       'proposal_created', 'proposal_executed',
       'invite_sent', 'invite_accepted',
+      'data_access_granted', 'data_access_revoked',
     ],
   }).notNull(),
   title: text('title').notNull(),

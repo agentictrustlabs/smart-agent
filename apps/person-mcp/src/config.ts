@@ -36,4 +36,9 @@ export const config = {
   agentAccountResolverAddress: process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as
     | `0x${string}`
     | undefined,
+
+  /** AgentRelationship contract address (for cross-principal edge discovery) */
+  agentRelationshipAddress: process.env.AGENT_RELATIONSHIP_ADDRESS as
+    | `0x${string}`
+    | undefined,
 } as const

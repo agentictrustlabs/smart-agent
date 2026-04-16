@@ -1,10 +1,10 @@
 import { Hono } from 'hono'
-import { eq } from 'drizzle-orm'
+import { eq, and } from 'drizzle-orm'
 import { privateKeyToAccount } from 'viem/accounts'
 import { decryptPayload, mintDelegationToken } from '@smart-agent/sdk'
 import type { DelegationTokenClaims } from '@smart-agent/sdk'
 import { db } from '../db'
-import { sessions } from '../db/schema'
+import { sessions, dataDelegations } from '../db/schema'
 import { config } from '../config'
 import { requireSession } from '../middleware/require-session'
 
@@ -110,6 +110,93 @@ profile.put('/', requireSession, async (c) => {
   const result = await callMcpTool(sess.accountAddress, 'update_profile', body)
   if (!result.ok) return c.json({ error: result.error }, 502)
   return c.json(result.data)
+})
+
+// ─── GET /profile/delegated?target=<addr>&grantee=<addr> ───────────
+profile.get('/delegated', requireSession, async (c) => {
+  const sess = c.get('session')
+  const targetPrincipal = c.req.query('target')
+  const granteeAddr = c.req.query('grantee') // person agent address of the reader
+  if (!targetPrincipal) return c.json({ error: 'Missing target query parameter' }, 400)
+
+  // Look up cross-delegation by grantor + grantee (person agent addresses)
+  // The session uses the smart account address, but delegations use person agent addresses.
+  // The web app passes the grantee's person agent address explicitly.
+  const queryConditions = granteeAddr
+    ? and(eq(dataDelegations.grantee, granteeAddr.toLowerCase()), eq(dataDelegations.grantor, targetPrincipal.toLowerCase()), eq(dataDelegations.status, 'active'))
+    : and(eq(dataDelegations.grantor, targetPrincipal.toLowerCase()), eq(dataDelegations.status, 'active'))
+
+  const rows = db.select().from(dataDelegations).where(queryConditions).all()
+
+  if (rows.length === 0) {
+    return c.json({ error: 'No active data delegation found for this target' }, 404)
+  }
+
+  const crossDelegation = JSON.parse(rows[0].delegationJson)
+
+  // Call MCP with the cross-delegation included in the args
+  const result = await callMcpTool(sess.accountAddress, 'get_delegated_profile', {
+    targetPrincipal,
+    crossDelegation,
+  })
+
+  if (!result.ok) return c.json({ error: result.error }, 502)
+  return c.json(result.data)
+})
+
+// ─── POST /profile/delegations — store a cross-delegation ──────────
+// No session auth — this is called during seeding and by the web app server.
+// The delegation data is cryptographically verified by MCP at read time.
+profile.post('/delegations', async (c) => {
+  const body = await c.req.json() as {
+    grantor: string
+    grantee: string
+    delegationJson: string
+    delegationHash: string
+  }
+
+  if (!body.grantor || !body.grantee || !body.delegationJson || !body.delegationHash) {
+    return c.json({ error: 'Missing required fields' }, 400)
+  }
+
+  // Upsert — if delegation hash already exists, update it
+  const existing = db.select().from(dataDelegations)
+    .where(eq(dataDelegations.delegationHash, body.delegationHash))
+    .all()
+
+  if (existing.length > 0) {
+    db.update(dataDelegations)
+      .set({ status: 'active', delegationJson: body.delegationJson })
+      .where(eq(dataDelegations.delegationHash, body.delegationHash))
+      .run()
+  } else {
+    db.insert(dataDelegations).values({
+      id: crypto.randomUUID(),
+      grantor: body.grantor.toLowerCase(),
+      grantee: body.grantee.toLowerCase(),
+      delegationJson: body.delegationJson,
+      delegationHash: body.delegationHash,
+      status: 'active',
+    }).run()
+  }
+
+  return c.json({ success: true })
+})
+
+// ─── GET /profile/delegations — list delegations for this account ──
+profile.get('/delegations', requireSession, async (c) => {
+  const sess = c.get('session')
+  const direction = c.req.query('direction') ?? 'incoming' // 'incoming' | 'outgoing'
+
+  const rows = direction === 'outgoing'
+    ? db.select().from(dataDelegations)
+        .where(and(eq(dataDelegations.grantor, sess.accountAddress.toLowerCase()), eq(dataDelegations.status, 'active')))
+        .all()
+    : db.select().from(dataDelegations)
+        .where(and(eq(dataDelegations.grantee, sess.accountAddress.toLowerCase()), eq(dataDelegations.status, 'active')))
+        .all()
+
+  return c.json({ delegations: rows })
 })
 
 export { profile }

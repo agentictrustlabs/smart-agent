@@ -198,6 +198,13 @@ const relationshipTypeDefinitions: Array<RelationshipTypeDefinition & { hash: `0
     description: 'Person-to-person relational influence link — tracks proximity and engagement between a person agent and individuals in their relational network (oikos).',
     parentTerm: 'atl:NetworkRelationship',
   }),
+  withHash({
+    key: 'data-access-delegation',
+    term: 'atl:DataAccessDelegationRelationship',
+    label: 'Data Access Delegation',
+    description: 'Person-to-person data access grant — subject allows object to read specified data from MCP backends per the scope defined in the delegation caveats and metadataURI.',
+    parentTerm: 'atl:NetworkRelationship',
+  }),
 ]
 
 const roleDefinitions: Array<RoleDefinition & { hash: `0x${string}` }> = [
@@ -678,6 +685,22 @@ const roleDefinitions: Array<RoleDefinition & { hash: `0x${string}` }> = [
     relationshipTypeKeys: ['personal-influence'],
     parentTerm: 'atl:NetworkRole',
   }),
+  withHash({
+    key: 'data-grantor',
+    term: 'atl:DataGrantorRole',
+    label: 'data-grantor',
+    description: 'The person granting read access to their data stored in an MCP backend.',
+    relationshipTypeKeys: ['data-access-delegation'],
+    parentTerm: 'atl:NetworkRole',
+  }),
+  withHash({
+    key: 'data-grantee',
+    term: 'atl:DataGranteeRole',
+    label: 'data-grantee',
+    description: 'The person granted read access to another person\'s data stored in an MCP backend.',
+    relationshipTypeKeys: ['data-access-delegation'],
+    parentTerm: 'atl:NetworkRole',
+  }),
 ]
 
 const delegationPolicyDefinitions: DelegationPolicyDefinition[] = [
@@ -927,7 +950,10 @@ export const ROLE_UPSTREAM = requireRoleHash('upstream')
 export const ROLE_DOWNSTREAM = requireRoleHash('downstream')
 export const COACHING_MENTORSHIP = requireRelationshipTypeHash('coaching-mentorship')
 export const PERSONAL_INFLUENCE = requireRelationshipTypeHash('personal-influence')
+export const DATA_ACCESS_DELEGATION = requireRelationshipTypeHash('data-access-delegation')
 export const ROLE_COACH = requireRoleHash('coach')
 export const ROLE_DISCIPLE = requireRoleHash('disciple')
 export const ROLE_INFLUENCER = requireRoleHash('influencer')
 export const ROLE_INFLUENCE_CONTACT = requireRoleHash('influence-contact')
+export const ROLE_DATA_GRANTOR = requireRoleHash('data-grantor')
+export const ROLE_DATA_GRANTEE = requireRoleHash('data-grantee')

@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { profiles } from '../db/schema.js'
 import { requirePrincipal } from '../auth/principal-context.js'
+import { verifyCrossDelegation } from '../auth/verify-delegation.js'
 
 /**
  * Profile fields that can be read/written via MCP tools.
@@ -149,6 +150,90 @@ export const profileTools = {
         .all()
 
       return { content: [{ type: 'text' as const, text: JSON.stringify({ profile: updated[0] }) }] }
+    },
+  },
+
+  get_delegated_profile: {
+    name: 'get_delegated_profile',
+    description: 'Read another principal\'s profile via a cross-principal delegation. The caller must have a valid delegation from the data owner granting access to specific fields.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        token: { type: 'string', description: 'Delegation token from A2A agent (includes crossDelegation)' },
+        targetPrincipal: { type: 'string', description: 'Person agent address of the data owner' },
+        crossDelegation: {
+          type: 'object',
+          description: 'The cross-principal delegation struct signed by the data owner',
+          properties: {
+            delegator: { type: 'string' },
+            delegate: { type: 'string' },
+            authority: { type: 'string' },
+            caveats: { type: 'array', items: { type: 'object', properties: { enforcer: { type: 'string' }, terms: { type: 'string' } } } },
+            salt: { type: 'string' },
+            signature: { type: 'string' },
+          },
+        },
+      },
+      required: ['token', 'targetPrincipal', 'crossDelegation'],
+    },
+    handler: async (args: {
+      token: string
+      targetPrincipal: string
+      crossDelegation: {
+        delegator: `0x${string}`
+        delegate: `0x${string}`
+        authority: `0x${string}`
+        caveats: Array<{ enforcer: `0x${string}`; terms: `0x${string}` }>
+        salt: string
+        signature: `0x${string}`
+      }
+    }) => {
+      // 1. Verify the caller's own delegation → get caller's principal
+      const callerPrincipal = await requirePrincipal(args.token, 'get_delegated_profile')
+
+      // 2. Verify the cross-principal delegation
+      const crossResult = await verifyCrossDelegation(
+        args.crossDelegation,
+        callerPrincipal,
+        'urn:mcp:server:person',
+      )
+
+      if ('error' in crossResult) {
+        return { content: [{ type: 'text' as const, text: JSON.stringify({ error: crossResult.error }) }], isError: true }
+      }
+
+      // 3. Verify targetPrincipal matches the delegation's delegator
+      if (args.targetPrincipal.toLowerCase() !== crossResult.dataPrincipal) {
+        return { content: [{ type: 'text' as const, text: JSON.stringify({ error: 'Target principal does not match cross-delegation delegator' }) }], isError: true }
+      }
+
+      // 4. Get the profile grant and extract allowed fields
+      const profileGrant = crossResult.grants.find(g => g.resources.includes('profile'))
+      if (!profileGrant) {
+        return { content: [{ type: 'text' as const, text: JSON.stringify({ error: 'No profile grant in cross-delegation scope' }) }], isError: true }
+      }
+
+      // 5. Query the data owner's profile
+      const rows = db
+        .select()
+        .from(profiles)
+        .where(eq(profiles.principal, crossResult.dataPrincipal))
+        .all()
+
+      if (rows.length === 0) {
+        return { content: [{ type: 'text' as const, text: JSON.stringify({ profile: null }) }] }
+      }
+
+      // 6. Filter to only allowed fields
+      const fullProfile = rows[0] as Record<string, unknown>
+      const filtered: Record<string, unknown> = { principal: crossResult.dataPrincipal }
+      for (const field of profileGrant.fields) {
+        if (field in fullProfile) {
+          filtered[field] = fullProfile[field]
+        }
+      }
+
+      return { content: [{ type: 'text' as const, text: JSON.stringify({ profile: filtered, allowedFields: profileGrant.fields }) }] }
     },
   },
 }

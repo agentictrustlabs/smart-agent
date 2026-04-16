@@ -40,6 +40,18 @@ sqlite.exec(`
     endpoint_url TEXT,
     created_at TEXT NOT NULL
   );
+
+  CREATE TABLE IF NOT EXISTS data_delegations (
+    id TEXT PRIMARY KEY,
+    grantor TEXT NOT NULL,
+    grantee TEXT NOT NULL,
+    delegation_json TEXT NOT NULL,
+    delegation_hash TEXT NOT NULL UNIQUE,
+    status TEXT NOT NULL DEFAULT 'active',
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_data_delegations_grantee ON data_delegations(grantee);
+  CREATE INDEX IF NOT EXISTS idx_data_delegations_grantor ON data_delegations(grantor);
 `)
 
 export const db = drizzle(sqlite, { schema })

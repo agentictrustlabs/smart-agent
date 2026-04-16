@@ -287,6 +287,44 @@ function seedCatalystNetwork() {
     insertCOC(u7, 3) // 3/10 obeying
     insertPreferences(u7, 'es', 'Laporte Circle', 'Laporte, CO')
   }
+
+  // ─── Data sharing notification for Maria ─────────────────────────
+  const existingMsg = db.select().from(schema.messages)
+    .where(eq(schema.messages.type, 'data_access_granted')).get()
+  if (!existingMsg) {
+    db.insert(schema.messages).values({
+      id: randomUUID(),
+      userId: 'cat-user-001',
+      type: 'data_access_granted',
+      title: 'Ana Reyes shared personal data with you',
+      body: 'Ana Reyes has shared her contact information (email, phone, location) with you. View it in your Data Sharing page.',
+      link: '/catalyst/me/sharing',
+    }).run()
+  }
+
+  // ─── Seed Ana's profile in person-mcp ────────────────────────────
+  try {
+    const Database = require('better-sqlite3')
+    const mcpDbPath = process.env.PERSON_MCP_DB_PATH ?? '../person-mcp/person-mcp.db'
+    const mcpDb = new Database(mcpDbPath)
+    const anaUser = db.select().from(schema.users).where(eq(schema.users.id, 'cat-user-006')).get()
+    if (anaUser?.personAgentAddress) {
+      const principal = anaUser.personAgentAddress.toLowerCase()
+      const existing = mcpDb.prepare('SELECT id FROM profiles WHERE principal = ?').get(principal)
+      if (!existing) {
+        const now = new Date().toISOString()
+        mcpDb.prepare(`INSERT INTO profiles (id, principal, display_name, email, phone, city, state_province, country, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
+          randomUUID(), principal, 'Ana Reyes', 'ana@wellington-circle.org', '+1-970-555-0198',
+          'Wellington', 'Colorado', 'US', now, now,
+        )
+        console.log('[multiply-seed] Seeded Ana\'s profile in person-mcp')
+      }
+    }
+    mcpDb.close()
+  } catch (err) {
+    console.warn('[multiply-seed] MCP profile seed failed:', err)
+  }
 }
 
 function seedCIL() {

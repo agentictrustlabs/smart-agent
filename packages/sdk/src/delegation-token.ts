@@ -49,6 +49,19 @@ export interface DelegationTokenClaims {
   jti: string
   /** Max number of times this token can be used */
   usageLimit: number
+  /**
+   * Optional cross-principal delegation — grants the caller access to
+   * another principal's data. Verified separately from the session delegation.
+   * The delegator is the data owner, the delegate is the authorized reader.
+   */
+  crossDelegation?: {
+    delegator: `0x${string}`
+    delegate: `0x${string}`
+    authority: `0x${string}`
+    caveats: Array<{ enforcer: `0x${string}`; terms: `0x${string}` }>
+    salt: string
+    signature: `0x${string}`
+  }
 }
 
 export interface DelegationTokenEnvelope {
@@ -74,7 +87,7 @@ export interface DelegationTokenEnvelope {
  * The session ECDSA signature covers this entire string.
  */
 export function claimsCanonicalString(claims: DelegationTokenClaims): string {
-  return [
+  const parts = [
     `v=${claims.v}`,
     `iss=${claims.iss}`,
     `aud=${claims.aud}`,
@@ -90,7 +103,19 @@ export function claimsCanonicalString(claims: DelegationTokenClaims): string {
     `exp=${claims.expiresAtISO}`,
     `jti=${claims.jti}`,
     `usageLimit=${claims.usageLimit}`,
-  ].join('|')
+  ]
+  // Cross-principal delegation extends the canonical string when present
+  if (claims.crossDelegation) {
+    const cd = claims.crossDelegation
+    parts.push(
+      `xDelegator=${cd.delegator}`,
+      `xDelegate=${cd.delegate}`,
+      `xAuthority=${cd.authority}`,
+      `xSalt=${cd.salt}`,
+      `xSig=${cd.signature}`,
+    )
+  }
+  return parts.join('|')
 }
 
 // ---------------------------------------------------------------------------
