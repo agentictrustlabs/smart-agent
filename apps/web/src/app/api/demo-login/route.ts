@@ -3,8 +3,16 @@ import { cookies } from 'next/headers'
 import { DEMO_USER_META } from '@/lib/auth/session'
 import { db, schema } from '@/db'
 import { eq } from 'drizzle-orm'
+import { signCookie, verifyCookie } from '@/lib/cookie-signing'
 
 export async function POST(request: Request) {
+  // CSRF protection: verify the request comes from our own origin
+  const origin = request.headers.get('origin')
+  const host = request.headers.get('host')
+  if (origin && host && !origin.includes(host.split(':')[0])) {
+    return NextResponse.json({ error: 'CSRF rejected' }, { status: 403 })
+  }
+
   const body = await request.json()
   const userId = body.userId as string
 
@@ -21,7 +29,7 @@ export async function POST(request: Request) {
     // First login — generate real keypair and deploy AgentAccount
     try {
       const { generateDemoWallet } = await import('@/lib/demo-seed/generate-wallet')
-      const wallet = await generateDemoWallet()
+      const wallet = await generateDemoWallet(meta.name)
 
       await db.insert(schema.users).values({
         id: userId,
@@ -31,6 +39,7 @@ export async function POST(request: Request) {
         privyUserId: meta.userId,
         privateKey: wallet.privateKey,
         smartAccountAddress: wallet.smartAccountAddress,
+        personAgentAddress: wallet.personAgentAddress,
       })
 
       user = {
@@ -41,10 +50,11 @@ export async function POST(request: Request) {
         privyUserId: meta.userId,
         privateKey: wallet.privateKey,
         smartAccountAddress: wallet.smartAccountAddress,
+        personAgentAddress: wallet.personAgentAddress,
         createdAt: new Date().toISOString(),
       }
 
-      console.log(`[demo-login] Created wallet for ${meta.name}: EOA=${wallet.address}, SmartAccount=${wallet.smartAccountAddress}`)
+      console.log(`[demo-login] Created wallet for ${meta.name}: EOA=${wallet.address}, SmartAccount=${wallet.smartAccountAddress}, PersonAgent=${wallet.personAgentAddress}`)
     } catch (err) {
       console.error('[demo-login] Wallet generation failed:', err)
       return NextResponse.json({ error: 'Failed to provision wallet' }, { status: 500 })
@@ -53,10 +63,11 @@ export async function POST(request: Request) {
 
   // Set demo cookie
   const cookieStore = await cookies()
-  cookieStore.set('demo-user', userId, {
+  cookieStore.set('demo-user', signCookie(userId), {
     path: '/',
     maxAge: 60 * 60 * 24 * 30,
-    httpOnly: false,
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
   })
 
   // Seed community data in background (idempotent)
@@ -81,8 +92,14 @@ export async function POST(request: Request) {
 
 export async function GET() {
   const cookieStore = await cookies()
-  const current = cookieStore.get('demo-user')?.value ?? null
+  const rawCookie = cookieStore.get('demo-user')?.value ?? null
 
+  if (!rawCookie) {
+    return NextResponse.json({ current: null, user: null })
+  }
+
+  // Verify signed cookie
+  const current = verifyCookie(rawCookie)
   if (!current) {
     return NextResponse.json({ current: null, user: null })
   }

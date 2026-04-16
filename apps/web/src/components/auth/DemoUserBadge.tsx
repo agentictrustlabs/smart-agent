@@ -32,8 +32,8 @@ export function DemoUserBadge() {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
-  function disconnect() {
-    document.cookie = 'demo-user=; path=/; max-age=0'
+  async function disconnect() {
+    await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {})
     window.location.href = '/'
   }
 

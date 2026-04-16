@@ -17,31 +17,34 @@ import { generateDemoWallet } from './generate-wallet'
 export async function ensureDemoUser(userKey: string): Promise<{
   walletAddress: string
   smartAccountAddress: string
+  personAgentAddress: string
 }> {
   const meta = DEMO_USER_META[userKey]
   if (!meta) throw new Error(`Unknown demo user: ${userKey}`)
 
-  // Check if already exists
+  // Check if already exists with full provisioning
   const existing = await db.select().from(schema.users)
     .where(eq(schema.users.id, userKey)).limit(1)
 
-  if (existing[0]?.smartAccountAddress) {
+  if (existing[0]?.smartAccountAddress && existing[0]?.personAgentAddress) {
     return {
       walletAddress: existing[0].walletAddress,
       smartAccountAddress: existing[0].smartAccountAddress,
+      personAgentAddress: existing[0].personAgentAddress,
     }
   }
 
   // Generate wallet and create user
-  const wallet = await generateDemoWallet()
+  const wallet = await generateDemoWallet(meta.name)
 
   if (existing[0]) {
-    // User exists but no smart account — update
+    // User exists but not fully provisioned — update
     await db.update(schema.users)
       .set({
         walletAddress: wallet.address,
         privateKey: wallet.privateKey,
         smartAccountAddress: wallet.smartAccountAddress,
+        personAgentAddress: wallet.personAgentAddress,
       })
       .where(eq(schema.users.id, userKey))
   } else {
@@ -54,14 +57,16 @@ export async function ensureDemoUser(userKey: string): Promise<{
       privyUserId: meta.userId,
       privateKey: wallet.privateKey,
       smartAccountAddress: wallet.smartAccountAddress,
+      personAgentAddress: wallet.personAgentAddress,
     })
   }
 
-  console.log(`[demo-seed] Provisioned ${meta.name}: EOA=${wallet.address}, SmartAccount=${wallet.smartAccountAddress}`)
+  console.log(`[demo-seed] Provisioned ${meta.name}: EOA=${wallet.address}, PersonAgent=${wallet.personAgentAddress}`)
 
   return {
     walletAddress: wallet.address,
     smartAccountAddress: wallet.smartAccountAddress,
+    personAgentAddress: wallet.personAgentAddress,
   }
 }
 
@@ -70,7 +75,7 @@ export async function ensureDemoUser(userKey: string): Promise<{
  * Ensures all users exist with real wallets.
  */
 export async function ensureCommunityUsers(prefix: string): Promise<
-  Array<{ key: string; walletAddress: string; smartAccountAddress: string; name: string }>
+  Array<{ key: string; walletAddress: string; smartAccountAddress: string; personAgentAddress: string; name: string }>
 > {
   const users = Object.entries(DEMO_USER_META)
     .filter(([key]) => key.startsWith(prefix))

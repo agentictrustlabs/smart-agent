@@ -11,8 +11,7 @@ import { recoverMessageAddress, createPublicClient, http } from 'viem'
 import { localhost } from 'viem/chains'
 import { config } from '../config.js'
 import { db } from '../db/index.js'
-import { tokenUsage } from '../db/schema.js'
-import { eq } from 'drizzle-orm'
+import { sql } from 'drizzle-orm'
 
 const ERC1271_MAGIC_VALUE = '0x1626ba7e'
 
@@ -142,35 +141,31 @@ export async function verifyDelegationAndExtractPrincipal(
     }
   }
 
-  // ─── Layer 8: JTI usage tracking ──────────────────────────────
+  // ─── Layer 8: JTI usage tracking (atomic upsert) ───────────────
   const jti = claims.jti
   if (jti) {
     try {
-      const existing = db.select().from(tokenUsage).where(eq(tokenUsage.jti, jti)).all()
+      const now = new Date().toISOString()
+      const principal = claims.delegation.delegator.toLowerCase()
+      const limit = claims.usageLimit
 
-      if (existing.length > 0) {
-        const usage = existing[0]
-        if (usage.usageCount >= claims.usageLimit) {
-          return { error: `Token usage limit exceeded (${usage.usageCount}/${claims.usageLimit})` }
-        }
-        // Increment
-        db.update(tokenUsage)
-          .set({ usageCount: usage.usageCount + 1, lastUsedAt: new Date().toISOString() })
-          .where(eq(tokenUsage.jti, jti))
-          .run()
-      } else {
-        // First use
-        db.insert(tokenUsage).values({
-          jti,
-          principal: claims.delegation.delegator.toLowerCase(),
-          usageCount: 1,
-          usageLimit: claims.usageLimit,
-          firstUsedAt: new Date().toISOString(),
-          lastUsedAt: new Date().toISOString(),
-        }).run()
+      // Atomic INSERT ... ON CONFLICT: either inserts first use or increments.
+      // The WHERE guard rejects if usage_count already hit the limit.
+      const result = db.run(sql`
+        INSERT INTO token_usage (jti, principal, usage_count, usage_limit, first_used_at, last_used_at)
+        VALUES (${jti}, ${principal}, 1, ${limit}, ${now}, ${now})
+        ON CONFLICT(jti) DO UPDATE SET
+          usage_count = usage_count + 1,
+          last_used_at = ${now}
+        WHERE usage_count < usage_limit
+      `)
+
+      // If no rows were affected, the WHERE guard blocked us → limit exceeded
+      if (result.changes === 0) {
+        return { error: `Token usage limit exceeded for jti ${jti}` }
       }
     } catch (err) {
-      console.warn('[verify] JTI tracking failed:', err instanceof Error ? err.message : err)
+      return { error: `JTI tracking failed — cannot verify token usage: ${err instanceof Error ? err.message : String(err)}` }
     }
   }
 

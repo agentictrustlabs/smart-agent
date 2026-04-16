@@ -60,14 +60,7 @@ export function useOptionalHubContext(): HubContextValue | null {
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Read the demo-user cookie value (client-side) */
-function getDemoUserKey(): string | null {
-  if (typeof document === 'undefined') return null
-  const match = document.cookie.match(/(?:^|;\s*)demo-user=([^;]*)/)
-  return match ? decodeURIComponent(match[1]) : null
-}
-
-/** Determine hubId from user context — no demo key prefix checks */
+/** Determine hubId from user context */
 function resolveHubId(
   hubs: Array<{ address: string; name: string }>,
   _orgs: Array<{ address: string; name: string }>,

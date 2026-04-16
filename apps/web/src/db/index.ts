@@ -28,5 +28,8 @@ if (fs.existsSync(migrationsDir)) {
   }
 }
 
+// Add new columns not in original migrations
+try { sqlite.prepare('ALTER TABLE users ADD COLUMN person_agent_address TEXT').run() } catch { /* already exists */ }
+
 export const db = drizzle(sqlite, { schema })
 export { schema }

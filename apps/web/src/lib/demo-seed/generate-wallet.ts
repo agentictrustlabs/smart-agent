@@ -9,14 +9,16 @@
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts'
 import { createWalletClient, createPublicClient, http, parseEther } from 'viem'
 import { localhost } from 'viem/chains'
-import { keccak256, encodePacked } from 'viem'
-import { deploySmartAccount } from '@/lib/contracts'
-import { registerAgentMetadata } from '@/lib/actions/agent-metadata.action'
-import { addAgentController } from '@/lib/agent-resolver'
+import { keccak256, encodePacked, toBytes } from 'viem'
+import { deploySmartAccount, getPublicClient, getWalletClient } from '@/lib/contracts'
+import { agentAccountResolverAbi, ATL_CONTROLLER } from '@smart-agent/sdk'
 
 const RPC_URL = process.env.RPC_URL ?? 'http://127.0.0.1:8545'
 const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? '31337')
 const DEPLOYER_KEY = process.env.DEPLOYER_PRIVATE_KEY as `0x${string}`
+
+const TYPE_PERSON = keccak256(toBytes('atl:PersonAgent'))
+const ZERO_HASH = '0x0000000000000000000000000000000000000000000000000000000000000000' as `0x${string}`
 
 /**
  * Generate a new wallet, fund it, deploy an AgentAccount, and deploy
@@ -61,17 +63,40 @@ export async function generateDemoWallet(userName?: string): Promise<{
   const personSalt = BigInt(personSaltHash)
   const personAgentAddress = await deploySmartAccount(account.address, personSalt) as `0x${string}`
 
-  // 5. Register person agent in on-chain resolver
-  try {
-    await registerAgentMetadata({
-      agentAddress: personAgentAddress,
-      displayName: userName ? `${userName}'s Agent` : 'Personal Agent',
-      description: '',
-      agentType: 'person',
-    })
-    await addAgentController(personAgentAddress, account.address)
-  } catch (err) {
-    console.warn('[generate-wallet] Person agent registration failed:', err)
+  // 5. Register person agent in on-chain resolver (uses deployer directly, no session needed)
+  const resolverAddr = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}`
+  if (resolverAddr) {
+    try {
+      const wc = getWalletClient()
+      const pc = getPublicClient()
+
+      // Register in resolver
+      const isReg = await pc.readContract({
+        address: resolverAddr, abi: agentAccountResolverAbi,
+        functionName: 'isRegistered', args: [personAgentAddress],
+      }) as boolean
+
+      if (!isReg) {
+        const regHash = await wc.writeContract({
+          address: resolverAddr, abi: agentAccountResolverAbi,
+          functionName: 'register',
+          args: [personAgentAddress, userName ?? 'Personal Agent', '', TYPE_PERSON, ZERO_HASH, ''],
+        })
+        await pc.waitForTransactionReceipt({ hash: regHash })
+      }
+
+      // Set ATL_CONTROLLER
+      const ctrlHash = await wc.writeContract({
+        address: resolverAddr, abi: agentAccountResolverAbi,
+        functionName: 'addMultiAddressProperty',
+        args: [personAgentAddress, ATL_CONTROLLER as `0x${string}`, account.address],
+      })
+      await pc.waitForTransactionReceipt({ hash: ctrlHash })
+
+      console.log(`[generate-wallet] Person agent registered: ${personAgentAddress} → ${account.address}`)
+    } catch (err) {
+      console.warn('[generate-wallet] Person agent registration failed:', err)
+    }
   }
 
   return {

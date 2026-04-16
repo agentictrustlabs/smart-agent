@@ -12,6 +12,8 @@ export const users = sqliteTable('users', {
   privateKey: text('private_key'),
   /** Smart account address deployed for this user. Null until deployed. */
   smartAccountAddress: text('smart_account_address'),
+  /** Person agent address deployed for this user. Null until deployed. */
+  personAgentAddress: text('person_agent_address'),
   createdAt: text('created_at')
     .notNull()
     .$defaultFn(() => new Date().toISOString()),

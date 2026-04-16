@@ -18,7 +18,7 @@ import { agentAccountResolverAbi } from '@smart-agent/sdk'
 import { keccak256, toBytes } from 'viem'
 
 const TYPE_ORGANIZATION = keccak256(toBytes('atl:OrganizationAgent'))
-const TYPE_PERSON = keccak256(toBytes('atl:PersonAgent'))
+// TYPE_PERSON no longer needed — person agents deployed by generateDemoWallet
 const ZERO_HASH = '0x0000000000000000000000000000000000000000000000000000000000000000' as `0x${string}`
 
 async function deploy(salt: number): Promise<`0x${string}`> {
@@ -116,8 +116,20 @@ async function doSeed() {
   ]
   for (const u of USERS) upsertUser(u)
 
-  // ─── Deploy Agent Smart Accounts ──────────────────────────────────
-  console.log('[gc-seed] Deploying smart accounts...')
+  // ─── Ensure community users have wallets + person agents ───────────
+  console.log('[gc-seed] Ensuring community users provisioned...')
+  const { ensureCommunityUsers } = await import('./lookup-users')
+  const gcUsers = await ensureCommunityUsers('gc-user-')
+  const userMap = new Map(gcUsers.map(u => [u.key, u]))
+
+  const paPastorJames = userMap.get('gc-user-001')!.personAgentAddress as `0x${string}`
+  const paSarahMitchell = userMap.get('gc-user-002')!.personAgentAddress as `0x${string}`
+  const paDanBusby = userMap.get('gc-user-003')!.personAgentAddress as `0x${string}`
+  const paJohnChesnut = userMap.get('gc-user-004')!.personAgentAddress as `0x${string}`
+  const paDavidWills = userMap.get('gc-user-005')!.personAgentAddress as `0x${string}`
+
+  // ─── Deploy Org Smart Accounts ───────────────────────────────────
+  console.log('[gc-seed] Deploying org smart accounts...')
   // Organizations (salt 300001+)
   const gcNetwork = await deploy(300001)
   const graceChurch = await deploy(300002)
@@ -128,13 +140,6 @@ async function doSeed() {
   const youthMinistry = await deploy(300007)
   const smallGroups = await deploy(300008)
   const missionsTeam = await deploy(300009)
-
-  // Person agents (salt 320001+)
-  const paPastorJames = await deploy(320001)
-  const paSarahMitchell = await deploy(320002)
-  const paDanBusby = await deploy(320003)
-  const paJohnChesnut = await deploy(320004)
-  const paDavidWills = await deploy(320005)
 
   console.log('[gc-seed] Smart accounts deployed. Network:', gcNetwork, 'Grace Church:', graceChurch)
 
@@ -149,23 +154,8 @@ async function doSeed() {
   await register(youthMinistry, 'Grace Youth Ministry', 'Sub-ministry of Grace Community Church — youth programs', TYPE_ORGANIZATION)
   await register(smallGroups, 'Grace Small Groups', 'Sub-ministry of Grace Community Church — small group discipleship', TYPE_ORGANIZATION)
   await register(missionsTeam, 'Grace Missions Team', 'Sub-ministry of Grace Community Church — missions outreach', TYPE_ORGANIZATION)
-  await register(paPastorJames, 'Pastor James', 'Senior Pastor — Grace Community Church', TYPE_PERSON)
-  await register(paSarahMitchell, 'Dr. Sarah Mitchell', 'Executive Director — Southern Baptist Convention', TYPE_PERSON)
-  await register(paDanBusby, 'Dan Busby', 'Executive Director — ECFA', TYPE_PERSON)
-  await register(paJohnChesnut, 'John Chesnut', 'Director — Wycliffe Bible Translators', TYPE_PERSON)
-  await register(paDavidWills, 'David Wills', 'President — National Christian Foundation', TYPE_PERSON)
-
-  // ─── Set ATL_CONTROLLER on person agents (wallet → agent mapping) ──
-  // Look up real wallet addresses from DB (generated at demo login)
-  console.log('[gc-seed] Setting controller predicates...')
-  const { ensureCommunityUsers } = await import('./lookup-users')
-  const gcUsers = await ensureCommunityUsers('gc-user-')
-  const userWallets = new Map(gcUsers.map(u => [u.key, u.walletAddress]))
-  await setController(paPastorJames, userWallets.get('gc-user-001') ?? USERS[0].wallet)
-  await setController(paSarahMitchell, userWallets.get('gc-user-002') ?? USERS[1].wallet)
-  await setController(paDanBusby, userWallets.get('gc-user-003') ?? USERS[2].wallet)
-  await setController(paJohnChesnut, userWallets.get('gc-user-004') ?? USERS[3].wallet)
-  await setController(paDavidWills, userWallets.get('gc-user-005') ?? USERS[4].wallet)
+  // Person agents already registered by generateDemoWallet — skip re-registration
+  // Person agent controllers already set by generateDemoWallet — skip
 
   // ─── Geospatial Metadata (US locations) ───────────────────────────
   console.log('[gc-seed] Setting geospatial metadata...')

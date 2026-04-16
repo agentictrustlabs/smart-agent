@@ -40,7 +40,7 @@ export const profileTools = {
       required: ['token'],
     },
     handler: async (args: { token: string }) => {
-      const principal = await requirePrincipal(args.token, 'update_profile')
+      const principal = await requirePrincipal(args.token, 'get_profile')
 
       const rows = db
         .select()

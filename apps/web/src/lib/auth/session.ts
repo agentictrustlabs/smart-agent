@@ -15,8 +15,13 @@ function getPrivyClient(): PrivyClient {
 }
 
 async function getDemoSessionFromCookie(
-  demoUser: string | undefined,
+  signedCookie: string | undefined,
 ): Promise<AuthSession | null> {
+  if (!signedCookie) return null
+
+  // Verify signed cookie
+  const { verifyCookie } = await import('@/lib/cookie-signing')
+  const demoUser = verifyCookie(signedCookie)
   if (!demoUser) return null
 
   const meta = DEMO_USER_META[demoUser]

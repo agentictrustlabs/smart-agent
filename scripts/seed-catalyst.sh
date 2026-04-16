@@ -249,6 +249,9 @@ if (fs.existsSync(migrDir)) {
   }
 }
 
+// Add columns not in original migration
+try { db.prepare('ALTER TABLE users ADD COLUMN person_agent_address TEXT').run(); } catch {}
+
 // Users
 const users = [
   { id: 'cat-user-001', name: 'Maria Gonzalez', email: 'maria@catalystnoco.org', wallet: '0x00000000000000000000000000000000000b0001', privy: 'did:privy:cat-001' },

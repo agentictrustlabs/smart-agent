@@ -42,8 +42,8 @@ export function AuthGate() {
     hasStarted.current = true
     window.sessionStorage.removeItem(PRIVY_CONNECT_INTENT_KEY)
 
-    // Clear stale demo cookies
-    document.cookie = 'demo-user=; path=/; max-age=0'
+    // Clear stale demo cookies (httpOnly — must go through server)
+    fetch('/api/auth/logout', { method: 'POST' }).catch(() => {})
 
     const googleUser = user as unknown as Record<string, { name?: string } | undefined>
 

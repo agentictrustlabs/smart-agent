@@ -19,7 +19,7 @@ import { agentAccountResolverAbi } from '@smart-agent/sdk'
 import { keccak256, toBytes } from 'viem'
 
 const TYPE_ORGANIZATION = keccak256(toBytes('atl:OrganizationAgent'))
-const TYPE_PERSON = keccak256(toBytes('atl:PersonAgent'))
+// TYPE_PERSON no longer needed — person agents deployed by generateDemoWallet
 const TYPE_AI = keccak256(toBytes('atl:AIAgent'))
 const ZERO_HASH = '0x0000000000000000000000000000000000000000000000000000000000000000' as `0x${string}`
 
@@ -112,8 +112,24 @@ async function doSeed() {
   ]
   for (const u of USERS) upsertUser(u)
 
-  // ─── Deploy Agent Smart Accounts ──────────────────────────────────
-  console.log('[catalyst-seed] Deploying smart accounts...')
+  // ─── Ensure community users have wallets + person agents ───────────
+  console.log('[catalyst-seed] Ensuring community users provisioned...')
+  const { ensureCommunityUsers } = await import('./lookup-users')
+  const catUsers = await ensureCommunityUsers('cat-user-')
+  const userMap = new Map(catUsers.map(u => [u.key, u]))
+
+  // Person agents come from the user provisioning (generateDemoWallet),
+  // not separate deployments — avoids duplicate person agents.
+  const paMaria = userMap.get('cat-user-001')!.personAgentAddress as `0x${string}`
+  const paDavid = userMap.get('cat-user-002')!.personAgentAddress as `0x${string}`
+  const paRosa = userMap.get('cat-user-003')!.personAgentAddress as `0x${string}`
+  const paCarlos = userMap.get('cat-user-004')!.personAgentAddress as `0x${string}`
+  const paSarah = userMap.get('cat-user-005')!.personAgentAddress as `0x${string}`
+  const paAna = userMap.get('cat-user-006')!.personAgentAddress as `0x${string}`
+  const paMiguel = userMap.get('cat-user-007')!.personAgentAddress as `0x${string}`
+
+  // ─── Deploy Org/AI Agent Smart Accounts ──────────────────────────
+  console.log('[catalyst-seed] Deploying org smart accounts...')
   const network = await deploy(200001)      // Catalyst NoCo Network
   const hub = await deploy(200002)          // Fort Collins Hub
   const grpWellington = await deploy(200003)  // Wellington Circle
@@ -124,13 +140,6 @@ async function doSeed() {
   const grpJohnstown = await deploy(200008)   // Johnstown Circle
   const grpRedFeather = await deploy(200009)  // Red Feather Lakes Circle
   const analytics = await deploy(210001)
-  const paMaria = await deploy(220001)
-  const paDavid = await deploy(220002)
-  const paRosa = await deploy(220003)
-  const paCarlos = await deploy(220004)
-  const paSarah = await deploy(220005)
-  const paAna = await deploy(220006)
-  const paMiguel = await deploy(220007)
 
   console.log('[catalyst-seed] Smart accounts deployed. Network:', network, 'Hub:', hub)
 
@@ -146,26 +155,9 @@ async function doSeed() {
   await register(grpJohnstown, 'Johnstown Circle', 'Circle — Johnstown and Milliken families (G3)', TYPE_ORGANIZATION)
   await register(grpRedFeather, 'Red Feather Circle', 'Circle — rural mountain community near Red Feather Lakes (G2)', TYPE_ORGANIZATION)
   await register(analytics, 'NoCo Growth Analytics', 'Movement health tracking for Northern Colorado circles', TYPE_AI)
-  await register(paMaria, 'Maria Gonzalez', 'Program Director — Catalyst NoCo Network, bilingual community leader', TYPE_PERSON)
-  await register(paDavid, 'Pastor David Chen', 'Hub Lead — Fort Collins Hub, bridge-building pastor', TYPE_PERSON)
-  await register(paRosa, 'Rosa Martinez', 'Hispanic Outreach Coordinator — ESL, immigration support, community liaison', TYPE_PERSON)
-  await register(paCarlos, 'Carlos Herrera', 'Community Partner — local business owner, connects circles to resources', TYPE_PERSON)
-  await register(paSarah, 'Sarah Thompson', 'Regional Lead — Catalyst NoCo Network, fundraising and partnerships', TYPE_PERSON)
-  await register(paAna, 'Ana Reyes', 'Circle Leader — Wellington Circle, ESL teacher and youth mentor', TYPE_PERSON)
-  await register(paMiguel, 'Miguel Santos', 'Circle Leader — Laporte Circle, farm worker advocate and prayer warrior', TYPE_PERSON)
+  // Person agents already registered by generateDemoWallet — skip re-registration
 
-  // ─── Set ATL_CONTROLLER on person agents (wallet → agent mapping) ──
-  console.log('[catalyst-seed] Setting controller predicates...')
-  const { ensureCommunityUsers } = await import('./lookup-users')
-  const catUsers = await ensureCommunityUsers('cat-user-')
-  const catWallets = new Map(catUsers.map(u => [u.key, u.walletAddress]))
-  await setController(paMaria, catWallets.get('cat-user-001') ?? USERS[0].wallet)
-  await setController(paDavid, catWallets.get('cat-user-002') ?? USERS[1].wallet)
-  await setController(paRosa, catWallets.get('cat-user-003') ?? USERS[2].wallet)
-  await setController(paCarlos, catWallets.get('cat-user-004') ?? USERS[3].wallet)
-  await setController(paSarah, catWallets.get('cat-user-005') ?? USERS[4].wallet)
-  await setController(paAna, catWallets.get('cat-user-006') ?? USERS[5].wallet)
-  await setController(paMiguel, catWallets.get('cat-user-007') ?? USERS[6].wallet)
+  // Person agent controllers already set by generateDemoWallet — skip
 
   // ─── Geospatial Metadata (Northern Colorado) ──────────────────────
   console.log('[catalyst-seed] Setting geospatial metadata...')

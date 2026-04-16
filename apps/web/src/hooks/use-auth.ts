@@ -17,11 +17,8 @@ interface DemoAuthResponse {
   } | null
 }
 
-function readDemoUserCookie(): string | null {
-  if (typeof document === 'undefined') return null
-  const match = document.cookie.match(/(?:^|;\s*)demo-user=([^;]*)/)
-  return match ? decodeURIComponent(match[1]) : null
-}
+// Demo-user cookie is httpOnly — can't read from client.
+// The GET /api/demo-login endpoint reads it server-side and returns user data.
 
 function buildDemoUser(data: NonNullable<DemoAuthResponse['user']>): PrivyUser {
   return {
@@ -44,19 +41,18 @@ export function useAuth() {
     let cancelled = false
 
     async function loadDemoUser() {
-      const cookieUser = readDemoUserCookie()
-      if (!cookieUser) {
-        if (!cancelled) {
-          setDemoAuthenticated(false)
-          setDemoUser(null)
-          setDemoReady(true)
-        }
-        return
-      }
-
+      // Cookie is httpOnly — check via server API
       try {
         const res = await fetch('/api/demo-login', { cache: 'no-store' })
         const data = await res.json() as DemoAuthResponse
+        if (!data.user) {
+          if (!cancelled) {
+            setDemoAuthenticated(false)
+            setDemoUser(null)
+            setDemoReady(true)
+          }
+          return
+        }
         if (!cancelled) {
           setDemoAuthenticated(Boolean(data.user))
           setDemoUser(data.user ? buildDemoUser(data.user) : null)
@@ -121,7 +117,8 @@ export function useAuth() {
       // Clear demo cookie. Keep a2a-session — it's tied to the smart account
       // and stays valid across reconnects (24h TTL). Only cleared when
       // switching demo users (see DemoLoginPicker).
-      document.cookie = 'demo-user=; path=/; max-age=0'
+      // Clear httpOnly cookies via server
+      await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {})
       setDemoAuthenticated(false)
       setDemoUser(null)
 

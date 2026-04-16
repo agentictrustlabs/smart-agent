@@ -18,7 +18,7 @@ import { agentAccountResolverAbi } from '@smart-agent/sdk'
 import { keccak256, toBytes } from 'viem'
 
 const TYPE_ORGANIZATION = keccak256(toBytes('atl:OrganizationAgent'))
-const TYPE_PERSON = keccak256(toBytes('atl:PersonAgent'))
+// TYPE_PERSON no longer needed — person agents deployed by generateDemoWallet
 const ZERO_HASH = '0x0000000000000000000000000000000000000000000000000000000000000000' as `0x${string}`
 
 async function deploy(salt: number): Promise<`0x${string}`> {
@@ -116,8 +116,22 @@ async function doSeed() {
   ]
   for (const u of USERS) upsertUser(u)
 
-  // ─── Deploy Agent Smart Accounts ──────────────────────────────────
-  console.log('[cil-seed] Deploying smart accounts...')
+  // ─── Ensure community users have wallets + person agents ───────────
+  console.log('[cil-seed] Ensuring community users provisioned...')
+  const { ensureCommunityUsers } = await import('./lookup-users')
+  const cilUsers = await ensureCommunityUsers('cil-user-')
+  const userMap = new Map(cilUsers.map(u => [u.key, u]))
+
+  const paCameron = userMap.get('cil-user-001')!.personAgentAddress as `0x${string}`
+  const paNick    = userMap.get('cil-user-002')!.personAgentAddress as `0x${string}`
+  const paAfia    = userMap.get('cil-user-003')!.personAgentAddress as `0x${string}`
+  const paKossi   = userMap.get('cil-user-004')!.personAgentAddress as `0x${string}`
+  const paYaw     = userMap.get('cil-user-005')!.personAgentAddress as `0x${string}`
+  const paJohn    = userMap.get('cil-user-006')!.personAgentAddress as `0x${string}`
+  const paPaul    = userMap.get('cil-user-007')!.personAgentAddress as `0x${string}`
+
+  // ─── Deploy Org Smart Accounts ───────────────────────────────────
+  console.log('[cil-seed] Deploying org smart accounts...')
 
   // Organizations (salt 400001+)
   const cil         = await deploy(400001)
@@ -128,15 +142,6 @@ async function doSeed() {
   const lomeHub     = await deploy(400006)
   const wave1       = await deploy(400007)
   const wave2       = await deploy(400008)
-
-  // Person agents (salt 420001+)
-  const paCameron = await deploy(420001)
-  const paNick    = await deploy(420002)
-  const paAfia    = await deploy(420003)
-  const paKossi   = await deploy(420004)
-  const paYaw     = await deploy(420005)
-  const paJohn    = await deploy(420006)
-  const paPaul    = await deploy(420007)
 
   console.log('[cil-seed] Smart accounts deployed. CIL:', cil, 'ILAD:', ilad)
 
@@ -151,26 +156,8 @@ async function doSeed() {
   await register(wave1,       'Wave 1 Cohort', 'First batch of funded businesses', TYPE_ORGANIZATION)
   await register(wave2,       'Wave 2 Cohort', 'Second batch of funded businesses', TYPE_ORGANIZATION)
 
-  await register(paCameron, 'Cameron Henrion', 'Operations Lead — ILAD', TYPE_PERSON)
-  await register(paNick,    'Nick Courchesne', 'Reviewer — ILAD', TYPE_PERSON)
-  await register(paAfia,    'Afia Mensah', "Business Owner — Afia's Market", TYPE_PERSON)
-  await register(paKossi,   'Kossi Agbeko', 'Business Owner — Kossi Mobile Repairs', TYPE_PERSON)
-  await register(paYaw,     'Yaw', 'Local Manager — ILAD', TYPE_PERSON)
-  await register(paJohn,    'John F. Kim', 'Admin — Collective Impact Labs', TYPE_PERSON)
-  await register(paPaul,    'Paul Martel', 'Funder — Collective Impact Labs', TYPE_PERSON)
-
-  // ─── Set ATL_CONTROLLER on person agents (wallet → agent mapping) ──
-  console.log('[cil-seed] Setting controller predicates...')
-  const { ensureCommunityUsers } = await import('./lookup-users')
-  const cilUsers = await ensureCommunityUsers('cil-user-')
-  const cilWallets = new Map(cilUsers.map(u => [u.key, u.walletAddress]))
-  await setController(paCameron, cilWallets.get('cil-user-001') ?? USERS[0].wallet)
-  await setController(paNick,    cilWallets.get('cil-user-002') ?? USERS[1].wallet)
-  await setController(paAfia,    cilWallets.get('cil-user-003') ?? USERS[2].wallet)
-  await setController(paKossi,   cilWallets.get('cil-user-004') ?? USERS[3].wallet)
-  await setController(paYaw,     cilWallets.get('cil-user-005') ?? USERS[4].wallet)
-  await setController(paJohn,    cilWallets.get('cil-user-006') ?? USERS[5].wallet)
-  await setController(paPaul,    cilWallets.get('cil-user-007') ?? USERS[6].wallet)
+  // Person agents already registered by generateDemoWallet — skip re-registration
+  // Person agent controllers already set by generateDemoWallet — skip
 
   // ─── Geospatial Metadata ──────────────────────────────────────────
   console.log('[cil-seed] Setting geospatial metadata...')
