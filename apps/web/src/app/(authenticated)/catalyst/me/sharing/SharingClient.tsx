@@ -76,9 +76,9 @@ export function SharingClient({ incoming, outgoing, userId }: Props) {
   }
 
   return (
-    <div style={{ padding: '1.5rem 2rem', maxWidth: 900 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-        <h1 style={{ fontSize: '1.4rem', fontWeight: 700, color: '#3a3028', margin: 0 }}>Data Sharing</h1>
+    <div className="px-6 py-5 max-w-4xl">
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-headline-sm font-bold text-on-surface">Data Sharing</h1>
         <a href="/catalyst/me" style={{ fontSize: '0.85rem', color: '#8b5e3c', textDecoration: 'none' }}>
           ← Back to Profile
         </a>

@@ -641,11 +641,8 @@ async function DelegationSection({ userId }: { userId: string }) {
   for (const d of outgoing) await agentName(d.grantee)
 
   return (
-    <div style={{
-      background: '#ffffff', border: '1px solid #ece6db',
-      borderRadius: 12, padding: '1rem 1.25rem', marginBottom: '1rem',
-    }}>
-      <h2 style={{ fontSize: '0.7rem', fontWeight: 700, color: '#9a8c7e', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.6rem' }}>
+    <div className="bg-white border border-outline-variant rounded-md p-5 mb-4 shadow-elevation-1">
+      <h2 className="text-label-md text-on-surface-variant uppercase tracking-wider font-bold mb-3">
         Relationships & Data Delegations
       </h2>
 
@@ -700,27 +697,33 @@ function DelegationRow({ icon, iconBg, iconColor, name, agentName, detail, toolt
   href?: string; linkLabel?: string; linkColor?: string; linkBorder?: string; linkBg?: string
 }) {
   return (
-    <div title={tooltip} style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', padding: '0.5rem 0', borderBottom: '1px solid #ece6db', cursor: tooltip ? 'help' : undefined }}>
-      <span style={{
-        padding: '0.15rem 0.4rem', borderRadius: 10, background: iconBg, color: iconColor,
-        fontSize: '0.6rem', fontWeight: 700, whiteSpace: 'nowrap', border: `1px solid ${iconColor}25`,
-      }}>{icon}</span>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
-          <span style={{ fontWeight: 600, fontSize: '0.85rem', color: '#5c4a3a' }}>{name}</span>
+    <div title={tooltip} className={`flex items-center gap-3 py-2 border-b border-outline-variant ${tooltip ? 'cursor-help' : ''}`}>
+      <span className="px-2 py-0.5 rounded-full text-label-sm font-bold whitespace-nowrap"
+        style={{ background: iconBg, color: iconColor, border: `1px solid ${iconColor}25` }}>
+        {icon}
+      </span>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-title-sm font-semibold text-on-surface">{name}</span>
           {agentName && (
-            <span style={{ fontFamily: 'monospace', fontSize: '0.68rem', color: '#8b5e3c', background: 'rgba(139,94,60,0.06)', padding: '0.05rem 0.35rem', borderRadius: 6, border: '1px solid rgba(139,94,60,0.12)' }}>
+            <span className="font-mono text-label-sm text-primary bg-primary-container px-1.5 py-0.5 rounded border border-primary/10">
               {agentName}
             </span>
           )}
         </div>
-        <div style={{ fontSize: '0.7rem', color: '#9a8c7e', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{detail}</div>
+        <div className="text-body-sm text-on-surface-variant truncate">{detail}</div>
       </div>
       {badgeLabel && (
-        <span style={{ fontSize: '0.6rem', padding: '0.1rem 0.4rem', borderRadius: 10, background: `${badgeColor}12`, color: badgeColor, fontWeight: 600, border: `1px solid ${badgeColor}30` }}>{badgeLabel}</span>
+        <span className="text-label-sm px-2 py-0.5 rounded-full font-semibold"
+          style={{ background: `${badgeColor}12`, color: badgeColor, border: `1px solid ${badgeColor}30` }}>
+          {badgeLabel}
+        </span>
       )}
       {href && linkLabel && (
-        <Link href={href} style={{ fontSize: '0.65rem', padding: '0.15rem 0.5rem', borderRadius: 10, background: linkBg ?? 'rgba(139,94,60,0.10)', color: linkColor ?? '#8b5e3c', fontWeight: 600, border: `1px solid ${linkBorder ?? 'rgba(139,94,60,0.20)'}`, textDecoration: 'none' }}>{linkLabel}</Link>
+        <Link href={href} className="text-label-sm px-2.5 py-0.5 rounded-full font-semibold no-underline transition-all hover:shadow-elevation-1"
+          style={{ background: linkBg ?? 'rgba(139,94,60,0.10)', color: linkColor ?? '#8b5e3c', border: `1px solid ${linkBorder ?? 'rgba(139,94,60,0.20)'}` }}>
+          {linkLabel}
+        </Link>
       )}
     </div>
   )

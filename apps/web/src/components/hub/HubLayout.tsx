@@ -212,11 +212,11 @@ function HubLayoutInner({ children }: { children: React.ReactNode }) {
   if (loading) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: '#fafafa' }}>
-        <header style={{ position: 'sticky', top: 0, zIndex: 40, background: '#fff', borderBottom: '1px solid #e0e0e0', height: 56, display: 'flex', alignItems: 'center', padding: '0 1rem' }}>
-          <span style={{ fontWeight: 700, fontSize: '1.05rem', color: '#37474f' }}>Smart Agent</span>
+        <header className="sticky top-0 z-40 bg-white border-b border-outline-variant h-14 flex items-center px-4">
+          <span className="font-bold text-title-md text-on-surface">Smart Agent</span>
         </header>
-        <main style={{ flex: 1, padding: '2rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <span style={{ color: '#9e9e9e', fontSize: '0.9rem' }}>Loading...</span>
+        <main className="flex-1 p-8 flex items-center justify-center">
+          <span className="text-on-surface-variant text-body-md animate-pulse">Loading...</span>
         </main>
       </div>
     )
@@ -233,52 +233,19 @@ function HubLayoutInner({ children }: { children: React.ReactNode }) {
         {/* ============================================================== */}
         {/* Top Header Bar                                                  */}
         {/* ============================================================== */}
-        <header style={{
-          position: 'sticky',
-          top: 0,
-          zIndex: 40,
-          background: T.headerBg,
-          borderBottom: `1px solid ${T.border}`,
-          flexShrink: 0,
-        }}>
+        <header className="sticky top-0 z-40 bg-white border-b border-outline-variant flex-shrink-0 shadow-elevation-1">
           {/* Primary row: logo + tabs + mode toggle + agent + user */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '0 1rem',
-            height: 56,
-            gap: '0.75rem',
-          }}>
+          <div className="flex items-center justify-between px-4 h-14 gap-3">
             {/* ── Left: Logo + Brand ── */}
-            <Link href="/" style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              textDecoration: 'none',
-              flexShrink: 0,
-            }}>
+            <Link href="/" className="flex items-center gap-2 no-underline flex-shrink-0">
               <LogoIcon accent={T.accent} />
-              <span style={{
-                fontWeight: 700,
-                fontSize: '1.05rem',
-                color: T.text,
-                letterSpacing: '-0.01em',
-              }}>
+              <span className="font-bold text-title-md text-on-surface tracking-tight">
                 {loading ? 'Loading...' : profile.name}
               </span>
             </Link>
 
             {/* ── Center: Intent-based primary tabs ── */}
-            <nav style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.25rem',
-              flexWrap: 'wrap',
-              justifyContent: 'center',
-              flex: 1,
-              minWidth: 0,
-            }}>
+            <nav className="flex items-center gap-1 flex-wrap justify-center flex-1 min-w-0">
               {primaryNav.map(tab => {
                 const active = tab.activePrefixes
                   ? tab.activePrefixes.some(p => pathname === p || pathname.startsWith(p + '/'))
@@ -287,17 +254,11 @@ function HubLayoutInner({ children }: { children: React.ReactNode }) {
                   <Link
                     key={tab.href}
                     href={tab.href}
-                    style={{
-                      padding: '0.35rem 0.85rem',
-                      borderRadius: 20,
-                      fontSize: '0.82rem',
-                      fontWeight: active ? 650 : 500,
-                      color: active ? '#fff' : T.text,
-                      background: active ? T.accent : 'transparent',
-                      textDecoration: 'none',
-                      transition: 'all 0.15s ease',
-                      whiteSpace: 'nowrap',
-                    }}
+                    className={`px-4 py-1.5 rounded-full text-label-lg no-underline transition-all duration-200 whitespace-nowrap ${
+                      active
+                        ? 'bg-primary text-on-primary font-semibold shadow-elevation-1'
+                        : 'text-on-surface-variant hover:bg-surface-variant hover:text-on-surface font-medium'
+                    }`}
                   >
                     {tab.label}
                   </Link>
@@ -674,11 +635,7 @@ function HubLayoutInner({ children }: { children: React.ReactNode }) {
           display: 'flex',
           minHeight: 0,
         }}>
-          <main style={{
-            flex: 1,
-            padding: '1.25rem 1.5rem 3rem',
-            minWidth: 0,
-          }}>
+          <main className="flex-1 px-6 py-5 pb-12 min-w-0">
             {children}
           </main>
 

@@ -7,5 +7,5 @@ export default async function HubLandingPage({ params }: { params: Promise<{ hub
   const config = getHubLandingConfig(hubId)
   if (!config) notFound()
 
-  return <HubLandingClient config={config} allHubs={HUB_LANDING_CONFIGS.map(h => ({ slug: h.slug, name: h.name, color: h.color }))} />
+  return <HubLandingClient config={config} allHubs={HUB_LANDING_CONFIGS.map(h => ({ slug: h.slug, name: h.name, color: h.color, colorSoft: h.colorSoft }))} />
 }

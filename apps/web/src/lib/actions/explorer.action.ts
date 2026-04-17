@@ -65,6 +65,20 @@ function getUniversalAddr(): `0x${string}` | null {
   return (process.env.AGENT_NAME_UNIVERSAL_RESOLVER_ADDRESS as `0x${string}`) || null
 }
 
+// ─── Root Node ────────────────────────────────────────────────────
+
+export async function getAgentRoot(): Promise<string | null> {
+  const registryAddr = getRegistryAddr()
+  if (!registryAddr) return null
+  try {
+    const client = getPublicClient()
+    return await client.readContract({
+      address: registryAddr, abi: agentNameRegistryAbi,
+      functionName: 'AGENT_ROOT',
+    }) as string
+  } catch { return null }
+}
+
 // ─── Tree Operations ───────────────────────────────────────────────
 
 /**
@@ -77,16 +91,31 @@ export async function getExplorerChildren(parentNode: string): Promise<ExplorerN
   const client = getPublicClient()
   const results: ExplorerNode[] = []
 
+  // Resolve "root" to the actual AGENT_ROOT from the contract
+  let resolvedParent: `0x${string}`
+  if (parentNode === 'root') {
+    try {
+      resolvedParent = await client.readContract({
+        address: registryAddr, abi: agentNameRegistryAbi,
+        functionName: 'AGENT_ROOT',
+      }) as `0x${string}`
+    } catch {
+      return []
+    }
+  } else {
+    resolvedParent = parentNode as `0x${string}`
+  }
+
   try {
     const labelhashes = await client.readContract({
       address: registryAddr, abi: agentNameRegistryAbi,
-      functionName: 'childLabelhashes', args: [parentNode as `0x${string}`],
+      functionName: 'childLabelhashes', args: [resolvedParent],
     }) as `0x${string}`[]
 
     for (const lh of labelhashes) {
       const childNodeHash = await client.readContract({
         address: registryAddr, abi: agentNameRegistryAbi,
-        functionName: 'childNode', args: [parentNode as `0x${string}`, lh],
+        functionName: 'childNode', args: [resolvedParent, lh],
       }) as `0x${string}`
 
       const owner = await client.readContract({

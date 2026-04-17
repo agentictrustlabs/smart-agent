@@ -1,9 +1,61 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 @import 'leaflet/dist/leaflet.css';
 
-/* ─── Reset & Base ──────────────────────────────────────────────────── */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+/* ─── Material Design 3 Token System ──────────────────────────────── */
 
 :root {
+  /* ── M3 Primary (warm brown — Catalyst default) ──
+     Generated via Material Theme Builder baseline
+     Primary: #7B5733 → tonal palette ensures contrast */
+  --md-primary: #7B5733;
+  --md-on-primary: #ffffff;
+  --md-primary-container: #FFDCC2;
+  --md-on-primary-container: #2C1600;
+
+  /* ── M3 Secondary (teal) ── */
+  --md-secondary: #006B5F;
+  --md-on-secondary: #ffffff;
+  --md-secondary-container: #74F8E4;
+
+  /* ── M3 Tertiary ── */
+  --md-tertiary: #5C6237;
+  --md-on-tertiary: #ffffff;
+  --md-tertiary-container: #E1E7B0;
+
+  /* ── M3 Surface (light warm gray) ── */
+  --md-surface: #FFF8F5;
+  --md-surface-dim: #E4D8D0;
+  --md-surface-bright: #FFF8F5;
+  --md-surface-container-lowest: #ffffff;
+  --md-surface-container-low: #FEF1EA;
+  --md-surface-container: #F8ECE4;
+  --md-surface-container-high: #F3E6DE;
+  --md-surface-container-highest: #EDE0D8;
+  --md-surface-variant: #F0DED2;
+  --md-on-surface: #201A17;
+  --md-on-surface-variant: #51443B;
+
+  /* ── M3 Outline ── */
+  --md-outline: #847469;
+  --md-outline-variant: #D5C3B6;
+
+  /* ── M3 Error ── */
+  --md-error: #BA1A1A;
+  --md-on-error: #ffffff;
+  --md-error-container: #FFDAD6;
+
+  /* ── M3 Success ── */
+  --md-success: #1B6D2A;
+  --md-success-container: #A4F5A2;
+
+  /* ── M3 Warning ── */
+  --md-warning: #8B5000;
+  --md-warning-container: #FFDCBE;
+
+  /* Legacy vars (kept for gradual migration) */
   --bg: #fafafa;
   --bg-card: #ffffff;
   --bg-hover: #f5f5f5;
@@ -12,7 +64,7 @@
   --text-secondary: #616161;
   --text-muted: #9e9e9e;
   --accent: #8b5e3c;
-
+  --accent-hover: #6d4c2a;
   --accent-light: rgba(139, 94, 60, 0.08);
   --success: #2e7d32;
   --success-light: #e8f5e9;
@@ -27,6 +79,51 @@
   --shadow-md: 0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.06);
   --shadow-lg: 0 10px 15px rgba(0,0,0,0.1), 0 4px 6px rgba(0,0,0,0.05);
 }
+
+/* ─── Hub Theme Overrides ─────────────────────────────────────────── */
+/* ── Catalyst Hub: Warm brown ── */
+[data-hub="catalyst"] {
+  --md-primary: #7B5733;
+  --md-on-primary: #ffffff;
+  --md-primary-container: #FFDCC2;
+  --md-on-primary-container: #2C1600;
+  --md-secondary: #006B5F;
+  --accent: #7B5733;
+  --accent-hover: #5E3F1F;
+}
+
+/* ── CIL / Mission Collective: Indigo blue ── */
+[data-hub="cil"], [data-hub="mission"] {
+  --md-primary: #3F51B5;
+  --md-on-primary: #ffffff;
+  --md-primary-container: #DEE0FF;
+  --md-on-primary-container: #00105C;
+  --md-secondary: #00696D;
+  --md-on-secondary: #ffffff;
+  --md-secondary-container: #6FF6FC;
+  --md-surface: #FAFBFF;
+  --md-surface-variant: #E1E2EC;
+  --md-on-surface: #1B1B1F;
+  --md-on-surface-variant: #44464F;
+  --md-outline: #757680;
+  --md-outline-variant: #C5C6D0;
+  --accent: #3F51B5;
+  --accent-hover: #303F9F;
+}
+
+/* ── Global Church: Same warm brown ── */
+[data-hub="global-church"] {
+  --md-primary: #7B5733;
+  --md-on-primary: #ffffff;
+  --md-primary-container: #FFDCC2;
+  --md-on-primary-container: #2C1600;
+  --md-secondary: #006B5F;
+  --accent: #7B5733;
+  --accent-hover: #5E3F1F;
+}
+
+/* ─── Reset & Base ──────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 html { color-scheme: light; }
 
@@ -325,7 +422,8 @@ a:hover { color: var(--accent-hover); text-decoration: underline; }
 }
 
 /* ─── Buttons ───────────────────────────────────────────────────────── */
-button, [data-component="connect-wallet-btn"] {
+/* Only apply the default button skin to unstyled buttons. */
+button:not([class]):not([style]), [data-component="connect-wallet-btn"] {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -342,9 +440,9 @@ button, [data-component="connect-wallet-btn"] {
   box-shadow: var(--shadow-sm);
 }
 
-button:hover:not(:disabled) { background: var(--accent-hover); box-shadow: var(--shadow); }
-button:active:not(:disabled) { transform: scale(0.98); }
-button:disabled { opacity: 0.45; cursor: not-allowed; }
+button:not([class]):not([style]):hover:not(:disabled) { background: var(--accent-hover); box-shadow: var(--shadow); }
+button:not([class]):not([style]):active:not(:disabled) { transform: scale(0.98); }
+button:not([class]):not([style]):disabled { opacity: 0.45; cursor: not-allowed; }
 
 [data-component="connect-wallet-btn"] {
   padding: 1rem 2.5rem;

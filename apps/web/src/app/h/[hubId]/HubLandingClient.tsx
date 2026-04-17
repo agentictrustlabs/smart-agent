@@ -5,21 +5,17 @@ import Link from 'next/link'
 import { useAuth } from '@/hooks/use-auth'
 import type { HubLandingConfig } from '@/lib/hub-routes'
 
+const PRIVY_CONNECT_INTENT_KEY = 'smart-agent:privy-connect-intent'
+
 interface Props {
   config: HubLandingConfig
-  allHubs: Array<{ slug: string; name: string; color: string }>
+  allHubs: Array<{ slug: string; name: string; color: string; colorSoft?: string }>
 }
-
-const PRIVY_CONNECT_INTENT_KEY = 'smart-agent:privy-connect-intent'
 
 export function HubLandingClient({ config, allHubs }: Props) {
   const { login, canLoginWithPrivy, authenticated, ready } = useAuth()
   const [loading, setLoading] = useState(false)
   const [selectedUser, setSelectedUser] = useState<string | null>(null)
-
-  // When Privy auth completes (user connects wallet on this page), redirect to hub home
-  // We track whether we initiated a wallet connect to avoid redirecting on page load
-  // for users who are already authenticated from a previous session
   const [connectInitiated, setConnectInitiated] = useState(false)
 
   useEffect(() => {
@@ -40,10 +36,8 @@ export function HubLandingClient({ config, allHubs }: Props) {
     setLoading(true)
     setSelectedUser(key)
 
-    // Clear any existing sessions
     await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {})
 
-    // Demo login
     const loginRes = await fetch('/api/demo-login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -56,120 +50,171 @@ export function HubLandingClient({ config, allHubs }: Props) {
       return
     }
 
-    // Bootstrap A2A session in background — don't block navigation
     fetch('/api/a2a/bootstrap', { method: 'POST' }).catch(() => {})
-
-    // Navigate to hub dashboard immediately
     window.location.href = `/h/${config.slug}/home`
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#faf8f3', display: 'flex', flexDirection: 'column' }}>
-
-      {/* Top bar: hub switcher */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.5rem',
-        borderBottom: '1px solid #ece6db', background: '#fff',
-      }}>
-        <Link href="/" style={{ fontSize: '0.82rem', color: '#9a8c7e', textDecoration: 'none', fontWeight: 600 }}>
-          Smart Agent
-        </Link>
-        <span style={{ color: '#ece6db' }}>|</span>
-        {allHubs.map(h => (
-          <Link key={h.slug} href={`/h/${h.slug}`} style={{
-            padding: '0.25rem 0.65rem', borderRadius: 8, fontSize: '0.78rem', fontWeight: 600,
-            textDecoration: 'none',
-            background: h.slug === config.slug ? `${h.color}12` : 'transparent',
-            color: h.slug === config.slug ? h.color : '#9a8c7e',
-            border: h.slug === config.slug ? `1px solid ${h.color}30` : '1px solid transparent',
-          }}>
-            {h.name}
+    <div
+      className="min-h-screen"
+      style={{
+        background: `radial-gradient(circle at top right, ${config.color}18 0%, transparent 24%), ${config.heroGradient}`,
+      }}
+    >
+      <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-6 py-6 lg:px-10">
+        <nav
+          className="flex flex-wrap items-center gap-2 rounded-[26px] border px-4 py-3 shadow-[0_10px_32px_rgba(30,41,66,0.06)]"
+          style={{
+            background: 'rgba(255,255,255,0.72)',
+            borderColor: `${config.color}20`,
+            backdropFilter: 'blur(10px)',
+          }}
+        >
+          <Link href="/" className="mr-2 text-sm font-semibold text-[#394154] no-underline transition-colors hover:text-black">
+            Smart Agent
           </Link>
-        ))}
-      </div>
-
-      {/* Hero section */}
-      <div style={{
-        padding: '3rem 2rem 2rem', textAlign: 'center', maxWidth: 700, margin: '0 auto',
-      }}>
-        <div style={{
-          display: 'inline-block', padding: '0.3rem 0.8rem', borderRadius: 20,
-          background: `${config.color}12`, color: config.color, fontSize: '0.75rem',
-          fontWeight: 700, letterSpacing: '0.04em', marginBottom: '1rem',
-          border: `1px solid ${config.color}25`,
-        }}>
-          .agent namespace
-        </div>
-
-        <h1 style={{
-          fontSize: '2rem', fontWeight: 800, color: '#3a3028', margin: '0 0 0.5rem',
-          lineHeight: 1.2,
-        }}>
-          {config.name}
-        </h1>
-
-        <p style={{ fontSize: '1rem', color: '#9a8c7e', margin: '0 0 2rem', lineHeight: 1.6 }}>
-          {config.description}
-        </p>
-
-        {/* Connect Wallet button */}
-        <div style={{ marginBottom: '2rem' }}>
-          <button onClick={handleConnectWallet} style={{
-            padding: '0.75rem 2rem', background: config.color, color: '#fff',
-            border: 'none', borderRadius: 10, fontWeight: 700, fontSize: '0.95rem',
-            cursor: 'pointer', boxShadow: `0 2px 8px ${config.color}40`,
-            opacity: canLoginWithPrivy ? 1 : 0.5,
-          }}>
-            {canLoginWithPrivy ? 'Connect Wallet' : 'Wallet Connect Not Configured'}
-          </button>
-          <div style={{ fontSize: '0.78rem', color: '#9a8c7e', marginTop: '0.5rem' }}>
-            or select a demo user below
-          </div>
-        </div>
-      </div>
-
-      {/* Demo users grid */}
-      <div style={{ maxWidth: 700, margin: '0 auto', padding: '0 2rem 3rem', width: '100%' }}>
-        <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#9a8c7e', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.75rem' }}>
-          Demo Users ({config.demoUsers.length})
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.6rem' }}>
-          {config.demoUsers.map(u => (
-            <button
-              key={u.key}
-              onClick={() => handleSelectUser(u.key)}
-              disabled={loading}
+          {allHubs.map((h) => (
+            <Link
+              key={h.slug}
+              href={`/h/${h.slug}`}
+              className="rounded-full px-4 py-2 text-sm font-semibold no-underline transition-all"
               style={{
-                padding: '0.75rem', background: '#fff', border: `1px solid #ece6db`,
-                borderRadius: 10, cursor: loading ? 'wait' : 'pointer', textAlign: 'left',
-                transition: 'all 0.15s', opacity: loading && selectedUser !== u.key ? 0.5 : 1,
-                borderLeft: `3px solid ${config.color}`,
+                background: h.slug === config.slug ? config.colorSoft : 'rgba(255,255,255,0.6)',
+                color: h.slug === config.slug ? config.color : '#5f677d',
+                boxShadow: h.slug === config.slug ? `inset 0 0 0 1px ${config.color}22` : 'inset 0 0 0 1px rgba(149, 157, 178, 0.18)',
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-                <div style={{
-                  width: 32, height: 32, borderRadius: '50%',
-                  background: `${config.color}12`, color: config.color,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontWeight: 700, fontSize: '0.82rem',
-                }}>
-                  {u.name.charAt(0)}
+              {h.name}
+            </Link>
+          ))}
+        </nav>
+
+        <section className="grid flex-1 gap-6 pt-6 lg:grid-cols-[1.15fr_0.85fr]">
+          <div
+            className="overflow-hidden rounded-[32px] border shadow-[0_24px_70px_rgba(37,44,71,0.10)]"
+            style={{
+              background: 'linear-gradient(160deg, rgba(255,255,255,0.96) 0%, rgba(248,249,252,0.96) 60%, rgba(244,246,251,0.98) 100%)',
+              borderColor: `${config.color}18`,
+            }}
+          >
+            <div className="grid gap-8 px-8 py-8 lg:grid-cols-[1fr_0.9fr] lg:px-10 lg:py-10">
+              <div>
+                <div className="text-sm font-semibold uppercase tracking-[0.18em]" style={{ color: config.color }}>
+                  {config.name}
                 </div>
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: '0.85rem', color: '#3a3028' }}>{u.name}</div>
-                  <div style={{ fontSize: '0.7rem', color: '#9a8c7e' }}>{u.role}</div>
+
+                <h1 className="mt-5 max-w-xl text-5xl font-semibold leading-[1.02] tracking-[-0.05em] text-[#171c28]">
+                  {config.slug === 'catalyst' ? 'Catalyst hub' : config.name}
+                </h1>
+                <p className="mt-5 max-w-2xl text-lg leading-8 text-[#5e667c]">
+                  {config.description}
+                </p>
+
+                <div className="mt-8 flex flex-wrap items-center gap-4">
+                  <button
+                    onClick={handleConnectWallet}
+                    disabled={!canLoginWithPrivy}
+                    className="rounded-full px-6 py-3 text-sm font-semibold text-white shadow-[0_18px_36px_rgba(46,55,88,0.18)] transition hover:translate-y-[-1px] disabled:cursor-not-allowed disabled:opacity-50"
+                    style={{
+                      background: canLoginWithPrivy
+                        ? `linear-gradient(135deg, ${config.color} 0%, #384a7a 100%)`
+                        : '#a6adbf',
+                    }}
+                  >
+                    {canLoginWithPrivy ? 'Connect Wallet' : 'Wallet Not Configured'}
+                  </button>
+                  <div className="text-sm text-[#6a7288]">or select a demo user</div>
                 </div>
               </div>
-              <div style={{ fontSize: '0.7rem', color: '#b5a898' }}>{u.org}</div>
-              {loading && selectedUser === u.key && (
-                <div style={{ fontSize: '0.72rem', color: config.color, fontWeight: 600, marginTop: '0.25rem' }}>
-                  Connecting...
+
+              <div
+                className="rounded-[28px] border p-6"
+                style={{
+                  background: `linear-gradient(160deg, ${config.color} 0%, #37476f 100%)`,
+                  borderColor: 'rgba(255,255,255,0.14)',
+                }}
+              >
+                <div className="text-sm font-semibold uppercase tracking-[0.18em] text-white/72">Hub details</div>
+                <div className="mt-6 grid gap-4">
+                  <div className="rounded-[22px] bg-white/12 p-4 backdrop-blur-[8px]">
+                    <div className="text-sm font-medium text-white/70">Hub</div>
+                    <div className="mt-1 text-lg font-semibold text-white">{config.name}</div>
+                  </div>
+                  <div className="rounded-[22px] bg-white/12 p-4 backdrop-blur-[8px]">
+                    <div className="text-sm font-medium text-white/70">Route</div>
+                    <div className="mt-1 text-lg font-semibold text-white">/h/{config.slug}</div>
+                  </div>
+                  <div className="rounded-[22px] bg-white/12 p-4 backdrop-blur-[8px]">
+                    <div className="text-sm font-medium text-white/70">Demo users</div>
+                    <div className="mt-1 text-lg font-semibold text-white">{config.demoUsers.length}</div>
+                  </div>
                 </div>
-              )}
-            </button>
-          ))}
-        </div>
+              </div>
+            </div>
+          </div>
+
+          <div
+            className="rounded-[32px] border p-6 shadow-[0_24px_70px_rgba(37,44,71,0.08)]"
+            style={{
+              background: 'rgba(255,255,255,0.88)',
+              borderColor: `${config.color}18`,
+            }}
+          >
+            <div className="flex items-start justify-between gap-4 text-left">
+              <div className="min-w-0">
+                <div className="text-sm font-semibold uppercase tracking-[0.16em] text-[#6c7388]">Demo users</div>
+                <h2 className="mt-2 text-3xl font-semibold tracking-[-0.03em] text-[#1e2433]">
+                  Choose a user
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-[#6a7288]">
+                  Select a demo user to enter this hub.
+                </p>
+              </div>
+              <div
+                className="shrink-0 rounded-full px-3 py-1 text-sm font-semibold"
+                style={{ background: config.colorSoft, color: config.color }}
+              >
+                {config.demoUsers.length}
+              </div>
+            </div>
+
+            <div className="mt-6 grid gap-3">
+              {config.demoUsers.map((u) => (
+                <button
+                  key={u.key}
+                  onClick={() => handleSelectUser(u.key)}
+                  disabled={loading}
+                  className="flex w-full flex-col items-start rounded-[24px] border p-4 text-left transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_28px_rgba(37,44,71,0.10)] disabled:cursor-wait disabled:opacity-60"
+                  style={{
+                    background: selectedUser === u.key ? config.surfaceTint : '#ffffff',
+                    borderColor: selectedUser === u.key ? `${config.color}40` : 'rgba(149, 157, 178, 0.2)',
+                  }}
+                >
+                  <div className="flex w-full items-center gap-4 text-left">
+                    <div
+                      className="flex h-11 w-11 items-center justify-center rounded-[16px] text-sm font-bold"
+                      style={{ background: config.colorSoft, color: config.color }}
+                    >
+                      {u.name.charAt(0)}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-base font-semibold text-[#202637]">{u.name}</div>
+                      <div className="truncate text-sm text-[#6a7288]">{u.role}</div>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 w-full text-sm text-[#6a7288]">{u.org}</div>
+
+                  {loading && selectedUser === u.key && (
+                    <div className="mt-3 w-full text-sm font-semibold animate-pulse" style={{ color: config.color }}>
+                      Connecting...
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
       </div>
     </div>
   )

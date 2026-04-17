@@ -1,8 +1,13 @@
 'use client'
 
 import { useState, useTransition, useEffect } from 'react'
+import Link from 'next/link'
 import { saveProfileViaDelegation, loadProfileViaDelegation } from '@/lib/actions/profile.action'
 import { useA2ASession } from '@/hooks/use-a2a-session'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -21,102 +26,18 @@ interface ProfileClientProps {
   coach: CoachInfo | null
 }
 
-// ─── Colors ─────────────────────────────────────────────────────────
-
-const C = {
-  bg: '#faf8f3',
-  card: '#ffffff',
-  accent: '#8b5e3c',
-  accentLight: 'rgba(139,94,60,0.10)',
-  accentBorder: 'rgba(139,94,60,0.20)',
-  text: '#5c4a3a',
-  textMuted: '#9a8c7e',
-  border: '#ece6db',
-}
-
-function SectionHeader({ label }: { label: string }) {
-  return (
-    <h3 style={{
-      fontSize: '0.68rem', fontWeight: 700, color: C.accent,
-      textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 0.5rem',
-    }}>
-      {label}
-    </h3>
-  )
-}
-
-function Field({ label, value, onChange, placeholder, type = 'text' }: {
-  label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string
-}) {
-  return (
-    <div style={{ marginBottom: '0.6rem' }}>
-      <label style={{ fontSize: '0.72rem', fontWeight: 600, color: C.textMuted, display: 'block', marginBottom: '0.2rem' }}>
-        {label}
-      </label>
-      <input
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        style={{
-          width: '100%', padding: '0.45rem 0.6rem',
-          border: `1px solid ${C.border}`, borderRadius: 6,
-          fontSize: '0.85rem', color: C.text, background: C.bg,
-          outline: 'none', boxSizing: 'border-box',
-        }}
-      />
-    </div>
-  )
-}
-
-function SelectField({ label, value, onChange, options }: {
-  label: string; value: string; onChange: (v: string) => void
-  options: Array<{ value: string; label: string }>
-}) {
-  return (
-    <div style={{ marginBottom: '0.6rem' }}>
-      <label style={{ fontSize: '0.72rem', fontWeight: 600, color: C.textMuted, display: 'block', marginBottom: '0.2rem' }}>
-        {label}
-      </label>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        style={{
-          width: '100%', padding: '0.45rem 0.6rem',
-          border: `1px solid ${C.border}`, borderRadius: 6,
-          fontSize: '0.85rem', color: C.text, background: C.bg,
-          outline: 'none', boxSizing: 'border-box',
-        }}
-      >
-        <option value="">Select...</option>
-        {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-      </select>
-    </div>
-  )
-}
-
 // ─── Main Component ─────────────────────────────────────────────────
 
 export function ProfileClient({
-  userId,
-  userName,
-  email: initialEmail,
-  location: initialLocation,
-  homeChurch: initialHomeChurch,
-  language: initialLanguage,
-  coach,
+  userId, userName, email: initialEmail, location: initialLocation,
+  homeChurch: initialHomeChurch, language: initialLanguage, coach,
 }: ProfileClientProps) {
-  // Basic info
   const [name, setName] = useState(userName)
   const [email, setEmail] = useState(initialEmail ?? '')
   const [phone, setPhone] = useState('')
   const [language, setLanguage] = useState(initialLanguage)
-
-  // Personal
   const [dateOfBirth, setDateOfBirth] = useState('')
   const [gender, setGender] = useState('')
-
-  // Address
   const [addressLine1, setAddressLine1] = useState('')
   const [addressLine2, setAddressLine2] = useState('')
   const [city, setCity] = useState('')
@@ -124,26 +45,20 @@ export function ProfileClient({
   const [postalCode, setPostalCode] = useState('')
   const [country, setCountry] = useState('')
   const [location, setLocation] = useState(initialLocation ?? '')
-
-  // Church
   const [homeChurch, setHomeChurch] = useState(initialHomeChurch ?? '')
 
   const [pending, startTransition] = useTransition()
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loadingProfile, setLoadingProfile] = useState(false)
-
-  // Client-side A2A session for Privy/MetaMask users
   const a2a = useA2ASession()
-  const [sessionValid, setSessionValid] = useState<boolean | null>(null) // null = unknown
+  const [sessionValid, setSessionValid] = useState<boolean | null>(null)
 
-  // Load profile from MCP via delegation chain. Returns true if successful.
   async function loadProfile(token: string | null): Promise<boolean> {
     setLoadingProfile(true)
     try {
       const result = await loadProfileViaDelegation(token)
       if (result.success) {
-        // Session is valid — populate fields if profile data exists
         if (result.profile) {
           const p = result.profile as Record<string, string | null>
           if (p.displayName) setName(p.displayName)
@@ -160,7 +75,6 @@ export function ProfileClient({
           if (p.country) setCountry(p.country)
           if (p.location) setLocation(p.location)
         }
-        // Session valid even if no profile data yet (first visit)
         setSessionValid(true)
         setLoadingProfile(false)
         return true
@@ -171,15 +85,11 @@ export function ProfileClient({
     return false
   }
 
-  // On mount: try to load profile. If session is invalid, auto-bootstrap for demo users.
   useEffect(() => {
     async function init() {
-      // Try loading with existing session (server reads httpOnly cookie)
       const token = a2a.sessionToken
       const ok = await loadProfile(token ?? null)
       if (ok) return
-
-      // No valid session — try server-side bootstrap (works for demo users)
       try {
         const res = await fetch('/api/a2a/bootstrap', { method: 'POST' })
         const data = await res.json()
@@ -188,37 +98,24 @@ export function ProfileClient({
           if (ok) return
         }
       } catch { /* server bootstrap not available */ }
-
-      // Both failed — Privy users need to click "Connect Agent Session"
       setSessionValid(false)
     }
     init()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Token comes from server actions (httpOnly cookie) or from the a2a hook (React state).
-  // Client cannot read httpOnly cookies directly — this is intentional for security.
-
   async function handleBootstrapSession() {
     setError(null)
-
-    // Try server-side bootstrap first (demo users with stored keys)
     try {
       const res = await fetch('/api/a2a/bootstrap', { method: 'POST' })
       const data = await res.json()
       if (data.success) {
-        // Server set the httpOnly cookie — load profile using it
         await loadProfile(data.sessionToken ?? null)
         return
       }
     } catch { /* not available */ }
-
-    // Server-side failed — client-side MetaMask signing
     const token = await a2a.bootstrap()
-    if (token) {
-      await loadProfile(token)
-    } else if (a2a.error) {
-      setError(a2a.error)
-    }
+    if (token) { await loadProfile(token) }
+    else if (a2a.error) { setError(a2a.error) }
   }
 
   function handleSave() {
@@ -226,239 +123,179 @@ export function ProfileClient({
     const token = a2a.sessionToken
     startTransition(async () => {
       const result = await saveProfileViaDelegation(token, {
-        displayName: name || undefined,
-        email: email || undefined,
-        phone: phone || undefined,
-        dateOfBirth: dateOfBirth || undefined,
-        gender: gender || undefined,
-        language: language || undefined,
-        addressLine1: addressLine1 || undefined,
-        addressLine2: addressLine2 || undefined,
-        city: city || undefined,
-        stateProvince: stateProvince || undefined,
-        postalCode: postalCode || undefined,
-        country: country || undefined,
-        location: location || undefined,
-        homeChurch: homeChurch || undefined,
+        displayName: name || undefined, email: email || undefined, phone: phone || undefined,
+        dateOfBirth: dateOfBirth || undefined, gender: gender || undefined, language: language || undefined,
+        addressLine1: addressLine1 || undefined, addressLine2: addressLine2 || undefined,
+        city: city || undefined, stateProvince: stateProvince || undefined,
+        postalCode: postalCode || undefined, country: country || undefined,
+        location: location || undefined, homeChurch: homeChurch || undefined,
       })
-
       if (!result.success) {
-        setError(result.error ?? 'Failed to save profile through delegation chain')
+        setError(result.error ?? 'Failed to save')
         return
       }
-
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     })
   }
 
-  const shareCount = coach?.sharePermissions
-    ? coach.sharePermissions.split(',').filter(Boolean).length
-    : 0
+  const shareCount = coach?.sharePermissions ? coach.sharePermissions.split(',').filter(Boolean).length : 0
 
   return (
-    <div style={{ maxWidth: 480 }}>
+    <div className="max-w-lg space-y-4">
       {loadingProfile && (
-        <div style={{
-          background: '#e3f2fd', border: '1px solid #90caf9', borderRadius: 8,
-          padding: '0.5rem 0.8rem', marginBottom: '0.75rem',
-          fontSize: '0.78rem', color: '#1565c0',
-        }}>
+        <div className="bg-secondary-container rounded-sm p-3 text-body-md text-secondary animate-pulse">
           Loading profile from agent...
         </div>
       )}
 
-      {/* PERSONAL INFORMATION */}
-      <div style={{
-        background: C.card, border: `1px solid ${C.border}`,
-        borderRadius: 10, padding: '1rem', marginBottom: '0.75rem',
-      }}>
-        <SectionHeader label="Personal Information" />
-        <Field label="Full Name" value={name} onChange={setName} />
-        <Field label="Email" value={email} onChange={setEmail} type="email" placeholder="your@email.com" />
-        <Field label="Phone" value={phone} onChange={setPhone} type="tel" placeholder="+1 (555) 000-0000" />
-        <Field label="Date of Birth" value={dateOfBirth} onChange={setDateOfBirth} type="date" />
-        <SelectField label="Gender" value={gender} onChange={setGender} options={[
-          { value: 'male', label: 'Male' },
-          { value: 'female', label: 'Female' },
-          { value: 'non-binary', label: 'Non-binary' },
-          { value: 'prefer-not-to-say', label: 'Prefer not to say' },
-        ]} />
-      </div>
-
-      {/* ADDRESS */}
-      <div style={{
-        background: C.card, border: `1px solid ${C.border}`,
-        borderRadius: 10, padding: '1rem', marginBottom: '0.75rem',
-      }}>
-        <SectionHeader label="Address" />
-        <Field label="Street Address" value={addressLine1} onChange={setAddressLine1} placeholder="123 Main St" />
-        <Field label="Apt / Suite / Unit" value={addressLine2} onChange={setAddressLine2} placeholder="Apt 4B" />
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-          <Field label="City" value={city} onChange={setCity} />
-          <Field label="State / Province" value={stateProvince} onChange={setStateProvince} />
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-          <Field label="Postal Code" value={postalCode} onChange={setPostalCode} />
-          <SelectField label="Country" value={country} onChange={setCountry} options={[
-            { value: 'US', label: 'United States' },
-            { value: 'CA', label: 'Canada' },
-            { value: 'GB', label: 'United Kingdom' },
-            { value: 'MX', label: 'Mexico' },
-            { value: 'TG', label: 'Togo' },
-            { value: 'GH', label: 'Ghana' },
-            { value: 'NG', label: 'Nigeria' },
-            { value: 'KE', label: 'Kenya' },
-            { value: 'BR', label: 'Brazil' },
-            { value: 'CO', label: 'Colombia' },
-            { value: 'GT', label: 'Guatemala' },
-            { value: 'HN', label: 'Honduras' },
-          ]} />
-        </div>
-        <Field label="Location (freeform)" value={location} onChange={setLocation} placeholder="e.g., Northern Colorado" />
-      </div>
-
-      {/* LANGUAGE */}
-      <div style={{
-        background: C.card, border: `1px solid ${C.border}`,
-        borderRadius: 10, padding: '1rem', marginBottom: '0.75rem',
-      }}>
-        <SectionHeader label="Language" />
-        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-          {[
-            { value: 'en', label: 'English' },
-            { value: 'es', label: 'Espa\u00f1ol' },
-            { value: 'fr', label: 'Fran\u00e7ais' },
-            { value: 'pt', label: 'Portugu\u00eas' },
-          ].map((lang) => (
-            <button
-              key={lang.value}
-              onClick={() => setLanguage(lang.value)}
-              style={{
-                padding: '0.4rem 1rem', borderRadius: 20,
-                border: `1px solid ${language === lang.value ? C.accent : C.border}`,
-                background: language === lang.value ? C.accent : 'transparent',
-                color: language === lang.value ? '#fff' : C.text,
-                fontWeight: 600, fontSize: '0.82rem', cursor: 'pointer',
-                transition: 'all 0.15s',
-              }}
-            >
-              {lang.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* HOME CHURCH */}
-      <div style={{
-        background: C.card, border: `1px solid ${C.border}`,
-        borderRadius: 10, padding: '1rem', marginBottom: '0.75rem',
-      }}>
-        <SectionHeader label="Home Church" />
-        <Field label="" value={homeChurch} onChange={setHomeChurch} placeholder="No home church set" />
-      </div>
-
-      {/* COACH */}
-      <div style={{
-        background: C.card, border: `1px solid ${C.border}`,
-        borderRadius: 10, padding: '1rem', marginBottom: '0.75rem',
-      }}>
-        <SectionHeader label="Coach" />
-        {coach ? (
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: '0.5rem',
-            padding: '0.5rem 0.65rem', background: C.bg, borderRadius: 6,
-            border: `1px solid ${C.border}`,
-          }}>
-            <span style={{
-              width: 28, height: 28, borderRadius: '50%', background: C.accent,
-              color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontWeight: 700, fontSize: '0.75rem', flexShrink: 0,
-            }}>
-              {coach.coachName.charAt(0).toUpperCase()}
-            </span>
-            <span style={{ fontSize: '0.85rem', color: C.text }}>
-              {coach.coachName} &middot; {shareCount} item{shareCount !== 1 ? 's' : ''} shared
-            </span>
+      {/* Personal Information */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-label-lg text-primary uppercase tracking-wider">Personal Information</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Input label="Full Name" value={name} onChange={e => setName(e.target.value)} />
+          <Input label="Email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="your@email.com" />
+          <Input label="Phone" type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+1 (555) 000-0000" />
+          <Input label="Date of Birth" type="date" value={dateOfBirth} onChange={e => setDateOfBirth(e.target.value)} />
+          <div className="flex flex-col gap-1">
+            <label className="text-label-md text-on-surface-variant">Gender</label>
+            <select value={gender} onChange={e => setGender(e.target.value)}
+              className="h-10 w-full rounded-xs border border-outline-variant bg-transparent px-3 text-body-md text-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-primary transition-all">
+              <option value="">Select...</option>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+              <option value="non-binary">Non-binary</option>
+              <option value="prefer-not-to-say">Prefer not to say</option>
+            </select>
           </div>
-        ) : (
-          <p style={{ fontSize: '0.85rem', color: C.textMuted, margin: 0 }}>No coach assigned</p>
-        )}
-      </div>
+        </CardContent>
+      </Card>
 
-      {/* Agent session status + connect button */}
+      {/* Address */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-label-lg text-primary uppercase tracking-wider">Address</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Input label="Street Address" value={addressLine1} onChange={e => setAddressLine1(e.target.value)} placeholder="123 Main St" />
+          <Input label="Apt / Suite" value={addressLine2} onChange={e => setAddressLine2(e.target.value)} placeholder="Apt 4B" />
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="City" value={city} onChange={e => setCity(e.target.value)} />
+            <Input label="State / Province" value={stateProvince} onChange={e => setStateProvince(e.target.value)} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="Postal Code" value={postalCode} onChange={e => setPostalCode(e.target.value)} />
+            <div className="flex flex-col gap-1">
+              <label className="text-label-md text-on-surface-variant">Country</label>
+              <select value={country} onChange={e => setCountry(e.target.value)}
+                className="h-10 w-full rounded-xs border border-outline-variant bg-transparent px-3 text-body-md text-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-primary transition-all">
+                <option value="">Select...</option>
+                {[['US','United States'],['CA','Canada'],['GB','United Kingdom'],['MX','Mexico'],['TG','Togo'],['GH','Ghana'],['NG','Nigeria'],['KE','Kenya'],['BR','Brazil'],['CO','Colombia'],['GT','Guatemala'],['HN','Honduras']].map(([v,l]) => (
+                  <option key={v} value={v}>{l}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <Input label="Location (freeform)" value={location} onChange={e => setLocation(e.target.value)} placeholder="e.g., Northern Colorado" />
+        </CardContent>
+      </Card>
+
+      {/* Language */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-label-lg text-primary uppercase tracking-wider">Language</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex gap-2 flex-wrap">
+            {[{ value: 'en', label: 'English' }, { value: 'es', label: 'Español' }, { value: 'fr', label: 'Français' }, { value: 'pt', label: 'Português' }].map(lang => (
+              <button key={lang.value} onClick={() => setLanguage(lang.value)}
+                className={`px-4 py-1.5 rounded-full text-label-lg font-semibold transition-all duration-200 ${
+                  language === lang.value
+                    ? 'bg-primary text-on-primary'
+                    : 'border border-outline-variant text-on-surface-variant hover:bg-surface-variant'
+                }`}>
+                {lang.label}
+              </button>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Home Church */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-label-lg text-primary uppercase tracking-wider">Home Church</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Input value={homeChurch} onChange={e => setHomeChurch(e.target.value)} placeholder="No home church set" />
+        </CardContent>
+      </Card>
+
+      {/* Coach */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-label-lg text-primary uppercase tracking-wider">Coach</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {coach ? (
+            <div className="flex items-center gap-3 p-3 bg-surface rounded-sm border border-outline-variant">
+              <div className="w-8 h-8 rounded-full bg-primary text-on-primary flex items-center justify-center font-bold text-label-md flex-shrink-0">
+                {coach.coachName.charAt(0).toUpperCase()}
+              </div>
+              <span className="text-body-md text-on-surface">
+                {coach.coachName} &middot; {shareCount} item{shareCount !== 1 ? 's' : ''} shared
+              </span>
+            </div>
+          ) : (
+            <p className="text-body-md text-on-surface-variant">No coach assigned</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Session status */}
       {sessionValid === false && (
-        <div style={{
-          background: '#e3f2fd', border: '1px solid #90caf9', borderRadius: 8,
-          padding: '0.75rem', marginBottom: '0.75rem',
-        }}>
-          <p style={{ fontSize: '0.78rem', color: '#1565c0', margin: '0 0 0.5rem', fontWeight: 600 }}>
-            Agent session required to save personal data
-          </p>
-          <p style={{ fontSize: '0.72rem', color: '#42a5f5', margin: '0 0 0.5rem', lineHeight: 1.4 }}>
-            Your personal information is stored securely through an authenticated delegation chain. Connect your agent to enable saving.
-          </p>
-          <button
-            onClick={handleBootstrapSession}
-            disabled={a2a.bootstrapping}
-            style={{
-              padding: '0.45rem 1rem', background: '#1565c0', color: '#fff',
-              border: 'none', borderRadius: 6, fontWeight: 600, fontSize: '0.82rem',
-              cursor: a2a.bootstrapping ? 'wait' : 'pointer', opacity: a2a.bootstrapping ? 0.7 : 1,
-            }}
-          >
+        <div className="bg-secondary-container/50 border border-secondary/20 rounded-sm p-4">
+          <p className="text-label-lg text-secondary font-semibold mb-1">Agent session required</p>
+          <p className="text-body-sm text-on-surface-variant mb-3">Your personal data is stored securely through an authenticated delegation chain.</p>
+          <Button onClick={handleBootstrapSession} disabled={a2a.bootstrapping} variant="filled" size="sm">
             {a2a.bootstrapping ? 'Connecting...' : 'Connect Agent Session'}
-          </button>
+          </Button>
         </div>
       )}
 
       {sessionValid === true && (
-        <div style={{
-          background: '#e8f5e9', border: '1px solid #a5d6a7', borderRadius: 8,
-          padding: '0.6rem 0.8rem', marginBottom: '0.75rem',
-          fontSize: '0.75rem', color: '#2e7d32', lineHeight: 1.4,
-        }}>
-          Agent session active. Personal data is saved securely through delegation chain (Web → A2A Agent → Person MCP).
+        <div className="bg-[#e8f5e9] border border-[#a5d6a7] rounded-sm p-3 text-body-sm text-[#2e7d32]">
+          Agent session active — data saved securely via delegation chain.
         </div>
       )}
 
-      {/* Error display */}
+      {/* Error */}
       {(error || a2a.error) && (
-        <div style={{
-          background: '#ffebee', border: '1px solid #ef9a9a', borderRadius: 8,
-          padding: '0.6rem 0.8rem', marginBottom: '0.75rem',
-          fontSize: '0.78rem', color: '#c62828', lineHeight: 1.4,
-        }}>
+        <div className="bg-error-container border border-error/20 rounded-sm p-3 text-body-md text-error">
           <strong>{error ? 'Save failed:' : 'Session error:'}</strong> {error || a2a.error}
         </div>
       )}
 
-      {/* Save button */}
-      <button
-        onClick={handleSave}
-        disabled={pending}
-        style={{
-          width: '100%', padding: '0.65rem',
-          background: C.accent, color: '#fff', border: 'none',
-          borderRadius: 8, fontWeight: 700, fontSize: '0.9rem',
-          cursor: pending ? 'wait' : 'pointer',
-          opacity: pending ? 0.7 : 1, transition: 'opacity 0.15s',
-        }}
-      >
-        {saved ? 'Saved!' : pending ? 'Saving...' : 'Save Profile'}
-      </button>
+      {/* Save */}
+      <Button onClick={handleSave} disabled={pending} size="lg" className="w-full">
+        {saved ? (
+          <span className="flex items-center gap-2">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" fill="currentColor"/></svg>
+            Saved!
+          </span>
+        ) : pending ? (
+          <span className="flex items-center gap-2">
+            <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+            Saving...
+          </span>
+        ) : 'Save Profile'}
+      </Button>
 
-      {/* DATA SHARING LINK */}
-      <a
-        href="/catalyst/me/sharing"
-        style={{
-          display: 'block', textAlign: 'center', marginTop: '0.75rem',
-          color: C.accent, fontSize: '0.85rem', fontWeight: 600,
-          textDecoration: 'none',
-        }}
-      >
+      <Link href="/catalyst/me/sharing" className="block text-center text-label-lg text-primary font-semibold no-underline hover:text-primary/80 transition-colors">
         Manage Data Sharing →
-      </a>
+      </Link>
     </div>
   )
 }

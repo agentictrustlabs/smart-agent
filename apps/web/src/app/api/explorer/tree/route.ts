@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getExplorerChildren } from '@/lib/actions/explorer.action'
+import { getExplorerChildren, getAgentRoot } from '@/lib/actions/explorer.action'
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -7,5 +7,7 @@ export async function GET(request: Request) {
   if (!node) return NextResponse.json({ children: [] })
 
   const children = await getExplorerChildren(node)
-  return NextResponse.json({ children })
+  // Include the resolved root node hash when requesting root
+  const rootNode = node === 'root' ? await getAgentRoot() : undefined
+  return NextResponse.json({ children, rootNode })
 }

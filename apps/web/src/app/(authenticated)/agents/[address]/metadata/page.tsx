@@ -6,6 +6,7 @@ import {
   agentAccountResolverAbi,
   AI_CLASS_LABELS,
   ATL_CAPABILITY, ATL_SUPPORTED_TRUST, ATL_A2A_ENDPOINT, ATL_MCP_SERVER,
+  ATL_PRIMARY_NAME, ATL_NAME_LABEL,
   TYPE_PERSON, TYPE_ORGANIZATION, TYPE_AI_AGENT,
 } from '@smart-agent/sdk'
 import { MetadataEditorClient } from './MetadataEditorClient'
@@ -38,6 +39,8 @@ export default async function MetadataEditorPage({ params }: { params: Promise<{
     trustModels: [] as string[],
     a2aEndpoint: '',
     mcpServer: '',
+    primaryName: agentMeta.primaryName,
+    nameLabel: agentMeta.nameLabel,
     isRegistered: false,
   }
 
@@ -96,6 +99,8 @@ export default async function MetadataEditorPage({ params }: { params: Promise<{
           trustModels: trusts,
           a2aEndpoint: a2a,
           mcpServer: mcp,
+          primaryName: agentMeta.primaryName,
+          nameLabel: agentMeta.nameLabel,
           isRegistered: true,
         }
       }
@@ -121,6 +126,35 @@ export default async function MetadataEditorPage({ params }: { params: Promise<{
           <dt>Resolver</dt><dd data-component="address">{resolverAddr}</dd>
           <dt>Profile</dt><dd><span data-component="role-badge" data-status={initial.isRegistered ? 'active' : 'proposed'}>{initial.isRegistered ? 'Published' : 'Draft'}</span></dd>
         </dl>
+      </div>
+
+      {/* .agent Name Section */}
+      <div className="mb-4 rounded-md border border-outline-variant bg-white p-5 shadow-elevation-1">
+        <h3 className="text-label-lg text-primary uppercase tracking-wider font-bold mb-3">.agent Namespace</h3>
+        {initial.primaryName ? (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-label-md text-on-surface-variant">Primary Name</span>
+              <span className="font-mono text-title-sm font-semibold text-primary">{initial.primaryName}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-label-md text-on-surface-variant">Label</span>
+              <span className="font-mono text-body-md text-on-surface">{initial.nameLabel}</span>
+            </div>
+            <div className="pt-2">
+              <Link href={`/explorer`} className="text-label-lg text-primary font-semibold no-underline hover:text-primary/80 transition-colors">
+                Open in Namespace Explorer →
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <div>
+            <p className="text-body-md text-on-surface-variant mb-3">This agent does not have a .agent name registered.</p>
+            <Link href={`/explorer`} className="text-label-lg text-primary font-semibold no-underline hover:text-primary/80 transition-colors">
+              Register in Namespace Explorer →
+            </Link>
+          </div>
+        )}
       </div>
 
       <MetadataEditorClient agentAddress={agentAddress} agentName={agentName} chainId={Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? '31337')} initial={initial} />
