@@ -124,6 +124,37 @@ export function encodeAllowedMethodsTerms(selectors: `0x${string}`[]): `0x${stri
   return encodeAbiParameters([{ type: 'bytes4[]' }], [selectors])
 }
 
+/**
+ * Encode rate-limit enforcer terms.
+ *
+ *   scopeKey        — keccak256 of a caller-chosen label (e.g. "daily-transfers").
+ *                     Buckets are keyed by (delegator, delegationHash, scopeKey) so
+ *                     scopes under the same delegation don't interfere.
+ *   maxCalls        — calls allowed per window (1 – 2³²−1).
+ *   windowSeconds   — rolling window length in seconds.
+ *
+ * Layout: abi.encodePacked(bytes32, uint32, uint32) — 40 bytes total, matching
+ * RateLimitEnforcer._decode().
+ */
+export function encodeRateLimitTerms(
+  scopeKey: `0x${string}`,
+  maxCalls: number,
+  windowSeconds: number,
+): `0x${string}` {
+  if (!/^0x[0-9a-fA-F]{64}$/.test(scopeKey)) {
+    throw new Error('scopeKey must be a 0x-prefixed 32-byte value (e.g. keccak256 of a label)')
+  }
+  if (maxCalls <= 0 || !Number.isInteger(maxCalls) || maxCalls > 0xffffffff) {
+    throw new Error('maxCalls must be a positive uint32')
+  }
+  if (windowSeconds <= 0 || !Number.isInteger(windowSeconds) || windowSeconds > 0xffffffff) {
+    throw new Error('windowSeconds must be a positive uint32')
+  }
+  const maxHex = maxCalls.toString(16).padStart(8, '0')
+  const winHex = windowSeconds.toString(16).padStart(8, '0')
+  return (scopeKey + maxHex + winHex) as `0x${string}`
+}
+
 /** Build a Caveat struct from an enforcer address and encoded terms.
  *  args defaults to '0x' (empty) — provided at redemption time by the redeemer. */
 export function buildCaveat(enforcer: `0x${string}`, terms: `0x${string}`, args: `0x${string}` = '0x'): Caveat {

@@ -123,6 +123,20 @@ contract AgentAccount is BaseAccount, Initializable, UUPSUpgradeable, IAgentAcco
         return _delegationManager;
     }
 
+    // ─── ERC-7579 introspection (compatibility-only) ──────────────────
+
+    /**
+     * @notice Stable account-implementation identifier.
+     * @dev We do NOT implement the full ERC-7579 install/uninstall module API
+     *      — AgentAccount uses a delegation-manager model with caveat-enforcer
+     *      modules rather than per-account module slots. This accessor exists
+     *      so 7579-aware wallets can identify the implementation without
+     *      false-positively assuming install/uninstall support.
+     */
+    function accountId() external pure returns (string memory) {
+        return "smart-agent.agent-account.1";
+    }
+
     // ─── ERC-4337 ───────────────────────────────────────────────────
 
     /// @inheritdoc BaseAccount
@@ -156,17 +170,33 @@ contract AgentAccount is BaseAccount, Initializable, UUPSUpgradeable, IAgentAcco
 
     // ─── ERC-1271 ───────────────────────────────────────────────────
 
+    /// @dev 32-byte ERC-6492 magic suffix — `0x6492…6492` repeated.
+    bytes32 private constant ERC6492_MAGIC =
+        0x6492649264926492649264926492649264926492649264926492649264926492;
+
     /// @inheritdoc IERC1271
+    /// @dev Tolerates ERC-6492 envelope: if the suffix is the 6492 magic, the
+    ///      inner sig is extracted before ECDSA recovery. Callers that verify
+    ///      the account counterfactually MUST deploy it first (e.g. via
+    ///      UniversalSignatureValidator.isValidSig).
     function isValidSignature(
         bytes32 hash,
         bytes calldata signature
     ) external view override(IAgentAccount, IERC1271) returns (bytes4) {
-        bytes32 ethSignedHash = hash.toEthSignedMessageHash();
-        address recovered = ethSignedHash.recover(signature);
-        if (_owners[recovered]) {
-            return ERC1271_MAGIC_VALUE;
+        bytes calldata inner = signature;
+        if (signature.length >= 32 && bytes32(signature[signature.length - 32:]) == ERC6492_MAGIC) {
+            // abi.encode(address factory, bytes factoryCalldata, bytes innerSig)
+            (, , bytes memory unwrapped) = abi.decode(
+                signature[:signature.length - 32],
+                (address, bytes, bytes)
+            );
+            bytes32 ethSignedHash = hash.toEthSignedMessageHash();
+            address recovered = ethSignedHash.recover(unwrapped);
+            return _owners[recovered] ? ERC1271_MAGIC_VALUE : bytes4(0xffffffff);
         }
-        return bytes4(0xffffffff);
+        bytes32 _ethSignedHash = hash.toEthSignedMessageHash();
+        address _recovered = _ethSignedHash.recover(inner);
+        return _owners[_recovered] ? ERC1271_MAGIC_VALUE : bytes4(0xffffffff);
     }
 
     // ─── Owner Management ───────────────────────────────────────────

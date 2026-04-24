@@ -144,6 +144,23 @@ contract AgentAccountTest is Test {
         assertEq(result, bytes4(0xffffffff), "Invalid signature should return failure");
     }
 
+    function test_erc1271_strips_6492_envelope() public view {
+        bytes32 hash = keccak256("6492-wrapped");
+        bytes32 ethSignedHash = MessageHashUtils.toEthSignedMessageHash(hash);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerKey, ethSignedHash);
+        bytes memory innerSig = abi.encodePacked(r, s, v);
+
+        // factory + calldata are irrelevant here — our account is already deployed;
+        // we're just asserting the envelope gets unwrapped before ECDSA recovery.
+        bytes memory wrapped = abi.encodePacked(
+            abi.encode(address(factory), abi.encodeCall(factory.createAccount, (owner, 0)), innerSig),
+            bytes32(0x6492649264926492649264926492649264926492649264926492649264926492)
+        );
+
+        bytes4 result = account.isValidSignature(hash, wrapped);
+        assertEq(result, bytes4(0x1626ba7e), "6492-wrapped owner sig should still verify");
+    }
+
     // ─── Execution ──────────────────────────────────────────────────
 
     function test_execute_from_entrypoint() public {

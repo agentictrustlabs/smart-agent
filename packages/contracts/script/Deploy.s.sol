@@ -9,6 +9,9 @@ import "../src/enforcers/ValueEnforcer.sol";
 import "../src/enforcers/AllowedTargetsEnforcer.sol";
 import "../src/enforcers/AllowedMethodsEnforcer.sol";
 import "../src/enforcers/DataScopeEnforcer.sol";
+import "../src/enforcers/RateLimitEnforcer.sol";
+import "../src/validators/PasskeyValidator.sol";
+import "../src/UniversalSignatureValidator.sol";
 import "../src/AgentRelationship.sol";
 import "../src/AgentAssertion.sol";
 import "../src/AgentRelationshipResolver.sol";
@@ -189,6 +192,15 @@ contract Deploy is Script {
         MembershipProofEnforcer membershipProofEnforcer = new MembershipProofEnforcer();
         console.log("MembershipProofEnforcer:", address(membershipProofEnforcer));
 
+        RateLimitEnforcer rateLimitEnforcer = new RateLimitEnforcer();
+        console.log("RateLimitEnforcer:", address(rateLimitEnforcer));
+
+        PasskeyValidator passkeyValidator = new PasskeyValidator();
+        console.log("PasskeyValidator:", address(passkeyValidator));
+
+        UniversalSignatureValidator universalSigValidator = new UniversalSignatureValidator();
+        console.log("UniversalSignatureValidator:", address(universalSigValidator));
+
         // Initialize .agent root and set default resolver
         nameRegistry.initializeRoot(deployer, address(nameResolver));
 
@@ -227,6 +239,9 @@ contract Deploy is Script {
         _logEnv("NAME_SCOPE_ENFORCER_ADDRESS", address(nameScopeEnforcer));
         _logEnv("CREDENTIAL_REGISTRY_CONTRACT_ADDRESS", address(credentialRegistry));
         _logEnv("MEMBERSHIP_PROOF_ENFORCER_ADDRESS", address(membershipProofEnforcer));
+        _logEnv("RATE_LIMIT_ENFORCER_ADDRESS", address(rateLimitEnforcer));
+        _logEnv("PASSKEY_VALIDATOR_ADDRESS", address(passkeyValidator));
+        _logEnv("UNIVERSAL_SIG_VALIDATOR_ADDRESS", address(universalSigValidator));
     }
 
     function _logEnv(string memory key, address addr) internal pure {

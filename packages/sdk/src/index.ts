@@ -36,6 +36,7 @@ export {
   encodeValueTerms,
   encodeAllowedTargetsTerms,
   encodeAllowedMethodsTerms,
+  encodeRateLimitTerms,
   buildCaveat,
   // EIP-712 delegation hashing (matches DelegationManager contract)
   hashDelegation,
@@ -195,3 +196,49 @@ export type {
 } from '@smart-agent/types'
 
 export { SUPPORTED_CHAINS, ENTRYPOINT_V07_ADDRESS } from '@smart-agent/types'
+
+// ─── External bundler + paymaster ────────────────────────────────────
+export { BundlerClient, BundlerRpcError } from './bundler'
+export type { BundlerConfig, UserOperationReceipt, GasEstimate } from './bundler'
+export { PaymasterClient, PaymasterRpcError } from './paymaster'
+export type {
+  PaymasterConfig,
+  PaymasterStubData,
+  PaymasterData,
+  SponsorUserOperationResponse,
+} from './paymaster'
+export { UserOperationBuilder } from './user-operation-builder'
+export type {
+  UserOperationBuilderConfig,
+  SendArgs,
+  SignUserOpFn,
+} from './user-operation-builder'
+export type {
+  UserOperation,
+  UserOperationDraft,
+  Hex as UserOpHex,
+  Address as UserOpAddress,
+} from './bundler-types'
+
+// ─── ERC-6492 counterfactual signatures ──────────────────────────────
+export {
+  wrap6492,
+  unwrap6492,
+  is6492Signature,
+  ERC6492_MAGIC_SUFFIX,
+} from './erc6492'
+export type { Unwrapped6492, Unwrapped6492Not } from './erc6492'
+
+// ─── WebAuthn / Passkey helpers ──────────────────────────────────────
+export {
+  buildPasskeyAssertion,
+  encodeAssertionForValidator,
+  packWebAuthnSignature,
+  parseDerSignature,
+  normaliseLowS,
+  hashToWebAuthnChallenge,
+  base64urlEncode,
+  base64urlDecode,
+  P256_N,
+} from './passkey'
+export type { PasskeyAssertion } from './passkey'
