@@ -1,6 +1,6 @@
 import { verifyPrivyAction, type WalletAction } from '@smart-agent/privacy-creds'
 import { consumeNonce } from '../storage/nonces.js'
-import { getHolderWalletById } from '../storage/wallets.js'
+import { getHolderWalletById, normalizeWalletContext } from '../storage/wallets.js'
 import { config } from '../config.js'
 
 export interface GateInput {
@@ -39,6 +39,16 @@ export async function gateExistingWalletAction(input: GateInput): Promise<GateRe
 
   if (hw.personPrincipal !== action.personPrincipal) {
     return { ok: false, status: 400, reason: 'personPrincipal mismatch' }
+  }
+  // walletContext must already be normalized AND match the wallet's stored
+  // context. Enforcing normalization here blocks the "Personal vs personal
+  // parallel wallet" drift attack described in the security audit.
+  const normalized = normalizeWalletContext(action.walletContext)
+  if (normalized === null || normalized !== action.walletContext) {
+    return { ok: false, status: 400, reason: 'walletContext not canonically normalized' }
+  }
+  if (hw.walletContext !== action.walletContext) {
+    return { ok: false, status: 400, reason: 'walletContext mismatch' }
   }
 
   const verify = await verifyPrivyAction({

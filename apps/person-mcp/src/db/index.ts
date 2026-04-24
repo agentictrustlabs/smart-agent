@@ -89,19 +89,24 @@ sqlite.exec(`
   CREATE INDEX IF NOT EXISTS idx_chat_messages_thread_id ON chat_messages(thread_id);
   CREATE INDEX IF NOT EXISTS idx_chat_messages_principal ON chat_messages(principal);
 
-  -- ─── SSI Wallet integration (Phase 3) ────────────────────────────────
+  -- ─── SSI Wallet integration (context-scoped) ─────────────────────────
   CREATE TABLE IF NOT EXISTS ssi_holder_wallets (
     id TEXT PRIMARY KEY,
-    principal TEXT NOT NULL UNIQUE,
+    principal TEXT NOT NULL,
+    wallet_context TEXT NOT NULL,
     privy_eoa TEXT NOT NULL,
-    holder_wallet_ref TEXT NOT NULL,      -- ssi-wallet-mcp's holder_wallet id
+    holder_wallet_ref TEXT NOT NULL,       -- ssi-wallet-mcp's holder_wallet id
     link_secret_ref TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'active',
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    UNIQUE (principal, wallet_context)
   );
+  CREATE INDEX IF NOT EXISTS idx_ssi_hw_principal ON ssi_holder_wallets(principal);
+
   CREATE TABLE IF NOT EXISTS ssi_credential_metadata (
     id TEXT PRIMARY KEY,
     principal TEXT NOT NULL,
+    wallet_context TEXT NOT NULL,
     holder_wallet_ref TEXT NOT NULL,
     issuer_id TEXT NOT NULL,
     schema_id TEXT NOT NULL,
@@ -110,21 +115,24 @@ sqlite.exec(`
     received_at TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'active'
   );
+  CREATE INDEX IF NOT EXISTS idx_ssi_cred_principal ON ssi_credential_metadata(principal);
+  CREATE INDEX IF NOT EXISTS idx_ssi_cred_context ON ssi_credential_metadata(principal, wallet_context);
+
   CREATE TABLE IF NOT EXISTS ssi_proof_audit (
     id TEXT PRIMARY KEY,
     principal TEXT NOT NULL,
+    wallet_context TEXT NOT NULL,
     holder_wallet_ref TEXT NOT NULL,
     verifier_id TEXT NOT NULL,
     purpose TEXT NOT NULL,
-    revealed_attrs TEXT NOT NULL,          -- JSON
-    predicates TEXT NOT NULL,              -- JSON
+    revealed_attrs TEXT NOT NULL,
+    predicates TEXT NOT NULL,
     action_nonce TEXT NOT NULL,
     pairwise_handle TEXT,
     holder_binding_included INTEGER NOT NULL DEFAULT 0,
-    result TEXT NOT NULL,                   -- ok | denied | error
+    result TEXT NOT NULL,
     created_at TEXT NOT NULL
   );
-  CREATE INDEX IF NOT EXISTS idx_ssi_cred_principal ON ssi_credential_metadata(principal);
   CREATE INDEX IF NOT EXISTS idx_ssi_audit_principal ON ssi_proof_audit(principal);
 `)
 

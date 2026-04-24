@@ -82,7 +82,7 @@ oid4vciRoutes.get('/.well-known/openid-credential-issuer', (c) => {
 oid4vciRoutes.post('/oid4vci/offer', async (c) => {
   const { attributes } = await c.req.json<{ attributes: Record<string, string> }>()
   await ensureMembershipRegistered()
-  const credentialOfferJson = catalystIssuer.createOffer(MEMBERSHIP_CRED_DEF_ID)
+  const credentialOfferJson = await catalystIssuer.createOffer(MEMBERSHIP_CRED_DEF_ID)
   const code = 'pac_' + randomBytes(24).toString('hex')
   oidDb.prepare(
     `INSERT INTO pre_auth (code, credential_offer_json, attributes_json, expires_at)
@@ -196,7 +196,7 @@ oid4vciRoutes.post('/credential', async (c) => {
   }
 
   const attrs = JSON.parse(row.attributes_json) as Record<string, string>
-  const credentialJson = catalystIssuer.issue(
+  const credentialJson = await catalystIssuer.issue(
     MEMBERSHIP_CRED_DEF_ID,
     row.credential_offer_json,
     body.anoncreds_credential_request,

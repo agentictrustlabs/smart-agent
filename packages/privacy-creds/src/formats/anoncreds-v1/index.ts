@@ -198,13 +198,18 @@ export interface PresentationRequestJson {
   non_revoked?: { from?: number; to?: number }
 }
 
-export interface HolderCreatePresentationInput {
-  presentationRequestJson: JsonString        // full AnonCreds presentation request
-  credential: { credentialJson: JsonString } // MVP: single credential per presentation
-  /** Referents from presentationRequest.requested_attributes to reveal. */
+export interface HolderCredentialEntry {
+  credentialJson: JsonString
+  /** Referents from presentationRequest.requested_attributes to reveal from THIS cred. */
   revealAttrReferents: string[]
-  /** Referents from presentationRequest.requested_predicates to answer. */
+  /** Referents from presentationRequest.requested_predicates to answer from THIS cred. */
   predicateReferents: string[]
+}
+
+export interface HolderCreatePresentationInput {
+  presentationRequestJson: JsonString
+  /** One or more credentials. Each entry lists which referents it satisfies. */
+  credentials: HolderCredentialEntry[]
   schemasJson: Record<string, JsonString>
   credDefsJson: Record<string, JsonString>
   linkSecret: string
@@ -225,26 +230,21 @@ export function holderCreatePresentation(
     credDefs[id] = CredentialDefinition.fromJson(JSON.parse(json) as JsonObject)
   }
 
-  // One credential entry, one prove-entry per requested referent.
-  const credObj = Credential.fromJson(JSON.parse(input.credential.credentialJson) as JsonObject)
-  const credentialsProve = [
-    ...input.revealAttrReferents.map(r => ({
-      entryIndex: 0,
-      referent: r,
-      isPredicate: false,
-      reveal: true,
-    })),
-    ...input.predicateReferents.map(r => ({
-      entryIndex: 0,
-      referent: r,
-      isPredicate: true,
-      reveal: true,
-    })),
-  ]
+  // Multi-credential: each cred gets an entryIndex; credentialsProve entries
+  // reference it by index. Per-credential referent lists let callers split a
+  // compound proof across N credentials (e.g. membership from wallet A,
+  // guardian from wallet B as long as both share the same link secret).
+  const credObjs = input.credentials.map(c =>
+    Credential.fromJson(JSON.parse(c.credentialJson) as JsonObject),
+  )
+  const credentialsProve = input.credentials.flatMap((c, entryIndex) => [
+    ...c.revealAttrReferents.map(r => ({ entryIndex, referent: r, isPredicate: false, reveal: true })),
+    ...c.predicateReferents.map(r  => ({ entryIndex, referent: r, isPredicate: true,  reveal: true })),
+  ])
 
   const presentation = Presentation.create({
     presentationRequest: request,
-    credentials: [{ credential: credObj }],
+    credentials: credObjs.map(c => ({ credential: c })),
     credentialsProve,
     selfAttest: input.selfAttestedAttributes ?? {},
     linkSecret: input.linkSecret,

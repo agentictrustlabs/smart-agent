@@ -87,6 +87,9 @@ importers:
       '@smart-agent/privacy-creds':
         specifier: workspace:*
         version: link:../../packages/privacy-creds
+      better-sqlite3:
+        specifier: ^11.0.0
+        version: 11.10.0
       hono:
         specifier: ^4.4.0
         version: 4.12.14
@@ -94,6 +97,9 @@ importers:
         specifier: ^2.21.0
         version: 2.47.10(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76)
     devDependencies:
+      '@types/better-sqlite3':
+        specifier: ^7.6.0
+        version: 7.6.13
       '@types/node':
         specifier: ^22.0.0
         version: 22.19.17

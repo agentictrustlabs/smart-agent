@@ -1,7 +1,7 @@
 import { Nonce } from '@hyperledger/anoncreds-shared'
 import { AnonCreds } from '@smart-agent/privacy-creds'
 import {
-  CredentialRegistryStore,
+  OnChainResolver,
   loadVerifiedSchema,
   loadVerifiedCredDef,
 } from '@smart-agent/credential-registry'
@@ -33,21 +33,16 @@ export function buildGuardianProofRequest() {
 }
 
 export async function verifyGuardianPresentation(
-  registryPath: string,
+  resolver: OnChainResolver,
   presentationJson: string,
   presentationRequest: Record<string, unknown>,
 ): Promise<boolean> {
-  const reg = new CredentialRegistryStore(registryPath)
-  try {
-    const schema = await loadVerifiedSchema(reg, GUARDIAN_SCHEMA_ID)
-    const credDef = await loadVerifiedCredDef(reg, GUARDIAN_CRED_DEF_ID)
-    return AnonCreds.verifierVerifyPresentation({
-      presentationJson,
-      presentationRequestJson: JSON.stringify(presentationRequest),
-      schemasJson: { [GUARDIAN_SCHEMA_ID]: schema.json },
-      credDefsJson: { [GUARDIAN_CRED_DEF_ID]: credDef.json },
-    })
-  } finally {
-    reg.close()
-  }
+  const schema = await loadVerifiedSchema(resolver, GUARDIAN_SCHEMA_ID)
+  const credDef = await loadVerifiedCredDef(resolver, GUARDIAN_CRED_DEF_ID)
+  return AnonCreds.verifierVerifyPresentation({
+    presentationJson,
+    presentationRequestJson: JSON.stringify(presentationRequest),
+    schemasJson: { [GUARDIAN_SCHEMA_ID]: schema.json },
+    credDefsJson: { [GUARDIAN_CRED_DEF_ID]: credDef.json },
+  })
 }

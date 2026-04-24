@@ -9,13 +9,15 @@ export const GUARDIAN_SCHEMA_ID  = 'https://family.smartagent.io/schemas/Guardia
 export const GUARDIAN_CRED_DEF_ID = 'https://family.smartagent.io/creddefs/GuardianOfMinor/1.0/v1'
 
 const address = privateKeyToAccount(config.privateKey).address
-export const FAMILY_DID = `did:ethr:${config.chainId}:${address}`
+export const FAMILY_DID = `did:ethr:${config.chainId}:${address.toLowerCase()}`
 
 export const familyIssuer = new IssuerAgent({
   did: FAMILY_DID,
   privateKey: config.privateKey,
   displayName: config.displayName,
-  registryPath: config.registryPath,
+  rpcUrl: config.rpcUrl,
+  chainId: config.chainId,
+  credentialRegistryAddress: config.credentialRegistryAddress,
   privateStorePath: config.privateStorePath,
 })
 

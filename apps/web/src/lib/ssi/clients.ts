@@ -73,7 +73,12 @@ export const family = {
   }>(ssiConfig.familyUrl, '/credential/offer', { body: { credentialType } }),
   issue: (args: { credentialOfferJson: string; credentialRequestJson: string; attributes: Record<string, string> }) =>
     call<{ credentialJson: string }>(ssiConfig.familyUrl, '/credential/issue', { body: args }),
-  guardianRequest: () => call<{ presentationRequest: Record<string, unknown> }>(ssiConfig.familyUrl, '/verify/guardian/request'),
+  guardianRequest: () => call<{
+    presentationRequest: Record<string, unknown>
+    verifierId: string
+    verifierAddress: `0x${string}`
+    signature: `0x${string}`
+  }>(ssiConfig.familyUrl, '/verify/guardian/request'),
   guardianCheck: (args: { presentation: string; presentationRequest: Record<string, unknown> }) =>
     call<{ verified: boolean; reason?: string }>(ssiConfig.familyUrl, '/verify/guardian/check', { body: args }),
 }

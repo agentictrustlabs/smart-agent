@@ -12,11 +12,17 @@ try {
   }
 } catch { /* .env not found */ }
 
+const requiredAddress = process.env.CREDENTIAL_REGISTRY_CONTRACT_ADDRESS
+if (!requiredAddress) {
+  throw new Error('CREDENTIAL_REGISTRY_CONTRACT_ADDRESS env is required')
+}
+
 export const config = {
   port: Number(process.env.FAMILY_MCP_PORT ?? '3500'),
   displayName: process.env.FAMILY_DISPLAY_NAME ?? 'Smart Agent Family Hub',
   privateKey: (process.env.FAMILY_PRIVATE_KEY ?? ('0x' + 'd'.repeat(64))) as `0x${string}`,
   chainId: Number(process.env.FAMILY_CHAIN_ID ?? '31337'),
-  registryPath: process.env.CREDENTIAL_REGISTRY_PATH ?? '../ssi-wallet-mcp/credential-registry.db',
+  rpcUrl: process.env.RPC_URL ?? 'http://localhost:8545',
+  credentialRegistryAddress: requiredAddress as `0x${string}`,
   privateStorePath: process.env.FAMILY_PRIVATE_STORE_PATH ?? './family-private.db',
 }

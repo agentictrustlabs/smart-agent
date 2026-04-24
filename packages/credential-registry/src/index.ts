@@ -1,5 +1,4 @@
 export * from './types'
-export * from './store'
 export * from './signing'
 export * from './verify'
-export * from './anchor'
+export * from './on-chain-resolver'

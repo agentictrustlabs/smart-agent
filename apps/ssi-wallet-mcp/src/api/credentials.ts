@@ -10,8 +10,8 @@ import {
   takeCredentialRequestMeta,
 } from '../storage/askar.js'
 import { insertCredentialMetadata, listCredentialMetadata } from '../storage/cred-metadata.js'
-import { CredentialRegistryStore, loadVerifiedCredDef } from '@smart-agent/credential-registry'
-import { config } from '../config.js'
+import { loadVerifiedCredDef } from '@smart-agent/credential-registry'
+import { resolver } from '../registry/resolver.js'
 
 export const credentialRoutes = new Hono()
 
@@ -46,40 +46,35 @@ credentialRoutes.post('/credentials/request', async (c) => {
   if (!gate.ok) return c.json({ error: gate.reason }, gate.status as 400 | 401 | 404 | 409)
 
   const hw = gate.holderWallet
-  const registry = new CredentialRegistryStore(config.registryPath)
+  let credDef
   try {
-    let credDef
-    try {
-      credDef = await loadVerifiedCredDef(registry, body.credDefId)
-    } catch (err) {
-      return c.json({ error: `credDef: ${(err as Error).message}` }, 403)
-    }
-
-    const linkSecret = await getLinkSecret(hw.askarProfile, hw.linkSecretId)
-
-    const { credentialRequest, credentialRequestMetadata } = AnonCreds.holderCreateCredentialRequest({
-      credentialOfferJson: body.credentialOfferJson,
-      credentialDefinitionJson: credDef.json,
-      linkSecret,
-      linkSecretId: hw.linkSecretId,
-      proverDid: hw.id,
-    })
-
-    const requestId = `req_${randomUUID()}`
-    await putCredentialRequestMeta(
-      hw.askarProfile,
-      requestId,
-      JSON.stringify({
-        credentialRequestMetadata,
-        credDefId: body.credDefId,
-        credentialOfferJson: body.credentialOfferJson,
-      }),
-    )
-
-    return c.json({ requestId, credentialRequestJson: credentialRequest })
-  } finally {
-    registry.close()
+    credDef = await loadVerifiedCredDef(resolver, body.credDefId)
+  } catch (err) {
+    return c.json({ error: `credDef: ${(err as Error).message}` }, 403)
   }
+
+  const linkSecret = await getLinkSecret(hw.askarProfile, hw.linkSecretId)
+
+  const { credentialRequest, credentialRequestMetadata } = AnonCreds.holderCreateCredentialRequest({
+    credentialOfferJson: body.credentialOfferJson,
+    credentialDefinitionJson: credDef.json,
+    linkSecret,
+    linkSecretId: hw.linkSecretId,
+    proverDid: hw.id,
+  })
+
+  const requestId = `req_${randomUUID()}`
+  await putCredentialRequestMeta(
+    hw.askarProfile,
+    requestId,
+    JSON.stringify({
+      credentialRequestMetadata,
+      credDefId: body.credDefId,
+      credentialOfferJson: body.credentialOfferJson,
+    }),
+  )
+
+  return c.json({ requestId, credentialRequestJson: credentialRequest })
 })
 
 /**
@@ -114,48 +109,44 @@ credentialRoutes.post('/credentials/store', async (c) => {
   const hw = getHolderWalletById(body.holderWalletId)
   if (!hw) return c.json({ error: 'holder wallet not found' }, 404)
 
-  const registry = new CredentialRegistryStore(config.registryPath)
-  try {
-    const meta = JSON.parse(await takeCredentialRequestMeta(hw.askarProfile, body.requestId)) as {
-      credentialRequestMetadata: string
-      credDefId: string
-    }
-    let credDef
-    try {
-      credDef = await loadVerifiedCredDef(registry, meta.credDefId)
-    } catch (err) {
-      return c.json({ error: `credDef: ${(err as Error).message}` }, 403)
-    }
-
-    const linkSecret = await getLinkSecret(hw.askarProfile, hw.linkSecretId)
-
-    const processed = AnonCreds.holderProcessCredential({
-      credentialJson: body.credentialJson,
-      credentialRequestMetadataJson: meta.credentialRequestMetadata,
-      linkSecret,
-      credentialDefinitionJson: credDef.json,
-    })
-
-    const credId = `cred_${randomUUID()}`
-    await putCredential(hw.askarProfile, credId, processed, {
-      credDefId: meta.credDefId,
-      schemaId: body.schemaId,
-      issuerId: body.issuerId,
-    })
-
-    const metaRow = insertCredentialMetadata({
-      id: credId,
-      holderWalletId: hw.id,
-      issuerId: body.issuerId,
-      schemaId: body.schemaId,
-      credDefId: meta.credDefId,
-      credentialType: body.credentialType,
-    })
-
-    return c.json({ credentialId: credId, metadata: metaRow })
-  } finally {
-    registry.close()
+  const meta = JSON.parse(await takeCredentialRequestMeta(hw.askarProfile, body.requestId)) as {
+    credentialRequestMetadata: string
+    credDefId: string
   }
+  let credDef
+  try {
+    credDef = await loadVerifiedCredDef(resolver, meta.credDefId)
+  } catch (err) {
+    return c.json({ error: `credDef: ${(err as Error).message}` }, 403)
+  }
+
+  const linkSecret = await getLinkSecret(hw.askarProfile, hw.linkSecretId)
+
+  const processed = AnonCreds.holderProcessCredential({
+    credentialJson: body.credentialJson,
+    credentialRequestMetadataJson: meta.credentialRequestMetadata,
+    linkSecret,
+    credentialDefinitionJson: credDef.json,
+  })
+
+  const credId = `cred_${randomUUID()}`
+  await putCredential(hw.askarProfile, credId, processed, {
+    credDefId: meta.credDefId,
+    schemaId: body.schemaId,
+    issuerId: body.issuerId,
+  })
+
+  const metaRow = insertCredentialMetadata({
+    id: credId,
+    holderWalletId: hw.id,
+    issuerId: body.issuerId,
+    schemaId: body.schemaId,
+    credDefId: meta.credDefId,
+    credentialType: body.credentialType,
+    linkSecretId: hw.linkSecretId,
+  })
+
+  return c.json({ credentialId: credId, metadata: metaRow })
 })
 
 /** GET /credentials/:holderWalletId — metadata only (no blobs, no attrs). */

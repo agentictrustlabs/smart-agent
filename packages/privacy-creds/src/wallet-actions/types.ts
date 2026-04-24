@@ -23,6 +23,9 @@ export interface WalletAction {
   type: WalletActionType
   actionId: string
   personPrincipal: string
+  /** Context label — every wallet belongs to a (principal, context) pair.
+   *  Common values: "default", "professional", "personal", "ai-delegate". */
+  walletContext: string
   holderWalletId: string
   counterpartyId: string
   purpose: string
@@ -63,6 +66,7 @@ export const WalletActionTypes = {
     { name: 'type',              type: 'string'  },
     { name: 'actionId',          type: 'string'  },
     { name: 'personPrincipal',   type: 'string'  },
+    { name: 'walletContext',     type: 'string'  },
     { name: 'holderWalletId',    type: 'string'  },
     { name: 'counterpartyId',    type: 'string'  },
     { name: 'purpose',           type: 'string'  },

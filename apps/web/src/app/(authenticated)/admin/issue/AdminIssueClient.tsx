@@ -1,18 +1,55 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   adminIssueMembershipAction,
   adminIssueGuardianAction,
   adminCreateOid4vciOfferAction,
 } from '@/lib/actions/ssi/admin-issue.action'
 
-export function AdminIssueClient() {
+export function AdminIssueClient({
+  availableContexts, activeContext,
+}: {
+  availableContexts: string[]
+  activeContext: string
+}) {
   return (
     <div style={{ display: 'grid', gap: 16 }}>
-      <MembershipForm />
-      <GuardianForm />
+      <ContextBar availableContexts={availableContexts} activeContext={activeContext} />
+      <MembershipForm walletContext={activeContext} />
+      <GuardianForm   walletContext={activeContext} />
       <Oid4vciOfferForm />
+    </div>
+  )
+}
+
+function ContextBar({
+  availableContexts, activeContext,
+}: { availableContexts: string[]; activeContext: string }) {
+  const router = useRouter()
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 10,
+      padding: '0.6rem 0.9rem', background: '#fff',
+      border: '1px solid #e2e8f0', borderRadius: 10,
+    }}>
+      <span style={{ fontSize: 12, fontWeight: 600, color: '#64748b' }}>
+        Issue into this wallet context:
+      </span>
+      <select
+        value={activeContext}
+        onChange={e => router.push(`/admin/issue?context=${encodeURIComponent(e.currentTarget.value)}`)}
+        style={{
+          padding: '0.35rem 0.55rem', border: '1px solid #c7d0e8',
+          borderRadius: 6, fontSize: 13,
+        }}
+      >
+        {availableContexts.map(c => (<option key={c} value={c}>{c}</option>))}
+      </select>
+      <span style={{ fontSize: 11, color: '#64748b' }}>
+        (direct-issue forms below target <code>{activeContext}</code>)
+      </span>
     </div>
   )
 }
@@ -33,12 +70,12 @@ function input(props: React.InputHTMLAttributes<HTMLInputElement>) {
   }} />
 }
 
-function MembershipForm() {
+function MembershipForm({ walletContext }: { walletContext: string }) {
   const [pending, start] = useTransition()
   const [f, setF] = useState({ membershipStatus: 'active', role: 'leader', joinedYear: '2024', circleId: 'circle_wellington' })
   const [msg, setMsg] = useState<string | null>(null)
   return (
-    <Card title="Direct issue — OrgMembership">
+    <Card title={`Direct issue — OrgMembership (→ ${walletContext})`}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 8, marginBottom: 10 }}>
         {(['membershipStatus', 'role', 'joinedYear', 'circleId'] as const).map(k =>
           <label key={k} style={{ display: 'block', fontSize: 11, color: '#64748b' }}>
@@ -49,22 +86,22 @@ function MembershipForm() {
       </div>
       <button disabled={pending} onClick={() => start(async () => {
         setMsg(null)
-        const r = await adminIssueMembershipAction(f)
-        setMsg(r.success ? `✓ issued ${r.credentialId}` : `✗ ${r.error}`)
-      })} style={btn}>
-        {pending ? 'Issuing…' : 'Issue OrgMembership to me'}
+        const r = await adminIssueMembershipAction({ walletContext, attrs: f })
+        setMsg(r.success ? `✓ issued ${r.credentialId} into "${walletContext}"` : `✗ ${r.error}`)
+      })} style={btn} data-testid="admin-issue-membership">
+        {pending ? 'Issuing…' : `Issue OrgMembership into "${walletContext}"`}
       </button>
       {msg && <div style={{ marginTop: 8, fontSize: 12 }}>{msg}</div>}
     </Card>
   )
 }
 
-function GuardianForm() {
+function GuardianForm({ walletContext }: { walletContext: string }) {
   const [pending, start] = useTransition()
   const [f, setF] = useState({ relationship: 'legal-guardian', minorBirthYear: '2012', issuedYear: '2026' })
   const [msg, setMsg] = useState<string | null>(null)
   return (
-    <Card title="Direct issue — GuardianOfMinor">
+    <Card title={`Direct issue — GuardianOfMinor (→ ${walletContext})`}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 10 }}>
         {(['relationship', 'minorBirthYear', 'issuedYear'] as const).map(k =>
           <label key={k} style={{ display: 'block', fontSize: 11, color: '#64748b' }}>
@@ -75,10 +112,10 @@ function GuardianForm() {
       </div>
       <button disabled={pending} onClick={() => start(async () => {
         setMsg(null)
-        const r = await adminIssueGuardianAction(f)
-        setMsg(r.success ? `✓ issued ${r.credentialId}` : `✗ ${r.error}`)
-      })} style={btn}>
-        {pending ? 'Issuing…' : 'Issue Guardian to me'}
+        const r = await adminIssueGuardianAction({ walletContext, attrs: f })
+        setMsg(r.success ? `✓ issued ${r.credentialId} into "${walletContext}"` : `✗ ${r.error}`)
+      })} style={btn} data-testid="admin-issue-guardian">
+        {pending ? 'Issuing…' : `Issue Guardian into "${walletContext}"`}
       </button>
       {msg && <div style={{ marginTop: 8, fontSize: 12 }}>{msg}</div>}
     </Card>
@@ -94,9 +131,10 @@ function Oid4vciOfferForm() {
   return (
     <Card title="OID4VCI — issue via pre-authorized offer URI">
       <div style={{ fontSize: 12, color: '#64748b', marginBottom: 10 }}>
-        Generates a pre-authorized_code offer URI that can be pasted into
+        Generates a portable offer URI. The recipient pastes it into
         <a href="/wallet/oid4vci" style={{ color: '#3f6ee8' }}> /wallet/oid4vci </a>
-        to exchange for a credential. Simulates an external OID4VCI flow.
+        and <strong>chooses their own target context at redeem time</strong> — the offer URI is
+        wallet-agnostic. Simulates a cross-user OID4VCI flow.
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 8, marginBottom: 10 }}>
         {(['membershipStatus', 'role', 'joinedYear', 'circleId'] as const).map(k =>
@@ -110,7 +148,7 @@ function Oid4vciOfferForm() {
         const r = await adminCreateOid4vciOfferAction(f)
         if (r.success) setOffer({ preAuthCode: r.preAuthCode!, offerUri: r.offerUri!, credDefId: r.credDefId!, schemaId: r.schemaId!, issuerId: r.issuerId! })
         else setOffer(null)
-      })} style={btn}>
+      })} style={btn} data-testid="admin-create-oid4vci-offer">
         {pending ? 'Building…' : 'Create pre-auth offer'}
       </button>
       {offer && (

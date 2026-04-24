@@ -16,7 +16,7 @@ credentialRoutes.post('/credential/offer', async (c) => {
     return c.json({ error: 'unsupported credentialType' }, 400)
   }
   await ensureGuardianRegistered()
-  const credentialOfferJson = familyIssuer.createOffer(GUARDIAN_CRED_DEF_ID)
+  const credentialOfferJson = await familyIssuer.createOffer(GUARDIAN_CRED_DEF_ID)
   return c.json({
     offerId: `offer_${randomUUID()}`,
     credentialOfferJson,
@@ -32,7 +32,7 @@ credentialRoutes.post('/credential/issue', async (c) => {
     credentialRequestJson: string
     attributes: Record<string, string>
   }>()
-  const credentialJson = familyIssuer.issue(
+  const credentialJson = await familyIssuer.issue(
     GUARDIAN_CRED_DEF_ID,
     body.credentialOfferJson,
     body.credentialRequestJson,

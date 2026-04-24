@@ -13,7 +13,12 @@ export default async function CoachVerifyPage() {
   const status = await walletStatusAction()
   const guardianCreds = status.credentials
     .filter(c => c.credentialType === 'GuardianOfMinorCredential' && c.status === 'active')
-    .map(c => ({ id: c.id, issuerId: c.issuerId, receivedAt: c.receivedAt }))
+    .map(c => ({
+      id:            c.id,
+      issuerId:      c.issuerId,
+      receivedAt:    c.receivedAt,
+      walletContext: c.walletContext,
+    }))
 
   return (
     <div style={{ maxWidth: 720, margin: '0 auto', padding: '1.5rem', minHeight: '100vh', background: '#f8fafc' }}>

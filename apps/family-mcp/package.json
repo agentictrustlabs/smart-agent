@@ -15,10 +15,12 @@
     "@hyperledger/anoncreds-shared": "^0.4.0",
     "@smart-agent/credential-registry": "workspace:*",
     "@smart-agent/privacy-creds": "workspace:*",
+    "better-sqlite3": "^11.0.0",
     "hono": "^4.4.0",
     "viem": "^2.21.0"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.0",
     "@types/node": "^22.0.0",
     "tsx": "^4.0.0",
     "typescript": "^5.5.0"

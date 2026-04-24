@@ -15,11 +15,9 @@
   },
   "dependencies": {
     "@smart-agent/types": "workspace:*",
-    "better-sqlite3": "^11.0.0",
     "viem": "^2.21.0"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.0",
     "@types/node": "^22.0.0",
     "typescript": "^5.5.0"
   }

@@ -58,6 +58,7 @@ NAME_RESOLVER=$(echo "$OUTPUT" | grep "AGENT_NAME_RESOLVER_ADDRESS=" | sed 's/.*
 NAME_UNIVERSAL=$(echo "$OUTPUT" | grep "AGENT_NAME_UNIVERSAL_RESOLVER_ADDRESS=" | sed 's/.*=//')
 NAME_SCOPE_ENFORCER=$(echo "$OUTPUT" | grep "NAME_SCOPE_ENFORCER_ADDRESS=" | sed 's/.*=//')
 CRED_REGISTRY_CONTRACT=$(echo "$OUTPUT" | grep "CREDENTIAL_REGISTRY_CONTRACT_ADDRESS=" | sed 's/.*=//')
+MEMBERSHIP_PROOF_ENFORCER=$(echo "$OUTPUT" | grep "MEMBERSHIP_PROOF_ENFORCER_ADDRESS=" | sed 's/.*=//')
 
 echo ""
 echo "=== Extracted addresses ==="
@@ -126,6 +127,7 @@ sed -i '/^AGENT_NAME_RESOLVER_ADDRESS=/d' "$WEB_ENV"
 sed -i '/^AGENT_NAME_UNIVERSAL_RESOLVER_ADDRESS=/d' "$WEB_ENV"
 sed -i '/^NAME_SCOPE_ENFORCER_ADDRESS=/d' "$WEB_ENV"
 sed -i '/^CREDENTIAL_REGISTRY_CONTRACT_ADDRESS=/d' "$WEB_ENV"
+sed -i '/^MEMBERSHIP_PROOF_ENFORCER_ADDRESS=/d' "$WEB_ENV"
 sed -i '/^RPC_URL=/d' "$WEB_ENV"
 sed -i '/^DEPLOYER_PRIVATE_KEY=/d' "$WEB_ENV"
 
@@ -164,10 +166,47 @@ AGENT_NAME_RESOLVER_ADDRESS=$NAME_RESOLVER
 AGENT_NAME_UNIVERSAL_RESOLVER_ADDRESS=$NAME_UNIVERSAL
 NAME_SCOPE_ENFORCER_ADDRESS=$NAME_SCOPE_ENFORCER
 CREDENTIAL_REGISTRY_CONTRACT_ADDRESS=$CRED_REGISTRY_CONTRACT
+MEMBERSHIP_PROOF_ENFORCER_ADDRESS=$MEMBERSHIP_PROOF_ENFORCER
 EOF
 
 echo ""
 echo "=== Updated $WEB_ENV ==="
+
+# ─── Propagate registry wiring to issuer services ──────────────────────────
+# org-mcp and family-mcp publish schemas/credDefs directly on-chain, so they
+# need the RPC URL + CredentialRegistry contract address. Rewrite the two
+# relevant keys in place; leave every other env key untouched.
+update_env_var() {
+  local file="$1" key="$2" value="$3"
+  if [ ! -f "$file" ]; then return; fi
+  if grep -q "^${key}=" "$file"; then
+    sed -i "s|^${key}=.*|${key}=${value}|" "$file"
+  else
+    printf '\n%s=%s\n' "$key" "$value" >> "$file"
+  fi
+}
+
+for svc in org-mcp family-mcp ssi-wallet-mcp; do
+  ENV_FILE="$ROOT_DIR/apps/$svc/.env"
+  if [ -f "$ENV_FILE" ]; then
+    update_env_var "$ENV_FILE" RPC_URL "$ANVIL_RPC"
+    update_env_var "$ENV_FILE" CREDENTIAL_REGISTRY_CONTRACT_ADDRESS "$CRED_REGISTRY_CONTRACT"
+    # Clear the obsolete off-chain-registry path. Harmless if absent.
+    sed -i '/^CREDENTIAL_REGISTRY_PATH=/d' "$ENV_FILE"
+    echo "Updated $ENV_FILE"
+  fi
+done
+
+# ─── Fund issuer EOAs so they can publish on-chain ─────────────────────────
+# The org and family issuers each derive an EOA from a deterministic private
+# key in their .env. Those EOAs must pay gas for publishSchema / publishCredDef
+# transactions. anvil_setBalance is cheap.
+ORG_ISSUER_ADDR=$(cast wallet address 0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc)
+FAMILY_ISSUER_ADDR=$(cast wallet address 0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd)
+TEN_ETH_HEX="0x8ac7230489e80000"   # 10 ETH
+cast rpc --rpc-url "$ANVIL_RPC" anvil_setBalance "$ORG_ISSUER_ADDR" "$TEN_ETH_HEX" > /dev/null
+cast rpc --rpc-url "$ANVIL_RPC" anvil_setBalance "$FAMILY_ISSUER_ADDR" "$TEN_ETH_HEX" > /dev/null
+echo "Funded org issuer $ORG_ISSUER_ADDR and family issuer $FAMILY_ISSUER_ADDR with 10 ETH each"
 
 # ─── Post-deploy registrations ──────────────────────────────────────────────
 #

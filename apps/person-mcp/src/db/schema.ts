@@ -5,7 +5,8 @@ import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core'
 // ---------------------------------------------------------------------------
 export const ssiHolderWallets = sqliteTable('ssi_holder_wallets', {
   id: text('id').primaryKey(),
-  principal: text('principal').notNull().unique(),
+  principal: text('principal').notNull(),
+  walletContext: text('wallet_context').notNull(),
   privyEoa: text('privy_eoa').notNull(),
   holderWalletRef: text('holder_wallet_ref').notNull(),
   linkSecretRef: text('link_secret_ref').notNull(),
@@ -19,6 +20,7 @@ export const ssiHolderWallets = sqliteTable('ssi_holder_wallets', {
 export const ssiCredentialMetadata = sqliteTable('ssi_credential_metadata', {
   id: text('id').primaryKey(),
   principal: text('principal').notNull(),
+  walletContext: text('wallet_context').notNull(),
   holderWalletRef: text('holder_wallet_ref').notNull(),
   issuerId: text('issuer_id').notNull(),
   schemaId: text('schema_id').notNull(),
@@ -34,6 +36,7 @@ export const ssiCredentialMetadata = sqliteTable('ssi_credential_metadata', {
 export const ssiProofAudit = sqliteTable('ssi_proof_audit', {
   id: text('id').primaryKey(),
   principal: text('principal').notNull(),
+  walletContext: text('wallet_context').notNull(),
   holderWalletRef: text('holder_wallet_ref').notNull(),
   verifierId: text('verifier_id').notNull(),
   purpose: text('purpose').notNull(),

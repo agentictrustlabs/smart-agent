@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import { presentGuardianToCoachAction } from '@/lib/actions/ssi/present.action'
 
-interface GuardianCred { id: string; issuerId: string; receivedAt: string }
+interface GuardianCred { id: string; issuerId: string; receivedAt: string; walletContext: string }
 
 export function CoachClient({ guardianCreds }: { guardianCreds: GuardianCred[] }) {
   const [pending, start] = useTransition()
@@ -40,13 +40,26 @@ export function CoachClient({ guardianCreds }: { guardianCreds: GuardianCred[] }
         </ul>
       </div>
 
+      {guardianCreds.length > 1 && (
+        <div style={{ marginBottom: 10, fontSize: 12, color: '#64748b' }}>
+          You hold {guardianCreds.length} guardian credentials across different wallet contexts.
+          Pick the one to present. Each context uses its own link secret → the coach
+          learns only a context-pairwise handle.
+        </div>
+      )}
       {guardianCreds.map(c => (
         <div key={c.id} style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '0.75rem 1rem', border: '1px solid #e2e8f0', borderRadius: 10, marginBottom: 8,
         }}>
           <div>
-            <div style={{ fontWeight: 600 }}>GuardianOfMinorCredential</div>
+            <div style={{ fontWeight: 600 }}>
+              GuardianOfMinorCredential{' '}
+              <span style={{
+                display: 'inline-block', padding: '2px 8px', borderRadius: 999, fontSize: 10,
+                background: 'rgba(63,110,232,0.12)', color: '#3f6ee8', fontWeight: 600, marginLeft: 6,
+              }}>wallet: {c.walletContext}</span>
+            </div>
             <div style={{ fontSize: 11, color: '#64748b' }}>
               from <code>{c.issuerId}</code> · received {new Date(c.receivedAt).toLocaleString()}
             </div>

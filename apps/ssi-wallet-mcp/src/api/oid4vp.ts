@@ -20,8 +20,8 @@ import type { WalletAction } from '@smart-agent/privacy-creds'
 import { AnonCreds, evaluateProofPolicy, hashProofRequest, pairwiseHandle } from '@smart-agent/privacy-creds'
 import { gateExistingWalletAction } from '../auth/verify-privy-action.js'
 import { getCredential, getLinkSecret } from '../storage/askar.js'
-import { CredentialRegistryStore, loadVerifiedCredDef, loadVerifiedSchema } from '@smart-agent/credential-registry'
-import { config } from '../config.js'
+import { loadVerifiedCredDef, loadVerifiedSchema } from '@smart-agent/credential-registry'
+import { resolver } from '../registry/resolver.js'
 import { db } from '../db/index.js'
 
 export const oid4vpRoutes = new Hono()
@@ -59,7 +59,20 @@ function attrFromPath(path: string): string | null {
   return m ? m[1] : null
 }
 
-function buildAnonCredsRequest(def: PresentationDefinition): {
+/**
+ * Deterministic translation of a DIF-PE presentation_definition → AnonCreds
+ * presentation_request. The caller supplies the nonce so the wallet-side
+ * result is byte-identical to what they compute locally — this is what lets
+ * /oid4vp/preview return a proofRequestHash that the Privy WalletAction can
+ * pre-commit to.
+ *
+ * Referent naming is deterministic:
+ *   holder self-attest  → "attr_holder"
+ *   reveal attr "X"     → "attr_<X>"
+ *   predicate attr "X"  → "pred_<X>"                    (single per attr)
+ *   if multiple preds over the same attr → "pred_<X>_<operator>_<value>"
+ */
+function buildAnonCredsRequest(def: PresentationDefinition, nonce: string): {
   presentationRequest: Record<string, unknown>
   referentMap: { reveal: Record<string, string>; predicate: Record<string, string> }
 } {
@@ -67,18 +80,18 @@ function buildAnonCredsRequest(def: PresentationDefinition): {
   const requested_predicates: Record<string, unknown> = {}
   const referentMap = { reveal: {} as Record<string, string>, predicate: {} as Record<string, string> }
 
-  // Always add the known holder self-attested slot so the wallet can bind
-  // the presentation to a pairwise handle per verifier.
-  const holderReferent = 'attr_holder'
-  requested_attributes[holderReferent] = { name: 'holder' }
-  referentMap.reveal[holderReferent] = 'holder'
+  requested_attributes['attr_holder'] = { name: 'holder' }
+  referentMap.reveal['attr_holder'] = 'holder'
 
+  const predCounts: Record<string, number> = {}
   for (const idesc of def.input_descriptors) {
     for (const f of idesc.constraints.fields) {
       const attr = attrFromPath(f.path)
       if (!attr) continue
       if (f.filter?.type === 'number' && typeof f.filter.minimum === 'number') {
-        const ref = `pred_${attr}_${Math.random().toString(36).slice(2, 8)}`
+        const used = predCounts[attr] ?? 0
+        const ref = used === 0 ? `pred_${attr}` : `pred_${attr}_${f.filter.minimum}`
+        predCounts[attr] = used + 1
         requested_predicates[ref] = {
           name: attr,
           p_type: '>=',
@@ -101,7 +114,7 @@ function buildAnonCredsRequest(def: PresentationDefinition): {
     presentationRequest: {
       name: `oid4vp/${def.id}`,
       version: '1.0',
-      nonce: (() => { const n = (BigInt(Date.now()) << 32n) | BigInt(Math.floor(Math.random() * 2 ** 31)); return n.toString() })(),
+      nonce,
       requested_attributes,
       requested_predicates,
     },
@@ -123,10 +136,36 @@ function buildAnonCredsRequest(def: PresentationDefinition): {
  * The caller is expected to POST vp_token+presentation_submission to the
  * verifier's response_uri; we don't do that on behalf of the wallet here.
  */
+/**
+ * POST /oid4vp/preview
+ *
+ * Preview endpoint: give me the exact AnonCreds request + hash the wallet
+ * will use for this presentation_definition + nonce. Lets callers build the
+ * Privy WalletAction with the correct proofRequestHash before calling
+ * /oid4vp/authorize.
+ *
+ * Body: { presentation_definition, nonce }
+ * Returns: { presentationRequest, proofRequestHash, referentMap }
+ */
+oid4vpRoutes.post('/oid4vp/preview', async (c) => {
+  const body = await c.req.json<{
+    presentation_definition: PresentationDefinition
+    nonce: string
+  }>()
+  if (!body.nonce) return c.json({ error: 'nonce is required (decimal string)' }, 400)
+  const { presentationRequest, referentMap } = buildAnonCredsRequest(body.presentation_definition, body.nonce)
+  return c.json({
+    presentationRequest,
+    proofRequestHash: hashProofRequest(presentationRequest),
+    referentMap,
+  })
+})
+
 oid4vpRoutes.post('/oid4vp/authorize', async (c) => {
   const body = await c.req.json<{
     presentation_definition: PresentationDefinition
     credentialId: string
+    nonce: string                 // same nonce that was passed to /oid4vp/preview
     action: WalletAction & { expiresAt: string | number | bigint }
     signature: `0x${string}`
   }>()
@@ -135,84 +174,91 @@ oid4vpRoutes.post('/oid4vp/authorize', async (c) => {
   if (action.type !== 'CreatePresentation') {
     return c.json({ error: 'WalletAction.type must be CreatePresentation' }, 400)
   }
+  if (!body.nonce) return c.json({ error: 'nonce is required (must match /oid4vp/preview)' }, 400)
 
   const gate = await gateExistingWalletAction({ action, signature: body.signature })
   if (!gate.ok) return c.json({ error: gate.reason }, gate.status as 400 | 401 | 404 | 409)
   const hw = gate.holderWallet
 
-  const { presentationRequest, referentMap } = buildAnonCredsRequest(body.presentation_definition)
+  const { presentationRequest, referentMap } = buildAnonCredsRequest(body.presentation_definition, body.nonce)
 
   // Tamper-evidence: action.proofRequestHash must match this built request.
   const freshHash = hashProofRequest(presentationRequest)
   if (freshHash !== action.proofRequestHash) {
-    return c.json({ error: 'proofRequestHash mismatch (rebuild the WalletAction from this presentation_definition)' }, 400)
+    return c.json({ error: 'proofRequestHash mismatch (rebuild the WalletAction from /oid4vp/preview output)' }, 400)
   }
 
-  const registry = new CredentialRegistryStore(config.registryPath)
+  const rawRow = db.prepare(
+    `SELECT cred_def_id as credDefId, schema_id as schemaId FROM credential_metadata WHERE id = ? AND holder_wallet_id = ?`,
+  ).get(body.credentialId, hw.id) as { credDefId: string; schemaId: string } | undefined
+  if (!rawRow) return c.json({ error: `unknown credentialId: ${body.credentialId}` }, 404)
+
+  let credDef, schema
   try {
-    const rawRow = db.prepare(
-      `SELECT cred_def_id as credDefId, schema_id as schemaId FROM credential_metadata WHERE id = ? AND holder_wallet_id = ?`,
-    ).get(body.credentialId, hw.id) as { credDefId: string; schemaId: string } | undefined
-    if (!rawRow) return c.json({ error: `unknown credentialId: ${body.credentialId}` }, 404)
+    credDef = await loadVerifiedCredDef(resolver, rawRow.credDefId)
+    schema  = await loadVerifiedSchema(resolver, rawRow.schemaId)
+  } catch (err) {
+    return c.json({ error: `registry: ${(err as Error).message}` }, 403)
+  }
 
-    let credDef, schema
-    try {
-      credDef = await loadVerifiedCredDef(registry, rawRow.credDefId)
-      schema  = await loadVerifiedSchema(registry, rawRow.schemaId)
-    } catch (err) {
-      return c.json({ error: `registry: ${(err as Error).message}` }, 403)
-    }
+  const availableAttrs = new Set(attributeNamesFromSchemaJson(schema.json))
+  const revealReferents = Object.entries(referentMap.reveal).filter(([, name]) => name !== 'holder').map(([ref]) => ref)
+  const predicateReferents = Object.keys(referentMap.predicate)
+  const revealAttrs = revealReferents.map(r => referentMap.reveal[r])
+  const predicates = predicateReferents.map(r => ({
+    attribute: referentMap.predicate[r], operator: '>=' as const,
+    value: ((presentationRequest.requested_predicates as Record<string, { p_value: number }>)[r]).p_value,
+  }))
 
-    const availableAttrs = new Set(schema.attributeNames)
-    const revealReferents = Object.entries(referentMap.reveal).filter(([, name]) => name !== 'holder').map(([ref]) => ref)
-    const predicateReferents = Object.keys(referentMap.predicate)
-    const revealAttrs = revealReferents.map(r => referentMap.reveal[r])
-    const predicates = predicateReferents.map(r => ({
-      attribute: referentMap.predicate[r], operator: '>=' as const,
-      value: ((presentationRequest.requested_predicates as Record<string, { p_value: number }>)[r]).p_value,
-    }))
+  const policy = evaluateProofPolicy({
+    requestedRevealAttrs: revealAttrs,
+    requestedPredicates: predicates,
+    allowedReveal: JSON.parse(action.allowedReveal || '[]'),
+    allowedPredicates: JSON.parse(action.allowedPredicates || '[]'),
+    forbiddenAttrs: JSON.parse(action.forbiddenAttrs || '[]'),
+    availableInCred: Array.from(availableAttrs),
+  })
+  if (!policy.ok) return c.json({ error: `policy denied: ${policy.reason}` }, 403)
 
-    const policy = evaluateProofPolicy({
-      requestedRevealAttrs: revealAttrs,
-      requestedPredicates: predicates,
-      allowedReveal: JSON.parse(action.allowedReveal || '[]'),
-      allowedPredicates: JSON.parse(action.allowedPredicates || '[]'),
-      forbiddenAttrs: JSON.parse(action.forbiddenAttrs || '[]'),
-      availableInCred: Array.from(availableAttrs),
-    })
-    if (!policy.ok) return c.json({ error: `policy denied: ${policy.reason}` }, 403)
+  const linkSecret = await getLinkSecret(hw.askarProfile, hw.linkSecretId)
+  const credentialJson = await getCredential(hw.askarProfile, body.credentialId)
+  const pwHandle = pairwiseHandle(hw.id, action.counterpartyId)
 
-    const linkSecret = await getLinkSecret(hw.askarProfile, hw.linkSecretId)
-    const credentialJson = await getCredential(hw.askarProfile, body.credentialId)
-    const pwHandle = pairwiseHandle(hw.id, action.counterpartyId)
-
-    const presentation = AnonCreds.holderCreatePresentation({
-      presentationRequestJson: JSON.stringify(presentationRequest),
-      credential: { credentialJson },
+  const presentation = AnonCreds.holderCreatePresentation({
+    presentationRequestJson: JSON.stringify(presentationRequest),
+    credentials: [{
+      credentialJson,
       revealAttrReferents: revealReferents,
       predicateReferents: predicateReferents,
-      schemasJson: { [rawRow.schemaId]: schema.json },
-      credDefsJson: { [rawRow.credDefId]: credDef.json },
-      linkSecret,
-      selfAttestedAttributes: { attr_holder: pwHandle },
-    })
+    }],
+    schemasJson: { [rawRow.schemaId]: schema.json },
+    credDefsJson: { [rawRow.credDefId]: credDef.json },
+    linkSecret,
+    selfAttestedAttributes: { attr_holder: pwHandle },
+  })
 
-    const submission = {
-      id: `sub_${randomUUID()}`,
-      definition_id: body.presentation_definition.id,
-      descriptor_map: body.presentation_definition.input_descriptors.map(i => ({
-        id: i.id,
-        format: 'anoncreds-v1',
-        path: '$',
-      })),
-    }
-
-    return c.json({
-      vp_token: presentation,
-      presentation_submission: submission,
-      pairwiseHandle: pwHandle,
-    })
-  } finally {
-    registry.close()
+  const submission = {
+    id: `sub_${randomUUID()}`,
+    definition_id: body.presentation_definition.id,
+    descriptor_map: body.presentation_definition.input_descriptors.map(i => ({
+      id: i.id,
+      format: 'anoncreds-v1',
+      path: '$',
+    })),
   }
+
+  return c.json({
+    vp_token: presentation,
+    presentation_submission: submission,
+    pairwiseHandle: pwHandle,
+  })
 })
+
+function attributeNamesFromSchemaJson(json: string): string[] {
+  try {
+    const obj = JSON.parse(json) as { attrNames?: string[] }
+    return obj.attrNames ?? []
+  } catch {
+    return []
+  }
+}

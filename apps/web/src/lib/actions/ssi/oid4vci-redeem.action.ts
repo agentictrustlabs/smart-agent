@@ -7,11 +7,12 @@ import { person, org } from '@/lib/ssi/clients'
 import { ssiConfig } from '@/lib/ssi/config'
 
 export async function redeemOid4vciOfferAction(args: {
-  /** Either the base64url-encoded credential_offer (`credential_offer_uri`) or just the pre_authorized_code. */
   input: string
+  walletContext?: string
 }): Promise<{ success: boolean; credentialId?: string; error?: string }> {
   try {
     const { principal, userRow } = await loadSignerForCurrentUser()
+    void userRow // still used implicitly by loadSignerForCurrentUser
 
     let preAuthCode: string
     try {
@@ -47,23 +48,30 @@ export async function redeemOid4vciOfferAction(args: {
     // Exchange pre-auth code for access token.
     const tok = await org.oid4vciToken(preAuthCode)
 
-    // Ensure wallet provisioned; get holderWalletId.
-    const list = await person.callTool<{ credentials: Array<{ holderWalletRef: string }> }>(
-      'ssi_list_my_credentials', { principal },
-    ).catch(() => ({ credentials: [] }))
-    let holderWalletId = list.credentials[0]?.holderWalletRef
+    // Walletize to the caller's current context (defaults to 'default').
+    const walletContext = (args as { walletContext?: string }).walletContext ?? 'default'
+
+    // Ensure wallet exists for this (principal, context).
+    let holderWalletId: string | undefined
+    try {
+      const r = await fetch(
+        `${ssiConfig.walletUrl}/wallet/${encodeURIComponent(principal)}/${encodeURIComponent(walletContext)}`,
+        { cache: 'no-store' },
+      )
+      if (r.ok) holderWalletId = (await r.json() as { holderWalletId?: string }).holderWalletId
+    } catch { /* fall through */ }
     if (!holderWalletId) {
       const { provisionHolderWalletAction } = await import('./provision.action')
-      const p = await provisionHolderWalletAction()
+      const p = await provisionHolderWalletAction(walletContext)
       if (!p.success || !p.holderWalletId) return { success: false, error: p.error ?? 'provision failed' }
       holderWalletId = p.holderWalletId
     }
 
-    // Build AcceptCredentialOffer action.
     const built = await person.callTool<{ action: WalletAction & { expiresAt: string } }>(
       'ssi_create_wallet_action',
       {
         principal,
+        walletContext,
         type: 'AcceptCredentialOffer',
         counterpartyId: freshOffer.issuerId,
         purpose: 'oid4vci redeem',
@@ -74,7 +82,6 @@ export async function redeemOid4vciOfferAction(args: {
     const action: WalletAction = { ...built.action, expiresAt: BigInt(built.action.expiresAt) }
     const { signature } = await signWalletAction(action)
 
-    // Wallet creates credential request against this offer.
     const req = await person.callTool<{ requestId: string; credentialRequestJson: string }>(
       'ssi_start_credential_exchange',
       {
@@ -84,14 +91,15 @@ export async function redeemOid4vciOfferAction(args: {
       },
     )
 
-    // POST /credential with access_token.
     const credRes = await org.oid4vciCredential(tok.access_token, freshOffer.credDefId, req.credentialRequestJson)
 
-    // Wallet stores.
     const fin = await person.callTool<{ credentialId: string }>(
       'ssi_finish_credential_exchange',
       {
-        principal, holderWalletId, requestId: req.requestId,
+        principal,
+        walletContext,
+        holderWalletId,
+        requestId: req.requestId,
         credentialJson: credRes.credential,
         credentialType: 'OrgMembershipCredential',
         issuerId: credRes.issuer_id,

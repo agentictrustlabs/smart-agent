@@ -13,13 +13,16 @@ sqlite.pragma('journal_mode = WAL')
 sqlite.exec(`
   CREATE TABLE IF NOT EXISTS holder_wallets (
     id TEXT PRIMARY KEY,
-    person_principal TEXT NOT NULL UNIQUE,
-    privy_eoa TEXT NOT NULL,                -- user's Privy EOA (lowercase)
-    askar_profile TEXT NOT NULL,             -- profile name in Askar store
+    person_principal TEXT NOT NULL,
+    wallet_context TEXT NOT NULL,              -- 'default' | 'professional' | 'personal' | 'ai-delegate' | ...
+    privy_eoa TEXT NOT NULL,
+    askar_profile TEXT NOT NULL,
     link_secret_id TEXT NOT NULL,
-    status TEXT NOT NULL DEFAULT 'active',   -- active | rotating | revoked
-    created_at TEXT NOT NULL
+    status TEXT NOT NULL DEFAULT 'active',     -- active | rotating | revoked
+    created_at TEXT NOT NULL,
+    UNIQUE (person_principal, wallet_context)
   );
+  CREATE INDEX IF NOT EXISTS idx_hw_principal ON holder_wallets(person_principal);
   CREATE INDEX IF NOT EXISTS idx_hw_privy_eoa ON holder_wallets(privy_eoa);
 
   CREATE TABLE IF NOT EXISTS action_nonces (
@@ -31,9 +34,6 @@ sqlite.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_nonce_wallet ON action_nonces(holder_wallet_id);
 
-  -- Phase 1: store credential-metadata index here too. In the target design
-  -- this lives in person-mcp; for Phase 1 we carry it locally so the mock
-  -- harness can drive end-to-end without a new person-mcp migration yet.
   CREATE TABLE IF NOT EXISTS credential_metadata (
     id TEXT PRIMARY KEY,
     holder_wallet_id TEXT NOT NULL,
@@ -42,7 +42,8 @@ sqlite.exec(`
     cred_def_id TEXT NOT NULL,
     credential_type TEXT NOT NULL,
     received_at TEXT NOT NULL,
-    status TEXT NOT NULL DEFAULT 'active'
+    status TEXT NOT NULL DEFAULT 'active',
+    link_secret_id TEXT NOT NULL DEFAULT ''    -- which link secret this cred is bound to (for rotation)
   );
   CREATE INDEX IF NOT EXISTS idx_cm_wallet ON credential_metadata(holder_wallet_id);
 `)

@@ -14,6 +14,11 @@ try {
   }
 } catch { /* .env not found */ }
 
+const registryAddr = process.env.CREDENTIAL_REGISTRY_CONTRACT_ADDRESS
+if (!registryAddr) {
+  throw new Error('CREDENTIAL_REGISTRY_CONTRACT_ADDRESS env is required')
+}
+
 export const config = {
   port: Number(process.env.SSI_WALLET_MCP_PORT ?? '3300'),
   dbPath: process.env.SSI_WALLET_DB_PATH ?? 'ssi-wallet.db',
@@ -23,5 +28,5 @@ export const config = {
   rpcUrl: process.env.RPC_URL ?? 'http://127.0.0.1:8545',
   verifyingContract: (process.env.SSI_ACTION_VERIFIER_ADDRESS ??
     '0x0000000000000000000000000000000000000000') as `0x${string}`,
-  registryPath: process.env.CREDENTIAL_REGISTRY_PATH ?? './credential-registry.db',
+  credentialRegistryAddress: registryAddr as `0x${string}`,
 }

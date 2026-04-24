@@ -2,7 +2,13 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { walletStatusAction } from '@/lib/actions/ssi/list.action'
-import { ProvisionButton, AcceptMembershipButton, AcceptGuardianButton } from './WalletActions'
+import {
+  ProvisionButton,
+  AcceptMembershipButton,
+  AcceptGuardianButton,
+  RotateLinkSecretButton,
+  ContextPicker,
+} from './WalletActions'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,18 +19,28 @@ const C = {
   warnBg: 'rgba(198,93,75,0.08)', warnFg: '#c65d4b',
 }
 
-export default async function WalletPage() {
+interface SearchParams { context?: string }
+
+export default async function WalletPage(props: {
+  searchParams: Promise<SearchParams>
+}) {
   const user = await getCurrentUser()
   if (!user) redirect('/')
-  const status = await walletStatusAction()
-  const provisioned = status.provisioned
+  const sp = await props.searchParams
+  const requestedContext = sp.context
+
+  const status = await walletStatusAction({ walletContext: requestedContext })
+  const activeContextRow = status.wallets.find(w => w.walletContext === status.activeContext) ?? null
+  const provisioned = !!activeContextRow
 
   return (
     <div style={{ maxWidth: 880, margin: '0 auto', padding: '1.5rem', background: C.bg, minHeight: '100vh' }}>
       <h1 style={{ fontSize: '1.4rem', fontWeight: 700, color: C.text, margin: 0 }}>Credential wallet</h1>
-      <p style={{ color: C.muted, margin: '0.25rem 0 1.25rem' }}>
-        Holder wallet for {user.name} · {user.email ?? 'demo user'}
+      <p style={{ color: C.muted, margin: '0.25rem 0 0.75rem' }}>
+        Context-scoped holder wallets for {user.name} · {user.email ?? 'demo user'}
       </p>
+
+      <ContextPicker wallets={status.wallets} activeContext={status.activeContext} />
 
       {status.error && (
         <div style={{ background: C.warnBg, color: C.warnFg, padding: '0.75rem 1rem', borderRadius: 10, marginBottom: 16 }}>
@@ -32,49 +48,51 @@ export default async function WalletPage() {
         </div>
       )}
 
-      <Section title="Wallet status">
-        {provisioned ? (
+      <Section title={`Wallet status — "${status.activeContext}"`}>
+        {provisioned && activeContextRow ? (
           <div style={{ color: C.okFg, background: C.okBg, padding: '0.6rem 0.9rem', borderRadius: 8, fontSize: 14 }}>
-            ✓ Holder wallet provisioned
+            ✓ Holder wallet provisioned for context <b>{status.activeContext}</b>
             <div style={{ fontSize: 11, opacity: 0.85, marginTop: 4 }}>
-              principal <code>{status.principal}</code>
-              {status.holderWalletId && <> · wallet <code>{status.holderWalletId}</code></>}
+              principal <code>{status.principal}</code> · wallet <code>{activeContextRow.holderWalletRef}</code>
+            </div>
+            <div style={{ marginTop: 10 }}>
+              <RotateLinkSecretButton walletContext={status.activeContext} />
             </div>
           </div>
         ) : (
           <div>
             <div style={{ color: C.muted, marginBottom: 8, fontSize: 14 }}>
-              No holder wallet yet. Provision one — we&apos;ll create an encrypted vault in ssi-wallet-mcp and store your AnonCreds link secret inside.
+              No wallet for context <b>{status.activeContext}</b> yet. Provision one — a fresh link secret + its own encrypted Askar profile.
             </div>
-            <ProvisionButton />
+            <ProvisionButton walletContext={status.activeContext} />
           </div>
         )}
       </Section>
 
-      <Section title="Accept credentials">
+      <Section title="Accept credentials into this context">
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          <AcceptMembershipButton />
-          <AcceptGuardianButton />
+          <AcceptMembershipButton walletContext={status.activeContext} />
+          <AcceptGuardianButton   walletContext={status.activeContext} />
         </div>
         <div style={{ marginTop: 10, fontSize: 12, color: C.muted }}>
-          For demo flows with custom attributes or the OID4VCI pre-auth flow, use{' '}
-          <Link href="/admin/issue" style={{ color: C.accent }}>/admin/issue</Link> or{' '}
-          <Link href="/wallet/oid4vci" style={{ color: C.accent }}>/wallet/oid4vci</Link>.
+          For custom attributes or OID4VCI offer URIs, see{' '}
+          <Link href="/admin/issue" style={{ color: C.accent }}>/admin/issue</Link>{' '}
+          and <Link href="/wallet/oid4vci" style={{ color: C.accent }}>/wallet/oid4vci</Link>.
         </div>
       </Section>
 
-      <Section title={`My credentials (${status.credentials.length})`}>
+      <Section title={`Credentials in "${status.activeContext}" (${status.credentials.length})`}>
         {status.credentials.length === 0 ? (
-          <div style={{ color: C.muted, fontSize: 14 }}>None yet.</div>
+          <div style={{ color: C.muted, fontSize: 14 }}>No credentials in this context.</div>
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
               <tr style={{ textAlign: 'left', color: C.muted, fontWeight: 500 }}>
                 <th style={th}>Type</th>
                 <th style={th}>Issuer</th>
-                <th style={th}>Received</th>
                 <th style={th}>Status</th>
-                <th style={th}>On-chain anchor</th>
+                <th style={th}>Anchor</th>
+                <th style={th}>Received</th>
               </tr>
             </thead>
             <tbody>
@@ -82,13 +100,13 @@ export default async function WalletPage() {
                 <tr key={c.id} style={{ borderTop: `1px solid ${C.border}` }}>
                   <td style={td}>{c.credentialType}</td>
                   <td style={td}><code style={{ fontSize: 11 }}>{c.issuerId}</code></td>
-                  <td style={td}>{new Date(c.receivedAt).toLocaleString()}</td>
                   <td style={td}><Badge ok={c.status === 'active'}>{c.status}</Badge></td>
                   <td style={td}>
                     {c.anchored === null
                       ? <span style={{ color: C.muted }}>—</span>
                       : <Badge ok={c.anchored}>{c.anchored ? 'anchored ✓' : 'not anchored'}</Badge>}
                   </td>
+                  <td style={td}>{new Date(c.receivedAt).toLocaleString()}</td>
                 </tr>
               ))}
             </tbody>
@@ -96,7 +114,7 @@ export default async function WalletPage() {
         )}
       </Section>
 
-      <Section title={`Proof audit (${status.audit.length})`}>
+      <Section title={`Proof audit — all contexts (${status.audit.length})`}>
         {status.audit.length === 0 ? (
           <div style={{ color: C.muted, fontSize: 14 }}>No presentations yet. Try <Link href="/verify/coach" style={{ color: C.accent }}>/verify/coach</Link>.</div>
         ) : (
@@ -107,12 +125,14 @@ export default async function WalletPage() {
                   <div>
                     <Badge ok={a.result === 'ok'}>{a.result}</Badge>{' '}
                     <span style={{ color: C.muted }}>{a.purpose}</span>{' '}
-                    to <code style={{ fontSize: 11 }}>{a.verifierId}</code>
+                    <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 999,
+                                    background: C.warnBg, color: C.warnFg }}>{a.walletContext}</span>
                   </div>
                   <div style={{ color: C.muted, fontSize: 11 }}>{new Date(a.createdAt).toLocaleString()}</div>
                 </div>
                 <div style={{ marginTop: 4, color: C.muted, fontSize: 11 }}>
-                  reveal={a.revealedAttrs} · pred={a.predicates} · pairwise=<code>{a.pairwiseHandle?.slice(0, 18)}…</code>
+                  reveal={a.revealedAttrs} · pred={a.predicates}
+                  {a.pairwiseHandle && <> · pairwise=<code>{a.pairwiseHandle.slice(0, 18)}…</code></>}
                 </div>
               </li>
             ))}
@@ -121,7 +141,7 @@ export default async function WalletPage() {
       </Section>
 
       <div style={{ display: 'flex', gap: 12, marginTop: 18, flexWrap: 'wrap' }}>
-        <Link href="/verify/coach" style={btnLink}>Coach verifier demo →</Link>
+        <Link href="/verify/coach" style={btnLink}>Coach verifier →</Link>
         <Link href="/admin/issue" style={btnLink}>Issuer admin →</Link>
         <Link href="/wallet/oid4vci" style={btnLink}>OID4VCI redeem →</Link>
       </div>

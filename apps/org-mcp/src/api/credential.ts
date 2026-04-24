@@ -26,7 +26,7 @@ credentialRoutes.post('/credential/offer', async (c) => {
     return c.json({ error: 'unsupported credentialType' }, 400)
   }
   await ensureMembershipRegistered()
-  const credentialOfferJson = catalystIssuer.createOffer(MEMBERSHIP_CRED_DEF_ID)
+  const credentialOfferJson = await catalystIssuer.createOffer(MEMBERSHIP_CRED_DEF_ID)
   return c.json({
     offerId: `offer_${randomUUID()}`,
     credentialOfferJson,
@@ -54,7 +54,7 @@ credentialRoutes.post('/credential/issue', async (c) => {
     credentialRequestJson: string
     attributes: Record<string, string>
   }>()
-  const credentialJson = catalystIssuer.issue(
+  const credentialJson = await catalystIssuer.issue(
     MEMBERSHIP_CRED_DEF_ID,
     body.credentialOfferJson,
     body.credentialRequestJson,

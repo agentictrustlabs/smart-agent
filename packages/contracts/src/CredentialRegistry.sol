@@ -3,24 +3,26 @@ pragma solidity ^0.8.28;
 
 /**
  * @title CredentialRegistry
- * @notice On-chain anchor for the off-chain AnonCreds registry (Phase 6).
+ * @notice On-chain Data Layer Registry for AnonCreds (cheqd-style).
  *
- *   An issuer (identified by its secp256k1 EOA) anchors hashes of its schema
- *   and credential-definition public records. The wallet and verifier use
- *   these anchors as a tamper-evidence layer on top of the off-chain signed
- *   JSON: if a reader can see a valid signature AND the on-chain anchor hash
- *   matches the canonical bytes they read, the record is authentic.
+ *   Schemas and credential definitions are PUBLISHED on-chain in full: the
+ *   canonical-JSON bytes land in event data (cheap LOG cost, not SSTORE).
+ *   A verifier with only an RPC URL and this contract address can resolve
+ *   and verify every credential it sees — the issuer is NOT in the
+ *   verification path.
  *
- *   - registerIssuer(did, address)      caller must prove control of address
- *   - anchorSchema(id, hash)            caller must be the issuer
- *   - anchorCredDef(id, hash, schemaId) caller must be the issuer
+ *   Identity. An issuer registers its did:ethr by proving control of the
+ *   EOA. The on-chain msg.sender of every publish* call IS the provenance
+ *   of the published record — no off-chain signature required.
  *
- *   Hashes are 32-byte keccak256 digests of the canonical-JSON public record,
- *   matching the off-chain `recordDigest(...)` used by the signing helpers.
+ *   Storage model. We keep two sentinels on-chain per id:
+ *     - the indexed jsonHash (so log filters are cheap), and
+ *     - a "published" flag (so re-publish is rejected).
+ *   The canonical JSON itself lives in the event's non-indexed data, which
+ *   a full-archive RPC node returns via eth_getLogs.
  *
- *   Optional trust gating (Phase 6 stretch): a caveat enforcer can require a
- *   valid membership proof against an anchored credDef before allowing a
- *   delegation to be redeemed. That enforcer is NOT part of this contract.
+ *   Revocation. Reserved as RevStatusUpdated below (not implemented — the
+ *   credentials we mint in this build are non-revocable).
  */
 contract CredentialRegistry {
     struct Issuer {
@@ -29,37 +31,61 @@ contract CredentialRegistry {
         uint64 registeredAt;
     }
 
-    struct SchemaAnchor {
-        string id;
-        bytes32 recordHash;
-        address issuer;
-        uint64 anchoredAt;
-    }
+    mapping(string => Issuer) private _issuers;            // did -> Issuer
+    mapping(address => string) private _didByAddress;      // address -> did
 
-    struct CredDefAnchor {
-        string id;
-        bytes32 recordHash;
-        string schemaId;
-        address issuer;
-        uint64 anchoredAt;
-    }
+    // Sentinels. We only need to prove "was published" and bind to a hash —
+    // the canonical-JSON payload is recovered from event data, not SSTORE.
+    mapping(bytes32 => bytes32) private _schemaJsonHash;   // keccak(id) -> keccak(canonicalJson)
+    mapping(bytes32 => address) private _schemaIssuer;     // keccak(id) -> msg.sender
 
-    mapping(string => Issuer) private _issuers;              // did -> Issuer
-    mapping(address => string) private _didByAddress;        // address -> did
-
-    mapping(string => SchemaAnchor) private _schemas;        // schemaId -> anchor
-    mapping(string => CredDefAnchor) private _credDefs;      // credDefId -> anchor
+    mapping(bytes32 => bytes32) private _credDefJsonHash;  // keccak(id) -> keccak(canonicalJson)
+    mapping(bytes32 => address) private _credDefIssuer;    // keccak(id) -> msg.sender
+    mapping(bytes32 => bytes32) private _credDefSchema;    // keccak(credDefId) -> keccak(schemaId)
 
     event IssuerRegistered(string did, address indexed account, uint64 at);
-    event SchemaAnchored(string id, bytes32 indexed recordHash, address indexed issuer, uint64 at);
-    event CredDefAnchored(string id, bytes32 indexed recordHash, string schemaId, address indexed issuer, uint64 at);
+
+    /// @notice Emitted when a schema is published. `canonicalJson` is the full
+    /// AnonCreds schema payload (minified, key-sorted). Verifiers recover it
+    /// from event data and check keccak256(canonicalJson) == jsonHash.
+    event SchemaPublished(
+        bytes32 indexed schemaIdKey,     // keccak256(bytes(id))
+        bytes32 indexed jsonHash,        // keccak256(canonicalJson)
+        address indexed issuer,
+        string id,
+        bytes canonicalJson,
+        uint64 at
+    );
+
+    /// @notice Emitted when a credential definition is published.
+    event CredDefPublished(
+        bytes32 indexed credDefIdKey,    // keccak256(bytes(id))
+        bytes32 indexed jsonHash,        // keccak256(canonicalJson)
+        address indexed issuer,
+        string id,
+        string schemaId,
+        bytes canonicalJson,
+        uint64 at
+    );
+
+    /// @notice Reserved for future revocation-status updates. Not yet emitted.
+    event RevStatusUpdated(
+        bytes32 indexed credDefIdKey,
+        uint64 indexed sequence,
+        bytes32 indexed deltaHash,
+        address issuer,
+        bytes delta,
+        uint64 at
+    );
 
     error NotIssuerAccount();
     error IssuerAlreadyRegistered();
     error UnknownIssuer();
-    error SchemaAlreadyAnchored();
-    error CredDefAlreadyAnchored();
+    error SchemaAlreadyPublished();
+    error CredDefAlreadyPublished();
     error UnknownSchema();
+    error EmptyId();
+    error EmptyJson();
 
     /// @notice Register a did:ethr issuer. The caller MUST be the EOA in the DID.
     function registerIssuer(string calldata did, address account) external {
@@ -70,36 +96,40 @@ contract CredentialRegistry {
         emit IssuerRegistered(did, account, uint64(block.timestamp));
     }
 
-    /// @notice Anchor a schema hash. Caller must be the registered issuer account.
-    function anchorSchema(string calldata id, bytes32 recordHash) external {
+    /// @notice Publish a schema. The canonical-JSON bytes are emitted in event
+    /// data; only the keccak hashes are stored on-chain. Caller must be a
+    /// registered issuer. One publish per id.
+    function publishSchema(string calldata id, bytes calldata canonicalJson) external {
         if (bytes(_didByAddress[msg.sender]).length == 0) revert UnknownIssuer();
-        if (_schemas[id].issuer != address(0)) revert SchemaAlreadyAnchored();
-        _schemas[id] = SchemaAnchor({
-            id: id,
-            recordHash: recordHash,
-            issuer: msg.sender,
-            anchoredAt: uint64(block.timestamp)
-        });
-        emit SchemaAnchored(id, recordHash, msg.sender, uint64(block.timestamp));
+        if (bytes(id).length == 0) revert EmptyId();
+        if (canonicalJson.length == 0) revert EmptyJson();
+        bytes32 key = keccak256(bytes(id));
+        if (_schemaIssuer[key] != address(0)) revert SchemaAlreadyPublished();
+        bytes32 jsonHash = keccak256(canonicalJson);
+        _schemaJsonHash[key] = jsonHash;
+        _schemaIssuer[key] = msg.sender;
+        emit SchemaPublished(key, jsonHash, msg.sender, id, canonicalJson, uint64(block.timestamp));
     }
 
-    /// @notice Anchor a credDef hash. Caller must be the registered issuer.
-    function anchorCredDef(
+    /// @notice Publish a credential definition bound to an already-published
+    /// schema. Canonical-JSON lives in event data.
+    function publishCredDef(
         string calldata id,
-        bytes32 recordHash,
-        string calldata schemaId
+        string calldata schemaId,
+        bytes calldata canonicalJson
     ) external {
         if (bytes(_didByAddress[msg.sender]).length == 0) revert UnknownIssuer();
-        if (_schemas[schemaId].issuer == address(0)) revert UnknownSchema();
-        if (_credDefs[id].issuer != address(0)) revert CredDefAlreadyAnchored();
-        _credDefs[id] = CredDefAnchor({
-            id: id,
-            recordHash: recordHash,
-            schemaId: schemaId,
-            issuer: msg.sender,
-            anchoredAt: uint64(block.timestamp)
-        });
-        emit CredDefAnchored(id, recordHash, schemaId, msg.sender, uint64(block.timestamp));
+        if (bytes(id).length == 0) revert EmptyId();
+        if (canonicalJson.length == 0) revert EmptyJson();
+        bytes32 schemaKey = keccak256(bytes(schemaId));
+        if (_schemaIssuer[schemaKey] == address(0)) revert UnknownSchema();
+        bytes32 key = keccak256(bytes(id));
+        if (_credDefIssuer[key] != address(0)) revert CredDefAlreadyPublished();
+        bytes32 jsonHash = keccak256(canonicalJson);
+        _credDefJsonHash[key] = jsonHash;
+        _credDefIssuer[key] = msg.sender;
+        _credDefSchema[key] = schemaKey;
+        emit CredDefPublished(key, jsonHash, msg.sender, id, schemaId, canonicalJson, uint64(block.timestamp));
     }
 
     // ─── Reads ──────────────────────────────────────────────────────────
@@ -113,21 +143,29 @@ contract CredentialRegistry {
         return _issuers[did];
     }
 
-    function getSchemaAnchor(string calldata id) external view returns (SchemaAnchor memory) {
-        return _schemas[id];
+    function isSchemaPublished(string calldata id) external view returns (bool) {
+        return _schemaIssuer[keccak256(bytes(id))] != address(0);
     }
 
-    function getCredDefAnchor(string calldata id) external view returns (CredDefAnchor memory) {
-        return _credDefs[id];
+    function isCredDefPublished(string calldata id) external view returns (bool) {
+        return _credDefIssuer[keccak256(bytes(id))] != address(0);
     }
 
-    function isSchemaAnchored(string calldata id, bytes32 expectedHash) external view returns (bool) {
-        SchemaAnchor memory a = _schemas[id];
-        return a.issuer != address(0) && a.recordHash == expectedHash;
+    /// @notice Sentinel view — verifier checks keccak(canonicalJson) against
+    /// the hash stored on-chain. Canonical bytes are fetched from event data.
+    function schemaJsonHash(string calldata id) external view returns (bytes32) {
+        return _schemaJsonHash[keccak256(bytes(id))];
     }
 
-    function isCredDefAnchored(string calldata id, bytes32 expectedHash) external view returns (bool) {
-        CredDefAnchor memory a = _credDefs[id];
-        return a.issuer != address(0) && a.recordHash == expectedHash;
+    function credDefJsonHash(string calldata id) external view returns (bytes32) {
+        return _credDefJsonHash[keccak256(bytes(id))];
+    }
+
+    function schemaIssuerOf(string calldata id) external view returns (address) {
+        return _schemaIssuer[keccak256(bytes(id))];
+    }
+
+    function credDefIssuerOf(string calldata id) external view returns (address) {
+        return _credDefIssuer[keccak256(bytes(id))];
     }
 }

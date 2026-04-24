@@ -29,6 +29,7 @@ import "../src/AgentNameRegistry.sol";
 import "../src/AgentNameResolver.sol";
 import "../src/AgentNameUniversalResolver.sol";
 import "../src/enforcers/NameScopeEnforcer.sol";
+import "../src/enforcers/MembershipProofEnforcer.sol";
 import "../src/CredentialRegistry.sol";
 import "account-abstraction/interfaces/IEntryPoint.sol";
 import "account-abstraction/core/EntryPoint.sol";
@@ -185,6 +186,9 @@ contract Deploy is Script {
         CredentialRegistry credentialRegistry = new CredentialRegistry();
         console.log("CredentialRegistry:", address(credentialRegistry));
 
+        MembershipProofEnforcer membershipProofEnforcer = new MembershipProofEnforcer();
+        console.log("MembershipProofEnforcer:", address(membershipProofEnforcer));
+
         // Initialize .agent root and set default resolver
         nameRegistry.initializeRoot(deployer, address(nameResolver));
 
@@ -222,6 +226,7 @@ contract Deploy is Script {
         _logEnv("AGENT_NAME_UNIVERSAL_RESOLVER_ADDRESS", address(nameUniversalResolver));
         _logEnv("NAME_SCOPE_ENFORCER_ADDRESS", address(nameScopeEnforcer));
         _logEnv("CREDENTIAL_REGISTRY_CONTRACT_ADDRESS", address(credentialRegistry));
+        _logEnv("MEMBERSHIP_PROOF_ENFORCER_ADDRESS", address(membershipProofEnforcer));
     }
 
     function _logEnv(string memory key, address addr) internal pure {

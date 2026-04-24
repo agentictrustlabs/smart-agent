@@ -3,12 +3,17 @@ import { createPublicClient, http } from 'viem'
 import { foundry } from 'viem/chains'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { db, schema } from '@/db'
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import { agentAccountResolverAbi, agentRelationshipAbi, ATL_CONTROLLER } from '@smart-agent/sdk'
+import { DEMO_USER_META } from '@/lib/auth/session'
+import { getBootState, triggerBootSeed } from '@/lib/boot-seed'
 
 export const dynamic = 'force-dynamic'
 
 interface Check { label: string; ok: boolean; detail?: string }
+
+const EXPECTED_DEMO_USER_COUNT = Object.keys(DEMO_USER_META).length            // 19 today
+const EXPECTED_MIN_ONCHAIN_AGENTS = 40                                          // persons + orgs + hubs across all 3 communities
 
 async function rpcReady(): Promise<Check> {
   try {
@@ -58,6 +63,65 @@ async function checkPort(url: string, label: string, healthPath = '/health'): Pr
   }
 }
 
+// ─── Community — system-wide ────────────────────────────────────────────────
+//
+// These checks verify the RULE: "System ready" only when every demo user and
+// every demo org is provisioned. Triggers boot-seed if not yet started.
+
+async function communityStatus(): Promise<{ usersProvisioned: Check; onChainAgents: Check; bootSeed: Check }> {
+  // Users provisioned in DB (has private key, smart account, person agent).
+  const [{ count }] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(schema.users)
+    .where(sql`${schema.users.privateKey} IS NOT NULL AND ${schema.users.smartAccountAddress} IS NOT NULL AND ${schema.users.personAgentAddress} IS NOT NULL`)
+  const usersProvisioned: Check = {
+    label: 'All demo users provisioned',
+    ok: (count ?? 0) >= EXPECTED_DEMO_USER_COUNT,
+    detail: `${count ?? 0} / ${EXPECTED_DEMO_USER_COUNT}`,
+  }
+
+  // On-chain agent count (persons + orgs + hubs across all 3 communities).
+  let onChainAgents: Check
+  try {
+    const resolverAddr = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}`
+    const client = createPublicClient({ chain: foundry, transport: http(process.env.RPC_URL ?? 'http://127.0.0.1:8545') })
+    const countChain = (await client.readContract({
+      address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'agentCount',
+    })) as bigint
+    onChainAgents = {
+      label: 'Community agents registered on-chain',
+      ok: Number(countChain) >= EXPECTED_MIN_ONCHAIN_AGENTS,
+      detail: `${countChain} / ≥ ${EXPECTED_MIN_ONCHAIN_AGENTS}`,
+    }
+  } catch (e) {
+    onChainAgents = { label: 'Community agents registered on-chain', ok: false, detail: (e as Error).message }
+  }
+
+  const boot = getBootState()
+  // Self-healing: if both data-level checks pass, the community is actually
+  // provisioned regardless of whether the in-memory boot flag got stuck on a
+  // transient error (e.g. a UNIQUE-constraint race during parallel seeds).
+  const dataReady = usersProvisioned.ok && onChainAgents.ok
+  const bootSeed: Check = {
+    label: 'Boot seed',
+    ok: boot.completed || dataReady,
+    detail: boot.completed
+      ? 'complete'
+      : dataReady
+        ? 'complete (verified from on-chain + DB state)'
+        : boot.started
+          ? `in progress — ${boot.phase}`
+          : 'not started',
+  }
+
+  // Auto-trigger only if data isn't already provisioned and boot hasn't run.
+  if (!boot.started && !dataReady) {
+    triggerBootSeed().catch(() => { /* state.error captures */ })
+  }
+
+  return { usersProvisioned, onChainAgents, bootSeed }
+}
+
 async function userStatus(): Promise<{ personAgentRegistered: Check; orgsLinked: Check; hubResolved: Check }> {
   const pending = { label: 'Person agent registered on-chain', ok: false, detail: 'not logged in' }
   const pending2 = { label: 'Community seed — orgs linked', ok: false, detail: 'not logged in' }
@@ -79,7 +143,6 @@ async function userStatus(): Promise<{ personAgentRegistered: Check; orgsLinked:
     const relAddr      = process.env.AGENT_RELATIONSHIP_ADDRESS   as `0x${string}`
     const client = createPublicClient({ chain: foundry, transport: http(process.env.RPC_URL ?? 'http://127.0.0.1:8545') })
 
-    // Is PA registered + has a controller?
     const isReg = (await client.readContract({
       address: resolverAddr, abi: agentAccountResolverAbi,
       functionName: 'isRegistered', args: [row.personAgentAddress as `0x${string}`],
@@ -96,7 +159,6 @@ async function userStatus(): Promise<{ personAgentRegistered: Check; orgsLinked:
       detail: isReg ? `${ctrls.length} controller(s)` : 'not registered yet',
     }
 
-    // Does PA have at least one outgoing relationship edge?
     let edgeCount = 0
     try {
       const edges = (await client.readContract({
@@ -113,7 +175,6 @@ async function userStatus(): Promise<{ personAgentRegistered: Check; orgsLinked:
       detail: `${edgeCount} outgoing edge(s)`,
     }
 
-    // Hub resolved?
     const { getUserHubId } = await import('@/lib/get-user-hub')
     let hubId = 'generic'
     try { hubId = await getUserHubId(user.id) } catch { /* ignored */ }
@@ -136,6 +197,7 @@ export async function GET() {
   const [
     rpc, contracts, ontology,
     a2a, personMcp, ssi, orgMcp, familyMcp,
+    communityBits,
     userBits,
   ] = await Promise.all([
     rpcReady(),
@@ -146,17 +208,24 @@ export async function GET() {
     checkPort(process.env.SSI_WALLET_MCP_URL ?? 'http://localhost:3300', 'ssi-wallet-mcp'),
     checkPort(process.env.ORG_MCP_URL ?? 'http://localhost:3400', 'org-mcp'),
     checkPort(process.env.FAMILY_MCP_URL ?? 'http://localhost:3500', 'family-mcp'),
+    communityStatus(),
     userStatus(),
   ])
 
   const infra: Check[] = [rpc, contracts, ontology]
   const services: Check[] = [a2a, personMcp, ssi, orgMcp, familyMcp]
+  const community: Check[] = [communityBits.usersProvisioned, communityBits.onChainAgents, communityBits.bootSeed]
   const user: Check[] = [userBits.personAgentRegistered, userBits.orgsLinked, userBits.hubResolved]
 
-  const infraReady    = infra.every(c => c.ok)
-  const servicesReady = services.every(c => c.ok)
-  const userReady     = user.every(c => c.ok)
-  const allReady      = infraReady && servicesReady && userReady
+  const infraReady     = infra.every(c => c.ok)
+  const servicesReady  = services.every(c => c.ok)
+  const communityReady = community.every(c => c.ok)
+  const userReady      = user.every(c => c.ok)
+  const allReady       = infraReady && servicesReady && communityReady && userReady
 
-  return NextResponse.json({ infra, services, user, infraReady, servicesReady, userReady, allReady })
+  return NextResponse.json({
+    infra, services, community, user,
+    infraReady, servicesReady, communityReady, userReady, allReady,
+    bootPhase: getBootState().phase,
+  })
 }

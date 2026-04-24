@@ -14,7 +14,7 @@
  */
 
 import { randomBytes, randomUUID } from 'node:crypto'
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import {
   verifyPrivyAction,
   hashProofRequest,
@@ -50,12 +50,14 @@ async function forward(path: string, body: unknown): Promise<unknown> {
 
 interface CreateWalletActionArgs {
   principal: string
+  walletContext?: string                  // default 'default'
   type: WalletActionType
   counterpartyId?: string
   purpose?: string
   credentialType?: string
   holderWalletId?: string                 // required except for ProvisionHolderWallet
   proofRequest?: Record<string, unknown>  // presentation request body (for CreatePresentation)
+  proofRequestHash?: `0x${string}`        // caller may supply precomputed hash (OID4VP preview path)
   allowedReveal?: string[]
   allowedPredicates?: Array<{ attribute: string; operator: '>='|'<='|'>'|'<'; value: number }>
   forbiddenAttrs?: string[]
@@ -91,11 +93,13 @@ const createWalletAction = {
       return mcpText({ error: 'holderWalletId required for non-provision actions' })
     }
 
-    const proofRequestHash = args.proofRequest ? hashProofRequest(args.proofRequest) : ZERO_HASH
+    const proofRequestHash = args.proofRequestHash
+      ?? (args.proofRequest ? hashProofRequest(args.proofRequest) : ZERO_HASH)
     const action: WalletAction = {
       type: args.type,
       actionId: `wa_${randomUUID()}`,
       personPrincipal: args.principal,
+      walletContext: args.walletContext ?? 'default',
       holderWalletId: args.holderWalletId ?? 'pending',
       counterpartyId: args.counterpartyId ?? 'self',
       purpose: args.purpose ?? '',
@@ -157,11 +161,17 @@ const provisionWallet = {
     }
 
     const existing = db.select().from(ssiHolderWallets)
-      .where(eq(ssiHolderWallets.principal, action.personPrincipal)).get()
+      .where(
+        and(
+          eq(ssiHolderWallets.principal, action.personPrincipal),
+          eq(ssiHolderWallets.walletContext, action.walletContext),
+        ),
+      ).get()
     if (!existing) {
       db.insert(ssiHolderWallets).values({
         id: `pm_${randomUUID()}`,
         principal: action.personPrincipal,
+        walletContext: action.walletContext,
         privyEoa: args.expectedSigner.toLowerCase(),
         holderWalletRef: res.holderWalletId,
         linkSecretRef: res.linkSecretId,
@@ -204,6 +214,7 @@ const startCredentialExchange = {
 
 interface FinishExchangeArgs {
   principal: string
+  walletContext: string
   holderWalletId: string
   requestId: string
   credentialJson: string
@@ -243,6 +254,7 @@ const finishCredentialExchange = {
     db.insert(ssiCredentialMetadata).values({
       id: res.credentialId,
       principal: args.principal,
+      walletContext: args.walletContext,
       holderWalletRef: args.holderWalletId,
       issuerId: args.issuerId,
       schemaId: args.schemaId,
@@ -295,6 +307,7 @@ const createPresentation = {
       db.insert(ssiProofAudit).values({
         id: `audit_${randomUUID()}`,
         principal: action.personPrincipal,
+        walletContext: action.walletContext,
         holderWalletRef: action.holderWalletId,
         verifierId: action.counterpartyId,
         purpose: action.purpose,
@@ -331,6 +344,7 @@ const createPresentation = {
       db.insert(ssiProofAudit).values({
         id: `audit_${randomUUID()}`,
         principal: action.personPrincipal,
+        walletContext: action.walletContext,
         holderWalletRef: action.holderWalletId,
         verifierId: res.auditSummary.verifier,
         purpose: res.auditSummary.purpose,
@@ -348,6 +362,7 @@ const createPresentation = {
       db.insert(ssiProofAudit).values({
         id: `audit_${randomUUID()}`,
         principal: action.personPrincipal,
+        walletContext: action.walletContext,
         holderWalletRef: action.holderWalletId,
         verifierId: action.counterpartyId,
         purpose: action.purpose,
@@ -368,17 +383,67 @@ const createPresentation = {
 
 const listMyCredentials = {
   name: 'ssi_list_my_credentials',
-  description: 'List credential metadata (no blobs, no attribute values) for a principal.',
+  description: 'List credential metadata (no blobs, no attribute values) for a principal. Optionally filter by walletContext.',
+  inputSchema: {
+    type: 'object' as const,
+    properties: {
+      principal: { type: 'string' },
+      walletContext: { type: 'string' },
+    },
+    required: ['principal'],
+  },
+  handler: async (args: { principal: string; walletContext?: string }) => {
+    const rows = args.walletContext
+      ? db.select().from(ssiCredentialMetadata)
+          .where(and(
+            eq(ssiCredentialMetadata.principal, args.principal),
+            eq(ssiCredentialMetadata.walletContext, args.walletContext),
+          )).all()
+      : db.select().from(ssiCredentialMetadata)
+          .where(eq(ssiCredentialMetadata.principal, args.principal))
+          .all()
+    return mcpText({ credentials: rows })
+  },
+}
+
+// ─── 6b. ssi_list_wallets ───────────────────────────────────────────────────
+
+const listWallets = {
+  name: 'ssi_list_wallets',
+  description: 'List all holder-wallet contexts for a principal.',
   inputSchema: {
     type: 'object' as const,
     properties: { principal: { type: 'string' } },
     required: ['principal'],
   },
   handler: async (args: { principal: string }) => {
-    const rows = db.select().from(ssiCredentialMetadata)
-      .where(eq(ssiCredentialMetadata.principal, args.principal))
+    const rows = db.select().from(ssiHolderWallets)
+      .where(eq(ssiHolderWallets.principal, args.principal))
       .all()
-    return mcpText({ credentials: rows })
+    return mcpText({ wallets: rows })
+  },
+}
+
+// ─── 6c. ssi_rotate_link_secret ─────────────────────────────────────────────
+
+interface RotateLinkSecretArgs {
+  action: WalletAction & { expiresAt: string | number | bigint }
+  signature: `0x${string}`
+}
+const rotateLinkSecret = {
+  name: 'ssi_rotate_link_secret',
+  description: 'Forward a signed RotateLinkSecret action to ssi-wallet-mcp. New link secret replaces the old; existing credentials marked stale.',
+  inputSchema: {
+    type: 'object' as const,
+    properties: {
+      action: { type: 'object' },
+      signature: { type: 'string' },
+    },
+    required: ['action', 'signature'],
+  },
+  handler: async (args: RotateLinkSecretArgs) => {
+    const res = await forward('/wallet/rotate-link-secret', args)
+    return mcpText(res)
   },
 }
 
@@ -409,5 +474,7 @@ export const ssiWalletTools = {
   ssi_finish_credential_exchange:  finishCredentialExchange,
   ssi_create_presentation:         createPresentation,
   ssi_list_my_credentials:         listMyCredentials,
+  ssi_list_wallets:                listWallets,
   ssi_list_proof_audit:            listProofAudit,
+  ssi_rotate_link_secret:          rotateLinkSecret,
 }

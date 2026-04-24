@@ -1,39 +1,35 @@
+/**
+ * Resolved registry records.
+ *
+ * Schema and credential-definition canonical JSON live on-chain in event
+ * data. When OnChainResolver recovers them, it returns these typed views.
+ * Provenance is the msg.sender that emitted the publish event — no
+ * off-chain signature is carried on the record.
+ */
+
 export interface SchemaRecord {
-  id: string                    // canonical id (did-style or URL-like)
-  name: string
-  version: string
-  attributeNames: string[]
-  issuerId: string              // did:ethr:<chainId>:<address>
-  json: string                  // serialized AnonCreds Schema
-  /** EIP-191 signature over recordDigest('schema', id, json) by the issuer EOA. */
-  signature: `0x${string}`
-  createdAt: string
+  id: string                      // canonical id (URL-like or did-scoped)
+  issuerId: string                // did:ethr:<chainId>:<address>
+  issuerAddress: `0x${string}`    // msg.sender of the publish tx
+  json: string                    // canonical AnonCreds schema JSON
+  jsonHash: `0x${string}`         // keccak256(canonicalJson)
+  blockNumber: bigint
+  publishedAt: Date
 }
 
 export interface CredentialDefinitionRecord {
   id: string
   schemaId: string
-  issuerId: string              // did:ethr:<chainId>:<address>
-  tag: string
-  json: string                  // serialized CredentialDefinition (public)
-  keyCorrectnessProof: string   // serialized KCP
-  supportRevocation: boolean
-  /** EIP-191 signature over recordDigest('credDef', id, json) by the issuer EOA. */
-  signature: `0x${string}`
-  createdAt: string
-}
-
-/** Private creddef material — kept only by the issuer. NOT part of the
- *  public registry interface but stored in the same SQLite for Phase 1 mocks. */
-export interface CredentialDefinitionPrivateRecord {
-  credentialDefinitionId: string
-  privateJson: string
-  createdAt: string
+  issuerId: string
+  issuerAddress: `0x${string}`
+  json: string                    // canonical CredentialDefinition JSON (public)
+  jsonHash: `0x${string}`
+  blockNumber: bigint
+  publishedAt: Date
 }
 
 export interface IssuerRecord {
-  id: string                    // did:ethr:31337:0x...
-  address: `0x${string}`        // secp256k1 EOA derived from the did
-  displayName: string
-  createdAt: string
+  did: string                     // did:ethr:<chainId>:<address>
+  address: `0x${string}`
+  registeredAt: Date
 }
