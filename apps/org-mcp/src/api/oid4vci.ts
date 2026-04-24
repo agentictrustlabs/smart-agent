@@ -25,10 +25,12 @@ import { config } from '../config.js'
 
 export const oid4vciRoutes = new Hono()
 
-// Pre-auth state: pre-authorized_code → (access_token, offer body, attrs).
-const oidDb = new Database(':memory:')
+// Pre-auth state persisted to disk so codes survive org-mcp restarts.
+const OID_DB_PATH = process.env.OID4VCI_DB_PATH ?? './oid4vci.db'
+const oidDb = new Database(OID_DB_PATH)
+oidDb.pragma('journal_mode = WAL')
 oidDb.exec(`
-  CREATE TABLE pre_auth (
+  CREATE TABLE IF NOT EXISTS pre_auth (
     code TEXT PRIMARY KEY,
     credential_offer_json TEXT NOT NULL,
     attributes_json TEXT NOT NULL,
@@ -104,6 +106,31 @@ oid4vciRoutes.post('/oid4vci/offer', async (c) => {
     // anoncreds-specific extension: expose the on-the-wire AnonCreds offer so
     // the wallet uses the exact offer bound to this pre-auth code.
     anoncreds_credential_offer: credentialOfferJson,
+    credential_definition_id: MEMBERSHIP_CRED_DEF_ID,
+    schema_id: MEMBERSHIP_SCHEMA_ID,
+    issuer_id: CATALYST_DID,
+  })
+})
+
+/**
+ * GET /oid4vci/offer-by-code/:code
+ *
+ * Returns the AnonCreds offer body that was bound to a pre-authorized_code at
+ * /oid4vci/offer time. The wallet needs THIS exact offer — not a fresh one —
+ * because the credential-request correctness proof is nonce-bound.
+ *
+ * No auth: the code itself is the capability. Records beyond the 10-min TTL
+ * are refused.
+ */
+oid4vciRoutes.get('/oid4vci/offer-by-code/:code', async (c) => {
+  const code = c.req.param('code')
+  const row = oidDb.prepare(`SELECT * FROM pre_auth WHERE code = ?`).get(code) as
+    | { credential_offer_json: string; expires_at: number }
+    | undefined
+  if (!row) return c.json({ error: 'not found' }, 404)
+  if (row.expires_at < Math.floor(Date.now() / 1000)) return c.json({ error: 'expired' }, 410)
+  return c.json({
+    anoncreds_credential_offer: row.credential_offer_json,
     credential_definition_id: MEMBERSHIP_CRED_DEF_ID,
     schema_id: MEMBERSHIP_SCHEMA_ID,
     issuer_id: CATALYST_DID,

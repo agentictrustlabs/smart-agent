@@ -17,7 +17,7 @@ export default async function WalletPage() {
   const user = await getCurrentUser()
   if (!user) redirect('/')
   const status = await walletStatusAction()
-  const provisioned = status.provisioned || status.audit.length > 0
+  const provisioned = status.provisioned
 
   return (
     <div style={{ maxWidth: 880, margin: '0 auto', padding: '1.5rem', background: C.bg, minHeight: '100vh' }}>
@@ -35,7 +35,11 @@ export default async function WalletPage() {
       <Section title="Wallet status">
         {provisioned ? (
           <div style={{ color: C.okFg, background: C.okBg, padding: '0.6rem 0.9rem', borderRadius: 8, fontSize: 14 }}>
-            ✓ Holder wallet provisioned (principal: <code>{status.principal}</code>)
+            ✓ Holder wallet provisioned
+            <div style={{ fontSize: 11, opacity: 0.85, marginTop: 4 }}>
+              principal <code>{status.principal}</code>
+              {status.holderWalletId && <> · wallet <code>{status.holderWalletId}</code></>}
+            </div>
           </div>
         ) : (
           <div>

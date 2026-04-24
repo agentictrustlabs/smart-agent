@@ -33,8 +33,18 @@ export interface AuditRow {
 const CRED_REGISTRY_PATH = process.env.CREDENTIAL_REGISTRY_DB_PATH
   ?? resolve(process.cwd(), '../ssi-wallet-mcp/credential-registry.db')
 
+async function lookupHolderWallet(principal: string): Promise<string | null> {
+  try {
+    const res = await fetch(`${ssiConfig.walletUrl}/wallet/${encodeURIComponent(principal)}`, { cache: 'no-store' })
+    if (!res.ok) return null
+    const j = (await res.json()) as { holderWalletId?: string }
+    return j.holderWalletId ?? null
+  } catch { return null }
+}
+
 export async function walletStatusAction(): Promise<{
   provisioned: boolean
+  holderWalletId: string | null
   principal: string
   credentials: CredentialRow[]
   audit: AuditRow[]
@@ -43,12 +53,13 @@ export async function walletStatusAction(): Promise<{
   try {
     const { principal } = await loadSignerForCurrentUser()
 
-    const [list, audit] = await Promise.all([
+    const [list, audit, holderWalletId] = await Promise.all([
       person.callTool<{ credentials: Array<{
         id: string; issuerId: string; schemaId: string; credDefId: string;
         credentialType: string; receivedAt: string; status: string;
       }> }>('ssi_list_my_credentials', { principal }),
       person.callTool<{ audit: AuditRow[] }>('ssi_list_proof_audit', { principal, limit: 25 }),
+      lookupHolderWallet(principal),
     ])
 
     // Anchor-check every credential if the on-chain registry is configured.
@@ -89,13 +100,14 @@ export async function walletStatusAction(): Promise<{
     store?.close()
 
     return {
-      provisioned: list.credentials.length > 0,
+      provisioned: holderWalletId !== null,
+      holderWalletId,
       principal,
       credentials,
       audit: audit.audit,
     }
   } catch (err) {
-    return { provisioned: false, principal: '', credentials: [], audit: [], error: (err as Error).message }
+    return { provisioned: false, holderWalletId: null, principal: '', credentials: [], audit: [], error: (err as Error).message }
   }
 }
 

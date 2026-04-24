@@ -536,6 +536,63 @@ flowchart TD
     T -->|no| NO[Not trusted ✗]
 ```
 
+### 4.9 AnonCreds for a Person ↔ Org Relationship
+
+This is a **conceptual extension** showing how an anoncreds credential could be
+issued from an existing person-to-organization relationship edge, then later
+proven without revealing the full relationship record.
+
+```mermaid
+sequenceDiagram
+    participant P as Person
+    participant H as Holder Wallet / Agent
+    participant O as Org Agent
+    participant Rel as AgentRelationship
+    participant I as Org Issuer Service
+    participant Reg as AnonCreds Schema + Cred Def + Revocation Registry
+    participant V as Verifier / Relying Org
+
+    P->>O: Request credential for org relationship
+    O->>Rel: readEdge(person, org, relationshipType, role)
+    Rel-->>O: confirmed relationship + metadata
+
+    O->>I: authorize issuance from relationship edge
+    I->>Reg: create / load schema, cred def, revocation state
+    I-->>H: credential offer
+    H-->>I: blinded credential request
+
+    I->>I: bind claims to relationship context<br/>personAgent, orgAgent, role, status, validUntil
+    I-->>H: anoncreds credential
+    H->>H: store credential + revocation witness
+
+    Note over P,V: Later, the person proves org affiliation
+
+    V-->>H: proof request<br/>needs org affiliation / role / freshness
+    H->>Reg: fetch latest revocation data
+    H-->>V: zero-knowledge presentation
+
+    V->>Reg: verify cred def + revocation state
+    V->>O: optional policy check<br/>issuer trusted? role acceptable?
+    O-->>V: yes / no
+    V-->>P: access granted / denied
+```
+
+Typical claim set in the credential:
+
+- `subjectAgent` — the person agent DID / account
+- `orgAgent` — the organization agent DID / account
+- `relationshipType` — e.g. membership, employment, governance
+- `role` — e.g. member, employee, admin, officer
+- `status` — active, suspended, pending
+- `validUntil` or epoch-bound freshness marker
+- optional `edgeId` or relationship reference as a non-disclosed linkage field
+
+The important separation is:
+
+- `AgentRelationship` remains the authoritative relationship graph
+- anoncreds package a privacy-preserving proof of that relationship
+- verifiers check the proof without needing the full edge record disclosed
+
 ---
 
 ## 5. Security Overview

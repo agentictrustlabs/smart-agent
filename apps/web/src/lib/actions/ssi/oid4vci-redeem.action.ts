@@ -32,12 +32,17 @@ export async function redeemOid4vciOfferAction(args: {
       return { success: false, error: 'input is not a valid offer URI or pre-auth code (expected pac_...)' }
     }
 
-    // Still need the anoncreds offer body so the wallet can build a proper
-    // credential request. org-mcp's /oid4vci/offer returned it in the original
-    // offer response; we don't keep that state here, so call /credential/offer
-    // again — same issuer + credDef, so it's a valid offer.
-    // (Real deployments would carry the offer body alongside the code.)
-    const freshOffer = await org.offer('OrgMembershipCredential')
+    // Look up the AnonCreds offer body that was bound to this pre-auth code
+    // at /oid4vci/offer time. The correctness proof is nonce-bound to the
+    // exact offer used at /credential time, so we MUST use the same one —
+    // NOT a fresh offer.
+    const bound = await org.oid4vciOfferByCode(preAuthCode)
+    const freshOffer = {
+      credentialOfferJson: bound.anoncreds_credential_offer,
+      credDefId: bound.credential_definition_id,
+      schemaId: bound.schema_id,
+      issuerId: bound.issuer_id,
+    }
 
     // Exchange pre-auth code for access token.
     const tok = await org.oid4vciToken(preAuthCode)

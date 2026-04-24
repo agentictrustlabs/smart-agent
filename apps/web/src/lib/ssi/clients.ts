@@ -31,6 +31,12 @@ export const org = {
   }>(ssiConfig.orgUrl, '/credential/offer', { body: { credentialType } }),
   issue: (args: { credentialOfferJson: string; credentialRequestJson: string; attributes: Record<string, string> }) =>
     call<{ credentialJson: string }>(ssiConfig.orgUrl, '/credential/issue', { body: args }),
+  oid4vciOfferByCode: (code: string) => call<{
+    anoncreds_credential_offer: string
+    credential_definition_id: string
+    schema_id: string
+    issuer_id: string
+  }>(ssiConfig.orgUrl, `/oid4vci/offer-by-code/${encodeURIComponent(code)}`),
   oid4vciOffer: (attributes: Record<string, string>) => call<{
     credential_offer: Record<string, unknown>
     credential_offer_uri: string

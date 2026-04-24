@@ -168,4 +168,30 @@ EOF
 
 echo ""
 echo "=== Updated $WEB_ENV ==="
+
+# ─── Post-deploy registrations ──────────────────────────────────────────────
+#
+# These seeds register ontology predicates + relationship types against the
+# *just-deployed* registry contracts. They MUST run before anything tries to
+# call `setStringProperty` / `addMultiAddressProperty` on the account resolver
+# (i.e. before any demo login runs the community seeds). Skipping them was
+# the root cause of the "Organizations: 0 registered" failure after every
+# redeploy. Running them here makes the deploy idempotent and self-healing.
+#
+# To skip (e.g. CI unit-test deploys that don't need the ontology), set
+#   SKIP_POST_DEPLOY_SEEDS=1
+
+if [ "${SKIP_POST_DEPLOY_SEEDS:-0}" = "1" ]; then
+  echo ""
+  echo "=== SKIP_POST_DEPLOY_SEEDS=1 — leaving ontology / relationship-type registries empty ==="
+else
+  echo ""
+  echo "=== Seeding ontology predicates ==="
+  "$SCRIPT_DIR/seed-ontology.sh"
+  echo ""
+  echo "=== Seeding relationship-type registry ==="
+  "$SCRIPT_DIR/seed-type-registry.sh"
+fi
+
+echo ""
 echo "Done. Start the web app with: pnpm dev"
