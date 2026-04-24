@@ -1,0 +1,31 @@
+{
+  "name": "@smart-agent/privacy-creds",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./wallet-actions": "./src/wallet-actions/index.ts",
+    "./policy": "./src/policy/index.ts",
+    "./formats/anoncreds-v1": "./src/formats/anoncreds-v1/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "tsc",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@hyperledger/anoncreds-shared": "^0.4.0",
+    "@smart-agent/credential-registry": "workspace:*",
+    "@smart-agent/types": "workspace:*",
+    "better-sqlite3": "^11.0.0",
+    "viem": "^2.21.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.0",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.5.0"
+  }
+}

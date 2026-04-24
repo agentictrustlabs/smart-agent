@@ -1,7 +1,13 @@
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
-  transpilePackages: ['@smart-agent/types', '@smart-agent/sdk'],
+  transpilePackages: [
+    '@smart-agent/types',
+    '@smart-agent/sdk',
+    '@smart-agent/privacy-creds',
+    '@smart-agent/credential-registry',
+    '@smart-agent/discovery',
+  ],
   async rewrites() {
     return [
       // Root-level routes → catalyst pages (no file moves needed)

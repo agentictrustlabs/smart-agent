@@ -8,6 +8,7 @@ import {
 import { profileTools } from './tools/profile.js'
 import { identityTools } from './tools/identities.js'
 import { chatTools } from './tools/chat.js'
+import { ssiWalletTools } from './tools/ssi-wallet.js'
 
 // ---------------------------------------------------------------------------
 // Collect all tool definitions and handlers
@@ -17,6 +18,7 @@ const allTools = {
   ...profileTools,
   ...identityTools,
   ...chatTools,
+  ...ssiWalletTools,
 } as const
 
 const toolDefinitions = Object.values(allTools).map(

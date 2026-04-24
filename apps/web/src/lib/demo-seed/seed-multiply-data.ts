@@ -19,6 +19,15 @@ function hasOikosContacts(userId: string): boolean {
   return !!row
 }
 
+function userExists(userId: string): boolean {
+  const row = db.select().from(schema.users).where(eq(schema.users.id, userId)).get()
+  return !!row
+}
+
+function shouldSeed(userId: string): boolean {
+  return userExists(userId) && !hasOikosContacts(userId)
+}
+
 // ─── Oikos helper ─────────────────────────────────────────────────────
 
 interface OikosEntry {
@@ -148,7 +157,7 @@ function insertPreferences(userId: string, language: string, homeChurch: string,
 function seedGlobalChurch() {
   // ─── gc-user-001: Pastor James (Coach) ────────────────────────────
   const u1 = 'gc-user-001'
-  if (!hasOikosContacts(u1)) {
+  if (shouldSeed(u1)) {
     insertOikosContacts(u1, [
       { personName: 'Maria Chen', proximity: 1, response: 'decided' },
       { personName: 'Tom & Lisa', proximity: 2, response: 'interested' },
@@ -170,7 +179,7 @@ function seedGlobalChurch() {
 
   // ─── gc-user-002: Dr. Sarah Mitchell (Disciple + Coach) ──────────
   const u2 = 'gc-user-002'
-  if (!hasOikosContacts(u2)) {
+  if (shouldSeed(u2)) {
     insertOikosContacts(u2, [
       { personName: 'Board members', proximity: 1, response: 'decided' },
       { personName: 'Seminary students', proximity: 2, response: 'interested' },
@@ -189,7 +198,7 @@ function seedGlobalChurch() {
 function seedCatalystNetwork() {
   // ─── cat-user-001: Maria Gonzalez (Coach — NoCo Hispanic outreach) ─
   const u1 = 'cat-user-001'
-  if (!hasOikosContacts(u1)) {
+  if (shouldSeed(u1)) {
     insertOikosContacts(u1, [
       { personName: 'Pastor David', proximity: 1, response: 'decided' },
       { personName: 'Rosa Martinez', proximity: 1, response: 'decided' },
@@ -213,7 +222,7 @@ function seedCatalystNetwork() {
 
   // ─── cat-user-002: Pastor David Chen (Hub Lead — Disciple) ────────
   const u2 = 'cat-user-002'
-  if (!hasOikosContacts(u2)) {
+  if (shouldSeed(u2)) {
     insertOikosContacts(u2, [
       { personName: 'Ana Reyes (Wellington)', proximity: 1, response: 'decided' },
       { personName: 'Miguel Santos (Laporte)', proximity: 1, response: 'decided' },
@@ -233,7 +242,7 @@ function seedCatalystNetwork() {
 
   // ─── cat-user-003: Rosa Martinez (Hispanic Outreach Coordinator) ──
   const u3 = 'cat-user-003'
-  if (!hasOikosContacts(u3)) {
+  if (shouldSeed(u3)) {
     insertOikosContacts(u3, [
       { personName: 'Familia Herrera', proximity: 1, response: 'decided' },
       { personName: 'ESL students (Tue/Thu class)', proximity: 2, response: 'seeking', plannedConversation: true },
@@ -253,7 +262,7 @@ function seedCatalystNetwork() {
 
   // ─── cat-user-006: Ana Reyes (Circle Leader — Wellington) ─────────
   const u6 = 'cat-user-006'
-  if (!hasOikosContacts(u6)) {
+  if (shouldSeed(u6)) {
     insertOikosContacts(u6, [
       { personName: 'Familia Morales', proximity: 1, response: 'seeking' },
       { personName: 'Youth group teens (5)', proximity: 2, response: 'interested' },
@@ -272,7 +281,7 @@ function seedCatalystNetwork() {
 
   // ─── cat-user-007: Miguel Santos (Circle Leader — Laporte) ────────
   const u7 = 'cat-user-007'
-  if (!hasOikosContacts(u7)) {
+  if (shouldSeed(u7)) {
     insertOikosContacts(u7, [
       { personName: 'Farm crew (8 men)', proximity: 1, response: 'interested' },
       { personName: 'Foreman Ricardo', proximity: 1, response: 'seeking', plannedConversation: true },
@@ -330,7 +339,7 @@ function seedCatalystNetwork() {
 function seedCIL() {
   // ─── cil-user-001: Cameron Henrion (Coach) ────────────────────────
   const u1 = 'cil-user-001'
-  if (!hasOikosContacts(u1)) {
+  if (shouldSeed(u1)) {
     insertOikosContacts(u1, [
       { personName: 'Afia', proximity: 1, response: 'decided' },
       { personName: 'Kossi', proximity: 1, response: 'seeking' },
@@ -351,7 +360,7 @@ function seedCIL() {
 
   // ─── cil-user-003: Afia Mensah (Disciple) ────────────────────────
   const u3 = 'cil-user-003'
-  if (!hasOikosContacts(u3)) {
+  if (shouldSeed(u3)) {
     insertOikosContacts(u3, [
       { personName: 'Market neighbors', proximity: 1, response: 'interested' },
       { personName: 'Supplier Kokou', proximity: 2, response: 'curious' },
@@ -369,7 +378,7 @@ function seedCIL() {
 
   // ─── cil-user-004: Kossi Agbeko (Disciple) ───────────────────────
   const u4 = 'cil-user-004'
-  if (!hasOikosContacts(u4)) {
+  if (shouldSeed(u4)) {
     insertOikosContacts(u4, [
       { personName: 'Customers', proximity: 2, response: 'curious' },
       { personName: 'Apprentice Yao', proximity: 1, response: 'seeking' },
@@ -537,12 +546,13 @@ function seedMCData() {
  */
 export function seedMultiplyData() {
   console.log('[multiply-seed] Seeding personal Multiply data...')
-  try {
-    seedGlobalChurch()
-    seedCatalystNetwork()
-    seedCIL()
-    console.log('[multiply-seed] Multiply data seeded successfully')
-  } catch (err) {
-    console.warn('[multiply-seed] Error seeding Multiply data:', err)
+  const runSafe = (label: string, fn: () => void) => {
+    try { fn() } catch (err) {
+      console.warn(`[multiply-seed] ${label} failed:`, err)
+    }
   }
+  runSafe('Global.Church', seedGlobalChurch)
+  runSafe('Catalyst',      seedCatalystNetwork)
+  runSafe('CIL',           seedCIL)
+  console.log('[multiply-seed] Multiply data seeding done')
 }

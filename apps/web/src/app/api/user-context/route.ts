@@ -308,6 +308,18 @@ export async function GET() {
       })
     }
 
+    // "Credential wallet" — SSI holder-wallet links (always present)
+    personalNav.push({
+      key: 'ssi-wallet',
+      label: 'Credential wallet',
+      items: [
+        { href: '/wallet',            label: 'My credentials',   icon: 'wallet'  },
+        { href: '/admin/issue',       label: 'Issuer admin',      icon: 'issue'   },
+        { href: '/verify/coach',      label: 'Coach verifier',    icon: 'verify'  },
+        { href: '/wallet/oid4vci',    label: 'OID4VCI redeem',    icon: 'oidc'    },
+      ],
+    })
+
     return NextResponse.json({
       personAgent,
       orgs,

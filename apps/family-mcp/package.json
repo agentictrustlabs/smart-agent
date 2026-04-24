@@ -1,0 +1,26 @@
+{
+  "name": "@smart-agent/family-mcp",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.11.0",
+    "@hyperledger/anoncreds-nodejs": "^0.4.0",
+    "@hyperledger/anoncreds-shared": "^0.4.0",
+    "@smart-agent/credential-registry": "workspace:*",
+    "@smart-agent/privacy-creds": "workspace:*",
+    "hono": "^4.4.0",
+    "viem": "^2.21.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.5.0"
+  }
+}

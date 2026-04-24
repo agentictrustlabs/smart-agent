@@ -32,6 +32,7 @@ The canonical ERC-4337 smart account for agent identity.
 The heart of the system — agent-native caveat enforcement.
 
 Caveat types:
+
 - **Tool caveats** — can call only these MCP tools
 - **Spending caveats** — up to X USDC per day
 - **Session caveats** — only for this customer/session/thread
@@ -80,6 +81,7 @@ Agent accounts connected into a trust context.
 - Trust assertions (ontology-aligned)
 
 Policy can depend on graph context:
+
 - "only transact with agents validated by X"
 - "only allow autonomous payments to org-linked service agents"
 - "only permit tool use if session is tied to approved principal-agent relationship"
@@ -92,6 +94,7 @@ Policy can depend on graph context:
 Makes agent accounts discoverable as machine actors.
 
 An agent account exposes:
+
 - Canonical metadata URI
 - Supported interfaces
 - Supported tools
@@ -104,32 +107,39 @@ An agent account exposes:
 
 ## Authority Separation
 
-| Authority          | Scope                                |
-|--------------------|--------------------------------------|
-| Identity authority | Who is this agent?                   |
-| Runtime authority  | What can this session do right now?  |
-| Tool authority     | Which tools can be invoked?          |
-| Spending authority | How much can be spent?               |
-| Trust authority    | Who can assert trust?                |
+
+| Authority          | Scope                               |
+| ------------------ | ----------------------------------- |
+| Identity authority | Who is this agent?                  |
+| Runtime authority  | What can this session do right now? |
+| Tool authority     | Which tools can be invoked?         |
+| Spending authority | How much can be spent?              |
+| Trust authority    | Who can assert trust?               |
+
 
 ## Autonomy Modes
 
-| Mode                | Description                           |
-|---------------------|---------------------------------------|
-| Human-confirmed     | Every action requires human approval  |
-| Policy-confirmed    | Actions auto-approved if within policy|
-| Fully autonomous    | Actions execute within caveats        |
-| Emergency lockdown  | All actions blocked                   |
+
+| Mode               | Description                            |
+| ------------------ | -------------------------------------- |
+| Human-confirmed    | Every action requires human approval   |
+| Policy-confirmed   | Actions auto-approved if within policy |
+| Fully autonomous   | Actions execute within caveats         |
+| Emergency lockdown | All actions blocked                    |
+
 
 ## Tech Stack
 
-| Component      | Technology                              |
-|----------------|-----------------------------------------|
-| Smart contracts| Solidity ^0.8.24, Foundry, OpenZeppelin |
-| Account model  | ERC-4337 (EntryPoint v0.7)              |
-| Signatures     | ERC-1271, EIP-712 typed data            |
-| Delegation     | ERC-7710 / custom caveat system         |
-| Chain          | Sepolia (testnet), Base Sepolia         |
-| SDK            | TypeScript, viem                        |
-| Web app        | Next.js 15, App Router                  |
-| Testing        | Forge (contracts), Vitest (SDK/app)     |
+
+| Component       | Technology                              |
+| --------------- | --------------------------------------- |
+| Smart contracts | Solidity ^0.8.24, Foundry, OpenZeppelin |
+| Account model   | ERC-4337 (EntryPoint v0.7)              |
+| Signatures      | ERC-1271, EIP-712 typed data            |
+| Delegation      | ERC-7710 / custom caveat system         |
+| Chain           | Sepolia (testnet), Base Sepolia         |
+| SDK             | TypeScript, viem                        |
+| Web app         | Next.js 15, App Router                  |
+| Testing         | Forge (contracts), Vitest (SDK/app)     |
+
+

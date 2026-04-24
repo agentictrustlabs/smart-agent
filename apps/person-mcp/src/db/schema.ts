@@ -1,6 +1,52 @@
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core'
 
 // ---------------------------------------------------------------------------
+// ssi_holder_wallets — one-to-one with a principal
+// ---------------------------------------------------------------------------
+export const ssiHolderWallets = sqliteTable('ssi_holder_wallets', {
+  id: text('id').primaryKey(),
+  principal: text('principal').notNull().unique(),
+  privyEoa: text('privy_eoa').notNull(),
+  holderWalletRef: text('holder_wallet_ref').notNull(),
+  linkSecretRef: text('link_secret_ref').notNull(),
+  status: text('status').notNull().default('active'),
+  createdAt: text('created_at').notNull(),
+})
+
+// ---------------------------------------------------------------------------
+// ssi_credential_metadata — metadata only (no attribute values, no blobs)
+// ---------------------------------------------------------------------------
+export const ssiCredentialMetadata = sqliteTable('ssi_credential_metadata', {
+  id: text('id').primaryKey(),
+  principal: text('principal').notNull(),
+  holderWalletRef: text('holder_wallet_ref').notNull(),
+  issuerId: text('issuer_id').notNull(),
+  schemaId: text('schema_id').notNull(),
+  credDefId: text('cred_def_id').notNull(),
+  credentialType: text('credential_type').notNull(),
+  receivedAt: text('received_at').notNull(),
+  status: text('status').notNull().default('active'),
+})
+
+// ---------------------------------------------------------------------------
+// ssi_proof_audit — one row per proof attempt (ok or denied)
+// ---------------------------------------------------------------------------
+export const ssiProofAudit = sqliteTable('ssi_proof_audit', {
+  id: text('id').primaryKey(),
+  principal: text('principal').notNull(),
+  holderWalletRef: text('holder_wallet_ref').notNull(),
+  verifierId: text('verifier_id').notNull(),
+  purpose: text('purpose').notNull(),
+  revealedAttrs: text('revealed_attrs').notNull(),
+  predicates: text('predicates').notNull(),
+  actionNonce: text('action_nonce').notNull(),
+  pairwiseHandle: text('pairwise_handle'),
+  holderBindingIncluded: integer('holder_binding_included').notNull().default(0),
+  result: text('result').notNull(),
+  createdAt: text('created_at').notNull(),
+})
+
+// ---------------------------------------------------------------------------
 // accounts — smart account registrations per principal
 // ---------------------------------------------------------------------------
 export const accounts = sqliteTable('accounts', {

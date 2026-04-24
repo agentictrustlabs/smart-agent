@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1",
+    "@smart-agent/privacy-creds": "workspace:*",
     "@smart-agent/sdk": "workspace:*",
     "@smart-agent/types": "workspace:*",
     "hono": "^4.4.0",

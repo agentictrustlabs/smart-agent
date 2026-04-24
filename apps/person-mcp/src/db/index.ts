@@ -88,6 +88,44 @@ sqlite.exec(`
   CREATE INDEX IF NOT EXISTS idx_chat_threads_principal ON chat_threads(principal);
   CREATE INDEX IF NOT EXISTS idx_chat_messages_thread_id ON chat_messages(thread_id);
   CREATE INDEX IF NOT EXISTS idx_chat_messages_principal ON chat_messages(principal);
+
+  -- ─── SSI Wallet integration (Phase 3) ────────────────────────────────
+  CREATE TABLE IF NOT EXISTS ssi_holder_wallets (
+    id TEXT PRIMARY KEY,
+    principal TEXT NOT NULL UNIQUE,
+    privy_eoa TEXT NOT NULL,
+    holder_wallet_ref TEXT NOT NULL,      -- ssi-wallet-mcp's holder_wallet id
+    link_secret_ref TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'active',
+    created_at TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS ssi_credential_metadata (
+    id TEXT PRIMARY KEY,
+    principal TEXT NOT NULL,
+    holder_wallet_ref TEXT NOT NULL,
+    issuer_id TEXT NOT NULL,
+    schema_id TEXT NOT NULL,
+    cred_def_id TEXT NOT NULL,
+    credential_type TEXT NOT NULL,
+    received_at TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'active'
+  );
+  CREATE TABLE IF NOT EXISTS ssi_proof_audit (
+    id TEXT PRIMARY KEY,
+    principal TEXT NOT NULL,
+    holder_wallet_ref TEXT NOT NULL,
+    verifier_id TEXT NOT NULL,
+    purpose TEXT NOT NULL,
+    revealed_attrs TEXT NOT NULL,          -- JSON
+    predicates TEXT NOT NULL,              -- JSON
+    action_nonce TEXT NOT NULL,
+    pairwise_handle TEXT,
+    holder_binding_included INTEGER NOT NULL DEFAULT 0,
+    result TEXT NOT NULL,                   -- ok | denied | error
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_ssi_cred_principal ON ssi_credential_metadata(principal);
+  CREATE INDEX IF NOT EXISTS idx_ssi_audit_principal ON ssi_proof_audit(principal);
 `)
 
 export const db = drizzle(sqlite, { schema })

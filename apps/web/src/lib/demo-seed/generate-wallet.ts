@@ -59,9 +59,12 @@ export async function generateDemoWallet(userName?: string): Promise<{
   const smartAccountAddress = await deploySmartAccount(account.address, acctSalt) as `0x${string}`
 
   // 4. Deploy person agent (separate smart account registered as person type)
+  // Owner MUST be the deployer so resolver.register() passes the onlyAgentOwner check.
+  // The user's EOA is tracked via ATL_CONTROLLER (set below), not as a smart-account owner.
+  const deployerAddr = privateKeyToAccount(DEPLOYER_KEY).address
   const personSaltHash = keccak256(encodePacked(['string', 'address'], ['person', account.address]))
   const personSalt = BigInt(personSaltHash)
-  const personAgentAddress = await deploySmartAccount(account.address, personSalt) as `0x${string}`
+  const personAgentAddress = await deploySmartAccount(deployerAddr, personSalt) as `0x${string}`
 
   // 5. Register person agent in on-chain resolver (uses deployer directly, no session needed)
   const resolverAddr = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}`
