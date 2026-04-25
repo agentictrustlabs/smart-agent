@@ -4,6 +4,7 @@ pragma solidity ^0.8.28;
 import "forge-std/Test.sol";
 import "../src/AgentAccount.sol";
 import "../src/AgentAccountFactory.sol";
+import "../src/libraries/WebAuthnLib.sol";
 import "account-abstraction/interfaces/IEntryPoint.sol";
 import "account-abstraction/core/EntryPoint.sol";
 
@@ -159,6 +160,174 @@ contract AgentAccountTest is Test {
 
         bytes4 result = account.isValidSignature(hash, wrapped);
         assertEq(result, bytes4(0x1626ba7e), "6492-wrapped owner sig should still verify");
+    }
+
+    // ─── Signature type-byte routing (0x00 ECDSA prefix) ────────────
+
+    function test_sig_type_byte_ecdsa() public view {
+        bytes32 hash = keccak256("type-prefixed");
+        bytes32 ethSignedHash = MessageHashUtils.toEthSignedMessageHash(hash);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerKey, ethSignedHash);
+        bytes memory inner = abi.encodePacked(r, s, v);
+        bytes memory prefixed = abi.encodePacked(uint8(0x00), inner);
+
+        bytes4 result = account.isValidSignature(hash, prefixed);
+        assertEq(result, bytes4(0x1626ba7e));
+    }
+
+    // ─── Passkey management ─────────────────────────────────────────
+
+    bytes32 internal constant CRED_1 = keccak256("cred-device-1");
+    bytes32 internal constant CRED_2 = keccak256("cred-device-2");
+
+    function test_addPasskey_via_self_call() public {
+        vm.prank(address(account));
+        account.addPasskey(CRED_1, 0x1111, 0x2222);
+        assertTrue(account.hasPasskey(CRED_1));
+        (uint256 x, uint256 y) = account.getPasskey(CRED_1);
+        assertEq(x, 0x1111);
+        assertEq(y, 0x2222);
+        assertEq(account.passkeyCount(), 1);
+    }
+
+    function test_addPasskey_reverts_not_self() public {
+        vm.prank(owner);
+        vm.expectRevert(AgentAccount.NotFromSelf.selector);
+        account.addPasskey(CRED_1, 0x1111, 0x2222);
+    }
+
+    function test_addPasskey_reverts_zero_pubkey() public {
+        vm.prank(address(account));
+        vm.expectRevert(AgentAccount.InvalidPasskeyPublicKey.selector);
+        account.addPasskey(CRED_1, 0, 1);
+    }
+
+    function test_addPasskey_reverts_duplicate() public {
+        vm.prank(address(account));
+        account.addPasskey(CRED_1, 0x1111, 0x2222);
+        vm.prank(address(account));
+        vm.expectRevert(abi.encodeWithSelector(AgentAccount.PasskeyAlreadyRegistered.selector, CRED_1));
+        account.addPasskey(CRED_1, 0x1111, 0x2222);
+    }
+
+    function test_removePasskey_happy_path() public {
+        vm.prank(address(account));
+        account.addPasskey(CRED_1, 0x1111, 0x2222);
+        vm.prank(address(account));
+        account.removePasskey(CRED_1);
+        assertFalse(account.hasPasskey(CRED_1));
+        assertEq(account.passkeyCount(), 0);
+    }
+
+    function test_removePasskey_cannot_remove_last_signer() public {
+        // The factory seeds the account with TWO owners: `owner` + serverSigner
+        // (the test contract itself). To isolate the last-signer invariant:
+        // register a passkey, then remove both owners (allowed since the passkey
+        // covers the "at least one signer" invariant), then try to remove the
+        // passkey — which must revert.
+        vm.prank(address(account));
+        account.addPasskey(CRED_1, 0x1111, 0x2222);
+        vm.prank(address(account));
+        account.removeOwner(address(this));      // 2 owners → 1
+        vm.prank(address(account));
+        account.removeOwner(owner);              // 1 owner + 1 passkey → 0 owners
+        // Now the sole signer is the passkey. Removing it must revert.
+        vm.prank(address(account));
+        vm.expectRevert(AgentAccount.CannotRemoveLastSigner.selector);
+        account.removePasskey(CRED_1);
+    }
+
+    function test_removeOwner_allows_drop_to_passkey_only() public {
+        vm.prank(address(account));
+        account.addPasskey(CRED_1, 0x1111, 0x2222);
+        vm.prank(address(account));
+        account.removeOwner(address(this));
+        vm.prank(address(account));
+        account.removeOwner(owner);
+        assertEq(account.ownerCount(), 0);
+        assertEq(account.passkeyCount(), 1);
+    }
+
+    function test_removeOwner_blocked_without_other_signers() public {
+        // Drop the second owner first so `owner` is the only one.
+        vm.prank(address(account));
+        account.removeOwner(address(this));
+        vm.prank(address(account));
+        vm.expectRevert(AgentAccount.CannotRemoveLastOwner.selector);
+        account.removeOwner(owner);
+    }
+
+    // ─── WebAuthn validation path through AgentAccount ────────────────
+
+    function test_isValidSignature_routes_webauthn() public {
+        // Register a passkey.
+        vm.prank(address(account));
+        account.addPasskey(CRED_1, 0x55, 0x66);
+        // Mock the RIP-7212 precompile to return success.
+        (bool mockOk,) = address(vm).call(
+            abi.encodeWithSignature(
+                "mockCall(address,bytes,bytes)",
+                address(0x100),
+                bytes(""),
+                abi.encodePacked(uint256(1))
+            )
+        );
+        require(mockOk);
+
+        bytes32 hash = keccak256("hello-passkey");
+        // Build a minimal valid clientDataJSON with the correct challenge encoding.
+        string memory cdj = _buildClientDataJSON(hash);
+        WebAuthnLib.Assertion memory a = WebAuthnLib.Assertion({
+            authenticatorData: hex"abcdef",
+            clientDataJSON: cdj,
+            challengeIndex: 23,
+            typeIndex: 1,
+            r: 1, s: 2,
+            credentialIdDigest: CRED_1
+        });
+        bytes memory typed = abi.encodePacked(uint8(0x01), abi.encode(a));
+        bytes4 result = account.isValidSignature(hash, typed);
+        assertEq(result, bytes4(0x1626ba7e));
+    }
+
+    function test_isValidSignature_webauthn_rejects_unknown_credential() public {
+        bytes32 hash = keccak256("hello-passkey");
+        string memory cdj = _buildClientDataJSON(hash);
+        WebAuthnLib.Assertion memory a = WebAuthnLib.Assertion({
+            authenticatorData: hex"abcdef",
+            clientDataJSON: cdj,
+            challengeIndex: 23,
+            typeIndex: 1,
+            r: 1, s: 2,
+            credentialIdDigest: CRED_2  // not registered
+        });
+        bytes memory typed = abi.encodePacked(uint8(0x01), abi.encode(a));
+        bytes4 result = account.isValidSignature(hash, typed);
+        assertEq(result, bytes4(0xffffffff));
+    }
+
+    // helpers
+    bytes internal constant ALPHA = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+
+    function _base64url32(bytes32 h) internal pure returns (string memory) {
+        bytes memory raw = abi.encodePacked(h);
+        bytes memory out = new bytes(43);
+        uint256 acc;
+        uint256 bits;
+        uint256 outIdx;
+        for (uint256 i; i < 32; i++) {
+            acc = (acc << 8) | uint8(raw[i]);
+            bits += 8;
+            while (bits >= 6) { bits -= 6; out[outIdx++] = ALPHA[(acc >> bits) & 0x3f]; }
+        }
+        if (bits > 0) out[outIdx++] = ALPHA[(acc << (6 - bits)) & 0x3f];
+        return string(out);
+    }
+
+    function _buildClientDataJSON(bytes32 hash) internal pure returns (string memory) {
+        return string(abi.encodePacked(
+            '{"type":"webauthn.get","challenge":"', _base64url32(hash), '","origin":"https://smart-agent.test","crossOrigin":false}'
+        ));
     }
 
     // ─── Execution ──────────────────────────────────────────────────

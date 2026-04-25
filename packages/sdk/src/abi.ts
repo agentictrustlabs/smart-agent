@@ -16,9 +16,17 @@ export const agentAccountAbi = [
   { type: 'function', name: 'version', inputs: [], outputs: [{ name: '', type: 'string' }], stateMutability: 'pure' },
   { type: 'function', name: 'upgradeToAndCall', inputs: [{ name: 'newImplementation', type: 'address' }, { name: 'data', type: 'bytes' }], outputs: [], stateMutability: 'payable' },
   { type: 'function', name: 'proxiableUUID', inputs: [], outputs: [{ name: '', type: 'bytes32' }], stateMutability: 'view' },
+  { type: 'function', name: 'addPasskey', inputs: [{ name: 'credentialIdDigest', type: 'bytes32' }, { name: 'x', type: 'uint256' }, { name: 'y', type: 'uint256' }], outputs: [], stateMutability: 'nonpayable' },
+  { type: 'function', name: 'removePasskey', inputs: [{ name: 'credentialIdDigest', type: 'bytes32' }], outputs: [], stateMutability: 'nonpayable' },
+  { type: 'function', name: 'hasPasskey', inputs: [{ name: 'credentialIdDigest', type: 'bytes32' }], outputs: [{ name: '', type: 'bool' }], stateMutability: 'view' },
+  { type: 'function', name: 'getPasskey', inputs: [{ name: 'credentialIdDigest', type: 'bytes32' }], outputs: [{ name: 'x', type: 'uint256' }, { name: 'y', type: 'uint256' }], stateMutability: 'view' },
+  { type: 'function', name: 'passkeyCount', inputs: [], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view' },
+  { type: 'function', name: 'accountId', inputs: [], outputs: [{ name: '', type: 'string' }], stateMutability: 'pure' },
   { type: 'event', name: 'OwnerAdded', inputs: [{ name: 'owner', type: 'address', indexed: true }] },
   { type: 'event', name: 'OwnerRemoved', inputs: [{ name: 'owner', type: 'address', indexed: true }] },
   { type: 'event', name: 'Upgraded', inputs: [{ name: 'implementation', type: 'address', indexed: true }] },
+  { type: 'event', name: 'PasskeyAdded', inputs: [{ name: 'credentialIdDigest', type: 'bytes32', indexed: true }, { name: 'x', type: 'uint256', indexed: false }, { name: 'y', type: 'uint256', indexed: false }] },
+  { type: 'event', name: 'PasskeyRemoved', inputs: [{ name: 'credentialIdDigest', type: 'bytes32', indexed: true }] },
 ] as const
 
 // ─── AgentAccountFactory ABI ─────────────────────────────────────────

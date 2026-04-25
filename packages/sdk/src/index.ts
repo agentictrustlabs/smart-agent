@@ -37,6 +37,9 @@ export {
   encodeAllowedTargetsTerms,
   encodeAllowedMethodsTerms,
   encodeRateLimitTerms,
+  encodeRecoveryTerms,
+  encodeRecoveryArgs,
+  computeRecoveryIntentHash,
   buildCaveat,
   // EIP-712 delegation hashing (matches DelegationManager contract)
   hashDelegation,
@@ -242,3 +245,5 @@ export {
   P256_N,
 } from './passkey'
 export type { PasskeyAssertion } from './passkey'
+export { parseAttestationObject, parseAuthData } from './cose-parse'
+export type { ParsedAttestation } from './cose-parse'

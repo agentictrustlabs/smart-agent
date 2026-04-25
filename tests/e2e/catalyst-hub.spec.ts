@@ -56,14 +56,14 @@ test.describe('Catalyst Hub — Maria Gonzalez', () => {
   })
 
   test('Onboarding page guards: redirects when profile is complete', async ({ page }) => {
-    // Demo users come pre-named/pre-emailed, so the (authenticated) onboarding page
-    // calls redirect('/dashboard'), which in turn redirects to the hub home. The
-    // onboarding gate working = we end up OFF /onboarding.
+    // Demo users come pre-named/pre-emailed, so the (authenticated) onboarding
+    // page server-side calls redirect('/dashboard'). That's an RSC streaming
+    // redirect — easier to verify via the HTML payload than a client-side
+    // navigation race.
     await loginAsMaria(page)
-    await page.goto(BASE + '/onboarding')
-    await page.waitForLoadState('networkidle')
-
-    await expect.poll(() => page.url(), { timeout: 10_000 }).not.toContain('/onboarding')
+    const r = await page.request.get(`${BASE}/onboarding`)
+    const body = await r.text()
+    expect(body).toContain('NEXT_REDIRECT;replace;/dashboard')
   })
 
   test('Org deployment page has M3 form', async ({ page }) => {

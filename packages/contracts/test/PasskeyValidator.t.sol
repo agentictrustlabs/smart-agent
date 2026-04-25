@@ -3,6 +3,7 @@ pragma solidity ^0.8.28;
 
 import "forge-std/Test.sol";
 import "../src/validators/PasskeyValidator.sol";
+import "../src/libraries/WebAuthnLib.sol";
 
 contract PasskeyValidatorTest is Test {
     PasskeyValidator internal v;
@@ -84,7 +85,7 @@ contract PasskeyValidatorTest is Test {
         _mockP256(true);
         bytes32 hash = keccak256("hello");
         (string memory cdj, uint256 tIdx, uint256 cIdx) = _makeClientDataJSON(hash);
-        PasskeyValidator.Assertion memory a = PasskeyValidator.Assertion({
+        WebAuthnLib.Assertion memory a = WebAuthnLib.Assertion({
             authenticatorData: hex"1234567890",
             clientDataJSON: cdj,
             challengeIndex: cIdx,
@@ -103,7 +104,7 @@ contract PasskeyValidatorTest is Test {
         _mockP256(false);
         bytes32 hash = keccak256("hello");
         (string memory cdj, uint256 tIdx, uint256 cIdx) = _makeClientDataJSON(hash);
-        PasskeyValidator.Assertion memory a = PasskeyValidator.Assertion({
+        WebAuthnLib.Assertion memory a = WebAuthnLib.Assertion({
             authenticatorData: hex"ab",
             clientDataJSON: cdj,
             challengeIndex: cIdx,
@@ -122,7 +123,7 @@ contract PasskeyValidatorTest is Test {
         bytes32 hash = keccak256("hello");
         // Build clientData with a DIFFERENT hash so challenge != signed hash.
         (string memory cdj, uint256 tIdx, uint256 cIdx) = _makeClientDataJSON(keccak256("not-hello"));
-        PasskeyValidator.Assertion memory a = PasskeyValidator.Assertion({
+        WebAuthnLib.Assertion memory a = WebAuthnLib.Assertion({
             authenticatorData: hex"ab",
             clientDataJSON: cdj,
             challengeIndex: cIdx,
@@ -139,7 +140,7 @@ contract PasskeyValidatorTest is Test {
         bytes32 hash = keccak256("hello");
         _mockP256(true);
         (string memory cdj, uint256 tIdx, uint256 cIdx) = _makeClientDataJSON(hash);
-        PasskeyValidator.Assertion memory a = PasskeyValidator.Assertion({
+        WebAuthnLib.Assertion memory a = WebAuthnLib.Assertion({
             authenticatorData: hex"ab",
             clientDataJSON: cdj,
             challengeIndex: cIdx,

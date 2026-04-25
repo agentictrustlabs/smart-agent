@@ -10,6 +10,7 @@ import "../src/enforcers/AllowedTargetsEnforcer.sol";
 import "../src/enforcers/AllowedMethodsEnforcer.sol";
 import "../src/enforcers/DataScopeEnforcer.sol";
 import "../src/enforcers/RateLimitEnforcer.sol";
+import "../src/enforcers/RecoveryEnforcer.sol";
 import "../src/validators/PasskeyValidator.sol";
 import "../src/UniversalSignatureValidator.sol";
 import "../src/AgentRelationship.sol";
@@ -195,6 +196,9 @@ contract Deploy is Script {
         RateLimitEnforcer rateLimitEnforcer = new RateLimitEnforcer();
         console.log("RateLimitEnforcer:", address(rateLimitEnforcer));
 
+        RecoveryEnforcer recoveryEnforcer = new RecoveryEnforcer();
+        console.log("RecoveryEnforcer:", address(recoveryEnforcer));
+
         PasskeyValidator passkeyValidator = new PasskeyValidator();
         console.log("PasskeyValidator:", address(passkeyValidator));
 
@@ -240,6 +244,7 @@ contract Deploy is Script {
         _logEnv("CREDENTIAL_REGISTRY_CONTRACT_ADDRESS", address(credentialRegistry));
         _logEnv("MEMBERSHIP_PROOF_ENFORCER_ADDRESS", address(membershipProofEnforcer));
         _logEnv("RATE_LIMIT_ENFORCER_ADDRESS", address(rateLimitEnforcer));
+        _logEnv("RECOVERY_ENFORCER_ADDRESS", address(recoveryEnforcer));
         _logEnv("PASSKEY_VALIDATOR_ADDRESS", address(passkeyValidator));
         _logEnv("UNIVERSAL_SIG_VALIDATOR_ADDRESS", address(universalSigValidator));
     }

@@ -125,6 +125,68 @@ export function encodeAllowedMethodsTerms(selectors: `0x${string}`[]): `0x${stri
 }
 
 /**
+ * Encode recovery enforcer terms.
+ *
+ *   guardians      — set of EOAs whose signatures count toward the threshold.
+ *   threshold      — required quorum (1 ≤ threshold ≤ guardians.length).
+ *   delaySeconds   — minimum wait after `propose(intentHash)` before redemption.
+ *
+ * Layout: abi.encode(address[], uint256, uint256).
+ */
+export function encodeRecoveryTerms(
+  guardians: `0x${string}`[],
+  threshold: number,
+  delaySeconds: number,
+): `0x${string}` {
+  if (guardians.length === 0) throw new Error('guardians set must be non-empty')
+  if (threshold <= 0 || threshold > guardians.length) throw new Error('threshold out of range')
+  if (delaySeconds < 0) throw new Error('delaySeconds must be non-negative')
+  return encodeAbiParameters(
+    [{ type: 'address[]' }, { type: 'uint256' }, { type: 'uint256' }],
+    [guardians, BigInt(threshold), BigInt(delaySeconds)],
+  )
+}
+
+/**
+ * Encode the runtime args a redeemer passes when consuming a recovery-gated
+ * delegation: (intentHash, signatures[]).
+ */
+export function encodeRecoveryArgs(
+  intentHash: `0x${string}`,
+  signatures: `0x${string}`[],
+): `0x${string}` {
+  return encodeAbiParameters(
+    [{ type: 'bytes32' }, { type: 'bytes[]' }],
+    [intentHash, signatures],
+  )
+}
+
+/**
+ * Canonical intent-hash builder. Matches RecoveryEnforcer.computeIntentHash.
+ */
+export function computeRecoveryIntentHash(args: {
+  chainId: number
+  delegator: `0x${string}`
+  target: `0x${string}`
+  value: bigint
+  callData: `0x${string}`
+}): `0x${string}` {
+  return keccak256(
+    encodeAbiParameters(
+      [
+        { type: 'string' },
+        { type: 'uint256' },
+        { type: 'address' },
+        { type: 'address' },
+        { type: 'uint256' },
+        { type: 'bytes' },
+      ],
+      ['smart-agent.recovery.v1', BigInt(args.chainId), args.delegator, args.target, args.value, args.callData],
+    ),
+  )
+}
+
+/**
  * Encode rate-limit enforcer terms.
  *
  *   scopeKey        — keccak256 of a caller-chosen label (e.g. "daily-transfers").
