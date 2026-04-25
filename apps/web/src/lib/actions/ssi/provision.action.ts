@@ -9,7 +9,11 @@ export async function provisionHolderWalletAction(
   walletContext: string = 'default',
 ): Promise<{ success: boolean; holderWalletId?: string; walletContext?: string; error?: string }> {
   try {
-    const { userRow, principal } = await loadSignerForCurrentUser()
+    const ctx = await loadSignerForCurrentUser()
+    if (ctx.kind !== 'eoa') {
+      return { success: false, error: 'OAuth users must use the passkey-signed WalletAction flow (Phase 4 client path)' }
+    }
+    const { userRow, principal } = ctx
 
     const built = await person.callTool<{ action: WalletAction & { expiresAt: string } }>(
       'ssi_create_wallet_action',

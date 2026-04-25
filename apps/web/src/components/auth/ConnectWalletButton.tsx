@@ -2,28 +2,13 @@
 
 import { useAuth } from '@/hooks/use-auth'
 
-const PRIVY_CONNECT_INTENT_KEY = 'smart-agent:privy-connect-intent'
-
+/**
+ * Top-bar Connect button. Native auth replaces the Privy modal — clicking
+ * scrolls the user to the demo-login picker (and the eventual passkey/SIWE
+ * buttons that sit on the same page).
+ */
 export function ConnectWalletButton() {
-  const { login, ready, privyAuthenticated, canLoginWithPrivy, resetPrivySession } = useAuth()
-
-  async function handleClick() {
-    if (canLoginWithPrivy && typeof window !== 'undefined') {
-      if (privyAuthenticated) {
-        window.sessionStorage.removeItem(PRIVY_CONNECT_INTENT_KEY)
-        await resetPrivySession()
-        await new Promise(resolve => setTimeout(resolve, 300))
-      }
-      window.sessionStorage.setItem(PRIVY_CONNECT_INTENT_KEY, 'true')
-      login()
-      return
-    }
-
-    if (!canLoginWithPrivy) {
-      login()
-      return
-    }
-  }
+  const { login, ready, authenticated } = useAuth()
 
   if (!ready) {
     return (
@@ -35,11 +20,11 @@ export function ConnectWalletButton() {
 
   return (
     <button
-      onClick={handleClick}
+      onClick={() => login()}
       data-component="connect-wallet-btn"
-      data-state={privyAuthenticated ? 'connected' : 'disconnected'}
+      data-state={authenticated ? 'connected' : 'disconnected'}
     >
-      Connect Wallet
+      {authenticated ? 'Connected' : 'Connect Wallet'}
     </button>
   )
 }

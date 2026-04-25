@@ -1,7 +1,22 @@
 import { verifyPrivyAction, type WalletAction } from '@smart-agent/privacy-creds'
+import { createPublicClient, http } from 'viem'
 import { consumeNonce } from '../storage/nonces.js'
 import { getHolderWalletById, normalizeWalletContext } from '../storage/wallets.js'
 import { config } from '../config.js'
+
+// Lazy public client used for ERC-1271 signature verification (smart-account
+// signers — passkey-signed WalletActions for OAuth users). Plain EOA paths
+// continue to verify without any RPC.
+let _publicClient: ReturnType<typeof createPublicClient> | null = null
+function getPublicClient() {
+  if (!_publicClient) {
+    _publicClient = createPublicClient({
+      chain: { id: config.chainId, name: 'sa', nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 }, rpcUrls: { default: { http: [config.rpcUrl] } } },
+      transport: http(config.rpcUrl),
+    })
+  }
+  return _publicClient
+}
 
 export interface GateInput {
   action: WalletAction
@@ -57,6 +72,7 @@ export async function gateExistingWalletAction(input: GateInput): Promise<GateRe
     expectedSigner: hw.privyEoa as `0x${string}`,
     chainId: config.chainId,
     verifyingContract: config.verifyingContract,
+    client: getPublicClient(),
   })
   if (!verify.ok) return { ok: false, status: 401, reason: verify.reason ?? 'invalid signature' }
 
@@ -88,6 +104,7 @@ export async function gateProvisionAction(
     expectedSigner,
     chainId: config.chainId,
     verifyingContract: config.verifyingContract,
+    client: getPublicClient(),
   })
   if (!verify.ok) return { ok: false, status: 401, reason: verify.reason ?? 'invalid signature' }
 

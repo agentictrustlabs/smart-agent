@@ -18,7 +18,7 @@ export function InviteAcceptClient({ code, agentName, role }: InviteAcceptClient
   const [accepted, setAccepted] = useState(false)
 
   async function handleAccept() {
-    if (!user?.wallet?.address) return
+    if (!user?.walletAddress) return
     setAccepting(true)
     setError('')
 
@@ -27,9 +27,9 @@ export function InviteAcceptClient({ code, agentName, role }: InviteAcceptClient
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        walletAddress: user.wallet.address,
-        email: user.email?.address ?? null,
-        name: 'Agent User',
+        walletAddress: user.walletAddress,
+        email: user.email ?? null,
+        name: user.name ?? 'Agent User',
       }),
     })
 
@@ -71,7 +71,7 @@ export function InviteAcceptClient({ code, agentName, role }: InviteAcceptClient
   return (
     <div style={{ marginTop: '1.5rem' }}>
       <p style={{ color: '#616161', marginBottom: '0.5rem' }}>
-        Connected as {user?.wallet?.address?.slice(0, 6)}...{user?.wallet?.address?.slice(-4)}
+        Connected as {user?.walletAddress?.slice(0, 6)}...{user?.walletAddress?.slice(-4)}
       </p>
       {error && <p role="alert" data-component="error-message">{error}</p>}
       <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>

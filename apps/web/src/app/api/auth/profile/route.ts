@@ -3,7 +3,6 @@ import { db, schema } from '@/db'
 import { eq } from 'drizzle-orm'
 import { getSession } from '@/lib/auth/session'
 import { getPersonAgentForUser } from '@/lib/agent-registry'
-import { deployPersonAgent } from '@/lib/actions/deploy-person-agent.action'
 
 export async function GET() {
   const session = await getSession()
@@ -27,11 +26,42 @@ export async function GET() {
     })
   }
 
+  // Prefer the persisted addresses on the user row — they're written by the
+  // signup/seed paths and don't require an on-chain scan. Fall back to the
+  // (slow) on-chain iteration only when the DB doesn't have one yet, e.g. for
+  // a partially-provisioned legacy row.
+  const personAgentAddress =
+    user.personAgentAddress ?? user.smartAccountAddress ?? (await getPersonAgentForUser(user.id))
+
+  // Reverse-resolve the .agent primary name for the connected user's smart
+  // account. The dropdown surface uses this whenever it's set so users see
+  // "joe.catalyst.agent" instead of "Joe Smith" / 0xabcd…1234. We try the
+  // on-chain resolver first, then fall back to the DB-mirrored value
+  // (written by registerPersonalAgentName when the resolver write was
+  // skipped on a legacy account).
+  let primaryName: string | null = null
+  try {
+    const resolverAddr = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}` | undefined
+    if (resolverAddr && (user.smartAccountAddress ?? personAgentAddress)) {
+      const { getPublicClient } = await import('@/lib/contracts')
+      const { agentAccountResolverAbi, ATL_PRIMARY_NAME } = await import('@smart-agent/sdk')
+      const { getAddress } = await import('viem')
+      const target = (user.smartAccountAddress ?? personAgentAddress) as `0x${string}`
+      const v = await getPublicClient().readContract({
+        address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'getStringProperty',
+        args: [getAddress(target), ATL_PRIMARY_NAME as `0x${string}`],
+      }) as string
+      primaryName = v || null
+    }
+  } catch { /* on-chain unavailable; non-fatal */ }
+  if (!primaryName && user.agentName) primaryName = user.agentName
+
   return NextResponse.json({
     name: user.name,
     email: user.email,
     walletAddress: user.walletAddress,
-    smartAccountAddress: await getPersonAgentForUser(user.id),
+    smartAccountAddress: personAgentAddress,
+    primaryName,
   })
 }
 
@@ -56,19 +86,11 @@ export async function PUT(request: Request) {
     .set(updates)
     .where(eq(schema.users.privyUserId, session.userId))
 
-  // Auto-deploy person agent if user doesn't have one yet
-  try {
-    const user = (await db.select().from(schema.users)
-      .where(eq(schema.users.privyUserId, session.userId)).limit(1))[0]
-    if (user) {
-      const existingAgent = await getPersonAgentForUser(user.id)
-      if (!existingAgent && session.walletAddress) {
-        await deployPersonAgent(name.trim())
-      }
-    }
-  } catch (e) {
-    console.warn('Auto-deploy person agent failed (non-fatal):', e)
-  }
-
+  // Person-agent provisioning happens later — the setup wizard's `person-agent`
+  // step (or any other deploy site that needs it) will create it on first use.
+  // We do NOT fire-and-forget here: a detached promise outlives the route's
+  // request scope, and Next.js's fetch wrapper leaves the in-flight viem
+  // request in a state that hangs every subsequent deployer-signed write in
+  // the same dev process.
   return NextResponse.json({ success: true, name: name.trim() })
 }

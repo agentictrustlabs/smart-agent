@@ -30,6 +30,47 @@ if (fs.existsSync(migrationsDir)) {
 
 // Add new columns not in original migrations
 try { sqlite.prepare('ALTER TABLE users ADD COLUMN person_agent_address TEXT').run() } catch { /* already exists */ }
+try { sqlite.prepare('ALTER TABLE users ADD COLUMN agent_name TEXT').run() } catch { /* already exists */ }
+try { sqlite.prepare('ALTER TABLE users ADD COLUMN onboarded_at TEXT').run() } catch { /* already exists */ }
+try { sqlite.prepare('ALTER TABLE users ADD COLUMN account_salt_rotation INTEGER NOT NULL DEFAULT 0').run() } catch { /* already exists */ }
+
+// Tables introduced post-migration files.
+try {
+  sqlite.prepare(`CREATE TABLE IF NOT EXISTS passkeys (
+    id TEXT PRIMARY KEY NOT NULL,
+    user_id TEXT NOT NULL,
+    account_address TEXT NOT NULL,
+    credential_id_base64url TEXT NOT NULL UNIQUE,
+    credential_id_digest TEXT NOT NULL,
+    pub_key_x TEXT NOT NULL,
+    pub_key_y TEXT NOT NULL,
+    label TEXT,
+    created_at TEXT NOT NULL
+  )`).run()
+} catch { /* already exists */ }
+try {
+  sqlite.prepare(`CREATE TABLE IF NOT EXISTS recovery_delegations (
+    id TEXT PRIMARY KEY NOT NULL,
+    account_address TEXT NOT NULL UNIQUE,
+    delegation_json TEXT NOT NULL,
+    delegation_hash TEXT NOT NULL,
+    recovery_config_json TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  )`).run()
+} catch { /* already exists */ }
+try {
+  sqlite.prepare(`CREATE TABLE IF NOT EXISTS recovery_intents (
+    id TEXT PRIMARY KEY NOT NULL,
+    account_address TEXT NOT NULL,
+    intent_hash TEXT NOT NULL UNIQUE,
+    new_credential_id TEXT NOT NULL,
+    new_pub_key_x TEXT NOT NULL,
+    new_pub_key_y TEXT NOT NULL,
+    ready_at INTEGER NOT NULL,
+    status INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL
+  )`).run()
+} catch { /* already exists */ }
 
 export const db = drizzle(sqlite, { schema })
 export { schema }

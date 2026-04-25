@@ -4,6 +4,7 @@ import { DEMO_USER_META } from '@/lib/auth/session'
 import { db, schema } from '@/db'
 import { eq } from 'drizzle-orm'
 import { signCookie, verifyCookie } from '@/lib/cookie-signing'
+import { mintSession, SESSION_COOKIE } from '@/lib/auth/native-session'
 
 export async function POST(request: Request) {
   // CSRF protection: verify the request comes from our own origin
@@ -51,6 +52,9 @@ export async function POST(request: Request) {
         privateKey: wallet.privateKey,
         smartAccountAddress: wallet.smartAccountAddress,
         personAgentAddress: wallet.personAgentAddress,
+        agentName: null,
+        onboardedAt: null,
+        accountSaltRotation: 0,
         createdAt: new Date().toISOString(),
       }
 
@@ -61,15 +65,20 @@ export async function POST(request: Request) {
     }
   }
 
-  // Set demo cookie
+  // Set the native JWT session cookie + the legacy demo cookie (kept for
+  // anything still keyed off the old name during the transition).
   const cookieStore = await cookies()
-  cookieStore.set('demo-user', signCookie(userId), {
-    path: '/',
-    maxAge: 60 * 60 * 24 * 30,
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+  const jwt = mintSession({
+    // `sub` must match what `getCurrentUser` looks up by — i.e. `users.privyUserId`.
+    // Demo users have privyUserId = `did:privy:<key>` (e.g. `did:privy:cat-001`).
+    sub: meta.userId,
+    walletAddress: user.walletAddress,
+    smartAccountAddress: user.smartAccountAddress ?? null,
+    name: meta.name,
+    email: meta.email,
+    via: 'demo',
+    kind: 'session',
   })
-
   // Seed community data in background (idempotent)
   try {
     const { ensureDemoCommunitySeeded } = await import('@/lib/demo-seed')
@@ -78,7 +87,7 @@ export async function POST(request: Request) {
     console.warn('[demo-login] Community seed failed:', err)
   }
 
-  return NextResponse.json({
+  const response = NextResponse.json({
     success: true,
     user: {
       userId: meta.userId,
@@ -88,6 +97,21 @@ export async function POST(request: Request) {
       name: meta.name,
     },
   })
+  response.cookies.set(SESSION_COOKIE, jwt, {
+    path: '/',
+    maxAge: 60 * 60 * 24 * 30,
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+  })
+  response.cookies.set('demo-user', signCookie(userId), {
+    path: '/',
+    maxAge: 60 * 60 * 24 * 30,
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+  })
+  void cookieStore
+  return response
 }
 
 export async function GET() {

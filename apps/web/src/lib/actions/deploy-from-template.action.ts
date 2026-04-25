@@ -106,26 +106,36 @@ export async function runDeployStep(
     personAgentAddress?: string
   },
 ): Promise<DeployStepResult> {
+  const t0 = Date.now()
+  const tick = (msg: string) => console.log(`[deploy-step] ${stepId} +${Date.now() - t0}ms ${msg}`)
+  tick('start')
   try {
     const session = await requireSession()
-    if (!session.walletAddress) return { stepId, success: false, error: 'Not connected' }
+    tick(`session resolved (wallet=${session.walletAddress ?? 'none'})`)
+    if (!session.walletAddress) {
+      return { stepId, success: false, error: 'Not connected' }
+    }
 
     const walletAddress = session.walletAddress as `0x${string}`
     const walletClient = getWalletClient()
     const publicClient = getPublicClient()
     const controlAddr = process.env.AGENT_CONTROL_ADDRESS as `0x${string}`
     const resolverAddr = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}`
+    tick(`clients ready, controlAddr=${controlAddr ? 'set' : 'unset'}, resolverAddr=${resolverAddr ? 'set' : 'unset'}`)
 
     // Get user
     const users = await db.select().from(schema.users)
       .where(eq(schema.users.privyUserId, session.userId)).limit(1)
+    tick(`user query done (found=${!!users[0]})`)
     if (!users[0]) return { stepId, success: false, error: 'User not found' }
     const user = users[0]
 
     switch (stepId) {
       case 'org-account': {
         const orgSalt = BigInt(Date.now())
+        tick(`deploySmartAccount starting salt=${orgSalt}`)
         const orgAddress = await deploySmartAccount(walletAddress, orgSalt)
+        tick(`deploySmartAccount done addr=${orgAddress}`)
         return { stepId, success: true, data: { orgAddress } }
       }
 
@@ -235,6 +245,7 @@ export async function runDeployStep(
       }
     }
   } catch (error) {
+    console.log(`[deploy-step] ${stepId} threw after ${Date.now() - t0}ms:`, (error as Error).message)
     return {
       stepId,
       success: false,

@@ -3,9 +3,8 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/use-auth'
+import { FRESH_LOGIN_INTENT_KEY } from '@/components/auth/AuthGate'
 import type { HubLandingConfig } from '@/lib/hub-routes'
-
-const PRIVY_CONNECT_INTENT_KEY = 'smart-agent:privy-connect-intent'
 
 interface Props {
   config: HubLandingConfig
@@ -13,7 +12,7 @@ interface Props {
 }
 
 export function HubLandingClient({ config, allHubs }: Props) {
-  const { login, canLoginWithPrivy, authenticated, ready } = useAuth()
+  const { authenticated, ready } = useAuth()
   const [loading, setLoading] = useState(false)
   const [selectedUser, setSelectedUser] = useState<string | null>(null)
   const [connectInitiated, setConnectInitiated] = useState(false)
@@ -25,11 +24,12 @@ export function HubLandingClient({ config, allHubs }: Props) {
   }, [ready, authenticated, connectInitiated, config.slug])
 
   function handleConnectWallet() {
-    if (canLoginWithPrivy && typeof window !== 'undefined') {
-      setConnectInitiated(true)
-      window.sessionStorage.setItem(PRIVY_CONNECT_INTENT_KEY, 'true')
-      login()
-    }
+    if (typeof window === 'undefined') return
+    setConnectInitiated(true)
+    window.sessionStorage.setItem(FRESH_LOGIN_INTENT_KEY, 'true')
+    // Phase 2 will route this to /sign-in (passkey + SIWE). For now, just
+    // surface the demo picker which is on the same page.
+    window.location.href = '/sign-in'
   }
 
   async function handleSelectUser(key: string) {
@@ -113,15 +113,15 @@ export function HubLandingClient({ config, allHubs }: Props) {
                 <div className="mt-8 flex flex-wrap items-center gap-4">
                   <button
                     onClick={handleConnectWallet}
-                    disabled={!canLoginWithPrivy}
+                    disabled={!true /* native auth always available */}
                     className="rounded-full px-6 py-3 text-sm font-semibold text-white shadow-[0_18px_36px_rgba(46,55,88,0.18)] transition hover:translate-y-[-1px] disabled:cursor-not-allowed disabled:opacity-50"
                     style={{
-                      background: canLoginWithPrivy
+                      background: true /* native auth always available */
                         ? `linear-gradient(135deg, ${config.color} 0%, #384a7a 100%)`
                         : '#a6adbf',
                     }}
                   >
-                    {canLoginWithPrivy ? 'Connect Wallet' : 'Wallet Not Configured'}
+                    {true /* native auth always available */ ? 'Connect Wallet' : 'Wallet Not Configured'}
                   </button>
                   <div className="text-sm text-[#6a7288]">or select a demo user</div>
                 </div>

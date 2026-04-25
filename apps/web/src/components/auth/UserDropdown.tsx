@@ -10,6 +10,7 @@ export function UserDropdown() {
   const [open, setOpen] = useState(false)
   const [smartAccount, setSmartAccount] = useState<string | null>(null)
   const [userName, setUserName] = useState<string | null>(null)
+  const [primaryName, setPrimaryName] = useState<string | null>(null)
   const [disconnecting, setDisconnecting] = useState(false)
   const [editing, setEditing] = useState(false)
   const [editName, setEditName] = useState('')
@@ -23,6 +24,7 @@ export function UserDropdown() {
       .then((d) => {
         setSmartAccount(d.smartAccountAddress ?? null)
         setUserName(d.name ?? null)
+        setPrimaryName(d.primaryName ?? null)
         setEditName(d.name ?? '')
       })
       .catch(() => {})
@@ -46,21 +48,11 @@ export function UserDropdown() {
   async function handleDisconnect() {
     setDisconnecting(true)
     setOpen(false)
+    // logout() now handles wallet_revokePermissions for SIWE sessions — see
+    // useAuth in @/hooks/use-auth.ts.
     try {
       await logout()
     } catch { /* ignore */ }
-
-    // Request MetaMask to revoke site permissions
-    try {
-      const ethereum = (window as unknown as { ethereum?: { request?: (args: { method: string; params: unknown[] }) => Promise<unknown> } }).ethereum
-      if (ethereum?.request) {
-        await ethereum.request({
-          method: 'wallet_revokePermissions',
-          params: [{ eth_accounts: {} }],
-        })
-      }
-    } catch { /* MetaMask may not support this method — non-fatal */ }
-
     router.push('/')
   }
 
@@ -93,9 +85,12 @@ export function UserDropdown() {
     )
   }
 
-  const walletAddress = user?.wallet?.address ?? ''
+  const walletAddress = user?.walletAddress ?? ''
   const shortWallet = walletAddress ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}` : ''
-  const displayName = userName || shortWallet
+  // Prefer the .agent primary name, then the human display name, then the
+  // shortened wallet address. The .agent name is the canonical handle once
+  // a user has registered one, so it surfaces wherever we show "the user".
+  const displayName = primaryName || userName || shortWallet
 
   return (
     <div ref={ref} data-component="user-dropdown">

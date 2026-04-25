@@ -14,6 +14,18 @@ export const users = sqliteTable('users', {
   smartAccountAddress: text('smart_account_address'),
   /** Person agent address deployed for this user. Null until deployed. */
   personAgentAddress: text('person_agent_address'),
+  /** The .agent name the user registered, mirrored from on-chain for fast
+   *  lookup. The on-chain ATL_PRIMARY_NAME is still the canonical source. */
+  agentName: text('agent_name'),
+  /** ISO timestamp set when the user finishes the onboarding wizard. Used as
+   *  the master gate by the (authenticated) layout — once set, the user is
+   *  considered onboarded regardless of on-chain resolver state, which can
+   *  fall behind for accounts that already had the bootstrap server removed. */
+  onboardedAt: text('onboarded_at'),
+  /** Counter mixed into the smart-account salt so the user can abandon a
+   *  stuck account and re-deploy at a fresh address. Starts at 0; the
+   *  "Start fresh" escape hatch bumps it. */
+  accountSaltRotation: integer('account_salt_rotation').notNull().default(0),
   createdAt: text('created_at')
     .notNull()
     .$defaultFn(() => new Date().toISOString()),
@@ -23,6 +35,70 @@ export const users = sqliteTable('users', {
 // All agent identity, relationships, and metadata are ON-CHAIN.
 // The only DB table for agents is `users` (Privy auth → wallet mapping).
 // Agent lookup: resolver (name/type) + edges (relationships) + ATL_CONTROLLER (wallet→agent).
+// ─── Passkeys ────────────────────────────────────────────────────────
+//
+// Server-side mirror of every passkey registered on a user's smart account.
+// The on-chain `_passkeys[digest]` entry only stores the SHA-keccak digest
+// of the credentialId — we can't reverse that to get the actual credentialId
+// bytes the OS authenticator needs in `allowCredentials`. Mirroring lets the
+// passkey-signed UserOp flows (recovery, repair) constrain the OS picker to
+// only credentials actually registered on the account, which is essential
+// for users on a fresh browser where localStorage hints are empty.
+
+export const passkeys = sqliteTable('passkeys', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => users.id),
+  /** Smart-account address the passkey is registered on. */
+  accountAddress: text('account_address').notNull(),
+  /** WebAuthn credentialId, base64url-encoded — what we hand the OS picker. */
+  credentialIdBase64Url: text('credential_id_base64url').notNull().unique(),
+  /** keccak256 of the raw credentialId bytes — matches `_passkeys[digest]`. */
+  credentialIdDigest: text('credential_id_digest').notNull(),
+  /** P-256 public key components (decimal strings — bigints serialised). */
+  pubKeyX: text('pub_key_x').notNull(),
+  pubKeyY: text('pub_key_y').notNull(),
+  /** Optional label set at enrollment time. */
+  label: text('label'),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+})
+
+// ─── Recovery Delegations ────────────────────────────────────────────
+//
+// Stored per smart account at first passkey enrollment. Lets the server
+// (acting as a guardian under RecoveryEnforcer) sign an addPasskey UserOp
+// for a fresh device after the OAuth-gated timelock elapses.
+
+export const recoveryDelegations = sqliteTable('recovery_delegations', {
+  id: text('id').primaryKey(),
+  /** The smart-account address that authored this delegation. */
+  accountAddress: text('account_address').notNull().unique(),
+  /** Full delegation, including signature, JSON-serialised. */
+  delegationJson: text('delegation_json').notNull(),
+  /** Pre-computed delegation hash (for revocation lookups). */
+  delegationHash: text('delegation_hash').notNull(),
+  /** Guardians + threshold + delaySeconds in JSON form (for UI display). */
+  recoveryConfigJson: text('recovery_config_json').notNull(),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+})
+
+// ─── Pending Recovery Intents ────────────────────────────────────────
+// One row per (account, intentHash) recovery proposal.
+
+export const recoveryIntents = sqliteTable('recovery_intents', {
+  id: text('id').primaryKey(),
+  accountAddress: text('account_address').notNull(),
+  intentHash: text('intent_hash').notNull().unique(),
+  /** Hex-encoded credentialId of the new passkey that will be registered. */
+  newCredentialId: text('new_credential_id').notNull(),
+  newPubKeyX: text('new_pub_key_x').notNull(),
+  newPubKeyY: text('new_pub_key_y').notNull(),
+  /** Unix seconds when the timelock expires (proposedAt + delaySeconds). */
+  readyAt: integer('ready_at').notNull(),
+  /** 0 = open, 1 = consumed, 2 = cancelled. */
+  status: integer('status').notNull().default(0),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+})
+
 // ─── Invites ─────────────────────────────────────────────────────────
 
 export const invites = sqliteTable('invites', {

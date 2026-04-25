@@ -62,7 +62,9 @@ const COMMUNITIES: DemoCommunity[] = [
 
 export function DemoLoginPicker() {
   const router = useRouter()
-  const { privyAuthenticated, resetPrivySession } = useAuth()
+  // No external session machinery in native auth — logout is enough.
+  const _ = useAuth()
+  void _
   const [selectedCommunity, setSelectedCommunity] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -71,9 +73,6 @@ export function DemoLoginPicker() {
 
     // Clear any active sessions before switching (httpOnly cookies — server clears)
     await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {})
-    if (privyAuthenticated) {
-      await resetPrivySession()
-    }
 
     await fetch('/api/demo-login', {
       method: 'POST',

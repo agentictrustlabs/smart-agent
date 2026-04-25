@@ -41,16 +41,96 @@ export function getPublicClient() {
   })
 }
 
-/** Server-side wallet client for writing transactions (uses deployer key). */
+/**
+ * Process-wide tail of the deployer's pending-transactions queue. Each
+ * deployer-signed write awaits the current tail and replaces it with its own
+ * promise — that guarantees viem fetches the next nonce only after the
+ * previous tx has been broadcast, preventing "replacement transaction
+ * underpriced" races between concurrent server flows (boot-seed, ensure-user,
+ * passkey-signup, demo-login).
+ *
+ * Read paths don't share this lock (they don't bump the nonce), so they keep
+ * their natural concurrency.
+ */
+// Use globalThis so the queue is genuinely process-wide. Next.js dev re-evaluates
+// modules across requests/bundles; a module-local `let` would create independent
+// queues per instance, defeating the lock entirely.
+type DeployerLockState = { tail: Promise<unknown>; seq: number; depth: number }
+const _g = globalThis as unknown as { __saDeployerLock?: DeployerLockState }
+if (!_g.__saDeployerLock) {
+  _g.__saDeployerLock = { tail: Promise.resolve(), seq: 0, depth: 0 }
+}
+const deployerLock = _g.__saDeployerLock
+
+// Safety net: if a single write hangs longer than this, fail it (and release
+// the lock) instead of stalling every subsequent deployer-signed write in the
+// process. anvil writes normally complete in <5s; production RPCs in <30s.
+const DEPLOYER_WRITE_TIMEOUT_MS = 60_000
+
+async function withDeployerLock<T>(fn: () => Promise<T>, label?: string): Promise<T> {
+  const id = ++deployerLock.seq
+  const prev = deployerLock.tail
+  let release!: () => void
+  const next = new Promise<void>(r => { release = r })
+  deployerLock.tail = next
+  const depthOnEntry = deployerLock.depth
+  console.log(`[deployer-lock] #${id} ${label ?? 'write'} queued (depth=${depthOnEntry})`)
+  const t0 = Date.now()
+  try {
+    // Cap the wait on the previous holder: if some earlier call hung without
+    // releasing (e.g., a zombie in a long-lived dev process), don't block the
+    // entire queue forever.
+    await Promise.race([
+      prev.catch(() => undefined),
+      new Promise<void>(resolve => setTimeout(resolve, DEPLOYER_WRITE_TIMEOUT_MS)),
+    ])
+    deployerLock.depth++
+    console.log(`[deployer-lock] #${id} acquired after ${Date.now() - t0}ms`)
+    const tFn = Date.now()
+    const out = await Promise.race([
+      fn(),
+      new Promise<never>((_, reject) =>
+        setTimeout(
+          () => reject(new Error(`deployer-lock #${id} ${label ?? 'write'} timed out after ${DEPLOYER_WRITE_TIMEOUT_MS}ms`)),
+          DEPLOYER_WRITE_TIMEOUT_MS,
+        ),
+      ),
+    ])
+    console.log(`[deployer-lock] #${id} fn done in ${Date.now() - tFn}ms`)
+    return out
+  } finally {
+    deployerLock.depth--
+    release()
+    console.log(`[deployer-lock] #${id} released (held ${Date.now() - t0}ms)`)
+  }
+}
+
+/** Server-side wallet client for writing transactions (uses deployer key).
+ *  Returned client serialises writeContract / sendTransaction across the
+ *  whole Node process to avoid nonce collisions. */
 export function getWalletClient() {
   const privateKey = process.env.DEPLOYER_PRIVATE_KEY as `0x${string}`
   if (!privateKey) throw new Error('DEPLOYER_PRIVATE_KEY not set')
   const account = privateKeyToAccount(privateKey)
-  return createWalletClient({
+  const base = createWalletClient({
     account,
     chain: getChain(),
     transport: http(RPC_URL),
   })
+  // Capture the originals BEFORE wrapping. If we close over `base.writeContract`
+  // and then Object.assign over it, the wrapper recurses into itself and
+  // deadlocks on the deployer lock (each call queues a second waiter).
+  type WriteArgs = Parameters<typeof base.writeContract>[0]
+  type SendArgs  = Parameters<typeof base.sendTransaction>[0]
+  const originalWriteContract = base.writeContract.bind(base)
+  const originalSendTransaction = base.sendTransaction.bind(base)
+  const writeContract = ((args: WriteArgs) =>
+    withDeployerLock(() => originalWriteContract(args as never),
+      `writeContract(${(args as { functionName?: string }).functionName ?? '?'})`)) as typeof base.writeContract
+  const sendTransaction = ((args: SendArgs) =>
+    withDeployerLock(() => originalSendTransaction(args as never),
+      'sendTransaction')) as typeof base.sendTransaction
+  return Object.assign(base, { writeContract, sendTransaction })
 }
 
 /** Get deployed contract addresses from environment. */

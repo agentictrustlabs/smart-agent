@@ -101,7 +101,11 @@ export async function registerPasskeyAction(args: RegisterPasskeyArgs): Promise<
     if (!ENTRYPOINT) return { success: false, error: 'ENTRYPOINT_ADDRESS not configured' }
     if (!DEPLOYER_KEY) return { success: false, error: 'DEPLOYER_PRIVATE_KEY not configured' }
 
-    const { userRow } = await loadSignerForCurrentUser()
+    const ctx = await loadSignerForCurrentUser()
+    if (ctx.kind !== 'eoa') {
+      return { success: false, error: 'this path requires an EOA user; OAuth users should use the OAuth enrollment flow' }
+    }
+    const userRow = ctx.userRow
     const rows = await db.select().from(schema.users).where(eq(schema.users.id, userRow.id)).limit(1)
     const smartAcct = rows[0]?.smartAccountAddress
     if (!smartAcct) return { success: false, error: 'no smart account address on user row' }

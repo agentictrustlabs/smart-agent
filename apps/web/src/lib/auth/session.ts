@@ -1,24 +1,12 @@
-import { PrivyClient } from '@privy-io/server-auth'
 import { cookies } from 'next/headers'
-
-const PRIVY_APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID ?? ''
-const PRIVY_APP_SECRET = process.env.PRIVY_APP_SECRET ?? ''
-
-let privyClient: PrivyClient | null = null
-
-function getPrivyClient(): PrivyClient {
-  if (!privyClient) {
-    privyClient = new PrivyClient(PRIVY_APP_ID, PRIVY_APP_SECRET)
-  }
-  return privyClient
-}
+import { readSession, SESSION_COOKIE } from './native-session'
 
 async function getDemoSessionFromCookie(
   signedCookie: string | undefined,
 ): Promise<AuthSession | null> {
   if (!signedCookie) return null
 
-  // Verify signed cookie
+  // Verify signed cookie (legacy demo path — kept so in-flight sessions don't break).
   const { verifyCookie } = await import('@/lib/cookie-signing')
   const demoUser = verifyCookie(signedCookie)
   if (!demoUser) return null
@@ -43,7 +31,6 @@ async function getDemoSessionFromCookie(
   } catch { /* DB may not be ready yet */ }
 
   // Fallback: user not yet provisioned — return meta with null wallet
-  // The demo-login API will provision the wallet on next login
   return {
     userId: meta.userId,
     walletAddress: null,
@@ -55,13 +42,13 @@ export interface AuthSession {
   userId: string
   walletAddress: string | null
   email: string | null
+  /** Auth method used to obtain this session — null for legacy demo cookies. */
+  via?: 'demo' | 'passkey' | 'siwe' | 'google' | null
 }
 
 /**
  * Demo user seed metadata — NO wallet addresses.
  * Real keypairs are generated at first login and stored in the DB.
- * This makes demo users indistinguishable from Privy users at the
- * contract/A2A/MCP layers.
  */
 export interface DemoUserMeta {
   userId: string
@@ -98,9 +85,8 @@ export const DEMO_USER_META: Record<string, DemoUserMeta> = {
 }
 
 /**
- * @deprecated Use DEMO_USER_META instead. This shim exists for backward compat
- * with code that reads walletAddress from the static map. It returns a placeholder
- * address — actual wallet comes from the DB after keypair generation.
+ * @deprecated kept for backward-compat with code that reads walletAddress
+ * from the static map.
  */
 export const DEMO_USERS: Record<string, { userId: string; walletAddress: string; email: string; name: string; org: string; role: string }> = Object.fromEntries(
   Object.entries(DEMO_USER_META).map(([key, meta]) => [
@@ -109,40 +95,26 @@ export const DEMO_USERS: Record<string, { userId: string; walletAddress: string;
   ]),
 )
 
+/**
+ * Returns the active session, if any. Order of precedence:
+ *   1. Native JWT cookie (`smart-agent-session`) — preferred.
+ *   2. Legacy demo-user cookie (HMAC-signed user id) — fallback during the
+ *      Privy → native transition. Drops out once everyone re-logs in.
+ */
 export async function getSession(): Promise<AuthSession | null> {
   const cookieStore = await cookies()
-  // Always check demo cookie — demo users have real wallets and valid sessions
-  const demoSession = await getDemoSessionFromCookie(cookieStore.get('demo-user')?.value)
-  const authToken = cookieStore.get('privy-token')?.value
-
-  if (!authToken) {
-    return demoSession
-  }
-
-  try {
-    const client = getPrivyClient()
-    const verifiedClaims = await client.verifyAuthToken(authToken)
-
-    let walletAddress: string | null = null
-    let email: string | null = null
-
-    try {
-      const user = await client.getUser(verifiedClaims.userId)
-      walletAddress = user.wallet?.address ?? null
-      email = user.email?.address ?? null
-    } catch (userErr) {
-      console.warn('[auth] Failed to fetch user details:', userErr)
-    }
-
+  const jwt = cookieStore.get(SESSION_COOKIE)?.value
+  const claims = readSession(jwt)
+  if (claims) {
     return {
-      userId: verifiedClaims.userId,
-      walletAddress,
-      email,
+      userId: claims.sub,
+      walletAddress: claims.walletAddress ?? null,
+      email: claims.email ?? null,
+      via: claims.via ?? null,
     }
-  } catch (err) {
-    console.warn('[auth] Session verification failed:', err)
-    return demoSession
   }
+  // Legacy demo cookie path.
+  return getDemoSessionFromCookie(cookieStore.get('demo-user')?.value)
 }
 
 export async function requireSession(): Promise<AuthSession> {

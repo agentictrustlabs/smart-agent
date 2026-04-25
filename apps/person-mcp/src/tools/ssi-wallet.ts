@@ -15,6 +15,7 @@
 
 import { randomBytes, randomUUID } from 'node:crypto'
 import { and, eq } from 'drizzle-orm'
+import { createPublicClient, http } from 'viem'
 import {
   verifyPrivyAction,
   hashProofRequest,
@@ -28,6 +29,18 @@ const SSI_WALLET_URL = process.env.SSI_WALLET_MCP_URL ?? 'http://127.0.0.1:3300'
 const CHAIN_ID = Number(process.env.CHAIN_ID ?? '31337')
 const VERIFIER = (process.env.SSI_ACTION_VERIFIER_ADDRESS ??
   '0x0000000000000000000000000000000000000000') as `0x${string}`
+const RPC_URL = process.env.RPC_URL ?? 'http://127.0.0.1:8545'
+
+let _publicClient: ReturnType<typeof createPublicClient> | null = null
+function getPublicClient() {
+  if (!_publicClient) {
+    _publicClient = createPublicClient({
+      chain: { id: CHAIN_ID, name: 'sa', nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 }, rpcUrls: { default: { http: [RPC_URL] } } },
+      transport: http(RPC_URL),
+    })
+  }
+  return _publicClient
+}
 
 const ZERO_HASH = ('0x' + '0'.repeat(64)) as `0x${string}`
 
@@ -150,6 +163,7 @@ const provisionWallet = {
       action, signature: args.signature,
       expectedSigner: args.expectedSigner,
       chainId: CHAIN_ID, verifyingContract: VERIFIER,
+      client: getPublicClient(),
     })
     if (!verify.ok) return mcpText({ error: `signature invalid: ${verify.reason}` })
 
@@ -302,6 +316,7 @@ const createPresentation = {
       action, signature: args.signature,
       expectedSigner: args.expectedSigner,
       chainId: CHAIN_ID, verifyingContract: VERIFIER,
+      client: getPublicClient(),
     })
     if (!verify.ok) {
       db.insert(ssiProofAudit).values({

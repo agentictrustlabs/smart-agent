@@ -11,8 +11,9 @@ export async function redeemOid4vciOfferAction(args: {
   walletContext?: string
 }): Promise<{ success: boolean; credentialId?: string; error?: string }> {
   try {
-    const { principal, userRow } = await loadSignerForCurrentUser()
-    void userRow // still used implicitly by loadSignerForCurrentUser
+    const ctx = await loadSignerForCurrentUser()
+    const { principal } = ctx
+    void ctx
 
     let preAuthCode: string
     try {
@@ -109,7 +110,6 @@ export async function redeemOid4vciOfferAction(args: {
 
     // Confirm ssiConfig contract address is available to suppress lint.
     void ssiConfig.verifierContract
-    void userRow.walletAddress
 
     revalidatePath('/wallet')
     return { success: true, credentialId: fin.credentialId }

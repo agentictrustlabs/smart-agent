@@ -1,141 +1,91 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { usePrivy } from '@privy-io/react-auth'
 
-const PRIVY_APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID ?? ''
-
-type PrivyUser = ReturnType<typeof usePrivy>['user']
-
-interface DemoAuthResponse {
-  user: {
-    userId: string
-    walletAddress: string
-    email: string
-    name: string
-  } | null
+export interface AuthenticatedUser {
+  id: string
+  walletAddress: string | null
+  smartAccountAddress: string | null
+  name: string
+  email: string | null
+  /** Identifies the auth method used to obtain this session. */
+  via?: 'demo' | 'passkey' | 'siwe' | 'google' | null
 }
 
-// Demo-user cookie is httpOnly — can't read from client.
-// The GET /api/demo-login endpoint reads it server-side and returns user data.
-
-function buildDemoUser(data: NonNullable<DemoAuthResponse['user']>): PrivyUser {
-  return {
-    id: data.userId,
-    wallet: { address: data.walletAddress },
-    email: { address: data.email },
-    google: { name: data.name },
-  } as PrivyUser
+interface SessionResponse {
+  user: AuthenticatedUser | null
 }
 
+/**
+ * Native session hook. Reads the current session from /api/auth/session.
+ *
+ *   - `authenticated` — true when a server-validated session cookie is present.
+ *   - `ready` — true once the initial fetch has settled.
+ *   - `user` — claims-derived user object, or null.
+ *   - `login()` — scrolls to the demo-login picker (production passkey/SIWE
+ *     buttons sit alongside it on the same page).
+ *   - `logout()` — clears the session cookie via /api/auth/logout.
+ *   - `refresh()` — re-fetch the session (for after a fresh login).
+ */
 export function useAuth() {
-  const privy = usePrivy()
-  const [demoReady, setDemoReady] = useState(false)
-  const [demoAuthenticated, setDemoAuthenticated] = useState(false)
-  const [demoUser, setDemoUser] = useState<PrivyUser>(null)
+  const [user, setUser] = useState<AuthenticatedUser | null>(null)
+  const [ready, setReady] = useState(false)
 
-  // Always check for demo user cookie (demo users have real wallets)
+  async function load() {
+    try {
+      const r = await fetch('/api/auth/session', { cache: 'no-store' })
+      const body = (await r.json()) as SessionResponse
+      setUser(body.user)
+    } catch {
+      setUser(null)
+    } finally {
+      setReady(true)
+    }
+  }
+
   useEffect(() => {
-
     let cancelled = false
-
-    async function loadDemoUser() {
-      // Cookie is httpOnly — check via server API
-      try {
-        const res = await fetch('/api/demo-login', { cache: 'no-store' })
-        const data = await res.json() as DemoAuthResponse
-        if (!data.user) {
-          if (!cancelled) {
-            setDemoAuthenticated(false)
-            setDemoUser(null)
-            setDemoReady(true)
-          }
-          return
-        }
-        if (!cancelled) {
-          setDemoAuthenticated(Boolean(data.user))
-          setDemoUser(data.user ? buildDemoUser(data.user) : null)
-        }
-      } catch {
-        if (!cancelled) {
-          setDemoAuthenticated(false)
-          setDemoUser(null)
-        }
-      } finally {
-        if (!cancelled) {
-          setDemoReady(true)
-        }
-      }
-    }
-
-    loadDemoUser()
-
-    return () => {
-      cancelled = true
-    }
+    void (async () => {
+      await load()
+      if (cancelled) setUser(null)
+    })()
+    return () => { cancelled = true }
   }, [])
 
-  const privyEnabled = Boolean(PRIVY_APP_ID)
-  const privyReady = privyEnabled ? privy.ready : true
-  const privyAuthenticated = privyEnabled ? privy.authenticated : false
-
-  const authMethod = privyAuthenticated
-    ? 'privy'
-    : demoAuthenticated
-      ? 'demo'
-      : null
-
-  const authenticated = privyAuthenticated || demoAuthenticated
-  const ready = privyReady && demoReady
-  const user = privyAuthenticated ? privy.user : demoUser
-
   return {
-    authenticated,
-    ready,
     user,
-    authMethod,
-    privyAuthenticated,
-    demoAuthenticated,
-    canLoginWithPrivy: privyEnabled,
+    ready,
+    authenticated: !!user,
+    refresh: load,
     login: () => {
-      if (privyEnabled) {
-        privy.login()
-        return
-      }
-
       if (typeof document === 'undefined') return
       const picker = document.getElementById('demo-login-picker')
       picker?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     },
-    resetPrivySession: async () => {
-      if (privyEnabled && privyAuthenticated) {
-        await privy.logout()
-      }
-    },
     logout: async () => {
-      // Clear httpOnly cookies via server
-      await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {})
-      setDemoAuthenticated(false)
-      setDemoUser(null)
-
-      if (privyAuthenticated) {
-        await privy.logout()
-      }
-
-      // Disconnect wallet from site (revoke MetaMask permissions)
+      // For SIWE sessions, also revoke the MetaMask account permission so the
+      // dApp disappears from the wallet's "Connected sites" list. Other auth
+      // paths (passkey, demo) never asked for the permission, so we skip.
+      // Always check for an injected provider — even non-SIWE users may have
+      // connected MetaMask earlier in the session via another flow.
       if (typeof window !== 'undefined') {
-        try {
-          const ethereum = (window as unknown as { ethereum?: { request?: (args: { method: string; params?: unknown[] }) => Promise<unknown> } }).ethereum
-          if (ethereum?.request) {
-            await ethereum.request({
+        const eth = (window as unknown as { ethereum?: { request: (args: { method: string; params?: unknown }) => Promise<unknown> } }).ethereum
+        if (eth) {
+          try {
+            await eth.request({
               method: 'wallet_revokePermissions',
               params: [{ eth_accounts: {} }],
             })
+          } catch (err) {
+            // EIP-2255 not supported, or no permission to revoke (already
+            // disconnected, or never connected). Log so we can tell the
+            // difference when debugging — UI flow continues either way.
+            console.warn('[logout] wallet_revokePermissions failed:', (err as Error).message)
           }
-        } catch {
-          // wallet_revokePermissions not supported by all wallets
         }
       }
+      await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {})
+      setUser(null)
     },
   }
 }

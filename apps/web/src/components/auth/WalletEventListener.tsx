@@ -11,13 +11,13 @@ export function WalletEventListener() {
   const initialAddress = useRef<string | null>(null)
 
   useEffect(() => {
-    if (ready && authenticated && user?.wallet?.address) {
-      initialAddress.current = user.wallet.address
+    if (ready && authenticated && user?.walletAddress) {
+      initialAddress.current = user.walletAddress
     }
     if (!authenticated) {
       initialAddress.current = null
     }
-  }, [ready, authenticated, user?.wallet?.address])
+  }, [ready, authenticated, user?.walletAddress])
 
   useEffect(() => {
     if (!ready || !authenticated) return
@@ -49,8 +49,17 @@ export function WalletEventListener() {
 
   useEffect(() => {
     if (!ready) return
-    if (!authenticated && pathname !== '/' && !pathname.startsWith('/invite') && !pathname.startsWith('/h/')) {
-      router.push('/')
+    // Public paths an unauthenticated visitor is allowed to reach. Keep this
+    // in sync with PUBLIC_PATHS in middleware.ts.
+    const isPublic =
+      pathname === '/' ||
+      pathname.startsWith('/sign-in') ||
+      pathname.startsWith('/sign-up') ||
+      pathname.startsWith('/recover') ||
+      pathname.startsWith('/invite') ||
+      pathname.startsWith('/h/')
+    if (!authenticated && !isPublic) {
+      router.push('/sign-in')
     }
   }, [ready, authenticated, pathname, router])
 

@@ -23,8 +23,11 @@ function queryContract() { return process.env.AGENT_RELATIONSHIP_QUERY_ADDRESS a
  * Iterates registered person agents and checks ATL_CONTROLLER for the user's wallet.
  */
 export async function getPersonAgentForUser(userId: string): Promise<string | null> {
+  // Fast path: read the persisted address from the user row. The on-chain
+  // scan is reserved as a fallback for rows that never finished provisioning.
   const user = await db.select().from(schema.users).where(eq(schema.users.id, userId)).limit(1)
   if (!user[0]) return null
+  if (user[0].personAgentAddress) return user[0].personAgentAddress
   const wallet = user[0].walletAddress.toLowerCase()
 
   const addr = resolver()
@@ -33,20 +36,26 @@ export async function getPersonAgentForUser(userId: string): Promise<string | nu
 
   try {
     const count = await client.readContract({ address: addr, abi: agentAccountResolverAbi, functionName: 'agentCount' }) as bigint
-    for (let i = 0n; i < count; i++) {
-      const agentAddr = await client.readContract({ address: addr, abi: agentAccountResolverAbi, functionName: 'getAgentAt', args: [i] }) as `0x${string}`
-      const core = await client.readContract({ address: addr, abi: agentAccountResolverAbi, functionName: 'getCore', args: [agentAddr] }) as { agentType: `0x${string}` }
-      if (core.agentType !== TYPE_PERSON) continue
-
-      // Check if this person agent's controller list includes the user's wallet
-      const controllers = await client.readContract({
+    // Parallelise the per-agent lookups — we used to do ~3 sequential RPC
+    // calls per agent, which made N user-page renders cost ~3N round-trips.
+    const indexes = Array.from({ length: Number(count) }, (_, i) => BigInt(i))
+    const agentAddrs = await Promise.all(indexes.map(i =>
+      client.readContract({ address: addr, abi: agentAccountResolverAbi, functionName: 'getAgentAt', args: [i] }) as Promise<`0x${string}`>,
+    ))
+    const cores = await Promise.all(agentAddrs.map(a =>
+      client.readContract({ address: addr, abi: agentAccountResolverAbi, functionName: 'getCore', args: [a] }) as Promise<{ agentType: `0x${string}` }>,
+    ))
+    const persons = agentAddrs.filter((_, i) => cores[i].agentType === TYPE_PERSON)
+    const controllerLists = await Promise.all(persons.map(a =>
+      client.readContract({
         address: addr, abi: agentAccountResolverAbi,
         functionName: 'getMultiAddressProperty',
-        args: [agentAddr, ATL_CONTROLLER as `0x${string}`],
-      }) as string[]
-
-      if (controllers.some(c => c.toLowerCase() === wallet)) {
-        return agentAddr
+        args: [a, ATL_CONTROLLER as `0x${string}`],
+      }) as Promise<string[]>,
+    ))
+    for (let i = 0; i < persons.length; i++) {
+      if (controllerLists[i].some(c => c.toLowerCase() === wallet)) {
+        return persons[i]
       }
     }
   } catch { /* ignored */ }
