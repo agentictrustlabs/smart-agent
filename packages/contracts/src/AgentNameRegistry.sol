@@ -5,10 +5,24 @@ import "./AgentRelationship.sol";
 
 /**
  * @title AgentNameRegistry
- * @notice Hierarchical name registry for the .agent namespace.
+ * @notice Multi-root hierarchical name registry.
  *
  * Names are keyed by node (bytes32 namehash). Each node has an owner
  * (an AgentAccount), a resolver, and an optional subregistry delegate.
+ *
+ *   ⚠ Multi-root since 2026-04: a single registry instance can host any
+ *     number of TLD roots — `.agent`, `.geo`, `.pg`, …  — each initialized
+ *     by `initializeRoot(label, owner, resolver, kind)` and discoverable via
+ *     `getRoots()` / `isRoot(node)`. The legacy `AGENT_ROOT()` accessor
+ *     remains as a pure helper that returns `namehash("agent")` so existing
+ *     callers continue to compile and read the canonical .agent root.
+ *
+ *   The `kind` field on each root is an opaque tag (e.g.
+ *   keccak256("namespace:Agent"), "namespace:Geo", "namespace:PeopleGroup")
+ *   that downstream contracts/SDKs use to dispatch to the right resource
+ *   binding (GeoFeatureRegistry for .geo, PgRegistry for .pg, etc.). The
+ *   registry itself does not enforce kind semantics — that lives in the
+ *   resource binders.
  *
  * ENS v2 principles adopted:
  *   - Each name can have its own subregistry for child management
@@ -46,7 +60,7 @@ contract AgentNameRegistry {
 
     // ─── Events ─────────────────────────────────────────────────────
 
-    event RootInitialized(bytes32 indexed rootNode, address indexed owner);
+    event RootInitialized(bytes32 indexed rootNode, string label, address indexed owner, bytes32 kind);
     event NameRegistered(bytes32 indexed node, bytes32 indexed parent, string label, address owner, address resolver, uint64 expiry);
     event OwnerChanged(bytes32 indexed node, address indexed newOwner);
     event ResolverChanged(bytes32 indexed node, address indexed resolver);
@@ -59,7 +73,15 @@ contract AgentNameRegistry {
     mapping(bytes32 => mapping(bytes32 => bytes32)) private _children; // parent => labelhash => childNode
     mapping(bytes32 => bytes32[]) private _childLabels; // parent => labelhashes
 
-    bytes32 public immutable AGENT_ROOT; // namehash("agent")
+    /// @notice Roots indexed by node — `true` iff `_records[node]` was initialized via `initializeRoot`.
+    mapping(bytes32 => bool) public isRoot;
+    /// @notice Per-root kind tag (e.g. keccak256("namespace:Agent"), "namespace:Geo", "namespace:PeopleGroup").
+    mapping(bytes32 => bytes32) public rootKind;
+    /// @notice Lookup root node by ASCII TLD label ("agent", "geo", "pg").
+    mapping(string => bytes32) private _rootByLabel;
+    /// @notice Enumeration of every initialized root.
+    bytes32[] private _allRoots;
+
     AgentRelationship public immutable RELATIONSHIPS;
 
     // Well-known constants
@@ -67,37 +89,105 @@ contract AgentNameRegistry {
     bytes32 private constant ROLE_NS_PARENT = keccak256("atl:NamespaceParentRole");
     bytes32 private constant ROLE_NS_CHILD = keccak256("atl:NamespaceChildRole");
 
+    // Default kind tags — callers may pass their own bytes32 kind, but
+    // these are the well-known ones the SDK references.
+    bytes32 public constant KIND_AGENT = keccak256("namespace:Agent");
+    bytes32 public constant KIND_GEO = keccak256("namespace:Geo");
+    bytes32 public constant KIND_PEOPLE_GROUP = keccak256("namespace:PeopleGroup");
+
     // ─── Constructor ────────────────────────────────────────────────
 
     constructor(
         AgentRelationship relationships
     ) {
         RELATIONSHIPS = relationships;
-        // Compute .agent root: namehash("agent") = keccak256(bytes32(0) + keccak256("agent"))
-        AGENT_ROOT = keccak256(abi.encodePacked(bytes32(0), keccak256("agent")));
     }
 
-    // ─── Root Initialization ────────────────────────────────────────
+    // ─── Namehash Helpers ───────────────────────────────────────────
+
+    /// @notice Pure namehash for a top-level label (parent = bytes32(0)).
+    function namehashRoot(string memory label) public pure returns (bytes32) {
+        return keccak256(abi.encodePacked(bytes32(0), keccak256(bytes(label))));
+    }
+
+    /// @notice Backward-compat accessor returning namehash("agent"). Existing
+    ///         callers that read `AGENT_ROOT` keep compiling without changes.
+    function AGENT_ROOT() public pure returns (bytes32) {
+        return keccak256(abi.encodePacked(bytes32(0), keccak256("agent")));
+    }
+
+    // ─── Root Initialization (multi-root) ───────────────────────────
 
     /**
-     * @notice Initialize the .agent root node. Can only be called once.
+     * @notice Initialize a TLD root.
+     * @param label TLD label without leading dot (e.g. "agent", "geo", "pg").
      * @param rootOwner The AgentAccount (or EOA) that will own the root.
-     * @param resolver The default resolver for the root.
+     * @param resolverContract The default resolver for the root.
+     * @param kind Opaque tag (KIND_AGENT, KIND_GEO, …) used by SDK / resource binders.
      */
-    function initializeRoot(address rootOwner, address resolver) external {
-        if (_records[AGENT_ROOT].registeredAt != 0) revert RootAlreadyInitialized();
+    function initializeRoot(
+        string calldata label,
+        address rootOwner,
+        address resolverContract,
+        bytes32 kind
+    ) external returns (bytes32 rootNode) {
+        if (bytes(label).length == 0) revert EmptyLabel();
+        rootNode = namehashRoot(label);
+        if (_records[rootNode].registeredAt != 0) revert RootAlreadyInitialized();
 
-        _records[AGENT_ROOT] = NameRecord({
+        _records[rootNode] = NameRecord({
             owner: rootOwner,
-            resolver: resolver,
-            subregistry: rootOwner, // root owner can create TLDs
+            resolver: resolverContract,
+            subregistry: rootOwner,
+            parent: bytes32(0),
+            labelhash: keccak256(bytes(label)),
+            expiry: 0,
+            registeredAt: uint64(block.timestamp)
+        });
+
+        isRoot[rootNode] = true;
+        rootKind[rootNode] = kind;
+        _rootByLabel[label] = rootNode;
+        _allRoots.push(rootNode);
+
+        emit RootInitialized(rootNode, label, rootOwner, kind);
+    }
+
+    /**
+     * @notice Backward-compat shim. Initializes the .agent root with KIND_AGENT.
+     *         Prefer the multi-root signature above for new callers.
+     */
+    function initializeRoot(address rootOwner, address resolverContract) external returns (bytes32) {
+        bytes32 rootNode = AGENT_ROOT();
+        if (_records[rootNode].registeredAt != 0) revert RootAlreadyInitialized();
+
+        _records[rootNode] = NameRecord({
+            owner: rootOwner,
+            resolver: resolverContract,
+            subregistry: rootOwner,
             parent: bytes32(0),
             labelhash: keccak256("agent"),
             expiry: 0,
             registeredAt: uint64(block.timestamp)
         });
 
-        emit RootInitialized(AGENT_ROOT, rootOwner);
+        isRoot[rootNode] = true;
+        rootKind[rootNode] = KIND_AGENT;
+        _rootByLabel["agent"] = rootNode;
+        _allRoots.push(rootNode);
+
+        emit RootInitialized(rootNode, "agent", rootOwner, KIND_AGENT);
+        return rootNode;
+    }
+
+    /// @notice Enumerate every initialized root.
+    function getRoots() external view returns (bytes32[] memory) {
+        return _allRoots;
+    }
+
+    /// @notice Look up a root by its TLD label. Returns bytes32(0) if not initialized.
+    function rootByLabel(string calldata label) external view returns (bytes32) {
+        return _rootByLabel[label];
     }
 
     // ─── Registration ───────────────────────────────────────────────
