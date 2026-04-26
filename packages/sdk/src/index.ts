@@ -22,6 +22,8 @@ export {
   agentNameRegistryAbi,
   agentNameResolverAbi,
   agentNameUniversalResolverAbi,
+  geoFeatureRegistryAbi,
+  geoClaimRegistryAbi,
 } from './abi'
 
 // ─── Account Client ──────────────────────────────────────────────────
@@ -162,6 +164,7 @@ export {
   ATL_SUPPORTED_TRUST, ATL_CAPABILITY,
   ATL_CONTROLLER, ATL_OPERATED_BY,
   ATL_METADATA_URI, ATL_METADATA_HASH, ATL_SCHEMA_URI,
+  ATL_CITY, ATL_REGION, ATL_COUNTRY,
   ATL_LATITUDE, ATL_LONGITUDE, ATL_SPATIAL_CRS, ATL_SPATIAL_TYPE,
   ATL_HUB_NAV_CONFIG, ATL_HUB_NETWORK_LABEL, ATL_HUB_CONTEXT_TERM,
   ATL_HUB_OVERVIEW_LABEL, ATL_HUB_AGENT_LABEL,
@@ -171,7 +174,17 @@ export {
   ATL_PRIMARY_NAME, ATL_NAME_LABEL,
   ATL_ENTRY_POINT, ATL_IMPLEMENTATION, ATL_DELEGATION_MANAGER,
   AGENT_TYPE_LABELS, AI_CLASS_LABELS,
+  // Multi-root namespace + geo
+  KIND_AGENT, KIND_GEO, KIND_PEOPLE_GROUP,
+  GEO_KIND_PLANET, GEO_KIND_COUNTRY, GEO_KIND_STATE, GEO_KIND_COUNTY,
+  GEO_KIND_MUNICIPALITY, GEO_KIND_NEIGHBORHOOD, GEO_KIND_ZIPCODE, GEO_KIND_CUSTOM,
+  GEO_REL_SERVES_WITHIN, GEO_REL_OPERATES_IN, GEO_REL_LICENSED_IN,
+  GEO_REL_COMPLETED_TASK_IN, GEO_REL_VALIDATED_PRESENCE_IN, GEO_REL_STEWARD_OF,
+  GEO_REL_RESIDENT_OF, GEO_REL_ORIGIN_IN,
+  GEO_VISIBILITY,
+  namehashRoot,
 } from './predicates'
+export type { GeoVisibility } from './predicates'
 
 // ─── Agent Naming (.agent namespace) ─────────────────────────────────
 export {

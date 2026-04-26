@@ -36,6 +36,8 @@ import "../src/enforcers/NameScopeEnforcer.sol";
 import "../src/enforcers/MembershipProofEnforcer.sol";
 import "../src/CredentialRegistry.sol";
 import "../src/DaimoP256Verifier.sol";
+import "../src/GeoFeatureRegistry.sol";
+import "../src/GeoClaimRegistry.sol";
 import "account-abstraction/interfaces/IEntryPoint.sol";
 import "account-abstraction/core/EntryPoint.sol";
 
@@ -209,6 +211,18 @@ contract Deploy is Script {
         // Initialize .agent root and set default resolver
         nameRegistry.initializeRoot(deployer, address(nameResolver));
 
+        // ─── Multi-root namespaces (.geo, .pg) ────────────────────────
+        // Each TLD root is owned by the deployer for the demo; in
+        // production each would have its own steward AgentAccount.
+        nameRegistry.initializeRoot("geo", deployer, address(nameResolver), nameRegistry.KIND_GEO());
+        nameRegistry.initializeRoot("pg",  deployer, address(nameResolver), nameRegistry.KIND_PEOPLE_GROUP());
+
+        // ─── Geo registries ───────────────────────────────────────────
+        GeoFeatureRegistry geoFeatures = new GeoFeatureRegistry(nameRegistry);
+        console.log("GeoFeatureRegistry:", address(geoFeatures));
+        GeoClaimRegistry geoClaims = new GeoClaimRegistry(geoFeatures);
+        console.log("GeoClaimRegistry:", address(geoClaims));
+
         // ─── Seed ontology predicates ─────────────────────────────────
         // AgentAccountResolver rejects any setStringProperty / addMulti…
         // call whose predicate isn't registered + active here. The full
@@ -271,6 +285,8 @@ contract Deploy is Script {
         _logEnv("PASSKEY_VALIDATOR_ADDRESS", address(passkeyValidator));
         _logEnv("UNIVERSAL_SIG_VALIDATOR_ADDRESS", address(universalSigValidator));
         _logEnv("P256_VERIFIER_ADDRESS", address(verifier));
+        _logEnv("GEO_FEATURE_REGISTRY_ADDRESS", address(geoFeatures));
+        _logEnv("GEO_CLAIM_REGISTRY_ADDRESS", address(geoClaims));
     }
 
     function _logEnv(string memory key, address addr) internal pure {
@@ -278,8 +294,8 @@ contract Deploy is Script {
     }
 
     function _seedOntology(OntologyTermRegistry ont) internal {
-        // Single batched call instead of 41 separate registerTerm txs.
-        string[41] memory curies = [
+        // Single batched call instead of N separate registerTerm txs.
+        string[44] memory curies = [
             "atl:displayName", "atl:description", "atl:isActive", "atl:version",
             "atl:agentType", "atl:aiAgentClass", "atl:hasA2AEndpoint", "atl:hasMCPServer",
             "atl:hasServiceEndpoint", "atl:supportedTrustModel", "atl:hasCapability",
@@ -290,9 +306,13 @@ contract Deploy is Script {
             "atl:hubViewModes", "atl:hubGreeting", "atl:hubVocabulary", "atl:hubRoleVocabulary",
             "atl:hubTypeVocabulary", "atl:genMapData", "atl:activityLog", "atl:trackedMembers",
             "atl:templateId", "atl:primaryName", "atl:nameLabel", "atl:entryPoint",
-            "atl:implementation", "atl:delegationManager"
+            "atl:implementation", "atl:delegationManager",
+            // Phase 5 (geo-overlap.v1) reads city/region/country directly off
+            // the agent for the coarse trust score; the precise GeoSPARQL
+            // path uses lat/long + GeoFeatureRegistry features.
+            "atl:city", "atl:region", "atl:country"
         ];
-        string[41] memory dtypes = [
+        string[44] memory dtypes = [
             "string", "string", "bool", "string",
             "string", "string", "string", "string",
             "string", "string[]", "string[]",
@@ -303,14 +323,15 @@ contract Deploy is Script {
             "string", "string", "string", "string",
             "string", "string", "string", "string",
             "string", "string", "string", "address",
-            "address", "address"
+            "address", "address",
+            "string", "string", "string"
         ];
-        bytes32[] memory ids = new bytes32[](41);
-        string[] memory curiesDyn = new string[](41);
-        string[] memory uris = new string[](41);
-        string[] memory labels = new string[](41);
-        string[] memory dtypesDyn = new string[](41);
-        for (uint256 i = 0; i < 41; i++) {
+        bytes32[] memory ids = new bytes32[](44);
+        string[] memory curiesDyn = new string[](44);
+        string[] memory uris = new string[](44);
+        string[] memory labels = new string[](44);
+        string[] memory dtypesDyn = new string[](44);
+        for (uint256 i = 0; i < 44; i++) {
             ids[i] = keccak256(bytes(curies[i]));
             curiesDyn[i] = curies[i];
             uris[i] = string.concat("https://agentictrust.io/ontology/core#", curies[i]);

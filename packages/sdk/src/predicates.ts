@@ -50,6 +50,13 @@ export const ATL_METADATA_HASH = keccak256(toBytes('atl:metadataHash'))
 export const ATL_SCHEMA_URI = keccak256(toBytes('atl:schemaURI'))
 
 // ─── Geospatial (GeoSPARQL-aligned, EPSG:4326 default) ─────────────
+// Geographic place tags — coarse text labels stored on agents that the
+// geo-overlap.v1 scorer reads as a quick path before any GeoSPARQL /
+// GeoFeatureRegistry lookup. Same agent should also have ATL_LATITUDE /
+// ATL_LONGITUDE for the precise path.
+export const ATL_CITY    = keccak256(toBytes('atl:city'))
+export const ATL_REGION  = keccak256(toBytes('atl:region'))    // state/province
+export const ATL_COUNTRY = keccak256(toBytes('atl:country'))   // ISO 3166-1 alpha-2
 export const ATL_LATITUDE = keccak256(toBytes('atl:latitude'))
 export const ATL_LONGITUDE = keccak256(toBytes('atl:longitude'))
 export const ATL_SPATIAL_CRS = keccak256(toBytes('atl:spatialCRS'))
@@ -92,6 +99,56 @@ export const ATL_NAME_LABEL = keccak256(toBytes('atl:nameLabel'))
 export const ATL_ENTRY_POINT = keccak256(toBytes('atl:entryPoint'))
 export const ATL_IMPLEMENTATION = keccak256(toBytes('atl:implementation'))
 export const ATL_DELEGATION_MANAGER = keccak256(toBytes('atl:delegationManager'))
+
+// ─── Namespace kinds (multi-root NameRegistry) ──────────────────────
+// Tags AgentNameRegistry stamps on each TLD root via initializeRoot's
+// `kind` parameter. Resource binders (GeoFeatureRegistry for .geo, the
+// future PgRegistry for .pg) dispatch on these.
+export const KIND_AGENT        = keccak256(toBytes('namespace:Agent'))
+export const KIND_GEO          = keccak256(toBytes('namespace:Geo'))
+export const KIND_PEOPLE_GROUP = keccak256(toBytes('namespace:PeopleGroup'))
+
+// ─── Geo feature kinds (GeoFeatureRegistry) ─────────────────────────
+export const GEO_KIND_PLANET       = keccak256(toBytes('geo:Planet'))
+export const GEO_KIND_COUNTRY      = keccak256(toBytes('geo:Country'))
+export const GEO_KIND_STATE        = keccak256(toBytes('geo:State'))
+export const GEO_KIND_COUNTY       = keccak256(toBytes('geo:County'))
+export const GEO_KIND_MUNICIPALITY = keccak256(toBytes('geo:Municipality'))
+export const GEO_KIND_NEIGHBORHOOD = keccak256(toBytes('geo:Neighborhood'))
+export const GEO_KIND_ZIPCODE      = keccak256(toBytes('geo:ZipCode'))
+export const GEO_KIND_CUSTOM       = keccak256(toBytes('geo:Custom'))
+
+// ─── Geo claim relations (GeoClaimRegistry) ─────────────────────────
+export const GEO_REL_SERVES_WITHIN          = keccak256(toBytes('geo:servesWithin'))
+export const GEO_REL_OPERATES_IN            = keccak256(toBytes('geo:operatesIn'))
+export const GEO_REL_LICENSED_IN            = keccak256(toBytes('geo:licensedIn'))
+export const GEO_REL_COMPLETED_TASK_IN      = keccak256(toBytes('geo:completedTaskIn'))
+export const GEO_REL_VALIDATED_PRESENCE_IN  = keccak256(toBytes('geo:validatedPresenceIn'))
+export const GEO_REL_STEWARD_OF             = keccak256(toBytes('geo:stewardOf'))
+export const GEO_REL_RESIDENT_OF            = keccak256(toBytes('geo:residentOf'))
+export const GEO_REL_ORIGIN_IN              = keccak256(toBytes('geo:originIn'))
+
+/** Geo claim visibility — must match `enum Visibility` in GeoClaimRegistry. */
+export const GEO_VISIBILITY = {
+  Public: 0,
+  PublicCoarse: 1,
+  PrivateCommitment: 2,
+  PrivateZk: 3,
+  OffchainOnly: 4,
+} as const
+export type GeoVisibility = typeof GEO_VISIBILITY[keyof typeof GEO_VISIBILITY]
+
+/**
+ * Pure namehash for a top-level label (parent = bytes32(0)). Mirrors
+ * AgentNameRegistry.namehashRoot so off-chain code can compute root
+ * nodes deterministically.
+ */
+export function namehashRoot(label: string): `0x${string}` {
+  const labelHash = keccak256(toBytes(label))
+  // namehash(label) = keccak256(bytes32(0) ‖ keccak256(label))
+  const ZERO = '0x' + '0'.repeat(64)
+  return keccak256(`${ZERO}${labelHash.slice(2)}` as `0x${string}`)
+}
 
 // ─── Human-readable labels ──────────────────────────────────────────
 
