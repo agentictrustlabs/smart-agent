@@ -255,6 +255,10 @@ export async function completeAnonOrgRegistration(input: {
   holderWalletId: string
   offer: { credentialOfferJson: string; credDefId: string; schemaId: string; issuerId: string }
   attributes: Record<string, string>
+  /** Smart-account address of the target org (e.g. Red Feather Circle).
+   *  Persisted alongside the credential so held-credentials views can label
+   *  the credential by org name instead of by issuing-service DID. */
+  targetOrgAddress?: string
 }): Promise<{ success: boolean; credentialId?: string; error?: string }> {
   try {
     const ctx = await loadSignerForCurrentUser()
@@ -291,6 +295,7 @@ export async function completeAnonOrgRegistration(input: {
         credentialType: 'OrgMembershipCredential',
         issuerId: input.offer.issuerId,
         schemaId: input.offer.schemaId,
+        ...(input.targetOrgAddress ? { targetOrgAddress: input.targetOrgAddress } : {}),
       },
     )
     if (fin.error || !fin.credentialId) return { success: false, error: fin.error ?? 'store failed' }

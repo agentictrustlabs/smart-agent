@@ -94,8 +94,43 @@ export function HeldCredentialsPanel() {
                       }}>unanchored</span>
                     )}
                   </div>
-                  <div style={{ color: '#64748b', fontSize: 11 }}>
-                    issuer <code style={{ fontSize: 10 }}>{c.issuerId.slice(0, 28)}{c.issuerId.length > 28 ? '…' : ''}</code>
+                  {c.targetOrgDisplayName && (
+                    <div
+                      style={{ color: '#64748b', fontSize: 11, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}
+                      title={c.targetOrgAddress ?? undefined}
+                    >
+                      <span>for</span>
+                      <span style={{ fontWeight: 600, color: '#171c28' }}>{c.targetOrgDisplayName}</span>
+                      {c.targetOrgPrimaryName && (
+                        <code style={{
+                          fontFamily: 'ui-monospace, monospace', fontSize: 10,
+                          background: '#eef2ff', color: '#3f6ee8',
+                          padding: '0 4px', borderRadius: 4,
+                        }}>{c.targetOrgPrimaryName}</code>
+                      )}
+                    </div>
+                  )}
+                  <div
+                    style={{ color: '#64748b', fontSize: 11, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}
+                    title={c.issuerId}
+                  >
+                    <span>issued by</span>
+                    {c.issuerDisplayName ? (
+                      <>
+                        <span style={{ fontWeight: 600, color: '#171c28' }}>{c.issuerDisplayName}</span>
+                        {c.issuerPrimaryName && (
+                          <code style={{
+                            fontFamily: 'ui-monospace, monospace', fontSize: 10,
+                            background: '#eef2ff', color: '#3f6ee8',
+                            padding: '0 4px', borderRadius: 4,
+                          }}>{c.issuerPrimaryName}</code>
+                        )}
+                      </>
+                    ) : c.issuerAddress ? (
+                      <code style={{ fontSize: 10 }}>{c.issuerAddress.slice(0, 6)}…{c.issuerAddress.slice(-4)}</code>
+                    ) : (
+                      <code style={{ fontSize: 10 }}>{c.issuerId.slice(0, 28)}{c.issuerId.length > 28 ? '…' : ''}</code>
+                    )}
                   </div>
                   <div style={{ color: '#64748b', fontSize: 11 }}>
                     received {new Date(c.receivedAt).toLocaleString()} · context {c.walletContext}

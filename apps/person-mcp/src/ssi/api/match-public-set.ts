@@ -84,13 +84,20 @@ matchPublicSetRoutes.post('/wallet/match-against-public-set', async (c) => {
   const onChain = await getOnChainOrgsForPrincipal(callerAddr)
   const heldOnChain = onChain.map(canonicalOrgId)
 
+  // AnonCreds-held memberships: prefer the target org's smart-account
+  // address (the org the credential is FOR — e.g. Red Feather Circle).
+  // The credential's issuer DID points at the org-mcp signing EOA, NOT
+  // at the target org, so falling back to that EOA produces empty
+  // intersections against every candidate's publicSet (which contains
+  // real org addresses). Credentials issued before `target_org_address`
+  // existed have no contribution and need re-issuance.
   const heldAnonCreds: string[] = []
   for (const cred of listCredentialMetadata(hw.id)) {
     if (cred.status !== 'active') continue
     if (!cred.credentialType.toLowerCase().includes('membership')) continue
-    const addr = addrFromDidEthr(cred.issuerId)
-    if (addr) heldAnonCreds.push(canonicalOrgId(addr))
+    if (cred.targetOrgAddress) heldAnonCreds.push(canonicalOrgId(cred.targetOrgAddress))
   }
+  void addrFromDidEthr  // legacy; retained for future credential formats
 
   const heldSet = Array.from(new Set([...heldOnChain, ...heldAnonCreds]))
   const blockPin = req.body.blockPin && req.body.blockPin !== '0' ? BigInt(req.body.blockPin) : undefined

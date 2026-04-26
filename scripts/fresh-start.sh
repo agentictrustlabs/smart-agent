@@ -231,7 +231,7 @@ start_web() {
 }
 
 trigger_boot_seed() {
-  banner "8/8  Triggering /api/boot-seed"
+  banner "8/8  Triggering /api/boot-seed (also runs final on-chain → KB sync)"
   curl -fsS "http://127.0.0.1:$WEB_PORT/api/boot-seed" >/dev/null
   if (( WAIT_FOR_READY )); then
     echo "  polling /api/system-readiness …"
@@ -248,6 +248,12 @@ trigger_boot_seed() {
       echo "  ⚠ readiness still false after $((i*2))s — see tmp/logs/web.log"
     fi
   fi
+  # Belt-and-suspenders: even when --no-wait skipped readiness polling, kick
+  # the explicit ontology-sync endpoint so KB lands current on this redeploy.
+  echo "  forcing on-chain → GraphDB sync …"
+  curl -fsS -X POST "http://127.0.0.1:$WEB_PORT/api/ontology-sync" \
+    -H 'content-type: application/json' >/dev/null 2>&1 || \
+    echo "  (ontology-sync curl failed — boot-seed already attempted it; check tmp/logs/web.log)"
 }
 
 # ─── Run ───────────────────────────────────────────────────────────────

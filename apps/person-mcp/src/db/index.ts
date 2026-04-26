@@ -130,7 +130,12 @@ sqliteHandle.exec(`
     credential_type TEXT NOT NULL,
     received_at TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'active',
-    link_secret_id TEXT NOT NULL DEFAULT ''
+    link_secret_id TEXT NOT NULL DEFAULT '',
+    -- Target org's smart-account address (e.g. Red Feather Circle for an
+    -- OrgMembership in that circle). The credential's issuer DID points at
+    -- the org-mcp signing EOA, not at the org being joined; this column
+    -- captures the *target* so the held-credentials view can label it.
+    target_org_address TEXT
   );
   CREATE INDEX IF NOT EXISTS idx_cm_wallet ON credential_metadata(holder_wallet_id);
 

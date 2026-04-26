@@ -162,6 +162,24 @@ async function doSeed() {
 
   // Person agent controllers already set by generateDemoWallet — skip
 
+  // ─── Issuer EOA → Catalyst NoCo Network controller link ───────────
+  // The org-mcp service issues OrgMembershipCredentials with `issuerId` set
+  // to `did:ethr:<chainId>:<orgIssuerEoa>`, where the EOA is derived from
+  // ORG_PRIVATE_KEY. Wallets that hold those credentials need a way to
+  // resolve the issuer-EOA back to a human-readable org name. We achieve
+  // that by registering the issuer EOA as a controller of the Catalyst
+  // NoCo Network agent — `list.action.ts > buildIssuerLookup` then walks
+  // ATL_CONTROLLER lists to find the matching org.
+  try {
+    const orgKey = (process.env.ORG_PRIVATE_KEY ?? ('0x' + 'c'.repeat(64))) as `0x${string}`
+    const { privateKeyToAccount } = await import('viem/accounts')
+    const orgIssuerEoa = privateKeyToAccount(orgKey).address
+    await setController(network, orgIssuerEoa)
+    console.log('[catalyst-seed] linked issuer EOA → Catalyst NoCo Network:', orgIssuerEoa)
+  } catch (e) {
+    console.warn('[catalyst-seed] issuer→org controller link failed (non-fatal):', e)
+  }
+
   // ─── Geospatial Metadata (Northern Colorado) ──────────────────────
   console.log('[catalyst-seed] Setting geospatial metadata...')
   await setGeo(network, '40.5853', '-105.0844')     // Fort Collins (network level)

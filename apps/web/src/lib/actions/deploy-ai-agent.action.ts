@@ -72,6 +72,8 @@ export async function deployAIAgent(input: DeployAIAgentInput): Promise<DeployAI
         })
         // Auto-confirm since creator owns both
         await confirmRelationship(edgeId)
+        const { scheduleKbSync } = await import('@/lib/ontology/kb-write-through')
+        scheduleKbSync()
       } catch { /* non-fatal */ }
     }
 

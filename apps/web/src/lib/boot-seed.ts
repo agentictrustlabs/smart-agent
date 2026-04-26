@@ -88,6 +88,18 @@ export function triggerBootSeed(): Promise<void> {
         seedCILOnChain(),
       ])
 
+      // 3. Push fresh on-chain state into the GraphDB KB so the /agents
+      //    directory + KPI counters reflect today's deploy. Subsequent edge
+      //    writes use scheduleKbSync() from the action layer.
+      state.phase = 'syncing on-chain → GraphDB'
+      try {
+        const { syncOnChainToGraphDB } = await import('@/lib/ontology/graphdb-sync')
+        const result = await syncOnChainToGraphDB()
+        console.log('[boot-seed]', result.success ? `KB sync ok (${result.agentCount})` : `KB sync failed: ${result.message}`)
+      } catch (e) {
+        console.warn('[boot-seed] KB sync error (non-fatal):', (e as Error).message)
+      }
+
       state.completed = true
       state.completedAt = new Date().toISOString()
       state.phase = 'ready'

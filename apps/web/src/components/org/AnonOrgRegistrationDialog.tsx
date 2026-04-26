@@ -127,6 +127,7 @@ export function AnonOrgRegistrationDialog({ hubAddress, hubName, onCancel, onIss
           signature: acceptSig,
           holderWalletId,
           offer: accept.offer,
+          targetOrgAddress: org.address,
           attributes: {
             membershipStatus: 'active',
             role: role.trim() || 'member',

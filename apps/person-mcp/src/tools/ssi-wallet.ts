@@ -220,6 +220,8 @@ interface FinishExchangeArgs {
   credentialType: string
   issuerId: string
   schemaId: string
+  /** Optional — smart-account address of the org this credential references. */
+  targetOrgAddress?: string
 }
 const finishCredentialExchange = {
   name: 'ssi_finish_credential_exchange',
@@ -248,6 +250,7 @@ const finishCredentialExchange = {
       credentialType: args.credentialType,
       issuerId: args.issuerId,
       schemaId: args.schemaId,
+      ...(args.targetOrgAddress ? { targetOrgAddress: args.targetOrgAddress } : {}),
     })
     return mcpText(res)
   },

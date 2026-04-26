@@ -103,6 +103,10 @@ credentialRoutes.post('/credentials/store', async (c) => {
     credentialType: string
     issuerId: string
     schemaId: string
+    /** Smart-account address of the org this credential references — e.g.
+     *  the Red Feather Circle agent for an OrgMembership in that circle.
+     *  Optional for older callers that don't yet set it. */
+    targetOrgAddress?: string
   }>()
 
   const { getHolderWalletById } = await import('../storage/wallets.js')
@@ -144,6 +148,7 @@ credentialRoutes.post('/credentials/store', async (c) => {
     credDefId: meta.credDefId,
     credentialType: body.credentialType,
     linkSecretId: hw.linkSecretId,
+    targetOrgAddress: body.targetOrgAddress?.toLowerCase() ?? null,
   })
 
   return c.json({ credentialId: credId, metadata: metaRow })

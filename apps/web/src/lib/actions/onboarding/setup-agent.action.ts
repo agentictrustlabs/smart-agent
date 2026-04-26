@@ -373,6 +373,8 @@ export async function joinHubAsPerson(hubAddress: string): Promise<{ success: bo
       relationshipType: HAS_MEMBER as `0x${string}`,
     })
     await confirmRelationship(edgeId)
+    const { scheduleKbSync } = await import('@/lib/ontology/kb-write-through')
+    scheduleKbSync()
     return { success: true }
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : 'join failed' }
