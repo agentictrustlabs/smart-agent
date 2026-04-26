@@ -11,7 +11,8 @@
     "./policy": "./src/policy/index.ts",
     "./formats/anoncreds-v1": "./src/formats/anoncreds-v1/index.ts",
     "./trust-overlap": "./src/trust-overlap.ts",
-    "./geo-overlap": "./src/geo-overlap.ts"
+    "./geo-overlap": "./src/geo-overlap.ts",
+    "./h3-merkle": "./src/h3-merkle.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
@@ -23,6 +24,8 @@
     "@smart-agent/credential-registry": "workspace:*",
     "@smart-agent/types": "workspace:*",
     "better-sqlite3": "^11.0.0",
+    "circomlibjs": "^0.1.7",
+    "h3-js": "^4.1.0",
     "viem": "^2.21.0"
   },
   "devDependencies": {
