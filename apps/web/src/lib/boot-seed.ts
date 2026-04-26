@@ -20,6 +20,7 @@ import { ensureCommunityUsers } from '@/lib/demo-seed/lookup-users'
 import { seedCILOnChain } from '@/lib/demo-seed/seed-cil-onchain'
 import { seedCatalystOnChain } from '@/lib/demo-seed/seed-catalyst-onchain'
 import { seedGlobalChurchOnChain } from '@/lib/demo-seed/seed-globalchurch-onchain'
+import { seedGeoOnChain } from '@/lib/demo-seed/seed-geo-onchain'
 import { ensureDevP256Stub } from '@/lib/dev-p256-stub'
 
 export interface BootState {
@@ -87,6 +88,17 @@ export function triggerBootSeed(): Promise<void> {
         seedCatalystOnChain(),
         seedCILOnChain(),
       ])
+
+      // 2b. Geo features + .geo name tree.
+      //     Runs after the hub seeds because city tags on agents are
+      //     useful even if the GeoFeatureRegistry write fails (the
+      //     coarse-tier of geo-overlap.v1 only needs ATL_CITY).
+      state.phase = 'on-chain seed: geo features'
+      try {
+        await seedGeoOnChain()
+      } catch (e) {
+        console.warn('[boot-seed] geo seed error (non-fatal):', (e as Error).message)
+      }
 
       // 3. Push fresh on-chain state into the GraphDB KB so the /agents
       //    directory + KPI counters reflect today's deploy. Subsequent edge
