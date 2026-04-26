@@ -82,10 +82,10 @@ async function setGenMapData(addr: `0x${string}`, data: string) {
   } catch (_e) { console.warn(`[gc-seed] GenMap data failed for ${addr}:`, _e) }
 }
 
-function upsertUser(u: { id: string; name: string; email: string; wallet: string; privy: string }) {
+function upsertUser(u: { id: string; name: string; email: string; wallet: string; did: string }) {
   const existing = db.select().from(schema.users).where(eq(schema.users.id, u.id)).get()
   if (!existing) {
-    db.insert(schema.users).values({ id: u.id, email: u.email, name: u.name, walletAddress: u.wallet, privyUserId: u.privy }).run()
+    db.insert(schema.users).values({ id: u.id, email: u.email, name: u.name, walletAddress: u.wallet, did: u.did }).run()
   }
 }
 
@@ -109,11 +109,11 @@ async function doSeed() {
 
   // ─── Users (DB only) ──────────────────────────────────────────────
   const USERS = [
-    { id: 'gc-user-001', name: 'Pastor James', email: 'james@gracecommunity.org', wallet: '0x0000000000000000000000000000000000010001', privy: 'did:privy:gc-001' },
-    { id: 'gc-user-002', name: 'Dr. Sarah Mitchell', email: 'sarah@sbc.net', wallet: '0x0000000000000000000000000000000000010002', privy: 'did:privy:gc-002' },
-    { id: 'gc-user-003', name: 'Dan Busby', email: 'dan@ecfa.org', wallet: '0x0000000000000000000000000000000000010003', privy: 'did:privy:gc-003' },
-    { id: 'gc-user-004', name: 'John Chesnut', email: 'john@wycliffe.org', wallet: '0x0000000000000000000000000000000000010004', privy: 'did:privy:gc-004' },
-    { id: 'gc-user-005', name: 'David Wills', email: 'david@ncf.org', wallet: '0x0000000000000000000000000000000000010005', privy: 'did:privy:gc-005' },
+    { id: 'gc-user-001', name: 'Pastor James', email: 'james@gracecommunity.org', wallet: '0x0000000000000000000000000000000000010001', did: 'did:demo:gc-001' },
+    { id: 'gc-user-002', name: 'Dr. Sarah Mitchell', email: 'sarah@sbc.net', wallet: '0x0000000000000000000000000000000000010002', did: 'did:demo:gc-002' },
+    { id: 'gc-user-003', name: 'Dan Busby', email: 'dan@ecfa.org', wallet: '0x0000000000000000000000000000000000010003', did: 'did:demo:gc-003' },
+    { id: 'gc-user-004', name: 'John Chesnut', email: 'john@wycliffe.org', wallet: '0x0000000000000000000000000000000000010004', did: 'did:demo:gc-004' },
+    { id: 'gc-user-005', name: 'David Wills', email: 'david@ncf.org', wallet: '0x0000000000000000000000000000000000010005', did: 'did:demo:gc-005' },
   ]
   for (const u of USERS) upsertUser(u)
 
@@ -261,7 +261,11 @@ async function doSeed() {
 
     const agentRoot = await pc.readContract({ address: nameRegistryAddr, abi: agentNameRegistryAbi, functionName: 'AGENT_ROOT' }) as `0x${string}`
 
-    const gcNode = await regName(agentRoot, 'globalchurch', hubGC, 'globalchurch.agent')
+    // Register globalchurch.agent under root. Owner is the DEPLOYER (not
+    // the hub agent) so the onboarding wizard's deployer-signed sub-name
+    // calls succeed without needing UserOps from the hub's smart account.
+    const deployerOwner = wc.account!.address as `0x${string}`
+    const gcNode = await regName(agentRoot, 'globalchurch', deployerOwner, 'globalchurch.agent')
     if (gcNode) {
       await regName(gcNode, 'network', gcNetwork, 'network.globalchurch.agent')
       await regName(gcNode, 'grace', graceChurch, 'grace.globalchurch.agent')

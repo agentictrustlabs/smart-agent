@@ -4,7 +4,7 @@ import { db, schema } from '@/db'
 import { eq } from 'drizzle-orm'
 
 export interface EnsureUserInput {
-  privyUserId: string
+  did: string
   walletAddress: string
   email: string | null
   name: string
@@ -16,11 +16,11 @@ export interface EnsureUserResult {
 }
 
 export async function ensureUser(input: EnsureUserInput): Promise<EnsureUserResult> {
-  // Check if user exists by privy ID
+  // Check if user exists by DID
   const existing = await db
     .select()
     .from(schema.users)
-    .where(eq(schema.users.privyUserId, input.privyUserId))
+    .where(eq(schema.users.did, input.did))
     .limit(1)
 
   if (existing[0]) {
@@ -37,7 +37,7 @@ export async function ensureUser(input: EnsureUserInput): Promise<EnsureUserResu
   if (byWallet[0]) {
     await db
       .update(schema.users)
-      .set({ privyUserId: input.privyUserId })
+      .set({ did: input.did })
       .where(eq(schema.users.id, byWallet[0].id))
     return { userId: byWallet[0].id, isNewUser: false }
   }
@@ -49,7 +49,7 @@ export async function ensureUser(input: EnsureUserInput): Promise<EnsureUserResu
     email: input.email,
     name: input.name,
     walletAddress: input.walletAddress,
-    privyUserId: input.privyUserId,
+    did: input.did,
   })
 
   return { userId, isNewUser: true }

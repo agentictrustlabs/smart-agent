@@ -7,7 +7,7 @@ export const ssiHolderWallets = sqliteTable('ssi_holder_wallets', {
   id: text('id').primaryKey(),
   principal: text('principal').notNull(),
   walletContext: text('wallet_context').notNull(),
-  privyEoa: text('privy_eoa').notNull(),
+  signerEoa: text('signer_eoa').notNull(),
   holderWalletRef: text('holder_wallet_ref').notNull(),
   linkSecretRef: text('link_secret_ref').notNull(),
   status: text('status').notNull().default('active'),

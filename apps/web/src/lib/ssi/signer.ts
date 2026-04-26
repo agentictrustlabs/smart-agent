@@ -28,7 +28,7 @@ export async function loadSignerForCurrentUser(): Promise<
 > {
   const session = await requireSession()
   const rows = await db.select().from(schema.users)
-    .where(eq(schema.users.privyUserId, session.userId))
+    .where(eq(schema.users.did, session.userId))
     .limit(1)
   const user = rows[0]
   if (!user) throw new Error('User not found')
@@ -71,7 +71,7 @@ export async function loadSignerForCurrentUser(): Promise<
  *   2. Have the browser run navigator.credentials.get(challenge=hash) and
  *      pack the assertion as 0x01 || abi.encode(Assertion).
  *   3. Pass the resulting `{ signature, signer }` to whichever consumer
- *      checks via `verifyPrivyAction(..., { client })`. The smart account's
+ *      checks via `verifyWalletAction(..., { client })`. The smart account's
  *      ERC-1271 path verifies the passkey signature on-chain.
  */
 export async function signWalletAction(action: WalletAction): Promise<{ signature: `0x${string}`; signer: `0x${string}` }> {
@@ -96,7 +96,7 @@ export async function signWalletAction(action: WalletAction): Promise<{ signatur
  * (carried in clientDataJSON) to equal this hash. The eventual signature is
  * 0x01 || abi.encode(WebAuthnLib.Assertion) with that challenge baked in.
  *
- * `signer` is the smart-account address — that's what `verifyPrivyAction`
+ * `signer` is the smart-account address — that's what `verifyWalletAction`
  * resolves to on the ERC-1271 path.
  */
 export async function prepareWalletActionForPasskey(

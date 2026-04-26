@@ -54,7 +54,7 @@ export async function ensureDemoUser(userKey: string): Promise<{
       email: meta.email,
       name: meta.name,
       walletAddress: wallet.address,
-      privyUserId: meta.userId,
+      did: meta.userId,
       privateKey: wallet.privateKey,
       smartAccountAddress: wallet.smartAccountAddress,
       personAgentAddress: wallet.personAgentAddress,

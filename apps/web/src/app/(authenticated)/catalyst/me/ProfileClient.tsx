@@ -97,15 +97,11 @@ export function ProfileClient({
       const token = a2a.sessionToken
       const ok = await loadProfile(token ?? null)
       if (ok) return
-      // /api/a2a/bootstrap requires users.privateKey (only demo / Privy
-      // legacy users have one). For OAuth / passkey / SIWE users the call
-      // always returns 400 — skip it. The profile card still renders; the
-      // delegation-gated profile values just stay empty for now (Phase 4
-      // will wire ERC-1271 / passkey-signed wallet actions for them).
-      if (!walletAddress || walletAddress.toLowerCase() === (smartAccountAddress ?? '').toLowerCase()) {
-        setSessionValid(false)
-        return
-      }
+      // Try the server-side bootstrap. For users with users.privateKey
+      // (demo / legacy) this signs with the user's own EOA. For
+      // OAuth / passkey / SIWE users the bootstrap action falls back to
+      // deployer-as-co-owner signing, which ERC-1271 validates against
+      // the smart account's _owners set.
       try {
         const res = await fetch('/api/a2a/bootstrap', { method: 'POST' })
         const data = await res.json()
@@ -121,6 +117,9 @@ export function ProfileClient({
 
   async function handleBootstrapSession() {
     setError(null)
+    // 1. Server-side bootstrap (works only for demo / legacy legacy users
+    //    that have users.privateKey). For OAuth / passkey / SIWE users this
+    //    returns "Client-side signing required" — fall through.
     try {
       const res = await fetch('/api/a2a/bootstrap', { method: 'POST' })
       const data = await res.json()
@@ -129,6 +128,19 @@ export function ProfileClient({
         return
       }
     } catch { /* not available */ }
+
+    // 2. Passkey path. Preferred for OAuth / passkey users — the smart
+    //    account has a registered passkey, ERC-1271 validates the assertion
+    //    against the credential pubkey. No EOA needed.
+    const hasLocalPasskey = typeof window !== 'undefined'
+      && JSON.parse(localStorage.getItem('smart-agent.passkeys.local') ?? '[]').length > 0
+    if (hasLocalPasskey) {
+      const token = await a2a.bootstrapWithPasskey()
+      if (token) { await loadProfile(token); return }
+      if (a2a.error) { setError(a2a.error); return }
+    }
+
+    // 3. Wallet path (SIWE / MetaMask).
     const token = await a2a.bootstrap()
     if (token) { await loadProfile(token) }
     else if (a2a.error) { setError(a2a.error) }

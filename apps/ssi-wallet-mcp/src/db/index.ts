@@ -6,7 +6,7 @@ import { config } from '../config.js'
  * or secrets — those live in Askar).
  *
  *   - holder_wallets: lookup from personPrincipal → askar profile name + linkSecretId
- *   - action_nonces:  replay-prevention for Privy-signed WalletActions
+ *   - action_nonces:  replay-prevention for EIP-712-signed WalletActions
  */
 const sqlite = new Database(config.dbPath)
 sqlite.pragma('journal_mode = WAL')
@@ -15,7 +15,7 @@ sqlite.exec(`
     id TEXT PRIMARY KEY,
     person_principal TEXT NOT NULL,
     wallet_context TEXT NOT NULL,              -- 'default' | 'professional' | 'personal' | 'ai-delegate' | ...
-    privy_eoa TEXT NOT NULL,
+    signer_eoa TEXT NOT NULL,
     askar_profile TEXT NOT NULL,
     link_secret_id TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'active',     -- active | rotating | revoked
@@ -23,7 +23,7 @@ sqlite.exec(`
     UNIQUE (person_principal, wallet_context)
   );
   CREATE INDEX IF NOT EXISTS idx_hw_principal ON holder_wallets(person_principal);
-  CREATE INDEX IF NOT EXISTS idx_hw_privy_eoa ON holder_wallets(privy_eoa);
+  CREATE INDEX IF NOT EXISTS idx_hw_signer_eoa ON holder_wallets(signer_eoa);
 
   CREATE TABLE IF NOT EXISTS action_nonces (
     nonce TEXT PRIMARY KEY,

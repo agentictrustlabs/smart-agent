@@ -10,14 +10,27 @@ const A2A_AGENT_URL = process.env.A2A_AGENT_URL ?? 'http://localhost:3100'
 const A2A_SESSION_COOKIE = 'a2a-session'
 
 /**
- * Bootstrap a full A2A session for demo users (server-side signing).
+ * Bootstrap an A2A session by signing a delegation on behalf of the user's
+ * smart account using their own EOA private key.
  *
- * No challenge needed. No deployer key.
- *   1. Call A2A /session/init (unauthenticated)
+ *   1. Call A2A /session/init (unauthenticated) — gets sessionId + sessionKey
  *   2. Build delegation hash
- *   3. Sign delegation with user's stored private key
- *   4. Submit to A2A /session/package (self-authenticating via ERC-1271)
+ *   3. Sign delegation with the user's stored private key
+ *   4. Submit to A2A /session/package (validated via ERC-1271 against the
+ *      smart account's owner set)
  *   5. Store session ID in httpOnly cookie
+ *
+ * Only demo / legacy legacy users have `users.privateKey`. Google / Passkey /
+ * SIWE users must use the client-side bootstrap (use-a2a-session hook):
+ *   - Passkey: WebAuthn signs the delegation hash, packed with the 0x01
+ *     type byte; AgentAccount's ERC-1271 path validates it against the
+ *     smart account's registered passkeys.
+ *   - SIWE / MetaMask: injected EIP-1193 signs the hash; ERC-1271 validates
+ *     it against the smart account's owner set.
+ *
+ * We intentionally do NOT fall back to DEPLOYER_PRIVATE_KEY here. The
+ * deployer is a co-owner only as a recovery / bootstrap relay; it must not
+ * become a routine signer of user-scoped delegations.
  */
 export async function bootstrapA2ASession(): Promise<{
   success: boolean
@@ -34,11 +47,11 @@ export async function bootstrapA2ASession(): Promise<{
     .limit(1)
 
   const user = users[0]
-  if (!user?.privateKey) {
-    return { success: false, error: 'Client-side signing required' }
-  }
   if (!user?.smartAccountAddress) {
     return { success: false, error: 'No smart account deployed' }
+  }
+  if (!user?.privateKey) {
+    return { success: false, error: 'Client-side signing required (use passkey or wallet bootstrap)' }
   }
 
   const chainId = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? '31337')

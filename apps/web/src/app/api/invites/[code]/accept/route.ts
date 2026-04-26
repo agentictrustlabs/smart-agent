@@ -51,7 +51,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ cod
 
     // Get user
     const users = await db.select().from(schema.users)
-      .where(eq(schema.users.privyUserId, session.userId)).limit(1)
+      .where(eq(schema.users.did, session.userId)).limit(1)
     const user = users[0]
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 400 })
 

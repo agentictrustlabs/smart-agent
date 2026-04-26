@@ -65,7 +65,7 @@ export async function submitReview(input: SubmitReviewInput): Promise<SubmitRevi
 
     // Get user's person agent
     const users = await db.select().from(schema.users)
-      .where(eq(schema.users.privyUserId, session.userId)).limit(1)
+      .where(eq(schema.users.did, session.userId)).limit(1)
     if (!users[0]) return { success: false, error: 'User not found' }
 
     const myAgent = await getPersonAgentForUser(users[0].id)

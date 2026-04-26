@@ -78,10 +78,10 @@ async function setGeo(addr: `0x${string}`, lat: string, lon: string) {
   } catch (_e) { console.warn(`[catalyst-seed] Geo failed for ${addr}:`, _e) }
 }
 
-function upsertUser(u: { id: string; name: string; email: string; wallet: string; privy: string }) {
+function upsertUser(u: { id: string; name: string; email: string; wallet: string; did: string }) {
   const existing = db.select().from(schema.users).where(eq(schema.users.id, u.id)).get()
   if (!existing) {
-    db.insert(schema.users).values({ id: u.id, email: u.email, name: u.name, walletAddress: u.wallet, privyUserId: u.privy }).run()
+    db.insert(schema.users).values({ id: u.id, email: u.email, name: u.name, walletAddress: u.wallet, did: u.did }).run()
   }
 }
 
@@ -105,13 +105,13 @@ async function doSeed() {
 
   // ─── Users (DB only) — Northern Colorado Hispanic Outreach ─────────
   const USERS = [
-    { id: 'cat-user-001', name: 'Maria Gonzalez', email: 'maria@catalystnoco.org', wallet: '0x00000000000000000000000000000000000b0001', privy: 'did:privy:cat-001' },
-    { id: 'cat-user-002', name: 'Pastor David Chen', email: 'david@catalystnoco.org', wallet: '0x00000000000000000000000000000000000b0002', privy: 'did:privy:cat-002' },
-    { id: 'cat-user-003', name: 'Rosa Martinez', email: 'rosa@comunidad-noco.org', wallet: '0x00000000000000000000000000000000000b0003', privy: 'did:privy:cat-003' },
-    { id: 'cat-user-004', name: 'Carlos Herrera', email: 'carlos@comunidad-noco.org', wallet: '0x00000000000000000000000000000000000b0004', privy: 'did:privy:cat-004' },
-    { id: 'cat-user-005', name: 'Sarah Thompson', email: 'sarah@catalystnoco.org', wallet: '0x00000000000000000000000000000000000b0005', privy: 'did:privy:cat-005' },
-    { id: 'cat-user-006', name: 'Ana Reyes', email: 'ana@wellington-circle.org', wallet: '0x00000000000000000000000000000000000b0006', privy: 'did:privy:cat-006' },
-    { id: 'cat-user-007', name: 'Miguel Santos', email: 'miguel@laporte-circle.org', wallet: '0x00000000000000000000000000000000000b0007', privy: 'did:privy:cat-007' },
+    { id: 'cat-user-001', name: 'Maria Gonzalez', email: 'maria@catalystnoco.org', wallet: '0x00000000000000000000000000000000000b0001', did: 'did:demo:cat-001' },
+    { id: 'cat-user-002', name: 'Pastor David Chen', email: 'david@catalystnoco.org', wallet: '0x00000000000000000000000000000000000b0002', did: 'did:demo:cat-002' },
+    { id: 'cat-user-003', name: 'Rosa Martinez', email: 'rosa@comunidad-noco.org', wallet: '0x00000000000000000000000000000000000b0003', did: 'did:demo:cat-003' },
+    { id: 'cat-user-004', name: 'Carlos Herrera', email: 'carlos@comunidad-noco.org', wallet: '0x00000000000000000000000000000000000b0004', did: 'did:demo:cat-004' },
+    { id: 'cat-user-005', name: 'Sarah Thompson', email: 'sarah@catalystnoco.org', wallet: '0x00000000000000000000000000000000000b0005', did: 'did:demo:cat-005' },
+    { id: 'cat-user-006', name: 'Ana Reyes', email: 'ana@wellington-circle.org', wallet: '0x00000000000000000000000000000000000b0006', did: 'did:demo:cat-006' },
+    { id: 'cat-user-007', name: 'Miguel Santos', email: 'miguel@laporte-circle.org', wallet: '0x00000000000000000000000000000000000b0007', did: 'did:demo:cat-007' },
   ]
   for (const u of USERS) upsertUser(u)
 
@@ -287,8 +287,14 @@ async function doSeed() {
     } catch { /* registry not deployed */ }
   }
 
-  // Register catalyst.agent under root
-  const catalystNode = await registerName(agentRoot, 'catalyst', hubCatalyst)
+  // Register catalyst.agent under root. Owner is the DEPLOYER (not the
+  // hub agent) so the onboarding wizard's deployer-signed sub-name calls
+  // (e.g. `joefonda.catalyst.agent`) succeed without needing UserOps from
+  // the hub's smart account. Hub-agent ownership semantics live at the
+  // resolver (ATL_PRIMARY_NAME etc.); the registry owner is purely a
+  // signing key.
+  const deployerOwner = getWalletClient().account!.address as `0x${string}`
+  const catalystNode = await registerName(agentRoot, 'catalyst', deployerOwner)
   console.log('[catalyst-seed] catalyst.agent registered:', catalystNode ? 'yes' : 'no')
 
   if (catalystNode) {

@@ -72,7 +72,7 @@ export async function getHubOnboardingState(hubAddressInput: string): Promise<Hu
   }
 
   const user = await db.select().from(schema.users)
-    .where(eq(schema.users.privyUserId, session.userId)).limit(1).then(r => r[0])
+    .where(eq(schema.users.did, session.userId)).limit(1).then(r => r[0])
 
   if (!user) {
     return baseState('connect', { hub: hubMeta, authenticated: true, via: session.via })

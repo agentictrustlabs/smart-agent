@@ -25,7 +25,7 @@ export async function GET(request: Request) {
     let grantee = searchParams.get('grantee')
     if (!grantee) {
       const users = await db.select().from(schema.users)
-        .where(eq(schema.users.privyUserId, session.userId)).limit(1)
+        .where(eq(schema.users.did, session.userId)).limit(1)
       const user = users[0]
       grantee = user ? await getPersonAgentForUser(user.id) : null
     }

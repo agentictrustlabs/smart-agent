@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import type { WalletAction } from '@smart-agent/privacy-creds'
 import { AnonCreds, evaluateProofPolicy, hashProofRequest } from '@smart-agent/privacy-creds'
-import { gateExistingWalletAction } from '../auth/verify-privy-action.js'
+import { gateExistingWalletAction } from '../auth/verify-wallet-action.js'
 import { checkVerifierSignature } from '../auth/verifier-registry.js'
 import { getCredential, getLinkSecret } from '../storage/askar.js'
 import { loadVerifiedCredDef, loadVerifiedSchema } from '@smart-agent/credential-registry'
@@ -25,7 +25,7 @@ export const proofRoutes = new Hono()
  * }
  *
  * Flow:
- *   1. verify Privy signature + consume nonce
+ *   1. verify wallet signature + consume nonce
  *   2. hash(presentationRequest) must match action.proofRequestHash
  *   3. run proof policy (forbidden attrs, allow-set, predicate rewrite)
  *   4. build schemas/credDefs maps from the registry

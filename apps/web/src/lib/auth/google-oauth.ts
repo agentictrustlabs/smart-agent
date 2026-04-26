@@ -157,7 +157,7 @@ export function deriveSaltFromEmail(email: string, rotation: number = 0): bigint
   return BigInt('0x' + h.digest('hex'))
 }
 
-/** Stable DID for a Google identity (used as users.privyUserId / JWT sub). */
+/** Stable DID for a Google identity (used as users.did / JWT sub). */
 export function googleDid(sub: string): string {
   return `did:google:${sub}`
 }

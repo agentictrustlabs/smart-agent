@@ -60,7 +60,7 @@ export async function proposeRecoveryAction(args: ProposeArgs): Promise<ProposeR
     }
 
     const userRow = await db.select().from(schema.users)
-      .where(eq(schema.users.privyUserId, session.userId)).limit(1).then(r => r[0])
+      .where(eq(schema.users.did, session.userId)).limit(1).then(r => r[0])
     if (!userRow?.smartAccountAddress) return { success: false, error: 'no smart account on user row' }
     const accountAddr = getAddress(userRow.smartAccountAddress as `0x${string}`)
 
@@ -146,7 +146,7 @@ export async function completeRecoveryAction(args: CompleteArgs): Promise<Comple
     }
 
     const userRow = await db.select().from(schema.users)
-      .where(eq(schema.users.privyUserId, session.userId)).limit(1).then(r => r[0])
+      .where(eq(schema.users.did, session.userId)).limit(1).then(r => r[0])
     if (!userRow?.smartAccountAddress) return { success: false, error: 'no smart account on user row' }
     const accountAddr = getAddress(userRow.smartAccountAddress as `0x${string}`)
 
@@ -235,7 +235,7 @@ export async function completeRecoveryAction(args: CompleteArgs): Promise<Comple
     // that actually validate on-chain.
     try {
       const userRow = await db.select().from(schema.users)
-        .where(eq(schema.users.privyUserId, session.userId)).limit(1).then(r => r[0])
+        .where(eq(schema.users.did, session.userId)).limit(1).then(r => r[0])
       if (userRow) {
         const newDigest = keccak256(base64UrlDecode(intent.newCredentialId))
         await db.insert(schema.passkeys).values({

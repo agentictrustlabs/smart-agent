@@ -27,7 +27,7 @@ export function recordDigest(type: 'schema' | 'credDef', id: string, json: strin
   return keccak256(toBytes(payload))
 }
 
-/** Sign with an in-memory issuer account (mock). Production: Privy/HSM. */
+/** Sign with an in-memory issuer account (mock). Production: HSM or managed signer. */
 export async function signRecord(
   account: PrivateKeyAccount,
   type: 'schema' | 'credDef',

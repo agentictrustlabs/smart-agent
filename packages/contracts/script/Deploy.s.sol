@@ -208,6 +208,14 @@ contract Deploy is Script {
         // Initialize .agent root and set default resolver
         nameRegistry.initializeRoot(deployer, address(nameResolver));
 
+        // ─── Seed ontology predicates ─────────────────────────────────
+        // AgentAccountResolver rejects any setStringProperty / addMulti…
+        // call whose predicate isn't registered + active here. The full
+        // catalog has to be registered as part of deploy so resolver
+        // writes work from block 1. Mirrors the predicates in
+        // packages/sdk/src/predicates.ts.
+        _seedOntology(ontologyRegistry);
+
         vm.stopBroadcast();
 
         // Print env vars for copy-paste into apps/web/.env
@@ -251,5 +259,54 @@ contract Deploy is Script {
 
     function _logEnv(string memory key, address addr) internal pure {
         console.log(string.concat(key, "=", vm.toString(addr)));
+    }
+
+    function _seedOntology(OntologyTermRegistry ont) internal {
+        _term(ont, "atl:displayName",        "string");
+        _term(ont, "atl:description",        "string");
+        _term(ont, "atl:isActive",           "bool");
+        _term(ont, "atl:version",            "string");
+        _term(ont, "atl:agentType",          "string");
+        _term(ont, "atl:aiAgentClass",       "string");
+        _term(ont, "atl:hasA2AEndpoint",     "string");
+        _term(ont, "atl:hasMCPServer",       "string");
+        _term(ont, "atl:hasServiceEndpoint", "string");
+        _term(ont, "atl:supportedTrustModel","string[]");
+        _term(ont, "atl:hasCapability",      "string[]");
+        _term(ont, "atl:hasController",      "address[]");
+        _term(ont, "atl:operatedBy",         "address");
+        _term(ont, "atl:metadataURI",        "string");
+        _term(ont, "atl:metadataHash",       "bytes32");
+        _term(ont, "atl:schemaURI",          "string");
+        _term(ont, "atl:latitude",           "string");
+        _term(ont, "atl:longitude",          "string");
+        _term(ont, "atl:spatialCRS",         "string");
+        _term(ont, "atl:spatialType",        "string");
+        _term(ont, "atl:hubNavConfig",       "string");
+        _term(ont, "atl:hubNetworkLabel",    "string");
+        _term(ont, "atl:hubContextTerm",     "string");
+        _term(ont, "atl:hubOverviewLabel",   "string");
+        _term(ont, "atl:hubAgentLabel",      "string");
+        _term(ont, "atl:hubFeatures",        "string");
+        _term(ont, "atl:hubTheme",           "string");
+        _term(ont, "atl:hubViewModes",       "string");
+        _term(ont, "atl:hubGreeting",        "string");
+        _term(ont, "atl:hubVocabulary",      "string");
+        _term(ont, "atl:hubRoleVocabulary",  "string");
+        _term(ont, "atl:hubTypeVocabulary",  "string");
+        _term(ont, "atl:genMapData",         "string");
+        _term(ont, "atl:activityLog",        "string");
+        _term(ont, "atl:trackedMembers",     "string");
+        _term(ont, "atl:templateId",         "string");
+        _term(ont, "atl:primaryName",        "string");
+        _term(ont, "atl:nameLabel",          "string");
+        _term(ont, "atl:entryPoint",         "address");
+        _term(ont, "atl:implementation",     "address");
+        _term(ont, "atl:delegationManager",  "address");
+    }
+
+    function _term(OntologyTermRegistry ont, string memory curie, string memory dtype) internal {
+        bytes32 id = keccak256(bytes(curie));
+        ont.registerTerm(id, curie, string.concat("https://agentictrust.io/ontology/core#", curie), curie, dtype);
     }
 }

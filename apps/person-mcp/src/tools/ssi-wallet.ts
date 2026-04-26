@@ -3,7 +3,7 @@
  *
  * Pattern (per architecture plan §2.5):
  *   1. UI asks person-mcp for an unsigned WalletAction (purpose + allowlist).
- *   2. UI asks Privy to sign it (EIP-712).
+ *   2. UI asks the wallet to sign it (EIP-712).
  *   3. UI hands the signed action back to person-mcp, which:
  *        a. re-verifies the signature locally (defense in depth),
  *        b. forwards to ssi-wallet-mcp,
@@ -17,7 +17,7 @@ import { randomBytes, randomUUID } from 'node:crypto'
 import { and, eq } from 'drizzle-orm'
 import { createPublicClient, http } from 'viem'
 import {
-  verifyPrivyAction,
+  verifyWalletAction,
   hashProofRequest,
   type WalletAction,
   type WalletActionType,
@@ -79,7 +79,7 @@ interface CreateWalletActionArgs {
 
 const createWalletAction = {
   name: 'ssi_create_wallet_action',
-  description: 'Build an unsigned WalletAction envelope for the UI to hand to Privy for EIP-712 signing.',
+  description: 'Build an unsigned WalletAction envelope for the UI to hand to a wallet for EIP-712 signing.',
   inputSchema: {
     type: 'object' as const,
     properties: {
@@ -159,7 +159,7 @@ const provisionWallet = {
   handler: async (args: ProvisionArgs) => {
     const action: WalletAction = { ...args.action, expiresAt: BigInt(args.action.expiresAt) }
     // Defence in depth: re-verify here, not just downstream.
-    const verify = await verifyPrivyAction({
+    const verify = await verifyWalletAction({
       action, signature: args.signature,
       expectedSigner: args.expectedSigner,
       chainId: CHAIN_ID, verifyingContract: VERIFIER,
@@ -186,7 +186,7 @@ const provisionWallet = {
         id: `pm_${randomUUID()}`,
         principal: action.personPrincipal,
         walletContext: action.walletContext,
-        privyEoa: args.expectedSigner.toLowerCase(),
+        signerEoa: args.expectedSigner.toLowerCase(),
         holderWalletRef: res.holderWalletId,
         linkSecretRef: res.linkSecretId,
         status: 'active',
@@ -312,7 +312,7 @@ const createPresentation = {
   handler: async (args: CreatePresentationArgs) => {
     const action: WalletAction = { ...args.action, expiresAt: BigInt(args.action.expiresAt) }
     // Local re-verify
-    const verify = await verifyPrivyAction({
+    const verify = await verifyWalletAction({
       action, signature: args.signature,
       expectedSigner: args.expectedSigner,
       chainId: CHAIN_ID, verifyingContract: VERIFIER,

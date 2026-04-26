@@ -1,6 +1,6 @@
 import { createHmac } from 'crypto'
 
-const COOKIE_SECRET = process.env.COOKIE_SIGNING_SECRET ?? process.env.PRIVY_APP_SECRET ?? 'dev-cookie-secret'
+const COOKIE_SECRET = process.env.COOKIE_SIGNING_SECRET ?? 'dev-cookie-secret'
 
 /** Sign a cookie value: returns "value.signature" */
 export function signCookie(value: string): string {

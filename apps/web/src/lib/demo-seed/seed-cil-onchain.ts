@@ -82,10 +82,10 @@ async function setGenMapData(addr: `0x${string}`, data: string) {
   } catch (_e) { console.warn(`[cil-seed] GenMap data failed for ${addr}:`, _e) }
 }
 
-function upsertUser(u: { id: string; name: string; email: string; wallet: string; privy: string }) {
+function upsertUser(u: { id: string; name: string; email: string; wallet: string; did: string }) {
   const existing = db.select().from(schema.users).where(eq(schema.users.id, u.id)).get()
   if (!existing) {
-    db.insert(schema.users).values({ id: u.id, email: u.email, name: u.name, walletAddress: u.wallet, privyUserId: u.privy }).run()
+    db.insert(schema.users).values({ id: u.id, email: u.email, name: u.name, walletAddress: u.wallet, did: u.did }).run()
   }
 }
 
@@ -107,13 +107,13 @@ async function doSeed() {
 
   // ─── Users (DB only) ──────────────────────────────────────────────
   const USERS = [
-    { id: 'cil-user-001', name: 'Cameron Henrion', email: 'cameron@ilad.org', wallet: '0x00000000000000000000000000000000000c0001', privy: 'did:privy:cil-001' },
-    { id: 'cil-user-002', name: 'Nick Courchesne', email: 'nick@ilad.org', wallet: '0x00000000000000000000000000000000000c0002', privy: 'did:privy:cil-002' },
-    { id: 'cil-user-003', name: 'Afia Mensah', email: 'afia@market.tg', wallet: '0x00000000000000000000000000000000000c0003', privy: 'did:privy:cil-003' },
-    { id: 'cil-user-004', name: 'Kossi Agbeko', email: 'kossi@repairs.tg', wallet: '0x00000000000000000000000000000000000c0004', privy: 'did:privy:cil-004' },
-    { id: 'cil-user-005', name: 'Yaw', email: 'yaw@ilad-togo.org', wallet: '0x00000000000000000000000000000000000c0005', privy: 'did:privy:cil-005' },
-    { id: 'cil-user-006', name: 'John F. Kim', email: 'john@cil.org', wallet: '0x00000000000000000000000000000000000c0006', privy: 'did:privy:cil-006' },
-    { id: 'cil-user-007', name: 'Paul Martel', email: 'paul@funder.org', wallet: '0x00000000000000000000000000000000000c0007', privy: 'did:privy:cil-007' },
+    { id: 'cil-user-001', name: 'Cameron Henrion', email: 'cameron@ilad.org', wallet: '0x00000000000000000000000000000000000c0001', did: 'did:demo:cil-001' },
+    { id: 'cil-user-002', name: 'Nick Courchesne', email: 'nick@ilad.org', wallet: '0x00000000000000000000000000000000000c0002', did: 'did:demo:cil-002' },
+    { id: 'cil-user-003', name: 'Afia Mensah', email: 'afia@market.tg', wallet: '0x00000000000000000000000000000000000c0003', did: 'did:demo:cil-003' },
+    { id: 'cil-user-004', name: 'Kossi Agbeko', email: 'kossi@repairs.tg', wallet: '0x00000000000000000000000000000000000c0004', did: 'did:demo:cil-004' },
+    { id: 'cil-user-005', name: 'Yaw', email: 'yaw@ilad-togo.org', wallet: '0x00000000000000000000000000000000000c0005', did: 'did:demo:cil-005' },
+    { id: 'cil-user-006', name: 'John F. Kim', email: 'john@cil.org', wallet: '0x00000000000000000000000000000000000c0006', did: 'did:demo:cil-006' },
+    { id: 'cil-user-007', name: 'Paul Martel', email: 'paul@funder.org', wallet: '0x00000000000000000000000000000000000c0007', did: 'did:demo:cil-007' },
   ]
   for (const u of USERS) upsertUser(u)
 
@@ -265,8 +265,11 @@ async function doSeed() {
     // Get root node
     const agentRoot = await pc.readContract({ address: nameRegistryAddr, abi: agentNameRegistryAbi, functionName: 'AGENT_ROOT' }) as `0x${string}`
 
-    // Register mission.agent under root
-    const missionNode = await regName(agentRoot, 'mission', hubMission, 'mission.agent')
+    // Register mission.agent under root. Owner is the DEPLOYER (not the
+    // hub agent) so the onboarding wizard's deployer-signed sub-name
+    // calls succeed without needing UserOps from the hub's smart account.
+    const deployerOwner = wc.account!.address as `0x${string}`
+    const missionNode = await regName(agentRoot, 'mission', deployerOwner, 'mission.agent')
     if (missionNode) {
       await regName(missionNode, 'cil', cil, 'cil.mission.agent')
       await regName(missionNode, 'ilad', ilad, 'ilad.mission.agent')

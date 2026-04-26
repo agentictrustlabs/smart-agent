@@ -1,7 +1,7 @@
 /**
  * On-chain agent registry lookups.
  * All data from AgentAccountResolver + AgentRelationship edges.
- * The only DB table used is `users` (for Privy auth → wallet mapping).
+ * The only DB table used is `users` (for auth → wallet mapping).
  */
 
 import { db, schema } from '@/db'

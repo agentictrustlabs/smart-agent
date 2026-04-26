@@ -83,7 +83,7 @@ export async function GET() {
     if (!session) return NextResponse.json(empty)
 
     const users = await db.select().from(schema.users)
-      .where(eq(schema.users.privyUserId, session.userId)).limit(1)
+      .where(eq(schema.users.did, session.userId)).limit(1)
     if (!users[0]) return NextResponse.json(empty)
 
     // Person agent from on-chain — must be deployed (no fallback)

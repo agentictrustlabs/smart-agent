@@ -73,7 +73,7 @@ export async function getOnboardingStatus(): Promise<OnboardingStatus> {
     return { authenticated: false, profileComplete: false, agentRegistered: false, hasAgentName: false }
   }
   const user = await db.select().from(schema.users)
-    .where(eq(schema.users.privyUserId, session.userId)).limit(1).then(r => r[0])
+    .where(eq(schema.users.did, session.userId)).limit(1).then(r => r[0])
   if (!user) {
     return {
       authenticated: true, via: session.via, walletAddress: session.walletAddress,
@@ -141,7 +141,7 @@ export async function markOnboardingComplete(): Promise<{ success: boolean; erro
     const session = await requireSession()
     await db.update(schema.users)
       .set({ onboardedAt: new Date().toISOString() })
-      .where(eq(schema.users.privyUserId, session.userId))
+      .where(eq(schema.users.did, session.userId))
     // Clear the hub-of-origin cookie so subsequent visits don't replay it.
     try {
       const jar = await cookies()
@@ -171,7 +171,7 @@ export async function startFreshAccount(): Promise<{ success: boolean; error?: s
       return { success: false, error: 'Start-fresh is currently OAuth-only' }
     }
     const user = await db.select().from(schema.users)
-      .where(eq(schema.users.privyUserId, session.userId)).limit(1).then(r => r[0])
+      .where(eq(schema.users.did, session.userId)).limit(1).then(r => r[0])
     if (!user) return { success: false, error: 'user not found' }
     if (!user.email) return { success: false, error: 'user has no email on file' }
 
@@ -228,7 +228,7 @@ export async function ensurePersonAgentRegistered(): Promise<{ success: boolean;
     if (session.via === 'demo') return { success: true } // demo agents are seeded.
 
     const user = await db.select().from(schema.users)
-      .where(eq(schema.users.privyUserId, session.userId)).limit(1).then(r => r[0])
+      .where(eq(schema.users.did, session.userId)).limit(1).then(r => r[0])
     if (!user) return { success: false, error: 'user row missing' }
     if (!user.smartAccountAddress) return { success: false, error: 'no smart account on user row' }
 
@@ -348,7 +348,7 @@ export async function joinHubAsPerson(hubAddress: string): Promise<{ success: bo
   try {
     const session = await requireSession()
     const user = await db.select().from(schema.users)
-      .where(eq(schema.users.privyUserId, session.userId)).limit(1).then(r => r[0])
+      .where(eq(schema.users.did, session.userId)).limit(1).then(r => r[0])
     if (!user?.smartAccountAddress) return { success: false, error: 'no smart account on user row' }
     const personAgent = getAddress(user.smartAccountAddress as `0x${string}`)
 
@@ -401,7 +401,7 @@ export async function registerPersonalAgentName(input: RegisterNameInput): Promi
     if (session.via === 'demo') return { success: false, error: 'demo users have seeded names; not registerable here' }
 
     const user = await db.select().from(schema.users)
-      .where(eq(schema.users.privyUserId, session.userId)).limit(1).then(r => r[0])
+      .where(eq(schema.users.did, session.userId)).limit(1).then(r => r[0])
     if (!user?.smartAccountAddress) return { success: false, error: 'no smart account on user row' }
     const accountAddr = getAddress(user.smartAccountAddress as `0x${string}`)
 

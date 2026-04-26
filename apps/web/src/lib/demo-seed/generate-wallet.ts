@@ -2,7 +2,7 @@
  * Generate a real keypair for a demo user, fund it, deploy an AgentAccount,
  * and deploy + register a person agent in the on-chain resolver.
  *
- * After this, the user is indistinguishable from a Privy-connected user
+ * After this, the user is indistinguishable from a legacy-connected user
  * who completed onboarding — no fallbacks needed anywhere.
  */
 

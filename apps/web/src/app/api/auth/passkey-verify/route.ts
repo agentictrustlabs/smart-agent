@@ -165,7 +165,7 @@ export async function POST(request: Request) {
 
   // Mint session.
   const cookieStore = await cookies()
-  const did = row.privyUserId ?? `did:passkey:${CHAIN_ID}:${accountAddr.toLowerCase()}`
+  const did = row.did ?? `did:passkey:${CHAIN_ID}:${accountAddr.toLowerCase()}`
   const jwt = mintSession({
     sub: did,
     walletAddress: row.walletAddress,

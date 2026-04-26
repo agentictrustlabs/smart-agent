@@ -94,7 +94,7 @@ sqlite.exec(`
     id TEXT PRIMARY KEY,
     principal TEXT NOT NULL,
     wallet_context TEXT NOT NULL,
-    privy_eoa TEXT NOT NULL,
+    signer_eoa TEXT NOT NULL,
     holder_wallet_ref TEXT NOT NULL,       -- ssi-wallet-mcp's holder_wallet id
     link_secret_ref TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'active',

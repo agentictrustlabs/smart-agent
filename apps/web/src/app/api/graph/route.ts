@@ -249,7 +249,7 @@ export async function GET(request: Request) {
       const { getSession } = await import('@/lib/auth/session')
       const session = await getSession()
       if (session) {
-        const currentUser = await db.select().from(schema.users).where(eq(schema.users.privyUserId, session.userId)).limit(1)
+        const currentUser = await db.select().from(schema.users).where(eq(schema.users.did, session.userId)).limit(1)
         if (currentUser[0]) {
           currentUserAddresses.push(currentUser[0].walletAddress.toLowerCase())
           // Find this user's person agent from on-chain registry

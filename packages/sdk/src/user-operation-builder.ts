@@ -18,7 +18,7 @@
  *   4. submits via bundler and waits for receipt
  *
  * The caller owns the signing key — the builder never sees it. This is
- * intentional: it keeps the builder usable with Privy, WalletConnect,
+ * intentional: it keeps the builder usable with WalletConnect,
  * passkey validators, or any other custody model.
  */
 

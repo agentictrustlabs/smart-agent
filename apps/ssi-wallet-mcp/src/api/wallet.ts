@@ -13,7 +13,7 @@ import {
 } from '../storage/wallets.js'
 import { createProfile, putLinkSecret } from '../storage/askar.js'
 import { markCredentialsStaleForLinkSecret } from '../storage/cred-metadata.js'
-import { gateExistingWalletAction, gateProvisionAction } from '../auth/verify-privy-action.js'
+import { gateExistingWalletAction, gateProvisionAction } from '../auth/verify-wallet-action.js'
 
 export const walletRoutes = new Hono()
 
@@ -77,7 +77,7 @@ walletRoutes.post('/wallet/provision', async (c) => {
     id: holderWalletId,
     personPrincipal: body.action.personPrincipal,
     walletContext: context,
-    privyEoa: body.expectedSigner,
+    signerEoa: body.expectedSigner,
     askarProfile,
     linkSecretId,
     status: 'active',

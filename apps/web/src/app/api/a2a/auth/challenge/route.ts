@@ -6,7 +6,7 @@ const A2A_AGENT_URL = process.env.A2A_AGENT_URL ?? 'http://localhost:3100'
 /**
  * POST /api/a2a/auth/challenge
  * Request an EIP-712 challenge from the A2A agent.
- * Requires a Privy session (or demo user).
+ * Requires a auth session (or demo user).
  */
 export async function POST(request: Request) {
   const session = await getSession()

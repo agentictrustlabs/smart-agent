@@ -5,7 +5,7 @@ export interface HolderWalletRow {
   id: string
   personPrincipal: string
   walletContext: string
-  privyEoa: string
+  signerEoa: string
   askarProfile: string
   linkSecretId: string
   status: 'active' | 'rotating' | 'revoked'
@@ -16,7 +16,7 @@ const SELECT_COLS = `
   id,
   person_principal as personPrincipal,
   wallet_context   as walletContext,
-  privy_eoa        as privyEoa,
+  signer_eoa        as signerEoa,
   askar_profile    as askarProfile,
   link_secret_id   as linkSecretId,
   status,
@@ -51,13 +51,13 @@ export function insertHolderWallet(row: Omit<HolderWalletRow, 'createdAt'>): Hol
   const createdAt = new Date().toISOString()
   db.prepare(
     `INSERT INTO holder_wallets
-       (id, person_principal, wallet_context, privy_eoa, askar_profile, link_secret_id, status, created_at)
+       (id, person_principal, wallet_context, signer_eoa, askar_profile, link_secret_id, status, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     row.id,
     row.personPrincipal,
     row.walletContext,
-    row.privyEoa.toLowerCase(),
+    row.signerEoa.toLowerCase(),
     row.askarProfile,
     row.linkSecretId,
     row.status,

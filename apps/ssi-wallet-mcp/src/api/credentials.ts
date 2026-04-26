@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import { randomUUID } from 'node:crypto'
 import type { WalletAction } from '@smart-agent/privacy-creds'
 import { AnonCreds } from '@smart-agent/privacy-creds'
-import { gateExistingWalletAction } from '../auth/verify-privy-action.js'
+import { gateExistingWalletAction } from '../auth/verify-wallet-action.js'
 import {
   getLinkSecret,
   putCredential,

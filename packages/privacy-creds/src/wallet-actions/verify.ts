@@ -2,7 +2,7 @@ import { verifyTypedData, type Client } from 'viem'
 import type { WalletAction } from './types'
 import { WalletActionTypes, walletActionDomain } from './types'
 
-export interface VerifyPrivyActionInput {
+export interface VerifyWalletActionInput {
   action: WalletAction
   signature: `0x${string}`
   /**
@@ -28,14 +28,14 @@ export interface VerifyPrivyActionInput {
   client?: Client
 }
 
-export interface VerifyPrivyActionResult {
+export interface VerifyWalletActionResult {
   ok: boolean
   reason?: string
 }
 
-export async function verifyPrivyAction(
-  input: VerifyPrivyActionInput,
-): Promise<VerifyPrivyActionResult> {
+export async function verifyWalletAction(
+  input: VerifyWalletActionInput,
+): Promise<VerifyWalletActionResult> {
   const now = input.nowSeconds ?? BigInt(Math.floor(Date.now() / 1000))
   const maxAge = input.maxAgeSec ?? 300n
 

@@ -7,8 +7,16 @@ export const users = sqliteTable('users', {
   email: text('email'),
   name: text('name').notNull(),
   walletAddress: text('wallet_address').notNull().unique(),
-  privyUserId: text('privy_user_id').unique(),
-  /** Private key for demo users (hex, 0x-prefixed). Null for Privy users. */
+  /**
+   * Subject DID — identifies the user across auth flows. Format depends on
+   * how they signed in:
+   *   - Google OAuth → did:google:{sub}
+   *   - Passkey signup → did:passkey:{chainId}:{accountAddr}
+   *   - SIWE → did:ethr:{chainId}:{eoaAddr}
+   *   - Demo seed → did:demo:{key}
+   */
+  did: text('did').unique(),
+  /** Private key for demo users (hex, 0x-prefixed). Null for everyone else. */
   privateKey: text('private_key'),
   /** Smart account address deployed for this user. Null until deployed. */
   smartAccountAddress: text('smart_account_address'),
@@ -33,7 +41,7 @@ export const users = sqliteTable('users', {
 
 // ═══════════════════════════════════════════════════════════════════════
 // All agent identity, relationships, and metadata are ON-CHAIN.
-// The only DB table for agents is `users` (Privy auth → wallet mapping).
+// The only DB table for agents is `users` (auth DID → wallet mapping).
 // Agent lookup: resolver (name/type) + edges (relationships) + ATL_CONTROLLER (wallet→agent).
 // ─── Passkeys ────────────────────────────────────────────────────────
 //

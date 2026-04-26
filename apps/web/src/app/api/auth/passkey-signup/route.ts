@@ -151,7 +151,7 @@ export async function POST(request: Request) {
   }
 
   // 3. Insert user row. id = the credentialIdDigest (lowercased) so we can
-  //    look up by it on sign-in. privyUserId = `did:passkey:<accountAddr>`.
+  //    look up by it on sign-in. did = `did:passkey:<accountAddr>`.
   const accountAddrLower = accountAddr.toLowerCase() as `0x${string}`
   const did = `did:passkey:${CHAIN_ID}:${accountAddrLower}`
   await db.insert(schema.users).values({
@@ -159,7 +159,7 @@ export async function POST(request: Request) {
     email: null,
     name: body.name,
     walletAddress: accountAddrLower,
-    privyUserId: did,
+    did: did,
     privateKey: null,
     smartAccountAddress: accountAddrLower,
     personAgentAddress: null,

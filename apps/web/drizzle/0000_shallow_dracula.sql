@@ -102,9 +102,9 @@ CREATE TABLE `users` (
 	`email` text,
 	`name` text NOT NULL,
 	`wallet_address` text NOT NULL,
-	`privy_user_id` text,
+	`did` text,
 	`created_at` text NOT NULL
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `users_wallet_address_unique` ON `users` (`wallet_address`);--> statement-breakpoint
-CREATE UNIQUE INDEX `users_privy_user_id_unique` ON `users` (`privy_user_id`);
+CREATE UNIQUE INDEX `users_did_unique` ON `users` (`did`);

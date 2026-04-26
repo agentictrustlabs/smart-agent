@@ -37,7 +37,7 @@ export async function POST(request: Request) {
         email: meta.email,
         name: meta.name,
         walletAddress: wallet.address,
-        privyUserId: meta.userId,
+        did: meta.userId,
         privateKey: wallet.privateKey,
         smartAccountAddress: wallet.smartAccountAddress,
         personAgentAddress: wallet.personAgentAddress,
@@ -48,7 +48,7 @@ export async function POST(request: Request) {
         email: meta.email,
         name: meta.name,
         walletAddress: wallet.address,
-        privyUserId: meta.userId,
+        did: meta.userId,
         privateKey: wallet.privateKey,
         smartAccountAddress: wallet.smartAccountAddress,
         personAgentAddress: wallet.personAgentAddress,
@@ -69,8 +69,8 @@ export async function POST(request: Request) {
   // anything still keyed off the old name during the transition).
   const cookieStore = await cookies()
   const jwt = mintSession({
-    // `sub` must match what `getCurrentUser` looks up by — i.e. `users.privyUserId`.
-    // Demo users have privyUserId = `did:privy:<key>` (e.g. `did:privy:cat-001`).
+    // `sub` must match what `getCurrentUser` looks up by — i.e. `users.did`.
+    // Demo users have did = `did:demo:<key>` (e.g. `did:demo:cat-001`).
     sub: meta.userId,
     walletAddress: user.walletAddress,
     smartAccountAddress: user.smartAccountAddress ?? null,

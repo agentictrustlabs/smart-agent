@@ -6,7 +6,7 @@ const A2A_AGENT_URL = process.env.A2A_AGENT_URL ?? 'http://localhost:3100'
 /**
  * GET /api/a2a/profile
  * Get the authenticated user's profile from person-mcp via delegation chain.
- * Flow: Web (Privy session) → A2A agent (mint delegation token) → Person MCP (get_profile)
+ * Flow: Web (auth session) → A2A agent (mint delegation token) → Person MCP (get_profile)
  */
 export async function GET(request: Request) {
   const session = await getSession()

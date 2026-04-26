@@ -14,7 +14,7 @@ export async function GET() {
   const users = await db
     .select()
     .from(schema.users)
-    .where(eq(schema.users.privyUserId, session.userId))
+    .where(eq(schema.users.did, session.userId))
     .limit(1)
 
   const user = users[0]
@@ -84,7 +84,7 @@ export async function PUT(request: Request) {
   await db
     .update(schema.users)
     .set(updates)
-    .where(eq(schema.users.privyUserId, session.userId))
+    .where(eq(schema.users.did, session.userId))
 
   // Person-agent provisioning happens later — the setup wizard's `person-agent`
   // step (or any other deploy site that needs it) will create it on first use.

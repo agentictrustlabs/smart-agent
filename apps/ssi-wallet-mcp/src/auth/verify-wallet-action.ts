@@ -1,4 +1,4 @@
-import { verifyPrivyAction, type WalletAction } from '@smart-agent/privacy-creds'
+import { verifyWalletAction, type WalletAction } from '@smart-agent/privacy-creds'
 import { createPublicClient, http } from 'viem'
 import { consumeNonce } from '../storage/nonces.js'
 import { getHolderWalletById, normalizeWalletContext } from '../storage/wallets.js'
@@ -40,7 +40,7 @@ export type GateResult = GateSuccess | GateFailure
  *   1. The holder wallet must exist (for Provision, the caller deals with that
  *      case separately — this gate is only for actions that reference an
  *      existing wallet).
- *   2. The Privy signature must verify against the stored EOA.
+ *   2. The wallet signature must verify against the stored EOA.
  *   3. The nonce must be unused. Consume it atomically.
  *
  * NB: For `ProvisionHolderWallet` the wallet does not yet exist; callers of
@@ -66,10 +66,10 @@ export async function gateExistingWalletAction(input: GateInput): Promise<GateRe
     return { ok: false, status: 400, reason: 'walletContext mismatch' }
   }
 
-  const verify = await verifyPrivyAction({
+  const verify = await verifyWalletAction({
     action,
     signature,
-    expectedSigner: hw.privyEoa as `0x${string}`,
+    expectedSigner: hw.signerEoa as `0x${string}`,
     chainId: config.chainId,
     verifyingContract: config.verifyingContract,
     client: getPublicClient(),
@@ -87,7 +87,7 @@ export async function gateExistingWalletAction(input: GateInput): Promise<GateRe
 
 /**
  * Gate for ProvisionHolderWallet actions. The holder wallet doesn't yet exist
- * so `expectedSigner` must be supplied by the caller (= the Privy EOA they
+ * so `expectedSigner` must be supplied by the caller (= the signing EOA they
  * claim to own). Caller is responsible for persisting the resulting wallet.
  */
 export async function gateProvisionAction(
@@ -98,7 +98,7 @@ export async function gateProvisionAction(
   if (action.type !== 'ProvisionHolderWallet') {
     return { ok: false, status: 400, reason: `unexpected action type: ${action.type}` }
   }
-  const verify = await verifyPrivyAction({
+  const verify = await verifyWalletAction({
     action,
     signature,
     expectedSigner,

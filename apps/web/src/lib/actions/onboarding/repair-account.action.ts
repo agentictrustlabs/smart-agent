@@ -120,7 +120,7 @@ export async function prepareReAuthBootstrapAction(): Promise<PrepareReAuthResul
 
     const session = await requireSession()
     const user = await db.select().from(schema.users)
-      .where(eq(schema.users.privyUserId, session.userId)).limit(1).then(r => r[0])
+      .where(eq(schema.users.did, session.userId)).limit(1).then(r => r[0])
     if (!user?.smartAccountAddress) return { success: false, error: 'no smart account on user row' }
 
     const accountAddr = getAddress(user.smartAccountAddress as `0x${string}`)
@@ -316,7 +316,7 @@ export async function completeReAuthBootstrapAction(args: CompleteReAuthArgs): P
         const { keccak256 } = await import('viem')
         const session = await requireSession()
         const userRow = await db.select().from(schema.users)
-          .where(eq(schema.users.privyUserId, session.userId)).limit(1).then(r => r[0])
+          .where(eq(schema.users.did, session.userId)).limit(1).then(r => r[0])
         if (userRow) {
           const credIdBytes = base64UrlDecode(args.credentialIdBase64Url)
           const digest = keccak256(credIdBytes)

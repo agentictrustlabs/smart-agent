@@ -7,7 +7,7 @@ export async function GET() {
   const session = await getSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const users = await db.select().from(schema.users).where(eq(schema.users.privyUserId, session.userId)).limit(1)
+  const users = await db.select().from(schema.users).where(eq(schema.users.did, session.userId)).limit(1)
   if (!users[0]) return NextResponse.json({ messages: [], unread: 0 })
 
   const msgs = await db.select().from(schema.messages)

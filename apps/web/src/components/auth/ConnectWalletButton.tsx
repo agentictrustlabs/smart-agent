@@ -3,7 +3,7 @@
 import { useAuth } from '@/hooks/use-auth'
 
 /**
- * Top-bar Connect button. Native auth replaces the Privy modal — clicking
+ * Top-bar Connect button. Native auth replaces the auth modal — clicking
  * scrolls the user to the demo-login picker (and the eventual passkey/SIWE
  * buttons that sit on the same page).
  */

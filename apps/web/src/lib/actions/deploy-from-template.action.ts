@@ -125,7 +125,7 @@ export async function runDeployStep(
 
     // Get user
     const users = await db.select().from(schema.users)
-      .where(eq(schema.users.privyUserId, session.userId)).limit(1)
+      .where(eq(schema.users.did, session.userId)).limit(1)
     tick(`user query done (found=${!!users[0]})`)
     if (!users[0]) return { stepId, success: false, error: 'User not found' }
     const user = users[0]

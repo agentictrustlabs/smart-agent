@@ -7,24 +7,23 @@ export interface CurrentUser {
   email: string | null
   name: string
   walletAddress: string
-  privyUserId: string | null
+  did: string | null
 }
 
 /**
  * Get the current authenticated user from DB.
- * Works identically for Privy users and demo users — both have real
- * DB records with privyUserId set (demo users set it to their did:privy:* value).
- * No SKIP_AUTH branches.
+ * Works identically across all auth methods — every user row carries a
+ * `did` (did:google:*, did:passkey:*, did:ethr:*, or did:demo:*).
  */
 export async function getCurrentUser(): Promise<CurrentUser | null> {
   const session = await getSession()
   if (!session) return null
 
-  // Look up by privyUserId (works for both Privy and demo users)
+  // Look up by did (works for OAuth/passkey/SIWE/demo users uniformly).
   const users = await db
     .select()
     .from(schema.users)
-    .where(eq(schema.users.privyUserId, session.userId))
+    .where(eq(schema.users.did, session.userId))
     .limit(1)
 
   return users[0] ?? null

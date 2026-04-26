@@ -11,15 +11,15 @@ import { verifyCookie } from '@/lib/cookie-signing'
  *
  * Returns the authenticated user, if any. Used by the client `useAuth` hook.
  * Reads the native JWT cookie first, falls back to the legacy demo cookie so
- * sessions issued before the Privy → native migration keep working.
+ * sessions issued before the legacy → native migration keep working.
  */
 export async function GET() {
   const cookieStore = await cookies()
   const jwt = cookieStore.get(SESSION_COOKIE)?.value
   const claims = readSession(jwt)
   if (claims) {
-    // Hydrate from DB. JWT `sub` matches `users.privyUserId` (set at mint time).
-    const row = await db.select().from(schema.users).where(eq(schema.users.privyUserId, claims.sub)).limit(1).then(r => r[0])
+    // Hydrate from DB. JWT `sub` matches `users.did` (set at mint time).
+    const row = await db.select().from(schema.users).where(eq(schema.users.did, claims.sub)).limit(1).then(r => r[0])
     return NextResponse.json({
       user: {
         id: row?.id ?? claims.sub,

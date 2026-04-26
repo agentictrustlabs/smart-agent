@@ -21,7 +21,6 @@ function getSecret(): string {
   const s =
     process.env.SESSION_JWT_SECRET ??
     process.env.COOKIE_SIGNING_SECRET ??
-    process.env.PRIVY_APP_SECRET ??
     'dev-only-secret-rotate-in-prod'
   if (s === 'dev-only-secret-rotate-in-prod' && process.env.NODE_ENV === 'production') {
     throw new Error('SESSION_JWT_SECRET must be configured in production')
@@ -30,7 +29,7 @@ function getSecret(): string {
 }
 
 export interface JwtClaims {
-  /** Subject — our internal user id (e.g. "did:privy:cat-001" or "0x<smartAccountAddr>"). */
+  /** Subject — our internal user id (e.g. "did:demo:cat-001" or "0x<smartAccountAddr>"). */
   sub: string
   /** Issued at (unix seconds). */
   iat: number

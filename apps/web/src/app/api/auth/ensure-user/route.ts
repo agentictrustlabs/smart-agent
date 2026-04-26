@@ -16,11 +16,11 @@ export async function POST(request: Request) {
     name: string
   }
 
-  // Check if user exists by privy ID
+  // Check if user exists by DID
   const existing = await db
     .select()
     .from(schema.users)
-    .where(eq(schema.users.privyUserId, session.userId))
+    .where(eq(schema.users.did, session.userId))
     .limit(1)
 
   if (existing[0]) {
@@ -37,7 +37,7 @@ export async function POST(request: Request) {
   if (byWallet[0]) {
     await db
       .update(schema.users)
-      .set({ privyUserId: session.userId })
+      .set({ did: session.userId })
       .where(eq(schema.users.id, byWallet[0].id))
     return NextResponse.json({ userId: byWallet[0].id, isNewUser: false })
   }
@@ -49,7 +49,7 @@ export async function POST(request: Request) {
     email,
     name: name || 'Agent User',
     walletAddress,
-    privyUserId: session.userId,
+    did: session.userId,
   })
 
   return NextResponse.json({ userId, isNewUser: true })

@@ -16,3 +16,4 @@ Smart Agent is an **Agent Smart Account Kit** — an ERC-4337 smart account fram
 | [Agent Control](./agent-control.md) | EOA → Agent governance, multi-sig, permissions |
 | [Relationship Protocol](./relationship-protocol.md) | Agent-to-agent relationships, roles, delegation |
 | [Authentication & Onboarding](./auth-and-onboarding.md) | Google / Passkey / MetaMask login, smart-account deployment, name registration, onboarding wizard |
+| [AnonCreds, ssi-wallet-mcp & person-mcp](./anoncreds-ssi-flow.md) | Three-process SSI architecture, WalletAction envelope, issuance / presentation / rotation sequence diagrams |

@@ -81,7 +81,7 @@ export async function GET(request: Request) {
   // bumped rotation that maps to a different smart-account address.
   const did = googleDid(claims.sub)
   const existing = await db.select().from(schema.users)
-    .where(eq(schema.users.privyUserId, did)).limit(1).then(r => r[0])
+    .where(eq(schema.users.did, did)).limit(1).then(r => r[0])
   const rotation = existing?.accountSaltRotation ?? 0
 
   // Derive the smart-account address deterministically from the verified
@@ -113,7 +113,7 @@ export async function GET(request: Request) {
       email: claims.email,
       name: claims.name ?? claims.email.split('@')[0] ?? 'Google User',
       walletAddress: getAddress(smartAcct).toLowerCase() as `0x${string}`,
-      privyUserId: did,
+      did: did,
       privateKey: null,
       smartAccountAddress: getAddress(smartAcct).toLowerCase() as `0x${string}`,
       personAgentAddress: null,

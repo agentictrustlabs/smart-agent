@@ -99,7 +99,7 @@ export async function POST(request: Request) {
     const id = eoaLower  // simple, stable, unique
     const name = `Wallet ${eoaLower.slice(0, 6)}…${eoaLower.slice(-4)}`
     await db.insert(schema.users).values({
-      id, email: null, name, walletAddress: eoaLower, privyUserId: did,
+      id, email: null, name, walletAddress: eoaLower, did: did,
       privateKey: null, smartAccountAddress: smartAcct.toLowerCase() as `0x${string}`,
       personAgentAddress: null,
     })
@@ -109,7 +109,7 @@ export async function POST(request: Request) {
   if (!row) return NextResponse.json({ error: 'user lookup failed after upsert' }, { status: 500 })
 
   const cookieStore = await cookies()
-  const did = row.privyUserId ?? `did:ethr:${CHAIN_ID}:${eoaLower}`
+  const did = row.did ?? `did:ethr:${CHAIN_ID}:${eoaLower}`
   const jwt = mintSession({
     sub: did,
     walletAddress: row.walletAddress,

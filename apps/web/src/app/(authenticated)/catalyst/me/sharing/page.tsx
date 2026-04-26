@@ -9,7 +9,7 @@ export default async function SharingPage() {
   if (!session) return <div style={{ padding: '2rem' }}>Not authenticated</div>
 
   const users = await db.select().from(schema.users)
-    .where(eq(schema.users.privyUserId, session.userId)).limit(1)
+    .where(eq(schema.users.did, session.userId)).limit(1)
   const user = users[0]
   if (!user) return <div style={{ padding: '2rem' }}>User not found</div>
 

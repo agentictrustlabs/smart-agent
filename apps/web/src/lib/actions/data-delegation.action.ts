@@ -132,7 +132,7 @@ export async function createDataDelegation(
 
   // Look up current user's person agent and private key
   const users = await db.select().from(schema.users)
-    .where(eq(schema.users.privyUserId, session.userId)).limit(1)
+    .where(eq(schema.users.did, session.userId)).limit(1)
   const user = users[0]
   if (!user?.privateKey) return { success: false, error: 'No private key (demo users only for now)' }
 
@@ -399,7 +399,7 @@ export async function loadDelegatedProfile(
 
   // Resolve the current user's person agent address (used as grantee in delegations)
   const users = await db.select().from(schema.users)
-    .where(eq(schema.users.privyUserId, session.userId)).limit(1)
+    .where(eq(schema.users.did, session.userId)).limit(1)
   const user = users[0]
   const myPersonAgent = user ? await getPersonAgentForUser(user.id) : null
 

@@ -56,7 +56,7 @@ export async function getJoinableOrgsForHub(hubAddressInput: string): Promise<Jo
   let personAgent: `0x${string}` | null = null
   if (session) {
     const user = await db.select().from(schema.users)
-      .where(eq(schema.users.privyUserId, session.userId)).limit(1).then(r => r[0])
+      .where(eq(schema.users.did, session.userId)).limit(1).then(r => r[0])
     if (user) personAgent = await getPersonAgentForUser(user.id) as `0x${string}` | null
   }
 
@@ -115,7 +115,7 @@ export async function joinOrgAsPerson(orgAddressInput: string): Promise<{ succes
   try {
     const session = await requireSession()
     const user = await db.select().from(schema.users)
-      .where(eq(schema.users.privyUserId, session.userId)).limit(1).then(r => r[0])
+      .where(eq(schema.users.did, session.userId)).limit(1).then(r => r[0])
     if (!user?.smartAccountAddress) return { success: false, error: 'no smart account on user row' }
     const personAgent = getAddress(user.smartAccountAddress as `0x${string}`)
     const org = getAddress(orgAddressInput as `0x${string}`)
@@ -154,7 +154,7 @@ export async function createOrgInHub(input: {
   try {
     const session = await requireSession()
     const user = await db.select().from(schema.users)
-      .where(eq(schema.users.privyUserId, session.userId)).limit(1).then(r => r[0])
+      .where(eq(schema.users.did, session.userId)).limit(1).then(r => r[0])
     if (!user?.smartAccountAddress) return { success: false, error: 'no smart account on user row' }
     if (!input.name.trim()) return { success: false, error: 'org name is required' }
     if (!input.templateId) return { success: false, error: 'org template is required' }

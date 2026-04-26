@@ -18,7 +18,7 @@ import { Hono } from 'hono'
 import { randomUUID } from 'node:crypto'
 import type { WalletAction } from '@smart-agent/privacy-creds'
 import { AnonCreds, evaluateProofPolicy, hashProofRequest, pairwiseHandle } from '@smart-agent/privacy-creds'
-import { gateExistingWalletAction } from '../auth/verify-privy-action.js'
+import { gateExistingWalletAction } from '../auth/verify-wallet-action.js'
 import { getCredential, getLinkSecret } from '../storage/askar.js'
 import { loadVerifiedCredDef, loadVerifiedSchema } from '@smart-agent/credential-registry'
 import { resolver } from '../registry/resolver.js'
@@ -63,7 +63,7 @@ function attrFromPath(path: string): string | null {
  * Deterministic translation of a DIF-PE presentation_definition → AnonCreds
  * presentation_request. The caller supplies the nonce so the wallet-side
  * result is byte-identical to what they compute locally — this is what lets
- * /oid4vp/preview return a proofRequestHash that the Privy WalletAction can
+ * /oid4vp/preview return a proofRequestHash that the wallet action can
  * pre-commit to.
  *
  * Referent naming is deterministic:
@@ -141,7 +141,7 @@ function buildAnonCredsRequest(def: PresentationDefinition, nonce: string): {
  *
  * Preview endpoint: give me the exact AnonCreds request + hash the wallet
  * will use for this presentation_definition + nonce. Lets callers build the
- * Privy WalletAction with the correct proofRequestHash before calling
+ * wallet action with the correct proofRequestHash before calling
  * /oid4vp/authorize.
  *
  * Body: { presentation_definition, nonce }
