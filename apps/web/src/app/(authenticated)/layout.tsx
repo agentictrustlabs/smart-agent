@@ -1,43 +1,24 @@
 export const dynamic = 'force-dynamic'
 
-import { headers } from 'next/headers'
-import { redirect } from 'next/navigation'
 import { UserContextProvider } from '@/components/user/UserContext'
 import { HubLayout } from '@/components/hub/HubLayout'
 import { ReadinessBanner } from '@/components/ReadinessBanner'
-import { getOnboardingStatus } from '@/lib/actions/onboarding/setup-agent.action'
 
 /**
- * Onboarding guard — every connected non-demo user must have:
- *   - a real display name (not the 'Agent User' placeholder)
- *   - their smart account in AgentAccountResolver
- *   - a .agent primary name
+ * The onboarding redirect used to live here as a server-side guard, but it
+ * caused recurring self-redirect loops: certain RSC requests landed without
+ * the `x-pathname` request header (despite middleware injecting it), the
+ * guard couldn't tell it was on /onboarding, and fired a redirect back to
+ * /onboarding — which is harmless on plain navigation but devolves into a
+ * tight loop the moment a downstream effect re-fetches the RSC payload.
  *
- * If any of those is missing, send them through /onboarding. Demo users skip
- * the guard (their accounts are seeded). The guard explicitly opts /onboarding
- * out of the redirect, so the wizard itself is reachable.
+ * The redirect now lives on the page itself: /onboarding sends users to
+ * /dashboard if they're already onboarded. New non-demo users still
+ * arrive at /onboarding via the auth callbacks (Google / passkey-signup
+ * etc.), so we don't lose the gate; we just stop fighting Next about
+ * which request knows its own path.
  */
-async function onboardingGuard() {
-  const pathname = (await headers()).get('x-pathname') ?? ''
-  if (pathname.startsWith('/onboarding')) return
-
-  const status = await getOnboardingStatus()
-  if (!status.authenticated) return // unauth flows handled by middleware
-  if (status.via === 'demo') return // seeded users; nothing to do
-
-  // Once the wizard sets onboarded_at, trust the DB flag. On-chain writes can
-  // legitimately fail for accounts already past Phase 2; the wizard records
-  // attempted-and-acknowledged in the DB so the guard doesn't loop.
-  if (status.onboardedAt) return
-
-  if (!status.profileComplete || !status.agentRegistered || !status.hasAgentName) {
-    redirect('/onboarding')
-  }
-}
-
 export default async function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
-  await onboardingGuard()
-
   return (
     <UserContextProvider>
       <ReadinessBanner />

@@ -5,6 +5,8 @@ import { usePathname } from 'next/navigation'
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { useUserContext } from '@/components/user/UserContext'
 import { HubProvider, useHubContext } from '@/components/hub/HubContext'
+import { CreateOrgDialog } from '@/components/org/CreateOrgDialog'
+import type { HubId } from '@/lib/hub-profiles'
 import { CatalystViewCtx } from '@/components/catalyst/CatalystViewContext'
 import type { ViewMode } from '@/components/catalyst/CatalystViewContext'
 import QuickActivityModal from '@/components/catalyst/QuickActivityModal'
@@ -12,6 +14,14 @@ import { AgentPanel } from '@/components/agent/AgentPanel'
 import { useAuth } from '@/hooks/use-auth'
 
 // No hardcoded tabs — primary navigation comes from the hub profile via HubContext
+
+function hubProfileMatches(hub: { name: string }, hubId: HubId): boolean {
+  const n = hub.name.toLowerCase()
+  if (hubId === 'catalyst') return n.includes('catalyst')
+  if (hubId === 'global-church') return n.includes('global') && n.includes('church')
+  if (hubId === 'cil') return n.includes('mission') || n.includes('collective') || n.includes('cil')
+  return false
+}
 
 // ---------------------------------------------------------------------------
 // Breadcrumb derivation
@@ -59,7 +69,7 @@ const PARENT_INTENT: Record<string, { label: string; href: string }> = {
   '/genmap': { label: 'Build', href: '/groups' },
   '/members': { label: 'Build', href: '/groups' },
   '/activities': { label: 'Activity', href: '/activity' },
-  '/onboarding': { label: 'Home', href: '/catalyst' },
+  '/onboarding': { label: 'Home', href: '/dashboard' },
   '/catalyst/prayer': { label: 'Nurture', href: '/nurture' },
   '/catalyst/grow': { label: 'Nurture', href: '/nurture' },
   '/catalyst/coach': { label: 'Nurture', href: '/nurture' },
@@ -131,7 +141,7 @@ function LogoIcon({ accent }: { accent: string }) {
 // ---------------------------------------------------------------------------
 function HubLayoutInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
-  const { personAgent, orgs, hasRole, loading } = useUserContext()
+  const { personAgent, orgs, hubs, hasRole, loading } = useUserContext()
   const hub = useHubContext()
   const { profile, primaryNav, adminNav, availableViewModes, viewMode, setViewMode, userNav } = hub
   const T = profile.theme
@@ -139,7 +149,14 @@ function HubLayoutInner({ children }: { children: React.ReactNode }) {
 
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [agentPanelOpen, setAgentPanelOpen] = useState(false)
+  const [createOrgOpen, setCreateOrgOpen] = useState(false)
   const userMenuRef = useRef<HTMLDivElement>(null)
+
+  // Pick the active hub's address (used to scope "Create organization"). The
+  // hub the user is currently viewing is the first one in the list whose
+  // identity matches the active profile id; for users in a single hub this
+  // is just hubs[0].
+  const activeHub = hubs.find(h => hubProfileMatches(h, profile.id)) ?? hubs[0] ?? null
 
   const isAdmin = hasRole('owner') || hasRole('admin') || hasRole('ceo')
 
@@ -154,8 +171,15 @@ function HubLayoutInner({ children }: { children: React.ReactNode }) {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
-  const userName = personAgent?.name ?? 'User'
-  const userInitial = userName.charAt(0).toUpperCase()
+  // Prefer the .agent primary name (e.g. "joe.catalyst.agent") for the
+  // upper-right identity surface — that's the canonical handle once a user
+  // has registered one. Fall back to the friendly displayName, then 'User'.
+  const userPrimaryName = personAgent?.primaryName || ''
+  const userName = userPrimaryName || personAgent?.name || 'User'
+  const userSubtitle = userPrimaryName && personAgent?.name && personAgent.name !== userPrimaryName
+    ? personAgent.name
+    : ''
+  const userInitial = (personAgent?.name || userName).charAt(0).toUpperCase()
   const orgName = orgs[0]?.name ?? profile.name
 
   // Role label from view modes or fallback
@@ -192,12 +216,12 @@ function HubLayoutInner({ children }: { children: React.ReactNode }) {
 
   // Hub-specific status bar items
   const statusItems = profile.id === 'cil' ? [
-    { icon: '\uD83D\uDD14', label: '2 agent insights', href: '/catalyst' },
+    { icon: '\uD83D\uDD14', label: '2 agent insights', href: '/h/mission/home' },
     { icon: '\uD83D\uDCB0', label: '1 report pending', href: '/activity' },
     { icon: '\uD83D\uDFE1', label: '1 business at risk', href: '/groups' },
     { icon: '\uD83D\uDCC8', label: '34% recovered', href: '/steward' },
   ] : profile.id === 'catalyst' ? [
-    { icon: '\uD83D\uDD14', label: '3 agent insights', href: '/catalyst' },
+    { icon: '\uD83D\uDD14', label: '3 agent insights', href: '/h/catalyst/home' },
     { icon: '\uD83D\uDE4F', label: '1 prayer due today', href: '/nurture/prayer' },
     { icon: '\uD83D\uDCCA', label: '2 circles need attention', href: '/groups' },
     { icon: '\u2709', label: '1 follow-up pending', href: '/activity' },
@@ -324,12 +348,27 @@ function HubLayoutInner({ children }: { children: React.ReactNode }) {
                     alignItems: 'flex-start',
                     lineHeight: 1.2,
                   }}>
-                    <span style={{
-                      fontWeight: 600,
-                      fontSize: '0.8rem',
-                      color: T.text,
-                    }}>
+                    <span
+                      style={{
+                        fontWeight: 600,
+                        fontSize: '0.8rem',
+                        color: T.text,
+                      }}
+                      title={userSubtitle || undefined}
+                    >
                       {loading ? '...' : userName}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: '0.65rem',
+                        color: T.textMuted,
+                        // Always render the slot — keeps the DOM shape stable
+                        // across the loading→ready transition so React's
+                        // reconciler doesn't reposition siblings.
+                        display: userSubtitle ? 'inline' : 'none',
+                      }}
+                    >
+                      {userSubtitle}
                     </span>
                     {roleLabel && (
                       <span style={{
@@ -440,6 +479,22 @@ function HubLayoutInner({ children }: { children: React.ReactNode }) {
                     >
                       Settings
                     </Link>
+
+                    {activeHub && (
+                      <button
+                        type="button"
+                        onClick={() => { setUserMenuOpen(false); setCreateOrgOpen(true) }}
+                        style={{
+                          display: 'block', width: '100%', textAlign: 'left',
+                          padding: '0.5rem 1rem', fontSize: '0.82rem',
+                          color: T.text, background: 'transparent',
+                          border: 'none', cursor: 'pointer', fontWeight: 500,
+                        }}
+                        data-testid="hub-dropdown-create-org"
+                      >
+                        + Create organization
+                      </button>
+                    )}
 
                     {/* ── Admin tools (moved from center nav) ── */}
                     {visibleAdminItems.length > 0 && (
@@ -696,6 +751,21 @@ function HubLayoutInner({ children }: { children: React.ReactNode }) {
             </span>
           ))}
         </div>
+
+        {createOrgOpen && activeHub && (
+          <CreateOrgDialog
+            hubAddress={activeHub.address}
+            hubName={activeHub.name}
+            hubId={profile.id}
+            onCancel={() => setCreateOrgOpen(false)}
+            onCreated={() => {
+              setCreateOrgOpen(false)
+              // Hard reload so /api/user-context picks up the new org
+              // membership and downstream views (org list, dashboards) refresh.
+              window.location.reload()
+            }}
+          />
+        )}
       </div>
     </CatalystViewCtx.Provider>
   )

@@ -134,7 +134,7 @@ export const HUB_PROFILES: HubProfile[] = [
       secondaryLight: 'rgba(21,101,192,0.08)',
     },
     navItems: [
-      { href: '/catalyst', label: 'Home', section: 'primary', exact: true, activePrefixes: ['/', '/catalyst', '/dashboard'] },
+      { href: '/dashboard', label: 'Home', section: 'primary', exact: true, activePrefixes: ['/', '/dashboard', '/h/'] },
       { href: '/groups', label: 'Organizations', section: 'primary', activePrefixes: ['/groups', '/catalyst/groups', '/agents'] },
       { href: '/steward', label: 'Manage', section: 'primary', activePrefixes: ['/steward', '/treasury', '/reviews', '/network', '/trust'] },
       { href: '/activity', label: 'Activity', section: 'primary', activePrefixes: ['/activity', '/activities'] },
@@ -191,7 +191,7 @@ export const HUB_PROFILES: HubProfile[] = [
     ],
     greetingTemplate: 'Good day, {name}',
     navItems: [
-      { href: '/catalyst', label: 'Home', section: 'primary', exact: true, activePrefixes: ['/', '/catalyst', '/dashboard'] },
+      { href: '/dashboard', label: 'Home', section: 'primary', exact: true, activePrefixes: ['/', '/dashboard', '/h/'] },
       { href: '/agents', label: 'Agents', section: 'primary', activePrefixes: ['/agents'] },
       { href: '/explorer', label: 'Explorer', section: 'primary', activePrefixes: ['/explorer'] },
       { href: '/steward', label: 'Management', section: 'primary', activePrefixes: ['/steward', '/treasury', '/reviews', '/network', '/trust', '/groups', '/activity', '/nurture', '/oikos'] },
@@ -243,7 +243,7 @@ export const HUB_PROFILES: HubProfile[] = [
     ],
     greetingTemplate: 'Good day, {name}',
     navItems: [
-      { href: '/catalyst', label: 'Home', section: 'primary', exact: true, activePrefixes: ['/', '/catalyst', '/dashboard'] },
+      { href: '/h/catalyst/home', label: 'Home', section: 'primary', exact: true, activePrefixes: ['/', '/dashboard', '/h/catalyst/home'] },
       { href: '/nurture', label: 'Nurture', section: 'primary', activePrefixes: ['/nurture', '/catalyst/prayer', '/catalyst/grow', '/catalyst/coach'] },
       { href: '/oikos', label: 'Oikos', section: 'primary', activePrefixes: ['/oikos', '/circles', '/catalyst/circles'] },
       { href: '/groups', label: 'Build', section: 'primary', activePrefixes: ['/groups', '/catalyst/groups', '/catalyst/members', '/catalyst/map'] },
@@ -299,7 +299,7 @@ export const HUB_PROFILES: HubProfile[] = [
     greetingTemplate: 'Welcome, {name}',
     viewModes: [],
     navItems: [
-      { href: '/catalyst', label: 'Command Center', section: 'primary', exact: true, activePrefixes: ['/', '/catalyst', '/dashboard'] },
+      { href: '/h/mission/home', label: 'Command Center', section: 'primary', exact: true, activePrefixes: ['/', '/dashboard', '/h/mission/home'] },
       { href: '/groups', label: 'Portfolio', section: 'primary', activePrefixes: ['/groups', '/catalyst/groups', '/catalyst/members'] },
       { href: '/activity', label: 'Revenue', section: 'primary', activePrefixes: ['/activity', '/catalyst/activities', '/activities'] },
       { href: '/steward', label: 'Governance', section: 'primary', activePrefixes: ['/steward', '/treasury', '/reviews', '/network', '/trust'] },

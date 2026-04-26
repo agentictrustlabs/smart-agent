@@ -84,7 +84,7 @@ export function DeployOrgAgentClient() {
             <Button onClick={() => router.push(`/agents/${result.smartAccountAddress}`)}>
               Invite Co-Owners
             </Button>
-            <Button variant="outlined" onClick={() => router.push('/catalyst')}>
+            <Button variant="outlined" onClick={() => router.push('/dashboard')}>
               Dashboard
             </Button>
           </div>

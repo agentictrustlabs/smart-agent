@@ -9,7 +9,8 @@ import { useEffect, useRef, useState } from 'react'
  * Set this in sessionStorage right BEFORE you initiate a fresh login (passkey,
  * SIWE, or any future method). AuthGate watches for it: when authenticated +
  * the flag is present, it runs the post-login bootstrap (ensure-user → profile
- * check → A2A bootstrap) and routes to /catalyst. Without the flag, an already-
+ * check → A2A bootstrap) and routes to /dashboard (which forwards to the
+ * user's hub-specific home). Without the flag, an already-
  * authenticated user just keeps browsing — no setup re-runs.
  */
 export const FRESH_LOGIN_INTENT_KEY = 'smart-agent:fresh-login-intent'
@@ -86,9 +87,9 @@ export function AuthGate() {
         // it requires an EOA private key on the user row, which neither auth
         // method stores. Phase 4 (passkey-signed wallet actions) will fill
         // this gap with ERC-1271 signing; for now, just skip a2a-session
-        // bootstrap entirely and let the user onto /catalyst.
+        // bootstrap entirely and let the user onto /dashboard.
         if (user!.via === 'passkey' || user!.via === 'google') {
-          finish('/catalyst')
+          finish('/dashboard')
           return
         }
 
@@ -96,23 +97,25 @@ export function AuthGate() {
         const serverRes = await fetch('/api/a2a/bootstrap', { method: 'POST' })
         const serverData = await serverRes.json()
         if (serverData.success) {
-          finish('/catalyst')
+          finish('/dashboard')
           return
         }
 
         setPhase('bootstrapping-agent')
         const token = await a2a.bootstrap((p) => setPhase(p as SetupPhase))
         if (token) {
-          finish('/catalyst')
+          finish('/dashboard')
           return
         }
 
         if (a2a.error) console.warn('[AuthGate] A2A bootstrap failed:', a2a.error)
-        finish('/catalyst')
+        finish('/dashboard')
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Setup failed')
-        setTimeout(() => finish('/catalyst'), 2000)
+        setTimeout(() => finish('/dashboard'), 2000)
       }
+      // The /dashboard route resolves the user's actual hub home and
+      // forwards them there — no client-side hub knowledge required.
     }
 
     void setup()

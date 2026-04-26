@@ -11,12 +11,14 @@ import {
   STATE_COOKIE,
   NONCE_COOKIE,
   INTENT_COOKIE,
+  RETURN_TO_COOKIE,
 } from '@/lib/auth/google-oauth'
 import { mintSession, SESSION_COOKIE } from '@/lib/auth/native-session'
 import { db, schema } from '@/db'
 import { eq } from 'drizzle-orm'
 import { deploySmartAccount, getSmartAccountAddress, getPublicClient } from '@/lib/contracts'
 import { agentAccountAbi, agentAccountResolverAbi, ATL_PRIMARY_NAME } from '@smart-agent/sdk'
+import { resolveUserHomePath } from '@/lib/post-login-redirect'
 
 /**
  * GET /api/auth/google-callback?code=…&state=…
@@ -29,8 +31,8 @@ import { agentAccountAbi, agentAccountResolverAbi, ATL_PRIMARY_NAME } from '@sma
  * 5. Deploy the account if needed (server EOA = initial owner via factory's
  *    serverSigner mode).
  * 6. Upsert a row in `users`, mint our native session JWT, set the cookie.
- * 7. Redirect to /catalyst (or to the post-Google enrolment landing page if
- *    the account has no passkeys yet — handled in Phase 2).
+ * 7. Redirect to the user's resolved home (their hub-specific URL via
+ *    /h/{slug}/home, or /dashboard if no hub yet).
  */
 export async function GET(request: Request) {
   const url = new URL(request.url)
@@ -141,7 +143,7 @@ export async function GET(request: Request) {
   //      enroll removes the server (Phase 2), after which any deployer-signed
   //      resolver write reverts with NotAgentOwner.
   //   3. No passkey on the account → /passkey-enroll.
-  //   4. Otherwise → /catalyst.
+  //   4. Otherwise → user's resolved hub home (or /dashboard if no hub).
   const intent = jar.get(INTENT_COOKIE)?.value
   let passkeyCount = 0n
   try {
@@ -172,15 +174,23 @@ export async function GET(request: Request) {
     }
   } catch { /* assume incomplete on error */ }
 
+  // Honor return_to (set by google-start when the caller passed
+  // ?return_to=/h/{slug}). For hub-context onboarding we always want the
+  // user back on /h/{slug}, where the state machine resumes seamlessly.
+  // Recovery and missing-passkey flows still take precedence — those are
+  // server-driven security paths the user must complete.
+  const returnTo = jar.get(RETURN_TO_COOKIE)?.value ?? ''
   let nextPath: string
   if (intent === 'recover') {
     nextPath = '/recover-device'
-  } else if (!onboardingComplete) {
-    nextPath = '/onboarding'
   } else if (passkeyCount === 0n) {
     nextPath = '/passkey-enroll'
+  } else if (returnTo) {
+    nextPath = returnTo
+  } else if (!onboardingComplete) {
+    nextPath = '/onboarding'
   } else {
-    nextPath = '/catalyst'
+    nextPath = await resolveUserHomePath(userId)
   }
   const target = new URL(nextPath, url)
   const res = NextResponse.redirect(target)
@@ -195,5 +205,6 @@ export async function GET(request: Request) {
   res.cookies.set(STATE_COOKIE, '', { path: '/', maxAge: 0 })
   res.cookies.set(NONCE_COOKIE, '', { path: '/', maxAge: 0 })
   res.cookies.set(INTENT_COOKIE, '', { path: '/', maxAge: 0 })
+  res.cookies.set(RETURN_TO_COOKIE, '', { path: '/', maxAge: 0 })
   return res
 }

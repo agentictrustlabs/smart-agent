@@ -6,7 +6,7 @@ import type { HubProfile } from '@/lib/hub-profiles'
 
 interface UserContextValue {
   /** Connected user's person agent */
-  personAgent: { address: string; name: string } | null
+  personAgent: { address: string; name: string; primaryName?: string } | null
   /** All organizations the user has roles in */
   orgs: UserOrg[]
   /** Active delegations granted to this user */

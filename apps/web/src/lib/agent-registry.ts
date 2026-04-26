@@ -28,7 +28,15 @@ export async function getPersonAgentForUser(userId: string): Promise<string | nu
   const user = await db.select().from(schema.users).where(eq(schema.users.id, userId)).limit(1)
   if (!user[0]) return null
   if (user[0].personAgentAddress) return user[0].personAgentAddress
+  // OAuth / passkey / SIWE users without a separate person agent: the smart
+  // account itself acts as their person agent. Detected by walletAddress ==
+  // smartAccountAddress (we set them equal in google-callback / passkey
+  // signup / SIWE verify for non-EOA users).
   const wallet = user[0].walletAddress.toLowerCase()
+  const smartAcct = user[0].smartAccountAddress?.toLowerCase()
+  if (smartAcct && wallet === smartAcct) {
+    return user[0].smartAccountAddress
+  }
 
   const addr = resolver()
   if (!addr) return null
@@ -71,25 +79,48 @@ export async function getOrgsForPersonAgent(personAgentAddress: string): Promise
   if (!addr) return orgs
   const client = getPublicClient()
 
+  function pushOrg(orgAddr: string, roles: string[]) {
+    const existing = orgs.find(o => o.address.toLowerCase() === orgAddr.toLowerCase())
+    if (existing) {
+      for (const r of roles) if (!existing.roles.includes(r)) existing.roles.push(r)
+    } else {
+      orgs.push({ address: orgAddr, roles: [...roles] })
+    }
+  }
+
+  // Edges where the person is the SUBJECT (e.g. person CONTROLS org).
   try {
     const edgeIds = await getEdgesBySubject(personAgentAddress as `0x${string}`)
     for (const edgeId of edgeIds) {
-      const edge = await getEdge(edgeId)
-      if (edge.status < 2) continue
       try {
+        const edge = await getEdge(edgeId)
+        if (edge.status < 2) continue
         const core = await client.readContract({ address: addr, abi: agentAccountResolverAbi, functionName: 'getCore', args: [edge.object_ as `0x${string}`] }) as { agentType: `0x${string}` }
         if (core.agentType === TYPE_ORGANIZATION) {
           const roles = await getEdgeRoles(edgeId)
-          const existing = orgs.find(o => o.address.toLowerCase() === edge.object_.toLowerCase())
-          if (existing) {
-            existing.roles.push(...roles.map(r => roleName(r)))
-          } else {
-            orgs.push({ address: edge.object_, roles: roles.map(r => roleName(r)) })
-          }
+          pushOrg(edge.object_, roles.map(r => roleName(r)))
         }
       } catch { /* ignored */ }
     }
   } catch { /* ignored */ }
+
+  // Edges where the person is the OBJECT (e.g. HAS_MEMBER subject=org,
+  // object=person — written by createOrgInHub and joinOrgAsPerson).
+  try {
+    const edgeIds = await getEdgesByObject(personAgentAddress as `0x${string}`)
+    for (const edgeId of edgeIds) {
+      try {
+        const edge = await getEdge(edgeId)
+        if (edge.status < 2) continue
+        const core = await client.readContract({ address: addr, abi: agentAccountResolverAbi, functionName: 'getCore', args: [edge.subject as `0x${string}`] }) as { agentType: `0x${string}` }
+        if (core.agentType === TYPE_ORGANIZATION) {
+          const roles = await getEdgeRoles(edgeId)
+          pushOrg(edge.subject, roles.map(r => roleName(r)))
+        }
+      } catch { /* ignored */ }
+    }
+  } catch { /* ignored */ }
+
   return orgs
 }
 

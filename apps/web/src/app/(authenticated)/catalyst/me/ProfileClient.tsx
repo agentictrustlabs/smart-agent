@@ -24,6 +24,12 @@ interface ProfileClientProps {
   homeChurch: string | null
   language: string
   coach: CoachInfo | null
+  /** The user's .agent primary name (e.g. "joe.catalyst.agent"). */
+  primaryName: string | null
+  /** ERC-4337 smart-account address — the user's on-chain identity. */
+  smartAccountAddress: string | null
+  /** EOA wallet address (== smartAccountAddress for OAuth users). */
+  walletAddress: string | null
 }
 
 // ─── Main Component ─────────────────────────────────────────────────
@@ -31,6 +37,7 @@ interface ProfileClientProps {
 export function ProfileClient({
   userId, userName, email: initialEmail, location: initialLocation,
   homeChurch: initialHomeChurch, language: initialLanguage, coach,
+  primaryName, smartAccountAddress, walletAddress,
 }: ProfileClientProps) {
   const [name, setName] = useState(userName)
   const [email, setEmail] = useState(initialEmail ?? '')
@@ -90,6 +97,15 @@ export function ProfileClient({
       const token = a2a.sessionToken
       const ok = await loadProfile(token ?? null)
       if (ok) return
+      // /api/a2a/bootstrap requires users.privateKey (only demo / Privy
+      // legacy users have one). For OAuth / passkey / SIWE users the call
+      // always returns 400 — skip it. The profile card still renders; the
+      // delegation-gated profile values just stay empty for now (Phase 4
+      // will wire ERC-1271 / passkey-signed wallet actions for them).
+      if (!walletAddress || walletAddress.toLowerCase() === (smartAccountAddress ?? '').toLowerCase()) {
+        setSessionValid(false)
+        return
+      }
       try {
         const res = await fetch('/api/a2a/bootstrap', { method: 'POST' })
         const data = await res.json()
@@ -141,6 +157,14 @@ export function ProfileClient({
 
   const shareCount = coach?.sharePermissions ? coach.sharePermissions.split(',').filter(Boolean).length : 0
 
+  const shortAddr = (a: string | null) =>
+    a ? `${a.slice(0, 6)}…${a.slice(-4)}` : '—'
+  const copyToClipboard = (v: string) => {
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(v).catch(() => {})
+    }
+  }
+
   return (
     <div className="max-w-lg space-y-4">
       {loadingProfile && (
@@ -148,6 +172,84 @@ export function ProfileClient({
           Loading profile from agent...
         </div>
       )}
+
+      {/* Identity — on-chain agent name + smart account address */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-label-lg text-primary uppercase tracking-wider">Identity</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div>
+            <div className="text-label-md text-on-surface-variant mb-1">Personal agent name</div>
+            {primaryName ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <code style={{ fontSize: 14, fontWeight: 600, color: '#1f2937' }}>{primaryName}</code>
+                <button
+                  type="button"
+                  onClick={() => copyToClipboard(primaryName)}
+                  style={{
+                    fontSize: 11, padding: '2px 8px', borderRadius: 4,
+                    border: '1px solid #e2e8f0', background: '#f8fafc',
+                    color: '#475569', cursor: 'pointer',
+                  }}
+                  data-testid="copy-primary-name"
+                >Copy</button>
+              </div>
+            ) : (
+              <div style={{ fontSize: 13, color: '#64748b' }}>
+                Not set yet — finish onboarding to register a <code>.agent</code> name.
+              </div>
+            )}
+          </div>
+          <div>
+            <div className="text-label-md text-on-surface-variant mb-1">Smart account</div>
+            {smartAccountAddress ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <code
+                  title={smartAccountAddress}
+                  style={{ fontSize: 13, color: '#1f2937', fontFamily: 'ui-monospace, monospace' }}
+                >{shortAddr(smartAccountAddress)}</code>
+                <button
+                  type="button"
+                  onClick={() => copyToClipboard(smartAccountAddress)}
+                  style={{
+                    fontSize: 11, padding: '2px 8px', borderRadius: 4,
+                    border: '1px solid #e2e8f0', background: '#f8fafc',
+                    color: '#475569', cursor: 'pointer',
+                  }}
+                  data-testid="copy-smart-account"
+                >Copy</button>
+                <Link
+                  href={`/agents/${smartAccountAddress}`}
+                  style={{ fontSize: 11, color: '#3f6ee8' }}
+                >View on chain →</Link>
+              </div>
+            ) : (
+              <div style={{ fontSize: 13, color: '#64748b' }}>Not deployed yet.</div>
+            )}
+          </div>
+          {walletAddress && walletAddress.toLowerCase() !== (smartAccountAddress ?? '').toLowerCase() && (
+            <div>
+              <div className="text-label-md text-on-surface-variant mb-1">Wallet (EOA)</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <code
+                  title={walletAddress}
+                  style={{ fontSize: 13, color: '#1f2937', fontFamily: 'ui-monospace, monospace' }}
+                >{shortAddr(walletAddress)}</code>
+                <button
+                  type="button"
+                  onClick={() => copyToClipboard(walletAddress)}
+                  style={{
+                    fontSize: 11, padding: '2px 8px', borderRadius: 4,
+                    border: '1px solid #e2e8f0', background: '#f8fafc',
+                    color: '#475569', cursor: 'pointer',
+                  }}
+                >Copy</button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Personal Information */}
       <Card>

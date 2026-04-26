@@ -34,7 +34,9 @@ export async function submitRevenueReport(data: {
   }).run()
 
   revalidatePath('/activity')
-  revalidatePath('/catalyst')
+  revalidatePath('/dashboard')
+  revalidatePath('/h/mission/home')
+  revalidatePath('/h/catalyst/home')
 }
 
 export async function approveRevenueReport(reportId: string) {
@@ -49,7 +51,9 @@ export async function approveRevenueReport(reportId: string) {
     .run()
 
   revalidatePath('/activity')
-  revalidatePath('/catalyst')
+  revalidatePath('/dashboard')
+  revalidatePath('/h/mission/home')
+  revalidatePath('/h/catalyst/home')
 }
 
 export async function rejectRevenueReport(reportId: string) {

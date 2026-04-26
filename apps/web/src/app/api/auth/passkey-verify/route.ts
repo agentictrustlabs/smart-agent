@@ -68,12 +68,30 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'invalid or expired challenge' }, { status: 401 })
   }
 
-  // Lookup user by credentialIdDigest.
+  // Lookup the user for this credential. Two paths so we work for every
+  // signup history:
+  //   (a) modern: server-side `passkeys` mirror — the canonical source for
+  //       every passkey enrolled post-Phase-2-cleanup.
+  //   (b) legacy passkey-signup: user.id was set to the credentialIdDigest
+  //       (lowercased hex) before the mirror existed. Fallback covers users
+  //       who signed up via that path and never re-enrolled.
   const credIdBytes = base64UrlDecode(body.credentialIdBase64Url)
   const credentialIdDigest = keccak256(credIdBytes) // 0x...
   const credIdHex = credentialIdDigest.toLowerCase()
 
-  const row = await db.select().from(schema.users).where(eq(schema.users.id, credIdHex)).limit(1).then(r => r[0])
+  const passkeyRow = await db.select().from(schema.passkeys)
+    .where(eq(schema.passkeys.credentialIdBase64Url, body.credentialIdBase64Url))
+    .limit(1).then(r => r[0])
+  let row = passkeyRow
+    ? await db.select().from(schema.users)
+        .where(eq(schema.users.id, passkeyRow.userId)).limit(1).then(r => r[0])
+    : undefined
+  if (!row) {
+    // Legacy passkey-signup: user.id was set to the lowercased credIdHex.
+    row = await db.select().from(schema.users)
+      .where(eq(schema.users.id, credIdHex)).limit(1).then(r => r[0])
+  }
+
   if (!row || !row.smartAccountAddress) {
     return NextResponse.json({ error: 'unknown credential' }, { status: 404 })
   }

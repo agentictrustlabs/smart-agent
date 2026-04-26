@@ -22,6 +22,12 @@ export const STATE_COOKIE = 'sa-oauth-state'
 export const NONCE_COOKIE = 'sa-oauth-nonce'
 /** Caller's flow intent ('recover' routes the callback to /recover-device). */
 export const INTENT_COOKIE = 'sa-oauth-intent'
+/**
+ * Optional return-to URL set by /api/auth/google-start when the caller
+ * passed `?return_to=`. The callback honors this after session mint so
+ * users come back to the page they started from (e.g. /h/{slug}).
+ */
+export const RETURN_TO_COOKIE = 'sa-oauth-return-to'
 
 export type OAuthIntent = 'login' | 'recover'
 

@@ -132,9 +132,14 @@ async function userStatus(): Promise<{ personAgentRegistered: Check; orgsLinked:
 
     const rows = await db.select().from(schema.users).where(eq(schema.users.id, user.id)).limit(1)
     const row = rows[0]
-    if (!row?.personAgentAddress) {
+
+    // OAuth / passkey / SIWE users don't have a separate personAgentAddress —
+    // the smart account itself IS their person agent. Fall back accordingly so
+    // the readiness check works for every auth path.
+    const personAddr = (row?.personAgentAddress ?? row?.smartAccountAddress) as `0x${string}` | null | undefined
+    if (!personAddr) {
       return {
-        personAgentRegistered: { label: 'Person agent registered on-chain', ok: false, detail: 'no personAgentAddress in DB' },
+        personAgentRegistered: { label: 'Person agent registered on-chain', ok: false, detail: 'no personAgentAddress / smartAccountAddress in DB' },
         orgsLinked: pending2, hubResolved: pending3,
       }
     }
@@ -145,18 +150,26 @@ async function userStatus(): Promise<{ personAgentRegistered: Check; orgsLinked:
 
     const isReg = (await client.readContract({
       address: resolverAddr, abi: agentAccountResolverAbi,
-      functionName: 'isRegistered', args: [row.personAgentAddress as `0x${string}`],
+      functionName: 'isRegistered', args: [personAddr],
     })) as boolean
     const ctrls = isReg ? (await client.readContract({
       address: resolverAddr, abi: agentAccountResolverAbi,
       functionName: 'getMultiAddressProperty',
-      args: [row.personAgentAddress as `0x${string}`, ATL_CONTROLLER as `0x${string}`],
+      args: [personAddr, ATL_CONTROLLER as `0x${string}`],
     })) as string[] : []
 
+    // For OAuth-only accounts there's no separate EOA controller — the wallet
+    // address equals the smart account itself. Treat "registered with no
+    // separate controllers" as healthy in that case (bootstrap server stays
+    // as a co-owner of the AgentAccount, which is sufficient for trust).
+    const isOauthSelfControlled = !!row?.walletAddress
+      && row.walletAddress.toLowerCase() === personAddr.toLowerCase()
     const personAgentRegistered: Check = {
       label: 'Person agent registered on-chain',
-      ok: isReg && ctrls.length > 0,
-      detail: isReg ? `${ctrls.length} controller(s)` : 'not registered yet',
+      ok: isReg && (ctrls.length > 0 || isOauthSelfControlled),
+      detail: isReg
+        ? (ctrls.length > 0 ? `${ctrls.length} controller(s)` : 'self-controlled (OAuth)')
+        : 'not registered yet',
     }
 
     let edgeCount = 0
@@ -164,15 +177,20 @@ async function userStatus(): Promise<{ personAgentRegistered: Check; orgsLinked:
       const edges = (await client.readContract({
         address: relAddr, abi: agentRelationshipAbi,
         functionName: 'getEdgesBySubject',
-        args: [row.personAgentAddress as `0x${string}`],
+        args: [personAddr],
       })) as readonly `0x${string}`[]
       edgeCount = edges.length
     } catch { /* ignored */ }
 
+    // Org links and hub affiliation are post-onboarding actions for OAuth
+    // users (they choose New Org / Join Org explicitly). Mark these as ok
+    // once the user has finished onboarding (onboardedAt set) — they're
+    // legitimately in a state where no orgs/hub is the desired outcome.
+    const onboarded = !!row?.onboardedAt
     const orgsLinked: Check = {
       label: 'Community seed — orgs linked',
-      ok: edgeCount >= 1,
-      detail: `${edgeCount} outgoing edge(s)`,
+      ok: edgeCount >= 1 || onboarded,
+      detail: edgeCount >= 1 ? `${edgeCount} outgoing edge(s)` : (onboarded ? 'no orgs joined yet (ok)' : '0 outgoing edges'),
     }
 
     const { getUserHubId } = await import('@/lib/get-user-hub')
@@ -180,8 +198,8 @@ async function userStatus(): Promise<{ personAgentRegistered: Check; orgsLinked:
     try { hubId = await getUserHubId(user.id) } catch { /* ignored */ }
     const hubResolved: Check = {
       label: 'Hub resolved',
-      ok: hubId !== 'generic',
-      detail: `hubId=${hubId}`,
+      ok: hubId !== 'generic' || onboarded,
+      detail: `hubId=${hubId}${hubId === 'generic' && onboarded ? ' (ok — no hub joined yet)' : ''}`,
     }
 
     return { personAgentRegistered, orgsLinked, hubResolved }

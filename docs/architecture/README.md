@@ -15,3 +15,4 @@ Smart Agent is an **Agent Smart Account Kit** — an ERC-4337 smart account fram
 | [Contracts](./contracts.md) | Per-contract deep dive |
 | [Agent Control](./agent-control.md) | EOA → Agent governance, multi-sig, permissions |
 | [Relationship Protocol](./relationship-protocol.md) | Agent-to-agent relationships, roles, delegation |
+| [Authentication & Onboarding](./auth-and-onboarding.md) | Google / Passkey / MetaMask login, smart-account deployment, name registration, onboarding wizard |

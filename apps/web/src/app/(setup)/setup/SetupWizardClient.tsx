@@ -405,7 +405,7 @@ export function SetupWizardClient({ templates }: { templates: OrgTemplate[] }) {
         )}
 
         <div style={{ marginTop: '1.5rem', display: 'flex', gap: '0.5rem' }}>
-          <button onClick={() => router.push('/catalyst')}>Go to Home</button>
+          <button onClick={() => router.push('/dashboard')}>Go to Home</button>
           <button onClick={() => router.push('/team')} style={{ background: '#e0e0e0', color: '#1a1a2e' }}>Invite People</button>
           <button onClick={() => router.push('/agents')} style={{ background: '#e0e0e0', color: '#1a1a2e' }}>View Agents</button>
         </div>

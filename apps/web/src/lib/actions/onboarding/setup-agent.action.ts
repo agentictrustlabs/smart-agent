@@ -19,12 +19,14 @@
  */
 
 import { getAddress, keccak256, toBytes, encodePacked, type PublicClient } from 'viem'
+import { cookies } from 'next/headers'
 import { db, schema } from '@/db'
 import { eq } from 'drizzle-orm'
 import { requireSession } from '@/lib/auth/session'
 import { getPublicClient, getWalletClient } from '@/lib/contracts'
 import { addAgentController } from '@/lib/agent-resolver'
 import { registerAgentMetadata } from '@/lib/actions/agent-metadata.action'
+import { createRelationship, confirmRelationship } from '@/lib/contracts'
 import {
   agentAccountResolverAbi,
   agentNameRegistryAbi,
@@ -33,6 +35,8 @@ import {
   ATL_NAME_LABEL,
   TYPE_HUB,
   AGENT_TLD,
+  HAS_MEMBER,
+  ROLE_MEMBER,
   normalize,
   namehash,
 } from '@smart-agent/sdk'
@@ -76,7 +80,17 @@ export async function getOnboardingStatus(): Promise<OnboardingStatus> {
       profileComplete: false, agentRegistered: false, hasAgentName: false,
     }
   }
-  const profileComplete = !!user.name && user.name !== 'Agent User'
+  // The profile is "complete" only when the user has explicitly set a real
+  // name AND email. Auth flows seed placeholders that must not pass:
+  //   - Google OAuth: name comes from claims, email is real → both already set.
+  //   - SIWE / MetaMask: siwe-verify writes name="Wallet 0xabc…123" and
+  //     email=null. Without the placeholder check, profileComplete would be
+  //     true and the wizard would skip the Profile step, leaving the user
+  //     no way to enter their actual name or email.
+  //   - Passkey signup: client provides a display name, no email.
+  const placeholderName =
+    !user.name || user.name === 'Agent User' || user.name.startsWith('Wallet ')
+  const profileComplete = !placeholderName && !!user.email
 
   const resolverAddr = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}` | undefined
   const smartAcct = user.smartAccountAddress as `0x${string}` | null
@@ -128,6 +142,11 @@ export async function markOnboardingComplete(): Promise<{ success: boolean; erro
     await db.update(schema.users)
       .set({ onboardedAt: new Date().toISOString() })
       .where(eq(schema.users.privyUserId, session.userId))
+    // Clear the hub-of-origin cookie so subsequent visits don't replay it.
+    try {
+      const jar = await cookies()
+      jar.set('hub-intent', '', { path: '/', maxAge: 0 })
+    } catch { /* cookies may be read-only in some contexts */ }
     return { success: true }
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : 'mark complete failed' }
@@ -309,6 +328,54 @@ export async function listHubsForOnboarding(): Promise<HubChoice[]> {
     return hubs
   } catch {
     return []
+  }
+}
+
+/**
+ * Join a hub directly as the connected user's personal agent.
+ *
+ * Creates a HAS_MEMBER edge:
+ *   subject = hubAddress    (canonical: hub is the source of HAS_MEMBER)
+ *   object  = personAgent   (the user's smart account for OAuth users)
+ *   roles   = [ROLE_MEMBER]
+ *
+ * The deployer signs the transaction. In the demo / dev environment the
+ * deployer is the hub's owner, so the createRelationship + confirmRelationship
+ * pair lands without further authorisation. In production this would be
+ * gated by a "request → approve" flow that the hub admin runs.
+ */
+export async function joinHubAsPerson(hubAddress: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const session = await requireSession()
+    const user = await db.select().from(schema.users)
+      .where(eq(schema.users.privyUserId, session.userId)).limit(1).then(r => r[0])
+    if (!user?.smartAccountAddress) return { success: false, error: 'no smart account on user row' }
+    const personAgent = getAddress(user.smartAccountAddress as `0x${string}`)
+
+    const resolverAddr = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}` | undefined
+    if (!resolverAddr) return { success: false, error: 'AGENT_ACCOUNT_RESOLVER_ADDRESS not configured' }
+    const client = getPublicClient()
+
+    const hub = getAddress(hubAddress as `0x${string}`)
+    const core = await client.readContract({
+      address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'getCore',
+      args: [hub],
+    }) as { agentType: `0x${string}`; active: boolean }
+    if (core.agentType !== TYPE_HUB) {
+      return { success: false, error: 'address is not registered as a hub' }
+    }
+    if (!core.active) return { success: false, error: 'hub is not active' }
+
+    const edgeId = await createRelationship({
+      subject: hub,
+      object: personAgent,
+      roles: [ROLE_MEMBER as `0x${string}`],
+      relationshipType: HAS_MEMBER as `0x${string}`,
+    })
+    await confirmRelationship(edgeId)
+    return { success: true }
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'join failed' }
   }
 }
 

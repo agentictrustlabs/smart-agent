@@ -116,7 +116,7 @@ export function RecoverDeviceClient() {
         localStorage.setItem('smart-agent.passkeys.local', JSON.stringify(known))
         window.sessionStorage.setItem(FRESH_LOGIN_INTENT_KEY, 'true')
         setPhase('done')
-        router.replace('/catalyst')
+        router.replace('/dashboard')
       } catch (err) {
         setPhase('error'); setMsg(`✗ ${(err as Error).message}`)
       }

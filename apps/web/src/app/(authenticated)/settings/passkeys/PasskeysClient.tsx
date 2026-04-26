@@ -31,7 +31,7 @@ export function PasskeysClient({ initial }: { initial: ListPasskeysResult }) {
             displayName: label || 'Smart Agent Demo',
           },
           challenge,
-          pubKeyCredParams: [{ type: 'public-key', alg: -7 }], // ES256
+          pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }], // ES256 + RS256 (RS256 only to silence Chrome dev warning)
           authenticatorSelection: {
             residentKey: 'preferred',
             userVerification: 'preferred',

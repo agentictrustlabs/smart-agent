@@ -60,3 +60,29 @@ export interface OrgTemplate {
   /** AI agents to auto-deploy */
   aiAgents: OrgTemplateAIAgent[]
 }
+
+/**
+ * Return ALL org templates with the ones most relevant to the given hub
+ * sorted to the top. We don't whitelist by `HUB_PROFILES[hubId].templateIds`
+ * any more — that list represents the canonical/featured templates for the
+ * hub, but real users in (e.g.) Catalyst still routinely create Church,
+ * Denomination, Mission Agency, etc., so restricting the picker was wrong.
+ *
+ * Used by the inline org-creation dialog to populate its template radio list.
+ */
+export async function getTemplatesForHub(hubId: string): Promise<OrgTemplate[]> {
+  const [{ HUB_PROFILES }, { ORG_TEMPLATES }] = await Promise.all([
+    import('./hub-profiles'),
+    import('./org-templates.data'),
+  ])
+  const profile = HUB_PROFILES.find(p => p.id === hubId)
+  const featured = new Set(profile?.templateIds ?? [])
+  // Featured first (in their declared order), then the rest alphabetically.
+  const featuredOrdered = (profile?.templateIds ?? [])
+    .map(id => ORG_TEMPLATES.find(t => t.id === id))
+    .filter((t): t is OrgTemplate => !!t)
+  const rest = ORG_TEMPLATES
+    .filter(t => !featured.has(t.id))
+    .sort((a, b) => a.name.localeCompare(b.name))
+  return [...featuredOrdered, ...rest]
+}

@@ -134,7 +134,7 @@ export function PasskeyEnrollClient() {
     known.push({ id: credentialIdBase64Url, name: displayName })
     localStorage.setItem('smart-agent.passkeys.local', JSON.stringify(known))
     window.sessionStorage.setItem(FRESH_LOGIN_INTENT_KEY, 'true')
-    router.replace('/catalyst')
+    router.replace('/dashboard')
   }
 
   return (
@@ -151,7 +151,7 @@ export function PasskeyEnrollClient() {
         {pending ? 'Working…' : 'Add a passkey'}
       </button>
       <button
-        onClick={() => router.replace('/catalyst')}
+        onClick={() => router.replace('/dashboard')}
         disabled={pending}
         style={{
           width: '100%', marginTop: 8, padding: '0.6rem 1rem', background: 'transparent',

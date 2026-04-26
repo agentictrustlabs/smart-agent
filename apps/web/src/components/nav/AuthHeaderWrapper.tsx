@@ -10,16 +10,16 @@ interface Props {
 }
 
 /**
- * Renders the full app header with HubNav on non-catalyst routes.
- * On /catalyst/* routes, renders a minimal header (logo + back link only)
- * since the catalyst layout provides its own navigation.
+ * Renders the full app header with HubNav on routes that don't already
+ * provide their own. The hub layout (used by /h/{slug}/* and the rest of
+ * the authenticated app) supplies its own header, so we suppress this
+ * wrapper there and on the legacy /catalyst path that still redirects.
  */
 export function AuthHeaderWrapper({ logo, hubNav, utility }: Props) {
   const pathname = usePathname()
-  const isCatalyst = pathname.startsWith('/catalyst')
+  const suppress = pathname.startsWith('/catalyst') || pathname.startsWith('/h/')
 
-  if (isCatalyst) {
-    // Minimal header — catalyst layout handles its own nav
+  if (suppress) {
     return null
   }
 

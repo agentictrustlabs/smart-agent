@@ -91,7 +91,11 @@ export async function GET() {
     let personAgent: UserContextResponse['personAgent'] = null
     if (personAddr) {
       const meta = await getAgentMetadata(personAddr)
-      personAgent = { address: personAddr, name: meta.displayName, primaryName: meta.primaryName }
+      // Fall back to the DB mirror when the on-chain ATL_PRIMARY_NAME is
+      // empty (legacy accounts where the resolver write was skipped). The
+      // upper-right surface keys off this primaryName.
+      const primaryName = meta.primaryName || users[0].agentName || ''
+      personAgent = { address: personAddr, name: meta.displayName, primaryName }
     }
 
     // All orgs via on-chain edges
@@ -171,10 +175,25 @@ export async function GET() {
       }
     }
 
-    // Discover hub agents the user belongs to
+    // Discover hub agents the user belongs to. Two routes:
+    //   1. Direct person-agent → hub HAS_MEMBER edge (written by
+    //      joinHubAsPerson during onboarding — the user joined a hub
+    //      without going through an org).
+    //   2. Org → hub HAS_MEMBER edge (org-mediated membership).
     const { getHubsForAgent } = await import('@/lib/agent-registry')
     const hubs: UserHub[] = []
     const seenHubs = new Set<string>()
+    if (personAddr) {
+      try {
+        const hubAddrs = await getHubsForAgent(personAddr)
+        for (const hubAddr of hubAddrs) {
+          if (seenHubs.has(hubAddr.toLowerCase())) continue
+          seenHubs.add(hubAddr.toLowerCase())
+          const hubMeta = await getAgentMetadata(hubAddr)
+          hubs.push({ address: hubAddr, name: hubMeta.displayName, description: hubMeta.description })
+        }
+      } catch { /* ignored */ }
+    }
     for (const org of orgs) {
       try {
         const hubAddrs = await getHubsForAgent(org.address)

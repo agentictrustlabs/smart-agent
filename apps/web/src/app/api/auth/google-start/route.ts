@@ -6,6 +6,7 @@ import {
   STATE_COOKIE,
   NONCE_COOKIE,
   INTENT_COOKIE,
+  RETURN_TO_COOKIE,
   type OAuthIntent,
 } from '@/lib/auth/google-oauth'
 
@@ -32,6 +33,12 @@ export async function GET(request: Request) {
   const intentParam = url.searchParams.get('intent')
   const intent: OAuthIntent = intentParam === 'recover' ? 'recover' : 'login'
 
+  // Capture return_to so the callback can drop the user back where they
+  // started (e.g. /h/catalyst). Restrict to relative paths so we never
+  // open-redirect to an attacker-controlled origin.
+  const returnToRaw = url.searchParams.get('return_to')
+  const returnTo = isSafeReturnTo(returnToRaw) ? returnToRaw! : ''
+
   const state = randomToken()
   const nonce = randomToken()
   const authUrl = buildAuthorizeUrl(env, state, nonce)
@@ -47,5 +54,12 @@ export async function GET(request: Request) {
   res.cookies.set(STATE_COOKIE, state, cookie)
   res.cookies.set(NONCE_COOKIE, nonce, cookie)
   res.cookies.set(INTENT_COOKIE, intent, cookie)
+  if (returnTo) res.cookies.set(RETURN_TO_COOKIE, returnTo, cookie)
   return res
+}
+
+function isSafeReturnTo(p: string | null): boolean {
+  if (!p) return false
+  // Same-origin paths only: must start with `/` and not `//` (protocol-relative).
+  return p.startsWith('/') && !p.startsWith('//')
 }

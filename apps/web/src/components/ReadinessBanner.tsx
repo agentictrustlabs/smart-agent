@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
 
 interface Check { label: string; ok: boolean; detail?: string }
 interface Readiness {
@@ -18,7 +17,6 @@ interface Readiness {
 }
 
 export function ReadinessBanner() {
-  const router = useRouter()
   const [s, setS] = useState<Readiness | null>(null)
   const [dismissed, setDismissed] = useState(false)
   const [wasReady, setWasReady] = useState(false)
@@ -37,7 +35,13 @@ export function ReadinessBanner() {
         if (data.allReady && !lastReady && !wasReady) {
           lastReady = true
           setWasReady(true)
-          router.refresh()
+          // We deliberately do NOT call router.refresh() on transition to
+          // ready. Doing so re-fetched the current page's RSC payload, and
+          // for routes that have client effects depending on the resulting
+          // re-render (e.g. /onboarding's layout + polling banner combo),
+          // it triggered repeated /onboarding GETs. The banner already
+          // updates via its own poll; the underlying page can re-fetch on
+          // demand from its own logic if it needs to.
           setTimeout(() => setShow(false), 5000)
         }
       } catch { /* transient */ }
@@ -45,7 +49,7 @@ export function ReadinessBanner() {
     poll()
     const id = setInterval(poll, 3000)
     return () => { cancelled = true; clearInterval(id) }
-  }, [router, wasReady])
+  }, [wasReady])
 
   if (!s || dismissed || !show) return null
 
