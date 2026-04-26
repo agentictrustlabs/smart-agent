@@ -31,11 +31,16 @@ import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { getPublicClient, getEdgesByObject, getEdge } from '@/lib/contracts'
 import {
   agentAccountResolverAbi,
+  geoClaimRegistryAbi,
+  geoFeatureRegistryAbi,
   TYPE_PERSON,
   TYPE_ORGANIZATION,
   HAS_MEMBER,
   ATL_PRIMARY_NAME,
   ATL_CITY, ATL_REGION, ATL_COUNTRY,
+  ATL_LATITUDE, ATL_LONGITUDE,
+  GEO_VISIBILITY,
+  GEO_COORD_SCALE,
 } from '@smart-agent/sdk'
 import { getPersonAgentForUser } from '@/lib/agent-registry'
 import {
@@ -44,7 +49,7 @@ import {
   type WalletAction,
   type MatchAgainstPublicSetBody,
 } from '@smart-agent/privacy-creds'
-import { geoOverlapScore, type CoarseGeoTag } from '@smart-agent/privacy-creds/geo-overlap'
+import { geoOverlapScore, type CoarseGeoTag, type GeoClaimInput } from '@smart-agent/privacy-creds/geo-overlap'
 import { person } from '@/lib/ssi/clients'
 import { ssiConfig } from '@/lib/ssi/config'
 
@@ -62,6 +67,10 @@ export interface AgentMeta {
   /** Coarse geo tag — null if untagged. Stays in metadata (not signed over)
    *  because it's read from a public on-chain property. */
   geoTag: CoarseGeoTag | null
+  /** Public geo claims whose feature contains the caller's lat/long.
+   *  Stage-B input for geoOverlapScore — populated only when both
+   *  caller lat/lon and matching public claims exist. */
+  geoMatchedClaims?: GeoClaimInput[]
 }
 
 export interface TrustSearchHit {
@@ -181,6 +190,19 @@ export async function prepareTrustSearch(opts: { query?: string; limit?: number 
   for (const c of candidates) agentMeta[c.meta.id] = c.meta
 
   const callerGeo = await readCoarseGeoTag(resolverAddr, myPersonAgent)
+  const callerLatLon = await readLatLon(resolverAddr, myPersonAgent)
+
+  // Stage-B: per candidate, public claims whose feature contains the
+  // caller's lat/long. Skipped if the caller has no lat/long set.
+  if (callerLatLon) {
+    for (const c of candidates) {
+      const matched = await matchedGeoClaimsForCandidate({
+        candidate: c.meta.address,
+        callerLatLon,
+      })
+      if (matched.length > 0) c.meta.geoMatchedClaims = matched
+    }
+  }
 
   return {
     status: 'ready',
@@ -227,13 +249,17 @@ export async function completeTrustSearch(input: {
       const address = meta?.address ?? (getAddress(h.id) as `0x${string}`)
       const fallbackName = `${address.slice(0, 6)}…${address.slice(-4)}`
 
-      // Org-overlap score from the MCP. Geo-overlap layered on top here
-      // (coarse-tier — public claim contributions arrive via the ZK
-      // match path in Phase 6).
+      // Org-overlap score from the MCP. Geo-overlap layered on top
+      // here (stage A coarse-tier + stage B public claims; private-zk
+      // contributions arrive via the Phase 6 ZK match path).
       const orgScore = h.score
       let geoScore = 0
       if (callerGeo && meta?.geoTag) {
-        const geo = geoOverlapScore({ caller: callerGeo, candidate: meta.geoTag })
+        const geo = geoOverlapScore({
+          caller: callerGeo,
+          candidate: meta.geoTag,
+          matchedClaims: meta.geoMatchedClaims,
+        })
         geoScore = geo.score
       }
       return {
@@ -421,6 +447,123 @@ async function readCoarseGeoTag(
   ])
   if (!city && !region && !country) return null
   return { city: city || null, region: region || null, country: country || null }
+}
+
+/** Read ATL_LATITUDE / ATL_LONGITUDE off an agent. Returns null if either
+ *  is unset. Used by stage-B geo matching to bbox-test feature claims. */
+async function readLatLon(
+  resolverAddr: `0x${string}`,
+  agentAddr: `0x${string}`,
+): Promise<{ lat: number; lon: number } | null> {
+  const client = getPublicClient()
+  async function read(predicate: `0x${string}`): Promise<string> {
+    try {
+      return (await client.readContract({
+        address: resolverAddr, abi: agentAccountResolverAbi,
+        functionName: 'getStringProperty', args: [agentAddr, predicate],
+      })) as string
+    } catch { return '' }
+  }
+  const [lat, lon] = await Promise.all([
+    read(ATL_LATITUDE  as `0x${string}`),
+    read(ATL_LONGITUDE as `0x${string}`),
+  ])
+  if (!lat || !lon) return null
+  const flat = parseFloat(lat), flon = parseFloat(lon)
+  if (!isFinite(flat) || !isFinite(flon)) return null
+  return { lat: flat, lon: flon }
+}
+
+/** Hex-keccak → friendly relation label for the geo-overlap weights table. */
+const RELATION_HASH_TO_LABEL: Record<string, string> = {
+  // populated below from the SDK GEO_REL_* constants
+}
+async function ensureRelationLookup(): Promise<void> {
+  if (Object.keys(RELATION_HASH_TO_LABEL).length > 0) return
+  const sdk = await import('@smart-agent/sdk')
+  const map: Array<[string, string]> = [
+    ['servesWithin',         sdk.GEO_REL_SERVES_WITHIN as string],
+    ['operatesIn',           sdk.GEO_REL_OPERATES_IN as string],
+    ['licensedIn',           sdk.GEO_REL_LICENSED_IN as string],
+    ['completedTaskIn',      sdk.GEO_REL_COMPLETED_TASK_IN as string],
+    ['validatedPresenceIn',  sdk.GEO_REL_VALIDATED_PRESENCE_IN as string],
+    ['stewardOf',            sdk.GEO_REL_STEWARD_OF as string],
+    ['residentOf',           sdk.GEO_REL_RESIDENT_OF as string],
+    ['originIn',             sdk.GEO_REL_ORIGIN_IN as string],
+  ]
+  for (const [label, h] of map) RELATION_HASH_TO_LABEL[h.toLowerCase()] = `geo:${label}`
+}
+
+/**
+ * For one candidate: fetch their public GeoClaimRegistry rows, look
+ * up each claim's feature, and return the relation strings of every
+ * claim whose feature's bbox contains the caller's lat/lon.
+ * Stage-B input for geoOverlapScore.
+ */
+async function matchedGeoClaimsForCandidate(args: {
+  candidate: `0x${string}`
+  callerLatLon: { lat: number; lon: number }
+}): Promise<GeoClaimInput[]> {
+  const claimReg = process.env.GEO_CLAIM_REGISTRY_ADDRESS as `0x${string}` | undefined
+  const featReg  = process.env.GEO_FEATURE_REGISTRY_ADDRESS as `0x${string}` | undefined
+  if (!claimReg || !featReg) return []
+  await ensureRelationLookup()
+  const client = getPublicClient()
+
+  let claimIds: `0x${string}`[] = []
+  try {
+    claimIds = (await client.readContract({
+      address: claimReg, abi: geoClaimRegistryAbi,
+      functionName: 'claimsBySubject', args: [args.candidate],
+    })) as `0x${string}`[]
+  } catch { return [] }
+
+  const out: GeoClaimInput[] = []
+  for (const cid of claimIds) {
+    try {
+      const claim = (await client.readContract({
+        address: claimReg, abi: geoClaimRegistryAbi,
+        functionName: 'getClaim', args: [cid],
+      })) as {
+        relation: `0x${string}`; visibility: number; revoked: boolean
+        confidence: number; featureId: `0x${string}`; featureVersion: bigint
+        createdAt: bigint
+      }
+      if (claim.revoked) continue
+      // Stage-B handles Public + PublicCoarse. PrivateZk arrives via the
+      // separate ZK match path (Phase 6 verifier).
+      if (claim.visibility !== GEO_VISIBILITY.Public && claim.visibility !== GEO_VISIBILITY.PublicCoarse) continue
+
+      const feature = (await client.readContract({
+        address: featReg, abi: geoFeatureRegistryAbi,
+        functionName: 'getFeature', args: [claim.featureId, claim.featureVersion],
+      })) as {
+        active: boolean
+        bboxMinLat: bigint; bboxMinLon: bigint
+        bboxMaxLat: bigint; bboxMaxLon: bigint
+      }
+      if (!feature.active) continue
+      const minLat = Number(feature.bboxMinLat) / Number(GEO_COORD_SCALE)
+      const minLon = Number(feature.bboxMinLon) / Number(GEO_COORD_SCALE)
+      const maxLat = Number(feature.bboxMaxLat) / Number(GEO_COORD_SCALE)
+      const maxLon = Number(feature.bboxMaxLon) / Number(GEO_COORD_SCALE)
+      const inside =
+        args.callerLatLon.lat >= minLat && args.callerLatLon.lat <= maxLat &&
+        args.callerLatLon.lon >= minLon && args.callerLatLon.lon <= maxLon
+      if (!inside) continue
+
+      const relLabel = RELATION_HASH_TO_LABEL[claim.relation.toLowerCase()]
+      if (!relLabel) continue
+      out.push({
+        relation: relLabel,
+        confidence: claim.confidence,
+        issuedAt: new Date(Number(claim.createdAt) * 1000).toISOString(),
+        issuerTrust: 0.5, // self-asserted default
+        visibility: claim.visibility === GEO_VISIBILITY.PublicCoarse ? 'PublicCoarse' : 'Public',
+      })
+    } catch { /* skip bad row */ }
+  }
+  return out
 }
 
 async function getPublicOrgsForAgent(

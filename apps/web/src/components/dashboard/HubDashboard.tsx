@@ -14,6 +14,7 @@ import { CreateOrgButton } from '@/components/org/CreateOrgButton'
 import { HeldCredentialsPanel } from '@/components/org/HeldCredentialsPanel'
 import { AgentTrustSearch } from '@/components/trust/AgentTrustSearch'
 import { SetCityPanel } from '@/components/profile/SetCityPanel'
+import { AddGeoClaimPanel } from '@/components/profile/AddGeoClaimPanel'
 import { HUB_SLUG_MAP } from '@/lib/hub-routes'
 import type { HubId } from '@/lib/hub-profiles'
 
@@ -228,6 +229,7 @@ async function GenericDashboard({
       </div>
 
       <SetCityPanel />
+      <AddGeoClaimPanel />
       <AgentTrustSearch />
 
       {(userOrgs.length > 0 || hubAddress) && (
@@ -453,6 +455,7 @@ async function CatalystFieldDashboard({
       <DelegationSection userId={currentUser.id} />
 
       <SetCityPanel />
+      <AddGeoClaimPanel />
       <AgentTrustSearch />
 
       {(userOrgs.length > 0 || hubAddress) && (
