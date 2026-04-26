@@ -1,6 +1,22 @@
-import { verifyTypedData, type Client } from 'viem'
+import { verifyTypedData, hashTypedData, type Client } from 'viem'
+import { readContract, getCode } from 'viem/actions'
 import type { WalletAction } from './types'
 import { WalletActionTypes, walletActionDomain } from './types'
+
+const ERC1271_MAGIC = '0x1626ba7e' as const
+
+const erc1271Abi = [
+  {
+    type: 'function',
+    name: 'isValidSignature',
+    stateMutability: 'view',
+    inputs: [
+      { name: 'hash', type: 'bytes32' },
+      { name: 'signature', type: 'bytes' },
+    ],
+    outputs: [{ type: 'bytes4' }],
+  },
+] as const
 
 export interface VerifyWalletActionInput {
   action: WalletAction
@@ -46,16 +62,53 @@ export async function verifyWalletAction(
     return { ok: false, reason: 'expiresAt beyond max allowed lifetime' }
   }
 
-  const ok = await verifyTypedData({
-    address: input.expectedSigner,
-    domain: walletActionDomain(input.chainId, input.verifyingContract),
-    types: WalletActionTypes,
-    primaryType: 'WalletAction',
-    message: input.action,
-    signature: input.signature,
-    // viem's verifyTypedData accepts a wider client; we type ours loosely above.
-    ...(input.client ? { client: input.client as Parameters<typeof verifyTypedData>[0] extends infer P ? P extends { client?: infer C } ? C : never : never } : {}),
-  })
+  // If the expectedSigner has bytecode (it's a smart account), call
+  // isValidSignature directly. viem's verifyTypedData(mode='auto') tries
+  // ERC-1271 first but on failure falls through to ECDSA recover, which
+  // throws `invalid signature length` for our 0x01-prefixed packed passkey
+  // signatures. Going straight to ERC-1271 avoids that throw.
+  if (input.client) {
+    try {
+      const code = await getCode(input.client, { address: input.expectedSigner })
+      if (code && code !== '0x') {
+        const hash = hashTypedData({
+          domain: walletActionDomain(input.chainId, input.verifyingContract),
+          types: WalletActionTypes,
+          primaryType: 'WalletAction',
+          message: input.action,
+        })
+        try {
+          const result = await readContract(input.client, {
+            address: input.expectedSigner,
+            abi: erc1271Abi,
+            functionName: 'isValidSignature',
+            args: [hash, input.signature],
+          })
+          return result === ERC1271_MAGIC
+            ? { ok: true }
+            : { ok: false, reason: 'ERC-1271 rejected' }
+        } catch (e) {
+          return { ok: false, reason: `ERC-1271 call failed: ${(e as Error).message}` }
+        }
+      }
+    } catch {
+      // getCode failed — fall through to viem's auto path below.
+    }
+  }
 
-  return ok ? { ok: true } : { ok: false, reason: 'signature mismatch' }
+  // EOA path: viem's verifyTypedData handles ECDSA recovery and ERC-1271 fallback.
+  try {
+    const ok = await verifyTypedData({
+      address: input.expectedSigner,
+      domain: walletActionDomain(input.chainId, input.verifyingContract),
+      types: WalletActionTypes,
+      primaryType: 'WalletAction',
+      message: input.action,
+      signature: input.signature,
+      ...(input.client ? { client: input.client as Parameters<typeof verifyTypedData>[0] extends infer P ? P extends { client?: infer C } ? C : never : never } : {}),
+    })
+    return ok ? { ok: true } : { ok: false, reason: 'signature mismatch' }
+  } catch (e) {
+    return { ok: false, reason: `verify error: ${(e as Error).message}` }
+  }
 }
