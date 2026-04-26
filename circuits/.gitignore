@@ -1,0 +1,18 @@
+# Vendored circom binary (~12MB) — install per README rather than commit.
+bin/circom
+
+# Powers-of-tau ceremony files (10–150MB) — downloaded from Hermez ceremony.
+ptau/*.ptau
+
+# Compiled circuit artifacts.
+build/
+
+# Final ceremony zkeys + verification keys (per-circuit, regenerable).
+*.zkey
+*.vkey.json
+
+# Solidity verifier output (copied to packages/contracts/src/zk/ on export,
+# which IS committed; the staging copy here is not).
+verifier/*.sol
+
+node_modules/

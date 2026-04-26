@@ -1,0 +1,19 @@
+{
+  "name": "@smart-agent/circuits",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Zero-knowledge circuits for geo claims (H3 membership-in-coverage proofs).",
+  "scripts": {
+    "compile": "node ./scripts/compile-all.mjs",
+    "ptau:download": "node ./scripts/ptau-download.mjs",
+    "verifier": "node ./scripts/export-verifier.mjs",
+    "test": "node --test ./scripts/*.test.mjs"
+  },
+  "dependencies": {
+    "snarkjs": "^0.7.4",
+    "circomlibjs": "^0.1.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0"
+  }
+}
