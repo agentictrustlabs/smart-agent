@@ -15,6 +15,7 @@ import {
   ROLE_OWNER, ROLE_BOARD_MEMBER, ROLE_OPERATOR, ROLE_MEMBER, ROLE_ADVISOR, ROLE_OPERATED_AGENT,
   ROLE_STRATEGIC_PARTNER, ROLE_UPSTREAM, ROLE_DOWNSTREAM, ROLE_COACH, ROLE_DISCIPLE,
   ATL_LATITUDE, ATL_LONGITUDE, ATL_SPATIAL_CRS, ATL_SPATIAL_TYPE, ATL_CONTROLLER,
+  ATL_CITY, ATL_REGION, ATL_COUNTRY,
   ATL_PRIMARY_NAME, ATL_NAME_LABEL,
 } from '@smart-agent/sdk'
 import { agentAccountResolverAbi } from '@smart-agent/sdk'
@@ -76,6 +77,17 @@ async function setGeo(addr: `0x${string}`, lat: string, lon: string) {
     await wc.writeContract({ address: resolver, abi: agentAccountResolverAbi, functionName: 'setStringProperty', args: [addr, ATL_SPATIAL_CRS as `0x${string}`, 'EPSG:4326'] })
     await wc.writeContract({ address: resolver, abi: agentAccountResolverAbi, functionName: 'setStringProperty', args: [addr, ATL_SPATIAL_TYPE as `0x${string}`, 'Point'] })
   } catch (_e) { console.warn(`[catalyst-seed] Geo failed for ${addr}:`, _e) }
+}
+
+async function setCity(addr: `0x${string}`, city: string, region: string, country: string) {
+  const wc = getWalletClient()
+  const resolver = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}`
+  if (!resolver) return
+  try {
+    await wc.writeContract({ address: resolver, abi: agentAccountResolverAbi, functionName: 'setStringProperty', args: [addr, ATL_CITY as `0x${string}`, city] })
+    await wc.writeContract({ address: resolver, abi: agentAccountResolverAbi, functionName: 'setStringProperty', args: [addr, ATL_REGION as `0x${string}`, region] })
+    await wc.writeContract({ address: resolver, abi: agentAccountResolverAbi, functionName: 'setStringProperty', args: [addr, ATL_COUNTRY as `0x${string}`, country] })
+  } catch (_e) { console.warn(`[catalyst-seed] City failed for ${addr}:`, _e) }
 }
 
 function upsertUser(u: { id: string; name: string; email: string; wallet: string; did: string }) {
@@ -191,6 +203,38 @@ async function doSeed() {
   await setGeo(grpBerthoud, '40.3083', '-105.0811')   // Berthoud
   await setGeo(grpJohnstown, '40.3369', '-104.9522')  // Johnstown
   await setGeo(grpRedFeather, '40.8028', '-105.5819') // Red Feather Lakes
+
+  // City / region / country tags — coarse-tier input for geo-overlap.v1.
+  // Person agents inherit their host city from the circle they belong to;
+  // the seed sets controllers for orgs but not for persons here, so the
+  // person tags land via the per-person setCity calls below.
+  console.log('[catalyst-seed] Setting city tags...')
+  await setCity(network,       'Fort Collins',     'Colorado', 'US')
+  await setCity(hub,           'Fort Collins',     'Colorado', 'US')
+  await setCity(grpWellington, 'Wellington',       'Colorado', 'US')
+  await setCity(grpLaporte,    'Laporte',          'Colorado', 'US')
+  await setCity(grpTimnath,    'Timnath',          'Colorado', 'US')
+  await setCity(grpLoveland,   'Loveland',         'Colorado', 'US')
+  await setCity(grpBerthoud,   'Berthoud',         'Colorado', 'US')
+  await setCity(grpJohnstown,  'Johnstown',        'Colorado', 'US')
+  await setCity(grpRedFeather, 'Red Feather Lakes','Colorado', 'US')
+
+  // Person-agent cities: seven Catalyst demo users get geographically
+  // realistic Colorado towns spread across the circle network so the
+  // trust-search panel exercises both same-city and same-region cases.
+  const personCityMap: Array<[string, string, string, string]> = [
+    ['cat-user-001', 'Fort Collins',    'Colorado', 'US'],  // Maria
+    ['cat-user-002', 'Fort Collins',    'Colorado', 'US'],  // Pastor David
+    ['cat-user-003', 'Wellington',      'Colorado', 'US'],  // Carlos
+    ['cat-user-004', 'Fort Collins',    'Colorado', 'US'],  // Rosa
+    ['cat-user-005', 'Wellington',      'Colorado', 'US'],  // Sarah Thompson
+    ['cat-user-006', 'Loveland',        'Colorado', 'US'],  // Ana
+    ['cat-user-007', 'Laporte',         'Colorado', 'US'],  // Miguel
+  ]
+  for (const [uid, city, region, country] of personCityMap) {
+    const u = userMap.get(uid)
+    if (u?.personAgentAddress) await setCity(u.personAgentAddress as `0x${string}`, city, region, country)
+  }
 
   // ─── On-Chain Relationships (22 edges) ────────────────────────────
   // Quick check: if Hub already has outgoing ALLIANCE edges, skip all edge creation

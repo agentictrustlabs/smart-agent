@@ -35,6 +35,7 @@ import {
   TYPE_ORGANIZATION,
   HAS_MEMBER,
   ATL_PRIMARY_NAME,
+  ATL_CITY, ATL_REGION, ATL_COUNTRY,
 } from '@smart-agent/sdk'
 import { getPersonAgentForUser } from '@/lib/agent-registry'
 import {
@@ -43,6 +44,7 @@ import {
   type WalletAction,
   type MatchAgainstPublicSetBody,
 } from '@smart-agent/privacy-creds'
+import { geoOverlapScore, type CoarseGeoTag } from '@smart-agent/privacy-creds/geo-overlap'
 import { person } from '@/lib/ssi/clients'
 import { ssiConfig } from '@/lib/ssi/config'
 
@@ -57,20 +59,34 @@ export interface AgentMeta {
   address: `0x${string}`
   displayName: string
   primaryName: string | null
+  /** Coarse geo tag — null if untagged. Stays in metadata (not signed over)
+   *  because it's read from a public on-chain property. */
+  geoTag: CoarseGeoTag | null
 }
 
 export interface TrustSearchHit {
   address: `0x${string}`
   displayName: string
   primaryName: string | null
+  /** Combined org-overlap + geo-overlap score. */
   score: number
+  /** Org-overlap component (smart-agent.trust-overlap.v1). */
+  orgScore: number
+  /** Geo-overlap component (smart-agent.geo-overlap.v1) — coarse city/region/country only at this layer; private claim contributions arrive via the ZK match path. */
+  geoScore: number
+  /** Number of org memberships shared with the caller. */
   sharedCount: number
+  /** Candidate's coarse geo tag (city/region/country) — null if untagged. */
+  geoTag: CoarseGeoTag | null
   evidenceCommit: `0x${string}`
 }
 
 export interface TrustSearchPrepared {
   /** Lifecycle: 'no-wallet' means provision first; 'ready' means sign and submit. */
   status: 'ready' | 'no-wallet' | 'no-resolver' | 'no-candidates'
+  /** Caller's coarse geo tag — combined client-side with agentMeta tags
+   *  to add the geo-overlap.v1 score on top of org-overlap. */
+  callerGeo?: CoarseGeoTag | null
   /** Human-readable reason when status !== 'ready'. */
   message?: string
   /** Holder wallet id (when status === 'ready'). */
@@ -164,6 +180,8 @@ export async function prepareTrustSearch(opts: { query?: string; limit?: number 
   const agentMeta: Record<string, AgentMeta> = {}
   for (const c of candidates) agentMeta[c.meta.id] = c.meta
 
+  const callerGeo = await readCoarseGeoTag(resolverAddr, myPersonAgent)
+
   return {
     status: 'ready',
     holderWalletId,
@@ -177,15 +195,17 @@ export async function prepareTrustSearch(opts: { query?: string; limit?: number 
     hash,
     body,
     agentMeta,
+    callerGeo,
   }
 }
 
-/** Step 2: forward signed envelope to person-mcp; merge scores with agentMeta. */
+/** Step 2: forward signed envelope to person-mcp; merge scores with agentMeta + geo overlay. */
 export async function completeTrustSearch(input: {
   action: WalletAction & { expiresAt: string }
   signature: `0x${string}`
   body: MatchAgainstPublicSetBody
   agentMeta: Record<string, AgentMeta>
+  callerGeo?: CoarseGeoTag | null
 }): Promise<{ hits: TrustSearchHit[]; error?: string }> {
   try {
     const signer = await getSignerContext()
@@ -200,16 +220,31 @@ export async function completeTrustSearch(input: {
     })
     if (res.error || !res.hits) return { hits: [], error: res.error ?? 'match failed' }
 
+    const callerGeo = input.callerGeo ?? null
+
     const hits: TrustSearchHit[] = res.hits.map(h => {
       const meta = input.agentMeta[h.id.toLowerCase()]
       const address = meta?.address ?? (getAddress(h.id) as `0x${string}`)
       const fallbackName = `${address.slice(0, 6)}…${address.slice(-4)}`
+
+      // Org-overlap score from the MCP. Geo-overlap layered on top here
+      // (coarse-tier — public claim contributions arrive via the ZK
+      // match path in Phase 6).
+      const orgScore = h.score
+      let geoScore = 0
+      if (callerGeo && meta?.geoTag) {
+        const geo = geoOverlapScore({ caller: callerGeo, candidate: meta.geoTag })
+        geoScore = geo.score
+      }
       return {
         address,
         displayName: meta?.displayName || fallbackName,
         primaryName: meta?.primaryName ?? null,
-        score: h.score,
+        score: orgScore + geoScore,
+        orgScore,
+        geoScore,
         sharedCount: h.sharedCount,
+        geoTag: meta?.geoTag ?? null,
         evidenceCommit: h.evidenceCommit,
       }
     })
@@ -347,12 +382,14 @@ async function collectCandidates(args: {
     }
 
     const publicSet = await getPublicOrgsForAgent(args.resolverAddr, agentAddr)
+    const geoTag = await readCoarseGeoTag(args.resolverAddr, agentAddr)
     out.push({
       meta: {
         id: agentAddr.toLowerCase() as `0x${string}`,
         address: agentAddr,
         displayName: core.displayName || `${agentAddr.slice(0, 6)}…${agentAddr.slice(-4)}`,
         primaryName: primaryName || null,
+        geoTag,
       },
       publicSet,
     })
@@ -360,6 +397,30 @@ async function collectCandidates(args: {
     if (out.length >= args.limit) break
   }
   return out
+}
+
+/** Read ATL_CITY / ATL_REGION / ATL_COUNTRY off an agent. Returns null if
+ *  every field is empty so callers can skip geo scoring for untagged agents. */
+async function readCoarseGeoTag(
+  resolverAddr: `0x${string}`,
+  agentAddr: `0x${string}`,
+): Promise<CoarseGeoTag | null> {
+  const client = getPublicClient()
+  async function read(predicate: `0x${string}`): Promise<string> {
+    try {
+      return (await client.readContract({
+        address: resolverAddr, abi: agentAccountResolverAbi,
+        functionName: 'getStringProperty', args: [agentAddr, predicate],
+      })) as string
+    } catch { return '' }
+  }
+  const [city, region, country] = await Promise.all([
+    read(ATL_CITY as `0x${string}`),
+    read(ATL_REGION as `0x${string}`),
+    read(ATL_COUNTRY as `0x${string}`),
+  ])
+  if (!city && !region && !country) return null
+  return { city: city || null, region: region || null, country: country || null }
 }
 
 async function getPublicOrgsForAgent(

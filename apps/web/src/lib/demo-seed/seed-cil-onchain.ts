@@ -12,6 +12,7 @@ import {
   ROLE_OWNER, ROLE_BOARD_MEMBER, ROLE_OPERATOR, ROLE_MEMBER,
   ROLE_STRATEGIC_PARTNER, ROLE_UPSTREAM, ROLE_DOWNSTREAM,
   ATL_LATITUDE, ATL_LONGITUDE, ATL_SPATIAL_CRS, ATL_SPATIAL_TYPE, ATL_CONTROLLER,
+  ATL_CITY, ATL_REGION, ATL_COUNTRY,
   ATL_GENMAP_DATA, ATL_PRIMARY_NAME, ATL_NAME_LABEL,
   agentNameRegistryAbi, agentNameResolverAbi,
 } from '@smart-agent/sdk'
@@ -71,6 +72,17 @@ async function setGeo(addr: `0x${string}`, lat: string, lon: string) {
     await wc.writeContract({ address: resolver, abi: agentAccountResolverAbi, functionName: 'setStringProperty', args: [addr, ATL_SPATIAL_CRS as `0x${string}`, 'EPSG:4326'] })
     await wc.writeContract({ address: resolver, abi: agentAccountResolverAbi, functionName: 'setStringProperty', args: [addr, ATL_SPATIAL_TYPE as `0x${string}`, 'Point'] })
   } catch (_e) { console.warn(`[cil-seed] Geo failed for ${addr}:`, _e) }
+}
+
+async function setCity(addr: `0x${string}`, city: string, region: string, country: string) {
+  const wc = getWalletClient()
+  const resolver = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}`
+  if (!resolver) return
+  try {
+    await wc.writeContract({ address: resolver, abi: agentAccountResolverAbi, functionName: 'setStringProperty', args: [addr, ATL_CITY as `0x${string}`, city] })
+    await wc.writeContract({ address: resolver, abi: agentAccountResolverAbi, functionName: 'setStringProperty', args: [addr, ATL_REGION as `0x${string}`, region] })
+    await wc.writeContract({ address: resolver, abi: agentAccountResolverAbi, functionName: 'setStringProperty', args: [addr, ATL_COUNTRY as `0x${string}`, country] })
+  } catch (_e) { console.warn(`[cil-seed] City failed for ${addr}:`, _e) }
 }
 
 async function setGenMapData(addr: `0x${string}`, data: string) {
@@ -170,6 +182,24 @@ async function doSeed() {
   await setGeo(lomeHub,     '6.1340',  '1.2200')
   await setGeo(wave1,       '6.1300',  '1.2280')
   await setGeo(wave2,       '6.1360',  '1.2190')
+
+  // City tags — coarse-tier input for geo-overlap.v1.
+  console.log('[cil-seed] Setting city tags...')
+  await setCity(cil,         'New York',  'New York',  'US')
+  await setCity(ilad,        'Lomé',      'Maritime',  'TG')
+  await setCity(ravah,       'Lomé',      'Maritime',  'TG')
+  await setCity(afiaMarket,  'Lomé',      'Maritime',  'TG')
+  await setCity(kossiRepair, 'Lomé',      'Maritime',  'TG')
+  await setCity(lomeHub,     'Lomé',      'Maritime',  'TG')
+  await setCity(wave1,       'Lomé',      'Maritime',  'TG')
+  await setCity(wave2,       'Lomé',      'Maritime',  'TG')
+
+  // Person agents — every CIL demo user is anchored in Lomé so the
+  // panel scores same-city rich-overlap among the cohort, with cross-
+  // hub trust (NYC) emerging only via shared org memberships.
+  for (const u of cilUsers) {
+    if (u.personAgentAddress) await setCity(u.personAgentAddress as `0x${string}`, 'Lomé', 'Maritime', 'TG')
+  }
 
   // ─── GenMap Health Data ───────────────────────────────────────────
   console.log('[cil-seed] Setting genmap health data...')

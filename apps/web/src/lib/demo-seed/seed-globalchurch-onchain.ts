@@ -12,6 +12,7 @@ import {
   ROLE_OWNER, ROLE_BOARD_MEMBER, ROLE_OPERATOR, ROLE_MEMBER,
   ROLE_UPSTREAM, ROLE_DOWNSTREAM,
   ATL_LATITUDE, ATL_LONGITUDE, ATL_SPATIAL_CRS, ATL_SPATIAL_TYPE, ATL_CONTROLLER,
+  ATL_CITY, ATL_REGION, ATL_COUNTRY,
   ATL_GENMAP_DATA, ATL_PRIMARY_NAME, ATL_NAME_LABEL,
   agentNameRegistryAbi, agentNameResolverAbi,
 } from '@smart-agent/sdk'
@@ -71,6 +72,17 @@ async function setGeo(addr: `0x${string}`, lat: string, lon: string) {
     await wc.writeContract({ address: resolver, abi: agentAccountResolverAbi, functionName: 'setStringProperty', args: [addr, ATL_SPATIAL_CRS as `0x${string}`, 'EPSG:4326'] })
     await wc.writeContract({ address: resolver, abi: agentAccountResolverAbi, functionName: 'setStringProperty', args: [addr, ATL_SPATIAL_TYPE as `0x${string}`, 'Point'] })
   } catch (_e) { console.warn(`[gc-seed] Geo failed for ${addr}:`, _e) }
+}
+
+async function setCity(addr: `0x${string}`, city: string, region: string, country: string) {
+  const wc = getWalletClient()
+  const resolver = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}`
+  if (!resolver) return
+  try {
+    await wc.writeContract({ address: resolver, abi: agentAccountResolverAbi, functionName: 'setStringProperty', args: [addr, ATL_CITY as `0x${string}`, city] })
+    await wc.writeContract({ address: resolver, abi: agentAccountResolverAbi, functionName: 'setStringProperty', args: [addr, ATL_REGION as `0x${string}`, region] })
+    await wc.writeContract({ address: resolver, abi: agentAccountResolverAbi, functionName: 'setStringProperty', args: [addr, ATL_COUNTRY as `0x${string}`, country] })
+  } catch (_e) { console.warn(`[gc-seed] City failed for ${addr}:`, _e) }
 }
 
 async function setGenMapData(addr: `0x${string}`, data: string) {
@@ -169,6 +181,32 @@ async function doSeed() {
   await setGeo(youthMinistry, '34.1760', '-118.3150')
   await setGeo(smallGroups, '34.1758', '-118.3146')
   await setGeo(missionsTeam, '34.1762', '-118.3152')
+
+  // City tags — coarse-tier input for geo-overlap.v1.
+  console.log('[gc-seed] Setting city tags...')
+  await setCity(gcNetwork,    'Atlanta',     'Georgia',    'US')
+  await setCity(graceChurch,  'Sun Valley',  'California', 'US')
+  await setCity(sbc,          'Nashville',   'Tennessee',  'US')
+  await setCity(ecfa,         'Winchester',  'Virginia',   'US')
+  await setCity(wycliffe,     'Orlando',     'Florida',    'US')
+  await setCity(ncf,          'Alpharetta',  'Georgia',    'US')
+  await setCity(youthMinistry,  'Sun Valley',  'California', 'US')
+  await setCity(smallGroups,    'Sun Valley',  'California', 'US')
+  await setCity(missionsTeam,   'Sun Valley',  'California', 'US')
+
+  // Person agents — distribute the demo users across the org cities so
+  // shared-city scoring exercises pairs both within and across hubs.
+  const gcPersonCities: Array<[string, string, string, string]> = [
+    ['gc-user-001', 'Atlanta',    'Georgia',    'US'],  // Pastor James
+    ['gc-user-002', 'Atlanta',    'Georgia',    'US'],  // Sarah Mitchell
+    ['gc-user-003', 'Sun Valley', 'California', 'US'],  // John Chesnut
+    ['gc-user-004', 'Sun Valley', 'California', 'US'],  // Dan Busby
+    ['gc-user-005', 'Winchester', 'Virginia',   'US'],  // David Wills
+  ]
+  for (const [uid, city, region, country] of gcPersonCities) {
+    const u = userMap.get(uid)
+    if (u?.personAgentAddress) await setCity(u.personAgentAddress as `0x${string}`, city, region, country)
+  }
 
   // ─── GenMap Health Data ───────────────────────────────────────────
   console.log('[gc-seed] Setting GenMap health data...')

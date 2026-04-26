@@ -85,6 +85,7 @@ export function AgentTrustSearch() {
           signature,
           body: prep.body,
           agentMeta: prep.agentMeta,
+          callerGeo: prep.callerGeo ?? null,
         })
         if (res.error) { setErr(res.error); setHits([]); setPhase('idle'); return }
         setHits(res.hits)
@@ -205,11 +206,16 @@ export function AgentTrustSearch() {
                     <div style={{ fontWeight: 600, fontSize: 13, color: '#171c28' }}>
                       {h.displayName}
                     </div>
-                    <div style={{ fontSize: 11, color: '#64748b', display: 'flex', gap: 8 }}>
+                    <div style={{ fontSize: 11, color: '#64748b', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                       {h.primaryName && (
                         <code style={{ fontFamily: 'ui-monospace, monospace' }}>{h.primaryName}</code>
                       )}
+                      <span title="org-overlap.v1">org {h.orgScore.toFixed(1)}</span>
+                      <span title="geo-overlap.v1 (coarse city/region/country)">geo {h.geoScore.toFixed(1)}</span>
                       <span>{h.sharedCount} shared</span>
+                      {h.geoTag?.city && (
+                        <span style={{ color: '#3f6ee8' }}>📍 {h.geoTag.city}</span>
+                      )}
                     </div>
                   </div>
                 </Link>

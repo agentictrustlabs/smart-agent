@@ -194,6 +194,12 @@ export {
 } from './naming'
 export type { NameResolutionConfig, NameTreeNode } from './naming'
 
+// ─── Geo (.geo namespace) ────────────────────────────────────────────
+export { GeoFeatureClient, GEO_FEATURE_KIND_HASHES, GEO_COORD_SCALE } from './geo-feature'
+export type { GeoFeatureRecord, PublishFeatureInput, GeoFeatureKindLabel } from './geo-feature'
+export { GeoClaimClient } from './geo-claim'
+export type { GeoClaimRecord, MintClaimInput, GeoRelation, GeoVisibilityLabel } from './geo-claim'
+
 // ─── Re-export types ─────────────────────────────────────────────────
 export type {
   AgentAccount,
