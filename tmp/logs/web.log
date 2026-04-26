@@ -7880,3 +7880,23 @@
 [deployer-lock] #1804 released (held 9ms)
  GET /api/boot-seed 200 in 18ms
  GET /api/system-readiness 200 in 23ms
+[deployer-lock] #1805 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #1805 acquired after 0ms
+[deployer-lock] #1805 fn done in 8ms
+[deployer-lock] #1805 released (held 8ms)
+[deployer-lock] #1806 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #1806 acquired after 1ms
+[deployer-lock] #1806 fn done in 7ms
+[deployer-lock] #1806 released (held 8ms)
+ GET /api/boot-seed 200 in 15ms
+ GET /api/system-readiness 200 in 17ms
+[deployer-lock] #1807 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #1807 acquired after 0ms
+[deployer-lock] #1807 fn done in 8ms
+[deployer-lock] #1807 released (held 8ms)
+ GET /api/boot-seed 200 in 12ms
+ GET /api/system-readiness 200 in 19ms
+[deployer-lock] #1808 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #1808 acquired after 0ms
+[deployer-lock] #1808 fn done in 8ms
+[deployer-lock] #1808 released (held 8ms)

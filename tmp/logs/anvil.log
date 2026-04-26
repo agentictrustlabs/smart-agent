@@ -33174,3 +33174,100 @@ eth_getTransactionCount
 eth_call
 eth_getCode
 eth_blockNumber
+eth_call
+eth_call
+eth_blockNumber
+eth_getTransactionReceipt
+eth_getTransactionCount
+eth_getBlockByNumber
+eth_maxPriorityFeePerGas
+eth_estimateGas
+eth_sendRawTransaction
+eth_getTransactionReceipt
+eth_blockNumber
+
+    Transaction: 0xc59620a0a5de533186e7dd5aa9ea475ba0d318dee8282bd80694698a22c86482
+    Gas used: 41527
+
+    Block Number: 1881
+    Block Hash: 0xc7b6b8a0c4a9de69a8daed3d27a67ba0bf357b37020147a3b88678fd8c45a3ee
+    Block Time: "Sun, 26 Apr 2026 23:43:40 +0000"
+
+eth_getTransactionByHash
+eth_getTransactionReceipt
+eth_getTransactionCount
+eth_getBlockByNumber
+eth_maxPriorityFeePerGas
+eth_estimateGas
+eth_sendRawTransaction
+eth_getTransactionReceipt
+eth_blockNumber
+eth_getTransactionByHash
+eth_getTransactionReceipt
+eth_getBlockByNumber
+
+    Transaction: 0x1e24463d77a3efe89f53d29cfa6a29513766ef314cb35923beb0f33cd9cb1708
+    Gas used: 188228
+
+    Block Number: 1882
+    Block Hash: 0xafee81d6a8f1799cb2aa64c7f67dc1409c586b3d964f72914317c2356b6afe98
+    Block Time: "Sun, 26 Apr 2026 23:43:40 +0000"
+
+eth_getCode
+eth_blockNumber
+eth_call
+eth_call
+eth_chainId
+eth_getTransactionCount
+eth_call
+eth_blockNumber
+eth_getTransactionReceipt
+eth_call
+eth_call
+eth_call
+eth_call
+eth_getTransactionCount
+eth_getBlockByNumber
+eth_maxPriorityFeePerGas
+eth_estimateGas
+eth_sendRawTransaction
+eth_getTransactionReceipt
+eth_blockNumber
+eth_getTransactionByHash
+eth_getTransactionReceipt
+
+    Transaction: 0xd42f360c0fce19401e06f56e77dc15e48770daece7daa5db4197ce5e325dc229
+    Gas used: 41527
+
+    Block Number: 1883
+    Block Hash: 0xf26af056090c4016aee5511dca036d919a9a34344bb3e71fdc58f367a87dbc27
+    Block Time: "Sun, 26 Apr 2026 23:43:44 +0000"
+
+eth_getBlockByNumber
+eth_blockNumber
+eth_getCode
+eth_call
+eth_call
+eth_blockNumber
+eth_getTransactionReceipt
+eth_getTransactionCount
+eth_getBlockByNumber
+eth_maxPriorityFeePerGas
+eth_estimateGas
+eth_sendRawTransaction
+eth_getTransactionReceipt
+eth_blockNumber
+eth_getTransactionByHash
+eth_getTransactionReceipt
+eth_getBlockByNumber
+
+    Transaction: 0xaa586e88756ddf681295aeeec349216533ca44529a357c39ae0ebb44c984bc1d
+    Gas used: 41527
+
+    Block Number: 1884
+    Block Hash: 0x086ec0de368701a117c760c1c0fdb465f4fd95b30745f91e5adb87a8eaa1a05a
+    Block Time: "Sun, 26 Apr 2026 23:43:48 +0000"
+
+eth_chainId
+eth_getTransactionCount
+eth_call
