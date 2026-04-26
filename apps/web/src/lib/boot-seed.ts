@@ -20,6 +20,7 @@ import { ensureCommunityUsers } from '@/lib/demo-seed/lookup-users'
 import { seedCILOnChain } from '@/lib/demo-seed/seed-cil-onchain'
 import { seedCatalystOnChain } from '@/lib/demo-seed/seed-catalyst-onchain'
 import { seedGlobalChurchOnChain } from '@/lib/demo-seed/seed-globalchurch-onchain'
+import { ensureDevP256Stub } from '@/lib/dev-p256-stub'
 
 export interface BootState {
   started: boolean
@@ -49,31 +50,43 @@ export function triggerBootSeed(): Promise<void> {
   state.started = true
   state.startedAt = new Date().toISOString()
   state.phase = 'provisioning users (all prefixes)'
+  // Reset error from a prior failed attempt so callers don't see a stale
+  // string while a fresh attempt is making real progress.
+  state.error = null
 
   inflight = (async () => {
     try {
-      // 1. Provision every demo user across all three communities in parallel.
-      //    Each call inserts DB rows + deploys person agents for that prefix.
-      state.phase = 'provisioning: global.church users'
-      await ensureCommunityUsers('gc-user-')
+      // 0. Install the dev-only P-256 always-true stub at the canonical
+      //    precompile addresses. Anvil 1.5 doesn't expose RIP-7212, so
+      //    real WebAuthn / passkey signature verification can't run
+      //    without a fallback. The stub makes the smart account's
+      //    `_verifyWebAuthn` path return true so passkey-signed user
+      //    operations + ERC-1271 calls succeed in local dev. Idempotent.
+      state.phase = 'installing dev P-256 stub'
+      await ensureDevP256Stub()
 
-      state.phase = 'provisioning: catalyst users'
-      await ensureCommunityUsers('cat-user-')
+      // 1. Provision every demo user across all three communities in
+      //    parallel. The deployer-lock serializes the actual on-chain
+      //    writes inside getWalletClient, so this is "concurrent kick-off,
+      //    serialized signing" — gives us a single fan-out point instead
+      //    of three round-trip waves of fetches.
+      state.phase = 'provisioning users (all communities)'
+      await Promise.all([
+        ensureCommunityUsers('gc-user-'),
+        ensureCommunityUsers('cat-user-'),
+        ensureCommunityUsers('cil-user-'),
+      ])
 
-      state.phase = 'provisioning: cil users'
-      await ensureCommunityUsers('cil-user-')
-
-      // 2. Seed each hub's on-chain orgs + relationships. These are the big
-      //    ones (30s – 2min each) but they're idempotent, so the total cost
-      //    converges.
-      state.phase = 'on-chain seed: global.church'
-      await seedGlobalChurchOnChain()
-
-      state.phase = 'on-chain seed: catalyst'
-      await seedCatalystOnChain()
-
-      state.phase = 'on-chain seed: cil'
-      await seedCILOnChain()
+      // 2. Seed each hub's on-chain orgs + relationships in parallel for
+      //    the same reason. Each hub seed has its own per-hub lock that
+      //    short-circuits double-entry, so calling them simultaneously is
+      //    safe even if a poll re-trigger lands mid-flight.
+      state.phase = 'on-chain seed: all hubs'
+      await Promise.all([
+        seedGlobalChurchOnChain(),
+        seedCatalystOnChain(),
+        seedCILOnChain(),
+      ])
 
       state.completed = true
       state.completedAt = new Date().toISOString()

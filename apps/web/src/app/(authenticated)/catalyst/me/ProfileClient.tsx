@@ -94,22 +94,21 @@ export function ProfileClient({
 
   useEffect(() => {
     async function init() {
-      const token = a2a.sessionToken
-      const ok = await loadProfile(token ?? null)
+      // 1. Try the existing cookie (24h httpOnly, set on prior bootstrap).
+      //    No signing prompt — the common case after a tab refresh.
+      const ok = await loadProfile(a2a.sessionToken ?? null)
       if (ok) return
-      // Try the server-side bootstrap. For users with users.privateKey
-      // (demo / legacy) this signs with the user's own EOA. For
-      // OAuth / passkey / SIWE users the bootstrap action falls back to
-      // deployer-as-co-owner signing, which ERC-1271 validates against
-      // the smart account's _owners set.
-      try {
-        const res = await fetch('/api/a2a/bootstrap', { method: 'POST' })
-        const data = await res.json()
-        if (data.success && data.sessionToken) {
-          const ok = await loadProfile(data.sessionToken)
-          if (ok) return
-        }
-      } catch { /* server bootstrap not available */ }
+
+      // 2. Cookie is gone (logged out + back in, or first profile visit).
+      //    Mint a fresh A2A session via the auth method the user signed
+      //    in with — one signing prompt, then the saved profile loads.
+      //    Without this the user sees an empty form even though their
+      //    data lives in person-mcp under their smart-account principal.
+      const token = await ensureSessionToken()
+      if (token) {
+        await loadProfile(token)
+        return
+      }
       setSessionValid(false)
     }
     init()
@@ -146,10 +145,71 @@ export function ProfileClient({
     else if (a2a.error) { setError(a2a.error) }
   }
 
+  /**
+   * Resolve an A2A session token, prompting the user to sign exactly once
+   * with whichever method matches their auth path:
+   *
+   *   - via='demo' (or any user with users.privateKey)  → server-side
+   *   - via='siwe'                                       → wallet (MetaMask)
+   *   - via='passkey' / 'google' with a passkey enrolled → passkey
+   *
+   * Picking by `via` is essential because localStorage's passkey hint is
+   * shared across every account that ever signed in on this device — using
+   * it as the trigger forced SIWE users into a passkey prompt that would
+   * never validate.
+   */
+  async function ensureSessionToken(): Promise<string | null> {
+    if (a2a.sessionToken) return a2a.sessionToken
+
+    // 1. Server-side path always tried first — fast, no signing prompt.
+    //    Returns success only for users with a stored privateKey
+    //    (demo / Privy legacy). For everyone else this is a no-op 400.
+    try {
+      const res = await fetch('/api/a2a/bootstrap', { method: 'POST' })
+      const data = await res.json()
+      if (data.success && data.sessionToken) return data.sessionToken as string
+    } catch { /* fall through */ }
+
+    // 2. Pick the client-side path that matches how the user signed in.
+    let via: string | null = null
+    try {
+      const r = await fetch('/api/auth/session')
+      const body = await r.json()
+      via = body?.user?.via ?? null
+    } catch { /* fall through */ }
+
+    // Each auth method has exactly one signing path. Falling back from one
+    // to another would pop a second prompt for a credential the smart
+    // account doesn't even hold (e.g. MetaMask for a passkey-only user
+    // whose AgentAccount has no EOA owner).
+    if (via === 'siwe') {
+      const t = await a2a.bootstrap()
+      return t ?? null
+    }
+    if (via === 'passkey' || via === 'google') {
+      const t = await a2a.bootstrapWithPasskey()
+      return t ?? null
+    }
+    // Unknown via — best-effort: passkey if any are locally hinted, else
+    // wallet. Still single-path.
+    const hasLocalPasskey = typeof window !== 'undefined'
+      && JSON.parse(localStorage.getItem('smart-agent.passkeys.local') ?? '[]').length > 0
+    if (hasLocalPasskey) {
+      const t = await a2a.bootstrapWithPasskey()
+      return t ?? null
+    }
+    const t = await a2a.bootstrap()
+    return t ?? null
+  }
+
   function handleSave() {
     setError(null)
-    const token = a2a.sessionToken
     startTransition(async () => {
+      const token = await ensureSessionToken()
+      if (!token) {
+        setError(a2a.error ?? 'Could not establish agent session — please sign with your passkey or wallet to save.')
+        return
+      }
       const result = await saveProfileViaDelegation(token, {
         displayName: name || undefined, email: email || undefined, phone: phone || undefined,
         dateOfBirth: dateOfBirth || undefined, gender: gender || undefined, language: language || undefined,
@@ -163,6 +223,7 @@ export function ProfileClient({
         return
       }
       setSaved(true)
+      setSessionValid(true)
       setTimeout(() => setSaved(false), 2000)
     })
   }

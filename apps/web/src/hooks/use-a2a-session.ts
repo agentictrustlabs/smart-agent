@@ -134,15 +134,25 @@ export function useA2ASession() {
       const { delegationHash, sessionId, delegation } = await initBootstrap()
 
       onPhase?.('signing-delegation')
-      // Constrain the OS picker to passkeys we know about locally; if none
-      // are recorded, omit allowCredentials and let the OS surface every
-      // discoverable resident credential for this RP. The smart account's
-      // ERC-1271 path will reject any credential that isn't actually
-      // registered on this account, so the worst case is a clear failure.
-      const known = JSON.parse(localStorage.getItem('smart-agent.passkeys.local') ?? '[]') as Array<{ id: string }>
-      const allowCredentials = known.length > 0
-        ? known.map(k => {
-            const idBytes = base64UrlDecode(k.id)
+      // Constrain the OS picker to passkeys actually registered on the
+      // CURRENT user's smart account. We hit /api/auth/my-passkeys (server
+      // truth, scoped to the logged-in user) and only fall back to the
+      // browser-wide localStorage hint if that fails. localStorage alone
+      // would force the user to "Choose a passkey" out of every credential
+      // ever registered on this browser — including ones for other users.
+      let serverIds: string[] = []
+      try {
+        const r = await fetch('/api/auth/my-passkeys', { cache: 'no-store' })
+        if (r.ok) {
+          const body = await r.json() as { passkeys: Array<{ id: string }> }
+          serverIds = body.passkeys.map(p => p.id)
+        }
+      } catch { /* fall through to localStorage */ }
+      const localHint = JSON.parse(localStorage.getItem('smart-agent.passkeys.local') ?? '[]') as Array<{ id: string }>
+      const ids = serverIds.length > 0 ? serverIds : localHint.map(k => k.id)
+      const allowCredentials = ids.length > 0
+        ? ids.map(id => {
+            const idBytes = base64UrlDecode(id)
             const idAb = new ArrayBuffer(idBytes.length)
             new Uint8Array(idAb).set(idBytes)
             return { type: 'public-key' as const, id: idAb }
