@@ -19,6 +19,7 @@ export type WalletActionType =
   | 'RevokeCredential'
   | 'RotateLinkSecret'
   | 'MatchAgainstPublicSet'
+  | 'MatchAgainstPublicGeoSet'
 
 export interface WalletAction {
   type: WalletActionType

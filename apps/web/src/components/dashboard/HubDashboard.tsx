@@ -13,6 +13,7 @@ import { JoinHubBanner } from '@/components/catalyst/JoinHubBanner'
 import { CreateOrgButton } from '@/components/org/CreateOrgButton'
 import { HeldCredentialsPanel } from '@/components/org/HeldCredentialsPanel'
 import { AgentTrustSearch } from '@/components/trust/AgentTrustSearch'
+import { SetCityPanel } from '@/components/profile/SetCityPanel'
 import { HUB_SLUG_MAP } from '@/lib/hub-routes'
 import type { HubId } from '@/lib/hub-profiles'
 
@@ -226,6 +227,7 @@ async function GenericDashboard({
         <KpiCard label="TRUST GRAPH" href="/agents"><span style={{ fontSize: '1.75rem', fontWeight: 700, color: C.accent }}>{kbEdgeCount}</span><span style={{ fontSize: '0.72rem', color: C.textMuted }}>relationships</span></KpiCard>
       </div>
 
+      <SetCityPanel />
       <AgentTrustSearch />
 
       {(userOrgs.length > 0 || hubAddress) && (
@@ -450,6 +452,7 @@ async function CatalystFieldDashboard({
 
       <DelegationSection userId={currentUser.id} />
 
+      <SetCityPanel />
       <AgentTrustSearch />
 
       {(userOrgs.length > 0 || hubAddress) && (

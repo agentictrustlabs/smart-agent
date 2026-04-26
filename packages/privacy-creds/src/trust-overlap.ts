@@ -122,3 +122,49 @@ export function hashMatchBody(body: MatchAgainstPublicSetBody): `0x${string}` {
   }
   return keccak256(toBytes(canonicalJson(normalised)))
 }
+
+/**
+ * Body of a MatchAgainstPublicGeoSet wallet action.
+ *
+ *   featureSet — public geographic features (.geo namespace) the
+ *                holder is being asked to prove their private location
+ *                against. Each entry pins (featureId, featureVersion).
+ *   relations  — relations the verifier wants matched (e.g.
+ *                ['geo:residentOf', 'geo:operatesIn']). Empty = any.
+ *   policyId   — 'smart-agent.geo-overlap.v1' so historical scores
+ *                remain reproducible.
+ *
+ *   ⚠ The holder's H3 cell, exact lat/long, and any residency
+ *     credentials remain private. The Phase 6 ZK circuit
+ *     `H3MembershipInCoverageRoot` produces the proof; this body
+ *     describes what the proof must satisfy and the public output
+ *     is just `{score, evidenceCommit}`.
+ */
+export interface MatchAgainstPublicGeoSetBody {
+  policyId: string
+  blockPin: string
+  callerAddress: string
+  featureSet: Array<{
+    featureId: string         // bytes32
+    featureVersion: string    // uint64 as decimal
+    h3CoverageRoot: string    // bytes32
+  }>
+  relations: string[]
+}
+
+export function hashGeoMatchBody(body: MatchAgainstPublicGeoSetBody): `0x${string}` {
+  const normalised: MatchAgainstPublicGeoSetBody = {
+    policyId: body.policyId,
+    blockPin: body.blockPin,
+    callerAddress: canonicalOrgId(body.callerAddress),
+    featureSet: body.featureSet
+      .map(f => ({
+        featureId: f.featureId.toLowerCase(),
+        featureVersion: f.featureVersion,
+        h3CoverageRoot: f.h3CoverageRoot.toLowerCase(),
+      }))
+      .sort((a, b) => a.featureId.localeCompare(b.featureId) || a.featureVersion.localeCompare(b.featureVersion)),
+    relations: [...body.relations].map(r => r.toLowerCase()).sort(),
+  }
+  return keccak256(toBytes(canonicalJson(normalised)))
+}
