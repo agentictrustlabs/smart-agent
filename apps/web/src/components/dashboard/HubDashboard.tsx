@@ -11,6 +11,7 @@ import { getAgentMetadata } from '@/lib/agent-metadata'
 import { listHubsForOnboarding } from '@/lib/actions/onboarding/setup-agent.action'
 import { JoinHubBanner } from '@/components/catalyst/JoinHubBanner'
 import { CreateOrgButton } from '@/components/org/CreateOrgButton'
+import { HeldCredentialsPanel } from '@/components/org/HeldCredentialsPanel'
 import { HUB_SLUG_MAP } from '@/lib/hub-routes'
 import type { HubId } from '@/lib/hub-profiles'
 
@@ -224,7 +225,7 @@ async function GenericDashboard({
         <KpiCard label="TRUST GRAPH" href="/agents"><span style={{ fontSize: '1.75rem', fontWeight: 700, color: C.accent }}>{kbEdgeCount}</span><span style={{ fontSize: '0.72rem', color: C.textMuted }}>relationships</span></KpiCard>
       </div>
 
-      {userOrgs.length > 0 && (
+      {(userOrgs.length > 0 || hubAddress) && (
         <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: '1rem 1.25rem', marginBottom: '1rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.6rem' }}>
             <h2 style={{ fontSize: '0.7rem', fontWeight: 700, color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>My Organizations</h2>
@@ -250,6 +251,7 @@ async function GenericDashboard({
               </div>
             </div>
           ))}
+          <HeldCredentialsPanel />
         </div>
       )}
 
@@ -445,7 +447,7 @@ async function CatalystFieldDashboard({
 
       <DelegationSection userId={currentUser.id} />
 
-      {userOrgs.length > 0 && (
+      {(userOrgs.length > 0 || hubAddress) && (
         <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: '1rem 1.25rem', marginBottom: '1rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.6rem' }}>
             <h2 style={{ fontSize: '0.7rem', fontWeight: 700, color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>My Organizations</h2>
@@ -469,6 +471,7 @@ async function CatalystFieldDashboard({
               </div>
             </div>
           ))}
+          <HeldCredentialsPanel />
         </div>
       )}
 

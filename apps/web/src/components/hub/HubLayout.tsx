@@ -6,6 +6,7 @@ import { useState, useRef, useEffect, useMemo } from 'react'
 import { useUserContext } from '@/components/user/UserContext'
 import { HubProvider, useHubContext } from '@/components/hub/HubContext'
 import { CreateOrgDialog } from '@/components/org/CreateOrgDialog'
+import { AnonOrgRegistrationDialog } from '@/components/org/AnonOrgRegistrationDialog'
 import type { HubId } from '@/lib/hub-profiles'
 import { CatalystViewCtx } from '@/components/catalyst/CatalystViewContext'
 import type { ViewMode } from '@/components/catalyst/CatalystViewContext'
@@ -150,6 +151,7 @@ function HubLayoutInner({ children }: { children: React.ReactNode }) {
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [agentPanelOpen, setAgentPanelOpen] = useState(false)
   const [createOrgOpen, setCreateOrgOpen] = useState(false)
+  const [anonOrgOpen, setAnonOrgOpen] = useState(false)
   const userMenuRef = useRef<HTMLDivElement>(null)
 
   // Pick the active hub's address (used to scope "Create organization"). The
@@ -495,6 +497,21 @@ function HubLayoutInner({ children }: { children: React.ReactNode }) {
                         + Create organization
                       </button>
                     )}
+                    {activeHub && (
+                      <button
+                        type="button"
+                        onClick={() => { setUserMenuOpen(false); setAnonOrgOpen(true) }}
+                        style={{
+                          display: 'block', width: '100%', textAlign: 'left',
+                          padding: '0.5rem 1rem', fontSize: '0.82rem',
+                          color: T.text, background: 'transparent',
+                          border: 'none', cursor: 'pointer', fontWeight: 500,
+                        }}
+                        data-testid="hub-dropdown-anon-org"
+                      >
+                        + Anonymous org registration
+                      </button>
+                    )}
 
                     {/* ── Admin tools (moved from center nav) ── */}
                     {visibleAdminItems.length > 0 && (
@@ -763,6 +780,19 @@ function HubLayoutInner({ children }: { children: React.ReactNode }) {
               // Hard reload so /api/user-context picks up the new org
               // membership and downstream views (org list, dashboards) refresh.
               window.location.reload()
+            }}
+          />
+        )}
+        {anonOrgOpen && activeHub && (
+          <AnonOrgRegistrationDialog
+            hubAddress={activeHub.address}
+            hubName={activeHub.name}
+            onCancel={() => setAnonOrgOpen(false)}
+            onIssued={() => {
+              setAnonOrgOpen(false)
+              // The held-credentials panel on /h/{slug}/home loads on demand,
+              // so a hard reload isn't required. Just close — user can hit
+              // "Show held credentials" to confirm the new entry.
             }}
           />
         )}
