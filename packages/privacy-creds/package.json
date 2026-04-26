@@ -10,7 +10,8 @@
     "./wallet-actions": "./src/wallet-actions/index.ts",
     "./policy": "./src/policy/index.ts",
     "./formats/anoncreds-v1": "./src/formats/anoncreds-v1/index.ts",
-    "./trust-overlap": "./src/trust-overlap.ts"
+    "./trust-overlap": "./src/trust-overlap.ts",
+    "./geo-overlap": "./src/geo-overlap.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
