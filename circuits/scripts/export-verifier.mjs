@@ -46,10 +46,24 @@ console.log(`→ contributing to phase-2 ceremony (dev-only entropy)`)
 await snarkjs.zKey.contribute(zkey0, zkey1, `dev-${Date.now()}`, 'dev-only entropy — DO NOT use in prod')
 
 console.log(`→ exporting Solidity verifier`)
-const tpl = await import('snarkjs/templates/verifier_groth16.sol.ejs', { assert: { type: 'text' } }).catch(() => null)
-const sol = await snarkjs.zKey.exportSolidityVerifier(zkey1, {
-  groth16: tpl?.default ?? undefined,
-})
+// snarkjs needs the EJS template passed in as { groth16: <text> }.
+// snarkjs's package.json doesn't export './package.json' subpath, so
+// resolve via the symlink under circuits/node_modules.
+const { readFileSync, readdirSync } = await import('node:fs')
+const snarkjsRoot = resolve(ROOT, 'node_modules', 'snarkjs')
+let templatesDir = join(snarkjsRoot, 'templates')
+let groth16Tpl
+try {
+  groth16Tpl = readFileSync(join(templatesDir, 'verifier_groth16.sol.ejs'), 'utf-8')
+} catch {
+  // Fallback: walk the snarkjs install for the template (some pnpm
+  // layouts hide it under build/).
+  const candidates = readdirSync(snarkjsRoot, { recursive: true })
+  const hit = candidates.find(p => typeof p === 'string' && p.endsWith('verifier_groth16.sol.ejs'))
+  if (!hit) throw new Error('verifier_groth16.sol.ejs template not found in snarkjs')
+  groth16Tpl = readFileSync(join(snarkjsRoot, hit), 'utf-8')
+}
+const sol = await snarkjs.zKey.exportSolidityVerifier(zkey1, { groth16: groth16Tpl })
 
 const dest = join(REPO_ROOT, 'packages', 'contracts', 'src', 'zk')
 mkdirSync(dest, { recursive: true })
