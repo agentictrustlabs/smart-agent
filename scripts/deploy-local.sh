@@ -200,7 +200,7 @@ update_env_var() {
   fi
 }
 
-for svc in org-mcp family-mcp ssi-wallet-mcp; do
+for svc in org-mcp family-mcp person-mcp; do
   ENV_FILE="$ROOT_DIR/apps/$svc/.env"
   if [ -f "$ENV_FILE" ]; then
     update_env_var "$ENV_FILE" RPC_URL "$ANVIL_RPC"

@@ -9,7 +9,8 @@
     ".": "./src/index.ts",
     "./wallet-actions": "./src/wallet-actions/index.ts",
     "./policy": "./src/policy/index.ts",
-    "./formats/anoncreds-v1": "./src/formats/anoncreds-v1/index.ts"
+    "./formats/anoncreds-v1": "./src/formats/anoncreds-v1/index.ts",
+    "./trust-overlap": "./src/trust-overlap.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

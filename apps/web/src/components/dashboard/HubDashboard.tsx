@@ -12,6 +12,7 @@ import { listHubsForOnboarding } from '@/lib/actions/onboarding/setup-agent.acti
 import { JoinHubBanner } from '@/components/catalyst/JoinHubBanner'
 import { CreateOrgButton } from '@/components/org/CreateOrgButton'
 import { HeldCredentialsPanel } from '@/components/org/HeldCredentialsPanel'
+import { AgentTrustSearch } from '@/components/trust/AgentTrustSearch'
 import { HUB_SLUG_MAP } from '@/lib/hub-routes'
 import type { HubId } from '@/lib/hub-profiles'
 
@@ -224,6 +225,8 @@ async function GenericDashboard({
         <KpiCard label="KNOWLEDGE BASE" href="/agents"><span style={{ fontSize: '1.75rem', fontWeight: 700, color: C.accent }}>{kbAgentCount}</span><span style={{ fontSize: '0.72rem', color: C.textMuted }}>agents in registry</span></KpiCard>
         <KpiCard label="TRUST GRAPH" href="/agents"><span style={{ fontSize: '1.75rem', fontWeight: 700, color: C.accent }}>{kbEdgeCount}</span><span style={{ fontSize: '0.72rem', color: C.textMuted }}>relationships</span></KpiCard>
       </div>
+
+      <AgentTrustSearch />
 
       {(userOrgs.length > 0 || hubAddress) && (
         <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: '1rem 1.25rem', marginBottom: '1rem' }}>
@@ -446,6 +449,8 @@ async function CatalystFieldDashboard({
       </div>
 
       <DelegationSection userId={currentUser.id} />
+
+      <AgentTrustSearch />
 
       {(userOrgs.length > 0 || hubAddress) && (
         <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: '1rem 1.25rem', marginBottom: '1rem' }}>

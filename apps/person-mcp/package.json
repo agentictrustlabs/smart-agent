@@ -13,6 +13,9 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1",
+    "@hyperledger/anoncreds-nodejs": "^0.4.0",
+    "@hyperledger/anoncreds-shared": "^0.4.0",
+    "@smart-agent/credential-registry": "workspace:*",
     "@smart-agent/privacy-creds": "workspace:*",
     "@smart-agent/sdk": "workspace:*",
     "@smart-agent/types": "workspace:*",

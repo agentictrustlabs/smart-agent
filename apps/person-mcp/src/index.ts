@@ -5,6 +5,14 @@ import {
   CallToolRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js'
 
+// AnonCreds binding registration must happen exactly once per process,
+// before any code path that touches the AnonCreds APIs. Person-mcp now owns
+// the ssi-wallet operations end-to-end, so we register here instead of in a
+// separate ssi-wallet-mcp process.
+import { anoncredsNodeJS } from '@hyperledger/anoncreds-nodejs'
+import { AnonCreds } from '@smart-agent/privacy-creds'
+AnonCreds.registerNativeBinding(anoncredsNodeJS)
+
 import { profileTools } from './tools/profile.js'
 import { identityTools } from './tools/identities.js'
 import { chatTools } from './tools/chat.js'
@@ -128,6 +136,43 @@ app.get('/tools', (c) => {
 
 // Health check
 app.get('/health', (c) => c.json({ status: 'ok', tools: Object.keys(toolHandlers).length }))
+
+// ---------------------------------------------------------------------------
+// SSI-wallet HTTP routes (absorbed from the deleted ssi-wallet-mcp service)
+// ---------------------------------------------------------------------------
+// Same paths as before — /wallet/*, /credentials/*, /proofs/*, /audit/*,
+// /oid4vp/*, /wallet/match-against-public-set — only the port changes (3200
+// instead of 3300). Tools that used to HTTP-forward to ssi-wallet-mcp now
+// loopback to this same Hono server, which keeps the route bodies untouched.
+import { walletRoutes } from './ssi/api/wallet.js'
+import { credentialRoutes } from './ssi/api/credentials.js'
+import { proofRoutes } from './ssi/api/proofs.js'
+import { auditRoutes } from './ssi/api/audit.js'
+import { oid4vpRoutes } from './ssi/api/oid4vp.js'
+import { matchPublicSetRoutes } from './ssi/api/match-public-set.js'
+
+app.route('/', walletRoutes)
+app.route('/', credentialRoutes)
+app.route('/', proofRoutes)
+app.route('/', auditRoutes)
+app.route('/', oid4vpRoutes)
+app.route('/', matchPublicSetRoutes)
+
+app.get('/.well-known/ssi-wallet.json', (c) =>
+  c.json({
+    name: 'Smart Agent SSI Wallet (in-process within person-mcp)',
+    version: '0.1.0',
+    formats: ['anoncreds-v1'],
+    capabilities: ['provision', 'request', 'store', 'present', 'match-against-public-set'],
+    endpoints: {
+      provision: '/wallet/provision',
+      request: '/credentials/request',
+      store: '/credentials/store',
+      present: '/proofs/present',
+      match: '/wallet/match-against-public-set',
+    },
+  }),
+)
 
 // ---------------------------------------------------------------------------
 // Start both servers

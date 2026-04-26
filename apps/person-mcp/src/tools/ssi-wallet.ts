@@ -14,7 +14,7 @@
  */
 
 import { randomBytes, randomUUID } from 'node:crypto'
-import { and, eq } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { createPublicClient, http } from 'viem'
 import {
   verifyWalletAction,
@@ -23,9 +23,17 @@ import {
   type WalletActionType,
 } from '@smart-agent/privacy-creds'
 import { db } from '../db/index.js'
-import { ssiHolderWallets, ssiCredentialMetadata, ssiProofAudit } from '../db/schema.js'
+import { ssiProofAudit } from '../db/schema.js'
+import { listHolderWalletsForPrincipal } from '../ssi/storage/wallets.js'
+import { listCredentialMetadata } from '../ssi/storage/cred-metadata.js'
+import { listProofAuditByPrincipal } from '../ssi/storage/proof-audit.js'
 
-const SSI_WALLET_URL = process.env.SSI_WALLET_MCP_URL ?? 'http://127.0.0.1:3300'
+// After the merge, the ssi-wallet routes live in this same Hono server
+// (port = PERSON_MCP_PORT). The forward() helper still uses HTTP rather than
+// importing the route handlers directly — this is a tiny loopback overhead
+// for a clean migration; route bodies are unchanged.
+const SSI_WALLET_URL = process.env.SSI_WALLET_MCP_URL
+  ?? `http://127.0.0.1:${process.env.PERSON_MCP_PORT ?? '3200'}`
 const CHAIN_ID = Number(process.env.CHAIN_ID ?? '31337')
 const VERIFIER = (process.env.SSI_ACTION_VERIFIER_ADDRESS ??
   '0x0000000000000000000000000000000000000000') as `0x${string}`
@@ -167,32 +175,9 @@ const provisionWallet = {
     })
     if (!verify.ok) return mcpText({ error: `signature invalid: ${verify.reason}` })
 
-    const res = (await forward('/wallet/provision', args)) as {
-      holderWalletId: string
-      linkSecretId: string
-      askarProfile: string
-      idempotent: boolean
-    }
-
-    const existing = db.select().from(ssiHolderWallets)
-      .where(
-        and(
-          eq(ssiHolderWallets.principal, action.personPrincipal),
-          eq(ssiHolderWallets.walletContext, action.walletContext),
-        ),
-      ).get()
-    if (!existing) {
-      db.insert(ssiHolderWallets).values({
-        id: `pm_${randomUUID()}`,
-        principal: action.personPrincipal,
-        walletContext: action.walletContext,
-        signerEoa: args.expectedSigner.toLowerCase(),
-        holderWalletRef: res.holderWalletId,
-        linkSecretRef: res.linkSecretId,
-        status: 'active',
-        createdAt: new Date().toISOString(),
-      }).run()
-    }
+    // The /wallet/provision route persists the canonical holder_wallets row
+    // itself; we no longer keep a parallel mirror in person-mcp's drizzle DB.
+    const res = await forward('/wallet/provision', args)
     return mcpText(res)
   },
 }
@@ -253,31 +238,17 @@ const finishCredentialExchange = {
     required: ['principal', 'holderWalletId', 'requestId', 'credentialJson', 'credentialType', 'issuerId', 'schemaId'],
   },
   handler: async (args: FinishExchangeArgs) => {
-    const res = (await forward('/credentials/store', {
+    // /credentials/store persists the canonical credential_metadata row
+    // (keyed on holderWalletId). The previous mirror table in person-mcp's
+    // drizzle DB is gone post-merge.
+    const res = await forward('/credentials/store', {
       holderWalletId: args.holderWalletId,
       requestId: args.requestId,
       credentialJson: args.credentialJson,
       credentialType: args.credentialType,
       issuerId: args.issuerId,
       schemaId: args.schemaId,
-    })) as {
-      credentialId: string
-      metadata: { credDefId: string }
-    }
-
-    db.insert(ssiCredentialMetadata).values({
-      id: res.credentialId,
-      principal: args.principal,
-      walletContext: args.walletContext,
-      holderWalletRef: args.holderWalletId,
-      issuerId: args.issuerId,
-      schemaId: args.schemaId,
-      credDefId: res.metadata.credDefId,
-      credentialType: args.credentialType,
-      receivedAt: new Date().toISOString(),
-      status: 'active',
-    }).run()
-
+    })
     return mcpText(res)
   },
 }
@@ -408,15 +379,25 @@ const listMyCredentials = {
     required: ['principal'],
   },
   handler: async (args: { principal: string; walletContext?: string }) => {
-    const rows = args.walletContext
-      ? db.select().from(ssiCredentialMetadata)
-          .where(and(
-            eq(ssiCredentialMetadata.principal, args.principal),
-            eq(ssiCredentialMetadata.walletContext, args.walletContext),
-          )).all()
-      : db.select().from(ssiCredentialMetadata)
-          .where(eq(ssiCredentialMetadata.principal, args.principal))
-          .all()
+    // Walk this principal's wallets, then collect credential rows from each.
+    // The canonical credential_metadata table is keyed on holderWalletId, not
+    // principal/context — so the list tool joins through the wallet table.
+    const wallets = listHolderWalletsForPrincipal(args.principal)
+      .filter(w => !args.walletContext || w.walletContext === args.walletContext)
+    const rows = wallets.flatMap(w =>
+      listCredentialMetadata(w.id).map(c => ({
+        id: c.id,
+        principal: args.principal,
+        walletContext: w.walletContext,
+        holderWalletRef: w.id,
+        issuerId: c.issuerId,
+        schemaId: c.schemaId,
+        credDefId: c.credDefId,
+        credentialType: c.credentialType,
+        receivedAt: c.receivedAt,
+        status: c.status,
+      })),
+    )
     return mcpText({ credentials: rows })
   },
 }
@@ -432,9 +413,16 @@ const listWallets = {
     required: ['principal'],
   },
   handler: async (args: { principal: string }) => {
-    const rows = db.select().from(ssiHolderWallets)
-      .where(eq(ssiHolderWallets.principal, args.principal))
-      .all()
+    const rows = listHolderWalletsForPrincipal(args.principal).map(w => ({
+      id: w.id,
+      principal: w.personPrincipal,
+      walletContext: w.walletContext,
+      signerEoa: w.signerEoa,
+      holderWalletRef: w.id,
+      linkSecretRef: w.linkSecretId,
+      status: w.status,
+      createdAt: w.createdAt,
+    }))
     return mcpText({ wallets: rows })
   },
 }
@@ -462,6 +450,55 @@ const rotateLinkSecret = {
   },
 }
 
+// ─── 6d. ssi_match_against_public_set ───────────────────────────────────────
+
+interface MatchAgainstPublicSetArgs {
+  action: WalletAction & { expiresAt: string | number | bigint }
+  signature: `0x${string}`
+  expectedSigner: `0x${string}`
+  body: {
+    policyId: string
+    blockPin: string
+    candidates: Array<{ id: string; publicSet: string[] }>
+  }
+}
+
+const matchAgainstPublicSet = {
+  name: 'ssi_match_against_public_set',
+  description: 'Forward a signed MatchAgainstPublicSet action + candidate body to ssi-wallet-mcp. Returns score-only hits and writes an audit row per candidate.',
+  inputSchema: {
+    type: 'object' as const,
+    properties: {
+      action: { type: 'object' },
+      signature: { type: 'string' },
+      expectedSigner: { type: 'string' },
+      body: { type: 'object' },
+    },
+    required: ['action', 'signature', 'expectedSigner', 'body'],
+  },
+  handler: async (args: MatchAgainstPublicSetArgs) => {
+    const action: WalletAction = { ...args.action, expiresAt: BigInt(args.action.expiresAt) }
+    if (action.type !== 'MatchAgainstPublicSet') {
+      return mcpText({ error: `unexpected action type: ${action.type}` })
+    }
+    // Defence-in-depth: re-verify locally before forwarding.
+    const verify = await verifyWalletAction({
+      action, signature: args.signature,
+      expectedSigner: args.expectedSigner,
+      chainId: CHAIN_ID, verifyingContract: VERIFIER,
+      client: getPublicClient(),
+    })
+    if (!verify.ok) return mcpText({ error: `signature invalid: ${verify.reason}` })
+
+    const res = await forward('/wallet/match-against-public-set', {
+      action: args.action,
+      signature: args.signature,
+      body: args.body,
+    })
+    return mcpText(res)
+  },
+}
+
 // ─── 7. ssi_list_proof_audit ────────────────────────────────────────────────
 
 const listProofAudit = {
@@ -473,12 +510,20 @@ const listProofAudit = {
     required: ['principal'],
   },
   handler: async (args: { principal: string; limit?: number }) => {
-    const rows = db.select().from(ssiProofAudit)
+    // Two audit streams now share the same DB:
+    //   • ssi_proof_audit       — presentations (revealed attrs, predicates)
+    //   • trust_overlap_audit   — trust-overlap matches (score, evidenceCommit)
+    // Merge for the principal, sort recent-first, cap by limit.
+    const presentation = db.select().from(ssiProofAudit)
       .where(eq(ssiProofAudit.principal, args.principal))
       .all()
+      .map(r => ({ kind: 'presentation' as const, ...r }))
+    const trustOverlap = listProofAuditByPrincipal(args.principal, args.limit ?? 50)
+      .map(r => ({ kind: 'trust-overlap' as const, ...r }))
+    const merged = [...presentation, ...trustOverlap]
       .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
       .slice(0, args.limit ?? 50)
-    return mcpText({ audit: rows })
+    return mcpText({ audit: merged })
   },
 }
 
@@ -492,4 +537,5 @@ export const ssiWalletTools = {
   ssi_list_wallets:                listWallets,
   ssi_list_proof_audit:            listProofAudit,
   ssi_rotate_link_secret:          rotateLinkSecret,
+  ssi_match_against_public_set:    matchAgainstPublicSet,
 }

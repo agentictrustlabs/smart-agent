@@ -18,6 +18,7 @@ export type WalletActionType =
   | 'CreatePresentation'
   | 'RevokeCredential'
   | 'RotateLinkSecret'
+  | 'MatchAgainstPublicSet'
 
 export interface WalletAction {
   type: WalletActionType

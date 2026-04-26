@@ -214,7 +214,7 @@ async function userStatus(): Promise<{ personAgentRegistered: Check; orgsLinked:
 export async function GET() {
   const [
     rpc, contracts, ontology,
-    a2a, personMcp, ssi, orgMcp, familyMcp,
+    a2a, personMcp, orgMcp, familyMcp,
     communityBits,
     userBits,
   ] = await Promise.all([
@@ -222,8 +222,9 @@ export async function GET() {
     contractsDeployed(),
     ontologySeeded(),
     checkPort(process.env.A2A_AGENT_URL ?? 'http://localhost:3100', 'a2a-agent', '/.well-known/agent.json'),
+    // person-mcp now hosts the ssi-wallet routes too (provision/credentials/
+    // proofs/audit/oid4vp/match-against-public-set). One health check covers both.
     checkPort(process.env.PERSON_MCP_URL ?? 'http://localhost:3200', 'person-mcp'),
-    checkPort(process.env.SSI_WALLET_MCP_URL ?? 'http://localhost:3300', 'ssi-wallet-mcp'),
     checkPort(process.env.ORG_MCP_URL ?? 'http://localhost:3400', 'org-mcp'),
     checkPort(process.env.FAMILY_MCP_URL ?? 'http://localhost:3500', 'family-mcp'),
     communityStatus(),
@@ -231,7 +232,7 @@ export async function GET() {
   ])
 
   const infra: Check[] = [rpc, contracts, ontology]
-  const services: Check[] = [a2a, personMcp, ssi, orgMcp, familyMcp]
+  const services: Check[] = [a2a, personMcp, orgMcp, familyMcp]
   const community: Check[] = [communityBits.usersProvisioned, communityBits.onChainAgents, communityBits.bootSeed]
   const user: Check[] = [userBits.personAgentRegistered, userBits.orgsLinked, userBits.hubResolved]
 

@@ -1,18 +1,11 @@
-import { readFileSync } from 'node:fs'
-
-try {
-  const envFile = readFileSync('.env', 'utf-8')
-  for (const line of envFile.split('\n')) {
-    const trimmed = line.trim()
-    if (!trimmed || trimmed.startsWith('#')) continue
-    const eqIdx = trimmed.indexOf('=')
-    if (eqIdx > 0) {
-      const key = trimmed.slice(0, eqIdx)
-      const val = trimmed.slice(eqIdx + 1)
-      if (!process.env[key]) process.env[key] = val
-    }
-  }
-} catch { /* .env not found */ }
+/**
+ * ssi-wallet config — was previously a separate process. After the merge into
+ * person-mcp, the config object continues to exist with the same shape so the
+ * absorbed storage/registry/auth modules don't need internal edits.
+ *
+ * Values are read from process.env, which is loaded once by person-mcp's
+ * index.ts via its own .env loader.
+ */
 
 const registryAddr = process.env.CREDENTIAL_REGISTRY_CONTRACT_ADDRESS
 if (!registryAddr) {
@@ -20,8 +13,10 @@ if (!registryAddr) {
 }
 
 export const config = {
-  port: Number(process.env.SSI_WALLET_MCP_PORT ?? '3300'),
-  dbPath: process.env.SSI_WALLET_DB_PATH ?? 'ssi-wallet.db',
+  port: Number(process.env.PERSON_MCP_PORT ?? '3200'),
+  /** Person-mcp's own SQLite path — both the drizzle layer and the absorbed
+   *  ssi storage modules write into the same file. */
+  dbPath: process.env.PERSON_MCP_DB_PATH ?? 'person-mcp.db',
   askarStorePath: process.env.SSI_ASKAR_STORE_PATH ?? './askar-stores',
   askarKey: process.env.SSI_ASKAR_KEY ?? 'dev-only-key-rotate-in-prod',
   chainId: Number(process.env.CHAIN_ID ?? '31337'),
