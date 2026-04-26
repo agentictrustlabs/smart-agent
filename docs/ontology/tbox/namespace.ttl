@@ -1,0 +1,86 @@
+@prefix sa:    <https://smartagent.io/ontology/core#> .
+@prefix san:   <https://smartagent.io/ontology/namespace#> .
+@prefix sar:   <https://smartagent.io/ontology/relationships#> .
+@prefix atl:   <https://agentictrust.io/ontology/core#> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl:   <http://www.w3.org/2002/07/owl#> .
+@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
+@prefix skos:  <http://www.w3.org/2004/02/skos/core#> .
+
+# =============================================================================
+# Smart Agent Namespace Ontology  (T-Box)
+# =============================================================================
+#
+# A namespace root is a top-level handle space (`.agent`, `.geo`, `.pg`, …).
+# Each root is owned by an AgentAccount, has a default resolver, and carries
+# a `kind` tag that downstream resource binders dispatch on:
+#
+#   san:NamespaceRoot
+#     └── san:hasKind → san:Kind  (san:KindAgent | san:KindGeo |
+#                                  san:KindPeopleGroup | …)
+#
+# Names within a root are bound by NAMESPACE_CONTAINS edges in the
+# AgentRelationship graph (see relationships.ttl) — that's how on-chain
+# subtree traversal works without a name-specific contract method.
+#
+# Resource binders attach an opaque resource record per name node:
+#
+#   san:NameRecord  →  san:resourceRef  →  <resource IRI>
+#
+# For .agent, the resource is the AgentAccount itself. For .geo, the
+# resource is a sag:GeoFeature (see geo.ttl). For .pg, it's a
+# sapg:PeopleGroupResource (see pg.ttl).
+
+san:NamespaceRoot a owl:Class ;
+    rdfs:label "Namespace root" ;
+    rdfs:comment "A top-level naming handle space (e.g. .agent, .geo, .pg)." .
+
+san:NameRecord a owl:Class ;
+    rdfs:label "Name record" ;
+    rdfs:comment "A node within a namespace tree — a (root, parent, label) tuple. The owner is an AgentAccount; the resolver is shared with siblings under the same root unless overridden." .
+
+# ─── Namespace kinds ───────────────────────────────────────────────────
+
+san:Kind a owl:Class ;
+    rdfs:label "Namespace kind" ;
+    rdfs:comment "Tag attached to a NamespaceRoot at registration time. Downstream resource binders (GeoFeatureRegistry, PgRegistry) dispatch on this." .
+
+san:KindAgent       a san:Kind ; rdfs:label "Agent namespace" .
+san:KindGeo         a san:Kind ; rdfs:label "Geo namespace" .
+san:KindPeopleGroup a san:Kind ; rdfs:label "People-group namespace" .
+
+# ─── Properties ────────────────────────────────────────────────────────
+
+san:hasRoot a owl:ObjectProperty ;
+    rdfs:domain san:NameRecord ;
+    rdfs:range  san:NamespaceRoot .
+
+san:hasKind a owl:ObjectProperty ;
+    rdfs:domain san:NamespaceRoot ;
+    rdfs:range  san:Kind .
+
+san:rootLabel a owl:DatatypeProperty ;
+    rdfs:domain san:NamespaceRoot ;
+    rdfs:range  xsd:string ;
+    rdfs:comment 'Label without leading dot ("agent", "geo", "pg").' .
+
+san:resourceRef a owl:ObjectProperty ;
+    rdfs:domain san:NameRecord ;
+    rdfs:comment "Reference to the resource the name node binds to (e.g. the AgentAccount for .agent, the GeoFeature for .geo)." .
+
+san:stewardAccount a owl:ObjectProperty ;
+    rdfs:domain san:NamespaceRoot ;
+    rdfs:range  sa:AgentAccount ;
+    rdfs:comment "Account that owns and operates the root. May delegate child registration via subregistry." .
+
+san:resolverAccount a owl:ObjectProperty ;
+    rdfs:domain san:NamespaceRoot ;
+    rdfs:comment "Default resolver contract used when individual records don't override." .
+
+# ─── Relationship hooks ───────────────────────────────────────────────
+
+san:NamespaceContainsRelationship a owl:Class ;
+    rdfs:subClassOf sar:RelationshipType ;
+    rdfs:label "NAMESPACE_CONTAINS" ;
+    rdfs:comment "Edge from parent name to child name. Subject = parent owner, object = child owner; status transitions match the standard graph lifecycle." .

@@ -1,0 +1,122 @@
+@prefix sa:    <https://smartagent.io/ontology/core#> .
+@prefix sageo: <https://smartagent.io/ontology/geo#> .
+@prefix san:   <https://smartagent.io/ontology/namespace#> .
+@prefix sar:   <https://smartagent.io/ontology/relationships#> .
+@prefix geo:   <http://www.opengis.net/ont/geosparql#> .
+@prefix geof:  <http://www.opengis.net/def/function/geosparql/> .
+@prefix sf:    <http://www.opengis.net/ont/sf#> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl:   <http://www.w3.org/2002/07/owl#> .
+@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
+@prefix prov:  <http://www.w3.org/ns/prov#> .
+
+# =============================================================================
+# Smart Agent Geo Ontology  (T-Box, GeoSPARQL-aligned)
+# =============================================================================
+#
+# sageo:GeoFeature is a subclass of geo:Feature so every server-side
+# GeoSPARQL query (geof:sfContains / geof:sfWithin / geof:sfIntersects /
+# geof:distance) targets sageo:GeoFeature instances exactly the same way
+# it would target any geo:Feature. Centroid + bbox + h3CoverageRoot are
+# Smart-Agent additions for cheap pre-filter and ZK proof support; the
+# canonical geometry remains geo:hasGeometry → geo:asWKT.
+
+sageo:GeoFeature a owl:Class ;
+    rdfs:subClassOf geo:Feature ;
+    rdfs:label "Smart Agent Geo Feature" ;
+    rdfs:comment "Versioned, name-bound geographic feature. Subclass of geo:Feature; canonical geometry stays as geo:hasGeometry → geo:asWKT (RFC 7946 / ISO 19125)." .
+
+# ─── Feature kinds ────────────────────────────────────────────────────
+
+sageo:Planet       a owl:Class ; rdfs:subClassOf sageo:GeoFeature ; rdfs:label "Planet" .
+sageo:Country      a owl:Class ; rdfs:subClassOf sageo:GeoFeature ; rdfs:label "Country" .
+sageo:State        a owl:Class ; rdfs:subClassOf sageo:GeoFeature ; rdfs:label "State / Province" .
+sageo:County       a owl:Class ; rdfs:subClassOf sageo:GeoFeature ; rdfs:label "County" .
+sageo:Municipality a owl:Class ; rdfs:subClassOf sageo:GeoFeature ; rdfs:label "Municipality / City" .
+sageo:Neighborhood a owl:Class ; rdfs:subClassOf sageo:GeoFeature ; rdfs:label "Neighborhood / District" .
+sageo:ZipCode      a owl:Class ; rdfs:subClassOf sageo:GeoFeature ; rdfs:label "Postal code area" .
+
+# ─── Versioning + provenance ──────────────────────────────────────────
+
+sageo:featureId a owl:DatatypeProperty ;
+    rdfs:domain sageo:GeoFeature ;
+    rdfs:range  xsd:hexBinary ;
+    rdfs:comment "Stable bytes32 id across versions. Produced as keccak256(canonicalKey)." .
+
+sageo:featureVersion a owl:DatatypeProperty ;
+    rdfs:domain sageo:GeoFeature ;
+    rdfs:range  xsd:positiveInteger .
+
+sageo:geometryHash a owl:DatatypeProperty ;
+    rdfs:domain sageo:GeoFeature ;
+    rdfs:range  xsd:hexBinary ;
+    rdfs:comment "keccak256 of the canonical-encoded GeoJSON. The on-chain anchor — full geometry stays off chain." .
+
+sageo:h3CoverageRoot a owl:DatatypeProperty ;
+    rdfs:domain sageo:GeoFeature ;
+    rdfs:range  xsd:hexBinary ;
+    rdfs:comment "Merkle root over the H3 resolution-6 cells covering this feature. Used by H3MembershipInCoverageRoot ZK proofs." .
+
+sageo:sourceSetRoot a owl:DatatypeProperty ;
+    rdfs:domain sageo:GeoFeature ;
+    rdfs:range  xsd:hexBinary ;
+    rdfs:comment "Merkle root over source-dataset records (census tract ids, OSM relation ids) used to derive this feature." .
+
+sageo:stewardAccount a owl:ObjectProperty ;
+    rdfs:domain sageo:GeoFeature ;
+    rdfs:range  sa:AgentAccount .
+
+sageo:validAfter   a owl:DatatypeProperty ; rdfs:domain sageo:GeoFeature ; rdfs:range xsd:dateTime .
+sageo:validUntil   a owl:DatatypeProperty ; rdfs:domain sageo:GeoFeature ; rdfs:range xsd:dateTime .
+sageo:active       a owl:DatatypeProperty ; rdfs:domain sageo:GeoFeature ; rdfs:range xsd:boolean .
+
+# ─── GeoClaim ─────────────────────────────────────────────────────────
+
+sageo:GeoClaim a owl:Class ;
+    rdfs:label "Geo Claim" ;
+    rdfs:comment "A claim an agent makes about a feature (residency, operating area, completed task, …). Hooks into AgentRelationship via sageo:edgeRef and AgentAssertion via sageo:assertionRef when public." .
+
+sageo:subjectAgent  a owl:ObjectProperty ; rdfs:domain sageo:GeoClaim ; rdfs:range sa:AgentAccount .
+sageo:issuer        a owl:ObjectProperty ; rdfs:domain sageo:GeoClaim ; rdfs:range sa:AgentAccount .
+sageo:targetFeature a owl:ObjectProperty ; rdfs:domain sageo:GeoClaim ; rdfs:range sageo:GeoFeature .
+sageo:relation      a owl:ObjectProperty ; rdfs:domain sageo:GeoClaim .
+sageo:visibility    a owl:DatatypeProperty ; rdfs:domain sageo:GeoClaim ; rdfs:range xsd:string .
+sageo:evidenceCommit a owl:DatatypeProperty ; rdfs:domain sageo:GeoClaim ; rdfs:range xsd:hexBinary ;
+    rdfs:comment "ZK-targetable commit. The H3MembershipInCoverageRoot circuit's public output equals this value." .
+sageo:edgeRef       a owl:DatatypeProperty ; rdfs:domain sageo:GeoClaim ; rdfs:range xsd:hexBinary ;
+    rdfs:comment "AgentRelationship edge id for the public hop, or 0x0… for purely private claims." .
+sageo:assertionRef  a owl:DatatypeProperty ; rdfs:domain sageo:GeoClaim ; rdfs:range xsd:hexBinary .
+sageo:confidence    a owl:DatatypeProperty ; rdfs:domain sageo:GeoClaim ; rdfs:range xsd:integer .
+sageo:policyId      a owl:DatatypeProperty ; rdfs:domain sageo:GeoClaim ; rdfs:range xsd:string ;
+    rdfs:comment '"smart-agent.geo-overlap.v1" — pinned so historical scores remain reproducible.' .
+
+# ─── Relations ────────────────────────────────────────────────────────
+# Eight relations matching GeoClaimRegistry.sol constants.
+
+sageo:Relation a owl:Class ; rdfs:label "Geo claim relation kind" .
+
+sageo:servesWithin         a sageo:Relation ; rdfs:label "serves within" ;
+    rdfs:comment "Subject delivers service inside the feature (e.g. in-home care across this county)." .
+sageo:operatesIn           a sageo:Relation ; rdfs:label "operates in" ;
+    rdfs:comment "Subject's operations or activity span the feature." .
+sageo:licensedIn           a sageo:Relation ; rdfs:label "licensed in" ;
+    rdfs:comment "Subject holds a license valid within the feature." .
+sageo:completedTaskIn      a sageo:Relation ; rdfs:label "completed task in" .
+sageo:validatedPresenceIn  a sageo:Relation ; rdfs:label "validated presence in" ;
+    rdfs:comment "A validator attested subject was present in the feature (e.g. on-site verification)." .
+sageo:stewardOf            a sageo:Relation ; rdfs:label "steward of" ;
+    rdfs:comment "Subject curates / maintains this feature on chain." .
+sageo:residentOf           a sageo:Relation ; rdfs:label "resident of" ;
+    rdfs:comment "Subject's primary residence or registered address is in the feature." .
+sageo:originIn             a sageo:Relation ; rdfs:label "origin in" ;
+    rdfs:comment "Subject's origin (place of birth, founding city, etc.) is in the feature." .
+
+# ─── Visibility modes ────────────────────────────────────────────────
+
+sageo:Visibility a owl:Class .
+sageo:VisPublic            a sageo:Visibility ; rdfs:label "Public" .
+sageo:VisPublicCoarse      a sageo:Visibility ; rdfs:label "Public coarse" .
+sageo:VisPrivateCommitment a sageo:Visibility ; rdfs:label "Private commitment" .
+sageo:VisPrivateZk         a sageo:Visibility ; rdfs:label "Private ZK" .
+sageo:VisOffchainOnly      a sageo:Visibility ; rdfs:label "Offchain only" .

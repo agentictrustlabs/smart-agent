@@ -14,6 +14,8 @@
 export { DiscoveryService } from './discovery-service'
 export { GraphDBClient, GraphDBError } from './graphdb-client'
 export { PREFIXES, DATA_GRAPH } from './sparql'
+export { GeoDiscoveryClient } from './geo-sparql'
+export type { GeoFeatureRef } from './geo-sparql'
 
 export type {
   GraphDBConfig,

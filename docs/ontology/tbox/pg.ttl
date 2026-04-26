@@ -1,0 +1,103 @@
+@prefix sa:    <https://smartagent.io/ontology/core#> .
+@prefix sapg:  <https://smartagent.io/ontology/pg#> .
+@prefix san:   <https://smartagent.io/ontology/namespace#> .
+@prefix sageo: <https://smartagent.io/ontology/geo#> .
+@prefix sar:   <https://smartagent.io/ontology/relationships#> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl:   <http://www.w3.org/2002/07/owl#> .
+@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+
+# =============================================================================
+# Smart Agent People-Group Ontology  (T-Box, .pg)
+# =============================================================================
+#
+# The .pg namespace handles people-group resources. A PeopleGroup is an
+# ethnolinguistic / cultural group identified across well-known external
+# taxonomies — Joshua Project (peopleId3), Ethnologue (ROL3 ISO 639-3),
+# UN M.49, Glottolog. The on-chain PeopleGroupResource is a thin steward
+# record + ingestion compatibility shape; canonical taxonomic data stays
+# off chain (referenced by the ingestion URI).
+#
+# Compatibility design intent (per user 2026-04-26):
+#   • peopleId3 from Joshua Project drives discovery + cross-org identity.
+#   • rol3 (ISO 639-3) anchors the language affinity.
+#   • countryCode tags primary geography (ISO 3166-1 alpha-2).
+#   • each PeopleGroup has a stewardAccount that controls the on-chain
+#     record (typically a missions org).
+
+sapg:PeopleGroup a owl:Class ;
+    rdfs:label "People Group" ;
+    rdfs:comment "Ethnolinguistic / cultural group identified by Joshua Project peopleId3 + Ethnologue rol3. Steward-curated on chain; data canonical off chain." .
+
+sapg:PeopleGroupResource a owl:Class ;
+    rdfs:label "People Group Resource" ;
+    rdfs:subClassOf sapg:PeopleGroup ;
+    rdfs:comment "A .pg name node's resource binding. One PeopleGroupResource per .pg name." .
+
+# ─── External taxonomy ids ────────────────────────────────────────────
+
+sapg:peopleId3 a owl:DatatypeProperty ;
+    rdfs:domain sapg:PeopleGroup ;
+    rdfs:range  xsd:string ;
+    rdfs:comment "Joshua Project's peopleId3 (3-letter group identifier, e.g. 'AKB' for Akebu)." .
+
+sapg:rol3 a owl:DatatypeProperty ;
+    rdfs:domain sapg:PeopleGroup ;
+    rdfs:range  xsd:string ;
+    rdfs:comment "ISO 639-3 language code (Ethnologue / SIL)." .
+
+sapg:countryCode a owl:DatatypeProperty ;
+    rdfs:domain sapg:PeopleGroup ;
+    rdfs:range  xsd:string ;
+    rdfs:comment "ISO 3166-1 alpha-2 country code of primary location." .
+
+sapg:joshuaProjectURI a owl:DatatypeProperty ;
+    rdfs:domain sapg:PeopleGroup ;
+    rdfs:range  xsd:anyURI ;
+    rdfs:comment "Canonical record URL on joshuaproject.net or the ingestion-pipeline mirror." .
+
+sapg:ethnologueURI a owl:DatatypeProperty ;
+    rdfs:domain sapg:PeopleGroup ;
+    rdfs:range  xsd:anyURI .
+
+# ─── Steward + visibility ─────────────────────────────────────────────
+
+sapg:stewardAccount a owl:ObjectProperty ;
+    rdfs:domain sapg:PeopleGroup ;
+    rdfs:range  sa:AgentAccount ;
+    rdfs:comment "AgentAccount that maintains this resource (typically a missions org)." .
+
+sapg:visibility a owl:DatatypeProperty ;
+    rdfs:domain sapg:PeopleGroup ;
+    rdfs:range  xsd:string ;
+    rdfs:comment 'Mirror of sageo:visibility — "Public" / "PublicCoarse" / "PrivateCommitment" / "PrivateZk" / "OffchainOnly". People-group affinity may be sensitive depending on context.' .
+
+sapg:membershipPolicy a owl:DatatypeProperty ;
+    rdfs:domain sapg:PeopleGroup ;
+    rdfs:range  xsd:string ;
+    rdfs:comment 'How sapg:memberOf claims are validated for this group: "self-asserted" / "issuer-asserted" / "anoncreds-credential" / "zk-proof".' .
+
+sapg:metadataURI a owl:DatatypeProperty ;
+    rdfs:domain sapg:PeopleGroup ;
+    rdfs:range  xsd:anyURI .
+
+# ─── Relations (people-group claims) ──────────────────────────────────
+
+sapg:memberOf a owl:ObjectProperty ;
+    rdfs:label "member of (people group)" ;
+    rdfs:domain sa:Agent ;
+    rdfs:range  sapg:PeopleGroup ;
+    rdfs:comment "Subject identifies as a member of this PeopleGroup. Visibility controls whether the affinity is revealable." .
+
+sapg:servesAmong a owl:ObjectProperty ;
+    rdfs:label "serves among (people group)" ;
+    rdfs:domain sa:Agent ;
+    rdfs:range  sapg:PeopleGroup ;
+    rdfs:comment "Subject's mission / service work targets this PeopleGroup. Often public for orgs." .
+
+sapg:hasPrimaryGeography a owl:ObjectProperty ;
+    rdfs:domain sapg:PeopleGroup ;
+    rdfs:range  sageo:GeoFeature ;
+    rdfs:comment "Primary geographic feature where this people group lives. Cross-references the .geo namespace." .
