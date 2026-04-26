@@ -81,12 +81,15 @@ export interface TrustSearchHit {
   score: number
   /** Org-overlap component (smart-agent.trust-overlap.v1). */
   orgScore: number
-  /** Geo-overlap component (smart-agent.geo-overlap.v1) — coarse city/region/country only at this layer; private claim contributions arrive via the ZK match path. */
+  /** Geo-overlap component (smart-agent.geo-overlap.v1). */
   geoScore: number
   /** Number of org memberships shared with the caller. */
   sharedCount: number
   /** Candidate's coarse geo tag (city/region/country) — null if untagged. */
   geoTag: CoarseGeoTag | null
+  /** Per-row geo trust explanation: which relations contributed and at
+   *  what score. Empty when no public claims matched. */
+  geoExplanation: Array<{ relation: string; contribution: number }>
   evidenceCommit: `0x${string}`
 }
 
@@ -254,6 +257,7 @@ export async function completeTrustSearch(input: {
       // contributions arrive via the Phase 6 ZK match path).
       const orgScore = h.score
       let geoScore = 0
+      const geoExplanation: Array<{ relation: string; contribution: number }> = []
       if (callerGeo && meta?.geoTag) {
         const geo = geoOverlapScore({
           caller: callerGeo,
@@ -261,6 +265,17 @@ export async function completeTrustSearch(input: {
           matchedClaims: meta.geoMatchedClaims,
         })
         geoScore = geo.score
+        // Coarse-tier explanation
+        if (geo.coarseScore > 0) {
+          geoExplanation.push({ relation: 'coarse:city/region/country', contribution: geo.coarseScore })
+        }
+        // Per-claim explanation (relation hash → label is already stored)
+        for (const c of meta.geoMatchedClaims ?? []) {
+          // approximate per-claim contribution: same formula as the scorer
+          // but used for explanation, not for re-scoring.
+          const rough = roughClaimContribution(c)
+          if (rough > 0) geoExplanation.push({ relation: c.relation, contribution: rough })
+        }
       }
       return {
         address,
@@ -271,6 +286,7 @@ export async function completeTrustSearch(input: {
         geoScore,
         sharedCount: h.sharedCount,
         geoTag: meta?.geoTag ?? null,
+        geoExplanation,
         evidenceCommit: h.evidenceCommit,
       }
     })
@@ -279,6 +295,30 @@ export async function completeTrustSearch(input: {
   } catch (err) {
     return { hits: [], error: (err as Error).message }
   }
+}
+
+// ─── Helpers ────────────────────────────────────────────────────────
+
+/**
+ * Rough per-claim contribution estimate, mirroring scoreSingleClaim
+ * for the geo-trust-explanation UI. Not used in actual scoring (the
+ * canonical score comes from geoOverlapScore on the same inputs); this
+ * function exists only to attribute slices of the geo score to the
+ * relations that earned them.
+ */
+function roughClaimContribution(c: GeoClaimInput): number {
+  const baseWeights: Record<string, number> = {
+    'geo:residentOf': 1.5, 'geo:operatesIn': 1.0, 'geo:servesWithin': 1.2,
+    'geo:licensedIn': 1.0, 'geo:completedTaskIn': 0.8,
+    'geo:validatedPresenceIn': 1.0, 'geo:stewardOf': 0.7, 'geo:originIn': 0.6,
+  }
+  const w = baseWeights[c.relation] ?? 0
+  if (w === 0 || c.disputed) return 0
+  const conf = Math.max(0, Math.min(1, c.confidence / 100))
+  const issuer = Math.max(0, Math.min(1, c.issuerTrust ?? 0.5))
+  const visMap: Record<string, number> = { Public: 1, PublicCoarse: 0.8, PrivateZk: 0.9, OffchainOnly: 0.5, PrivateCommitment: 0 }
+  const vis = visMap[c.visibility ?? 'Public']
+  return Number((w * conf * issuer * vis).toFixed(3))
 }
 
 // ─── Internals ──────────────────────────────────────────────────────

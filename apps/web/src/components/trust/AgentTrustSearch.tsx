@@ -211,12 +211,24 @@ export function AgentTrustSearch() {
                         <code style={{ fontFamily: 'ui-monospace, monospace' }}>{h.primaryName}</code>
                       )}
                       <span title="org-overlap.v1">org {h.orgScore.toFixed(1)}</span>
-                      <span title="geo-overlap.v1 (coarse city/region/country)">geo {h.geoScore.toFixed(1)}</span>
+                      <span title="geo-overlap.v1 (coarse + claim-aware)">geo {h.geoScore.toFixed(1)}</span>
                       <span>{h.sharedCount} shared</span>
                       {h.geoTag?.city && (
                         <span style={{ color: '#3f6ee8' }}>📍 {h.geoTag.city}</span>
                       )}
                     </div>
+                    {h.geoExplanation && h.geoExplanation.length > 0 && (
+                      <div style={{ fontSize: 10, color: '#64748b', marginTop: 4, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        {h.geoExplanation.map((e, i) => (
+                          <span key={i} style={{
+                            background: '#f5f8ff', border: '1px solid #e0e7ff',
+                            color: '#3f6ee8', padding: '1px 6px', borderRadius: 4,
+                          }}>
+                            {e.relation.replace(/^geo:/, '')} +{e.contribution.toFixed(2)}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </Link>
               ))}
