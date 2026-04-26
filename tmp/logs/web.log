@@ -1,0 +1,151 @@
+
+> @smart-agent/web@0.0.1 dev /home/barb/smart-agent/apps/web
+> next dev
+
+ ⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+ We detected multiple lockfiles and selected the directory of /home/barb/package-lock.json as the root directory.
+ To silence this warning, set `outputFileTracingRoot` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/output#caveats for more information.
+ Detected additional lockfiles: 
+   * /home/barb/smart-agent/pnpm-lock.yaml
+
+   ▲ Next.js 15.5.15
+   - Local:        http://localhost:3000
+   - Network:      http://10.255.255.254:3000
+   - Environments: .env
+
+ ✓ Starting...
+ ✓ Ready in 1231ms
+ ✓ Compiled /middleware in 391ms (114 modules)
+ ○ Compiling / ...
+ ✓ Compiled / in 4s (1669 modules)
+ GET / 200 in 4594ms
+ ○ Compiling /api/boot-seed ...
+ ✓ Compiled /api/boot-seed in 3s (2933 modules)
+ GET /api/boot-seed 200 in 3429ms
+[deployer-lock] #1 writeContract(createAccount) queued (depth=0)
+[deployer-lock] #1 acquired after 0ms
+[deployer-lock] #1 fn done in 9ms
+[deployer-lock] #1 released (held 9ms)
+[deployer-lock] #2 writeContract(createAccount) queued (depth=0)
+[deployer-lock] #2 acquired after 0ms
+[deployer-lock] #2 fn done in 9ms
+[deployer-lock] #2 released (held 9ms)
+[deployer-lock] #3 writeContract(register) queued (depth=0)
+[deployer-lock] #3 acquired after 0ms
+[deployer-lock] #3 fn done in 9ms
+[deployer-lock] #3 released (held 9ms)
+[deployer-lock] #4 writeContract(addMultiAddressProperty) queued (depth=0)
+[deployer-lock] #4 acquired after 0ms
+[deployer-lock] #4 fn done in 7ms
+[deployer-lock] #4 released (held 7ms)
+[generate-wallet] Person agent registered: 0xb4368F1b5D0c25b27a2499975e61009f4f5496bb → 0x9A6476784290a762f3c3933d755Bc496b76292a9
+[demo-seed] Provisioned Maria Gonzalez: EOA=0x9A6476784290a762f3c3933d755Bc496b76292a9, PersonAgent=0xb4368F1b5D0c25b27a2499975e61009f4f5496bb
+[deployer-lock] #5 writeContract(createAccount) queued (depth=0)
+[deployer-lock] #5 acquired after 0ms
+[deployer-lock] #5 fn done in 16ms
+[deployer-lock] #5 released (held 16ms)
+[deployer-lock] #6 writeContract(createAccount) queued (depth=0)
+[deployer-lock] #6 acquired after 0ms
+[deployer-lock] #6 fn done in 8ms
+[deployer-lock] #6 released (held 8ms)
+[deployer-lock] #7 writeContract(register) queued (depth=0)
+[deployer-lock] #7 acquired after 0ms
+[deployer-lock] #7 fn done in 9ms
+[deployer-lock] #7 released (held 9ms)
+[deployer-lock] #8 writeContract(addMultiAddressProperty) queued (depth=0)
+[deployer-lock] #8 acquired after 0ms
+[deployer-lock] #8 fn done in 7ms
+[deployer-lock] #8 released (held 7ms)
+[generate-wallet] Person agent registered: 0x106322eA76e4aE623C1da4b0f660103f7D3dE683 → 0xa162355d9B4f7fcD7991f3dBa24D508f6369a873
+[demo-seed] Provisioned Pastor David Chen: EOA=0xa162355d9B4f7fcD7991f3dBa24D508f6369a873, PersonAgent=0x106322eA76e4aE623C1da4b0f660103f7D3dE683
+[deployer-lock] #9 writeContract(createAccount) queued (depth=0)
+[deployer-lock] #9 acquired after 0ms
+[deployer-lock] #9 fn done in 8ms
+[deployer-lock] #9 released (held 8ms)
+[deployer-lock] #10 writeContract(createAccount) queued (depth=0)
+[deployer-lock] #10 acquired after 0ms
+[deployer-lock] #10 fn done in 8ms
+[deployer-lock] #10 released (held 8ms)
+[deployer-lock] #11 writeContract(register) queued (depth=0)
+[deployer-lock] #11 acquired after 0ms
+[deployer-lock] #11 fn done in 10ms
+[deployer-lock] #11 released (held 10ms)
+[deployer-lock] #12 writeContract(addMultiAddressProperty) queued (depth=0)
+[deployer-lock] #12 acquired after 0ms
+[deployer-lock] #12 fn done in 8ms
+[deployer-lock] #12 released (held 8ms)
+[generate-wallet] Person agent registered: 0x7c1cCA786bFF9661D4fFa249105cF0d1f01946DD → 0x23129369CC619504E673947d08da984dfe50A204
+[demo-seed] Provisioned Rosa Martinez: EOA=0x23129369CC619504E673947d08da984dfe50A204, PersonAgent=0x7c1cCA786bFF9661D4fFa249105cF0d1f01946DD
+[deployer-lock] #13 writeContract(createAccount) queued (depth=0)
+[deployer-lock] #13 acquired after 0ms
+[deployer-lock] #13 fn done in 9ms
+[deployer-lock] #13 released (held 9ms)
+[deployer-lock] #14 writeContract(createAccount) queued (depth=0)
+[deployer-lock] #14 acquired after 0ms
+[deployer-lock] #14 fn done in 8ms
+[deployer-lock] #14 released (held 8ms)
+[deployer-lock] #15 writeContract(register) queued (depth=0)
+[deployer-lock] #15 acquired after 0ms
+[deployer-lock] #15 fn done in 11ms
+[deployer-lock] #15 released (held 11ms)
+[deployer-lock] #16 writeContract(addMultiAddressProperty) queued (depth=0)
+[deployer-lock] #16 acquired after 1ms
+[deployer-lock] #16 fn done in 7ms
+[deployer-lock] #16 released (held 8ms)
+[generate-wallet] Person agent registered: 0x2ff5Dd3094882c19D14810e56bDC83C24BB37368 → 0x1F9a30c413C6945F444845468484bb39D4338E51
+[demo-seed] Provisioned Carlos Herrera: EOA=0x1F9a30c413C6945F444845468484bb39D4338E51, PersonAgent=0x2ff5Dd3094882c19D14810e56bDC83C24BB37368
+[deployer-lock] #17 writeContract(createAccount) queued (depth=0)
+[deployer-lock] #17 acquired after 1ms
+[deployer-lock] #17 fn done in 7ms
+[deployer-lock] #17 released (held 8ms)
+[deployer-lock] #18 writeContract(createAccount) queued (depth=0)
+[deployer-lock] #18 acquired after 0ms
+[deployer-lock] #18 fn done in 8ms
+[deployer-lock] #18 released (held 8ms)
+[deployer-lock] #19 writeContract(register) queued (depth=0)
+[deployer-lock] #19 acquired after 0ms
+[deployer-lock] #19 fn done in 9ms
+[deployer-lock] #19 released (held 9ms)
+[deployer-lock] #20 writeContract(addMultiAddressProperty) queued (depth=0)
+[deployer-lock] #20 acquired after 0ms
+[deployer-lock] #20 fn done in 10ms
+[deployer-lock] #20 released (held 10ms)
+[generate-wallet] Person agent registered: 0xF417824F21319CdDC338CFF9eE50489F5021ca6F → 0xC18997497890EB30c7B21f49dbd5AD05D6474EA0
+[demo-seed] Provisioned Sarah Thompson: EOA=0xC18997497890EB30c7B21f49dbd5AD05D6474EA0, PersonAgent=0xF417824F21319CdDC338CFF9eE50489F5021ca6F
+[deployer-lock] #21 writeContract(createAccount) queued (depth=0)
+[deployer-lock] #21 acquired after 0ms
+[deployer-lock] #21 fn done in 11ms
+[deployer-lock] #21 released (held 11ms)
+[deployer-lock] #22 writeContract(createAccount) queued (depth=0)
+[deployer-lock] #22 acquired after 0ms
+[deployer-lock] #22 fn done in 9ms
+[deployer-lock] #22 released (held 10ms)
+[deployer-lock] #23 writeContract(register) queued (depth=0)
+[deployer-lock] #23 acquired after 1ms
+[deployer-lock] #23 fn done in 19ms
+[deployer-lock] #23 released (held 20ms)
+[deployer-lock] #24 writeContract(addMultiAddressProperty) queued (depth=0)
+[deployer-lock] #24 acquired after 0ms
+[deployer-lock] #24 fn done in 7ms
+[deployer-lock] #24 released (held 7ms)
+[generate-wallet] Person agent registered: 0xB7b2C055232b5f87f27503ed66Ea739107A875a7 → 0xcEB385EAF8AAB7f514e4862239d991423335A88e
+[demo-seed] Provisioned Ana Reyes: EOA=0xcEB385EAF8AAB7f514e4862239d991423335A88e, PersonAgent=0xB7b2C055232b5f87f27503ed66Ea739107A875a7
+[deployer-lock] #25 writeContract(createAccount) queued (depth=0)
+[deployer-lock] #25 acquired after 0ms
+[deployer-lock] #25 fn done in 7ms
+[deployer-lock] #25 released (held 7ms)
+[deployer-lock] #26 writeContract(createAccount) queued (depth=0)
+[deployer-lock] #26 acquired after 0ms
+[deployer-lock] #26 fn done in 7ms
+[deployer-lock] #26 released (held 7ms)
+[deployer-lock] #27 writeContract(register) queued (depth=0)
+[deployer-lock] #27 acquired after 0ms
+[deployer-lock] #27 fn done in 7ms
+[deployer-lock] #27 released (held 7ms)
+[deployer-lock] #28 writeContract(addMultiAddressProperty) queued (depth=0)
+[deployer-lock] #28 acquired after 0ms
+[deployer-lock] #28 fn done in 6ms
+[deployer-lock] #28 released (held 6ms)
+[generate-wallet] Person agent registered: 0xFb4A2F7d1DfC76edE58cbF3df65601b21b2062Af → 0x3dED4d6D2cC0E41347f870e865aF18d9cC6403Bb
+[demo-seed] Provisioned Miguel Santos: EOA=0x3dED4d6D2cC0E41347f870e865aF18d9cC6403Bb, PersonAgent=0xFb4A2F7d1DfC76edE58cbF3df65601b21b2062Af

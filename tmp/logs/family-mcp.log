@@ -1,0 +1,8 @@
+
+> @smart-agent/family-mcp@0.0.1 dev /home/barb/smart-agent/apps/family-mcp
+> tsx src/index.ts
+
+[family-mcp] Smart Agent Family Hub @ did:ethr:31337:0xa84585fb6728f413d4d89ec972c45e94686bf38e
+[family-mcp] listening on http://localhost:3500
+<-- GET /health
+--> GET /health [32m200[0m 0ms

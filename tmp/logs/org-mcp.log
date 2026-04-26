@@ -1,0 +1,8 @@
+
+> @smart-agent/org-mcp@0.0.1 dev /home/barb/smart-agent/apps/org-mcp
+> tsx src/index.ts
+
+[org-mcp] Catalyst NoCo Network @ did:ethr:31337:0xe8acf143afbf8b1371a20ea934d334180190eac1
+[org-mcp] listening on http://localhost:3400
+<-- GET /health
+--> GET /health [32m200[0m 0ms

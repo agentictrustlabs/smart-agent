@@ -1,0 +1,9 @@
+
+> @smart-agent/person-mcp@0.0.1 dev /home/barb/smart-agent/apps/person-mcp
+> tsx src/index.ts
+
+[person-mcp] HTTP server on http://localhost:3200
+[person-mcp] Tools: get_profile, update_profile, get_delegated_profile, add_external_identity, list_external_identities, remove_external_identity, create_thread, add_message, list_threads, get_thread, ssi_create_wallet_action, ssi_provision_wallet, ssi_start_credential_exchange, ssi_finish_credential_exchange, ssi_create_presentation, ssi_list_my_credentials, ssi_list_wallets, ssi_list_proof_audit, ssi_rotate_link_secret, ssi_match_against_public_set
+[person-mcp] MCP stdio transport connected
+<-- GET /health
+--> GET /health [32m200[0m 1ms

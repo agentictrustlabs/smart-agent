@@ -1,0 +1,11 @@
+
+> @smart-agent/a2a-agent@0.0.1 dev /home/barb/smart-agent/apps/a2a-agent
+> tsx watch src/index.ts
+
+Smart Agent A2A server starting on port 3100
+  Chain ID: 31337
+  RPC URL:  http://127.0.0.1:8545
+  Agent card: http://localhost:3100/.well-known/agent.json
+Smart Agent A2A server listening on http://localhost:3100
+<-- GET /health
+--> GET /health [32m200[0m 0ms

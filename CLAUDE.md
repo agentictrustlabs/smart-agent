@@ -33,6 +33,27 @@ forge build            # Compile Solidity contracts (in packages/contracts)
 forge test             # Run Forge tests
 ```
 
+### Fresh start (canonical reset)
+
+`scripts/fresh-start.sh` is the single command for "wipe everything and rebuild from zero" — new contract addresses, fresh SQLite + Askar, all services restarted, demo community re-seeded. Use it whenever:
+
+- A contract change requires a redeploy.
+- Demo state is corrupt or you want clean wallets/orgs/hubs.
+- You're debugging something that smells like stale data.
+
+```bash
+./scripts/fresh-start.sh                 # full reset, wait for readiness
+./scripts/fresh-start.sh --no-wait       # don't poll readiness
+./scripts/fresh-start.sh --no-services   # only deploy + seed; skip server startup
+```
+
+Logs land in `tmp/logs/<service>.log`; pids in `tmp/pids/<service>.pid`.
+
+When **adding new state or new services**, update three places (commented at the top of the script):
+- `SERVICES` array — new backend services.
+- `WIPE_PATHS` array — new on-disk DB / cache paths.
+- `seed_after_deploy()` — extra forge / curl seed steps.
+
 ## Smart Contracts (packages/contracts)
 
 | Contract | Purpose |

@@ -1,0 +1,118 @@
+=== Deploying contracts to local Anvil ===
+
+  Deployer: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+  Chain ID: 31337
+  EntryPoint (deployed): 0x5FbDB2315678afecb367f032d93F642f64180aa3
+  DelegationManager: 0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512
+  AgentAccountFactory: 0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0
+    AgentAccount impl: 0x75537828f2ce51be7289709686A69CbFDbB714F1
+  TimestampEnforcer: 0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9
+  ValueEnforcer: 0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9
+  AllowedTargetsEnforcer: 0x5FC8d32690cc91D4c39d9d3abcBD16989F875707
+  AllowedMethodsEnforcer: 0x0165878A594ca255338adfa4d48449f69242Eb8F
+  DataScopeEnforcer: 0xa513E6E4b8f2a923D98304ec87F64353C4D5C853
+  NameScopeEnforcer: 0x09635F643e140090A9A8Dcd712eD6285858ceBef
+  MembershipProofEnforcer: 0x67d269191c92Caf3cD7723F116c85e6E9bf55933
+  RateLimitEnforcer: 0xE6E340D132b5f46d1e472DebcD681B2aBc16e57E
+  RecoveryEnforcer: 0xc3e53F4d16Ae77Db1c982e75a937B9f60FE63690
+
+=== Extracted addresses ===
+EntryPoint:                0x5FbDB2315678afecb367f032d93F642f64180aa3
+AgentAccountFactory:       0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0
+DelegationManager:         0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512
+AgentRelationship:         0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6
+AgentAssertion:            0x8A791620dd6260079BF849Dc5567aDC3F2FdC318
+AgentRelationshipResolver: 0x610178dA211FEF7D417bC0e6FeD39F05609AD788
+AgentRelationshipTemplate: 0x0DCd1Bf9A1b36cE34237eEaFef220932846BCD82
+AgentIssuerProfile:        0x9A676e781A523b5d0C0e43731313A708CB607508
+AgentValidationProfile:    0x0B306BF915C4d645ff596e518fAf3F9669b97016
+AgentReviewRecord:         0x959922bE3CAee4b8Cd9a407cc3ac1C251C2007B1
+AgentDisputeRecord:        0x9A9f2CCfdE556A7E9Ff0848998Aa4a0CFD8863AE
+AgentTrustProfile:         0x68B1D87F95878fE05B998F19b66F4baba5De1aed
+AgentControl:              0x3Aa5ebB10DC797CAC828524e59A333d0A371443c
+TimestampEnforcer:         0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9
+ValueEnforcer:             0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9
+AllowedTargetsEnforcer:    0x5FC8d32690cc91D4c39d9d3abcBD16989F875707
+AllowedMethodsEnforcer:    0x0165878A594ca255338adfa4d48449f69242Eb8F
+DataScopeEnforcer:         0xa513E6E4b8f2a923D98304ec87F64353C4D5C853
+MockTeeVerifier:           0xc6e7DF5E7b4f2A278906862b61205850344D4e7d
+OntologyTermRegistry:      0x59b670e9fA9D0A427751Af201D676719a970857b
+AgentAccountResolver:      0x4ed7c70F96B99c776995fB64377f0d4aB3B0e1C1
+AgentUniversalResolver:    0x322813Fd9A801c5507c9de605d63CEA4f2CE6c44
+0x7a2088a1bFc9d81c55368AE168C2C02570cB814F
+RelationshipTypeRegistry: 0xB7f8BC63BbcaD18155201308C8f3540b07f84F5e
+AgentRelationshipQuery:   0xA51c1fc2f0D1a1b8494Ed1FE312d7C3a78Ed91C0
+AgentNameRegistry:        0xa85233C63b9Ee964Add6F2cffe00Fd84eb32338f
+AgentNameResolver:        0x4A679253410272dd5232B3Ff7cF5dbB88f295319
+AgentNameUniversalRes:    0x7a2088a1bFc9d81c55368AE168C2C02570cB814F
+NameScopeEnforcer:        0x09635F643e140090A9A8Dcd712eD6285858ceBef
+
+=== Updated /home/barb/smart-agent/apps/web/.env ===
+Updated /home/barb/smart-agent/apps/org-mcp/.env
+Updated /home/barb/smart-agent/apps/family-mcp/.env
+Updated /home/barb/smart-agent/apps/person-mcp/.env
+Funded org issuer 0xe8acf143AFbF8B1371A20ea934D334180190Eac1 and family issuer 0xA84585fb6728f413d4d89eC972c45E94686bf38e with 10 ETH each
+
+=== Seeding ontology predicates ===
+=== Seeding Ontology Term Registry ===
+  (already registered: atl:displayName)
+  (already registered: atl:description)
+  (already registered: atl:isActive)
+  (already registered: atl:version)
+  (already registered: atl:agentType)
+  (already registered: atl:aiAgentClass)
+  (already registered: atl:hasA2AEndpoint)
+  (already registered: atl:hasMCPServer)
+  (already registered: atl:hasServiceEndpoint)
+  (already registered: atl:supportedTrustModel)
+  (already registered: atl:hasCapability)
+  (already registered: atl:hasController)
+  (already registered: atl:operatedBy)
+  (already registered: atl:metadataURI)
+  (already registered: atl:metadataHash)
+  (already registered: atl:schemaURI)
+  (already registered: atl:entryPoint)
+  (already registered: atl:implementation)
+  (already registered: atl:delegationManager)
+  (already registered: atl:latitude)
+  (already registered: atl:longitude)
+  (already registered: atl:spatialCRS)
+  (already registered: atl:spatialType)
+  (already registered: atl:genMapData)
+  (already registered: atl:activityLog)
+  (already registered: atl:trackedMembers)
+  (already registered: atl:templateId)
+  (already registered: atl:primaryName)
+  (already registered: atl:nameLabel)
+  (already registered: atl:hubNavConfig)
+  (already registered: atl:hubNetworkLabel)
+  (already registered: atl:hubContextTerm)
+  (already registered: atl:hubOverviewLabel)
+  (already registered: atl:hubAgentLabel)
+  (already registered: atl:hubVocabulary)
+  (already registered: atl:hubRoleVocabulary)
+  (already registered: atl:hubTypeVocabulary)
+=== Ontology terms registered: 42 ===
+
+=== Seeding relationship-type registry ===
+=== Seeding Relationship Type Registry ===
+  Registering: Organization Governance (hierarchical=true, transitive=false, symmetric=false)
+  Registering: Organization Membership (hierarchical=true, transitive=false, symmetric=false)
+  Registering: Alliance (hierarchical=false, transitive=false, symmetric=true)
+  Registering: Validation Trust (hierarchical=false, transitive=false, symmetric=false)
+  Registering: Insurance Coverage (hierarchical=false, transitive=false, symmetric=false)
+  Registering: Compliance (hierarchical=false, transitive=false, symmetric=false)
+  Registering: Economic Security (hierarchical=false, transitive=false, symmetric=false)
+  Registering: Service Agreement (hierarchical=false, transitive=false, symmetric=false)
+  Registering: Delegation Authority (hierarchical=true, transitive=true, symmetric=false)
+  Registering: Runtime Attestation (hierarchical=false, transitive=false, symmetric=false)
+  Registering: Build Provenance (hierarchical=false, transitive=false, symmetric=false)
+  Registering: Organizational Control (hierarchical=true, transitive=true, symmetric=false)
+  Registering: Activity Validation (hierarchical=false, transitive=false, symmetric=false)
+  Registering: Review Relationship (hierarchical=false, transitive=false, symmetric=false)
+  Registering: Hub Membership (hierarchical=true, transitive=true, symmetric=false)
+  Registering: Generational Lineage (hierarchical=true, transitive=true, symmetric=false)
+  Registering: Namespace Contains (hierarchical=true, transitive=true, symmetric=false)
+=== Type Registry seeded: 17 relationship types ===
+
+Done. Start the web app with: pnpm dev
