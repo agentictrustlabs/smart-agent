@@ -137,37 +137,37 @@ export interface RelationshipTaxonomyRow {
 
 /**
  * Curated mapping of relationship-type key → valid object agent types
- * when the SUBJECT is always the caller's person agent. Hubs aren't
- * included here because hub-membership runs through the dedicated
- * /h/<slug> onboarding wizard, not this generic picker.
+ * when the SUBJECT is always the caller's person agent. Keys are the
+ * kebab-case taxonomy keys from packages/sdk/src/relationship-taxonomy.ts.
+ * Hubs aren't included here because hub-membership runs through the
+ * dedicated /h/<slug> onboarding wizard, not this generic picker.
  */
 const VALID_OBJECT_TYPES: Record<string, Array<'person' | 'org' | 'ai' | 'hub'>> = {
   // Person → Person
-  Coaching:               ['person'],
-  PersonalInfluence:      ['person'],
-  DataAccessDelegation:   ['person'],
+  'coaching-mentorship':    ['person'],
+  'personal-influence':     ['person'],
+  'data-access-delegation': ['person'],
   // Person → Org
-  OrganizationMembership: ['org'],
-  OrganizationGovernance: ['org'],
+  'organization-membership': ['org'],
+  'organization-governance': ['org'],
   // Person → Org / AI
-  OrganizationalControl:  ['org', 'ai'],
+  'organizational-control':  ['org', 'ai'],
   // Person → Person / Org
-  EconomicSecurity:       ['person', 'org'],
-  Compliance:             ['person', 'org'],
-  InsuranceCoverage:      ['person', 'org'],
-  GenerationalLineage:    ['person', 'org'],
-  Review:                 ['person', 'org'],
-  ReviewRelationship:     ['person', 'org'],
+  'economic-security':       ['person', 'org'],
+  'compliance':              ['person', 'org'],
+  'insurance-coverage':      ['person', 'org'],
+  'generational-lineage':    ['person', 'org'],
+  'review':                  ['person', 'org'],
   // Person → Person / Org / AI
-  ServiceAgreement:       ['person', 'org', 'ai'],
-  ValidationTrust:        ['person', 'org', 'ai'],
-  ActivityValidation:     ['person', 'org', 'ai'],
-  DelegationAuthority:    ['person', 'org', 'ai'],
+  'service-agreement':       ['person', 'org', 'ai'],
+  'validation-trust':        ['person', 'org', 'ai'],
+  'activity-validation':     ['person', 'org', 'ai'],
+  'delegation-authority':    ['person', 'org', 'ai'],
   // Person → AI
-  RuntimeAttestation:     ['ai'],
-  BuildProvenance:        ['ai'],
-  // Excluded: Alliance (org↔org), HasMember (parent→child),
-  // NamespaceContains (namespace-only).
+  'runtime-attestation':     ['ai'],
+  'build-provenance':        ['ai'],
+  // Excluded: alliance (org↔org), has-member (parent→child),
+  // namespace-contains (namespace-only).
 }
 
 export async function listRelationshipTaxonomyAction(): Promise<RelationshipTaxonomyRow[]> {
