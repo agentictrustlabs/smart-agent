@@ -43,6 +43,29 @@ const state: BootState = {
 
 let inflight: Promise<void> | null = null
 
+/**
+ * Quick on-chain probe: have the three hub agents already been seeded?
+ * Used to short-circuit boot-seed when an HMR reload reset the in-memory
+ * state.completed flag but anvil already has everything. Without this,
+ * every dev-mode source edit kicks off a fresh seed pass that hammers
+ * the deployer EOA for ~10 minutes and slows every concurrent RPC call
+ * (e.g. passkey-verify and the bootstrap routes balloon to 10–30s).
+ */
+async function chainSeedingComplete(): Promise<boolean> {
+  try {
+    const { listRegisteredAgents } = await import('@/lib/agent-resolver')
+    const agents = await listRegisteredAgents()
+    // Hub agents register last in each seed function. If all three hub
+    // names appear, every prior step (orgs, persons, edges, names) is
+    // already on chain.
+    const lower = (s: string) => s.toLowerCase()
+    const names = new Set(agents.map(a => lower(a.name)))
+    return ['catalyst hub', 'mission collective hub', 'global.church hub'].every(h => names.has(h))
+  } catch {
+    return false
+  }
+}
+
 /** Run all three community seeds to completion. Idempotent / concurrent-safe. */
 export function triggerBootSeed(): Promise<void> {
   if (state.completed) return Promise.resolve()
@@ -57,6 +80,19 @@ export function triggerBootSeed(): Promise<void> {
 
   inflight = (async () => {
     try {
+      // -1. If the chain already has all three hub agents registered, an
+      //     earlier seed run completed and the in-memory flag was cleared
+      //     by an HMR reload. Mark complete and exit before doing any
+      //     work — otherwise dev edits stall every passkey signin while
+      //     the seed re-checks every agent it already wrote.
+      if (await chainSeedingComplete()) {
+        state.completed = true
+        state.completedAt = new Date().toISOString()
+        state.phase = 'ready'
+        console.log('[boot-seed] chain already seeded — skipping')
+        return
+      }
+
       // 0. Install the dev-only P-256 always-true stub at the canonical
       //    precompile addresses. Anvil 1.5 doesn't expose RIP-7212, so
       //    real WebAuthn / passkey signature verification can't run
