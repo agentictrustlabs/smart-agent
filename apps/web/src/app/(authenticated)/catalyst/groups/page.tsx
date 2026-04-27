@@ -1,12 +1,13 @@
 import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { getUserOrgs } from '@/lib/get-user-orgs'
-import { getEdgesBySubject, getEdge, getPublicClient } from '@/lib/contracts'
+import { getEdgesBySubject, getEdgesByObject, getEdge, getPublicClient } from '@/lib/contracts'
 import { getAgentMetadata } from '@/lib/agent-metadata'
 import { type GroupNode } from '@/components/catalyst/GroupHierarchy'
 import { type CircleMapNode } from '@/components/catalyst/CircleMapView'
 import { GroupsPageClient } from './GroupsPageClient'
-import { agentAccountResolverAbi, ATL_GENMAP_DATA } from '@smart-agent/sdk'
+import { agentAccountResolverAbi, ATL_GENMAP_DATA, ALLIANCE, GENERATIONAL_LINEAGE } from '@smart-agent/sdk'
+import { getAgentKind } from '@/lib/agent-registry'
 import { getUserHubId } from '@/lib/get-user-hub'
 
 export default async function CatalystGroupsPage() {
@@ -187,20 +188,71 @@ export default async function CatalystGroupsPage() {
       metadata: health,
     })
 
-    // Walk children via outgoing edges
+    // Walk children via outgoing edges. Only follow structural org→org
+    // edges (ALLIANCE / GENERATIONAL_LINEAGE) and only land on organization-
+    // typed agents — otherwise NAMESPACE_CONTAINS pulls in person agents
+    // (e.g. Diego under Johnstown) and ORGANIZATION_MEMBERSHIP pulls
+    // their other orgs back in (Fort Collins Network under Diego).
     try {
       const edgeIds = await getEdgesBySubject(addr as `0x${string}`)
       for (const edgeId of edgeIds) {
         const edge = await getEdge(edgeId)
         if (edge.status < 2) continue
+        const t = edge.relationshipType.toLowerCase()
+        if (t !== ALLIANCE_LC && t !== GENLINEAGE_LC) continue
         if (seen.has(edge.object_.toLowerCase())) continue
+        const childKind = await getAgentKind(edge.object_).catch(() => 'unknown' as const)
+        if (childKind !== 'org') continue
         await addOrg(edge.object_, depth + 1, key)
       }
     } catch { /* ignored */ }
   }
 
+  const ALLIANCE_LC = (ALLIANCE as string).toLowerCase()
+  const GENLINEAGE_LC = (GENERATIONAL_LINEAGE as string).toLowerCase()
+
+  // Walk INCOMING structural edges to find each user-org's root ancestor,
+  // so the rendered hierarchy starts from the top-level org instead of
+  // from whatever happens to be in `userOrgs`. A circle leader who only
+  // controls one local circle still sees the full tree above them.
+  async function findRoot(addr: string): Promise<string> {
+    const visited = new Set<string>([addr.toLowerCase()])
+    let cur = addr
+    // Cap the climb so a cycle can't hang the page.
+    for (let i = 0; i < 8; i++) {
+      let parent: string | null = null
+      try {
+        const inIds = await getEdgesByObject(cur as `0x${string}`)
+        for (const id of inIds) {
+          const e = await getEdge(id).catch(() => null)
+          if (!e || e.status < 2) continue
+          const t = e.relationshipType.toLowerCase()
+          if (t !== ALLIANCE_LC && t !== GENLINEAGE_LC) continue
+          if (visited.has(e.subject.toLowerCase())) continue
+          const k = await getAgentKind(e.subject).catch(() => 'unknown' as const)
+          if (k !== 'org') continue
+          parent = e.subject
+          break
+        }
+      } catch { /* ignored */ }
+      if (!parent) return cur
+      visited.add(parent.toLowerCase())
+      cur = parent
+    }
+    return cur
+  }
+
+  // Collect distinct roots reachable from the user's orgs.
+  const rootSet = new Set<string>()
   for (const org of userOrgs) {
-    await addOrg(org.address, 0, null)
+    const root = await findRoot(org.address)
+    rootSet.add(root.toLowerCase())
+  }
+
+  // Resolve canonical-cased addresses for sort stability.
+  const roots = [...rootSet]
+  for (const root of roots) {
+    await addOrg(root, 0, null)
   }
 
   groups.sort((a, b) => a.depth - b.depth || a.name.localeCompare(b.name))
