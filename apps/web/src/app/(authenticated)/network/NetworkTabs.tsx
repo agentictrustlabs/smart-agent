@@ -1,6 +1,7 @@
 'use client'
 
-import { useSearchParams, useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 
 const TABS = [
   { key: 'graph', label: 'Trust Graph' },
@@ -9,20 +10,20 @@ const TABS = [
   { key: 'endorsements', label: 'Endorsements' },
 ]
 
-export function NetworkTabs({ children, stats, labels }: {
-  children: Record<string, React.ReactNode>
+/**
+ * Tab bar + stats. Tab content is server-rendered upstream and passed
+ * in as `activeContent` (only the active tab's data is fetched). Tab
+ * switching is a route navigation so each tab's server component gets
+ * its own fresh render and Suspense boundaries stream independently.
+ */
+export function NetworkTabs({ activeContent, stats, labels, statsSlot }: {
+  activeContent: React.ReactNode
   stats?: { total: number; outgoing: number; incoming: number }
   labels?: { network: string; lineage: string }
+  statsSlot?: React.ReactNode
 }) {
   const searchParams = useSearchParams()
-  const router = useRouter()
   const activeTab = searchParams.get('tab') ?? 'graph'
-
-  function handleTabChange(tab: string) {
-    const nextParams = new URLSearchParams(searchParams.toString())
-    nextParams.set('tab', tab)
-    router.push(`/network?${nextParams.toString()}`)
-  }
 
   function getTabLabel(key: string, fallback: string) {
     if (key === 'graph') return labels?.network ?? fallback
@@ -30,20 +31,26 @@ export function NetworkTabs({ children, stats, labels }: {
     return fallback
   }
 
+  function tabHref(key: string) {
+    const next = new URLSearchParams(searchParams.toString())
+    next.set('tab', key)
+    return `/network?${next.toString()}`
+  }
+
   return (
     <div data-component="network-layout">
-      {/* Compact toolbar */}
       <div data-component="network-toolbar">
         <div data-component="network-tabbar">
           {TABS.map((tab) => (
-            <button
+            <Link
               key={tab.key}
-              onClick={() => handleTabChange(tab.key)}
+              href={tabHref(tab.key)}
               data-component="filter-btn"
               data-active={activeTab === tab.key ? 'true' : 'false'}
+              prefetch={false}
             >
               {getTabLabel(tab.key, tab.label)}
-            </button>
+            </Link>
           ))}
         </div>
         {stats && (
@@ -53,10 +60,10 @@ export function NetworkTabs({ children, stats, labels }: {
             <span>{stats.incoming} in</span>
           </div>
         )}
+        {statsSlot}
       </div>
-      {/* Full-bleed content */}
       <div data-component="network-content" key={activeTab}>
-        {children[activeTab] ?? children.graph}
+        {activeContent}
       </div>
     </div>
   )

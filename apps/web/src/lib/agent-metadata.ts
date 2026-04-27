@@ -127,19 +127,28 @@ export async function buildAgentNameMap(): Promise<Map<string, { name: string; t
   const allUsers = await db.select().from(schema.users)
   for (const u of allUsers) nameMap.set(u.walletAddress.toLowerCase(), { name: u.name, type: 'eoa' })
 
-  // On-chain resolver (source of truth for names and types)
+  // On-chain resolver (source of truth for names and types). Fan out
+  // getAgentAt + getCore in parallel — sequential awaits used to dominate
+  // the network page's render time.
   const resolverAddr = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}`
   if (resolverAddr) {
     try {
       const client = getPublicClient()
       const count = await client.readContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'agentCount' }) as bigint
-      for (let i = 0n; i < count; i++) {
-        const agentAddr = await client.readContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'getAgentAt', args: [i] }) as `0x${string}`
-        const core = await client.readContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'getCore', args: [agentAddr] }) as { displayName: string; agentType: `0x${string}` }
-        if (core.displayName) {
-          const type = TYPE_MAP[core.agentType] ?? nameMap.get(agentAddr.toLowerCase())?.type ?? 'unknown'
-          nameMap.set(agentAddr.toLowerCase(), { name: core.displayName, type })
-        }
+      const indices = Array.from({ length: Number(count) }, (_, i) => BigInt(i))
+      const addrs = await Promise.all(indices.map(i =>
+        client.readContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'getAgentAt', args: [i] }) as Promise<`0x${string}`>,
+      ))
+      const cores = await Promise.all(addrs.map(a =>
+        (client.readContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'getCore', args: [a] }) as Promise<{ displayName: string; agentType: `0x${string}` }>)
+          .catch(() => null),
+      ))
+      for (let i = 0; i < addrs.length; i++) {
+        const core = cores[i]
+        if (!core?.displayName) continue
+        const agentAddr = addrs[i]
+        const type = TYPE_MAP[core.agentType] ?? nameMap.get(agentAddr.toLowerCase())?.type ?? 'unknown'
+        nameMap.set(agentAddr.toLowerCase(), { name: core.displayName, type })
       }
     } catch { /* ignored */ }
   }
