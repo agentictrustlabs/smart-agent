@@ -207,21 +207,31 @@ function ConnectStep({ hub, accent, hubSlug, error, setError }: {
   const [mode, setMode] = useState<'signup' | 'signin'>('signup')
   const [pending, startPending] = useTransition()
 
-  // Debounced availability check while the user is typing.
+  // Debounced availability check while the user is typing. The cleanup
+  // sets `cancelled` so an already-fired fetch from a previous keystroke
+  // doesn't overwrite state with a stale answer (e.g. you type "rich",
+  // the check fires, you keep typing → "richp2", and the older "rich"
+  // response races back and clobbers the UI with the wrong fullName).
   useEffect(() => {
     if (mode !== 'signup') return
     const label = signupLabel.toLowerCase().trim()
     if (!label) { setSignupCheck(null); return }
+    let cancelled = false
+    const ctrl = new AbortController()
     const id = setTimeout(async () => {
       try {
-        const r = await fetch(`/api/auth/check-agent-name?label=${encodeURIComponent(label)}`)
+        const r = await fetch(`/api/auth/check-agent-name?label=${encodeURIComponent(label)}`, { signal: ctrl.signal })
         const data = await r.json()
+        if (cancelled) return
         setSignupCheck(data)
-      } catch {
+      } catch (err) {
+        if (cancelled) return
+        // AbortError from the cleanup is expected; don't show as error.
+        if ((err as Error).name === 'AbortError') return
         setSignupCheck({ valid: false, available: false, reason: 'check failed' })
       }
     }, 400)
-    return () => clearTimeout(id)
+    return () => { cancelled = true; ctrl.abort(); clearTimeout(id) }
   }, [signupLabel, mode])
 
   const googleHref = `/api/auth/google-start?return_to=${encodeURIComponent(`/h/${hubSlug}`)}`
