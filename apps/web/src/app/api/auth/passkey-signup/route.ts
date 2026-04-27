@@ -19,12 +19,13 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { privateKeyToAccount } from 'viem/accounts'
-import { keccak256, toBytes, encodeFunctionData, createPublicClient, createWalletClient, http, getAddress, parseEther } from 'viem'
+import { keccak256, toBytes, encodeFunctionData, createPublicClient, createWalletClient, http, getAddress } from 'viem'
 import { localhost } from 'viem/chains'
 import { getUserOperationHash, toPackedUserOperation } from 'viem/account-abstraction'
 import { agentAccountAbi, agentAccountFactoryAbi } from '@smart-agent/sdk'
 import { db, schema } from '@/db'
 import { mintSession, SESSION_COOKIE } from '@/lib/auth/native-session'
+import { getWalletClient } from '@/lib/contracts'
 import { eq } from 'drizzle-orm'
 
 const RPC_URL = process.env.RPC_URL ?? 'http://127.0.0.1:8545'
@@ -64,6 +65,7 @@ interface SignupBody {
 }
 
 export async function POST(request: Request) {
+  try {
   if (!ENTRYPOINT || !FACTORY || !DEPLOYER_KEY) {
     return NextResponse.json({ error: 'auth chain config missing' }, { status: 500 })
   }
@@ -92,7 +94,11 @@ export async function POST(request: Request) {
   const publicClient = createPublicClient({ chain: { ...localhost, id: CHAIN_ID }, transport: http(RPC_URL) })
   const deployer = privateKeyToAccount(DEPLOYER_KEY)
   const relayer = privateKeyToAccount(RELAYER_KEY)
-  const deployerWallet = createWalletClient({ account: deployer, chain: { ...localhost, id: CHAIN_ID }, transport: http(RPC_URL) })
+  // Use the shared wallet client — its writeContract is wrapped with the
+  // process-wide deployer-lock so this createAccount can't race with the
+  // boot-seed loop's setStringProperty/setEdgeStatus writes (which would
+  // produce a "nonce too low" since both use the same EOA).
+  const deployerWallet = getWalletClient()
 
   // 1. Deploy smart account — owner=deployer, salt = keccak(credentialIdDigest|now).
   const salt = BigInt(keccak256(toBytes(`${credIdHex}${Date.now()}`)).slice(0, 18))
@@ -210,6 +216,16 @@ export async function POST(request: Request) {
   })
   void cookieStore
   return response
+  } catch (err) {
+    // Always return JSON so the client's `await r.json()` can read the error.
+    // Bare throws turn into a 500 with no body and the client crashes with
+    // "Unexpected end of JSON input".
+    const msg = err instanceof Error
+      ? (err as Error & { shortMessage?: string }).shortMessage ?? err.message
+      : 'passkey signup failed'
+    console.error('[passkey-signup] failed:', msg)
+    return NextResponse.json({ error: msg }, { status: 500 })
+  }
 }
 
 function base64UrlDecode(s: string): Uint8Array {
