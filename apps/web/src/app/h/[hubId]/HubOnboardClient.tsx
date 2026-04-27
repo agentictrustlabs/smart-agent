@@ -349,56 +349,64 @@ function ConnectStep({ hub, accent, hubSlug, error, setError }: {
         // surfaces don't pop another OS prompt the moment the user lands
         // on the dashboard. Two-step: server prepares an unsigned
         // delegation, we sign its hash with the just-created passkey,
-        // server finalizes. Best-effort — if the bootstrap fails the
-        // user can retry from the profile page.
+        // server finalizes. Mandatory — if the user cancels the second
+        // OS prompt or the network call fails, we surface the error and
+        // let them retry from the dialog instead of silently dropping
+        // them on the dashboard with a stale or missing session.
         setSignupProgress({ fullName, predictedAddress, step: 'agent' })
         try {
           const initRes = await fetch('/api/a2a/bootstrap/client', { method: 'POST' })
-          if (initRes.ok) {
-            const { delegationHash, sessionId, delegation } = await initRes.json() as {
-              delegationHash: string; sessionId: string; delegation: unknown
-            }
-            const challengeBytes = base64UrlDecode(delegationHash.startsWith('0x') ? delegationHash.slice(2) : delegationHash)
-            // delegationHash is hex, not base64url — convert via hex bytes:
-            const hex = delegationHash.startsWith('0x') ? delegationHash.slice(2) : delegationHash
-            const hashBytes = new Uint8Array(hex.length / 2)
-            for (let i = 0; i < hashBytes.length; i++) hashBytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16)
-            void challengeBytes // (kept variable for clarity; we use hashBytes)
-            const challengeAb = new ArrayBuffer(hashBytes.length)
-            new Uint8Array(challengeAb).set(hashBytes)
+          if (!initRes.ok) {
+            const e = await initRes.json().catch(() => ({})) as { error?: string }
+            throw new Error(e.error ?? `bootstrap init failed: HTTP ${initRes.status}`)
+          }
+          const { delegationHash, sessionId, delegation } = await initRes.json() as {
+            delegationHash: string; sessionId: string; delegation: unknown
+          }
+          const hex = delegationHash.startsWith('0x') ? delegationHash.slice(2) : delegationHash
+          const hashBytes = new Uint8Array(hex.length / 2)
+          for (let i = 0; i < hashBytes.length; i++) hashBytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16)
+          const challengeAb = new ArrayBuffer(hashBytes.length)
+          new Uint8Array(challengeAb).set(hashBytes)
 
-            // Constrain the picker to the credential we just created.
-            const credIdBytes = base64UrlDecode(parsed.credentialIdBase64Url)
-            const credIdAb = new ArrayBuffer(credIdBytes.length)
-            new Uint8Array(credIdAb).set(credIdBytes)
+          // Constrain the picker to the credential we just created.
+          const credIdBytes = base64UrlDecode(parsed.credentialIdBase64Url)
+          const credIdAb = new ArrayBuffer(credIdBytes.length)
+          new Uint8Array(credIdAb).set(credIdBytes)
 
-            const cred = await navigator.credentials.get({
-              publicKey: {
-                challenge: challengeAb,
-                rpId: window.location.hostname,
-                userVerification: 'preferred',
-                timeout: 60_000,
-                allowCredentials: [{ type: 'public-key', id: credIdAb }],
-              },
-            }) as PublicKeyCredential | null
-            if (cred) {
-              const aresp = cred.response as AuthenticatorAssertionResponse
-              const passkeySig = packWebAuthnSignature({
-                credentialIdBytes: new Uint8Array(cred.rawId),
-                authenticatorData: new Uint8Array(aresp.authenticatorData),
-                clientDataJSON: new Uint8Array(aresp.clientDataJSON),
-                derSignature: new Uint8Array(aresp.signature),
-              })
-              const taggedSig = ('0x01' + passkeySig.slice(2)) as `0x${string}`
-              await fetch('/api/a2a/bootstrap/complete', {
-                method: 'POST',
-                headers: { 'content-type': 'application/json' },
-                body: JSON.stringify({ sessionId, delegation, delegationSignature: taggedSig }),
-              })
-            }
+          const cred = await navigator.credentials.get({
+            publicKey: {
+              challenge: challengeAb,
+              rpId: window.location.hostname,
+              userVerification: 'preferred',
+              timeout: 60_000,
+              allowCredentials: [{ type: 'public-key', id: credIdAb }],
+            },
+          }) as PublicKeyCredential | null
+          if (!cred) throw new Error('Passkey prompt cancelled — agent connection not established')
+
+          const aresp = cred.response as AuthenticatorAssertionResponse
+          const passkeySig = packWebAuthnSignature({
+            credentialIdBytes: new Uint8Array(cred.rawId),
+            authenticatorData: new Uint8Array(aresp.authenticatorData),
+            clientDataJSON: new Uint8Array(aresp.clientDataJSON),
+            derSignature: new Uint8Array(aresp.signature),
+          })
+          const taggedSig = ('0x01' + passkeySig.slice(2)) as `0x${string}`
+          const completeRes = await fetch('/api/a2a/bootstrap/complete', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ sessionId, delegation, delegationSignature: taggedSig }),
+          })
+          if (!completeRes.ok) {
+            const e = await completeRes.json().catch(() => ({})) as { error?: string }
+            throw new Error(e.error ?? `bootstrap complete failed: HTTP ${completeRes.status}`)
           }
         } catch (e) {
-          console.warn('[passkey-signup] A2A bootstrap failed (non-fatal):', (e as Error).message)
+          const msg = `agent bootstrap: ${(e as Error).message}`
+          setSignupProgress({ fullName, predictedAddress, step: 'error', errorMessage: msg })
+          setError(msg)
+          return
         }
 
         setSignupProgress({ fullName, predictedAddress, step: 'done' })

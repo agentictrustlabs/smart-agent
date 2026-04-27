@@ -94,22 +94,13 @@ export function ProfileClient({
 
   useEffect(() => {
     async function init() {
-      // 1. Try the existing cookie (24h httpOnly, set on prior bootstrap).
-      //    No signing prompt — the common case after a tab refresh.
+      // Only try the existing cookie — set during sign-in / signup. No
+      // auto-prompts on page load: connection is supposed to happen in
+      // the connection dialog (demo) / signup flow (passkey). If the
+      // cookie is missing or stale, we render a "Connect agent" button
+      // and the user opts into the prompt explicitly.
       const ok = await loadProfile(a2a.sessionToken ?? null)
-      if (ok) return
-
-      // 2. Cookie is gone (logged out + back in, or first profile visit).
-      //    Mint a fresh A2A session via the auth method the user signed
-      //    in with — one signing prompt, then the saved profile loads.
-      //    Without this the user sees an empty form even though their
-      //    data lives in person-mcp under their smart-account principal.
-      const token = await ensureSessionToken()
-      if (token) {
-        await loadProfile(token)
-        return
-      }
-      setSessionValid(false)
+      if (!ok) setSessionValid(false)
     }
     init()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -205,12 +196,13 @@ export function ProfileClient({
   function handleSave() {
     setError(null)
     startTransition(async () => {
-      const token = await ensureSessionToken()
-      if (!token) {
-        setError(a2a.error ?? 'Could not establish agent session — please sign with your passkey or wallet to save.')
-        return
-      }
-      const result = await saveProfileViaDelegation(token, {
+      // Prefer the cookie path (set during connection-time bootstrap).
+      // saveProfileViaDelegation reads the a2a-session cookie server-side
+      // when we pass null. Only fall back to ensureSessionToken (which
+      // can prompt) if the save actually fails. That way clicking Save
+      // doesn't trigger an OS prompt unless the connection-time session
+      // really is gone.
+      let result = await saveProfileViaDelegation(a2a.sessionToken ?? null, {
         displayName: name || undefined, email: email || undefined, phone: phone || undefined,
         dateOfBirth: dateOfBirth || undefined, gender: gender || undefined, language: language || undefined,
         addressLine1: addressLine1 || undefined, addressLine2: addressLine2 || undefined,
@@ -219,8 +211,25 @@ export function ProfileClient({
         location: location || undefined, homeChurch: homeChurch || undefined,
       })
       if (!result.success) {
-        setError(result.error ?? 'Failed to save')
-        return
+        // Cookie missing or stale — try one explicit reconnect (this is
+        // where a passkey/wallet prompt becomes legitimate) and retry.
+        const token = await ensureSessionToken()
+        if (!token) {
+          setError(a2a.error ?? 'Could not establish agent session — click Connect agent above to retry.')
+          return
+        }
+        result = await saveProfileViaDelegation(token, {
+          displayName: name || undefined, email: email || undefined, phone: phone || undefined,
+          dateOfBirth: dateOfBirth || undefined, gender: gender || undefined, language: language || undefined,
+          addressLine1: addressLine1 || undefined, addressLine2: addressLine2 || undefined,
+          city: city || undefined, stateProvince: stateProvince || undefined,
+          postalCode: postalCode || undefined, country: country || undefined,
+          location: location || undefined, homeChurch: homeChurch || undefined,
+        })
+        if (!result.success) {
+          setError(result.error ?? 'Failed to save')
+          return
+        }
       }
       setSaved(true)
       setSessionValid(true)
