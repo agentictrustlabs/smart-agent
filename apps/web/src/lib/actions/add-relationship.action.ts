@@ -33,12 +33,15 @@ import {
 } from '@smart-agent/sdk'
 import { assertRelationship } from './assert-relationship.action'
 
+export type AgentKind = 'person' | 'org' | 'ai' | 'hub'
+
 export interface AddrAgent {
   address: `0x${string}`
   displayName: string
   primaryName: string | null
   agentType: string                // hash hex
   agentTypeLabel: string           // human label
+  agentKind: AgentKind | 'unknown'
 }
 
 const TYPE_HASH_TO_LABEL: Record<string, string> = {
@@ -46,6 +49,13 @@ const TYPE_HASH_TO_LABEL: Record<string, string> = {
   [(TYPE_ORGANIZATION as string).toLowerCase()]: AGENT_TYPE_LABELS[TYPE_ORGANIZATION] ?? 'Organization',
   [(TYPE_AI_AGENT     as string).toLowerCase()]: AGENT_TYPE_LABELS[TYPE_AI_AGENT]     ?? 'AI Agent',
   [(TYPE_HUB          as string).toLowerCase()]: AGENT_TYPE_LABELS[TYPE_HUB]          ?? 'Hub',
+}
+
+const TYPE_HASH_TO_KIND: Record<string, AgentKind> = {
+  [(TYPE_PERSON       as string).toLowerCase()]: 'person',
+  [(TYPE_ORGANIZATION as string).toLowerCase()]: 'org',
+  [(TYPE_AI_AGENT     as string).toLowerCase()]: 'ai',
+  [(TYPE_HUB          as string).toLowerCase()]: 'hub',
 }
 
 /**
@@ -104,6 +114,7 @@ export async function listAddressableAgentsAction(): Promise<AddrAgent[]> {
       primaryName: primaryName || null,
       agentType: core.agentType,
       agentTypeLabel: TYPE_HASH_TO_LABEL[core.agentType.toLowerCase()] ?? 'Agent',
+      agentKind: TYPE_HASH_TO_KIND[core.agentType.toLowerCase()] ?? 'unknown',
     })
   }
 
@@ -118,18 +129,67 @@ export interface RelationshipTaxonomyRow {
   label: string
   /** Roles available for this relationship type, in display order. */
   roles: Array<{ key: string; label: string }>
+  /** Object-side agent types this relationship type is meaningful for,
+   *  given that the caller (subject) is always a Person. The picker
+   *  filters by this against the selected agent's type. */
+  validObjectTypes: Array<'person' | 'org' | 'ai' | 'hub'>
+}
+
+/**
+ * Curated mapping of relationship-type key → valid object agent types
+ * when the SUBJECT is always the caller's person agent. Hubs aren't
+ * included here because hub-membership runs through the dedicated
+ * /h/<slug> onboarding wizard, not this generic picker.
+ */
+const VALID_OBJECT_TYPES: Record<string, Array<'person' | 'org' | 'ai' | 'hub'>> = {
+  // Person → Person
+  Coaching:               ['person'],
+  PersonalInfluence:      ['person'],
+  DataAccessDelegation:   ['person'],
+  // Person → Org
+  OrganizationMembership: ['org'],
+  OrganizationGovernance: ['org'],
+  // Person → Org / AI
+  OrganizationalControl:  ['org', 'ai'],
+  // Person → Person / Org
+  EconomicSecurity:       ['person', 'org'],
+  Compliance:             ['person', 'org'],
+  InsuranceCoverage:      ['person', 'org'],
+  GenerationalLineage:    ['person', 'org'],
+  Review:                 ['person', 'org'],
+  ReviewRelationship:     ['person', 'org'],
+  // Person → Person / Org / AI
+  ServiceAgreement:       ['person', 'org', 'ai'],
+  ValidationTrust:        ['person', 'org', 'ai'],
+  ActivityValidation:     ['person', 'org', 'ai'],
+  DelegationAuthority:    ['person', 'org', 'ai'],
+  // Person → AI
+  RuntimeAttestation:     ['ai'],
+  BuildProvenance:        ['ai'],
+  // Excluded: Alliance (org↔org), HasMember (parent→child),
+  // NamespaceContains (namespace-only).
 }
 
 export async function listRelationshipTaxonomyAction(): Promise<RelationshipTaxonomyRow[]> {
   const types = listRelationshipTypeDefinitions()
-  return types.map(t => {
-    const roles = listRoleDefinitionsForRelationshipType(t.key)
-    return {
-      key: t.key,
-      label: t.label ?? t.key,
-      roles: roles.map(r => ({ key: r.key, label: r.label ?? r.key })),
-    }
-  })
+  return types
+    .filter(t => VALID_OBJECT_TYPES[t.key])
+    .map(t => {
+      // BUG FIX: listRoleDefinitionsForRelationshipType expects a HASH, not
+      // a key. Passing the key always returned [] → empty role list → the
+      // picker showed "no roles" for every selection. Compute the keccak
+      // of the term once and pass that.
+      const hash = hashTaxonomyTerm(t.term)
+      const roles = listRoleDefinitionsForRelationshipType(hash)
+      return {
+        key: t.key,
+        label: t.label ?? t.key,
+        roles: roles.map(r => ({ key: r.key, label: r.label ?? r.key })),
+        validObjectTypes: VALID_OBJECT_TYPES[t.key] ?? [],
+      }
+    })
+    // Drop any with zero roles — nothing to mint.
+    .filter(t => t.roles.length > 0)
 }
 
 export interface AddRelationshipUIInput {

@@ -69,10 +69,37 @@ export function AddRelationshipPanel() {
     )
   }, [agents, agentFilter])
 
+  // Selected agent (for type-aware relationship-type filtering).
+  const selectedAgent = useMemo(
+    () => agents?.find(a => a.address === agentAddr) ?? null,
+    [agents, agentAddr],
+  )
+
+  // Relationship types valid for the selected agent's kind. If no agent
+  // is selected, show every type so the user can scan options before
+  // committing — the type list re-narrows once they pick.
+  const availableTypes = useMemo(() => {
+    if (!taxonomy) return []
+    if (!selectedAgent) return taxonomy
+    const kind = selectedAgent.agentKind
+    if (kind === 'unknown') return taxonomy
+    return taxonomy.filter(t =>
+      t.validObjectTypes.length === 0 || t.validObjectTypes.includes(kind as 'person' | 'org' | 'ai' | 'hub'),
+    )
+  }, [taxonomy, selectedAgent])
+
   const availableRoles = useMemo(() => {
     if (!taxonomy || !relTypeKey) return []
     return taxonomy.find(t => t.key === relTypeKey)?.roles ?? []
   }, [taxonomy, relTypeKey])
+
+  // Keep relTypeKey valid for the currently-selected agent's kind.
+  useEffect(() => {
+    if (availableTypes.length === 0) return
+    if (!availableTypes.find(t => t.key === relTypeKey)) {
+      setRelTypeKey(availableTypes[0].key)
+    }
+  }, [availableTypes, relTypeKey])
 
   // Keep roleKey valid for the currently-selected relationship type.
   useEffect(() => {
@@ -148,7 +175,8 @@ export function AddRelationshipPanel() {
           data-testid="add-rel-type"
         >
           {taxonomy === null && <option>Loading…</option>}
-          {taxonomy?.map(t => (
+          {taxonomy && availableTypes.length === 0 && <option value="">No types valid for this agent</option>}
+          {availableTypes.map(t => (
             <option key={t.key} value={t.key}>{t.label}</option>
           ))}
         </select>
