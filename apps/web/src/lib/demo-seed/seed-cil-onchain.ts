@@ -172,6 +172,36 @@ async function doSeed() {
   // Person agents already registered by generateDemoWallet — skip re-registration
   // Person agent controllers already set by generateDemoWallet — skip
 
+  // ─── Demo-user EOA → Org controller links ─────────────────────────
+  // Lets demo users approve PROPOSED relationship requests aimed at the
+  // orgs they administer (the /relationships page only surfaces a
+  // Confirm button when the signed-in user's wallet sits in the target
+  // agent's ATL_CONTROLLER list).
+  const ctrl: Array<[`0x${string}`, string, string]> = [
+    // Collective Impact Labs — Admin + Funder
+    [cil,         userMap.get('cil-user-006')!.walletAddress, 'John Kim → CIL'],
+    [cil,         userMap.get('cil-user-007')!.walletAddress, 'Paul → CIL'],
+    // ILAD — Operations Lead, Reviewer, Local Manager
+    [ilad,        userMap.get('cil-user-001')!.walletAddress, 'Cameron → ILAD'],
+    [ilad,        userMap.get('cil-user-002')!.walletAddress, 'Nick → ILAD'],
+    [ilad,        userMap.get('cil-user-005')!.walletAddress, 'Yaw → ILAD'],
+    // Portfolio businesses — owners
+    [afiaMarket,  userMap.get('cil-user-003')!.walletAddress, "Afia → Afia's Market"],
+    [kossiRepair, userMap.get('cil-user-004')!.walletAddress, 'Kossi → Repairs'],
+    // Lomé hub — Yaw runs it locally
+    [lomeHub,     userMap.get('cil-user-005')!.walletAddress, 'Yaw → Lomé Hub'],
+    // Cohorts — admin manages, funder approves
+    [wave1,       userMap.get('cil-user-006')!.walletAddress, 'John → Wave 1'],
+    [wave2,       userMap.get('cil-user-006')!.walletAddress, 'John → Wave 2'],
+    // Capital vehicle — funder
+    [ravah,       userMap.get('cil-user-007')!.walletAddress, 'Paul → Ravah'],
+  ]
+  for (const [agent, wallet, label] of ctrl) {
+    if (!wallet) continue
+    await setController(agent, wallet)
+    console.log(`[cil-seed] controller: ${label}`)
+  }
+
   // ─── Geospatial Metadata ──────────────────────────────────────────
   console.log('[cil-seed] Setting geospatial metadata...')
   await setGeo(cil,         '40.7128', '-74.0060')   // NYC HQ

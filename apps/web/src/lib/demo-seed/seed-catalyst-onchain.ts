@@ -192,6 +192,36 @@ async function doSeed() {
     console.warn('[catalyst-seed] issuer→org controller link failed (non-fatal):', e)
   }
 
+  // ─── Demo-user EOA → Org controller links ─────────────────────────
+  // Without this, no demo user controls any org and PROPOSED relationship
+  // requests directed at orgs (e.g. "join Fort Collins Hub") are stuck
+  // forever — the /relationships page only shows a "Confirm" button when
+  // the signed-in user's wallet appears in the target agent's ATL_CONTROLLER
+  // list. Map each persona to the org(s) they would plausibly administer.
+  const ctrl: Array<[`0x${string}`, string, string]> = [
+    // Network — Program Director + Regional Lead
+    [network,        userMap.get('cat-user-001')!.walletAddress, 'Maria → Network'],
+    [network,        userMap.get('cat-user-005')!.walletAddress, 'Sarah → Network'],
+    // Fort Collins Hub — Hub Lead + Outreach Coordinator
+    [hub,            userMap.get('cat-user-002')!.walletAddress, 'David → Hub'],
+    [hub,            userMap.get('cat-user-003')!.walletAddress, 'Rosa → Hub'],
+    // Wellington / Laporte — assigned circle leaders
+    [grpWellington,  userMap.get('cat-user-006')!.walletAddress, 'Ana → Wellington'],
+    [grpLaporte,     userMap.get('cat-user-007')!.walletAddress, 'Miguel → Laporte'],
+    // Unassigned circles + analytics fall to Maria (Program Director).
+    [grpTimnath,     userMap.get('cat-user-001')!.walletAddress, 'Maria → Timnath'],
+    [grpLoveland,    userMap.get('cat-user-001')!.walletAddress, 'Maria → Loveland'],
+    [grpBerthoud,    userMap.get('cat-user-001')!.walletAddress, 'Maria → Berthoud'],
+    [grpJohnstown,   userMap.get('cat-user-001')!.walletAddress, 'Maria → Johnstown'],
+    [grpRedFeather,  userMap.get('cat-user-001')!.walletAddress, 'Maria → RedFeather'],
+    [analytics,      userMap.get('cat-user-001')!.walletAddress, 'Maria → Analytics'],
+  ]
+  for (const [agent, wallet, label] of ctrl) {
+    if (!wallet) continue
+    await setController(agent, wallet)
+    console.log(`[catalyst-seed] controller: ${label}`)
+  }
+
   // ─── Geospatial Metadata (Northern Colorado) ──────────────────────
   console.log('[catalyst-seed] Setting geospatial metadata...')
   await setGeo(network, '40.5853', '-105.0844')     // Fort Collins (network level)

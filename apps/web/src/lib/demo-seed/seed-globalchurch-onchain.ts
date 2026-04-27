@@ -170,6 +170,32 @@ async function doSeed() {
   // Person agents already registered by generateDemoWallet — skip re-registration
   // Person agent controllers already set by generateDemoWallet — skip
 
+  // ─── Demo-user EOA → Org controller links ─────────────────────────
+  // Lets demo users approve PROPOSED relationship requests aimed at the
+  // orgs they administer (the /relationships page only surfaces a
+  // Confirm button when the signed-in user's wallet sits in the target
+  // agent's ATL_CONTROLLER list).
+  const ctrl: Array<[`0x${string}`, string, string]> = [
+    // Pastor James shepherds Grace Community + sub-ministries.
+    [graceChurch,    userMap.get('gc-user-001')!.walletAddress, 'James → Grace Community'],
+    [youthMinistry,  userMap.get('gc-user-001')!.walletAddress, 'James → Grace Youth'],
+    [smallGroups,    userMap.get('gc-user-001')!.walletAddress, 'James → Grace Small Groups'],
+    [missionsTeam,   userMap.get('gc-user-001')!.walletAddress, 'James → Grace Missions'],
+    // Network — both senior leaders.
+    [gcNetwork,      userMap.get('gc-user-001')!.walletAddress, 'James → Network'],
+    [gcNetwork,      userMap.get('gc-user-002')!.walletAddress, 'Sarah Mitchell → Network'],
+    // Other top-level orgs — each persona's home org.
+    [sbc,            userMap.get('gc-user-002')!.walletAddress, 'Sarah Mitchell → SBC'],
+    [ecfa,           userMap.get('gc-user-003')!.walletAddress, 'Dan → ECFA'],
+    [wycliffe,       userMap.get('gc-user-004')!.walletAddress, 'John Chesnut → Wycliffe'],
+    [ncf,            userMap.get('gc-user-005')!.walletAddress, 'David Wills → NCF'],
+  ]
+  for (const [agent, wallet, label] of ctrl) {
+    if (!wallet) continue
+    await setController(agent, wallet)
+    console.log(`[gc-seed] controller: ${label}`)
+  }
+
   // ─── Geospatial Metadata (US locations) ───────────────────────────
   console.log('[gc-seed] Setting geospatial metadata...')
   await setGeo(gcNetwork, '33.7490', '-84.3880')       // Atlanta, GA
