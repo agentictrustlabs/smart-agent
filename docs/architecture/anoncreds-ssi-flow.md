@@ -498,31 +498,30 @@ The diagrams below use these participants consistently:
 
 Every privileged sequence below ends up in the same three-step pattern:
 
-```
-Web                                Browser                          MCP / Vault / RPC
- │ build unsigned WalletAction (MCP)
- │ → digest = hashWalletAction(action)
- │
- │ prepareWalletActionForPasskey(action)
- │   = { digest, challenge=base64url(digest) }
- ├─────────────────────────────────►│
- │                                   │ navigator.credentials.get({
- │                                   │   challenge, allowCredentials,
- │                                   │   userVerification: "required"
- │                                   │ })
- │                                   │ → AuthenticatorAssertionResponse
- │                                   │
- │                                   │ buildPasskeyAssertion + parseDerSignature
- │                                   │   + normaliseLowS + packWebAuthnSignature
- │                                   │ → signature = 0x01 ‖ abi.encode(Assertion)
- │◄──────────────────────────────────┤
- │
- │ submit (action, signature, signerAddress = AgentAccount)
- │
- │ person-mcp verifyWalletAction(action, signature, signerAddress)
- │   ┣ shape == 0x01 → readContract AgentAccount.isValidSignature
- │   ┃   AgentAccount → WebAuthnLib → P256Verifier (precompile / soft)
- │   ┗ else 65-byte ECDSA → recoverTypedDataAddress (demo/SIWE only)
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Web as apps/web
+    participant Browser as Browser / authenticator
+    participant MCP as person-mcp
+    participant AA as AgentAccount
+
+    Web->>MCP: Build unsigned WalletAction
+    MCP-->>Web: WalletAction
+    Web->>Web: digest = hashWalletAction(action)
+    Web->>Web: challenge = hashToWebAuthnChallenge(digest)
+    Web->>Browser: navigator.credentials.get(challenge)
+    Browser->>Browser: Build WebAuthn assertion<br/>parse DER signature, normalize low-S
+    Browser-->>Web: signature = 0x01 || abi.encode(Assertion)
+    Web->>MCP: Submit action, signature, signerAddress=AgentAccount
+    MCP->>AA: isValidSignature(digest, signature)
+    AA-->>MCP: ERC-1271 magic value
+
+    alt Legacy demo / SIWE EOA
+        Web->>Web: signTypedData(action)
+        Web->>MCP: 65-byte ECDSA signature
+        MCP->>MCP: recoverTypedDataAddress
+    end
 ```
 
 The legacy EOA fallback collapses the middle step — `signer.ts`'s
@@ -533,44 +532,30 @@ production-shaped flow assumes the passkey round-trip above.
 
 `provisionHolderWalletAction` (`apps/web/src/lib/actions/ssi/provision.action.ts`).
 
-```
-B          Web                       MCP                                             Vault
-│  click    │                         │                             │                  │
-│  "create  │                         │                             │                  │
-│   wallet" │                         │                             │                  │
-├──────────►│                         │                             │                  │
-│           │ loadSignerForCurrentUser│                             │                  │
-│           │  (DB: users)            │                             │                  │
-│           │                         │                                              │
-│           │ /tools/ssi_create_wallet_action                                        │
-│           │  (principal, context,   │                             │                  │
-│           │   type=ProvisionHolder) │                             │                  │
-│           ├────────────────────────►│                                              │
-│           │                         │ build unsigned WalletAction                  │
-│           │                         │  (nonce, expiresAt, hash=0)                  │
-│           │◄────────────────────────┤                                              │
-│           │                         │                             │                  │
-│           │ prepareWalletActionForPasskey(action)                 │                  │
-│           │   → { digest, challenge }                             │                  │
-│           │ ──────► Browser:                                      │                  │
-│           │   navigator.credentials.get({ challenge })            │                  │
-│           │   packWebAuthnSignature → 0x01 ‖ abi.encode(Assertion)│                  │
-│           │ ◄──────                                                                  │
-│           │                         │  (legacy: signWalletAction direct EIP-712 EOA) │
-│           │                         │                                              │
-│           │ /tools/ssi_provision_wallet (action, sig, signerAddr=AgentAccount)    │
-│           ├────────────────────────►│                                              │
-│           │                         │ verifyWalletAction                           │
-│           │                         │  shape-routes 0x01 → ERC-1271 readContract  │
-│           │                         │  consumeNonce(personPrincipal)               │
-│           │                         │ getHolderByContext (idempotency)             │
-│           │                         │ createProfile(askarProfile) ───────────────►│
-│           │                         │ createLinkSecretValue                        │
-│           │                         │ putLinkSecret(profile,id) ─────────────────►│
-│           │                         │ insertHolderWallet(...)                      │
-│           │                         │ insert ssi_holder_wallets                    │
-│           │◄────────────────────────┤ {holderWalletId, linkSecretId, askarProfile}│
-│◄──────────┤  {holderWalletId}       │                             │                  │
+```mermaid
+sequenceDiagram
+    autonumber
+    participant B as Browser
+    participant Web as apps/web
+    participant MCP as person-mcp
+    participant Vault as Askar vault
+
+    B->>Web: Click "create wallet"
+    Web->>Web: loadSignerForCurrentUser
+    Web->>MCP: /tools/ssi_create_wallet_action<br/>type=ProvisionHolder
+    MCP-->>Web: Unsigned WalletAction
+    Web->>B: Passkey ceremony with challenge
+    B-->>Web: 0x01 || abi.encode(Assertion)
+    Web->>MCP: /tools/ssi_provision_wallet<br/>action, signature, AgentAccount
+    MCP->>MCP: verifyWalletAction
+    MCP->>MCP: consumeNonce
+    MCP->>MCP: getHolderByContext for idempotency
+    MCP->>Vault: createProfile
+    MCP->>MCP: createLinkSecretValue
+    MCP->>Vault: putLinkSecret(profile, id)
+    MCP->>MCP: insertHolderWallet + audit
+    MCP-->>Web: holderWalletId
+    Web-->>B: holderWalletId
 ```
 
 Idempotency: a second provision for the same `(principal, walletContext)`
@@ -581,43 +566,49 @@ short-circuits with the existing wallet without consuming a new nonce.
 `acceptCredentialAction(... 'org', 'OrgMembershipCredential' …)`.
 `apps/web/src/lib/actions/ssi/accept.action.ts`.
 
-```
-Web                  MCP                    Issuer (org-mcp)       Vault        Reg
- │ POST /credential/offer                         │                              │
- ├───────────────────────────────────────────────►│                              │
- │                                                │ loadVerifiedCredDef ───────►│
- │                                                │ KeyCorrectnessProof local DB│
- │◄───────────────────────────────────────────────┤ {offer, credDefId, schemaId}
- │
- │ /tools/ssi_create_wallet_action(type=AcceptCredentialOffer)
- ├──────────────────►│
- │◄──────────────────┤ unsigned action
- │ passkey ceremony in Browser (§6.0)
- │   → signature = 0x01 ‖ abi.encode(Assertion); signerAddress = AgentAccount
- │
- │ /tools/ssi_start_credential_exchange(action, sig, offer, credDefId)
- ├──────────────────►│
- │                   │ verifyWalletAction + consumeNonce
- │                   │ loadVerifiedCredDef ───────────────────────────────────►│
- │                   │ getLinkSecret(profile) ───────────────►│
- │                   │ AnonCreds.holderCreateCredentialRequest│
- │                   │ putCredentialRequestMeta(requestId) ──►│
- │◄──────────────────┤ {requestId, requestJson}
- │
- │ POST /credential/issue (offer, request, attributes)
- ├───────────────────────────────────────────────►│
- │                                                │ IssuerAgent.issue(...)
- │◄───────────────────────────────────────────────┤ {credentialJson}
- │
- │ /tools/ssi_finish_credential_exchange(credentialJson, holder ref)
- ├──────────────────►│
- │                   │ takeCredentialRequestMeta(requestId) ─►│
- │                   │ loadVerifiedCredDef ───────────────────────────────────►│
- │                   │ getLinkSecret(profile) ───────────────►│
- │                   │ AnonCreds.holderProcessCredential
- │                   │ putCredential(profile, id, blob, tags)►│
- │                   │ insertCredentialMetadata + audit
- │◄──────────────────┤ {credentialId, metadata}
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Web as apps/web
+    participant MCP as person-mcp
+    participant Issuer as org-mcp issuer
+    participant Vault as Askar vault
+    participant Reg as CredentialRegistry
+
+    Web->>Issuer: POST /credential/offer
+    Issuer->>Reg: loadVerifiedCredDef(credDefId)
+    Reg-->>Issuer: Verified credDef
+    Issuer->>Issuer: Load KeyCorrectnessProof from local DB
+    Issuer-->>Web: offer, credDefId, schemaId
+
+    Web->>MCP: /tools/ssi_create_wallet_action<br/>type=AcceptCredentialOffer
+    MCP-->>Web: Unsigned WalletAction
+    Web->>Web: Passkey ceremony via section 6.0
+
+    Web->>MCP: /tools/ssi_start_credential_exchange<br/>action, signature, offer, credDefId
+    MCP->>MCP: verifyWalletAction + consumeNonce
+    MCP->>Reg: loadVerifiedCredDef(credDefId)
+    Reg-->>MCP: Verified credDef
+    MCP->>Vault: getLinkSecret(profile)
+    Vault-->>MCP: link secret
+    MCP->>MCP: AnonCreds.holderCreateCredentialRequest
+    MCP->>Vault: putCredentialRequestMeta(requestId)
+    MCP-->>Web: requestId, requestJson
+
+    Web->>Issuer: POST /credential/issue<br/>offer, request, attributes
+    Issuer->>Issuer: IssuerAgent.issue(...)
+    Issuer-->>Web: credentialJson
+
+    Web->>MCP: /tools/ssi_finish_credential_exchange<br/>credentialJson, holder ref
+    MCP->>Vault: takeCredentialRequestMeta(requestId)
+    MCP->>Reg: loadVerifiedCredDef(credDefId)
+    Reg-->>MCP: Verified credDef
+    MCP->>Vault: getLinkSecret(profile)
+    Vault-->>MCP: link secret
+    MCP->>MCP: AnonCreds.holderProcessCredential
+    MCP->>Vault: putCredential(profile, id, blob, tags)
+    MCP->>MCP: insertCredentialMetadata + audit
+    MCP-->>Web: credentialId, metadata
 ```
 
 Note the **two-leg** request/store split. The blinding metadata generated
@@ -632,43 +623,41 @@ long-lived.
 `presentGuardianToCoachAction`
 (`apps/web/src/lib/actions/ssi/present.action.ts`).
 
-```
-Web                      MCP                                      Verifier (family-mcp)
- │ /tools/ssi_list_my_credentials                                             │
- ├──────────────────────►│                                                    │
- │                       │ select credential metadata                         │
- │◄──────────────────────┤ {credentials:[...]}                                │
- │                                                                            │
- │ GET /verify/guardian/request                                               │
- ├───────────────────────────────────────────────────────────────────────────►│
- │                                                                            │ build presentationRequest
- │                                                                            │ + EIP-191 verifier sig
- │◄───────────────────────────────────────────────────────────────────────────┤
- │                                                                            │
- │ /tools/ssi_create_wallet_action(type=CreatePresentation, policy limits)
- ├──────────────────────►│
- │                       │ proofRequestHash = keccak256(canonical(request))
- │                       │ build unsigned WalletAction
- │◄──────────────────────┤
- │ passkey ceremony in Browser (§6.0)
- │
- │ /tools/ssi_create_presentation(action, sig, selections, verifier signature)
- ├──────────────────────►│
- │                       │ verifyWalletAction + consumeNonce
- │                       │ check proofRequestHash
- │                       │ checkVerifierSignature when configured
- │                       │ loadVerifiedSchema/CredDef
- │                       │ getCredential(profile, credId) from vault
- │                       │ evaluateProofPolicy
- │                       │ pairwiseHandle(holderWalletId, verifierId)
- │                       │ AnonCreds.holderCreatePresentation
- │                       │ insert ssi_proof_audit(result='ok')
- │◄──────────────────────┤ {presentation, auditSummary}
- │
- │ POST /verify/guardian/check(presentation, presentationRequest)
- ├───────────────────────────────────────────────────────────────────────────►│
- │                                                                            │ anoncreds-rs verify
- │◄───────────────────────────────────────────────────────────────────────────┤ {verified, reason}
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Web as apps/web
+    participant MCP as person-mcp
+    participant Verifier as family-mcp verifier
+
+    Web->>MCP: /tools/ssi_list_my_credentials
+    MCP->>MCP: Select credential metadata
+    MCP-->>Web: credentials
+
+    Web->>Verifier: GET /verify/guardian/request
+    Verifier->>Verifier: Build presentationRequest<br/>and EIP-191 verifier signature
+    Verifier-->>Web: presentationRequest, verifierId,<br/>verifierAddress, signature
+
+    Web->>MCP: /tools/ssi_create_wallet_action<br/>type=CreatePresentation, policy limits
+    MCP->>MCP: proofRequestHash = keccak256(canonical(request))
+    MCP-->>Web: Unsigned WalletAction
+    Web->>Web: Passkey ceremony via section 6.0
+
+    Web->>MCP: /tools/ssi_create_presentation<br/>action, signature, selections, verifier signature
+    MCP->>MCP: verifyWalletAction + consumeNonce
+    MCP->>MCP: check proofRequestHash
+    MCP->>MCP: checkVerifierSignature when configured
+    MCP->>MCP: loadVerifiedSchema/CredDef
+    MCP->>MCP: getCredential(profile, credId) from vault
+    MCP->>MCP: evaluateProofPolicy
+    MCP->>MCP: pairwiseHandle(holderWalletId, verifierId)
+    MCP->>MCP: AnonCreds.holderCreatePresentation
+    MCP->>MCP: insert ssi_proof_audit(result=ok)
+    MCP-->>Web: presentation, auditSummary
+
+    Web->>Verifier: POST /verify/guardian/check<br/>presentation, presentationRequest
+    Verifier->>Verifier: anoncreds-rs verify
+    Verifier-->>Web: verified, reason
 ```
 
 Three independent layers reject a bad presentation request:
@@ -692,38 +681,33 @@ agent). It is **not** an AnonCreds flow — it's how PII (email, DOB, address)
 is shared between two principals — but the diagram completes the picture
 because person-mcp is the gateway to *both* SSI tools and PII tools.
 
-```
-Reader's web app           A2A agent (Reader's)          person-mcp (Owner's)
-       │                          │                              │
-       │ ask for delegation token │                              │
-       ├─────────────────────────►│                              │
-       │                          │ session JWT (HS256, HMAC)    │
-       │                          │   payload: delegation,       │
-       │                          │     sessionKey, jti, exp     │
-       │◄─────────────────────────┤                              │
-       │                                                         │
-       │ GET /tools/get_delegated_profile                        │
-       │  (token, targetPrincipal, crossDelegation)              │
-       ├────────────────────────────────────────────────────────►│
-       │                                                         │ requirePrincipal(token):
-       │                                                         │  - HMAC check
-       │                                                         │  - ECDSA recover sessionKey
-       │                                                         │  - delegate == sessionKey
-       │                                                         │  - delegation hash (EIP-712)
-       │                                                         │  - DelegationManager.isRevoked
-       │                                                         │  - ERC-1271 on delegator
-       │                                                         │  - timestamp + tool-scope caveats
-       │                                                         │  - JTI usage limit (atomic)
-       │                                                         │  callerPrincipal := delegator
-       │                                                         │
-       │                                                         │ verifyCrossDelegation:
-       │                                                         │  - hash, isRevoked, ERC-1271
-       │                                                         │    on the *Owner's* AgentAccount
-       │                                                         │  - decode DataScopeEnforcer terms
-       │                                                         │  - filter grants for 'urn:mcp:server:person'
-       │                                                         │ select profiles where principal = Owner
-       │                                                         │ project to grant.fields only
-       │◄────────────────────────────────────────────────────────┤ {profile: <subset>, allowedFields}
+```mermaid
+sequenceDiagram
+    autonumber
+    participant ReaderWeb as Reader web app
+    participant A2A as Reader A2A agent
+    participant OwnerMCP as Owner person-mcp
+    participant Chain as EVM chain
+
+    ReaderWeb->>A2A: Ask for delegation token
+    A2A-->>ReaderWeb: Session JWT<br/>delegation, sessionKey, jti, exp
+
+    ReaderWeb->>OwnerMCP: GET /tools/get_delegated_profile<br/>token, targetPrincipal, crossDelegation
+    OwnerMCP->>OwnerMCP: requirePrincipal(token)
+    OwnerMCP->>OwnerMCP: HMAC check
+    OwnerMCP->>OwnerMCP: Recover sessionKey
+    OwnerMCP->>OwnerMCP: Check delegation hash and caveats
+    OwnerMCP->>Chain: DelegationManager.isRevoked
+    Chain-->>OwnerMCP: Revocation status
+    OwnerMCP->>Chain: ERC-1271 on delegator AgentAccount
+    Chain-->>OwnerMCP: Signature valid
+    OwnerMCP->>OwnerMCP: Enforce timestamp, tool scope, and JTI usage
+    OwnerMCP->>OwnerMCP: verifyCrossDelegation
+    OwnerMCP->>Chain: Check Owner AgentAccount ERC-1271 and revocation
+    Chain-->>OwnerMCP: Cross-delegation valid
+    OwnerMCP->>OwnerMCP: Decode DataScopeEnforcer terms
+    OwnerMCP->>OwnerMCP: Select Owner profile and project granted fields
+    OwnerMCP-->>ReaderWeb: profile subset, allowedFields
 ```
 
 The two delegations (session and cross) are independent. The session proves
@@ -735,23 +719,25 @@ verifies both.
 
 `rotateLinkSecretAction` (`apps/web/src/lib/actions/ssi/rotate.action.ts`).
 
-```
-Web                         MCP                                      Vault / DB
- │ resolve holderWalletId for (principal, context)
- │
- │ /tools/ssi_create_wallet_action(type=RotateLinkSecret, holderWalletId)
- ├──────────────────────────►│
- │◄──────────────────────────┤ unsigned action
- │ passkey ceremony in Browser (§6.0)  →  0x01 ‖ abi.encode(Assertion)
- │
- │ /tools/ssi_rotate_link_secret(action, sig)
- ├──────────────────────────►│
- │                           │ verifyWalletAction + consumeNonce
- │                           │ AnonCreds.createLinkSecretValue
- │                           │ putLinkSecret(profile, newId) ───────►│
- │                           │ updateHolderLinkSecret(hw.id, newId)
- │                           │ markCredentialsStaleForLinkSecret(oldId)
- │◄──────────────────────────┤ {old, new, credentialsMarkedStale}
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Web as apps/web
+    participant MCP as person-mcp
+    participant Vault as Askar vault / DB
+
+    Web->>MCP: Resolve holderWalletId<br/>principal, context
+    MCP-->>Web: holderWalletId
+    Web->>MCP: /tools/ssi_create_wallet_action<br/>type=RotateLinkSecret
+    MCP-->>Web: Unsigned WalletAction
+    Web->>Web: Passkey ceremony via section 6.0
+    Web->>MCP: /tools/ssi_rotate_link_secret<br/>action, signature
+    MCP->>MCP: verifyWalletAction + consumeNonce
+    MCP->>MCP: AnonCreds.createLinkSecretValue
+    MCP->>Vault: putLinkSecret(profile, newId)
+    MCP->>MCP: updateHolderLinkSecret(hw.id, newId)
+    MCP->>MCP: markCredentialsStaleForLinkSecret(oldId)
+    MCP-->>Web: old, new, credentialsMarkedStale
 ```
 
 Rotation invalidates every credential previously bound to the old link

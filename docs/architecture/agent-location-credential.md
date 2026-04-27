@@ -123,47 +123,49 @@ or local policy engines. The proof is consumed by the **agent/verifier
 runtime**, not by a smart contract. That is why both AnonCreds verification and
 H3 inclusion verification stay off-chain.
 
-```text
-Holder app              person-mcp                         Third-party verifier        Chain / GraphDB
-   |                         |                                      |                         |
-   | request policy: "prove location relation"                  |                         |
-   +----------------------------------------------------------->|                         |
-   |                                                            | resolve feature policy   |
-   |                                                            +------------------------>|
-   |                                                            | GeoFeatureRegistry /     |
-   |                                                            | GraphDB GeoSPARQL        |
-   |<-----------------------------------------------------------+ presentationRequest +    |
-   | verifierId, verifierAddress, verifierSignature, relation     featureId/version/policy |
-   |                                                            |                         |
-   | /tools/ssi_create_wallet_action                            |                         |
-   |   type=CreatePresentation, policy limits                   |                         |
-   +------------------------->|                                |                         |
-   |<-------------------------+ unsigned WalletAction           |                         |
-   | passkey ceremony in Browser                               |                         |
-   |   -> 0x01 || abi.encode(Assertion)                        |                         |
-   |                                                            |                         |
-   | /tools/ssi_create_presentation(action, sig, selections)    |                         |
-   +------------------------->|                                |                         |
-   |                          | verify WalletAction                 |                         |
-   |                          | enforce proofRequestHash            |                         |
-   |                          | load schema/credDef                 +------------------------>|
-   |                          | get credential from vault           |                         |
-   |                          | create AnonCreds presentation       |                         |
-   |<-------------------------+ {presentation, auditSummary}    |                         |
-   |                                                            |                         |
-   | POST /verify/location/check(presentation, optional h3 proof witnesses)    |
-   +----------------------------------------------------------->|                         |
-   |                                                            | verify AnonCreds proof   |
-   |                                                            | verify issuer/credDef    +------------------------>|
-   |                                                            | if policy requires:      |
-   |                                                            |   check featureVersion   |
-   |                                                            |   verify H3 inclusion    |
-   |                                                            | create verifier receipt  |
-   |<-----------------------------------------------------------+ {verified, receipt, evidenceCommit}
-   |                                                            |                         |
-   | optional: publish public or commitment-only GeoClaim        |                         |
-   +----------------------------------------------------------->| -----------------------> |
-   |                                                            | GeoClaimRegistry.mint    |
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Holder as Holder app
+    participant MCP as person-mcp
+    participant Verifier as Third-party verifier
+    participant Chain as Chain / GraphDB
+
+    Holder->>Verifier: Request policy: prove location relation
+    Verifier->>Chain: Resolve feature policy
+    Chain-->>Verifier: GeoFeatureRegistry record + GraphDB GeoSPARQL result
+    Verifier-->>Holder: presentationRequest, verifierId, verifierAddress,<br/>verifierSignature, relation, featureId/version/policy
+
+    Holder->>MCP: /tools/ssi_create_wallet_action<br/>type=CreatePresentation, policy limits
+    MCP-->>Holder: Unsigned WalletAction
+
+    Note over Holder: Browser passkey ceremony<br/>0x01 || abi.encode(Assertion)
+
+    Holder->>MCP: /tools/ssi_create_presentation<br/>action, signature, selections
+    MCP->>MCP: Verify WalletAction
+    MCP->>MCP: Enforce proofRequestHash
+    MCP->>Chain: Load schema / credDef
+    Chain-->>MCP: Verified schema / credDef
+    MCP->>MCP: Get credential from vault
+    MCP->>MCP: Create AnonCreds presentation
+    MCP-->>Holder: presentation, auditSummary
+
+    Holder->>Verifier: POST /verify/location/check<br/>presentation, optional H3 proof witnesses
+    Verifier->>Verifier: Verify AnonCreds proof
+    Verifier->>Chain: Verify issuer / credDef
+    Chain-->>Verifier: Issuer and credDef provenance
+
+    alt Policy requires private point-in-feature proof
+        Verifier->>Chain: Load featureVersion and h3CoverageRoot
+        Verifier->>Verifier: Verify H3 inclusion off-chain
+    end
+
+    Verifier-->>Holder: verified, receipt, evidenceCommit
+
+    opt Public audit trail required
+        Holder->>Verifier: Request public or commitment-only GeoClaim
+        Verifier->>Chain: GeoClaimRegistry.mint
+    end
 ```
 
 The verifier can be an internal MCP, an external organisation, or another
