@@ -34,20 +34,10 @@ try { sqlite.prepare('ALTER TABLE users ADD COLUMN agent_name TEXT').run() } cat
 try { sqlite.prepare('ALTER TABLE users ADD COLUMN onboarded_at TEXT').run() } catch { /* already exists */ }
 try { sqlite.prepare('ALTER TABLE users ADD COLUMN account_salt_rotation INTEGER NOT NULL DEFAULT 0').run() } catch { /* already exists */ }
 
-// Tables introduced post-migration files.
-try {
-  sqlite.prepare(`CREATE TABLE IF NOT EXISTS passkeys (
-    id TEXT PRIMARY KEY NOT NULL,
-    user_id TEXT NOT NULL,
-    account_address TEXT NOT NULL,
-    credential_id_base64url TEXT NOT NULL UNIQUE,
-    credential_id_digest TEXT NOT NULL,
-    pub_key_x TEXT NOT NULL,
-    pub_key_y TEXT NOT NULL,
-    label TEXT,
-    created_at TEXT NOT NULL
-  )`).run()
-} catch { /* already exists */ }
+// Drop legacy passkeys table — login is now name-based via the .agent
+// registry, and the OS picker is hinted by browser-side localStorage. No
+// server-side credentialId mapping is kept anymore.
+try { sqlite.prepare('DROP TABLE IF EXISTS passkeys').run() } catch { /* */ }
 try {
   sqlite.prepare(`CREATE TABLE IF NOT EXISTS recovery_delegations (
     id TEXT PRIMARY KEY NOT NULL,

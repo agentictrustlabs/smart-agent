@@ -45,30 +45,11 @@ export const users = sqliteTable('users', {
 // Agent lookup: resolver (name/type) + edges (relationships) + ATL_CONTROLLER (wallet→agent).
 // ─── Passkeys ────────────────────────────────────────────────────────
 //
-// Server-side mirror of every passkey registered on a user's smart account.
-// The on-chain `_passkeys[digest]` entry only stores the SHA-keccak digest
-// of the credentialId — we can't reverse that to get the actual credentialId
-// bytes the OS authenticator needs in `allowCredentials`. Mirroring lets the
-// passkey-signed UserOp flows (recovery, repair) constrain the OS picker to
-// only credentials actually registered on the account, which is essential
-// for users on a fresh browser where localStorage hints are empty.
-
-export const passkeys = sqliteTable('passkeys', {
-  id: text('id').primaryKey(),
-  userId: text('user_id').notNull().references(() => users.id),
-  /** Smart-account address the passkey is registered on. */
-  accountAddress: text('account_address').notNull(),
-  /** WebAuthn credentialId, base64url-encoded — what we hand the OS picker. */
-  credentialIdBase64Url: text('credential_id_base64url').notNull().unique(),
-  /** keccak256 of the raw credentialId bytes — matches `_passkeys[digest]`. */
-  credentialIdDigest: text('credential_id_digest').notNull(),
-  /** P-256 public key components (decimal strings — bigints serialised). */
-  pubKeyX: text('pub_key_x').notNull(),
-  pubKeyY: text('pub_key_y').notNull(),
-  /** Optional label set at enrollment time. */
-  label: text('label'),
-  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
-})
+// Removed. Login is name-based via the .agent registry; the AgentAccount
+// contract's `_passkeys[digest]` mapping is the source of truth for which
+// credentials authorise the account. The OS picker is hinted purely from
+// browser localStorage (smart-agent.passkeys.local), filtered by .agent
+// name on the client.
 
 // ─── Recovery Delegations ────────────────────────────────────────────
 //
