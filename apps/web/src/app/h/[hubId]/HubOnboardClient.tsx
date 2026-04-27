@@ -199,10 +199,30 @@ function ConnectStep({ hub, accent, hubSlug, error, setError }: {
   error: string | null
   setError: (e: string | null) => void
 }) {
-  const [signupName, setSignupName] = useState('')
+  const [signupLabel, setSignupLabel] = useState('')
+  const [signupCheck, setSignupCheck] = useState<{
+    valid: boolean; available: boolean; reason?: string; fullName?: string; predictedAddress?: string | null
+  } | null>(null)
   const [signinAgentName, setSigninAgentName] = useState('')
   const [mode, setMode] = useState<'signup' | 'signin'>('signup')
   const [pending, startPending] = useTransition()
+
+  // Debounced availability check while the user is typing.
+  useEffect(() => {
+    if (mode !== 'signup') return
+    const label = signupLabel.toLowerCase().trim()
+    if (!label) { setSignupCheck(null); return }
+    const id = setTimeout(async () => {
+      try {
+        const r = await fetch(`/api/auth/check-agent-name?label=${encodeURIComponent(label)}`)
+        const data = await r.json()
+        setSignupCheck(data)
+      } catch {
+        setSignupCheck({ valid: false, available: false, reason: 'check failed' })
+      }
+    }, 400)
+    return () => clearTimeout(id)
+  }, [signupLabel, mode])
 
   const googleHref = `/api/auth/google-start?return_to=${encodeURIComponent(`/h/${hubSlug}`)}`
 
@@ -236,17 +256,25 @@ function ConnectStep({ hub, accent, hubSlug, error, setError }: {
   function onPasskeySignup() {
     setError(null)
     if (!window.PublicKeyCredential) { setError('WebAuthn not supported in this browser.'); return }
-    if (!signupName.trim()) { setError('Pick a display name first.'); return }
+    const label = signupLabel.toLowerCase().trim()
+    if (!label) { setError('Pick your .agent name first.'); return }
+    if (!signupCheck?.valid) { setError(signupCheck?.reason ?? 'invalid name format'); return }
+    if (!signupCheck.available) { setError(`${signupCheck.fullName ?? label + '.agent'} is taken — try another`); return }
+    const fullName = signupCheck.fullName ?? `${label}.agent`
     startPending(async () => {
       try {
         const challenge = crypto.getRandomValues(new Uint8Array(32))
+        // Use the .agent name as the WebAuthn user.name + displayName so
+        // the OS/password-manager labels the saved credential with the
+        // user's chosen identity. At sign-in time the picker shows the
+        // .agent name directly, no synthetic display name to remember.
         const cred = await navigator.credentials.create({
           publicKey: {
             rp: { name: 'Smart Agent', id: window.location.hostname },
             user: {
               id: crypto.getRandomValues(new Uint8Array(16)),
-              name: signupName.trim(),
-              displayName: signupName.trim(),
+              name: fullName,
+              displayName: fullName,
             },
             challenge,
             pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
@@ -262,7 +290,7 @@ function ConnectStep({ hub, accent, hubSlug, error, setError }: {
           method: 'POST',
           headers: { 'content-type': 'application/json', origin: window.location.origin },
           body: JSON.stringify({
-            name: signupName.trim(),
+            agentLabel: label,
             credentialIdBase64Url: parsed.credentialIdBase64Url,
             pubKeyX: parsed.pubKeyX.toString(),
             pubKeyY: parsed.pubKeyY.toString(),
@@ -271,7 +299,7 @@ function ConnectStep({ hub, accent, hubSlug, error, setError }: {
         const body = await r.json()
         if (!r.ok || !body.success) { setError(body.error ?? r.statusText); return }
         const known = JSON.parse(localStorage.getItem('smart-agent.passkeys.local') ?? '[]') as Array<{ id: string; name: string }>
-        known.push({ id: parsed.credentialIdBase64Url, name: signupName.trim() })
+        known.push({ id: parsed.credentialIdBase64Url, name: fullName })
         localStorage.setItem('smart-agent.passkeys.local', JSON.stringify(known))
         window.location.reload()
       } catch (err) { setError((err as Error).message) }
@@ -361,15 +389,44 @@ function ConnectStep({ hub, accent, hubSlug, error, setError }: {
         {mode === 'signup' ? (
           <>
             <Input
-              label="Display name (for new passkey)"
-              value={signupName}
-              onChange={(e) => setSignupName(e.target.value)}
-              placeholder="e.g. Alice"
+              label="Your .agent name"
+              value={signupLabel}
+              onChange={(e) => setSignupLabel(e.target.value.toLowerCase())}
+              placeholder="e.g. richp"
+              autoCapitalize="none"
+              autoCorrect="off"
+              autoComplete="off"
             />
+            {/* Live availability hint. Dim while empty; green if free,
+                red if taken or invalid. The predicted address shows the
+                user the counterfactual smart-account they'll deploy at. */}
+            <div style={{ fontSize: 11, color: '#475569', minHeight: 14 }}>
+              {!signupLabel.trim() ? (
+                <span style={{ color: '#94a3b8' }}>Pick the name your passkey will use to sign in.</span>
+              ) : !signupCheck ? (
+                <span style={{ color: '#94a3b8' }}>Checking…</span>
+              ) : !signupCheck.valid ? (
+                <span style={{ color: '#b91c1c' }}>{signupCheck.reason ?? 'invalid'}</span>
+              ) : !signupCheck.available ? (
+                <span style={{ color: '#b91c1c' }}>{signupCheck.fullName} is taken</span>
+              ) : (
+                <span style={{ color: '#047857' }}>
+                  {signupCheck.fullName} is available
+                  {signupCheck.predictedAddress ? (
+                    <>
+                      {' '}· will deploy at{' '}
+                      <code style={{ fontFamily: 'ui-monospace, monospace', fontSize: 10 }}>
+                        {signupCheck.predictedAddress.slice(0, 6)}…{signupCheck.predictedAddress.slice(-4)}
+                      </code>
+                    </>
+                  ) : null}
+                </span>
+              )}
+            </div>
             <button
               type="button"
               onClick={onPasskeySignup}
-              disabled={pending}
+              disabled={pending || !signupCheck?.available}
               style={authButtonStyle(accent, '#fff')}
               data-testid="hub-onboard-passkey-signup"
             >

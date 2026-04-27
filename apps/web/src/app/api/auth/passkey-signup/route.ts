@@ -22,7 +22,12 @@ import { privateKeyToAccount } from 'viem/accounts'
 import { keccak256, toBytes, encodeFunctionData, createPublicClient, createWalletClient, http, getAddress } from 'viem'
 import { localhost } from 'viem/chains'
 import { getUserOperationHash, toPackedUserOperation } from 'viem/account-abstraction'
-import { agentAccountAbi, agentAccountFactoryAbi } from '@smart-agent/sdk'
+import {
+  agentAccountAbi, agentAccountFactoryAbi,
+  agentNameRegistryAbi, agentNameResolverAbi, agentAccountResolverAbi,
+  ATL_PRIMARY_NAME, ATL_NAME_LABEL,
+  namehash, namehashRoot,
+} from '@smart-agent/sdk'
 import { db, schema } from '@/db'
 import { mintSession, SESSION_COOKIE } from '@/lib/auth/native-session'
 import { getWalletClient } from '@/lib/contracts'
@@ -58,10 +63,21 @@ const entryPointAbi = [
 ] as const
 
 interface SignupBody {
-  name: string
+  /** Bare label the user typed, e.g. "richp". Server appends ".agent". */
+  agentLabel: string
   credentialIdBase64Url: string
   pubKeyX: string  // decimal string (bigint)
   pubKeyY: string
+}
+
+/** Lowercase letters/digits/hyphens, 1–32 chars, no leading/trailing hyphen,
+ *  no double hyphens. Mirrors a conservative DNS-style label rule so the
+ *  resulting `<label>.agent` is a sane on-chain name. */
+function isValidLabel(label: string): boolean {
+  if (label.length < 1 || label.length > 32) return false
+  if (!/^[a-z0-9](?:[a-z0-9-]{0,30}[a-z0-9])?$/.test(label)) return false
+  if (label.includes('--')) return false
+  return true
 }
 
 export async function POST(request: Request) {
@@ -77,21 +93,46 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json() as SignupBody
-  if (!body.name || !body.credentialIdBase64Url || !body.pubKeyX || !body.pubKeyY) {
-    return NextResponse.json({ error: 'name, credentialIdBase64Url, pubKeyX, pubKeyY required' }, { status: 400 })
+  if (!body.agentLabel || !body.credentialIdBase64Url || !body.pubKeyX || !body.pubKeyY) {
+    return NextResponse.json({ error: 'agentLabel, credentialIdBase64Url, pubKeyX, pubKeyY required' }, { status: 400 })
+  }
+  const label = body.agentLabel.toLowerCase().trim()
+  if (!isValidLabel(label)) {
+    return NextResponse.json({ error: 'invalid label — use 1–32 chars: lowercase letters, digits, hyphens (no leading/trailing/double hyphens)' }, { status: 400 })
+  }
+  const fullName = `${label}.agent`
+
+  const NAME_REGISTRY = process.env.AGENT_NAME_REGISTRY_ADDRESS as `0x${string}` | undefined
+  const NAME_RESOLVER = process.env.AGENT_NAME_RESOLVER_ADDRESS as `0x${string}` | undefined
+  const ACCOUNT_RESOLVER = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}` | undefined
+  if (!NAME_REGISTRY || !NAME_RESOLVER || !ACCOUNT_RESOLVER) {
+    return NextResponse.json({ error: 'name registry not configured' }, { status: 500 })
   }
 
   const credIdBytes = base64UrlDecode(body.credentialIdBase64Url)
   const credentialIdDigest = keccak256(credIdBytes)
-
-  // Already enrolled? Block re-signup against the same credential.
   const credIdHex = credentialIdDigest.toLowerCase()
+
+  const publicClient = createPublicClient({ chain: { ...localhost, id: CHAIN_ID }, transport: http(RPC_URL) })
+
+  // Reject early if the .agent name is already registered. The registry's
+  // register() also reverts on collision, but checking up front gives a
+  // clean error before we do any deploy work.
+  const fullNode = namehash(fullName) as `0x${string}`
+  const nameTaken = await publicClient.readContract({
+    address: NAME_REGISTRY, abi: agentNameRegistryAbi,
+    functionName: 'recordExists', args: [fullNode],
+  }) as boolean
+  if (nameTaken) {
+    return NextResponse.json({ error: `${fullName} is taken` }, { status: 409 })
+  }
+
+  // Block re-signup against the same credential.
   const existing = await db.select().from(schema.users).where(eq(schema.users.id, credIdHex)).limit(1).then(r => r[0])
   if (existing) {
     return NextResponse.json({ error: 'credential already registered' }, { status: 409 })
   }
 
-  const publicClient = createPublicClient({ chain: { ...localhost, id: CHAIN_ID }, transport: http(RPC_URL) })
   const deployer = privateKeyToAccount(DEPLOYER_KEY)
   const relayer = privateKeyToAccount(RELAYER_KEY)
   // Use the shared wallet client — its writeContract is wrapped with the
@@ -100,8 +141,11 @@ export async function POST(request: Request) {
   // produce a "nonce too low" since both use the same EOA).
   const deployerWallet = getWalletClient()
 
-  // 1. Deploy smart account — owner=deployer, salt = keccak(credentialIdDigest|now).
-  const salt = BigInt(keccak256(toBytes(`${credIdHex}${Date.now()}`)).slice(0, 18))
+  // 1. Deploy smart account — owner=deployer, salt = keccak(fullName).
+  // Using the name as the salt seed makes the address counterfactual and
+  // deterministic from what the user typed; the same name always points
+  // to the same address even before the contract is deployed.
+  const salt = BigInt(keccak256(toBytes(fullName)).slice(0, 18))
   const accountAddr = (await publicClient.readContract({
     address: FACTORY, abi: agentAccountFactoryAbi, functionName: 'getAddress',
     args: [deployer.address, salt],
@@ -156,19 +200,67 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: `addPasskey reverted (tx ${txHash})` }, { status: 500 })
   }
 
-  // 3. Insert user row. id = the credentialIdDigest (lowercased) so we can
-  //    look up by it on sign-in. did = `did:passkey:<accountAddr>`.
+  // 3. Register `<label>.agent` in the AgentNameRegistry, pointing the
+  //    address record at the freshly-deployed smart account. .agent root
+  //    is owned by the deployer, so the deployer can mint child names.
+  //    setAddr passes auth because deployer is the initial owner of the
+  //    new smart account (registry.owner(child) is the smart account, and
+  //    smart-account.isOwner(deployer) returns true).
   const accountAddrLower = accountAddr.toLowerCase() as `0x${string}`
+  const agentRoot = namehashRoot('agent') as `0x${string}`
+  try {
+    const regHash = await deployerWallet.writeContract({
+      address: NAME_REGISTRY, abi: agentNameRegistryAbi,
+      functionName: 'register',
+      args: [agentRoot, label, accountAddr, NAME_RESOLVER, 0n],
+    })
+    await publicClient.waitForTransactionReceipt({ hash: regHash })
+    const setAddrHash = await deployerWallet.writeContract({
+      address: NAME_RESOLVER, abi: agentNameResolverAbi,
+      functionName: 'setAddr', args: [fullNode, accountAddr],
+    })
+    await publicClient.waitForTransactionReceipt({ hash: setAddrHash })
+  } catch (err) {
+    // Name registration failure shouldn't strand a deployed account, but
+    // it does mean the user can't sign in by name. Surface explicitly.
+    return NextResponse.json({
+      error: `name registration failed: ${(err as Error).message}`,
+      detail: 'account is deployed but the .agent name was not registered',
+    }, { status: 500 })
+  }
+
+  // 4. Set the resolver display props so reverse-resolution + name display
+  //    elsewhere in the app know what to show. Best-effort; failure here
+  //    only affects display, not login.
+  try {
+    await deployerWallet.writeContract({
+      address: ACCOUNT_RESOLVER, abi: agentAccountResolverAbi,
+      functionName: 'setStringProperty',
+      args: [accountAddr, ATL_NAME_LABEL as `0x${string}`, label],
+    })
+    await deployerWallet.writeContract({
+      address: ACCOUNT_RESOLVER, abi: agentAccountResolverAbi,
+      functionName: 'setStringProperty',
+      args: [accountAddr, ATL_PRIMARY_NAME as `0x${string}`, fullName],
+    })
+  } catch (e) {
+    console.warn('[passkey-signup] resolver props failed (non-fatal):', (e as Error).message)
+  }
+
+  // 5. Insert user row. id = credentialIdDigest (kept for legacy lookups),
+  //    did = did:passkey:<chainId>:<accountAddr>, agentName = full name so
+  //    the user's identity in the app matches their on-chain name.
   const did = `did:passkey:${CHAIN_ID}:${accountAddrLower}`
   await db.insert(schema.users).values({
     id: credIdHex,
     email: null,
-    name: body.name,
+    name: fullName,
     walletAddress: accountAddrLower,
     did: did,
     privateKey: null,
     smartAccountAddress: accountAddrLower,
     personAgentAddress: null,
+    agentName: fullName,
   })
 
   // No server-side passkey mirror anymore — login resolves the smart
@@ -176,13 +268,13 @@ export async function POST(request: Request) {
   // The account's _passkeys[digest] mapping is the source of truth for
   // which credentials authorise the account.
 
-  // 4. Mint session JWT.
+  // 6. Mint session JWT.
   const cookieStore = await cookies()
   const jwt = mintSession({
     sub: did,
     walletAddress: accountAddrLower,
     smartAccountAddress: accountAddrLower,
-    name: body.name,
+    name: fullName,
     email: null,
     via: 'passkey',
     kind: 'session',
@@ -192,7 +284,8 @@ export async function POST(request: Request) {
     user: {
       id: credIdHex,
       did,
-      name: body.name,
+      name: fullName,
+      agentName: fullName,
       smartAccountAddress: accountAddrLower,
       credentialIdDigest,
     },
