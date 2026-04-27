@@ -1,10 +1,10 @@
-# AnonCreds, `ssi-wallet-mcp`, and `person-mcp`
+# AnonCreds and `person-mcp`
 
 End-to-end documentation of how Smart Agent issues, stores, and presents
-AnonCreds credentials. The system splits authority across three independent
-processes — `apps/web` (UI + signer), `apps/person-mcp` (consent gateway), and
-`apps/ssi-wallet-mcp` (cryptographic vault) — plus an on-chain
-`CredentialRegistry` for schema/credDef provenance.
+AnonCreds credentials. The system splits authority across `apps/web`
+(UI + signer), `apps/person-mcp` (consent gateway, PII gateway, and
+cryptographic holder vault), and an on-chain `CredentialRegistry` for
+schema/credDef provenance.
 
 This document covers:
 
@@ -26,27 +26,25 @@ proofs** (e.g. "minorBirthYear ≥ 2006"), and **link secrets** (per-holder
 secrets that bind every credential the holder owns and let them prove "all
 these credentials are mine" without ever revealing the link secret itself).
 
-The native `anoncreds-rs` binding is loaded once per process (in
-`apps/ssi-wallet-mcp/src/index.ts`) via `AnonCreds.registerNativeBinding`. All
-holder-side cryptography (link secret creation, credential request build,
-credential processing, presentation creation) runs **inside ssi-wallet-mcp** —
-never in the web app, never in person-mcp.
+The native `anoncreds-rs` binding is loaded once in the MCP process via
+`AnonCreds.registerNativeBinding`. All holder-side cryptography (link secret
+creation, credential request build, credential processing, presentation
+creation) runs **inside `apps/person-mcp`** — never in the web app.
 
-### 1.2 Why three processes
+### 1.2 Runtime split
 
 
 | Layer            | Process               | What it owns                                                                                             | What it never sees                                            |
 | ---------------- | --------------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
 | UI + holder signer | `apps/web` (Next.js)  | User session, browser-side passkey ceremony for `WalletAction` envelopes (EIP-712 hash → WebAuthn assertion) | Link secrets, raw credentials, attribute values, passkey private key |
-| Consent gateway  | `apps/person-mcp`     | Builds unsigned `WalletAction`s, re-verifies signatures, writes audit/metadata, gates PII via delegation | Link secrets, raw credentials                                 |
-| Crypto vault     | `apps/ssi-wallet-mcp` | Askar-style encrypted vault, link secrets, credentials, AnonCreds operations                             | The user's signing key material (passkey or EOA)              |
+| Combined MCP     | `apps/person-mcp`     | Builds unsigned `WalletAction`s, re-verifies signatures, writes audit/metadata, gates PII via delegation, manages the encrypted holder vault, link secrets, credentials, and AnonCreds operations | The user's passkey private key or browser authenticator secret |
 
 
-The split means a compromise of `apps/web` can't reveal credentials
-(ssi-wallet-mcp re-validates everything); a compromise of `person-mcp` can't
-spend or sign anything (it has no keys); a compromise of `ssi-wallet-mcp`
-can't unilaterally produce presentations (every privileged action requires a
-signed, replay-protected `WalletAction`).
+The split means a compromise of `apps/web` cannot reveal credentials or link
+secrets. `apps/person-mcp` holds the vault, but it still cannot spend or sign
+as the user: every privileged SSI action requires a signed, replay-protected
+`WalletAction` whose passkey signature is verified through the user's
+`AgentAccount`.
 
 ### 1.3 Trust roots
 
@@ -56,10 +54,11 @@ signed, replay-protected `WalletAction`).
 | Holder identity             | **Passkey (primary)** — `AgentAccount` ERC-1271; signature is `0x01 ‖ abi.encode(WebAuthnLib.Assertion)` validated on-chain by `_verifyWebAuthn` → `P256Verifier`. Legacy EOA fallback (demo / SIWE only) — 65-byte secp256k1 ECDSA against `users.walletAddress`. | `verifyWalletAction` in `packages/privacy-creds/src/wallet-actions/verify.ts` — routes by signature shape: ERC-1271 `readContract.isValidSignature` for passkeys, `recoverTypedDataAddress` for EOA. |
 | Schema / CredDef provenance | `CredentialRegistry.sol` events on-chain                                                                                                                              | `loadVerifiedSchema` / `loadVerifiedCredDef` (in `packages/credential-registry`)                                                                       |
 | Issuer identity             | `did:ethr:<chainId>:<address>` matched against `msg.sender` of publish tx                                                                                             | Resolver + `IssuerAgent.ensureIssuerRegistered`                                                                                                        |
-| Verifier identity           | EIP-191 signature over the presentation request                                                                                                                       | `apps/ssi-wallet-mcp/src/auth/verifier-registry.ts` (only enforced when `SSI_KNOWN_VERIFIERS` is set)                                                  |
+| Verifier identity           | EIP-191 signature over the presentation request                                                                                                                       | `apps/person-mcp` verifier registry logic (only enforced when `SSI_KNOWN_VERIFIERS` is set)                                                            |
 
-
----
+Location-specific credential semantics, `.geo` feature binding, and
+third-party verifier receipts are documented separately in
+`docs/architecture/agent-location-credential.md`.
 
 ## 2. Service topology
 
@@ -76,39 +75,33 @@ Browser
 │  - SignInClient / SignUpClient           │         │   tokens for PII)    │
 │  - server actions in lib/actions/ssi/    │         └──────────┬───────────┘
 │  - lib/ssi/signer.ts (passkey primary,   │                    │
-│    EOA fallback for demo/SIWE)           │                    │
-│  - lib/ssi/clients.ts (HTTP clients)     │                    │ delegation
-└────┬───────────────┬──────────────┬──────┘                    │ tokens
-     │ /tools/*      │ /wallet/*    │ /credential/*             │
-     │ (POST)        │ /credentials/│ /verify/*                 │
-     ▼               │ /proofs/     │ (issuer/verifier)         │
-┌──────────────┐     │              │                           │
-│ apps/        │     │              │                           │
-│ person-mcp   │     │  ┌───────────┴────────────┐  ┌───────────┴──────┐
-│   :3200      │     │  │ apps/org-mcp    :3400  │  │ apps/family-mcp  │
-│              │     │  │ apps/family-mcp :3500  │  │   :3500          │
-│ HTTP + MCP   │     │  │ (Issuer + Verifier)    │  │ guardian verifier│
-│ stdio        │     │  └────────────┬───────────┘  └────────┬─────────┘
-└──┬───────────┘     │               │                       │
-   │ /wallet/        │               │ publishSchema /       │
-   │ /credentials/   │               │ publishCredDef        │
-   │ /proofs/        ▼               ▼                       │
-   ▼              ┌──────────────────────────────────┐       │
-┌──────────────┐  │ apps/ssi-wallet-mcp        :3300 │       │
-│ person-mcp   │  │  - Askar vault (vault.db)        │       │
-│ sqlite       │  │  - holder_wallets sqlite         │       │
-│ (audit only) │◄─┤  - action_nonces (replay)        │       │
-└──────────────┘  │  - credential_metadata           │       │
-                  │  - native anoncreds-rs           │       │
-                  └────────────┬─────────────────────┘       │
-                               │ readContract                │
-                               ▼                             │
-                  ┌─────────────────────────────────────┐    │
-                  │ EVM chain  (Anvil :8545)            │◄───┘
-                  │  - CredentialRegistry.sol           │
-                  │  - AgentAccount (ERC-1271 verify)   │
-                  │  - DelegationManager                │
-                  └─────────────────────────────────────┘
+│    EOA fallback for demo/SIWE)           │                    │ delegation
+│  - lib/ssi/clients.ts (HTTP clients)     │                    │ tokens
+└────┬──────────────────────┬──────────────┘                    │
+     │ /tools/*             │ /credential/* /verify/*           │
+     ▼                      │ (issuer/verifier)                 │
+┌──────────────────────┐    │       ┌───────────────────────────┴─────┐
+│ apps/person-mcp :3200│    │       │ apps/org-mcp / apps/family-mcp  │
+│  - HTTP + MCP stdio  │    │       │  (Issuer + Verifier)             │
+│  - SSI tools         │    │       └──────────────┬──────────────────┘
+│  - PII tools         │    │                      │ publishSchema /
+│  - audit sqlite      │    │                      │ publishCredDef
+│  - holder_wallets    │    │                      │
+│  - action_nonces     │    │                      │
+│  - credential_meta   │    │                      │
+│  - Askar vault       │    │                      │
+│  - native anoncreds  │    │                      │
+└──────────┬───────────┘    │                      │
+           │ readContract   │                      │
+           ▼                ▼                      ▼
+┌──────────────────────────────────────────────────────────────┐
+│ EVM chain  (Anvil :8545)                                     │
+│  - CredentialRegistry.sol                                    │
+│  - AgentAccount (ERC-1271 verify)                            │
+│  - AgentNameRegistry (.agent/.geo)                           │
+│  - GeoFeatureRegistry / GeoClaimReg                          │
+│  - DelegationManager                                         │
+└──────────────────────────────────────────────────────────────┘
 ```
 
 Default ports come from `apps/web/src/lib/ssi/config.ts`.
@@ -118,10 +111,10 @@ Default ports come from `apps/web/src/lib/ssi/config.ts`.
 
 | Service                          | Routes                                                                                                                                                                                                                                                                                                                              |
 | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ssi-wallet-mcp`                 | `POST /wallet/provision`, `POST /wallet/rotate-link-secret`, `GET /wallet/:principal[/:context]`, `POST /credentials/request`, `POST /credentials/store`, `GET /credentials/:holderWalletId`, `POST /proofs/present`                                                                                                                |
-| `person-mcp`                     | `POST /tools/<toolName>` for `ssi_create_wallet_action`, `ssi_provision_wallet`, `ssi_start_credential_exchange`, `ssi_finish_credential_exchange`, `ssi_create_presentation`, `ssi_list_my_credentials`, `ssi_list_wallets`, `ssi_list_proof_audit`, `ssi_rotate_link_secret`, plus profile/identity/chat tools (delegation-gated) |
+| `person-mcp`                     | `POST /tools/<toolName>` for `ssi_create_wallet_action`, `ssi_provision_wallet`, `ssi_start_credential_exchange`, `ssi_finish_credential_exchange`, `ssi_create_presentation`, `ssi_list_my_credentials`, `ssi_list_wallets`, `ssi_list_proof_audit`, `ssi_rotate_link_secret`, plus profile/identity/chat tools (delegation-gated). Internally owns holder-wallet, credential, proof, nonce, and vault modules. |
 | `org-mcp` (issuer)               | `POST /credential/offer`, `POST /credential/issue`, OID4VCI endpoints                                                                                                                                                                                                                                                               |
 | `family-mcp` (issuer + verifier) | `POST /credential/offer`, `POST /credential/issue`, `GET /verify/guardian/request`, `POST /verify/guardian/check`                                                                                                                                                                                                                   |
+| Third-party verifier agents       | Build signed presentation requests, verify AnonCreds presentations off-chain, optionally verify H3 inclusion / GeoSPARQL policy inputs, and issue signed verifier receipts or `GeoClaimRegistry` commitments                                                                                                                        |
 
 
 ---
@@ -158,14 +151,14 @@ or wallet-held secp256k1 key.
                                        person-mcp tools           │
                                                                   ▼
               ┌──────────────────────┐               ┌──────────────────────┐
-              │ AgentAccount.sol     │               │ ssi-wallet-mcp       │
-              │  isValidSignature?   │◄──────────────┤  /wallet/*  /creds/* │
-              │  ─ 0x00 ‖ ecdsa →    │  readContract │  /proofs/*           │
-              │     owner check      │               │  verifyWalletAction  │
-              │  ─ 0x01 ‖ Assertion →│               │   ▸ shape-routes:    │
-              │    _verifyWebAuthn → │               │     65 bytes  → ECDSA│
-              │    WebAuthnLib       │               │     0x01 ‖ … → 1271  │
-              │    → P256Verifier    │               │     0x00 ‖ … → 1271  │
+              │ AgentAccount.sol     │               │ person-mcp           │
+              │  isValidSignature?   │◄──────────────┤  SSI tools + vault   │
+              │  ─ 0x00 ‖ ecdsa →    │  readContract │  verifyWalletAction  │
+              │     owner check      │               │   ▸ shape-routes:    │
+              │  ─ 0x01 ‖ Assertion →│               │     65 bytes  → ECDSA│
+              │    _verifyWebAuthn → │               │     0x01 ‖ … → 1271  │
+              │    WebAuthnLib       │               │     0x00 ‖ … → 1271  │
+              │    → P256Verifier    │               │  runs anoncreds-rs   │
               └──────────────────────┘               └──────────┬───────────┘
                                                                 │
                                                                 │ unwraps DEK,
@@ -191,10 +184,10 @@ Three invariants live in this picture:
    (Secure Enclave / TPM / hybrid phone). Server-side flows that *require*
    a signature for an OAuth / passkey-only user always do a
    server → browser → server round trip.
-2. **Link secrets never leave ssi-wallet-mcp.** Even person-mcp has no API
-   for "give me the link secret" — it can only request operations that
-   ssi-wallet-mcp performs *with* the link secret.
-3. **The same envelope, two signature shapes.** ssi-wallet-mcp does not
+2. **Link secrets never leave the vault module.** `person-mcp` has no tool
+   for "give me the link secret" — it only exposes operations performed *with*
+   the link secret.
+3. **The same envelope, two signature shapes.** `person-mcp` does not
    care which signer produced the `WalletAction`; `verifyWalletAction`
    first asks `AgentAccount.isValidSignature` (covering both passkey and
    ECDSA owner shapes via the on-chain router) and falls back to
@@ -211,7 +204,7 @@ Three invariants live in this picture:
 
 EIP-712 typed data, defined in
 `packages/privacy-creds/src/wallet-actions/types.ts`. Every privileged route
-on `ssi-wallet-mcp` requires a fresh, signed action with:
+on `person-mcp`'s SSI tools requires a fresh, signed action with:
 
 
 | Field                                                    | Purpose                                                                                                               |
@@ -230,13 +223,13 @@ on `ssi-wallet-mcp` requires a fresh, signed action with:
 
 `DEFAULT_FORBIDDEN_ATTRS` (also in `types.ts`) is a hard server-side block
 list — `legalName`, `email`, `phone`, `dob`, `dateOfBirth`, `address`, `ssn`,
-`globalPersonId`, `privyWalletAddress` — that ssi-wallet-mcp refuses to
+`globalPersonId`, `privyWalletAddress` — that `person-mcp` refuses to
 disclose **even if the signed action allows them**.
 
 ### 3.2 Signature shapes and on-chain validator
 
 The same `WalletAction` digest is signed by exactly one of two shapes,
-both exposed to ssi-wallet-mcp as an opaque `bytes signature`:
+both exposed to `person-mcp` as an opaque `bytes signature`:
 
 | Shape (first byte) | Body                                                                                                                                          | Produced by                                                                                            | Verified by                                                          |
 | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------- |
@@ -280,9 +273,9 @@ The SDK helpers that drive this end-to-end:
 
 ## 4. Storage layout
 
-### 4.1 ssi-wallet-mcp — operational SQLite + Askar vault
+### 4.1 `person-mcp` SSI vault — operational SQLite + Askar vault
 
-Operational SQLite (`apps/ssi-wallet-mcp/src/db/index.ts`):
+Operational SQLite inside `apps/person-mcp`:
 
 ```
 holder_wallets
@@ -315,7 +308,7 @@ credential_metadata               -- public, no attribute values, no blobs
   link_secret_id   TEXT             -- which secret this cred is bound to
 ```
 
-Askar-style vault (`apps/ssi-wallet-mcp/src/storage/askar.ts`) — pure-JS,
+Askar-style vault inside `apps/person-mcp` — pure-JS,
 SQLite-backed, AES-256-GCM at the library layer:
 
 ```
@@ -345,15 +338,15 @@ Per-profile DEKs mean compromise of one profile doesn't leak others; each
 encryption commits to its own AAD so a row can't be silently moved between
 profiles or categories.
 
-### 4.2 person-mcp — audit, metadata, identities, profile
+### 4.2 `person-mcp` audit, metadata, identities, profile
 
 `apps/person-mcp/src/db/schema.ts` — the SSI-relevant tables:
 
 ```
-ssi_holder_wallets        -- mirror of ssi-wallet-mcp's holder_wallets
+ssi_holder_wallets        -- local holder-wallet index
   principal, walletContext, walletContext, privyEoa,
-  holderWalletRef → ssi-wallet-mcp.holder_wallets.id
-  linkSecretRef   → ssi-wallet-mcp.askar link_secret id
+  holderWalletRef → holder_wallets.id
+  linkSecretRef   → Askar link_secret id
   status, createdAt
 
 ssi_credential_metadata   -- mirror of credential_metadata (no values, no blobs)
@@ -398,6 +391,46 @@ Issuer-private material (`CredentialDefinitionPrivate`,
 (`packages/privacy-creds/src/issuer/index.ts`). It's never on chain and is
 not recoverable from the public record — wipe-and-re-publish if lost.
 
+### 4.4 On-chain — `.geo`, feature records, and claim anchors
+
+Location credentials do not put exact location evidence on chain. The public
+chain stores only feature provenance and optional claim anchors:
+
+```
+AgentNameRegistry
+  root "geo" → namehash(".geo")
+  erie.colorado.us.geo → nameNode
+
+GeoFeatureRegistry
+  featureId
+  version
+  stewardAccount
+  featureKind
+  geometryHash       -- hash of canonical GeoJSON/WKT payload
+  h3CoverageRoot     -- Merkle root over public H3 coverage cells
+  sourceSetRoot      -- provenance dataset commitment
+  metadataURI        -- full public feature document
+  centroid / bbox    -- map and pre-filter only, not spatial truth
+
+GeoClaimRegistry
+  claimId
+  subjectAgent
+  issuer
+  featureId / featureVersion
+  relation
+  visibility         -- Public | PublicCoarse | PrivateCommitment | PrivateZk | OffchainOnly
+  evidenceCommit     -- hash of verifier receipt / proof transcript / evidence bundle
+  edgeId / assertionId
+  confidence
+  policyId
+  validAfter / validUntil
+```
+
+`geometryHash` and `h3CoverageRoot` are public commitments. They make a
+third-party verifier's work reproducible, but they do not verify a private
+location by themselves. A verifier still checks the holder's AnonCreds proof
+and any H3 inclusion proof off-chain, then signs or publishes a receipt.
+
 ---
 
 ## 5. Component model
@@ -423,7 +456,7 @@ not recoverable from the public record — wipe-and-re-publish if lost.
        │                                                                 │
        └─┬──────────────────────────────────────────────┬────────────────┘
          │                                              │
-         │  HTTP /tools/<name>                          │ HTTP /credential/* /verify/*
+        │  HTTP /tools/<name>                          │ HTTP /credential/* /verify/*
          ▼                                              ▼
   ┌──────────────────────────┐                 ┌──────────────────────────┐
   │ apps/person-mcp          │                 │ apps/{org,family}-mcp    │
@@ -439,21 +472,13 @@ not recoverable from the public record — wipe-and-re-publish if lost.
   │   ssi_holder_wallets,    │                              ▼
   │   ssi_credential_metadata│                     ┌─────────────────────┐
   │   ssi_proof_audit        │                     │ CredentialRegistry  │
-  └────────────┬─────────────┘                     │   .sol (on-chain)   │
-               │ HTTP /wallet/* /credentials/* /proofs/*                 │
-               ▼                                   └─────────────────────┘
-  ┌────────────────────────────────────────────┐
-  │ apps/ssi-wallet-mcp                        │
-  │ src/api/wallet.ts                          │
-  │ src/api/credentials.ts                     │
-  │ src/api/proofs.ts                          │
-  │ src/auth/verify-wallet-action.ts (gate)    │
-  │ src/auth/verifier-registry.ts (registry)   │
-  │ src/storage/askar.ts                       │
-  │ src/storage/wallets.ts                     │
-  │ src/storage/cred-metadata.ts               │
-  │ src/storage/nonces.ts                      │
-  └────────────────────────────────────────────┘
+  │ src/auth/verify-wallet-action.ts           │   .sol (on-chain)   │
+  │ src/auth/verifier-registry.ts              └─────────────────────┘
+  │ src/storage/askar.ts
+  │ src/storage/wallets.ts
+  │ src/storage/cred-metadata.ts
+  │ src/storage/nonces.ts
+  └──────────────────────────┘
 ```
 
 ---
@@ -464,8 +489,7 @@ The diagrams below use these participants consistently:
 
 - `B`  = Browser (also runs the WebAuthn passkey ceremony)
 - `Web` = `apps/web` server actions
-- `PM` = `apps/person-mcp`
-- `WM` = `apps/ssi-wallet-mcp`
+- `MCP` = `apps/person-mcp` (combined consent gateway, SSI vault, and PII gateway)
 - `Issuer` = `apps/org-mcp` or `apps/family-mcp`
 - `Reg` = `CredentialRegistry.sol` on-chain
 - `AA` = `AgentAccount.sol` (the smart account; ERC-1271 verifier for passkeys)
@@ -475,8 +499,8 @@ The diagrams below use these participants consistently:
 Every privileged sequence below ends up in the same three-step pattern:
 
 ```
-Web                                Browser                          Vault / RPC
- │ build unsigned WalletAction (PM)
+Web                                Browser                          MCP / Vault / RPC
+ │ build unsigned WalletAction (MCP)
  │ → digest = hashWalletAction(action)
  │
  │ prepareWalletActionForPasskey(action)
@@ -495,7 +519,7 @@ Web                                Browser                          Vault / RPC
  │
  │ submit (action, signature, signerAddress = AgentAccount)
  │
- │ ssi-wallet-mcp verifyWalletAction(action, signature, signerAddress)
+ │ person-mcp verifyWalletAction(action, signature, signerAddress)
  │   ┣ shape == 0x01 → readContract AgentAccount.isValidSignature
  │   ┃   AgentAccount → WebAuthnLib → P256Verifier (precompile / soft)
  │   ┗ else 65-byte ECDSA → recoverTypedDataAddress (demo/SIWE only)
@@ -510,21 +534,21 @@ production-shaped flow assumes the passkey round-trip above.
 `provisionHolderWalletAction` (`apps/web/src/lib/actions/ssi/provision.action.ts`).
 
 ```
-B          Web                       PM                            WM                Vault
+B          Web                       MCP                                             Vault
 │  click    │                         │                             │                  │
 │  "create  │                         │                             │                  │
 │   wallet" │                         │                             │                  │
 ├──────────►│                         │                             │                  │
 │           │ loadSignerForCurrentUser│                             │                  │
 │           │  (DB: users)            │                             │                  │
-│           │                         │                             │                  │
-│           │ /tools/ssi_create_wallet_action                       │                  │
+│           │                         │                                              │
+│           │ /tools/ssi_create_wallet_action                                        │
 │           │  (principal, context,   │                             │                  │
 │           │   type=ProvisionHolder) │                             │                  │
-│           ├────────────────────────►│                             │                  │
-│           │                         │ build unsigned WalletAction │                  │
-│           │                         │  (nonce, expiresAt, hash=0) │                  │
-│           │◄────────────────────────┤                             │                  │
+│           ├────────────────────────►│                                              │
+│           │                         │ build unsigned WalletAction                  │
+│           │                         │  (nonce, expiresAt, hash=0)                  │
+│           │◄────────────────────────┤                                              │
 │           │                         │                             │                  │
 │           │ prepareWalletActionForPasskey(action)                 │                  │
 │           │   → { digest, challenge }                             │                  │
@@ -533,35 +557,19 @@ B          Web                       PM                            WM           
 │           │   packWebAuthnSignature → 0x01 ‖ abi.encode(Assertion)│                  │
 │           │ ◄──────                                                                  │
 │           │                         │  (legacy: signWalletAction direct EIP-712 EOA) │
-│           │                         │                             │                  │
-│           │ /tools/ssi_provision_wallet (action, sig, signerAddr=AgentAccount)       │
-│           ├────────────────────────►│                             │                  │
-│           │                         │ verifyWalletAction          │                  │
-│           │                         │  shape-routes 0x01 → ERC-1271 readContract     │
-│           │                         │  (defense-in-depth re-check)│                  │
-│           │                         │                             │                  │
-│           │                         │ /wallet/provision           │                  │
-│           │                         ├────────────────────────────►│                  │
-│           │                         │                             │ getHolderByContext (idempotency)
-│           │                         │                             │                  │
-│           │                         │                             │ gateProvisionAction:
-│           │                         │                             │   verifyWalletAction
-│           │                         │                             │     ◦ 0x01 prefix → AA.isValidSignature → WebAuthnLib → P256
-│           │                         │                             │     ◦ 65-byte ecdsa → recoverTypedDataAddress (demo/SIWE)
-│           │                         │                             │   consumeNonce(personPrincipal)
-│           │                         │                             │                  │
-│           │                         │                             │ createProfile(askarProfile)─►│
-│           │                         │                             │ createLinkSecretValue       │
-│           │                         │                             │ putLinkSecret(profile,id) ─►│
-│           │                         │                             │ insertHolderWallet(...)     │
-│           │                         │                             │                  │
-│           │                         │◄────────────────────────────┤ {holderWalletId, │
-│           │                         │   {holderWalletId, …}       │  linkSecretId,   │
-│           │                         │                             │  askarProfile}   │
-│           │                         │                             │                  │
-│           │                         │ insert ssi_holder_wallets   │                  │
-│           │                         │ (mirror row)                │                  │
-│           │◄────────────────────────┤                             │                  │
+│           │                         │                                              │
+│           │ /tools/ssi_provision_wallet (action, sig, signerAddr=AgentAccount)    │
+│           ├────────────────────────►│                                              │
+│           │                         │ verifyWalletAction                           │
+│           │                         │  shape-routes 0x01 → ERC-1271 readContract  │
+│           │                         │  consumeNonce(personPrincipal)               │
+│           │                         │ getHolderByContext (idempotency)             │
+│           │                         │ createProfile(askarProfile) ───────────────►│
+│           │                         │ createLinkSecretValue                        │
+│           │                         │ putLinkSecret(profile,id) ─────────────────►│
+│           │                         │ insertHolderWallet(...)                      │
+│           │                         │ insert ssi_holder_wallets                    │
+│           │◄────────────────────────┤ {holderWalletId, linkSecretId, askarProfile}│
 │◄──────────┤  {holderWalletId}       │                             │                  │
 ```
 
@@ -574,62 +582,42 @@ short-circuits with the existing wallet without consuming a new nonce.
 `apps/web/src/lib/actions/ssi/accept.action.ts`.
 
 ```
-Web        PM         Issuer (org-mcp)        WM            Vault         Reg
- │  POST /credential/offer                                                │
- ├────────────────────────────────►│                                       │
- │                                  │ catalystIssuer.createOffer(credDefId)│
- │                                  │  ⇢ loadVerifiedCredDef(resolver,id) ─┼─►│
- │                                  │                                       │  resolveIssuer/credDef
- │                                  │  ⇢ KeyCorrectnessProof from local DB │  jsonHash check
- │◄─────────────────────────────────┤  {offer, credDefId, schemaId, did}  │
- │                                                                        │
- │ /tools/ssi_create_wallet_action  (type=AcceptCredentialOffer,           │
- │   counterpartyId=did, holderWalletId, walletContext)                    │
- ├──────────►│                                                             │
- │           │ build unsigned action │                                     │
- │◄──────────┤                       │                                     │
- │ passkey ceremony in Browser (see §6.0)                                  │
- │   → signature = 0x01 ‖ abi.encode(Assertion); signerAddress = AgentAccount│
- │ (legacy EOA path: signWalletAction direct EIP-712, demo/SIWE only)      │
- │                                                                        │
- │ /tools/ssi_start_credential_exchange                                   │
- │  (action, sig, credentialOfferJson, credDefId)                         │
- ├──────────►│                                                             │
- │           │ /credentials/request                                       │
- │           ├──────────────────────────────────►│                         │
- │           │                                   │ gateExistingWalletAction│
- │           │                                   │  (ERC-1271 OR ECDSA;    │
- │           │                                   │   consumeNonce)         │
- │           │                                   │ loadVerifiedCredDef     ├─►│ event scan
- │           │                                   │ getLinkSecret(profile)──┼──►│ unwrap DEK
- │           │                                   │ AnonCreds.holderCreate  │   │
- │           │                                   │   CredentialRequest     │   │
- │           │                                   │ putCredentialRequestMeta┼──►│ store blinding meta
- │           │                                   │   (one-shot, requestId) │   │
- │           │◄──────────────────────────────────┤ {requestId, requestJson}│
- │◄──────────┤                                                             │
- │                                                                        │
- │ POST /credential/issue (offer, request, attributes)                    │
- ├────────────────────────────────►│                                       │
- │                                  │ IssuerAgent.issue(...)              │
- │                                  │  ⇢ anoncreds-rs sign credential     │
- │◄─────────────────────────────────┤ {credentialJson}                    │
- │                                                                        │
- │ /tools/ssi_finish_credential_exchange (issuer-side bits + holder ref)   │
- ├──────────►│                                                             │
- │           │ /credentials/store                                          │
- │           ├──────────────────────────────────►│                         │
- │           │                                   │ takeCredentialRequestMeta (consumes one-shot)
- │           │                                   │ loadVerifiedCredDef     ├─►│ re-verify on chain
- │           │                                   │ getLinkSecret           ├──►│
- │           │                                   │ AnonCreds.holderProcess │   │
- │           │                                   │   Credential            │   │
- │           │                                   │ putCredential(profile, id, blob, tags)
- │           │                                   │ insertCredentialMetadata│   │
- │           │◄──────────────────────────────────┤ {credentialId, metadata}│
- │           │ insert ssi_credential_metadata    │                         │
- │           │   (mirror in person-mcp DB)       │                         │
- │◄──────────┤                                                             │
+Web                  MCP                    Issuer (org-mcp)       Vault        Reg
+ │ POST /credential/offer                         │                              │
+ ├───────────────────────────────────────────────►│                              │
+ │                                                │ loadVerifiedCredDef ───────►│
+ │                                                │ KeyCorrectnessProof local DB│
+ │◄───────────────────────────────────────────────┤ {offer, credDefId, schemaId}
+ │
+ │ /tools/ssi_create_wallet_action(type=AcceptCredentialOffer)
+ ├──────────────────►│
+ │◄──────────────────┤ unsigned action
+ │ passkey ceremony in Browser (§6.0)
+ │   → signature = 0x01 ‖ abi.encode(Assertion); signerAddress = AgentAccount
+ │
+ │ /tools/ssi_start_credential_exchange(action, sig, offer, credDefId)
+ ├──────────────────►│
+ │                   │ verifyWalletAction + consumeNonce
+ │                   │ loadVerifiedCredDef ───────────────────────────────────►│
+ │                   │ getLinkSecret(profile) ───────────────►│
+ │                   │ AnonCreds.holderCreateCredentialRequest│
+ │                   │ putCredentialRequestMeta(requestId) ──►│
+ │◄──────────────────┤ {requestId, requestJson}
+ │
+ │ POST /credential/issue (offer, request, attributes)
+ ├───────────────────────────────────────────────►│
+ │                                                │ IssuerAgent.issue(...)
+ │◄───────────────────────────────────────────────┤ {credentialJson}
+ │
+ │ /tools/ssi_finish_credential_exchange(credentialJson, holder ref)
+ ├──────────────────►│
+ │                   │ takeCredentialRequestMeta(requestId) ─►│
+ │                   │ loadVerifiedCredDef ───────────────────────────────────►│
+ │                   │ getLinkSecret(profile) ───────────────►│
+ │                   │ AnonCreds.holderProcessCredential
+ │                   │ putCredential(profile, id, blob, tags)►│
+ │                   │ insertCredentialMetadata + audit
+ │◄──────────────────┤ {credentialId, metadata}
 ```
 
 Note the **two-leg** request/store split. The blinding metadata generated
@@ -645,73 +633,49 @@ long-lived.
 (`apps/web/src/lib/actions/ssi/present.action.ts`).
 
 ```
-Web                      PM                          WM                 Verifier (family-mcp)
- │  /tools/ssi_list_my_credentials                                              │
- ├──────────►│                                                                  │
- │           │ select ssi_credential_metadata where principal=…                 │
- │◄──────────┤ {credentials:[{id,credentialType,holderWalletRef,walletContext}]}│
- │                                                                              │
- │ GET /verify/guardian/request                                                 │
- ├─────────────────────────────────────────────────────────────────────────────►│
- │                                                                              │ build presentationRequest
- │                                                                              │ + EIP-191 verifier sig
- │◄─────────────────────────────────────────────────────────────────────────────┤
- │   {presentationRequest, verifierId, verifierAddress, signature}              │
- │                                                                              │
- │ /tools/ssi_create_wallet_action                                              │
- │   type=CreatePresentation, counterpartyId=verifierId,                        │
- │   proofRequest=presentationRequest,                                          │
- │   allowedReveal=[],                                                          │
- │   allowedPredicates=[{minorBirthYear ≥ 2006}],                               │
- │   forbiddenAttrs=['relationship','issuedYear']                               │
- ├──────────►│                                                                  │
- │           │ proofRequestHash = keccak256(canonical(presentationRequest))     │
- │           │ build unsigned WalletAction                                      │
- │◄──────────┤                                                                  │
- │                                                                              │
- │ passkey ceremony in Browser (§6.0) → { signer=AgentAccount,                  │
- │   signature = 0x01 ‖ abi.encode(Assertion) }                                 │
- │ (legacy EOA: signWalletAction → 65-byte ECDSA against users.walletAddress)   │
- │                                                                              │
- │ /tools/ssi_create_presentation (action, sig, signer, presentationRequest,    │
- │   credentialSelections=[{credentialId,revealReferents,predicateReferents}],  │
- │   verifierId, verifierAddress, verifierSignature)                            │
- ├──────────►│                                                                  │
- │           │ verifyWalletAction (defense-in-depth)                            │
- │           │ /proofs/present                                                  │
- │           ├─────────────────────────────────────►│                          │
- │           │                                       │ gateExistingWalletAction:
- │           │                                       │   verify sig + consume nonce
- │           │                                       │ freshHash = hashProofRequest(body)
- │           │                                       │   must equal action.proofRequestHash
- │           │                                       │ checkVerifierSignature
- │           │                                       │   (only if SSI_KNOWN_VERIFIERS lists this DID)
- │           │                                       │ loadVerifiedSchema/CredDef (Reg)
- │           │                                       │ getCredential(profile, credId) (Vault)
- │           │                                       │ evaluateProofPolicy:
- │           │                                       │   - DEFAULT_FORBIDDEN_ATTRS ∪ action.forbidden
- │           │                                       │   - reveal ⊆ allowedReveal
- │           │                                       │   - predicates ⊆ allowedPredicates
- │           │                                       │   - drop reveals covered by predicates
- │           │                                       │ pairwiseHandle(holderWalletId, verifierId)
- │           │                                       │ AnonCreds.holderCreatePresentation
- │           │                                       │   (selfAttest 'holder' = pwHandle)
- │           │◄──────────────────────────────────────┤ {presentation, auditSummary}
- │           │ insert ssi_proof_audit (result='ok')                            │
- │◄──────────┤ {presentation, auditSummary}                                    │
- │                                                                              │
- │ POST /verify/guardian/check (presentation, presentationRequest)              │
- ├─────────────────────────────────────────────────────────────────────────────►│
- │                                                                              │ anoncreds-rs verify
- │◄─────────────────────────────────────────────────────────────────────────────┤
- │  {verified, reason}                                                          │
+Web                      MCP                                      Verifier (family-mcp)
+ │ /tools/ssi_list_my_credentials                                             │
+ ├──────────────────────►│                                                    │
+ │                       │ select credential metadata                         │
+ │◄──────────────────────┤ {credentials:[...]}                                │
+ │                                                                            │
+ │ GET /verify/guardian/request                                               │
+ ├───────────────────────────────────────────────────────────────────────────►│
+ │                                                                            │ build presentationRequest
+ │                                                                            │ + EIP-191 verifier sig
+ │◄───────────────────────────────────────────────────────────────────────────┤
+ │                                                                            │
+ │ /tools/ssi_create_wallet_action(type=CreatePresentation, policy limits)
+ ├──────────────────────►│
+ │                       │ proofRequestHash = keccak256(canonical(request))
+ │                       │ build unsigned WalletAction
+ │◄──────────────────────┤
+ │ passkey ceremony in Browser (§6.0)
+ │
+ │ /tools/ssi_create_presentation(action, sig, selections, verifier signature)
+ ├──────────────────────►│
+ │                       │ verifyWalletAction + consumeNonce
+ │                       │ check proofRequestHash
+ │                       │ checkVerifierSignature when configured
+ │                       │ loadVerifiedSchema/CredDef
+ │                       │ getCredential(profile, credId) from vault
+ │                       │ evaluateProofPolicy
+ │                       │ pairwiseHandle(holderWalletId, verifierId)
+ │                       │ AnonCreds.holderCreatePresentation
+ │                       │ insert ssi_proof_audit(result='ok')
+ │◄──────────────────────┤ {presentation, auditSummary}
+ │
+ │ POST /verify/guardian/check(presentation, presentationRequest)
+ ├───────────────────────────────────────────────────────────────────────────►│
+ │                                                                            │ anoncreds-rs verify
+ │◄───────────────────────────────────────────────────────────────────────────┤ {verified, reason}
 ```
 
 Three independent layers reject a bad presentation request:
 
 1. **Outer signed policy**: the user's `WalletAction` declared the universe
   of allowed reveals/predicates. Anything not listed is rejected.
-2. **Inner default forbidden list**: ssi-wallet-mcp's
+2. **Inner default forbidden list**: `person-mcp`'s
   `evaluateProofPolicy` always layers `DEFAULT_FORBIDDEN_ATTRS` on top.
 3. `**proofRequestHash` tamper-evidence**: the full request body must hash to
   exactly the value the user signed. A man-in-the-middle changing
@@ -772,26 +736,22 @@ verifies both.
 `rotateLinkSecretAction` (`apps/web/src/lib/actions/ssi/rotate.action.ts`).
 
 ```
-Web         PM                  WM                       Vault                Mirror DBs
- │ resolve holderWalletId for (principal, context) (GET /wallet/:p/:c)
+Web                         MCP                                      Vault / DB
+ │ resolve holderWalletId for (principal, context)
  │
  │ /tools/ssi_create_wallet_action(type=RotateLinkSecret, holderWalletId)
- ├──────────►│
- │◄──────────┤ unsigned action
+ ├──────────────────────────►│
+ │◄──────────────────────────┤ unsigned action
  │ passkey ceremony in Browser (§6.0)  →  0x01 ‖ abi.encode(Assertion)
- │ (legacy EOA fallback: signWalletAction over EIP-712, demo/SIWE only)
  │
  │ /tools/ssi_rotate_link_secret(action, sig)
- ├──────────►│
- │           │ /wallet/rotate-link-secret
- │           ├───────────────────────────►│
- │           │                            │ gateExistingWalletAction (sig, nonce)
- │           │                            │ AnonCreds.createLinkSecretValue
- │           │                            │ putLinkSecret(profile, newId)──────────►│
- │           │                            │ updateHolderLinkSecret(hw.id, newId)    │
- │           │                            │ markCredentialsStaleForLinkSecret(oldId)│ → credential_metadata.status='stale'
- │           │◄───────────────────────────┤ {old, new, credentialsMarkedStale}      │
- │◄──────────┤
+ ├──────────────────────────►│
+ │                           │ verifyWalletAction + consumeNonce
+ │                           │ AnonCreds.createLinkSecretValue
+ │                           │ putLinkSecret(profile, newId) ───────►│
+ │                           │ updateHolderLinkSecret(hw.id, newId)
+ │                           │ markCredentialsStaleForLinkSecret(oldId)
+ │◄──────────────────────────┤ {old, new, credentialsMarkedStale}
 ```
 
 Rotation invalidates every credential previously bound to the old link
@@ -808,30 +768,31 @@ longer points at it.
 
 | Property                     | Mechanism                                                                                                                                                                                                    | Where it lives                                                                                   |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
-| Per-context unlinkability    | One Askar profile + one link secret per `(principal, walletContext)`. Two contexts can never produce a "same-holder" proof across each other.                                                                | `apps/ssi-wallet-mcp/src/api/wallet.ts` provision route                                          |
-| Pairwise verifier handle     | `pairwiseHandle(holderWalletId, verifierId)` deterministically produces a per-verifier opaque ID; presented as self-attested `holder` slot. Different verifiers cannot collude to correlate the same holder. | `packages/privacy-creds` (`pairwiseHandle`); `apps/ssi-wallet-mcp/src/api/proofs.ts`             |
+| Per-context unlinkability    | One Askar profile + one link secret per `(principal, walletContext)`. Two contexts can never produce a "same-holder" proof across each other.                                                                | `apps/person-mcp` SSI vault provision flow                                                       |
+| Pairwise verifier handle     | `pairwiseHandle(holderWalletId, verifierId)` deterministically produces a per-verifier opaque ID; presented as self-attested `holder` slot. Different verifiers cannot collude to correlate the same holder. | `packages/privacy-creds` (`pairwiseHandle`); `apps/person-mcp` presentation flow                 |
 | Hard-forbidden attrs         | `DEFAULT_FORBIDDEN_ATTRS` enforced at the `evaluateProofPolicy` layer regardless of signed action.                                                                                                           | `packages/privacy-creds/src/wallet-actions/types.ts`, `policy/proof-policy.ts`                   |
 | Presentation minimisation    | Reveals dominated by predicates on the same attribute are dropped before calling anoncreds-rs.                                                                                                               | `evaluateProofPolicy` step 4                                                                     |
-| Replay protection            | `action_nonces` table is INSERT-only; double-use is `409 Conflict`. Nonces have explicit expiry.                                                                                                             | `apps/ssi-wallet-mcp/src/storage/nonces.ts`                                                      |
-| Tamper evidence              | `proofRequestHash = keccak256(canonical(body))` is part of the signed envelope. Any change to the request body invalidates the signature.                                                                    | `hashProofRequest` in `packages/privacy-creds`; check in `apps/ssi-wallet-mcp/src/api/proofs.ts` |
-| Verifier registry (optional) | When `SSI_KNOWN_VERIFIERS` is set, ssi-wallet-mcp requires verifier to sign their request, registry maps DID→address, presentation refused otherwise.                                                        | `apps/ssi-wallet-mcp/src/auth/verifier-registry.ts`                                              |
+| Replay protection            | `action_nonces` table is INSERT-only; double-use is `409 Conflict`. Nonces have explicit expiry.                                                                                                             | `apps/person-mcp` nonce storage                                                                  |
+| Tamper evidence              | `proofRequestHash = keccak256(canonical(body))` is part of the signed envelope. Any change to the request body invalidates the signature.                                                                    | `hashProofRequest` in `packages/privacy-creds`; check in `apps/person-mcp` presentation flow     |
+| Verifier registry (optional) | When `SSI_KNOWN_VERIFIERS` is set, `person-mcp` requires verifier to sign their request, registry maps DID→address, presentation refused otherwise.                                                          | `apps/person-mcp` verifier registry logic                                                        |
 | Schema/credDef provenance    | All resolutions go through `loadVerifiedSchema` / `loadVerifiedCredDef`, which check `keccak256(canonicalJson)` against the on-chain hash before returning.                                                  | `packages/credential-registry`                                                                   |
 | Issuer-private isolation     | `CredentialDefinitionPrivate` and `KeyCorrectnessProof` never leave the issuer's local SQLite. The on-chain record contains only public material.                                                            | `packages/privacy-creds/src/issuer/index.ts`                                                     |
-| Vault-at-rest                | Per-profile DEK wrapped by KEK = `scrypt(SSI_ASKAR_KEY)`. AES-256-GCM with per-row AAD = `profile                                                                                                            | category                                                                                         |
+| Location minimisation        | `AgentLocationCredential` stores feature-level claims and commitments, not exact addresses, raw coordinates, private H3 cells, Merkle paths, or evidence documents.                                           | Credential schema, verifier policy, `GeoFeatureRegistry`, `GeoClaimRegistry`                     |
+| Off-chain verifier receipts  | Third-party verifiers check AnonCreds and H3 inclusion off-chain, then return a signed receipt / `evidenceCommit`; on-chain anchoring is optional and commitment-only.                                       | Third-party verifier agent / MCP, optional `GeoClaimRegistry`                                    |
+| Vault-at-rest                | Per-profile DEK wrapped by KEK = `scrypt(SSI_ASKAR_KEY)`. AES-256-GCM with per-row AAD bound to profile, category, and row name.                                                                              | `apps/person-mcp` Askar-style vault storage                                                      |
 
 
 ---
 
 ## 8. Operational notes
 
-- **Bring-up order**: Anvil → deploy contracts → `ssi-wallet-mcp` (3300) →
-issuer/verifier MCPs (`org-mcp` 3400, `family-mcp` 3500) →
-`person-mcp` (3200) → `apps/web` (3000). The web app's `ssiConfig` reads
-ports from env; defaults in `apps/web/src/lib/ssi/config.ts`.
+- **Bring-up order**: Anvil → deploy contracts → issuer/verifier MCPs
+(`org-mcp` 3400, `family-mcp` 3500) → `person-mcp` (3200) → `apps/web`
+(3000). The web app's `ssiConfig` reads ports from env; defaults in
+`apps/web/src/lib/ssi/config.ts`.
 - **Native binding**: `@hyperledger/anoncreds-nodejs` is registered exactly
-once in `apps/ssi-wallet-mcp/src/index.ts`. Re-registering in another
-process (e.g. an issuer MCP) is fine; re-registering twice in the same
-process throws.
+once in the MCP process. Re-registering in another process (e.g. an issuer
+MCP) is fine; re-registering twice in the same process throws.
 - **KEK rotation** is a destructive global action — see
 `docs/ops/ssi-wallet-kek-rotation.md`. Do not change `SSI_ASKAR_KEY`
 without running the rotation procedure or every profile becomes
@@ -863,6 +824,8 @@ take an explicit `principal` arg).
 | `src/lib/actions/ssi/oid4vci-redeem.action.ts` | OID4VCI variant of `accept`                                                           |
 | `src/lib/actions/ssi/present.action.ts`        | Build + submit a presentation                                                         |
 | `src/lib/actions/ssi/rotate.action.ts`         | Rotate the link secret                                                                |
+| `src/lib/actions/geo-claim.action.ts`          | Mint public `GeoClaimRegistry` rows and list `GeoFeatureRegistry` records             |
+| `src/lib/actions/trust-search.action.ts`       | Combines org-overlap and geo-overlap inputs for discovery/trust search                |
 | `src/app/(authenticated)/settings/passkeys/PasskeysClient.tsx` | Browser-side passkey enrolment / ceremony entry point                  |
 
 
@@ -879,27 +842,7 @@ take an explicit `principal` arg).
 | `src/formats/anoncreds-v1/index.ts` | `AnonCreds.*` facade over `anoncreds-rs`               |
 | `src/issuer/index.ts`               | `IssuerAgent` (publish, offer, issue)                  |
 | `src/verifier-signing.ts`           | EIP-191 verifier-request signature helpers             |
-
-
-### `apps/ssi-wallet-mcp`
-
-
-| File                                  | Role                                                       |
-| ------------------------------------- | ---------------------------------------------------------- |
-| `src/index.ts`                        | Hono server, native binding registration                   |
-| `src/api/wallet.ts`                   | `/wallet/provision`, `/wallet/rotate-link-secret`, lookups |
-| `src/api/credentials.ts`              | `/credentials/request`, `/credentials/store`               |
-| `src/api/proofs.ts`                   | `/proofs/present`                                          |
-| `src/api/oid4vp.ts`                   | OID4VP (optional verifier path)                            |
-| `src/auth/verify-wallet-action.ts`    | The single gate — sig + nonce + context                    |
-| `src/auth/verifier-registry.ts`       | `SSI_KNOWN_VERIFIERS` enforcement                          |
-| `src/storage/askar.ts`                | Encrypted vault (KEK / DEK / AES-GCM / SQLite)             |
-| `src/storage/wallets.ts`              | `holder_wallets` rows                                      |
-| `src/storage/cred-metadata.ts`        | `credential_metadata` rows                                 |
-| `src/storage/nonces.ts`               | `action_nonces` (replay protection)                        |
-| `src/registry/resolver.ts`            | Wraps `OnChainResolver` for the wallet process             |
-| `src/registry/mock-org-issuer.ts`     | Demo wiring                                                |
-| `src/registry/mock-coach-verifier.ts` | Demo wiring                                                |
+| `src/geo-overlap.ts`                | Versioned geo-overlap scoring helpers and evidence commitments |
 
 
 ### `packages/sdk` (passkey helpers)
@@ -916,19 +859,36 @@ take an explicit `principal` arg).
 | `src/AgentAccount.sol`                | `isValidSignature` shape-router; passkey storage; `_verifyWebAuthn` / `_verifyEcdsa`  |
 | `src/libraries/WebAuthnLib.sol`       | Parse `clientDataJSON` + `authenticatorData`, recompute signed hash, call P-256 verifier |
 | `src/libraries/P256Verifier.sol`      | RIP-7212 precompile dispatch with pure-Solidity fallback                              |
+| `src/AgentNameRegistry.sol`           | Multi-root naming substrate for `.agent`, `.geo`, `.pg`                               |
+| `src/GeoFeatureRegistry.sol`          | Versioned `.geo` feature records: geometry hash, H3 coverage root, source root        |
+| `src/GeoClaimRegistry.sol`            | Geo claim anchors: relation, visibility, confidence, evidence commitment              |
+
+### `packages/discovery` / GraphDB
+
+| File                | Role                                                                 |
+| ------------------- | -------------------------------------------------------------------- |
+| `src/geo-sparql.ts` | GeoSPARQL queries for feature containment, intersections, and claims |
+| `src/sparql.ts`     | General KB query builders                                            |
+
+### `circuits`
+
+| File                         | Role                                                                                         |
+| ---------------------------- | -------------------------------------------------------------------------------------------- |
+| `src/h3-membership.circom`   | Current H3 inclusion circuit scaffold; used as an off-chain verifier/prover path, not required for on-chain AnonCreds verification |
 
 ### `apps/person-mcp`
 
 
-| File                            | Role                                                          |
-| ------------------------------- | ------------------------------------------------------------- |
-| `src/index.ts`                  | MCP stdio + Hono `/tools/<name>` HTTP                         |
-| `src/tools/ssi-wallet.ts`       | `ssi_*` tools — the consent gateway                           |
-| `src/tools/profile.ts`          | PII tools (delegation-gated)                                  |
-| `src/tools/identities.ts`       | OAuth/social link tools                                       |
-| `src/auth/verify-delegation.ts` | Full chain verifier (HMAC + ECDSA + ERC-1271 + caveats + JTI) |
-| `src/auth/principal-context.ts` | `requirePrincipal` helper                                     |
-| `src/db/schema.ts`              | Audit + mirror tables                                         |
+| File                            | Role                                                                           |
+| ------------------------------- | ------------------------------------------------------------------------------ |
+| `src/index.ts`                  | MCP stdio + Hono `/tools/<name>` HTTP; native binding registration             |
+| `src/tools/ssi-wallet.ts`       | `ssi_*` tools — consent gateway for SSI wallet actions                         |
+| `src/tools/profile.ts`          | PII tools (delegation-gated)                                                   |
+| `src/tools/identities.ts`       | OAuth/social link tools                                                        |
+| `src/auth/verify-delegation.ts` | Full chain verifier (HMAC + ECDSA + ERC-1271 + caveats + JTI)                  |
+| `src/auth/principal-context.ts` | `requirePrincipal` helper                                                      |
+| `src/db/schema.ts`              | PII, audit, holder-wallet, credential metadata, proof audit, and mirror tables  |
+| SSI vault module                | Holder wallets, credentials, proofs, verifier registry, nonces, and Askar vault |
 
 
 ### Issuer / verifier (examples)
@@ -946,9 +906,9 @@ take an explicit `principal` arg).
 
 ## 10. TL;DR
 
-- **Three-process split** isolates UI, consent, and crypto. Each has the
-  smallest set of secrets it needs and re-validates everything from the
-  others.
+- **Two-runtime split** keeps the browser/web signer separate from the MCP
+  holder vault. `apps/person-mcp` now owns consent tools, PII tools, and SSI
+  vault operations in one service.
 - **`WalletAction` is the single capability token.** The holder signs it
   in the **browser via a WebAuthn passkey** (`navigator.credentials.get`
   with the EIP-712 hash as the WebAuthn challenge); the resulting
@@ -956,15 +916,23 @@ take an explicit `principal` arg).
   validated on-chain by `AgentAccount` → `WebAuthnLib` → `P256Verifier`
   via ERC-1271. Demo / SIWE EOA signing exists only as a legacy fallback.
 - **AnonCreds operations** (link secret, credential request, processing,
-  presentation) all happen inside ssi-wallet-mcp using the native
+  presentation) all happen inside `person-mcp` using the native
   `anoncreds-rs` binding. Link secrets are per-`(principal, context)` and
-  never leave the vault.
+  never leave the vault module.
 - **CredentialRegistry** on-chain is the source of truth for
   schema/credDef. Resolvers re-hash the canonical JSON before trusting it.
-- **Person-mcp** is both the SSI consent gateway (forwards signed
-  WalletActions to ssi-wallet-mcp, writes audit) and the PII gateway
-  (delegation-chain-verified profile reads). The two responsibilities share
-  no code paths beyond the MCP framing.
+- **AgentLocationCredential** is feature-level, not address-level. It carries
+  `featureId`, `featureVersion`, relation, issuer, confidence, validity, and
+  `evidenceCommit`; exact addresses, coordinates, private H3 cells, and
+  evidence documents stay outside SQL and outside chain state.
+- **Third-party verifiers run proofs off-chain.** They verify AnonCreds
+  presentations and any H3/GeoSPARQL policy inputs in their agent/MCP runtime,
+  then issue a signed receipt or optional `GeoClaimRegistry` commitment. Use
+  on-chain verifier contracts only when another contract must consume the
+  proof directly.
+- **Person-mcp** is both the SSI consent/vault gateway and the PII gateway
+  (delegation-chain-verified profile reads). SSI actions still require signed
+  `WalletAction`s before the vault is used.
 - **Anti-correlation** is enforced in three layers: per-context link
   secrets, pairwise handles per verifier, and the hard-forbidden attribute
   list inside `evaluateProofPolicy`.
