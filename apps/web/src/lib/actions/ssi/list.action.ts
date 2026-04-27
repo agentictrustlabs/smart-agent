@@ -37,6 +37,10 @@ export interface CredentialRow {
   targetOrgDisplayName: string | null
   /** Target org's .agent primary name. */
   targetOrgPrimaryName: string | null
+  /** Raw AnonCreds attribute values from the holder vault. The holder
+   *  owns this data — surfaced inline in `HeldCredentialsPanel` so the
+   *  user doesn't have to "expand" to see what their credential says. */
+  attributes: Record<string, string>
 }
 
 export interface AuditRow {
@@ -109,6 +113,23 @@ export async function walletStatusAction(opts: { walletContext?: string } = {}):
       targetCache,
     )
 
+    // Pull raw attribute values for every credential in parallel. The
+    // holder is the only principal allowed to read these — person-mcp's
+    // tool refuses cross-principal reads. We fold the result into each
+    // row so the panel can display attributes without an extra round-trip.
+    const detailResults = await Promise.all(
+      list.credentials.map(c =>
+        person.callTool<{ credential?: { attributes?: Record<string, string> }; error?: string }>(
+          'ssi_get_credential_details',
+          { principal, credentialId: c.id },
+        ).catch(() => ({ credential: undefined } as { credential?: { attributes?: Record<string, string> } })),
+      ),
+    )
+    const attributesById = new Map<string, Record<string, string>>()
+    for (let i = 0; i < list.credentials.length; i++) {
+      attributesById.set(list.credentials[i].id, detailResults[i]?.credential?.attributes ?? {})
+    }
+
     for (const c of list.credentials) {
       let anchored: boolean | null = null
       if (resolver) {
@@ -133,6 +154,7 @@ export async function walletStatusAction(opts: { walletContext?: string } = {}):
         targetOrgAddress: target ? (target.toLowerCase() as `0x${string}`) : null,
         targetOrgDisplayName: targetMeta?.displayName ?? null,
         targetOrgPrimaryName: targetMeta?.primaryName ?? null,
+        attributes: attributesById.get(c.id) ?? {},
       })
     }
 

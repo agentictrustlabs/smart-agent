@@ -200,6 +200,10 @@ export type { GeoFeatureRecord, PublishFeatureInput, GeoFeatureKindLabel } from 
 export { GeoClaimClient } from './geo-claim'
 export type { GeoClaimRecord, MintClaimInput, GeoRelation, GeoVisibilityLabel } from './geo-claim'
 
+// ─── Credential kinds (AnonCreds) ────────────────────────────────────
+export { CREDENTIAL_KINDS, findCredentialKind } from './credential-types'
+export type { CredentialKindDescriptor, IssuerKey } from './credential-types'
+
 // ─── Re-export types ─────────────────────────────────────────────────
 export type {
   AgentAccount,

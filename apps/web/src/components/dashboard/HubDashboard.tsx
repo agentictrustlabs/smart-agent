@@ -574,7 +574,7 @@ async function DelegationSection({ userId }: { userId: string }) {
         <h2 style={{
           fontSize: '0.7rem', fontWeight: 700, color: '#9a8c7e',
           textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0,
-        }}>Relationships &amp; Data Delegations</h2>
+        }}>My Relationships</h2>
         <span style={{ fontSize: 11, color: '#94a3b8' }}>
           {totalCount} {totalCount === 1 ? 'edge' : 'edges'}
         </span>

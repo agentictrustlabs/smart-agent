@@ -51,7 +51,9 @@ NameScopeEnforcer:        0x09635F643e140090A9A8Dcd712eD6285858ceBef
 Updated /home/barb/smart-agent/apps/org-mcp/.env
 Updated /home/barb/smart-agent/apps/family-mcp/.env
 Updated /home/barb/smart-agent/apps/person-mcp/.env
-Funded org issuer 0xe8acf143AFbF8B1371A20ea934D334180190Eac1 and family issuer 0xA84585fb6728f413d4d89eC972c45E94686bf38e with 10 ETH each
+Updated /home/barb/smart-agent/apps/geo-mcp/.env
+Updated /home/barb/smart-agent/apps/verifier-mcp/.env
+Funded org issuer 0xe8acf143AFbF8B1371A20ea934D334180190Eac1, family issuer 0xA84585fb6728f413d4d89eC972c45E94686bf38e, and geo issuer 0x46a23E25df9A0F6c18729ddA9Ad1aF3b6A131160 with 10 ETH each
 
 === Seeding ontology predicates ===
 === Seeding Ontology Term Registry ===

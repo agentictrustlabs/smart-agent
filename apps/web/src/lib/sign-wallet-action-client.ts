@@ -59,7 +59,7 @@ function base64UrlDecode(s: string): Uint8Array {
  *
  * @param action  The WalletAction with serialized expiresAt (string).
  * @param hash    The pre-computed EIP-712 hash of `action` (server-side).
- * @param signer  Signing context returned by `prepareAnonOrgRegistration`.
+ * @param signer  Signing context returned by `prepareWalletProvisionIfNeeded`.
  */
 export async function signWalletActionClient(
   action: WalletAction & { expiresAt: string },

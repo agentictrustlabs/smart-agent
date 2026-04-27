@@ -46,7 +46,61 @@ as the user: every privileged SSI action requires a signed, replay-protected
 `WalletAction` whose passkey signature is verified through the user's
 `AgentAccount`.
 
-### 1.3 Trust roots
+### 1.3 Vocabulary and the credential-kinds registry
+
+Smart Agent has three kinds of "this agent claims something" objects.
+We use a deliberately consistent vocabulary so the UI can teach all
+three with one mental model.
+
+| Noun           | Where it lives                              | What it is                                                  |
+| -------------- | ------------------------------------------- | ----------------------------------------------------------- |
+| **Relationship** | `AgentRelationship` on chain              | Public link between two agents (membership, alliance, …)   |
+| **Geo claim**    | `GeoClaimRegistry` on chain               | Public link from an agent to a `.geo` feature              |
+| **Credential**   | Holder Askar vault                        | Private AnonCred — invisible until you present it           |
+
+Verbs:
+
+- **Publish** — write the public on-chain version (relationship / geo
+  claim).
+- **Get / Request** — receive an AnonCred into the vault.
+- **Verify / Present** — submit a vault credential to a verifier.
+
+Every AnonCred kind Smart Agent supports is described by a single
+**`CredentialKindDescriptor`** in
+`packages/sdk/src/credential-types.ts`. The registry is pure data
+— `credentialType`, `schemaId`, `credDefId`, `attributeNames`,
+`displayName`, `noun`, `description`, `issuerKey`. Both the web app
+and `verifier-mcp` import from it, so issuance, vault display, and
+verification stay in lockstep.
+
+```
+packages/sdk/src/credential-types.ts        ← single source of truth
+       │
+       ├── apps/web      — IssueCredentialDialog reads form by kind
+       │                  HeldCredentialsPanel reads displayName
+       │                  HubLayout dropdown auto-renders one entry per kind
+       │
+       └── apps/verifier-mcp — specs.ts pairs each kind with a buildRequest
+                                + reveal/predicate selection
+```
+
+Adding a new credential kind:
+
+1. Append a descriptor to `CREDENTIAL_KINDS`.
+2. Add a React form in
+   `apps/web/src/lib/credentials/forms/<KindName>Form.tsx` and
+   register it in `apps/web/src/lib/credentials/registry.tsx`.
+3. Add a `buildRequest` + selection in
+   `apps/verifier-mcp/src/verifiers/specs.ts`.
+4. Wire the issuer's `/credential/offer` and `/credential/issue`
+   endpoints into `apps/web/src/lib/ssi/clients.ts` (one entry per
+   `issuerKey`).
+
+The dropdown menu, generic dialog, held-credentials display, and
+verifier-mcp routes pick the new kind up automatically — no per-type
+dialogs, no per-type web actions.
+
+### 1.4 Trust roots
 
 
 | Trust root                  | Source of truth                                                                                                                                                       | Verified by                                                                                                                                            |
@@ -76,35 +130,47 @@ Browser
 │  - server actions in lib/actions/ssi/    │         └──────────┬───────────┘
 │  - lib/ssi/signer.ts (passkey primary,   │                    │
 │    EOA fallback for demo/SIWE)           │                    │ delegation
-│  - lib/ssi/clients.ts (HTTP clients)     │                    │ tokens
-└────┬──────────────────────┬──────────────┘                    │
-     │ /tools/*             │ /credential/* /verify/*           │
-     ▼                      │ (issuer/verifier)                 │
-┌──────────────────────┐    │       ┌───────────────────────────┴─────┐
-│ apps/person-mcp :3200│    │       │ apps/org-mcp / apps/family-mcp  │
-│  - HTTP + MCP stdio  │    │       │  (Issuer + Verifier)             │
-│  - SSI tools         │    │       └──────────────┬──────────────────┘
-│  - PII tools         │    │                      │ publishSchema /
-│  - audit sqlite      │    │                      │ publishCredDef
-│  - holder_wallets    │    │                      │
-│  - action_nonces     │    │                      │
-│  - credential_meta   │    │                      │
-│  - Askar vault       │    │                      │
-│  - native anoncreds  │    │                      │
-└──────────┬───────────┘    │                      │
-           │ readContract   │                      │
-           ▼                ▼                      ▼
+│  - lib/ssi/clients.ts                    │                    │ tokens
+│    person/org/family/geo/verifier        │                    │
+└────┬───────────┬─────────┬───────────────┘                    │
+     │ /tools/*  │         │  /credential/* (issuers)           │
+     │           │         │  /verify/*     (verifier-mcp)      │
+     ▼           ▼         ▼                                    │
+┌──────────────────────┐  ┌──────────────────────────────────┐  │
+│ apps/person-mcp :3200│  │ Issuers (separate processes):    │  │
+│  - HTTP + MCP stdio  │  │   apps/org-mcp     :3400          │  │
+│  - SSI tools         │  │   apps/family-mcp  :3500 (also v) │  │
+│  - PII tools         │  │   apps/geo-mcp     :3600          │  │
+│  - audit sqlite      │  │ Each: IssuerAgent + /credential/* │  │
+│  - holder_wallets    │  └────────────────┬─────────────────┘  │
+│  - action_nonces     │                   │                    │
+│  - credential_meta   │  ┌────────────────┴─────────────────┐  │
+│  - Askar vault       │  │ apps/verifier-mcp :3700           │  │
+│  - native anoncreds  │  │  third-party verifier (Trusted    │  │
+└──────────┬───────────┘  │  Auditor)                         │  │
+           │ readContract │  /verify/<credentialType>/request │  │
+           │              │  /verify/<credentialType>/check   │  │
+           │              │  · org-membership                 │  │
+           │              │  · guardian                       │  │
+           │              │  · geo-location                   │  │
+           │              │  consumed-nonce sqlite            │  │
+           │              │  (no on-chain writes)             │  │
+           │              └────────────────┬─────────────────┘  │
+           ▼                               ▼                    ▼
 ┌──────────────────────────────────────────────────────────────┐
 │ EVM chain  (Anvil :8545)                                     │
-│  - CredentialRegistry.sol                                    │
+│  - CredentialRegistry.sol     (schemas/credDefs)             │
 │  - AgentAccount (ERC-1271 verify)                            │
-│  - AgentNameRegistry (.agent/.geo)                           │
-│  - GeoFeatureRegistry / GeoClaimReg                          │
+│  - AgentNameRegistry (.agent/.geo/.pg)                       │
+│  - GeoFeatureRegistry / GeoClaimRegistry                     │
 │  - DelegationManager                                         │
 └──────────────────────────────────────────────────────────────┘
 ```
 
-Default ports come from `apps/web/src/lib/ssi/config.ts`.
+Default ports come from `apps/web/src/lib/ssi/config.ts`. The
+`verifier-mcp` is a single third-party verifier service that exercises
+the AnonCreds proof path for every credential type — it never publishes
+schemas or credDefs and is read-only against the on-chain registry.
 
 ### 2.2 Public surface per service
 
@@ -114,7 +180,8 @@ Default ports come from `apps/web/src/lib/ssi/config.ts`.
 | `person-mcp`                     | `POST /tools/<toolName>` for `ssi_create_wallet_action`, `ssi_provision_wallet`, `ssi_start_credential_exchange`, `ssi_finish_credential_exchange`, `ssi_create_presentation`, `ssi_list_my_credentials`, `ssi_list_wallets`, `ssi_list_proof_audit`, `ssi_rotate_link_secret`, plus profile/identity/chat tools (delegation-gated). Internally owns holder-wallet, credential, proof, nonce, and vault modules. |
 | `org-mcp` (issuer)               | `POST /credential/offer`, `POST /credential/issue`, OID4VCI endpoints                                                                                                                                                                                                                                                               |
 | `family-mcp` (issuer + verifier) | `POST /credential/offer`, `POST /credential/issue`, `GET /verify/guardian/request`, `POST /verify/guardian/check`                                                                                                                                                                                                                   |
-| Third-party verifier agents       | Build signed presentation requests, verify AnonCreds presentations off-chain, optionally verify H3 inclusion / GeoSPARQL policy inputs, and issue signed verifier receipts or `GeoClaimRegistry` commitments                                                                                                                        |
+| `geo-mcp` (issuer)               | `POST /credential/offer` and `POST /credential/issue` for `GeoLocationCredential` — single steward across every `GeoFeature`. Holder authorisation is implicit: minting the on-chain `GeoClaim` is the consent signal, so no per-feature approval queue.                                                                                |
+| `verifier-mcp` (third-party)     | `POST /verify/<credentialType>/request` and `/check` for `OrgMembershipCredential`, `GuardianOfMinorCredential`, `GeoLocationCredential`. Read-only against the on-chain registry; consumed-nonce sqlite enforces single-use presentations. Drives the dashboard's "Test verification" button. |
 
 
 ---
@@ -330,13 +397,38 @@ Categories used:
 | Category             | Name pattern     | Value                                                                 |
 | -------------------- | ---------------- | --------------------------------------------------------------------- |
 | `link_secret`        | `<linkSecretId>` | random 32-byte AnonCreds link secret                                  |
-| `credential`         | `<credentialId>` | full processed AnonCreds credential JSON                              |
+| `credential`         | `<credentialId>` | full processed AnonCreds credential JSON — one blob per held credential, regardless of type |
 | `credential_request` | `<requestId>`    | one-shot blinding metadata + offer (consumed by `/credentials/store`) |
 
 
 Per-profile DEKs mean compromise of one profile doesn't leak others; each
 encryption commits to its own AAD so a row can't be silently moved between
 profiles or categories.
+
+#### What a credential blob looks like in the vault
+
+Every issued credential — `OrgMembershipCredential` from `org-mcp`,
+`GuardianOfMinorCredential` from `family-mcp`, `GeoLocationCredential`
+from `geo-mcp` — lands in the same `credential/<credentialId>` slot. The
+Askar value is the AnonCreds-rs processed credential JSON, holding the
+issuer signature, link secret commitment, schema/credDef ids, and the
+encoded attribute values. The presentation engine reads this blob, the
+holder's link secret from `link_secret/<linkSecretId>`, and the verified
+schema + credDef from chain to build a proof.
+
+For each credential type the attribute slots stored inside the blob are:
+
+| Credential type             | Attribute names (stringified per AnonCreds rules)                                                                                                  | Issuer        |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
+| `OrgMembershipCredential`   | `membershipStatus`, `role`, `joinedYear`, `circleId`                                                                                               | `org-mcp`     |
+| `GuardianOfMinorCredential` | `relationship`, `minorBirthYear`, `issuedYear`                                                                                                     | `family-mcp`  |
+| `GeoLocationCredential`  | `featureId`, `featureName`, `city`, `region`, `country`, `relation`, `confidence`, `validFrom`, `validUntil`, `attestedAt`                          | `geo-mcp`     |
+
+The companion `credential_metadata` row in `person-mcp`'s SQLite carries
+only the public surface — id, type, issuer DID, schema/credDef ids,
+target-org pointer (when applicable), receipt timestamp, status. Attribute
+values never leave the vault blob; presentation revealing reads them out
+in-process and never persists them.
 
 ### 4.2 `person-mcp` audit, metadata, identities, profile
 
@@ -563,8 +655,18 @@ short-circuits with the existing wallet without consuming a new nonce.
 
 ### 6.2 Issue a credential (org membership)
 
-`acceptCredentialAction(... 'org', 'OrgMembershipCredential' …)`.
-`apps/web/src/lib/actions/ssi/accept.action.ts`.
+Driven by the generic `prepareCredentialIssuance` +
+`completeCredentialIssuance` pair
+(`apps/web/src/lib/actions/ssi/request-credential.action.ts`) when the
+holder picks `OrgMembershipCredential` from the dropdown menu. The
+legacy server-EOA path lives in `accept.action.ts` for demo seeds and
+admin tools, but every interactive web flow (passkey, SIWE, EOA)
+goes through the generic prepare/complete pair.
+
+The shape below is identical for **any** credential kind — only the
+issuer client (org / family / geo) and the form-collected attributes
+change. Adding a new kind doesn't add a new sequence; it adds a
+descriptor to `CREDENTIAL_KINDS`.
 
 ```mermaid
 sequenceDiagram
@@ -715,6 +817,159 @@ The two delegations (session and cross) are independent. The session proves
 owner authorised the caller to read these specific fields*. Person-mcp
 verifies both.
 
+### 6.4a Issue a `GeoLocationCredential` (geo-mcp direct issuance, vault-only)
+
+`prepareCredentialIssuance` + `completeCredentialIssuance`
+(`apps/web/src/lib/actions/ssi/request-credential.action.ts`). Triggered by
+the "Get credential" button in `AddGeoClaimPanel` and by the
+"+ Get geo credential" entry in the dropdown header menu (which opens
+`IssueCredentialDialog`).
+
+This is the privacy-preserving path for binding a holder to a `.geo`
+feature. **Nothing is written to `GeoClaimRegistry`.** Verifiers learn
+the binding only when the holder voluntarily produces an AnonCreds
+presentation — selective-disclosure and predicate proofs ride for free
+on the standard wallet path.
+
+Two properties hold:
+
+1. **Authorisation is implicit.** `geo-mcp` is a single steward across
+   every `.geo` feature
+   (`did:ethr:<chainId>:<addr(0xeee…e)>`); it has no per-feature
+   approval queue and trusts the holder's request. Future evidence
+   hooks (verifier-receipt, H3-inclusion ZK witness) plug into the
+   `attestedAt`/`confidence` slots without changing the wire shape.
+2. **Inputs are feature + relation + confidence.** The web action reads
+   `GeoFeatureRegistry.getFeature(featureId, version)` for the public
+   `metadataURI`, parses it into `city`/`region`/`country`, and
+   combines that with the holder's chosen `relation` and `confidence`.
+   `validFrom`/`validUntil` default to `0` (open-ended); `attestedAt`
+   is the issuance unix-seconds. No `GeoClaim` lookup, no chain trace
+   of the holder ↔ feature binding.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Web as apps/web
+    participant Chain as GeoFeatureRegistry
+    participant MCP as person-mcp
+    participant Geo as geo-mcp issuer
+    participant Vault as Askar vault
+
+    Web->>Chain: getFeature(featureId, featureVersion)
+    Chain-->>Web: FeatureRecord (metadataURI, active)
+    Web->>Web: parseMetadataURI → city/region/country<br/>combine with holder's relation + confidence
+    Web->>Geo: POST /credential/offer<br/>credentialType=GeoLocationCredential
+    Geo->>Geo: ensureSchemaAndCredDef (idempotent)
+    Geo-->>Web: offer, credDefId, schemaId, issuerId
+
+    Web->>MCP: ssi_create_wallet_action<br/>type=AcceptCredentialOffer
+    MCP-->>Web: Unsigned WalletAction
+    Web->>Web: Passkey ceremony via section 6.0
+
+    Web->>MCP: ssi_start_credential_exchange<br/>action, signature, offer
+    MCP->>Vault: get link secret
+    MCP->>MCP: holderCreateCredentialRequest
+    MCP-->>Web: requestId, requestJson
+
+    Web->>Geo: POST /credential/issue<br/>offer, request, attributes
+    Note over Web,Geo: attributes = {<br/>  featureId, featureName, city, region, country,<br/>  relation, confidence, validFrom, validUntil,<br/>  attestedAt<br/>}
+    Geo-->>Web: credentialJson
+
+    Web->>MCP: ssi_finish_credential_exchange<br/>credentialJson, holder ref
+    MCP->>Vault: putCredential(profile, id)
+    MCP-->>Web: credentialId
+```
+
+The credential lands in the holder's Askar vault and is invisible to
+anyone but the holder until they choose to present it. The optional
+`mintPublicGeoClaimAction` path (the "Mint" button on the same form)
+remains available when the holder *wants* a public on-chain anchor
+— but the AnonCreds-vault path no longer depends on it.
+
+> **Tradeoff today:** geo-mcp does not verify evidence. The credential
+> attests "this holder claims this relationship to this feature" with
+> the same trust weight as a self-asserted email. Verifier-mcp's
+> default spec mitigates by requiring `confidence ≥ 50` predicates and
+> by binding to geo-mcp's specific `credDefId`, but until the
+> evidence hook is wired (Phase 6 ZK / verifier-receipt path), policy
+> consumers should treat assurance as low.
+
+### 6.4b Test verification through `verifier-mcp`
+
+`prepareVerifyHeldCredential` + `completeVerifyHeldCredential`
+(`apps/web/src/lib/actions/ssi/verify-held.action.ts`). Triggered by the
+"Test verification" button on each row of `HeldCredentialsPanel`.
+
+`verifier-mcp` is a single third-party "Trusted Auditor" service. It
+publishes nothing on chain; its only state is a sqlite of consumed
+presentation nonces. The verifier resolves schemas/credDefs through the
+same `OnChainResolver` issuers use, so it always speaks against the
+canonical on-chain definitions.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Browser as Browser
+    participant Web as apps/web
+    participant MCP as person-mcp
+    participant Verifier as verifier-mcp
+    participant Chain as CredentialRegistry
+
+    Browser->>Web: Click "Test verification" on credential row
+    Web->>MCP: ssi_list_my_credentials → resolve credentialType,<br/>holderWalletRef, walletContext
+    Web->>Verifier: POST /verify/<credentialType>/request
+    Verifier->>Verifier: buildRequest(spec) — picks reveals + predicates<br/>(e.g. attr_country / pred_confidence ≥ 50 for geo)
+    Verifier->>Verifier: signPresentationRequest(verifierKey, body)
+    Verifier-->>Web: presentationRequest, selection,<br/>verifierId, verifierAddress, verifierSignature, label
+
+    Web->>MCP: ssi_create_wallet_action<br/>type=CreatePresentation, allowed reveals + predicates
+    MCP-->>Web: Unsigned WalletAction
+    Web->>Browser: Passkey ceremony with EIP-712 challenge
+    Browser-->>Web: 0x01 || abi.encode(Assertion)
+
+    Web->>MCP: ssi_create_presentation<br/>action, signature, expectedSigner,<br/>presentationRequest, verifier identity, selections
+    MCP->>MCP: verifyWalletAction + consumeNonce
+    MCP->>MCP: enforce proofRequestHash
+    MCP->>MCP: checkVerifierSignature
+    MCP->>Chain: load schema + credDef
+    MCP->>MCP: get credential + link secret from vault
+    MCP->>MCP: evaluateProofPolicy
+    MCP->>MCP: holderCreatePresentation
+    MCP->>MCP: insert ssi_proof_audit(result=ok)
+    MCP-->>Web: presentation, auditSummary
+
+    Web->>Verifier: POST /verify/<credentialType>/check<br/>presentation, presentationRequest
+    Verifier->>Verifier: consumeNonce(presentationRequest.nonce)
+    Verifier->>Chain: loadVerifiedSchema + loadVerifiedCredDef
+    Chain-->>Verifier: canonical-hash-checked schema/credDef
+    Verifier->>Verifier: AnonCreds.verifierVerifyPresentation
+    Verifier-->>Web: { verified, revealedAttrs, replay? }
+
+    Web-->>Browser: render "verified ✓ by Trusted Auditor"<br/>+ revealed attrs (e.g. country=us, region=co)
+```
+
+The verifier-mcp's `specs.ts` has one `VerifierSpec` per supported
+credential type. Each spec defines (a) the schema/credDef ids it pins, (b)
+which referents to reveal vs. predicate-prove, (c) the `buildRequest`
+function that mints a fresh `requested_attributes` / `requested_predicates`
+body. The web action passes the spec's `selection` straight through to
+`ssi_create_presentation` so the wallet's `evaluateProofPolicy` knows
+exactly what the holder authorised.
+
+Replay protection is layered:
+
+- **person-mcp** rejects re-use of any signed `WalletAction` via
+  `action_nonces`.
+- **verifier-mcp** rejects re-use of any presentation-request nonce via
+  its own `consumed_nonces` table — preventing the same successful
+  presentation from being submitted twice as evidence.
+
+The verifier-mcp DID is `did:ethr:<chainId>:<addr(0xaaa…a)>` (the
+"Trusted Auditor" key in `apps/verifier-mcp/.env`). It is a dev-time
+constant; production deployments would substitute a real verifier
+identity.
+
 ### 6.5 Rotate a link secret
 
 `rotateLinkSecretAction` (`apps/web/src/lib/actions/ssi/rotate.action.ts`).
@@ -773,9 +1028,10 @@ longer points at it.
 ## 8. Operational notes
 
 - **Bring-up order**: Anvil → deploy contracts → issuer/verifier MCPs
-(`org-mcp` 3400, `family-mcp` 3500) → `person-mcp` (3200) → `apps/web`
-(3000). The web app's `ssiConfig` reads ports from env; defaults in
-`apps/web/src/lib/ssi/config.ts`.
+(`org-mcp` 3400, `family-mcp` 3500, `geo-mcp` 3600, `verifier-mcp` 3700)
+→ `person-mcp` (3200) → `apps/web` (3000). The web app's `ssiConfig`
+reads ports from env; defaults in `apps/web/src/lib/ssi/config.ts`.
+`scripts/fresh-start.sh` brings the whole stack up in this order.
 - **Native binding**: `@hyperledger/anoncreds-nodejs` is registered exactly
 once in the MCP process. Re-registering in another process (e.g. an issuer
 MCP) is fine; re-registering twice in the same process throws.
@@ -803,14 +1059,22 @@ take an explicit `principal` arg).
 | File                                           | Role                                                                                  |
 | ---------------------------------------------- | ------------------------------------------------------------------------------------- |
 | `src/lib/ssi/config.ts`                        | Service URLs, chain config                                                            |
-| `src/lib/ssi/clients.ts`                       | HTTP clients for `person`, `org`, `family` MCPs                                       |
+| `src/lib/ssi/clients.ts`                       | HTTP clients for `person`, `org`, `family`, `geo`, `verifier` MCPs                    |
 | `src/lib/ssi/signer.ts`                        | `prepareWalletActionForPasskey` (primary); `signWalletAction` direct EOA fallback     |
-| `src/lib/actions/ssi/provision.action.ts`      | First-time wallet creation                                                            |
-| `src/lib/actions/ssi/accept.action.ts`         | Membership / guardian credential issuance                                             |
+| `src/lib/actions/ssi/provision.action.ts`      | First-time wallet creation (server-EOA path)                                          |
+| `src/lib/actions/ssi/wallet-provision.action.ts` | Shared passkey-capable wallet provisioning primitives                              |
+| `src/lib/actions/ssi/accept.action.ts`         | Server-EOA credential issuance (legacy demo / admin path)                             |
+| `src/lib/actions/ssi/request-credential.action.ts` | Generic passkey-capable issuance — `prepareCredentialIssuance` / `completeCredentialIssuance`. Drives every kind via `CREDENTIAL_KINDS` lookup. |
+| `src/lib/credentials/IssueCredentialDialog.tsx` | Generic React dialog used by every "+ Get {noun} credential" entry                   |
+| `src/lib/credentials/registry.tsx`             | Web-side registry pairing each `CredentialKindDescriptor` with its issuance form     |
+| `src/lib/credentials/forms/`                   | Per-kind issuance form components (`OrgMembershipForm`, `GeoLocationForm`, …)         |
 | `src/lib/actions/ssi/oid4vci-redeem.action.ts` | OID4VCI variant of `accept`                                                           |
 | `src/lib/actions/ssi/present.action.ts`        | Build + submit a presentation                                                         |
 | `src/lib/actions/ssi/rotate.action.ts`         | Rotate the link secret                                                                |
-| `src/lib/actions/geo-claim.action.ts`          | Mint public `GeoClaimRegistry` rows and list `GeoFeatureRegistry` records             |
+| `src/lib/actions/ssi/verify-held.action.ts`    | `prepareVerifyHeldCredential` + `completeVerifyHeldCredential` — drive the "Test verification" button against verifier-mcp |
+| `src/lib/actions/geo-claim.action.ts`          | Publish public `GeoClaimRegistry` rows and list `GeoFeatureRegistry` records          |
+| `src/components/profile/AddGeoClaimPanel.tsx`  | "Publish claim" + "Get credential" buttons on the geo claim form                      |
+| `src/components/org/HeldCredentialsPanel.tsx`  | List held credentials (display name from `findCredentialKind`) + per-row "Test verification" |
 | `src/lib/actions/trust-search.action.ts`       | Combines org-overlap and geo-overlap inputs for discovery/trust search                |
 | `src/app/(authenticated)/settings/passkeys/PasskeysClient.tsx` | Browser-side passkey enrolment / ceremony entry point                  |
 
@@ -880,12 +1144,17 @@ take an explicit `principal` arg).
 ### Issuer / verifier (examples)
 
 
-| File                                     | Role                                                               |
-| ---------------------------------------- | ------------------------------------------------------------------ |
-| `apps/org-mcp/src/issuers/membership.ts` | `OrgMembershipCredential` issuer wiring                            |
-| `apps/org-mcp/src/api/credential.ts`     | `/credential/offer`, `/credential/issue`                           |
-| `apps/org-mcp/src/api/oid4vci.ts`        | OID4VCI pre-authorised flow                                        |
-| `apps/family-mcp/...`                    | `GuardianOfMinorCredential` issuer + `/verify/guardian/*` verifier |
+| File                                              | Role                                                               |
+| ------------------------------------------------- | ------------------------------------------------------------------ |
+| `apps/org-mcp/src/issuers/membership.ts`          | `OrgMembershipCredential` issuer wiring                            |
+| `apps/org-mcp/src/api/credential.ts`              | `/credential/offer`, `/credential/issue`                           |
+| `apps/org-mcp/src/api/oid4vci.ts`                 | OID4VCI pre-authorised flow                                        |
+| `apps/family-mcp/...`                             | `GuardianOfMinorCredential` issuer + `/verify/guardian/*` verifier |
+| `apps/geo-mcp/src/issuers/location.ts`         | `GeoLocationCredential` schema + credDef + `IssuerAgent` wiring |
+| `apps/geo-mcp/src/api/credential.ts`              | `/credential/offer`, `/credential/issue` for geo                   |
+| `apps/verifier-mcp/src/verifiers/specs.ts`        | One `VerifierSpec` per credential type (org / guardian / geo) — request body + selection |
+| `apps/verifier-mcp/src/api/verify.ts`             | `/verify/<credentialType>/{request,check}` + `/verify/specs`       |
+| `apps/verifier-mcp/src/verifiers/nonce-store.ts`  | Consumed-nonce sqlite — single-use presentation enforcement        |
 
 
 ---
@@ -907,15 +1176,23 @@ take an explicit `principal` arg).
   never leave the vault module.
 - **CredentialRegistry** on-chain is the source of truth for
   schema/credDef. Resolvers re-hash the canonical JSON before trusting it.
-- **AgentLocationCredential** is feature-level, not address-level. It carries
-  `featureId`, `featureVersion`, relation, issuer, confidence, validity, and
-  `evidenceCommit`; exact addresses, coordinates, private H3 cells, and
-  evidence documents stay outside SQL and outside chain state.
-- **Third-party verifiers run proofs off-chain.** They verify AnonCreds
-  presentations and any H3/GeoSPARQL policy inputs in their agent/MCP runtime,
-  then issue a signed receipt or optional `GeoClaimRegistry` commitment. Use
-  on-chain verifier contracts only when another contract must consume the
-  proof directly.
+- **`GeoLocationCredential`** mirrors a holder's on-chain `GeoClaim`
+  into a replayable AnonCreds blob. The single `geo-mcp` issuer covers
+  every `.geo` feature; minting the claim is the consent signal so there
+  is no per-feature approval queue. Attribute set is feature-level
+  (`featureId`/`featureName`/`city`/`region`/`country`/`relation`/
+  `confidence`/`validFrom`/`validUntil`/`attestedAt`), never
+  address-level — exact addresses, coordinates, private H3 cells, and
+  evidence documents stay out of SQL and out of chain state.
+- **Third-party verifiers run proofs off-chain.** `verifier-mcp` is a
+  single "Trusted Auditor" service that exercises every credential type
+  (`OrgMembership`, `GuardianOfMinor`, `GeoLocation`) through one
+  `/verify/<credentialType>/{request,check}` shape. It signs presentation
+  requests, verifies AnonCreds proofs through `OnChainResolver`, and
+  rejects replayed nonces. The dashboard surfaces "Test verification"
+  buttons next to each held credential that drive this verifier
+  end-to-end. Use on-chain verifier contracts only when another contract
+  must consume the proof directly.
 - **Person-mcp** is both the SSI consent/vault gateway and the PII gateway
   (delegation-chain-verified profile reads). SSI actions still require signed
   `WalletAction`s before the vault is used.

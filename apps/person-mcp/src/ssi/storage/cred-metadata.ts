@@ -78,6 +78,25 @@ export function listCredentialMetadata(holderWalletId: string): CredentialMetada
   ).all(holderWalletId) as CredentialMetadataRow[]
 }
 
+/** Look up a single credential metadata row by id (no holder scoping). */
+export function getCredentialMetadataById(credentialId: string): CredentialMetadataRow | null {
+  const row = db.prepare(
+    `SELECT id,
+            holder_wallet_id    as holderWalletId,
+            issuer_id           as issuerId,
+            schema_id           as schemaId,
+            cred_def_id         as credDefId,
+            credential_type     as credentialType,
+            received_at         as receivedAt,
+            status,
+            link_secret_id      as linkSecretId,
+            target_org_address  as targetOrgAddress
+       FROM credential_metadata
+      WHERE id = ?`,
+  ).get(credentialId) as CredentialMetadataRow | undefined
+  return row ?? null
+}
+
 /** Mark every cred in this wallet bound to the old link secret as 'stale'. */
 export function markCredentialsStaleForLinkSecret(holderWalletId: string, oldLinkSecretId: string): number {
   const result = db.prepare(

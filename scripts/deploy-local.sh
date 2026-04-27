@@ -213,7 +213,7 @@ update_env_var() {
   fi
 }
 
-for svc in org-mcp family-mcp person-mcp; do
+for svc in org-mcp family-mcp person-mcp geo-mcp verifier-mcp; do
   ENV_FILE="$ROOT_DIR/apps/$svc/.env"
   if [ -f "$ENV_FILE" ]; then
     update_env_var "$ENV_FILE" RPC_URL "$ANVIL_RPC"
@@ -230,10 +230,12 @@ done
 # transactions. anvil_setBalance is cheap.
 ORG_ISSUER_ADDR=$(cast wallet address 0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc)
 FAMILY_ISSUER_ADDR=$(cast wallet address 0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd)
+GEO_ISSUER_ADDR=$(cast wallet address 0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee)
 TEN_ETH_HEX="0x8ac7230489e80000"   # 10 ETH
 cast rpc --rpc-url "$ANVIL_RPC" anvil_setBalance "$ORG_ISSUER_ADDR" "$TEN_ETH_HEX" > /dev/null
 cast rpc --rpc-url "$ANVIL_RPC" anvil_setBalance "$FAMILY_ISSUER_ADDR" "$TEN_ETH_HEX" > /dev/null
-echo "Funded org issuer $ORG_ISSUER_ADDR and family issuer $FAMILY_ISSUER_ADDR with 10 ETH each"
+cast rpc --rpc-url "$ANVIL_RPC" anvil_setBalance "$GEO_ISSUER_ADDR" "$TEN_ETH_HEX" > /dev/null
+echo "Funded org issuer $ORG_ISSUER_ADDR, family issuer $FAMILY_ISSUER_ADDR, and geo issuer $GEO_ISSUER_ADDR with 10 ETH each"
 
 # ─── Post-deploy registrations ──────────────────────────────────────────────
 #

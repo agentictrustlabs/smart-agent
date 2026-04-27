@@ -6,7 +6,8 @@ import { useState, useRef, useEffect, useMemo } from 'react'
 import { useUserContext } from '@/components/user/UserContext'
 import { HubProvider, useHubContext } from '@/components/hub/HubContext'
 import { CreateOrgDialog } from '@/components/org/CreateOrgDialog'
-import { AnonOrgRegistrationDialog } from '@/components/org/AnonOrgRegistrationDialog'
+import { IssueCredentialDialog } from '@/lib/credentials/IssueCredentialDialog'
+import { listIssuableKinds } from '@/lib/credentials/registry'
 import type { HubId } from '@/lib/hub-profiles'
 import { CatalystViewCtx } from '@/components/catalyst/CatalystViewContext'
 import type { ViewMode } from '@/components/catalyst/CatalystViewContext'
@@ -151,7 +152,7 @@ function HubLayoutInner({ children }: { children: React.ReactNode }) {
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [agentPanelOpen, setAgentPanelOpen] = useState(false)
   const [createOrgOpen, setCreateOrgOpen] = useState(false)
-  const [anonOrgOpen, setAnonOrgOpen] = useState(false)
+  const [issueCredentialType, setIssueCredentialType] = useState<string | null>(null)
   const userMenuRef = useRef<HTMLDivElement>(null)
 
   // Pick the active hub's address (used to scope "Create organization"). The
@@ -497,21 +498,26 @@ function HubLayoutInner({ children }: { children: React.ReactNode }) {
                         + Create organization
                       </button>
                     )}
-                    {activeHub && (
+                    {/* Auto-generated from CREDENTIAL_KINDS — one entry per
+                        credential kind that has a registered issuance form.
+                        Adding a new kind: add a descriptor + form, dropdown
+                        light up automatically. */}
+                    {listIssuableKinds({ hasActiveHub: Boolean(activeHub) }).map(kind => (
                       <button
+                        key={kind.descriptor.credentialType}
                         type="button"
-                        onClick={() => { setUserMenuOpen(false); setAnonOrgOpen(true) }}
+                        onClick={() => { setUserMenuOpen(false); setIssueCredentialType(kind.descriptor.credentialType) }}
                         style={{
                           display: 'block', width: '100%', textAlign: 'left',
                           padding: '0.5rem 1rem', fontSize: '0.82rem',
                           color: T.text, background: 'transparent',
                           border: 'none', cursor: 'pointer', fontWeight: 500,
                         }}
-                        data-testid="hub-dropdown-anon-org"
+                        data-testid={`hub-dropdown-get-${kind.descriptor.noun}-credential`}
                       >
-                        + Anonymous org registration
+                        + Get {kind.descriptor.noun} credential
                       </button>
-                    )}
+                    ))}
 
                     {/* ── Admin tools (moved from center nav) ── */}
                     {visibleAdminItems.length > 0 && (
@@ -783,17 +789,12 @@ function HubLayoutInner({ children }: { children: React.ReactNode }) {
             }}
           />
         )}
-        {anonOrgOpen && activeHub && (
-          <AnonOrgRegistrationDialog
-            hubAddress={activeHub.address}
-            hubName={activeHub.name}
-            onCancel={() => setAnonOrgOpen(false)}
-            onIssued={() => {
-              setAnonOrgOpen(false)
-              // The held-credentials panel on /h/{slug}/home loads on demand,
-              // so a hard reload isn't required. Just close — user can hit
-              // "Show held credentials" to confirm the new entry.
-            }}
+        {issueCredentialType && (
+          <IssueCredentialDialog
+            credentialType={issueCredentialType}
+            context={activeHub ? { hubAddress: activeHub.address, hubName: activeHub.name } : undefined}
+            onCancel={() => setIssueCredentialType(null)}
+            onIssued={() => setIssueCredentialType(null)}
           />
         )}
       </div>

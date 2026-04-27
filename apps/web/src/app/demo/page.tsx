@@ -50,7 +50,7 @@ export default function DemoLoginPage() {
           <p style={{ fontSize: 14, color: '#5d6478', maxWidth: 560, margin: '0 auto' }}>
             Each demo user is fully provisioned on chain — wallet, person agent, hub
             membership, city tag — so you can immediately exercise trust search,
-            credentials, and geo claims from their perspective.
+            credentials, and public locations from their perspective.
           </p>
           <p style={{ fontSize: 12, color: '#94a3b8', margin: '8px auto 0' }}>
             <Link href="/" style={{ color: '#3f6ee8' }}>← back</Link>

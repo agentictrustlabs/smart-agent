@@ -24,8 +24,9 @@ import {
 } from '@smart-agent/privacy-creds'
 import { db } from '../db/index.js'
 import { ssiProofAudit } from '../db/schema.js'
-import { listHolderWalletsForPrincipal } from '../ssi/storage/wallets.js'
-import { listCredentialMetadata } from '../ssi/storage/cred-metadata.js'
+import { listHolderWalletsForPrincipal, getHolderWalletById } from '../ssi/storage/wallets.js'
+import { listCredentialMetadata, getCredentialMetadataById } from '../ssi/storage/cred-metadata.js'
+import { getCredential } from '../ssi/storage/askar.js'
 import { listProofAuditByPrincipal } from '../ssi/storage/proof-audit.js'
 
 // After the merge, the ssi-wallet routes live in this same Hono server
@@ -530,6 +531,72 @@ const listProofAudit = {
   },
 }
 
+// ─── 6c. ssi_get_credential_details ─────────────────────────────────────────
+//
+// The holder owns the credential blob and is allowed to read its raw
+// attribute values back out. This tool reads the AnonCreds processed
+// credential JSON from Askar, parses the `values` map, and returns the
+// `raw` value for every slot. It also returns the metadata fields the
+// holder might want to render alongside (issuerId, schema/credDef ids,
+// linkSecretId, targetOrgAddress).
+//
+// Principal-scoping: the credential must live under one of this
+// principal's holder wallets. Cross-principal reads return 403.
+
+interface GetCredentialDetailsArgs {
+  principal: string
+  credentialId: string
+}
+const getCredentialDetails = {
+  name: 'ssi_get_credential_details',
+  description: "Return a single credential's parsed AnonCreds attribute values plus its public metadata. Holder-only — principal must own the credential.",
+  inputSchema: {
+    type: 'object' as const,
+    properties: {
+      principal:    { type: 'string' },
+      credentialId: { type: 'string' },
+    },
+    required: ['principal', 'credentialId'],
+  },
+  handler: async (args: GetCredentialDetailsArgs) => {
+    const meta = getCredentialMetadataById(args.credentialId)
+    if (!meta) return mcpText({ error: 'credential not found' })
+    const wallet = getHolderWalletById(meta.holderWalletId)
+    if (!wallet) return mcpText({ error: 'holder wallet not found' })
+    if (wallet.personPrincipal !== args.principal) {
+      return mcpText({ error: 'forbidden: credential belongs to another principal' })
+    }
+
+    let attributes: Record<string, string> = {}
+    try {
+      const blob = await getCredential(wallet.askarProfile, args.credentialId)
+      const parsed = JSON.parse(blob) as { values?: Record<string, { raw?: string }> }
+      for (const [name, slot] of Object.entries(parsed.values ?? {})) {
+        if (slot && typeof slot.raw === 'string') attributes[name] = slot.raw
+      }
+    } catch (err) {
+      return mcpText({ error: `failed to read credential blob: ${(err as Error).message}` })
+    }
+
+    return mcpText({
+      credential: {
+        id:               meta.id,
+        credentialType:   meta.credentialType,
+        issuerId:         meta.issuerId,
+        schemaId:         meta.schemaId,
+        credDefId:        meta.credDefId,
+        receivedAt:       meta.receivedAt,
+        status:           meta.status,
+        linkSecretId:     meta.linkSecretId,
+        targetOrgAddress: meta.targetOrgAddress,
+        walletContext:    wallet.walletContext,
+        holderWalletRef:  wallet.id,
+        attributes,
+      },
+    })
+  },
+}
+
 export const ssiWalletTools = {
   ssi_create_wallet_action:        createWalletAction,
   ssi_provision_wallet:            provisionWallet,
@@ -541,4 +608,5 @@ export const ssiWalletTools = {
   ssi_list_proof_audit:            listProofAudit,
   ssi_rotate_link_secret:          rotateLinkSecret,
   ssi_match_against_public_set:    matchAgainstPublicSet,
+  ssi_get_credential_details:      getCredentialDetails,
 }

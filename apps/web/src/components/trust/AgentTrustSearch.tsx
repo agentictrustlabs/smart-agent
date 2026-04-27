@@ -211,7 +211,7 @@ export function AgentTrustSearch() {
                         <code style={{ fontFamily: 'ui-monospace, monospace' }}>{h.primaryName}</code>
                       )}
                       <span title="org-overlap.v1">org {h.orgScore.toFixed(1)}</span>
-                      <span title="geo-overlap.v1 (coarse + claim-aware)">geo {h.geoScore.toFixed(1)}</span>
+                      <span title="geo-overlap.v1 (coarse + location-aware)">geo {h.geoScore.toFixed(1)}</span>
                       <span>{h.sharedCount} shared</span>
                       {h.geoTag?.city && (
                         <span style={{ color: '#3f6ee8' }}>📍 {h.geoTag.city}</span>

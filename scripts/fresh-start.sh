@@ -48,6 +48,8 @@ SERVICES=(
   "family-mcp:3500:@smart-agent/family-mcp"
   "person-mcp:3200:@smart-agent/person-mcp"
   "a2a-agent:3100:@smart-agent/a2a-agent"
+  "geo-mcp:3600:@smart-agent/geo-mcp"
+  "verifier-mcp:3700:@smart-agent/verifier-mcp"
 )
 WEB_PORT=3000
 WEB_FILTER="@smart-agent/web"
@@ -73,6 +75,12 @@ WIPE_PATHS=(
   "apps/*/family-nonces.db"
   "apps/*/family-nonces.db-shm"
   "apps/*/family-nonces.db-wal"
+  "apps/*/geo-private.db"
+  "apps/*/geo-private.db-shm"
+  "apps/*/geo-private.db-wal"
+  "apps/*/verifier-nonces.db"
+  "apps/*/verifier-nonces.db-shm"
+  "apps/*/verifier-nonces.db-wal"
   "apps/*/askar-stores"
   "apps/web/.next/cache"
 )

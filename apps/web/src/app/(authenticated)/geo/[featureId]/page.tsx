@@ -164,12 +164,13 @@ export default async function GeoFeatureDetailPage({
 
       <section style={{ background: '#fff', border: '1px solid #ece6db', borderRadius: 12, padding: '1rem 1.25rem' }}>
         <h2 style={{ fontSize: '0.7rem', fontWeight: 700, color: '#9a8c7e', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 8px' }}>
-          Claims ({rows.length})
+          Public Locations ({rows.length})
         </h2>
         {rows.length === 0 && (
           <div style={{ fontSize: 12, color: '#64748b' }}>
-            No claims yet. Use the <b>Add geo claim</b> panel on the dashboard
-            to mint <code>residentOf</code> / <code>operatesIn</code> / etc. against this feature.
+            No public locations yet. Use the <b>My Public Locations</b> panel on the
+            dashboard to publish <code>residentOf</code> / <code>operatesIn</code> / etc.
+            against this feature.
           </div>
         )}
         {rows.length > 0 && (

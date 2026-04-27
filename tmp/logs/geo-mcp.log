@@ -1,0 +1,14 @@
+
+> @smart-agent/geo-mcp@0.0.1 dev /home/barb/smart-agent/apps/geo-mcp
+> tsx src/index.ts
+
+[geo-mcp] Smart Agent Geo Steward @ did:ethr:31337:0x46a23e25df9a0f6c18729dda9ad1af3b6a131160
+[geo-mcp] listening on http://localhost:3600
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- POST /credential/offer
+--> POST /credential/offer [32m200[0m 29ms
+<-- POST /credential/issue
+--> POST /credential/issue [32m200[0m 28ms

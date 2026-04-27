@@ -11,16 +11,16 @@ import {
 import type { GeoRelation } from '@smart-agent/sdk'
 
 /**
- * Mint a Public-visibility geo claim against a feature. The relation
- * + confidence land directly in stage B of geo-overlap.v1, so as soon
- * as the tx confirms the next Discover Agents rerun reflects it.
+ * Public-on-chain location publisher. Pick a `.geo` feature, a relation
+ * kind (`residentOf`, `operatesIn`, …), and a confidence score; the
+ * "Publish location" button writes a public on-chain record visible to
+ * anyone reading the geo registry.
  *
- * Always-on pane: form is rendered inline, the existing claim list
- * sits below it, and submitting refreshes the list immediately.
- *
- * Private (PrivateZk) claims will land here too once the holder-signed
- * mint path is wired — same UI, additional "Generate proof" step
- * before the mint.
+ * The vault-only path (`GeoLocationCredential`) lives in the dropdown
+ * header menu — "+ Get geo credential" — and ends up in
+ * `HeldCredentialsPanel`. Keeping the two flows on separate surfaces
+ * mirrors the noun split: this panel is for **public locations**,
+ * the wallet panel is for **credentials**.
  */
 const RELATIONS: GeoRelation[] = [
   'residentOf', 'operatesIn', 'servesWithin', 'licensedIn',
@@ -29,7 +29,7 @@ const RELATIONS: GeoRelation[] = [
 
 export function AddGeoClaimPanel() {
   const [features, setFeatures] = useState<FeatureRow[] | null>(null)
-  const [myClaims, setMyClaims] = useState<MyGeoClaimRow[] | null>(null)
+  const [myLocations, setMyLocations] = useState<MyGeoClaimRow[] | null>(null)
   const [featureId, setFeatureId] = useState('')
   const [featureVersion, setFeatureVersion] = useState('1')
   const [relation, setRelation] = useState<GeoRelation>('residentOf')
@@ -38,18 +38,15 @@ export function AddGeoClaimPanel() {
   const [info, setInfo] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
 
-  // Initial load on mount: features for the dropdown + the caller's
-  // existing claims. The pane is now always visible, so this fires once
-  // when the dashboard renders rather than on a toggle.
   useEffect(() => {
-    if (features && myClaims) return
+    if (features && myLocations) return
     start(async () => {
       const [rows, mine] = await Promise.all([
         features ? Promise.resolve(features) : listFeaturesAction(),
         listMyGeoClaimsAction(),
       ])
       setFeatures(rows)
-      setMyClaims(mine)
+      setMyLocations(mine)
       if (!featureId && rows.length > 0) {
         setFeatureId(rows[0].featureId)
         setFeatureVersion(rows[0].version)
@@ -58,7 +55,7 @@ export function AddGeoClaimPanel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  function mint() {
+  function publishLocation() {
     setInfo(null); setErr(null)
     if (!featureId) { setErr('Pick a feature'); return }
     start(async () => {
@@ -69,9 +66,9 @@ export function AddGeoClaimPanel() {
         confidence,
       })
       if (r.success) {
-        setInfo(`Claim minted (${r.claimId?.slice(0, 10)}…). Rerun Discover Agents to see geo stage-B kick in.`)
+        setInfo(`Public location added (${r.claimId?.slice(0, 10)}…). Anyone reading the public geo registry can now see this binding.`)
         const mine = await listMyGeoClaimsAction()
-        setMyClaims(mine)
+        setMyLocations(mine)
       } else {
         setErr(r.error ?? 'failed')
       }
@@ -87,19 +84,23 @@ export function AddGeoClaimPanel() {
         <h2 style={{
           fontSize: '0.7rem', fontWeight: 700, color: '#9a8c7e',
           textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0,
-        }}>My Geo Claims</h2>
+        }}>My Public Locations</h2>
         <span style={{ fontSize: 11, color: '#94a3b8' }}>
-          {myClaims === null ? 'loading…' : `${myClaims.length} claim${myClaims.length === 1 ? '' : 's'}`}
+          {myLocations === null
+            ? 'loading…'
+            : `${myLocations.length} location${myLocations.length === 1 ? '' : 's'}`}
         </span>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <div style={{ fontSize: 11, color: '#64748b' }}>
-          Mint a public claim binding your person agent to a <code>.geo</code> feature
-          with a relation kind (residentOf, operatesIn, …). Public claims feed
-          <code> stage&nbsp;B</code> of <code>smart-agent.geo-overlap.v1</code> immediately.
+          Pick a <code>.geo</code> feature, relation, and confidence — then
+          <b> Add</b> to write a public on-chain location visible to anyone
+          reading the geo registry. For a vault-only equivalent that stays
+          private until you choose to present it, use the
+          <b> + Get geo credential</b> entry in the dropdown menu.
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 80px', gap: 8 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 150px', gap: 8 }}>
           <select
             value={featureId}
             onChange={e => {
@@ -108,7 +109,7 @@ export function AddGeoClaimPanel() {
               if (row) setFeatureVersion(row.version)
             }}
             style={{ padding: '0.4rem 0.6rem', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 12 }}
-            data-testid="geo-claim-feature"
+            data-testid="geo-loc-feature"
           >
             {features === null && <option>Loading…</option>}
             {features?.length === 0 && <option>No features published</option>}
@@ -120,7 +121,7 @@ export function AddGeoClaimPanel() {
             value={relation}
             onChange={e => setRelation(e.target.value as GeoRelation)}
             style={{ padding: '0.4rem 0.6rem', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 12 }}
-            data-testid="geo-claim-relation"
+            data-testid="geo-loc-relation"
           >
             {RELATIONS.map(r => <option key={r} value={r}>{r}</option>)}
           </select>
@@ -131,12 +132,12 @@ export function AddGeoClaimPanel() {
             min={0}
             max={100}
             style={{ padding: '0.4rem 0.6rem', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 12 }}
-            data-testid="geo-claim-confidence"
+            data-testid="geo-loc-confidence"
             title="Confidence 0..100"
           />
           <button
             type="button"
-            onClick={mint}
+            onClick={publishLocation}
             disabled={pending || !featureId}
             style={{
               padding: '0.4rem 0.8rem',
@@ -144,25 +145,28 @@ export function AddGeoClaimPanel() {
               border: 'none', borderRadius: 6,
               fontSize: 12, fontWeight: 600,
               cursor: pending ? 'wait' : 'pointer', opacity: pending ? 0.5 : 1,
+              whiteSpace: 'nowrap',
             }}
-            data-testid="geo-claim-mint"
+            data-testid="geo-loc-publish"
+            title="Public on-chain location (visible to anyone reading the geo registry)"
           >
-            {pending ? '…' : 'Mint'}
+            {pending ? '…' : 'Add'}
           </button>
         </div>
         {info && <span style={{ fontSize: 11, color: '#15803d' }}>{info}</span>}
         {err && <span style={{ fontSize: 11, color: '#b91c1c' }}>{err}</span>}
 
-        {/* ─── Existing claims for this user ──────────────────────── */}
+        {/* ─── Existing public locations for this user ──────────────────── */}
         <div style={{ marginTop: 6, paddingTop: 10, borderTop: '1px dashed #e5e7eb' }}>
-          {myClaims !== null && myClaims.length === 0 && (
+          {myLocations !== null && myLocations.length === 0 && (
             <div style={{ fontSize: 11, color: '#64748b' }}>
-              No claims yet. Pick a feature + relation above and click Mint.
+              No public locations yet. (Vault-only credentials are listed under
+              <b> Show held credentials</b>.)
             </div>
           )}
-          {myClaims !== null && myClaims.length > 0 && (
+          {myLocations !== null && myLocations.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              {myClaims.map(c => (
+              {myLocations.map(c => (
                 <div
                   key={c.claimId}
                   style={{

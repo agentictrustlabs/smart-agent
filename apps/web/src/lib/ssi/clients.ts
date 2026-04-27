@@ -63,6 +63,45 @@ export const org = {
     ),
 }
 
+export const geo = {
+  agentCard: () => call<{ name: string; did: string; credentialTypes: string[] }>(ssiConfig.geoUrl, '/.well-known/agent.json'),
+  offer: (credentialType: string) => call<{
+    credentialOfferJson: string
+    credDefId: string
+    schemaId: string
+    issuerId: string
+  }>(ssiConfig.geoUrl, '/credential/offer', { body: { credentialType } }),
+  issue: (args: { credentialOfferJson: string; credentialRequestJson: string; attributes: Record<string, string> }) =>
+    call<{ credentialJson: string }>(ssiConfig.geoUrl, '/credential/issue', { body: args }),
+}
+
+export interface VerifierRequestResponse {
+  presentationRequest: Record<string, unknown> & { name: string; nonce: string }
+  selection: { revealReferents: string[]; predicateReferents: string[] }
+  verifierId: string
+  verifierAddress: `0x${string}`
+  signature: `0x${string}`
+  label: string
+}
+export const verifier = {
+  agentCard: () => call<{
+    name: string; did: string; address: `0x${string}`
+    credentialTypes: string[]; endpoints: Record<string, string>
+  }>(ssiConfig.verifierUrl, '/.well-known/agent.json'),
+  request: (credentialType: string) =>
+    call<VerifierRequestResponse>(
+      ssiConfig.verifierUrl,
+      `/verify/${encodeURIComponent(credentialType)}/request`,
+      { body: {} },
+    ),
+  check: (credentialType: string, args: { presentation: string; presentationRequest: Record<string, unknown> }) =>
+    call<{ verified: boolean; reason?: string; replay?: boolean; revealedAttrs?: Record<string, string> }>(
+      ssiConfig.verifierUrl,
+      `/verify/${encodeURIComponent(credentialType)}/check`,
+      { body: args },
+    ),
+}
+
 export const family = {
   agentCard: () => call<{ name: string; did: string; credentialTypes: string[] }>(ssiConfig.familyUrl, '/.well-known/agent.json'),
   offer: (credentialType: string) => call<{
