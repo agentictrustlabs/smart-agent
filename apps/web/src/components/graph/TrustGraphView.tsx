@@ -401,13 +401,40 @@ export function TrustGraphView({ orgAddress }: { orgAddress?: string }) {
                 const peer = e.source.toLowerCase() === selectedNode
                   ? nodeMap.get(e.target.toLowerCase()) : nodeMap.get(e.source.toLowerCase())
                 const dir = e.source.toLowerCase() === selectedNode ? '→' : '←'
+                // Synthetic controller edges (manufactured from the
+                // resolver's ATL_CONTROLLER list) carry a `ctrl-…` edgeId
+                // prefix. Real RelationshipRegistry edges have a 0x bytes32
+                // id. Color-code accordingly so the user can tell them
+                // apart at a glance.
+                const isCtrl = e.edgeId.startsWith('ctrl-')
+                const color = EDGE_COLORS[e.relationshipType] ?? '#666'
+                const cardStyle: React.CSSProperties = {
+                  borderLeft: `4px ${isCtrl ? 'dashed' : 'solid'} ${color}`,
+                  paddingLeft: 8,
+                }
                 return (
-                  <div key={i} data-component="rel-card" onClick={() => handleEdgeClick(e)}>
+                  <div
+                    key={e.edgeId || i}
+                    data-component="rel-card"
+                    onClick={() => handleEdgeClick(e)}
+                    style={cardStyle}
+                    title={isCtrl
+                      ? 'Controller link from the resolver ATL_CONTROLLER list (not an on-chain RelationshipEdge)'
+                      : 'On-chain RelationshipEdge from the registry'}
+                  >
                     <div data-component="rel-card-header">
                       <span>{dir} {peer?.label ?? 'Unknown'}</span>
                       <span data-component="role-badge" data-status={e.status}>{e.status}</span>
                     </div>
-                    <div data-component="rel-card-type">{e.relationshipType}</div>
+                    <div data-component="rel-card-type" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span>{e.relationshipType}</span>
+                      <span style={{
+                        fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.08em',
+                        color: isCtrl ? '#94a3b8' : color, fontWeight: 600,
+                      }}>
+                        {isCtrl ? 'controller link' : 'on-chain edge'}
+                      </span>
+                    </div>
                     <div data-component="role-list">
                       {e.roles.map((r, j) => <span key={j} data-component="role-badge">{r}</span>)}
                     </div>
@@ -438,10 +465,16 @@ export function TrustGraphView({ orgAddress }: { orgAddress?: string }) {
             </div>
           )}
 
-          {selectedEdge && (
-            <div data-component="edge-detail-inline">
+          {selectedEdge && (() => {
+            const isCtrl = selectedEdge.edgeId.startsWith('ctrl-')
+            const color = EDGE_COLORS[selectedEdge.relationshipType] ?? '#666'
+            return (
+            <div data-component="edge-detail-inline" style={{ borderLeft: `4px ${isCtrl ? 'dashed' : 'solid'} ${color}`, paddingLeft: 10 }}>
               <button onClick={() => setSelectedEdge(null)} data-component="back-btn">← Back</button>
               <h3>Edge Detail</h3>
+              <div style={{ fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: isCtrl ? '#94a3b8' : color, fontWeight: 700, marginBottom: 6 }}>
+                {isCtrl ? 'Resolver controller link' : 'On-chain RelationshipEdge'}
+              </div>
               <dl>
                 <dt>Type</dt><dd><span data-component="role-badge">{selectedEdge.relationshipType}</span></dd>
                 <dt>From</dt><dd>{nodeMap.get(selectedEdge.source.toLowerCase())?.label}</dd>
@@ -463,7 +496,7 @@ export function TrustGraphView({ orgAddress }: { orgAddress?: string }) {
                 </div>
               )}
             </div>
-          )}
+          )})()}
         </div>
       </div>
     </div>
