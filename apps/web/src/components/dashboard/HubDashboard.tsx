@@ -14,6 +14,7 @@ import { CreateOrgButton } from '@/components/org/CreateOrgButton'
 import { HeldCredentialsPanel } from '@/components/org/HeldCredentialsPanel'
 import { AgentTrustSearch } from '@/components/trust/AgentTrustSearch'
 import { AddGeoClaimPanel } from '@/components/profile/AddGeoClaimPanel'
+import { AddRelationshipPanel } from '@/components/profile/AddRelationshipPanel'
 import { HUB_SLUG_MAP } from '@/lib/hub-routes'
 import type { HubId } from '@/lib/hub-profiles'
 
@@ -518,7 +519,8 @@ async function DelegationSection({ userId }: { userId: string }) {
   const coachRel = await getCoachRelationship(userId)
   const disciples = await getDisciples(userId)
 
-  if (!coachRel && disciples.length === 0 && incoming.length === 0 && outgoing.length === 0) return null
+  // Always render the pane — even when empty — so the user has a place
+  // to click "Add relationship" before any rows exist.
 
   const nameCache = new Map<string, string>()
   async function agentName(addr: string): Promise<string> {
@@ -536,9 +538,20 @@ async function DelegationSection({ userId }: { userId: string }) {
   for (const d of incoming) await agentName(d.grantor)
   for (const d of outgoing) await agentName(d.grantee)
 
+  const isEmpty = !coachRel && disciples.length === 0 && incoming.length === 0 && outgoing.length === 0
+
   return (
     <div className="bg-white border border-outline-variant rounded-md p-5 mb-4 shadow-elevation-1">
-      <h2 className="text-label-md text-on-surface-variant uppercase tracking-wider font-bold mb-3">Relationships & Data Delegations</h2>
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-label-md text-on-surface-variant uppercase tracking-wider font-bold">Relationships & Data Delegations</h2>
+        <AddRelationshipPanel />
+      </div>
+      {isEmpty && (
+        <div className="text-body-sm text-on-surface-variant py-2">
+          No relationships yet. Use <b>+ Add relationship</b> to associate
+          with an existing agent.
+        </div>
+      )}
       {coachRel && (
         <DelegationRow icon="Coach" iconBg="#7c3aed12" iconColor="#7c3aed" name={coachRel.coachName} agentName={nameCache.get(coachRel.coachId)} detail="Coaching you" tooltip="Your mentor in this community" />
       )}
