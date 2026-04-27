@@ -26,8 +26,11 @@ import {
   agentAccountAbi, agentAccountFactoryAbi,
   agentNameRegistryAbi, agentNameResolverAbi, agentAccountResolverAbi,
   ATL_PRIMARY_NAME, ATL_NAME_LABEL,
+  TYPE_PERSON,
   namehash, namehashRoot,
 } from '@smart-agent/sdk'
+
+const ZERO_HASH = '0x0000000000000000000000000000000000000000000000000000000000000000' as `0x${string}`
 import { db, schema } from '@/db'
 import { mintSession, SESSION_COOKIE } from '@/lib/auth/native-session'
 import { getWalletClient } from '@/lib/contracts'
@@ -206,6 +209,11 @@ export async function POST(request: Request) {
   //    setAddr passes auth because deployer is the initial owner of the
   //    new smart account (registry.owner(child) is the smart account, and
   //    smart-account.isOwner(deployer) returns true).
+  //
+  //    waitForTransactionReceipt does NOT throw on a reverted tx — it
+  //    returns { status: 'reverted' }. We must check status explicitly,
+  //    otherwise a silent revert here lands the user with a deployed
+  //    account that has no .agent name and breaks sign-in.
   const accountAddrLower = accountAddr.toLowerCase() as `0x${string}`
   const agentRoot = namehashRoot('agent') as `0x${string}`
   try {
@@ -214,12 +222,18 @@ export async function POST(request: Request) {
       functionName: 'register',
       args: [agentRoot, label, accountAddr, NAME_RESOLVER, 0n],
     })
-    await publicClient.waitForTransactionReceipt({ hash: regHash })
+    const regReceipt = await publicClient.waitForTransactionReceipt({ hash: regHash })
+    if (regReceipt.status !== 'success') {
+      throw new Error(`AgentNameRegistry.register reverted (tx ${regHash})`)
+    }
     const setAddrHash = await deployerWallet.writeContract({
       address: NAME_RESOLVER, abi: agentNameResolverAbi,
       functionName: 'setAddr', args: [fullNode, accountAddr],
     })
-    await publicClient.waitForTransactionReceipt({ hash: setAddrHash })
+    const setAddrReceipt = await publicClient.waitForTransactionReceipt({ hash: setAddrHash })
+    if (setAddrReceipt.status !== 'success') {
+      throw new Error(`AgentNameResolver.setAddr reverted (tx ${setAddrHash})`)
+    }
   } catch (err) {
     // Name registration failure shouldn't strand a deployed account, but
     // it does mean the user can't sign in by name. Surface explicitly.
@@ -229,7 +243,27 @@ export async function POST(request: Request) {
     }, { status: 500 })
   }
 
-  // 4. Set the resolver display props so reverse-resolution + name display
+  // 4. Register the smart account itself in the AgentAccountResolver so
+  //    setStringProperty / getCore / etc. work for it. AgentAccountResolver
+  //    requires the agent to be `register`ed before any property writes;
+  //    otherwise NotRegistered() (0xaba47339) reverts every setStringProperty
+  //    call. Auth: AgentAccountResolver.register uses onlyAgentOwner, and
+  //    deployer is an initial owner of the freshly-created account.
+  try {
+    const regHash = await deployerWallet.writeContract({
+      address: ACCOUNT_RESOLVER, abi: agentAccountResolverAbi,
+      functionName: 'register',
+      args: [accountAddr, fullName, '', TYPE_PERSON, ZERO_HASH, ''],
+    })
+    const r = await publicClient.waitForTransactionReceipt({ hash: regHash })
+    if (r.status !== 'success') {
+      console.warn(`[passkey-signup] AgentAccountResolver.register reverted (tx ${regHash}) — display props will be unset`)
+    }
+  } catch (e) {
+    console.warn('[passkey-signup] AgentAccountResolver.register failed (non-fatal):', (e as Error).message)
+  }
+
+  // 5. Set the resolver display props so reverse-resolution + name display
   //    elsewhere in the app know what to show. Best-effort; failure here
   //    only affects display, not login.
   try {
