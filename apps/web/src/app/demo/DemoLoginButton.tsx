@@ -4,30 +4,49 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 
 /**
- * Sign in as a specific demo user via /api/demo-login. After the JWT
- * cookie lands, poll /api/system-readiness with the cookie applied so
- * the user can see exactly which step is still resolving (person agent
- * registered, orgs linked, hub resolved). When everything is green, we
- * navigate to /dashboard. When boot-seed is still mid-flight, the modal
- * shows "system not ready yet" with the current phase instead of
- * spinning silently.
+ * Demo sign-in flow with a progress dialog instead of a silent spinner:
+ *
+ *   1. Pre-flight /api/system-readiness BEFORE calling demo-login. If
+ *      the boot-seed for the community is still running, the dialog
+ *      stays in "system not ready" mode (live phase) and *no* session
+ *      is minted yet — so we never end up with a half-provisioned
+ *      cookie that bounces /dashboard back to /.
+ *   2. Once communityReady flips true, fire /api/demo-login. From here
+ *      the cookie is set; subsequent readiness fetches show user-side
+ *      items resolving (person agent registered, orgs linked, hub
+ *      resolved).
+ *   3. When userReady is true, navigate directly to the resolved hub
+ *      home (e.g. /h/catalyst/home) — bypassing /dashboard's redirect
+ *      chain to avoid the flicker the user reported.
+ *
+ * Cancel at any time bails out without leaving session state.
  */
 
 type ReadinessItem = { label: string; ok: boolean; detail?: string }
 type ReadinessPayload = {
-  infra: ReadinessItem[]
-  services: ReadinessItem[]
-  community: ReadinessItem[]
   user: ReadinessItem[]
-  infraReady: boolean
-  servicesReady: boolean
   communityReady: boolean
   userReady: boolean
-  allReady: boolean
   bootPhase: string
 }
 
-type Phase = 'idle' | 'signing-in' | 'progressing' | 'error'
+type Phase = 'idle' | 'opening' | 'progressing' | 'navigating' | 'error'
+
+// internal hub id (server-side `getUserHubId`) → URL slug
+const HUB_SLUG: Record<string, string> = {
+  catalyst: 'catalyst',
+  cil: 'mission',
+  'global-church': 'globalchurch',
+}
+
+function pickHubHomePath(user: ReadinessItem[]): string {
+  const item = user.find(i => i.label.toLowerCase().includes('hub'))
+  const m = item?.detail?.match(/hubId=([\w-]+)/)
+  const hubId = m?.[1]
+  if (!hubId || hubId === 'generic') return '/dashboard'
+  const slug = HUB_SLUG[hubId]
+  return slug ? `/h/${slug}/home` : '/dashboard'
+}
 
 export function DemoLoginButton({ userKey, accent }: { userKey: string; accent: string }) {
   const [phase, setPhase] = useState<Phase>('idle')
@@ -37,9 +56,8 @@ export function DemoLoginButton({ userKey, accent }: { userKey: string; accent: 
   const [name, setName] = useState<string>('')
   const router = useRouter()
   const cancelled = useRef(false)
+  const signedInRef = useRef(false)
 
-  // Poll readiness while in the 'progressing' phase. Stops when
-  // userReady flips true (then navigate) or when the user cancels.
   useEffect(() => {
     if (phase !== 'progressing') return
     cancelled.current = false
@@ -47,86 +65,110 @@ export function DemoLoginButton({ userKey, accent }: { userKey: string; accent: 
 
     async function tick() {
       while (!stopped && !cancelled.current) {
+        let d: ReadinessPayload | null = null
         try {
           const r = await fetch('/api/system-readiness', { cache: 'no-store' })
-          const d = await r.json() as ReadinessPayload
+          d = await r.json() as ReadinessPayload
           if (cancelled.current) return
           setReadiness(d)
-          if (d.userReady) {
+        } catch { /* network blip — keep polling */ }
+
+        // Step A — community seed must be done before we mint a session.
+        if (d?.communityReady && !signedInRef.current) {
+          try {
+            const res = await fetch('/api/demo-login', {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ userId: userKey }),
+            })
+            if (!res.ok) {
+              const j = await res.json().catch(() => ({})) as { error?: string }
+              setErr(j.error ?? `HTTP ${res.status}`)
+              setPhase('error')
+              stopped = true
+              return
+            }
+            const body = await res.json().catch(() => ({})) as { user?: { name?: string } }
+            if (body.user?.name) setName(body.user.name)
+            signedInRef.current = true
+            setSignedIn(true)
+          } catch (e) {
+            setErr(e instanceof Error ? e.message : 'demo-login failed')
+            setPhase('error')
             stopped = true
-            // Brief pause so the user sees all-green before navigation.
-            setTimeout(() => { if (!cancelled.current) router.push('/dashboard') }, 400)
             return
           }
-        } catch { /* network blip — keep polling */ }
+          // loop again immediately to refetch readiness with the cookie now set
+          continue
+        }
+
+        // Step B — user-side readiness flips true → navigate to the
+        // resolved hub home directly (no /dashboard hop).
+        if (d?.userReady && signedInRef.current) {
+          stopped = true
+          const target = pickHubHomePath(d.user)
+          setPhase('navigating')
+          // Brief pause so the user sees the all-green state.
+          setTimeout(() => { if (!cancelled.current) router.push(target) }, 350)
+          return
+        }
+
         await new Promise(res => setTimeout(res, 800))
       }
     }
     tick()
     return () => { stopped = true; cancelled.current = true }
-  }, [phase, router])
+  }, [phase, router, userKey])
 
-  async function go() {
+  function go() {
     setErr(null)
     setReadiness(null)
     setSignedIn(false)
-    setPhase('signing-in')
-    try {
-      const res = await fetch('/api/demo-login', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ userId: userKey }),
-      })
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({})) as { error?: string }
-        setErr(j.error ?? `HTTP ${res.status}`)
-        setPhase('error')
-        return
-      }
-      const body = await res.json().catch(() => ({})) as { user?: { name?: string } }
-      if (body.user?.name) setName(body.user.name)
-      setSignedIn(true)
-      setPhase('progressing')
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : 'failed')
-      setPhase('error')
-    }
+    signedInRef.current = false
+    setPhase('opening')
+    // The dialog opens synchronously; readiness polling kicks in via
+    // the effect once we transition to 'progressing'.
+    setTimeout(() => setPhase('progressing'), 0)
   }
 
   function cancel() {
     cancelled.current = true
     setPhase('idle')
     setSignedIn(false)
+    signedInRef.current = false
     setReadiness(null)
   }
+
+  const inFlight = phase !== 'idle' && phase !== 'error'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
       <button
         type="button"
         onClick={go}
-        disabled={phase === 'signing-in' || phase === 'progressing'}
+        disabled={inFlight}
         style={{
           padding: '0.3rem 0.7rem',
           background: accent, color: '#fff',
           border: 'none', borderRadius: 6,
           fontSize: 11, fontWeight: 600,
-          cursor: (phase === 'signing-in' || phase === 'progressing') ? 'wait' : 'pointer',
-          opacity: (phase === 'signing-in' || phase === 'progressing') ? 0.5 : 1,
+          cursor: inFlight ? 'wait' : 'pointer',
+          opacity: inFlight ? 0.5 : 1,
         }}
         data-testid={`demo-login-${userKey}`}
       >
-        {phase === 'signing-in' || phase === 'progressing' ? '…' : 'Sign in'}
+        {inFlight ? '…' : 'Sign in'}
       </button>
       {err && phase === 'error' && (
         <span style={{ fontSize: 10, color: '#b91c1c' }}>{err}</span>
       )}
 
-      {(phase === 'signing-in' || phase === 'progressing') && (
+      {inFlight && (
         <ProgressModal
           name={name || userKey}
           signedIn={signedIn}
           readiness={readiness}
+          phase={phase}
           accent={accent}
           onCancel={cancel}
         />
@@ -136,21 +178,15 @@ export function DemoLoginButton({ userKey, accent }: { userKey: string; accent: 
 }
 
 function ProgressModal({
-  name, signedIn, readiness, accent, onCancel,
+  name, signedIn, readiness, phase, accent, onCancel,
 }: {
   name: string
   signedIn: boolean
   readiness: ReadinessPayload | null
+  phase: Phase
   accent: string
   onCancel: () => void
 }) {
-  // Three views, in priority order:
-  //   1. Boot-seed for the whole community is still running → tell the
-  //      user the system isn't ready yet (with the live phase).
-  //   2. User-specific readiness still resolving → show the per-step
-  //      checklist so they can see what's catching up.
-  //   3. Everything ready → "Loading dashboard…" (we'll redirect in a
-  //      few hundred ms).
   const noneYet = !readiness
   const seedRunning = readiness && !readiness.communityReady
   const userResolving = readiness && readiness.communityReady && !readiness.userReady
@@ -164,8 +200,7 @@ function ProgressModal({
         position: 'fixed', inset: 0,
         background: 'rgba(15,23,42,0.55)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        zIndex: 9999,
-        padding: 16,
+        zIndex: 9999, padding: 16,
       }}
     >
       <div style={{
@@ -175,58 +210,67 @@ function ProgressModal({
         border: '1px solid #e5e7eb',
       }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 6 }}>
-          {seedRunning ? 'System not ready' : 'Connecting'}
+          {seedRunning ? 'System not ready yet' : phase === 'navigating' ? 'Loading' : 'Connecting'}
         </div>
         <h2 style={{ fontSize: 18, fontWeight: 700, color: '#0f172a', margin: '0 0 14px' }}>
           {name}
         </h2>
 
+        <Step
+          status={readiness ? 'ok' : 'pending'}
+          label="Connected to backend"
+        />
+        <Step
+          status={!readiness ? 'pending' : readiness.communityReady ? 'ok' : 'pending'}
+          label="Demo community on chain"
+          detail={readiness && !readiness.communityReady ? `phase: ${readiness.bootPhase}` : undefined}
+        />
+        <Step
+          status={signedIn ? 'ok' : seedRunning ? 'blocked' : 'pending'}
+          label="Session minted"
+        />
+
+        {/* User-readiness checklist (only shown once we have a session
+            and the cookie has had a chance to propagate). */}
+        {readiness && readiness.communityReady && signedIn && readiness.user.map((it) => (
+          <Step
+            key={it.label}
+            status={it.ok ? 'ok' : 'pending'}
+            label={it.label}
+            detail={it.detail}
+          />
+        ))}
+
         {noneYet && (
-          <Step status="pending" label="Signing in…" />
+          <div style={{ marginTop: 12, fontSize: 11, color: '#64748b' }}>
+            Checking system status…
+          </div>
         )}
 
-        {readiness && (
-          <>
-            <Step status={signedIn ? 'ok' : 'pending'} label="Signed in" />
+        {seedRunning && (
+          <div style={{ marginTop: 12, padding: '0.7rem 0.9rem', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: '#92400e', marginBottom: 4 }}>
+              Demo data is still being seeded.
+            </div>
+            <div style={{ fontSize: 11, color: '#92400e' }}>
+              Current phase: <code style={{ fontFamily: 'ui-monospace, monospace' }}>{readiness.bootPhase}</code>
+            </div>
+            <div style={{ fontSize: 11, color: '#92400e', marginTop: 4 }}>
+              Sign-in is paused until seeding finishes — the dialog will continue automatically.
+            </div>
+          </div>
+        )}
 
-            {/* User-readiness checklist (only meaningful once community-
-                seed is done — otherwise the cookie hasn't picked up the
-                fully-provisioned user yet). */}
-            {readiness.communityReady && readiness.user.map((it) => (
-              <Step
-                key={it.label}
-                status={it.ok ? 'ok' : 'pending'}
-                label={it.label}
-                detail={it.detail}
-              />
-            ))}
+        {userResolving && (
+          <div style={{ marginTop: 12, fontSize: 11, color: '#64748b' }}>
+            Resolving your on-chain agent and hub membership…
+          </div>
+        )}
 
-            {seedRunning && (
-              <div style={{ marginTop: 12, padding: '0.7rem 0.9rem', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: '#92400e', marginBottom: 4 }}>
-                  Demo data is still being seeded.
-                </div>
-                <div style={{ fontSize: 11, color: '#92400e' }}>
-                  Current phase: <code style={{ fontFamily: 'ui-monospace, monospace' }}>{readiness.bootPhase}</code>
-                </div>
-                <div style={{ fontSize: 11, color: '#92400e', marginTop: 4 }}>
-                  This usually takes a few minutes after a fresh start. The dialog will continue when seeding finishes.
-                </div>
-              </div>
-            )}
-
-            {userResolving && (
-              <div style={{ marginTop: 12, fontSize: 11, color: '#64748b' }}>
-                Resolving your on-chain agent and hub membership…
-              </div>
-            )}
-
-            {allReady && (
-              <div style={{ marginTop: 12, padding: '0.55rem 0.8rem', background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: 8, fontSize: 12, color: '#047857', fontWeight: 600 }}>
-                Ready. Loading your hub home…
-              </div>
-            )}
-          </>
+        {allReady && (
+          <div style={{ marginTop: 12, padding: '0.55rem 0.8rem', background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: 8, fontSize: 12, color: '#047857', fontWeight: 600 }}>
+            Ready. Loading your hub home…
+          </div>
         )}
 
         <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end' }}>
@@ -251,8 +295,16 @@ function ProgressModal({
   )
 }
 
-function Step({ status, label, detail }: { status: 'ok' | 'pending' | 'fail'; label: string; detail?: string }) {
-  const dot = status === 'ok' ? '#10b981' : status === 'fail' ? '#ef4444' : '#cbd5e1'
+function Step({ status, label, detail }: {
+  status: 'ok' | 'pending' | 'blocked' | 'fail'
+  label: string
+  detail?: string
+}) {
+  const dot =
+    status === 'ok' ? '#10b981' :
+    status === 'fail' ? '#ef4444' :
+    status === 'blocked' ? '#fbbf24' :
+    '#cbd5e1'
   const pulse = status === 'pending' ? { animation: 'sa-pulse 1.4s ease-in-out infinite' as const } : {}
   return (
     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '0.32rem 0' }}>
