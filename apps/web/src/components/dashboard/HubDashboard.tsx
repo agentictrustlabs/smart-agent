@@ -513,11 +513,13 @@ async function DelegationSection({ userId }: { userId: string }) {
   const { getIncomingDelegations, getOutgoingDelegations } = await import('@/lib/actions/data-delegation.action')
   const { getCoachRelationship, getDisciples } = await import('@/lib/actions/grow.action')
   const { getAgentMetadata: getMeta } = await import('@/lib/agent-metadata')
+  const { listMyRelationshipsAction } = await import('@/lib/actions/list-my-relationships.action')
 
   const incoming = await getIncomingDelegations(userId)
   const outgoing = await getOutgoingDelegations(userId)
   const coachRel = await getCoachRelationship(userId)
   const disciples = await getDisciples(userId)
+  const onChainRels = await listMyRelationshipsAction()
 
   // Always render the pane — even when empty — so the user has a place
   // to click "Add relationship" before any rows exist.
@@ -538,7 +540,7 @@ async function DelegationSection({ userId }: { userId: string }) {
   for (const d of incoming) await agentName(d.grantor)
   for (const d of outgoing) await agentName(d.grantee)
 
-  const totalCount = (coachRel ? 1 : 0) + disciples.length + incoming.length + outgoing.length
+  const totalCount = (coachRel ? 1 : 0) + disciples.length + incoming.length + outgoing.length + onChainRels.length
   const isEmpty = totalCount === 0
 
   return (
@@ -584,6 +586,31 @@ async function DelegationSection({ userId }: { userId: string }) {
           const fields = d.grants.flatMap(g => g.fields)
           return (
             <DelegationRow key={d.edgeId} icon="Shared" iconBg="#ec489912" iconColor="#ec4899" name={d.granteeName} agentName={nameCache.get(d.grantee)} detail={`You shared: ${fields.map(f => fieldLabel(f)).join(', ')}`} href="/catalyst/me/sharing" linkLabel="manage" linkColor="#ec4899" linkBorder="#ec489930" linkBg="#ec489912" tooltip="You have granted this person access to your personal data" />
+          )
+        })}
+        {onChainRels.map(r => {
+          const isPending = r.status === 1
+          const dirIcon = r.direction === 'outgoing' ? 'Out' : 'In'
+          const detail = `${r.relationshipTypeLabel}${r.roleLabels.length ? ` · ${r.roleLabels.join(', ')}` : ''}${r.direction === 'incoming' ? ' (incoming)' : ''}`
+          return (
+            <DelegationRow
+              key={r.edgeId}
+              icon={dirIcon}
+              iconBg={isPending ? '#fde68a' : '#dbeafe'}
+              iconColor={isPending ? '#92400e' : '#1d4ed8'}
+              name={r.counterpartyDisplayName}
+              agentName={r.counterpartyPrimaryName ?? undefined}
+              detail={detail}
+              badgeLabel={isPending ? 'pending' : undefined}
+              badgeColor={isPending ? '#92400e' : undefined}
+              tooltip={isPending
+                ? r.direction === 'outgoing'
+                  ? 'Awaiting counterparty confirmation'
+                  : 'Pending request from this agent — confirm on the Relationships page'
+                : `Status: ${r.statusLabel}`}
+              href={isPending && r.direction === 'incoming' ? '/relationships' : undefined}
+              linkLabel={isPending && r.direction === 'incoming' ? 'review' : undefined}
+            />
           )
         })}
       </div>
