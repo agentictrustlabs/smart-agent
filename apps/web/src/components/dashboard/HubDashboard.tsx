@@ -538,38 +538,55 @@ async function DelegationSection({ userId }: { userId: string }) {
   for (const d of incoming) await agentName(d.grantor)
   for (const d of outgoing) await agentName(d.grantee)
 
-  const isEmpty = !coachRel && disciples.length === 0 && incoming.length === 0 && outgoing.length === 0
+  const totalCount = (coachRel ? 1 : 0) + disciples.length + incoming.length + outgoing.length
+  const isEmpty = totalCount === 0
 
   return (
-    <div className="bg-white border border-outline-variant rounded-md p-5 mb-4 shadow-elevation-1">
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-label-md text-on-surface-variant uppercase tracking-wider font-bold">Relationships & Data Delegations</h2>
-        <AddRelationshipPanel />
+    <div
+      style={{
+        background: '#fff', border: '1px solid #ece6db', borderRadius: 12,
+        padding: '1rem 1.25rem', marginBottom: '1rem',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <h2 style={{
+          fontSize: '0.7rem', fontWeight: 700, color: '#9a8c7e',
+          textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0,
+        }}>Relationships &amp; Data Delegations</h2>
+        <span style={{ fontSize: 11, color: '#94a3b8' }}>
+          {totalCount} {totalCount === 1 ? 'edge' : 'edges'}
+        </span>
       </div>
-      {isEmpty && (
-        <div className="text-body-sm text-on-surface-variant py-2">
-          No relationships yet. Use <b>+ Add relationship</b> to associate
-          with an existing agent.
-        </div>
-      )}
-      {coachRel && (
-        <DelegationRow icon="Coach" iconBg="#7c3aed12" iconColor="#7c3aed" name={coachRel.coachName} agentName={nameCache.get(coachRel.coachId)} detail="Coaching you" tooltip="Your mentor in this community" />
-      )}
-      {disciples.map(d => (
-        <DelegationRow key={d.id} icon="Disciple" iconBg="#7c3aed12" iconColor="#7c3aed" name={d.discipleName} agentName={nameCache.get(d.discipleId)} detail="You coach" badgeLabel="data shared" badgeColor="#2e7d32" tooltip="You are coaching this person. They have shared personal data with you." />
-      ))}
-      {incoming.map(d => {
-        const fields = d.grants.flatMap(g => g.fields)
-        return (
-          <DelegationRow key={d.edgeId} icon="Received" iconBg="rgba(139,94,60,0.10)" iconColor="#8b5e3c" name={d.grantorName} agentName={nameCache.get(d.grantor)} detail={`Shared with you: ${fields.map(f => fieldLabel(f)).join(', ')}`} href="/catalyst/me/sharing" linkLabel="view" tooltip="This person has granted you access to their personal data" />
-        )
-      })}
-      {outgoing.map(d => {
-        const fields = d.grants.flatMap(g => g.fields)
-        return (
-          <DelegationRow key={d.edgeId} icon="Shared" iconBg="#ec489912" iconColor="#ec4899" name={d.granteeName} agentName={nameCache.get(d.grantee)} detail={`You shared: ${fields.map(f => fieldLabel(f)).join(', ')}`} href="/catalyst/me/sharing" linkLabel="manage" linkColor="#ec4899" linkBorder="#ec489930" linkBg="#ec489912" tooltip="You have granted this person access to your personal data" />
-        )
-      })}
+
+      {/* ─── New-relationship form (always visible) ───────────────── */}
+      <AddRelationshipPanel />
+
+      {/* ─── Existing relationships / delegations list ────────────── */}
+      <div style={{ marginTop: 6, paddingTop: 10, borderTop: '1px dashed #e5e7eb' }}>
+        {isEmpty && (
+          <div style={{ fontSize: 11, color: '#64748b' }}>
+            No relationships yet. Pick an agent + relationship type above and click Add.
+          </div>
+        )}
+        {coachRel && (
+          <DelegationRow icon="Coach" iconBg="#7c3aed12" iconColor="#7c3aed" name={coachRel.coachName} agentName={nameCache.get(coachRel.coachId)} detail="Coaching you" tooltip="Your mentor in this community" />
+        )}
+        {disciples.map(d => (
+          <DelegationRow key={d.id} icon="Disciple" iconBg="#7c3aed12" iconColor="#7c3aed" name={d.discipleName} agentName={nameCache.get(d.discipleId)} detail="You coach" badgeLabel="data shared" badgeColor="#2e7d32" tooltip="You are coaching this person. They have shared personal data with you." />
+        ))}
+        {incoming.map(d => {
+          const fields = d.grants.flatMap(g => g.fields)
+          return (
+            <DelegationRow key={d.edgeId} icon="Received" iconBg="rgba(139,94,60,0.10)" iconColor="#8b5e3c" name={d.grantorName} agentName={nameCache.get(d.grantor)} detail={`Shared with you: ${fields.map(f => fieldLabel(f)).join(', ')}`} href="/catalyst/me/sharing" linkLabel="view" tooltip="This person has granted you access to their personal data" />
+          )
+        })}
+        {outgoing.map(d => {
+          const fields = d.grants.flatMap(g => g.fields)
+          return (
+            <DelegationRow key={d.edgeId} icon="Shared" iconBg="#ec489912" iconColor="#ec4899" name={d.granteeName} agentName={nameCache.get(d.grantee)} detail={`You shared: ${fields.map(f => fieldLabel(f)).join(', ')}`} href="/catalyst/me/sharing" linkLabel="manage" linkColor="#ec4899" linkBorder="#ec489930" linkBg="#ec489912" tooltip="You have granted this person access to your personal data" />
+          )
+        })}
+      </div>
     </div>
   )
 }

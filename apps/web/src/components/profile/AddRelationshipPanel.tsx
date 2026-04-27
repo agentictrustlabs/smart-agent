@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   listAddressableAgentsAction,
   listRelationshipTaxonomyAction,
@@ -10,8 +11,7 @@ import {
 } from '@/lib/actions/add-relationship.action'
 
 /**
- * Inline "Add relationship" picker for the Relationships & Data Delegations
- * pane on the home dashboard.
+ * Inline "Add relationship" form.
  *
  *   • Pick any active agent in the on-chain registry (search-filterable).
  *   • Pick a relationship type (taxonomy keys from the SDK).
@@ -22,11 +22,13 @@ import {
  * the object the edge auto-confirms; otherwise the counterparty sees a
  * pending request.
  *
- * Collapsed by default — click "Add relationship" in the section
- * header to open. Closes itself on success and shows a green confirmation.
+ * Always-on (matches the My Geo Claims pane behaviour). Loads agents
+ * + taxonomy on mount; on success refreshes the parent server-component
+ * via router.refresh() so the relationship row appears immediately
+ * below the form without a full page reload.
  */
 export function AddRelationshipPanel() {
-  const [open, setOpen] = useState(false)
+  const router = useRouter()
   const [agents, setAgents] = useState<AddrAgent[] | null>(null)
   const [taxonomy, setTaxonomy] = useState<RelationshipTaxonomyRow[] | null>(null)
   const [agentFilter, setAgentFilter] = useState('')
@@ -37,9 +39,8 @@ export function AddRelationshipPanel() {
   const [info, setInfo] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
 
-  // Lazy load — only when opened.
+  // Initial load on mount.
   useEffect(() => {
-    if (!open) return
     if (agents && taxonomy) return
     start(async () => {
       const [list, tax] = await Promise.all([
@@ -54,7 +55,8 @@ export function AddRelationshipPanel() {
         if (first.roles.length > 0) setRoleKey(first.roles[0].key)
       }
     })
-  }, [open, agents, taxonomy, relTypeKey])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const filteredAgents = useMemo(() => {
     if (!agents) return []
@@ -97,113 +99,88 @@ export function AddRelationshipPanel() {
           ? `Linked to ${targetLabel} (auto-confirmed).`
           : `Sent request to ${targetLabel} — pending counterparty confirmation.`)
         setAgentAddr('')
+        // Refresh the parent server component so the new edge appears
+        // in the existing-relationships list rendered above/below us.
+        router.refresh()
       } else {
         setErr(r.error ?? 'failed')
       }
     })
   }
 
-  if (!open) {
-    return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="text-label-md font-semibold"
-        style={{
-          background: 'transparent', border: 'none',
-          color: '#3f6ee8', cursor: 'pointer',
-          padding: '0.25rem 0.5rem',
-        }}
-        data-testid="add-relationship-toggle"
-      >
-        + Add relationship
-      </button>
-    )
-  }
-
   return (
-    <div style={{ marginTop: 8, paddingTop: 10, borderTop: '1px dashed #e5e7eb' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-        <span style={{ fontSize: 11, fontWeight: 700, color: '#9a8c7e', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-          New relationship
-        </span>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <div style={{ fontSize: 11, color: '#64748b' }}>
+        Associate your person agent with another active agent. Pick a
+        relationship type + role; the edge auto-confirms when you own
+        both sides, otherwise lands as a pending request.
+      </div>
+      <input
+        type="text"
+        value={agentFilter}
+        onChange={e => setAgentFilter(e.target.value)}
+        placeholder="Filter agents by name, .agent name, or address…"
+        style={{ padding: '0.4rem 0.6rem', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 12 }}
+        data-testid="add-rel-filter"
+      />
+
+      <select
+        value={agentAddr}
+        onChange={e => setAgentAddr(e.target.value)}
+        style={{ padding: '0.4rem 0.6rem', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 12 }}
+        data-testid="add-rel-agent"
+        size={Math.min(6, Math.max(3, filteredAgents.length))}
+      >
+        {agents === null && <option>Loading agents…</option>}
+        {agents && filteredAgents.length === 0 && <option value="">No agents match</option>}
+        {filteredAgents.map(a => (
+          <option key={a.address} value={a.address}>
+            {a.displayName}{a.primaryName ? ` · ${a.primaryName}` : ''} · {a.agentTypeLabel}
+          </option>
+        ))}
+      </select>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 80px', gap: 6 }}>
+        <select
+          value={relTypeKey}
+          onChange={e => setRelTypeKey(e.target.value)}
+          style={{ padding: '0.4rem 0.6rem', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 12 }}
+          data-testid="add-rel-type"
+        >
+          {taxonomy === null && <option>Loading…</option>}
+          {taxonomy?.map(t => (
+            <option key={t.key} value={t.key}>{t.label}</option>
+          ))}
+        </select>
+        <select
+          value={roleKey}
+          onChange={e => setRoleKey(e.target.value)}
+          style={{ padding: '0.4rem 0.6rem', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 12 }}
+          data-testid="add-rel-role"
+        >
+          {availableRoles.length === 0 && <option value="">no roles</option>}
+          {availableRoles.map(r => <option key={r.key} value={r.key}>{r.label}</option>)}
+        </select>
         <button
           type="button"
-          onClick={() => { setOpen(false); setInfo(null); setErr(null) }}
-          style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: 11, cursor: 'pointer' }}
+          onClick={add}
+          disabled={pending || !agentAddr || !relTypeKey || !roleKey}
+          style={{
+            padding: '0.4rem 0.8rem',
+            background: '#3f6ee8', color: '#fff',
+            border: 'none', borderRadius: 6,
+            fontSize: 12, fontWeight: 600,
+            cursor: pending ? 'wait' : 'pointer',
+            opacity: pending ? 0.5 : 1,
+          }}
+          data-testid="add-rel-submit"
         >
-          cancel
+          {pending ? '…' : 'Add'}
         </button>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        <input
-          type="text"
-          value={agentFilter}
-          onChange={e => setAgentFilter(e.target.value)}
-          placeholder="Filter agents by name, .agent name, or address…"
-          style={{ padding: '0.4rem 0.6rem', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 12 }}
-          data-testid="add-rel-filter"
-        />
-
-        <select
-          value={agentAddr}
-          onChange={e => setAgentAddr(e.target.value)}
-          style={{ padding: '0.4rem 0.6rem', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 12 }}
-          data-testid="add-rel-agent"
-          size={Math.min(6, Math.max(3, filteredAgents.length))}
-        >
-          {agents === null && <option>Loading agents…</option>}
-          {agents && filteredAgents.length === 0 && <option value="">No agents match</option>}
-          {filteredAgents.map(a => (
-            <option key={a.address} value={a.address}>
-              {a.displayName}{a.primaryName ? ` · ${a.primaryName}` : ''} · {a.agentTypeLabel}
-            </option>
-          ))}
-        </select>
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 80px', gap: 6 }}>
-          <select
-            value={relTypeKey}
-            onChange={e => setRelTypeKey(e.target.value)}
-            style={{ padding: '0.4rem 0.6rem', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 12 }}
-            data-testid="add-rel-type"
-          >
-            {taxonomy === null && <option>Loading…</option>}
-            {taxonomy?.map(t => (
-              <option key={t.key} value={t.key}>{t.label}</option>
-            ))}
-          </select>
-          <select
-            value={roleKey}
-            onChange={e => setRoleKey(e.target.value)}
-            style={{ padding: '0.4rem 0.6rem', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 12 }}
-            data-testid="add-rel-role"
-          >
-            {availableRoles.length === 0 && <option value="">no roles</option>}
-            {availableRoles.map(r => <option key={r.key} value={r.key}>{r.label}</option>)}
-          </select>
-          <button
-            type="button"
-            onClick={add}
-            disabled={pending || !agentAddr || !relTypeKey || !roleKey}
-            style={{
-              padding: '0.4rem 0.8rem',
-              background: '#3f6ee8', color: '#fff',
-              border: 'none', borderRadius: 6,
-              fontSize: 12, fontWeight: 600,
-              cursor: pending ? 'wait' : 'pointer',
-              opacity: pending ? 0.5 : 1,
-            }}
-            data-testid="add-rel-submit"
-          >
-            {pending ? '…' : 'Add'}
-          </button>
-        </div>
-
-        {info && <span style={{ fontSize: 11, color: '#15803d' }}>{info}</span>}
-        {err && <span style={{ fontSize: 11, color: '#b91c1c' }}>{err}</span>}
-      </div>
+      {info && <span style={{ fontSize: 11, color: '#15803d' }}>{info}</span>}
+      {err && <span style={{ fontSize: 11, color: '#b91c1c' }}>{err}</span>}
     </div>
   )
 }
