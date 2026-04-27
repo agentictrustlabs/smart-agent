@@ -5,10 +5,20 @@ import { useAuth } from '@/hooks/use-auth'
 import { useRouter, usePathname } from 'next/navigation'
 
 export function WalletEventListener() {
-  const { authenticated, ready, logout, user } = useAuth()
+  const { authenticated, ready, logout, user, refresh } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
   const initialAddress = useRef<string | null>(null)
+
+  // Resync local auth state whenever the route changes. useAuth's load
+  // runs once on mount, so a sign-in that happened later (e.g. via the
+  // /demo dialog → POST /api/demo-login) leaves this component with
+  // user=null even though the session cookie is now valid. Without
+  // this resync the next SPA navigation sees authenticated=false and
+  // bounces the user to /sign-in (which redirects to /).
+  useEffect(() => {
+    refresh()
+  }, [pathname, refresh])
 
   useEffect(() => {
     if (ready && authenticated && user?.walletAddress) {
@@ -58,6 +68,7 @@ export function WalletEventListener() {
 
   useEffect(() => {
     if (!ready) return
+    if (authenticated) return
     // Public paths an unauthenticated visitor is allowed to reach. Keep this
     // in sync with PUBLIC_PATHS in middleware.ts.
     const isPublic =
@@ -68,10 +79,30 @@ export function WalletEventListener() {
       pathname.startsWith('/invite') ||
       pathname.startsWith('/demo') ||
       pathname.startsWith('/h/')
-    if (!authenticated && !isPublic) {
-      router.push('/sign-in')
-    }
-  }, [ready, authenticated, pathname, router])
+    if (isPublic) return
+
+    // Local state may be stale (the demo-login dialog mints a session
+    // cookie without resetting useAuth's mount-time fetch result). Verify
+    // with a fresh /api/auth/session before redirecting — only push to
+    // /sign-in when the server agrees we have no session.
+    let cancelled = false
+    ;(async () => {
+      try {
+        const r = await fetch('/api/auth/session', { cache: 'no-store' })
+        const body = await r.json() as { user: { id?: string } | null }
+        if (cancelled) return
+        if (body.user) {
+          // Stale local state — refresh and stay on the page.
+          refresh()
+        } else {
+          router.push('/sign-in')
+        }
+      } catch {
+        if (!cancelled) router.push('/sign-in')
+      }
+    })()
+    return () => { cancelled = true }
+  }, [ready, authenticated, pathname, router, refresh])
 
   return null
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 export interface AuthenticatedUser {
   id: string
@@ -31,7 +31,9 @@ export function useAuth() {
   const [user, setUser] = useState<AuthenticatedUser | null>(null)
   const [ready, setReady] = useState(false)
 
-  async function load() {
+  // Stable identity so consumers can put `refresh` in useEffect deps
+  // without causing infinite re-render loops.
+  const load = useCallback(async () => {
     try {
       const r = await fetch('/api/auth/session', { cache: 'no-store' })
       const body = (await r.json()) as SessionResponse
@@ -41,7 +43,7 @@ export function useAuth() {
     } finally {
       setReady(true)
     }
-  }
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -50,7 +52,7 @@ export function useAuth() {
       if (cancelled) setUser(null)
     })()
     return () => { cancelled = true }
-  }, [])
+  }, [load])
 
   return {
     user,
