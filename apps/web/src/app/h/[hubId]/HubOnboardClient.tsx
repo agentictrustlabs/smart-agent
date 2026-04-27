@@ -203,9 +203,24 @@ function ConnectStep({ hub, accent, hubSlug, error, setError }: {
   const [signupCheck, setSignupCheck] = useState<{
     valid: boolean; available: boolean; reason?: string; fullName?: string; predictedAddress?: string | null
   } | null>(null)
+  const [checking, setChecking] = useState(false)
   const [signinAgentName, setSigninAgentName] = useState('')
   const [mode, setMode] = useState<'signup' | 'signin'>('signup')
   const [pending, startPending] = useTransition()
+
+  // Progress modal state during the multi-step signup. We don't have a
+  // streaming endpoint, so the steps are advanced from the client at the
+  // boundary points we control (browser ceremony complete, server POST
+  // sent, server response received, redirect). Anything inside the
+  // server POST is treated as one bracketed phase ("Setting up on chain")
+  // because we can't introspect mid-handler progress.
+  const [signupProgress, setSignupProgress] = useState<null | {
+    fullName: string
+    predictedAddress?: string | null
+    step: 'passkey' | 'chain' | 'done' | 'error'
+    errorMessage?: string
+    serverError?: string
+  }>(null)
 
   // Debounced availability check while the user is typing. The cleanup
   // sets `cancelled` so an already-fired fetch from a previous keystroke
@@ -215,7 +230,9 @@ function ConnectStep({ hub, accent, hubSlug, error, setError }: {
   useEffect(() => {
     if (mode !== 'signup') return
     const label = signupLabel.toLowerCase().trim()
-    if (!label) { setSignupCheck(null); return }
+    if (!label) { setSignupCheck(null); setChecking(false); return }
+    setChecking(true)
+    setSignupCheck(null)
     let cancelled = false
     const ctrl = new AbortController()
     const id = setTimeout(async () => {
@@ -224,11 +241,12 @@ function ConnectStep({ hub, accent, hubSlug, error, setError }: {
         const data = await r.json()
         if (cancelled) return
         setSignupCheck(data)
+        setChecking(false)
       } catch (err) {
         if (cancelled) return
-        // AbortError from the cleanup is expected; don't show as error.
         if ((err as Error).name === 'AbortError') return
         setSignupCheck({ valid: false, available: false, reason: 'check failed' })
+        setChecking(false)
       }
     }, 400)
     return () => { cancelled = true; ctrl.abort(); clearTimeout(id) }
@@ -271,6 +289,8 @@ function ConnectStep({ hub, accent, hubSlug, error, setError }: {
     if (!signupCheck?.valid) { setError(signupCheck?.reason ?? 'invalid name format'); return }
     if (!signupCheck.available) { setError(`${signupCheck.fullName ?? label + '.agent'} is taken — try another`); return }
     const fullName = signupCheck.fullName ?? `${label}.agent`
+    const predictedAddress = signupCheck.predictedAddress ?? null
+    setSignupProgress({ fullName, predictedAddress, step: 'passkey' })
     startPending(async () => {
       try {
         const challenge = crypto.getRandomValues(new Uint8Array(32))
@@ -293,9 +313,15 @@ function ConnectStep({ hub, accent, hubSlug, error, setError }: {
             timeout: 60_000,
           },
         }) as PublicKeyCredential | null
-        if (!cred) { setError('Cancelled.'); return }
+        if (!cred) {
+          setSignupProgress(null)
+          setError('Cancelled.')
+          return
+        }
         const resp = cred.response as AuthenticatorAttestationResponse
         const parsed = parseAttestationObject(new Uint8Array(resp.attestationObject))
+        // Browser ceremony done; the multi-tx server phase begins.
+        setSignupProgress({ fullName, predictedAddress, step: 'chain' })
         const r = await fetch('/api/auth/passkey-signup', {
           method: 'POST',
           headers: { 'content-type': 'application/json', origin: window.location.origin },
@@ -307,12 +333,22 @@ function ConnectStep({ hub, accent, hubSlug, error, setError }: {
           }),
         })
         const body = await r.json()
-        if (!r.ok || !body.success) { setError(body.error ?? r.statusText); return }
+        if (!r.ok || !body.success) {
+          setSignupProgress({ fullName, predictedAddress, step: 'error', errorMessage: body.error ?? r.statusText, serverError: body.detail })
+          setError(body.error ?? r.statusText)
+          return
+        }
         const known = JSON.parse(localStorage.getItem('smart-agent.passkeys.local') ?? '[]') as Array<{ id: string; name: string }>
         known.push({ id: parsed.credentialIdBase64Url, name: fullName })
         localStorage.setItem('smart-agent.passkeys.local', JSON.stringify(known))
-        window.location.reload()
-      } catch (err) { setError((err as Error).message) }
+        setSignupProgress({ fullName, predictedAddress, step: 'done' })
+        // Brief pause so the user sees all steps complete before nav.
+        setTimeout(() => { window.location.reload() }, 600)
+      } catch (err) {
+        const msg = (err as Error).message
+        setSignupProgress({ fullName, predictedAddress, step: 'error', errorMessage: msg })
+        setError(msg)
+      }
     })
   }
 
@@ -398,46 +434,73 @@ function ConnectStep({ hub, accent, hubSlug, error, setError }: {
 
         {mode === 'signup' ? (
           <>
-            <Input
-              label="Your .agent name"
-              value={signupLabel}
-              onChange={(e) => setSignupLabel(e.target.value.toLowerCase())}
-              placeholder="e.g. richp"
-              autoCapitalize="none"
-              autoCorrect="off"
-              autoComplete="off"
-            />
-            {/* Live availability hint. Dim while empty; green if free,
-                red if taken or invalid. The predicted address shows the
-                user the counterfactual smart-account they'll deploy at. */}
-            <div style={{ fontSize: 11, color: '#475569', minHeight: 14 }}>
-              {!signupLabel.trim() ? (
-                <span style={{ color: '#94a3b8' }}>Pick the name your passkey will use to sign in.</span>
-              ) : !signupCheck ? (
-                <span style={{ color: '#94a3b8' }}>Checking…</span>
-              ) : !signupCheck.valid ? (
-                <span style={{ color: '#b91c1c' }}>{signupCheck.reason ?? 'invalid'}</span>
-              ) : !signupCheck.available ? (
-                <span style={{ color: '#b91c1c' }}>{signupCheck.fullName} is taken</span>
-              ) : (
-                <span style={{ color: '#047857' }}>
-                  {signupCheck.fullName} is available
-                  {signupCheck.predictedAddress ? (
-                    <>
-                      {' '}· will deploy at{' '}
-                      <code style={{ fontFamily: 'ui-monospace, monospace', fontSize: 10 }}>
-                        {signupCheck.predictedAddress.slice(0, 6)}…{signupCheck.predictedAddress.slice(-4)}
-                      </code>
-                    </>
-                  ) : null}
-                </span>
-              )}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <Input
+                label="Your .agent name"
+                value={signupLabel}
+                onChange={(e) => setSignupLabel(e.target.value.toLowerCase())}
+                placeholder="e.g. richp"
+                autoCapitalize="none"
+                autoCorrect="off"
+                autoComplete="off"
+                aria-invalid={signupCheck && !signupCheck.available ? 'true' : undefined}
+              />
+              {/* Live availability hint. Coloured pill so the result
+                  pops; predicted address shows the counterfactual
+                  smart-account the user will deploy at. */}
+              <div style={{ minHeight: 22, display: 'flex', alignItems: 'center' }}>
+                {!signupLabel.trim() ? (
+                  <span style={{ fontSize: 11, color: '#94a3b8' }}>
+                    Pick the name your passkey will use to sign in.
+                  </span>
+                ) : checking ? (
+                  <Pill color="#64748b" bg="#f1f5f9" border="#e2e8f0">
+                    Checking availability…
+                  </Pill>
+                ) : !signupCheck ? null : !signupCheck.valid ? (
+                  <Pill color="#b91c1c" bg="#fef2f2" border="#fecaca">
+                    {signupCheck.reason ?? 'invalid'}
+                  </Pill>
+                ) : !signupCheck.available ? (
+                  <Pill color="#b91c1c" bg="#fef2f2" border="#fecaca">
+                    {signupCheck.fullName} is taken — try another
+                  </Pill>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <Pill color="#047857" bg="#ecfdf5" border="#a7f3d0">
+                      ✓ {signupCheck.fullName} is available
+                    </Pill>
+                    {signupCheck.predictedAddress && (
+                      <span style={{ fontSize: 10, color: '#64748b', paddingLeft: 2 }}>
+                        Will deploy at{' '}
+                        <code style={{ fontFamily: 'ui-monospace, monospace' }}>
+                          {signupCheck.predictedAddress.slice(0, 6)}…{signupCheck.predictedAddress.slice(-4)}
+                        </code>
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
             <button
               type="button"
               onClick={onPasskeySignup}
-              disabled={pending || !signupCheck?.available}
-              style={authButtonStyle(accent, '#fff')}
+              // Gate strictly on a confirmed-available result. While
+              // checking, while invalid, while taken — disabled.
+              disabled={pending || checking || !signupCheck?.valid || !signupCheck?.available}
+              title={
+                pending ? 'Setting up…' :
+                checking ? 'Waiting for the availability check' :
+                !signupCheck ? 'Type a name above' :
+                !signupCheck.valid ? signupCheck.reason :
+                !signupCheck.available ? `${signupCheck.fullName} is taken` :
+                undefined
+              }
+              style={{
+                ...authButtonStyle(accent, '#fff'),
+                opacity: (pending || checking || !signupCheck?.available) ? 0.5 : 1,
+                cursor: (pending || checking || !signupCheck?.available) ? 'not-allowed' : 'pointer',
+              }}
               data-testid="hub-onboard-passkey-signup"
             >
               {pending ? 'Setting up…' : 'Sign up with Passkey'}
@@ -481,7 +544,168 @@ function ConnectStep({ hub, accent, hubSlug, error, setError }: {
       </div>
 
       {error && <ErrorBox text={error} />}
+
+      {signupProgress && (
+        <SignupProgressModal
+          fullName={signupProgress.fullName}
+          predictedAddress={signupProgress.predictedAddress ?? null}
+          step={signupProgress.step}
+          errorMessage={signupProgress.errorMessage}
+          accent={accent}
+          onDismiss={() => setSignupProgress(null)}
+        />
+      )}
     </Card>
+  )
+}
+
+// ─── Pill ───────────────────────────────────────────────────────────
+
+function Pill({ color, bg, border, children }: { color: string; bg: string; border: string; children: React.ReactNode }) {
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center',
+      padding: '0.18rem 0.55rem',
+      borderRadius: 999,
+      background: bg, color, border: `1px solid ${border}`,
+      fontSize: 11, fontWeight: 600,
+    }}>{children}</span>
+  )
+}
+
+// ─── Signup Progress Modal ──────────────────────────────────────────
+
+function SignupProgressModal({
+  fullName, predictedAddress, step, errorMessage, accent, onDismiss,
+}: {
+  fullName: string
+  predictedAddress: string | null
+  step: 'passkey' | 'chain' | 'done' | 'error'
+  errorMessage?: string
+  accent: string
+  onDismiss: () => void
+}) {
+  // The on-chain phase is one server POST that does several things —
+  // we can't see mid-handler state, but we can fade-cycle a list of
+  // known sub-steps so the user feels progress instead of a frozen "…".
+  const chainSubsteps = [
+    'Deploying agent contract',
+    'Adding passkey to agent',
+    'Registering ' + fullName,
+    'Setting display name',
+    'Signing in',
+  ]
+  const [chainIdx, setChainIdx] = useState(0)
+  useEffect(() => {
+    if (step !== 'chain') return
+    setChainIdx(0)
+    const id = setInterval(() => {
+      setChainIdx((i) => Math.min(i + 1, chainSubsteps.length - 1))
+    }, 1500)
+    return () => clearInterval(id)
+  }, [step, chainSubsteps.length])
+
+  const steps: Array<{ label: string; status: 'ok' | 'pending' | 'fail' | 'idle' }> = [
+    {
+      label: 'Creating passkey on this device',
+      status: step === 'passkey' ? 'pending' : step === 'error' && !errorMessage?.includes('chain') ? 'fail' : 'ok',
+    },
+    ...chainSubsteps.map((label, i) => {
+      let status: 'ok' | 'pending' | 'fail' | 'idle' = 'idle'
+      if (step === 'done') status = 'ok'
+      else if (step === 'error') status = i < chainIdx ? 'ok' : i === chainIdx ? 'fail' : 'idle'
+      else if (step === 'chain') status = i < chainIdx ? 'ok' : i === chainIdx ? 'pending' : 'idle'
+      else status = 'idle'
+      return { label, status }
+    }),
+  ]
+
+  return (
+    <div role="dialog" aria-label="Signup progress" style={{
+      position: 'fixed', inset: 0,
+      background: 'rgba(15,23,42,0.55)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      zIndex: 9999, padding: 16,
+    }}>
+      <div style={{
+        background: '#fff', borderRadius: 14, padding: '1.4rem 1.5rem',
+        maxWidth: 460, width: '100%',
+        boxShadow: '0 20px 60px rgba(15,23,42,0.30)',
+        border: '1px solid #e5e7eb',
+      }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 6 }}>
+          {step === 'done' ? 'All set' : step === 'error' ? 'Signup failed' : 'Setting up'}
+        </div>
+        <h2 style={{ fontSize: 18, fontWeight: 700, color: '#0f172a', margin: '0 0 4px' }}>{fullName}</h2>
+        {predictedAddress && (
+          <div style={{ fontSize: 11, color: '#94a3b8', fontFamily: 'ui-monospace, monospace', marginBottom: 12 }}>
+            {predictedAddress.slice(0, 6)}…{predictedAddress.slice(-4)}
+          </div>
+        )}
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+          {steps.map((s) => (
+            <SignupStep key={s.label} status={s.status} label={s.label} />
+          ))}
+        </div>
+
+        {step === 'error' && (
+          <div style={{ marginTop: 12, padding: '0.55rem 0.8rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, fontSize: 12, color: '#b91c1c' }}>
+            {errorMessage ?? 'Unknown error'}
+          </div>
+        )}
+
+        {step === 'done' && (
+          <div style={{ marginTop: 12, padding: '0.55rem 0.8rem', background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: 8, fontSize: 12, color: '#047857', fontWeight: 600 }}>
+            Welcome, {fullName}. Loading your hub home…
+          </div>
+        )}
+
+        {(step === 'error' || step === 'done') && (
+          <div style={{ marginTop: 14, display: 'flex', justifyContent: 'flex-end' }}>
+            <button
+              type="button"
+              onClick={onDismiss}
+              style={{
+                padding: '0.45rem 0.9rem', background: 'transparent',
+                color: accent, border: `1px solid ${accent}55`,
+                borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+              }}
+            >
+              {step === 'error' ? 'Close' : 'Dismiss'}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function SignupStep({ status, label }: { status: 'ok' | 'pending' | 'fail' | 'idle'; label: string }) {
+  const dot =
+    status === 'ok' ? '#10b981' :
+    status === 'fail' ? '#ef4444' :
+    status === 'pending' ? '#3f6ee8' :
+    '#cbd5e1'
+  const pulse = status === 'pending' ? { animation: 'sa-pulse 1.4s ease-in-out infinite' as const } : {}
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0.32rem 0' }}>
+      <span aria-hidden style={{
+        width: 10, height: 10, borderRadius: '50%',
+        background: dot, flexShrink: 0, ...pulse,
+      }} />
+      <span style={{
+        fontSize: 13,
+        color: status === 'idle' ? '#94a3b8' : '#0f172a',
+        fontWeight: status === 'pending' ? 600 : 500,
+      }}>{label}</span>
+      <style jsx>{`
+        @keyframes sa-pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.35; }
+        }
+      `}</style>
+    </div>
   )
 }
 
