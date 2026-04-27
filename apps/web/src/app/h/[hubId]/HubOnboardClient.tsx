@@ -217,7 +217,7 @@ function ConnectStep({ hub, accent, hubSlug, error, setError }: {
   const [signupProgress, setSignupProgress] = useState<null | {
     fullName: string
     predictedAddress?: string | null
-    step: 'passkey' | 'chain' | 'done' | 'error'
+    step: 'passkey' | 'chain' | 'agent' | 'done' | 'error'
     errorMessage?: string
     serverError?: string
   }>(null)
@@ -344,6 +344,63 @@ function ConnectStep({ hub, accent, hubSlug, error, setError }: {
         const known = JSON.parse(localStorage.getItem('smart-agent.passkeys.local') ?? '[]') as Array<{ id: string; name: string }>
         known.push({ id: parsed.credentialIdBase64Url, name: fullName })
         localStorage.setItem('smart-agent.passkeys.local', JSON.stringify(known))
+
+        // Bootstrap the A2A session right now so the profile / anoncred
+        // surfaces don't pop another OS prompt the moment the user lands
+        // on the dashboard. Two-step: server prepares an unsigned
+        // delegation, we sign its hash with the just-created passkey,
+        // server finalizes. Best-effort — if the bootstrap fails the
+        // user can retry from the profile page.
+        setSignupProgress({ fullName, predictedAddress, step: 'agent' })
+        try {
+          const initRes = await fetch('/api/a2a/bootstrap/client', { method: 'POST' })
+          if (initRes.ok) {
+            const { delegationHash, sessionId, delegation } = await initRes.json() as {
+              delegationHash: string; sessionId: string; delegation: unknown
+            }
+            const challengeBytes = base64UrlDecode(delegationHash.startsWith('0x') ? delegationHash.slice(2) : delegationHash)
+            // delegationHash is hex, not base64url — convert via hex bytes:
+            const hex = delegationHash.startsWith('0x') ? delegationHash.slice(2) : delegationHash
+            const hashBytes = new Uint8Array(hex.length / 2)
+            for (let i = 0; i < hashBytes.length; i++) hashBytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16)
+            void challengeBytes // (kept variable for clarity; we use hashBytes)
+            const challengeAb = new ArrayBuffer(hashBytes.length)
+            new Uint8Array(challengeAb).set(hashBytes)
+
+            // Constrain the picker to the credential we just created.
+            const credIdBytes = base64UrlDecode(parsed.credentialIdBase64Url)
+            const credIdAb = new ArrayBuffer(credIdBytes.length)
+            new Uint8Array(credIdAb).set(credIdBytes)
+
+            const cred = await navigator.credentials.get({
+              publicKey: {
+                challenge: challengeAb,
+                rpId: window.location.hostname,
+                userVerification: 'preferred',
+                timeout: 60_000,
+                allowCredentials: [{ type: 'public-key', id: credIdAb }],
+              },
+            }) as PublicKeyCredential | null
+            if (cred) {
+              const aresp = cred.response as AuthenticatorAssertionResponse
+              const passkeySig = packWebAuthnSignature({
+                credentialIdBytes: new Uint8Array(cred.rawId),
+                authenticatorData: new Uint8Array(aresp.authenticatorData),
+                clientDataJSON: new Uint8Array(aresp.clientDataJSON),
+                derSignature: new Uint8Array(aresp.signature),
+              })
+              const taggedSig = ('0x01' + passkeySig.slice(2)) as `0x${string}`
+              await fetch('/api/a2a/bootstrap/complete', {
+                method: 'POST',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ sessionId, delegation, delegationSignature: taggedSig }),
+              })
+            }
+          }
+        } catch (e) {
+          console.warn('[passkey-signup] A2A bootstrap failed (non-fatal):', (e as Error).message)
+        }
+
         setSignupProgress({ fullName, predictedAddress, step: 'done' })
         // Brief pause so the user sees all steps complete before nav.
         setTimeout(() => { window.location.reload() }, 600)
@@ -585,7 +642,7 @@ function SignupProgressModal({
 }: {
   fullName: string
   predictedAddress: string | null
-  step: 'passkey' | 'chain' | 'done' | 'error'
+  step: 'passkey' | 'chain' | 'agent' | 'done' | 'error'
   errorMessage?: string
   accent: string
   onDismiss: () => void
@@ -617,12 +674,16 @@ function SignupProgressModal({
     },
     ...chainSubsteps.map((label, i) => {
       let status: 'ok' | 'pending' | 'fail' | 'idle' = 'idle'
-      if (step === 'done') status = 'ok'
+      if (step === 'done' || step === 'agent') status = 'ok'
       else if (step === 'error') status = i < chainIdx ? 'ok' : i === chainIdx ? 'fail' : 'idle'
       else if (step === 'chain') status = i < chainIdx ? 'ok' : i === chainIdx ? 'pending' : 'idle'
       else status = 'idle'
       return { label, status }
     }),
+    {
+      label: 'Connecting your agent (A2A session)',
+      status: step === 'done' ? 'ok' : step === 'agent' ? 'pending' : 'idle',
+    },
   ]
 
   return (

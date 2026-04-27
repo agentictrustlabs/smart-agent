@@ -30,7 +30,7 @@ type ReadinessPayload = {
   bootPhase: string
 }
 
-type Phase = 'idle' | 'opening' | 'progressing' | 'navigating' | 'error'
+type Phase = 'idle' | 'opening' | 'progressing' | 'connecting-agent' | 'navigating' | 'error'
 
 // internal hub id (server-side `getUserHubId`) → URL slug
 const HUB_SLUG: Record<string, string> = {
@@ -54,6 +54,7 @@ export function DemoLoginButton({ userKey, accent }: { userKey: string; accent: 
   const [readiness, setReadiness] = useState<ReadinessPayload | null>(null)
   const [signedIn, setSignedIn] = useState(false)
   const [name, setName] = useState<string>('')
+  const [agentConnected, setAgentConnected] = useState(false)
   const [navTarget, setNavTarget] = useState<string | null>(null)
   const router = useRouter()
   // userCancelled is a *user-action* flag (Cancel button only). The polling
@@ -107,9 +108,26 @@ export function DemoLoginButton({ userKey, accent }: { userKey: string; accent: 
           continue
         }
 
-        // Step B — user-side readiness flips true → hand off to the
-        // navigation effect by setting navTarget. Polling stops here.
+        // Step B — user-side readiness flips true → bootstrap the A2A
+        // session BEFORE navigating, so the profile / anoncred surfaces
+        // don't pop a fresh prompt the moment the user lands.
+        // Demo users have a stored privateKey, so this is a server-only
+        // sign + an httpOnly cookie set on the response. No UI prompt.
         if (d?.userReady && signedInRef.current) {
+          setPhase('connecting-agent')
+          try {
+            const r = await fetch('/api/a2a/bootstrap', { method: 'POST' })
+            const body = await r.json().catch(() => ({})) as { success?: boolean; error?: string }
+            if (!body.success) {
+              // Don't fail the whole login — log it and continue. Profile
+              // page will retry lazily if the cookie isn't set.
+              console.warn('[demo-login] A2A bootstrap failed (non-fatal):', body.error)
+            } else {
+              setAgentConnected(true)
+            }
+          } catch (e) {
+            console.warn('[demo-login] A2A bootstrap threw:', (e as Error).message)
+          }
           setNavTarget(pickHubHomePath(d.user))
           setPhase('navigating')
           return
@@ -183,6 +201,7 @@ export function DemoLoginButton({ userKey, accent }: { userKey: string; accent: 
         <ProgressModal
           name={name || userKey}
           signedIn={signedIn}
+          agentConnected={agentConnected}
           readiness={readiness}
           phase={phase}
           accent={accent}
@@ -194,10 +213,11 @@ export function DemoLoginButton({ userKey, accent }: { userKey: string; accent: 
 }
 
 function ProgressModal({
-  name, signedIn, readiness, phase, accent, onCancel,
+  name, signedIn, agentConnected, readiness, phase, accent, onCancel,
 }: {
   name: string
   signedIn: boolean
+  agentConnected: boolean
   readiness: ReadinessPayload | null
   phase: Phase
   accent: string
@@ -256,6 +276,16 @@ function ProgressModal({
             detail={it.detail}
           />
         ))}
+
+        {/* A2A session bootstrap — fires once the user is fully ready.
+            Demo users sign server-side (no prompt); the cookie that lands
+            here is what /catalyst/me uses to skip the bootstrap modal. */}
+        {readiness?.userReady && (
+          <Step
+            status={agentConnected ? 'ok' : 'pending'}
+            label="Connecting your agent (A2A session)"
+          />
+        )}
 
         {noneYet && (
           <div style={{ marginTop: 12, fontSize: 11, color: '#64748b' }}>
