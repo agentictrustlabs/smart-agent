@@ -4,7 +4,7 @@
  * (building the witness path that proves their private cell sits
  * under that root).
  *
- * Bound to the same primitives the H3MembershipInCoverageRoot Circom
+ * Bound to the same primitives the GeoH3Inclusion Circom
  * circuit uses:
  *   • H3 res-6 covering cells, sorted by their H3 string id (ascending).
  *   • Poseidon-1(cell) leaf hash.
@@ -82,7 +82,7 @@ function nextPow2(n: number): number {
  *   the same root (canonical encoding).
  *
  *   `depth` defaults to 16 to match the circuit's
- *   `H3MembershipInCoverageRoot(16)`.
+ *   `GeoH3Inclusion(16)`.
  */
 export async function buildCoverageMerkleTree(
   cells: string[],
@@ -106,14 +106,28 @@ export async function buildCoverageMerkleTree(
     cur = next
   }
 
-  // Pad up to fixed `depth`. If the tree is naturally smaller than
-  // depth, climb upward by hashing root-with-zero so a path of length
-  // `depth` always exists. This way every prover produces a path of
-  // identical length and the circuit's MERKLE_DEPTH stays static.
+  // Pad up to fixed `depth`. Each padding iteration combines the
+  // current root with a zero-subtree sibling at the same height, then
+  // promotes the result to the next level. Two invariants make
+  // proveMembership and the Circom circuit agree on what to climb:
+  //
+  //   1. The sibling hash MUST equal the Poseidon root of an all-zero
+  //      subtree of the same height as the running root being padded.
+  //      Off-by-one here was the bug: zeroHashAtLayer(level) returns
+  //      the root of a height-`level` subtree, so when we promote
+  //      from level L to L+1 the sibling must be zeroHashAtLayer(L).
+  //   2. The padded layer must store BOTH children (root + zero
+  //      sibling) so proveMembership's `layer[idx+1]` lookup yields
+  //      the same sibling. Storing only [newRoot] would force callers
+  //      to special-case padded levels.
   let root = layers[layers.length - 1][0]
   while (layers.length - 1 < depth) {
-    const zeroHash = await zeroHashAtLayer(layers.length, p)
-    root = p([root, zeroHash])
+    const heightOfRoot = layers.length - 1
+    const sibling = await zeroHashAtLayer(heightOfRoot, p)
+    // Update the existing top layer to expose the sibling beside the
+    // root. proveMembership reads layer[1] as the sibling for idx=0.
+    layers[layers.length - 1] = [root, sibling]
+    root = p([root, sibling])
     layers.push([root])
   }
 
@@ -122,7 +136,7 @@ export async function buildCoverageMerkleTree(
 
 /** Hash of an all-zero subtree of height `level` — used for padding. */
 async function zeroHashAtLayer(level: number, p: (inputs: bigint[]) => bigint): Promise<bigint> {
-  let h = p([0n])  // leaf-level zero
+  let h = p([0n])  // leaf-level zero (height 0)
   for (let i = 1; i <= level; i++) h = p([h, h])
   return h
 }

@@ -38,7 +38,7 @@ import "../src/CredentialRegistry.sol";
 import "../src/DaimoP256Verifier.sol";
 import "../src/GeoFeatureRegistry.sol";
 import "../src/GeoClaimRegistry.sol";
-import "../src/zk/H3MembershipVerifier.sol";
+import "../src/zk/GeoH3InclusionVerifier.sol";
 import "account-abstraction/interfaces/IEntryPoint.sol";
 import "account-abstraction/core/EntryPoint.sol";
 
@@ -224,12 +224,14 @@ contract Deploy is Script {
         GeoClaimRegistry geoClaims = new GeoClaimRegistry(geoFeatures);
         console.log("GeoClaimRegistry:", address(geoClaims));
 
-        // ─── ZK verifier for H3MembershipInCoverageRoot ────────────────
+        // ─── ZK verifier for geo H3 inclusion ──────────────────────────
         // snarkjs-generated groth16 verifier; the holder wallet (Phase 6)
         // submits proofs against this contract to prove their private H3
-        // cell sits under a feature's h3CoverageRoot without revealing it.
-        H3MembershipVerifier h3Verifier = new H3MembershipVerifier();
-        console.log("H3MembershipVerifier:", address(h3Verifier));
+        // cell is included under a feature's h3CoverageRoot without
+        // revealing the cell. Renamed from H3Membership* to avoid
+        // confusion with org-membership relationships.
+        GeoH3InclusionVerifier geoH3Verifier = new GeoH3InclusionVerifier();
+        console.log("GeoH3InclusionVerifier:", address(geoH3Verifier));
 
         // ─── Seed ontology predicates ─────────────────────────────────
         // AgentAccountResolver rejects any setStringProperty / addMulti…
@@ -295,7 +297,7 @@ contract Deploy is Script {
         _logEnv("P256_VERIFIER_ADDRESS", address(verifier));
         _logEnv("GEO_FEATURE_REGISTRY_ADDRESS", address(geoFeatures));
         _logEnv("GEO_CLAIM_REGISTRY_ADDRESS", address(geoClaims));
-        _logEnv("H3_MEMBERSHIP_VERIFIER_ADDRESS", address(h3Verifier));
+        _logEnv("GEO_H3_INCLUSION_VERIFIER_ADDRESS", address(geoH3Verifier));
     }
 
     function _logEnv(string memory key, address addr) internal pure {

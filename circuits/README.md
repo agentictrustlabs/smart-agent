@@ -2,7 +2,7 @@
 
 This workspace owns the **zero-knowledge circuits** that back private
 geo-claim matching in the trust-overlap system. The headline circuit is
-`H3MembershipInCoverageRoot`: a holder proves that their (private) H3
+`GeoH3Inclusion`: a holder proves that their (private) H3
 cell at resolution 8 sits under the (public) H3 coverage root of a
 geographic feature at resolution 6, **without revealing the cell**.
 
@@ -75,7 +75,7 @@ pnpm install --filter @smart-agent/circuits
 pnpm --filter @smart-agent/circuits compile
 
 # Generate Solidity verifier for a circuit and copy to packages/contracts/
-pnpm --filter @smart-agent/circuits verifier h3-membership
+pnpm --filter @smart-agent/circuits verifier geo-h3-inclusion
 ```
 
 Compiled artifacts live in `build/<circuit-name>/`. The exported Solidity
@@ -84,7 +84,7 @@ only ZK output that ends up in git.
 
 ## Threat model & circuit invariants
 
-The `H3MembershipInCoverageRoot` circuit must:
+The `GeoH3Inclusion` circuit must:
 1. **Hide the holder's H3 cell.** Public inputs are only the feature's
    coverage root and the policy / featureVersion identifiers; the cell
    index, parent path, and Merkle siblings are private witnesses.
@@ -99,5 +99,5 @@ The `H3MembershipInCoverageRoot` circuit must:
    `featureVersion`; verifiers reject proofs whose version is older than
    the feature's `latestVersion` (post-deactivation).
 
-These invariants are exercised by `scripts/h3-membership.test.mjs`
+These invariants are exercised by `scripts/geo-h3-inclusion.test.mjs`
 against synthetic Erie/Colorado fixtures — see Phase 6 implementation.

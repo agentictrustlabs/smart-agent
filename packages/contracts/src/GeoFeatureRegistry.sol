@@ -17,7 +17,7 @@ import "./AgentNameRegistry.sol";
  *   • h3CoverageRoot (bytes32)             — Merkle root over the H3 cells
  *                                             (resolution 6 default) covering
  *                                             this feature's geometry. Used
- *                                             by `H3MembershipInCoverageRoot`
+ *                                             by `GeoH3Inclusion`
  *                                             ZK proofs for private claim
  *                                             matching without revealing
  *                                             the holder's exact H3 cell.

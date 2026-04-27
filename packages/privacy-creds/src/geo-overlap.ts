@@ -196,7 +196,7 @@ function canon(value: unknown): string {
 
 /**
  * Commit over (callerCoarse, candidateCoarse, matchedClaimRelations,
- * weightOverrides, policyId). The H3MembershipInCoverageRoot circuit
+ * weightOverrides, policyId). The GeoH3Inclusion circuit
  * (Phase 6) will compute this exact digest from the public preimage so
  * a ZK proof can target it without any further off-chain reconstruction.
  */

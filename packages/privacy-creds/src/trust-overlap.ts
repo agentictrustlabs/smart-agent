@@ -136,7 +136,7 @@ export function hashMatchBody(body: MatchAgainstPublicSetBody): `0x${string}` {
  *
  *   ⚠ The holder's H3 cell, exact lat/long, and any residency
  *     credentials remain private. The Phase 6 ZK circuit
- *     `H3MembershipInCoverageRoot` produces the proof; this body
+ *     `GeoH3Inclusion` produces the proof; this body
  *     describes what the proof must satisfy and the public output
  *     is just `{score, evidenceCommit}`.
  */

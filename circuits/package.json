@@ -7,14 +7,17 @@
     "compile": "node ./scripts/compile-all.mjs",
     "ptau:download": "node ./scripts/ptau-download.mjs",
     "verifier": "node ./scripts/export-verifier.mjs",
-    "test": "node --test ./scripts/*.test.mjs"
+    "prove:test": "tsx ./scripts/test-prove.mts",
+    "test": "tsx ./scripts/test-prove.mts"
   },
   "dependencies": {
     "snarkjs": "^0.7.4",
     "circomlib": "^2.0.5",
-    "circomlibjs": "^0.1.7"
+    "circomlibjs": "^0.1.7",
+    "h3-js": "^4.1.0"
   },
   "devDependencies": {
-    "@types/node": "^22.0.0"
+    "@types/node": "^22.0.0",
+    "tsx": "^4.0.0"
   }
 }

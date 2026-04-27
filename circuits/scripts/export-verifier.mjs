@@ -87,3 +87,12 @@ copyFileSync(outFile, join(stage, `${className}.sol`))
 // Compatibility hint: the on-chain MatchAgainstPublicGeoSet flow will
 // import this verifier by class name. Phase 6 wires the import.
 console.log(`\nnext: wire ${className} into MatchAgainstPublicGeoSet`)
+
+// Also export the verification key so off-chain provers can self-verify
+// before submitting on chain (saves a tx round-trip when the witness is
+// invalid). Lands at build/<name>/verification_key.json — gitignored.
+console.log(`→ exporting verification key`)
+const vKey = await snarkjs.zKey.exportVerificationKey(zkey1)
+const { writeFileSync: wfs } = await import('node:fs')
+wfs(join(buildDir, 'verification_key.json'), JSON.stringify(vKey, null, 2))
+console.log(`  ✓ ${join(buildDir, 'verification_key.json')}`)
