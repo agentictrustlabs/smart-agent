@@ -64,12 +64,14 @@ export default function DemoLoginPage() {
           return (
             <section
               key={hubKey}
+              id={`hub-${hubKey}`}
               style={{
                 marginBottom: 20,
                 background: meta.bg,
                 border: `1px solid ${meta.border}`,
                 borderRadius: 16,
                 padding: '1rem 1.25rem',
+                scrollMarginTop: 16,
               }}
             >
               <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 }}>

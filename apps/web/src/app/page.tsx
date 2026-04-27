@@ -66,10 +66,9 @@ export default function HomePage() {
         <section className="mt-8">
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
             {HUB_LANDING_CONFIGS.map((hub) => (
-              <Link
+              <div
                 key={hub.slug}
-                href={`/h/${hub.slug}`}
-                className="group block overflow-hidden rounded-[28px] border no-underline shadow-[0_16px_40px_rgba(34,43,68,0.08)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_22px_52px_rgba(34,43,68,0.14)]"
+                className="group block overflow-hidden rounded-[28px] border shadow-[0_16px_40px_rgba(34,43,68,0.08)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_22px_52px_rgba(34,43,68,0.14)]"
                 style={{
                   background: hub.heroGradient,
                   borderColor: `${hub.color}20`,
@@ -102,18 +101,29 @@ export default function HomePage() {
                     {hub.description}
                   </p>
 
-                  <div className="mt-8 flex items-center justify-between">
-                    <div className="text-sm font-medium text-[#677089]">{hub.demoUsers.length} demo users</div>
-                    <div
-                      className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold"
+                  <div className="mt-8 flex items-center justify-between gap-2">
+                    <Link
+                      href={`/demo#hub-${hub.hubId}`}
+                      className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold no-underline transition"
+                      style={{
+                        background: 'rgba(255,255,255,0.55)',
+                        color: hub.color,
+                        border: `1px solid ${hub.color}30`,
+                      }}
+                    >
+                      {hub.demoUsers.length} demo users →
+                    </Link>
+                    <Link
+                      href={`/h/${hub.slug}`}
+                      className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold no-underline transition"
                       style={{ background: 'rgba(255,255,255,0.74)', color: hub.color }}
                     >
                       Open hub
                       <span aria-hidden="true">→</span>
-                    </div>
+                    </Link>
                   </div>
                 </div>
-              </Link>
+              </div>
             ))}
           </div>
         </section>

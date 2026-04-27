@@ -57,6 +57,7 @@ export function WalletEventListener() {
       pathname.startsWith('/sign-up') ||
       pathname.startsWith('/recover') ||
       pathname.startsWith('/invite') ||
+      pathname.startsWith('/demo') ||
       pathname.startsWith('/h/')
     if (!authenticated && !isPublic) {
       router.push('/sign-in')
