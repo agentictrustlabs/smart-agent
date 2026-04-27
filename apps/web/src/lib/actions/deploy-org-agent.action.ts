@@ -3,11 +3,12 @@
 import { db, schema } from '@/db'
 import { eq } from 'drizzle-orm'
 import { requireSession } from '@/lib/auth/session'
-import { deploySmartAccount, getPublicClient, getWalletClient } from '@/lib/contracts'
-import { agentControlAbi } from '@smart-agent/sdk'
+import { deploySmartAccount, getPublicClient, getWalletClient, createRelationship, confirmRelationship } from '@/lib/contracts'
+import { agentControlAbi, ORGANIZATION_GOVERNANCE, ROLE_OWNER } from '@smart-agent/sdk'
 import { keccak256, encodePacked } from 'viem'
 import { registerAgentMetadata } from '@/lib/actions/agent-metadata.action'
 import { addAgentController } from '@/lib/agent-resolver'
+import { scheduleKbSync } from '@/lib/ontology/kb-write-through'
 
 export interface DeployOrgAgentInput {
   name: string
@@ -113,6 +114,27 @@ export async function deployOrgAgent(
       agentType: 'org',
     })
     await addAgentController(smartAccountAddress, ownerAddress)
+
+    // Mint an on-chain ORGANIZATION_GOVERNANCE + ROLE_OWNER edge from the
+    // user's person agent → the new org. Mirrors the seed flow: ownership
+    // becomes visible in the trust graph and getControlledAgentsForUser can
+    // surface a Confirm button on /relationships even if the controller list
+    // is later modified. Best-effort: missing person agent or chain hiccup
+    // shouldn't block the deploy.
+    if (user.personAgentAddress) {
+      try {
+        const edgeId = await createRelationship({
+          subject: user.personAgentAddress as `0x${string}`,
+          object: smartAccountAddress as `0x${string}`,
+          roles: [ROLE_OWNER],
+          relationshipType: ORGANIZATION_GOVERNANCE,
+        })
+        await confirmRelationship(edgeId)
+        scheduleKbSync()
+      } catch (e) {
+        console.warn('Owner edge mint failed (non-fatal):', (e as Error).message)
+      }
+    }
 
     return { success: true, agentId: smartAccountAddress, smartAccountAddress }
   } catch (error) {
