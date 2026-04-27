@@ -100,6 +100,77 @@ export interface MintGeoClaimInput {
   confidence: number    // 0..100
 }
 
+export interface MyGeoClaimRow {
+  claimId: `0x${string}`
+  featureId: `0x${string}`
+  featureLabel: string         // e.g. "fortcollins.colorado.us.geo"
+  relation: GeoRelation | string
+  visibility: 'Public' | 'PublicCoarse' | 'PrivateCommitment' | 'PrivateZk' | 'OffchainOnly'
+  confidence: number
+  createdAt: number            // unix seconds
+  revoked: boolean
+}
+
+const REL_LABEL_BY_HASH: Record<string, GeoRelation> = Object.fromEntries(
+  (Object.keys(REL_HASH) as GeoRelation[]).map(r => [REL_HASH[r].toLowerCase(), r]),
+)
+
+const VIS_LABELS = ['Public', 'PublicCoarse', 'PrivateCommitment', 'PrivateZk', 'OffchainOnly'] as const
+
+/** List the caller's public geo claims, with feature label resolved via metadataURI. */
+export async function listMyGeoClaimsAction(): Promise<MyGeoClaimRow[]> {
+  const me = await getCurrentUser()
+  if (!me) return []
+  const personAgent = (await getPersonAgentForUser(me.id)) as `0x${string}` | null
+  if (!personAgent) return []
+  const claimReg = process.env.GEO_CLAIM_REGISTRY_ADDRESS as `0x${string}` | undefined
+  const featReg  = process.env.GEO_FEATURE_REGISTRY_ADDRESS as `0x${string}` | undefined
+  if (!claimReg || !featReg) return []
+
+  const client = getPublicClient()
+  let claimIds: `0x${string}`[] = []
+  try {
+    claimIds = (await client.readContract({
+      address: claimReg, abi: geoClaimRegistryAbi,
+      functionName: 'claimsBySubject', args: [personAgent],
+    })) as `0x${string}`[]
+  } catch { return [] }
+
+  const out: MyGeoClaimRow[] = []
+  for (const cid of claimIds) {
+    try {
+      const c = (await client.readContract({
+        address: claimReg, abi: geoClaimRegistryAbi,
+        functionName: 'getClaim', args: [cid],
+      })) as {
+        claimId: `0x${string}`; featureId: `0x${string}`; featureVersion: bigint
+        relation: `0x${string}`; visibility: number; confidence: number
+        revoked: boolean; createdAt: bigint
+      }
+      let featureLabel = c.featureId.slice(0, 10) + '…'
+      try {
+        const f = (await client.readContract({
+          address: featReg, abi: geoFeatureRegistryAbi,
+          functionName: 'getFeature', args: [c.featureId, c.featureVersion],
+        })) as { metadataURI: string }
+        featureLabel = labelFromMetadataURI(f.metadataURI)
+      } catch { /* leave id */ }
+      out.push({
+        claimId: c.claimId,
+        featureId: c.featureId,
+        featureLabel,
+        relation: REL_LABEL_BY_HASH[c.relation.toLowerCase()] ?? c.relation,
+        visibility: VIS_LABELS[c.visibility] ?? 'Public',
+        confidence: c.confidence,
+        createdAt: Number(c.createdAt),
+        revoked: c.revoked,
+      })
+    } catch { /* skip bad row */ }
+  }
+  out.sort((a, b) => b.createdAt - a.createdAt)
+  return out
+}
+
 export async function mintPublicGeoClaimAction(input: MintGeoClaimInput): Promise<{ success: boolean; claimId?: `0x${string}`; error?: string }> {
   try {
     const me = await getCurrentUser()
