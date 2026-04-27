@@ -204,7 +204,11 @@ function ConnectStep({ hub, accent, hubSlug, error, setError }: {
     valid: boolean; available: boolean; reason?: string; fullName?: string; predictedAddress?: string | null
   } | null>(null)
   const [checking, setChecking] = useState(false)
-  const [signinAgentName, setSigninAgentName] = useState('')
+  const [signinLabel, setSigninLabel] = useState('')
+  const [signinCheck, setSigninCheck] = useState<{
+    valid: boolean; exists: boolean; reason?: string; fullName?: string
+  } | null>(null)
+  const [signinChecking, setSigninChecking] = useState(false)
   const [mode, setMode] = useState<'signup' | 'signin'>('signup')
   const [pending, startPending] = useTransition()
 
@@ -257,6 +261,39 @@ function ConnectStep({ hub, accent, hubSlug, error, setError }: {
     }, 400)
     return () => { cancelled = true; ctrl.abort(); clearTimeout(id) }
   }, [signupLabel, mode])
+
+  // Debounced existence check for sign-in. Reuses /api/auth/check-agent-name
+  // (returns valid + available); for sign-in we want the inverse — the
+  // name must be a *registered* `<label>.agent`, not an open one.
+  useEffect(() => {
+    if (mode !== 'signin') return
+    const label = signinLabel.toLowerCase().trim()
+    if (!label) { setSigninCheck(null); setSigninChecking(false); return }
+    setSigninChecking(true)
+    setSigninCheck(null)
+    let cancelled = false
+    const ctrl = new AbortController()
+    const id = setTimeout(async () => {
+      try {
+        const r = await fetch(`/api/auth/check-agent-name?label=${encodeURIComponent(label)}`, { signal: ctrl.signal })
+        const data = await r.json() as { valid: boolean; available: boolean; reason?: string; fullName?: string }
+        if (cancelled) return
+        setSigninCheck({
+          valid: data.valid,
+          exists: data.valid && !data.available,
+          reason: data.reason,
+          fullName: data.fullName,
+        })
+        setSigninChecking(false)
+      } catch (err) {
+        if (cancelled) return
+        if ((err as Error).name === 'AbortError') return
+        setSigninCheck({ valid: false, exists: false, reason: 'check failed' })
+        setSigninChecking(false)
+      }
+    }, 400)
+    return () => { cancelled = true; ctrl.abort(); clearTimeout(id) }
+  }, [signinLabel, mode])
 
   const googleHref = `/api/auth/google-start?return_to=${encodeURIComponent(`/h/${hubSlug}`)}`
 
@@ -429,8 +466,11 @@ function ConnectStep({ hub, accent, hubSlug, error, setError }: {
   function onPasskeySignin() {
     setError(null)
     if (!window.PublicKeyCredential) { setError('WebAuthn not supported in this browser.'); return }
-    const enteredName = signinAgentName.trim()
-    if (!enteredName) { setError('Enter your .agent name (e.g. richp.agent).'); return }
+    const label = signinLabel.toLowerCase().trim()
+    if (!label) { setError('Enter your .agent name first.'); return }
+    if (!signinCheck?.valid) { setError(signinCheck?.reason ?? 'invalid name format'); return }
+    if (!signinCheck.exists) { setError(`${signinCheck.fullName ?? label + '.agent'} is not registered — sign up instead?`); return }
+    const enteredName = signinCheck.fullName ?? `${label}.agent`
     setSigninProgress({ fullName: enteredName, step: 'passkey' })
     startPending(async () => {
       try {
@@ -664,17 +704,91 @@ function ConnectStep({ hub, accent, hubSlug, error, setError }: {
           </>
         ) : (
           <>
-            <Input
-              label="Your .agent name"
-              value={signinAgentName}
-              onChange={(e) => setSigninAgentName(e.target.value)}
-              placeholder="e.g. richp.agent"
-            />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {/* Label-only input with a fixed `.agent` suffix rendered as
+                  a non-editable adornment, mirroring the signup field. The
+                  user can't accidentally type a malformed FQDN. */}
+              <label style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>
+                Your .agent name
+              </label>
+              <div style={{
+                display: 'flex', alignItems: 'stretch',
+                border: `1px solid ${signinCheck && !signinCheck.exists && signinCheck.valid ? '#fecaca' : '#cbd5e1'}`,
+                borderRadius: 8,
+                background: '#fff',
+                overflow: 'hidden',
+              }}>
+                <input
+                  type="text"
+                  value={signinLabel}
+                  onChange={(e) => {
+                    // Strip anything from the first dot onward — the
+                    // suffix is rendered separately, the user only types
+                    // the label.
+                    const v = e.target.value.toLowerCase()
+                    const idx = v.indexOf('.')
+                    setSigninLabel(idx >= 0 ? v.slice(0, idx) : v)
+                  }}
+                  placeholder="e.g. richp"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  autoComplete="username"
+                  spellCheck={false}
+                  style={{
+                    flex: 1, minWidth: 0,
+                    padding: '0.5rem 0.7rem',
+                    border: 'none', outline: 'none',
+                    fontSize: 13,
+                  }}
+                />
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center',
+                  padding: '0 0.7rem',
+                  background: '#f1f5f9',
+                  borderLeft: '1px solid #e2e8f0',
+                  color: '#475569', fontSize: 13, fontWeight: 500,
+                  fontFamily: 'ui-monospace, monospace',
+                }}>.agent</span>
+              </div>
+              <div style={{ minHeight: 22, display: 'flex', alignItems: 'center' }}>
+                {!signinLabel.trim() ? (
+                  <span style={{ fontSize: 11, color: '#94a3b8' }}>
+                    Type the same name you signed up with.
+                  </span>
+                ) : signinChecking ? (
+                  <Pill color="#64748b" bg="#f1f5f9" border="#e2e8f0">Checking…</Pill>
+                ) : !signinCheck ? null : !signinCheck.valid ? (
+                  <Pill color="#b91c1c" bg="#fef2f2" border="#fecaca">
+                    {signinCheck.reason ?? 'invalid'}
+                  </Pill>
+                ) : !signinCheck.exists ? (
+                  <Pill color="#b91c1c" bg="#fef2f2" border="#fecaca">
+                    {signinCheck.fullName} is not registered — sign up instead?
+                  </Pill>
+                ) : (
+                  <Pill color="#047857" bg="#ecfdf5" border="#a7f3d0">
+                    ✓ {signinCheck.fullName} ready
+                  </Pill>
+                )}
+              </div>
+            </div>
             <button
               type="button"
               onClick={onPasskeySignin}
-              disabled={pending}
-              style={authButtonStyle(accent, '#fff')}
+              disabled={pending || signinChecking || !signinCheck?.valid || !signinCheck?.exists}
+              title={
+                pending ? 'Signing in…' :
+                signinChecking ? 'Waiting for the lookup' :
+                !signinCheck ? 'Type your name above' :
+                !signinCheck.valid ? signinCheck.reason :
+                !signinCheck.exists ? `${signinCheck.fullName} is not registered` :
+                undefined
+              }
+              style={{
+                ...authButtonStyle(accent, '#fff'),
+                opacity: (pending || signinChecking || !signinCheck?.exists) ? 0.5 : 1,
+                cursor: (pending || signinChecking || !signinCheck?.exists) ? 'not-allowed' : 'pointer',
+              }}
               data-testid="hub-onboard-passkey-signin"
             >
               {pending ? 'Signing in…' : 'Sign in with Passkey'}
