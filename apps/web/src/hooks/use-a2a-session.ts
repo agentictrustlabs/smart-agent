@@ -135,21 +135,21 @@ export function useA2ASession() {
 
       onPhase?.('signing-delegation')
       // Constrain the OS picker to passkeys actually registered on the
-      // CURRENT user's smart account. We hit /api/auth/my-passkeys (server
-      // truth, scoped to the logged-in user) and only fall back to the
-      // browser-wide localStorage hint if that fails. localStorage alone
-      // would force the user to "Choose a passkey" out of every credential
-      // ever registered on this browser — including ones for other users.
-      let serverIds: string[] = []
+      // CURRENT user's account. Login is name-based — there's no server-
+      // side credential mapping anymore — so we filter localStorage by
+      // the user's .agent name (the `name` field stored at signup time).
+      // Without this filter the picker would offer every passkey ever
+      // registered on this browser and the user could pick one whose
+      // digest isn't in this account's _passkeys → ERC-1271 rejects.
+      let userName: string | null = null
       try {
-        const r = await fetch('/api/auth/my-passkeys', { cache: 'no-store' })
-        if (r.ok) {
-          const body = await r.json() as { passkeys: Array<{ id: string }> }
-          serverIds = body.passkeys.map(p => p.id)
-        }
-      } catch { /* fall through to localStorage */ }
-      const localHint = JSON.parse(localStorage.getItem('smart-agent.passkeys.local') ?? '[]') as Array<{ id: string }>
-      const ids = serverIds.length > 0 ? serverIds : localHint.map(k => k.id)
+        const r = await fetch('/api/auth/session', { cache: 'no-store' })
+        const body = await r.json() as { user: { name?: string } | null }
+        userName = body.user?.name ?? null
+      } catch { /* */ }
+      const localHint = JSON.parse(localStorage.getItem('smart-agent.passkeys.local') ?? '[]') as Array<{ id: string; name?: string }>
+      const matched = userName ? localHint.filter(h => h.name === userName) : []
+      const ids = matched.length > 0 ? matched.map(h => h.id) : []
       const allowCredentials = ids.length > 0
         ? ids.map(id => {
             const idBytes = base64UrlDecode(id)

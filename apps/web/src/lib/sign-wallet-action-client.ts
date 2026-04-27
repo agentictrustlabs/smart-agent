@@ -97,19 +97,22 @@ export async function signWalletActionClient(
     if (typeof window === 'undefined' || !window.PublicKeyCredential) {
       throw new Error('Passkey signing not available in this browser')
     }
-    // Fetch the user's actual passkey credential IDs (server-truth) so the
-    // OS dialog doesn't make the user "Choose a passkey" out of every
-    // credential ever registered on this browser.
-    let serverIds: string[] = []
+    // Constrain the OS picker to passkeys registered on the CURRENT
+    // user's account. Login is name-based — no server-side credential
+    // mapping — so we filter localStorage hints by the .agent name set
+    // at signup time. Without this filter, picking a passkey for a
+    // different account here would produce a digest that isn't in this
+    // account's on-chain _passkeys mapping → ERC-1271 rejects.
+    let userName: string | null = null
     try {
-      const r = await fetch('/api/auth/my-passkeys', { cache: 'no-store' })
-      if (r.ok) {
-        const body = await r.json() as { passkeys: Array<{ id: string }> }
-        serverIds = body.passkeys.map(p => p.id)
-      }
-    } catch { /* fall through to undefined allowCredentials */ }
-    const allowCredentials = serverIds.length > 0
-      ? serverIds.map(id => {
+      const r = await fetch('/api/auth/session', { cache: 'no-store' })
+      const body = await r.json() as { user: { name?: string } | null }
+      userName = body.user?.name ?? null
+    } catch { /* */ }
+    const localHint = JSON.parse(localStorage.getItem('smart-agent.passkeys.local') ?? '[]') as Array<{ id: string; name?: string }>
+    const matched = userName ? localHint.filter(h => h.name === userName) : []
+    const allowCredentials = matched.length > 0
+      ? matched.map(({ id }) => {
           const idBytes = base64UrlDecode(id)
           const idAb = new ArrayBuffer(idBytes.length)
           new Uint8Array(idAb).set(idBytes)

@@ -364,12 +364,14 @@ function ConnectStep({ hub, accent, hubSlug, error, setError }: {
         const challengeBytes = base64UrlDecode(challenge)
         const challengeAb = new ArrayBuffer(challengeBytes.length)
         new Uint8Array(challengeAb).set(challengeBytes)
-        // No allowCredentials — the OS picker uses discoverable creds and
-        // the user picks the matching passkey themselves. localStorage
-        // hints below narrow the picker to passkeys this browser has seen
-        // before, but only when present (fresh devices skip the hint).
+        // Filter localStorage hints to credentials registered to the
+        // .agent name the user just typed — picking any other passkey
+        // would yield a digest that isn't in this account's _passkeys
+        // mapping → ERC-1271 rejects. Fresh devices with no matching
+        // hint fall back to an unconstrained picker.
         const known = JSON.parse(localStorage.getItem('smart-agent.passkeys.local') ?? '[]') as Array<{ id: string; name: string }>
-        const allowCredentials = known.map(k => ({
+        const matched = known.filter(k => k.name === enteredName)
+        const allowCredentials = matched.map(k => ({
           type: 'public-key' as const,
           id: base64UrlDecode(k.id).buffer.slice(0) as ArrayBuffer,
         }))
