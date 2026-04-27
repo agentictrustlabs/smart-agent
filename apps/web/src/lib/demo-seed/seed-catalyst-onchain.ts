@@ -117,13 +117,21 @@ async function doSeed() {
 
   // ─── Users (DB only) — Northern Colorado Hispanic Outreach ─────────
   const USERS = [
-    { id: 'cat-user-001', name: 'Maria Gonzalez', email: 'maria@catalystnoco.org', wallet: '0x00000000000000000000000000000000000b0001', did: 'did:demo:cat-001' },
-    { id: 'cat-user-002', name: 'Pastor David Chen', email: 'david@catalystnoco.org', wallet: '0x00000000000000000000000000000000000b0002', did: 'did:demo:cat-002' },
-    { id: 'cat-user-003', name: 'Rosa Martinez', email: 'rosa@comunidad-noco.org', wallet: '0x00000000000000000000000000000000000b0003', did: 'did:demo:cat-003' },
-    { id: 'cat-user-004', name: 'Carlos Herrera', email: 'carlos@comunidad-noco.org', wallet: '0x00000000000000000000000000000000000b0004', did: 'did:demo:cat-004' },
-    { id: 'cat-user-005', name: 'Sarah Thompson', email: 'sarah@catalystnoco.org', wallet: '0x00000000000000000000000000000000000b0005', did: 'did:demo:cat-005' },
-    { id: 'cat-user-006', name: 'Ana Reyes', email: 'ana@wellington-circle.org', wallet: '0x00000000000000000000000000000000000b0006', did: 'did:demo:cat-006' },
-    { id: 'cat-user-007', name: 'Miguel Santos', email: 'miguel@laporte-circle.org', wallet: '0x00000000000000000000000000000000000b0007', did: 'did:demo:cat-007' },
+    // Network-level
+    { id: 'cat-user-001', name: 'Maria Gonzalez',     email: 'maria@catalystnoco.org',       wallet: '0x00000000000000000000000000000000000b0001', did: 'did:demo:cat-001' },
+    { id: 'cat-user-005', name: 'Sarah Thompson',     email: 'sarah@catalystnoco.org',       wallet: '0x00000000000000000000000000000000000b0005', did: 'did:demo:cat-005' },
+    // Fort Collins Network — regional facilitator
+    { id: 'cat-user-002', name: 'Pastor David Chen',  email: 'david@catalystnoco.org',       wallet: '0x00000000000000000000000000000000000b0002', did: 'did:demo:cat-002' },
+    { id: 'cat-user-003', name: 'Rosa Martinez',      email: 'rosa@comunidad-noco.org',      wallet: '0x00000000000000000000000000000000000b0003', did: 'did:demo:cat-003' },
+    { id: 'cat-user-004', name: 'Carlos Herrera',     email: 'carlos@comunidad-noco.org',    wallet: '0x00000000000000000000000000000000000b0004', did: 'did:demo:cat-004' },
+    // Local circle leaders — one owner per circle.
+    { id: 'cat-user-006', name: 'Ana Reyes',          email: 'ana@wellington-circle.org',    wallet: '0x00000000000000000000000000000000000b0006', did: 'did:demo:cat-006' },
+    { id: 'cat-user-007', name: 'Miguel Santos',      email: 'miguel@laporte-circle.org',    wallet: '0x00000000000000000000000000000000000b0007', did: 'did:demo:cat-007' },
+    { id: 'cat-user-008', name: 'Elena Vasquez',      email: 'elena@timnath-circle.org',     wallet: '0x00000000000000000000000000000000000b0008', did: 'did:demo:cat-008' },
+    { id: 'cat-user-009', name: 'Luis Hernandez',     email: 'luis@loveland-circle.org',     wallet: '0x00000000000000000000000000000000000b0009', did: 'did:demo:cat-009' },
+    { id: 'cat-user-010', name: 'Sofia Ramirez',      email: 'sofia@berthoud-circle.org',    wallet: '0x00000000000000000000000000000000000b000a', did: 'did:demo:cat-010' },
+    { id: 'cat-user-011', name: 'Diego Morales',      email: 'diego@johnstown-circle.org',   wallet: '0x00000000000000000000000000000000000b000b', did: 'did:demo:cat-011' },
+    { id: 'cat-user-012', name: 'Isabel Cruz',        email: 'isabel@redfeather-circle.org', wallet: '0x00000000000000000000000000000000000b000c', did: 'did:demo:cat-012' },
   ]
   for (const u of USERS) upsertUser(u)
 
@@ -142,11 +150,16 @@ async function doSeed() {
   const paSarah = userMap.get('cat-user-005')!.personAgentAddress as `0x${string}`
   const paAna = userMap.get('cat-user-006')!.personAgentAddress as `0x${string}`
   const paMiguel = userMap.get('cat-user-007')!.personAgentAddress as `0x${string}`
+  const paElena = userMap.get('cat-user-008')!.personAgentAddress as `0x${string}`
+  const paLuis = userMap.get('cat-user-009')!.personAgentAddress as `0x${string}`
+  const paSofia = userMap.get('cat-user-010')!.personAgentAddress as `0x${string}`
+  const paDiego = userMap.get('cat-user-011')!.personAgentAddress as `0x${string}`
+  const paIsabel = userMap.get('cat-user-012')!.personAgentAddress as `0x${string}`
 
   // ─── Deploy Org/AI Agent Smart Accounts ──────────────────────────
   console.log('[catalyst-seed] Deploying org smart accounts...')
   const network = await deploy(200001)      // Catalyst NoCo Network
-  const hub = await deploy(200002)          // Fort Collins Hub
+  const hub = await deploy(200002)          // Fort Collins Network (regional facilitator org, not the Hub agent)
   const grpWellington = await deploy(200003)  // Wellington Circle
   const grpLaporte = await deploy(200004)     // Laporte Circle
   const grpTimnath = await deploy(200005)     // Timnath Circle
@@ -156,12 +169,12 @@ async function doSeed() {
   const grpRedFeather = await deploy(200009)  // Red Feather Lakes Circle
   const analytics = await deploy(210001)
 
-  console.log('[catalyst-seed] Smart accounts deployed. Network:', network, 'Hub:', hub)
+  console.log('[catalyst-seed] Smart accounts deployed. Network:', network, 'Fort Collins Network:', hub)
 
   // ─── Register in Resolver ─────────────────────────────────────────
   console.log('[catalyst-seed] Registering in resolver...')
   await register(network, 'Catalyst NoCo Network', 'Northern Colorado catalyst network — Hispanic community outreach and church planting north of Fort Collins', TYPE_ORGANIZATION)
-  await register(hub, 'Fort Collins Hub', 'Facilitator hub — bilingual community development in Fort Collins and surrounding communities', TYPE_ORGANIZATION)
+  await register(hub, 'Fort Collins Network', 'Regional facilitator org — bilingual community development across Fort Collins and surrounding circles', TYPE_ORGANIZATION)
   await register(grpWellington, 'Wellington Circle', 'Established circle — Hispanic families in Wellington (G1)', TYPE_ORGANIZATION)
   await register(grpLaporte, 'Laporte Circle', 'Circle — farm worker community in Laporte (G1)', TYPE_ORGANIZATION)
   await register(grpTimnath, 'Timnath Circle', 'Circle — growing Hispanic neighborhood in Timnath (G2)', TYPE_ORGANIZATION)
@@ -194,26 +207,28 @@ async function doSeed() {
 
   // ─── Demo-user EOA → Org controller links ─────────────────────────
   // Without this, no demo user controls any org and PROPOSED relationship
-  // requests directed at orgs (e.g. "join Fort Collins Hub") are stuck
-  // forever — the /relationships page only shows a "Confirm" button when
-  // the signed-in user's wallet appears in the target agent's ATL_CONTROLLER
-  // list. Map each persona to the org(s) they would plausibly administer.
+  // requests directed at orgs are stuck forever — the /relationships page
+  // only shows a "Confirm" button when the signed-in user's wallet appears
+  // in the target agent's ATL_CONTROLLER list. Each org gets a single
+  // persona-aligned owner (with secondaries only where multiple users hold
+  // similarly-scoped roles); ownership spans the whole hierarchy instead
+  // of concentrating on one user.
   const ctrl: Array<[`0x${string}`, string, string]> = [
-    // Network — Program Director + Regional Lead
+    // Network — Program Director + Regional Lead.
     [network,        userMap.get('cat-user-001')!.walletAddress, 'Maria → Network'],
     [network,        userMap.get('cat-user-005')!.walletAddress, 'Sarah → Network'],
-    // Fort Collins Hub — Hub Lead + Outreach Coordinator
-    [hub,            userMap.get('cat-user-002')!.walletAddress, 'David → Hub'],
-    [hub,            userMap.get('cat-user-003')!.walletAddress, 'Rosa → Hub'],
-    // Wellington / Laporte — assigned circle leaders
+    // Fort Collins Network — Network Lead + Outreach Coordinator.
+    [hub,            userMap.get('cat-user-002')!.walletAddress, 'David → Fort Collins Network'],
+    [hub,            userMap.get('cat-user-003')!.walletAddress, 'Rosa → Fort Collins Network'],
+    // Local circles — one circle leader each.
     [grpWellington,  userMap.get('cat-user-006')!.walletAddress, 'Ana → Wellington'],
     [grpLaporte,     userMap.get('cat-user-007')!.walletAddress, 'Miguel → Laporte'],
-    // Unassigned circles + analytics fall to Maria (Program Director).
-    [grpTimnath,     userMap.get('cat-user-001')!.walletAddress, 'Maria → Timnath'],
-    [grpLoveland,    userMap.get('cat-user-001')!.walletAddress, 'Maria → Loveland'],
-    [grpBerthoud,    userMap.get('cat-user-001')!.walletAddress, 'Maria → Berthoud'],
-    [grpJohnstown,   userMap.get('cat-user-001')!.walletAddress, 'Maria → Johnstown'],
-    [grpRedFeather,  userMap.get('cat-user-001')!.walletAddress, 'Maria → RedFeather'],
+    [grpTimnath,     userMap.get('cat-user-008')!.walletAddress, 'Elena → Timnath'],
+    [grpLoveland,    userMap.get('cat-user-009')!.walletAddress, 'Luis → Loveland'],
+    [grpBerthoud,    userMap.get('cat-user-010')!.walletAddress, 'Sofia → Berthoud'],
+    [grpJohnstown,   userMap.get('cat-user-011')!.walletAddress, 'Diego → Johnstown'],
+    [grpRedFeather,  userMap.get('cat-user-012')!.walletAddress, 'Isabel → Red Feather'],
+    // Analytics AI — operated by the Program Director.
     [analytics,      userMap.get('cat-user-001')!.walletAddress, 'Maria → Analytics'],
   ]
   for (const [agent, wallet, label] of ctrl) {
@@ -249,17 +264,22 @@ async function doSeed() {
   await setCity(grpJohnstown,  'Johnstown',        'Colorado', 'US')
   await setCity(grpRedFeather, 'Red Feather Lakes','Colorado', 'US')
 
-  // Person-agent cities: seven Catalyst demo users get geographically
-  // realistic Colorado towns spread across the circle network so the
-  // trust-search panel exercises both same-city and same-region cases.
+  // Person-agent cities: every Catalyst demo user is anchored in the town
+  // they actually serve so the trust-search panel exercises same-city and
+  // same-region cohorts.
   const personCityMap: Array<[string, string, string, string]> = [
-    ['cat-user-001', 'Fort Collins',    'Colorado', 'US'],  // Maria
-    ['cat-user-002', 'Fort Collins',    'Colorado', 'US'],  // Pastor David
-    ['cat-user-003', 'Wellington',      'Colorado', 'US'],  // Carlos
-    ['cat-user-004', 'Fort Collins',    'Colorado', 'US'],  // Rosa
-    ['cat-user-005', 'Wellington',      'Colorado', 'US'],  // Sarah Thompson
-    ['cat-user-006', 'Loveland',        'Colorado', 'US'],  // Ana
-    ['cat-user-007', 'Laporte',         'Colorado', 'US'],  // Miguel
+    ['cat-user-001', 'Fort Collins',     'Colorado', 'US'],  // Maria
+    ['cat-user-002', 'Fort Collins',     'Colorado', 'US'],  // David
+    ['cat-user-003', 'Fort Collins',     'Colorado', 'US'],  // Rosa
+    ['cat-user-004', 'Fort Collins',     'Colorado', 'US'],  // Carlos
+    ['cat-user-005', 'Fort Collins',     'Colorado', 'US'],  // Sarah Thompson
+    ['cat-user-006', 'Wellington',       'Colorado', 'US'],  // Ana
+    ['cat-user-007', 'Laporte',          'Colorado', 'US'],  // Miguel
+    ['cat-user-008', 'Timnath',          'Colorado', 'US'],  // Elena
+    ['cat-user-009', 'Loveland',         'Colorado', 'US'],  // Luis
+    ['cat-user-010', 'Berthoud',         'Colorado', 'US'],  // Sofia
+    ['cat-user-011', 'Johnstown',        'Colorado', 'US'],  // Diego
+    ['cat-user-012', 'Red Feather Lakes', 'Colorado', 'US'], // Isabel
   ]
   for (const [uid, city, region, country] of personCityMap) {
     const u = userMap.get(uid)
@@ -282,33 +302,37 @@ async function doSeed() {
   console.log('[catalyst-seed] Creating on-chain relationships (this takes ~60 seconds)...')
 
   // Person → Org governance + membership.
-  // The OWNER edges align with the ATL_CONTROLLER list registered above:
-  // every (person, org) controller pair has a matching ORGANIZATION_GOVERNANCE
-  // + ROLE_OWNER edge so ownership is visible in the trust graph and an
-  // owner can approve PROPOSED relationship requests aimed at the org.
-  await createEdge(paMaria, network, ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
-  await createEdge(paSarah, network, ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
-  await createEdge(paDavid, hub, ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
-  await createEdge(paRosa, hub, ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
-  await createEdge(paAna, grpWellington, ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
-  await createEdge(paMiguel, grpLaporte, ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
-  // Maria stewards the unowned circles + analytics as Program Director.
-  await createEdge(paMaria, grpTimnath, ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
-  await createEdge(paMaria, grpLoveland, ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
-  await createEdge(paMaria, grpBerthoud, ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
-  await createEdge(paMaria, grpJohnstown, ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
-  await createEdge(paMaria, grpRedFeather, ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
-  await createEdge(paMaria, analytics, ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
+  // OWNER edges mirror ATL_CONTROLLER one-for-one: a single persona-aligned
+  // owner per circle, network-level orgs co-owned by their two senior
+  // leaders. Every owner can approve PROPOSED requests aimed at their org.
+  await createEdge(paMaria,  network,        ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
+  await createEdge(paSarah,  network,        ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
+  await createEdge(paDavid,  hub,            ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
+  await createEdge(paRosa,   hub,            ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
+  await createEdge(paAna,    grpWellington,  ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
+  await createEdge(paMiguel, grpLaporte,     ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
+  await createEdge(paElena,  grpTimnath,     ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
+  await createEdge(paLuis,   grpLoveland,    ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
+  await createEdge(paSofia,  grpBerthoud,    ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
+  await createEdge(paDiego,  grpJohnstown,   ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
+  await createEdge(paIsabel, grpRedFeather,  ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
+  await createEdge(paMaria,  analytics,      ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
 
   // Membership / advisory edges layered on top of the governance graph.
-  await createEdge(paDavid, network, ORGANIZATION_MEMBERSHIP, [ROLE_OPERATOR])
-  await createEdge(paRosa, hub, ORGANIZATION_MEMBERSHIP, [ROLE_OPERATOR])
-  await createEdge(paCarlos, hub, ORGANIZATION_MEMBERSHIP, [ROLE_MEMBER])
-  await createEdge(paAna, hub, ORGANIZATION_MEMBERSHIP, [ROLE_MEMBER])
-  await createEdge(paMiguel, hub, ORGANIZATION_MEMBERSHIP, [ROLE_MEMBER])
-  await createEdge(paDavid, grpWellington, ORGANIZATION_MEMBERSHIP, [ROLE_ADVISOR])
-  await createEdge(paRosa, grpLaporte, ORGANIZATION_MEMBERSHIP, [ROLE_ADVISOR])
-  await createEdge(paRosa, grpRedFeather, ORGANIZATION_MEMBERSHIP, [ROLE_ADVISOR])
+  // Circle leaders are also members of the regional Fort Collins Network.
+  await createEdge(paDavid,  network,        ORGANIZATION_MEMBERSHIP, [ROLE_OPERATOR])
+  await createEdge(paCarlos, hub,            ORGANIZATION_MEMBERSHIP, [ROLE_MEMBER])
+  await createEdge(paAna,    hub,            ORGANIZATION_MEMBERSHIP, [ROLE_MEMBER])
+  await createEdge(paMiguel, hub,            ORGANIZATION_MEMBERSHIP, [ROLE_MEMBER])
+  await createEdge(paElena,  hub,            ORGANIZATION_MEMBERSHIP, [ROLE_MEMBER])
+  await createEdge(paLuis,   hub,            ORGANIZATION_MEMBERSHIP, [ROLE_MEMBER])
+  await createEdge(paSofia,  hub,            ORGANIZATION_MEMBERSHIP, [ROLE_MEMBER])
+  await createEdge(paDiego,  hub,            ORGANIZATION_MEMBERSHIP, [ROLE_MEMBER])
+  await createEdge(paIsabel, hub,            ORGANIZATION_MEMBERSHIP, [ROLE_MEMBER])
+  // Cross-circle advisory by the regional staff.
+  await createEdge(paDavid, grpWellington,  ORGANIZATION_MEMBERSHIP, [ROLE_ADVISOR])
+  await createEdge(paRosa,  grpLaporte,     ORGANIZATION_MEMBERSHIP, [ROLE_ADVISOR])
+  await createEdge(paRosa,  grpRedFeather,  ORGANIZATION_MEMBERSHIP, [ROLE_ADVISOR])
 
   // Org → Org ALLIANCE (network hierarchy)
   await createEdge(network, hub, ALLIANCE, [ROLE_STRATEGIC_PARTNER])
@@ -333,7 +357,13 @@ async function doSeed() {
 
   // HAS_MEMBER edges — connect all agents to the hub
   console.log('[catalyst-seed] Creating HAS_MEMBER edges...')
-  const allAgents = [network, hub, grpWellington, grpLaporte, grpTimnath, grpLoveland, grpBerthoud, grpJohnstown, grpRedFeather, analytics, paMaria, paDavid, paRosa, paCarlos, paSarah, paAna, paMiguel]
+  const allAgents = [
+    network, hub,
+    grpWellington, grpLaporte, grpTimnath, grpLoveland, grpBerthoud, grpJohnstown, grpRedFeather,
+    analytics,
+    paMaria, paDavid, paRosa, paCarlos, paSarah, paAna, paMiguel,
+    paElena, paLuis, paSofia, paDiego, paIsabel,
+  ]
   for (const agent of allAgents) {
     await createEdge(hubCatalyst, agent, HAS_MEMBER as `0x${string}`, [ROLE_MEMBER])
   }
@@ -405,14 +435,14 @@ async function doSeed() {
 
   if (catalystNode) {
     // Register direct children under catalyst.agent
-    const fcNode = await registerName(catalystNode, 'fortcollins', hub)
-    const welNode = await registerName(catalystNode, 'wellington', grpWellington)
-    const lapNode = await registerName(catalystNode, 'laporte', grpLaporte)
-    await registerName(catalystNode, 'timnath', grpTimnath)
-    await registerName(catalystNode, 'loveland', grpLoveland)
-    await registerName(catalystNode, 'berthoud', grpBerthoud)
-    await registerName(catalystNode, 'johnstown', grpJohnstown)
-    await registerName(catalystNode, 'redfeather', grpRedFeather)
+    const fcNode    = await registerName(catalystNode, 'fortcollins', hub)
+    const welNode   = await registerName(catalystNode, 'wellington', grpWellington)
+    const lapNode   = await registerName(catalystNode, 'laporte', grpLaporte)
+    const timNode   = await registerName(catalystNode, 'timnath', grpTimnath)
+    const lovNode   = await registerName(catalystNode, 'loveland', grpLoveland)
+    const berNode   = await registerName(catalystNode, 'berthoud', grpBerthoud)
+    const johNode   = await registerName(catalystNode, 'johnstown', grpJohnstown)
+    const redNode   = await registerName(catalystNode, 'redfeather', grpRedFeather)
     await registerName(catalystNode, 'network', network)
     await registerName(catalystNode, 'analytics', analytics)
     await registerName(catalystNode, 'maria', paMaria)
@@ -426,6 +456,11 @@ async function doSeed() {
     }
     if (welNode) await registerName(welNode, 'ana', paAna)
     if (lapNode) await registerName(lapNode, 'miguel', paMiguel)
+    if (timNode) await registerName(timNode, 'elena', paElena)
+    if (lovNode) await registerName(lovNode, 'luis', paLuis)
+    if (berNode) await registerName(berNode, 'sofia', paSofia)
+    if (johNode) await registerName(johNode, 'diego', paDiego)
+    if (redNode) await registerName(redNode, 'isabel', paIsabel)
 
     console.log('[catalyst-seed] Name registry populated')
   }
@@ -442,13 +477,18 @@ async function doSeed() {
   await setNameProps(grpJohnstown, 'johnstown', 'johnstown.catalyst.agent')
   await setNameProps(grpRedFeather, 'redfeather', 'redfeather.catalyst.agent')
   await setNameProps(analytics, 'analytics', 'analytics.catalyst.agent')
-  await setNameProps(paMaria, 'maria', 'maria.catalyst.agent')
-  await setNameProps(paDavid, 'david', 'david.fortcollins.catalyst.agent')
-  await setNameProps(paRosa, 'rosa', 'rosa.fortcollins.catalyst.agent')
+  await setNameProps(paMaria,  'maria',  'maria.catalyst.agent')
+  await setNameProps(paDavid,  'david',  'david.fortcollins.catalyst.agent')
+  await setNameProps(paRosa,   'rosa',   'rosa.fortcollins.catalyst.agent')
   await setNameProps(paCarlos, 'carlos', 'carlos.fortcollins.catalyst.agent')
-  await setNameProps(paSarah, 'sarah', 'sarah.catalyst.agent')
-  await setNameProps(paAna, 'ana', 'ana.wellington.catalyst.agent')
+  await setNameProps(paSarah,  'sarah',  'sarah.catalyst.agent')
+  await setNameProps(paAna,    'ana',    'ana.wellington.catalyst.agent')
   await setNameProps(paMiguel, 'miguel', 'miguel.laporte.catalyst.agent')
+  await setNameProps(paElena,  'elena',  'elena.timnath.catalyst.agent')
+  await setNameProps(paLuis,   'luis',   'luis.loveland.catalyst.agent')
+  await setNameProps(paSofia,  'sofia',  'sofia.berthoud.catalyst.agent')
+  await setNameProps(paDiego,  'diego',  'diego.johnstown.catalyst.agent')
+  await setNameProps(paIsabel, 'isabel', 'isabel.redfeather.catalyst.agent')
 
   // NAMESPACE_CONTAINS edges: hub → orgs, orgs → people
   // catalyst.agent contains everything at the top level
@@ -467,16 +507,21 @@ async function doSeed() {
   await createEdge(hubCatalyst, paMaria, NS, NS_ROLES, nsEdgeMeta('maria'))
   await createEdge(hubCatalyst, paSarah, NS, NS_ROLES, nsEdgeMeta('sarah'))
 
-  // Fort Collins Hub contains its people
-  await createEdge(hub, paDavid, NS, NS_ROLES, nsEdgeMeta('david'))
-  await createEdge(hub, paRosa, NS, NS_ROLES, nsEdgeMeta('rosa'))
+  // Fort Collins Network contains its staff
+  await createEdge(hub, paDavid,  NS, NS_ROLES, nsEdgeMeta('david'))
+  await createEdge(hub, paRosa,   NS, NS_ROLES, nsEdgeMeta('rosa'))
   await createEdge(hub, paCarlos, NS, NS_ROLES, nsEdgeMeta('carlos'))
 
   // Circles contain their leaders
-  await createEdge(grpWellington, paAna, NS, NS_ROLES, nsEdgeMeta('ana'))
-  await createEdge(grpLaporte, paMiguel, NS, NS_ROLES, nsEdgeMeta('miguel'))
+  await createEdge(grpWellington, paAna,    NS, NS_ROLES, nsEdgeMeta('ana'))
+  await createEdge(grpLaporte,    paMiguel, NS, NS_ROLES, nsEdgeMeta('miguel'))
+  await createEdge(grpTimnath,    paElena,  NS, NS_ROLES, nsEdgeMeta('elena'))
+  await createEdge(grpLoveland,   paLuis,   NS, NS_ROLES, nsEdgeMeta('luis'))
+  await createEdge(grpBerthoud,   paSofia,  NS, NS_ROLES, nsEdgeMeta('sofia'))
+  await createEdge(grpJohnstown,  paDiego,  NS, NS_ROLES, nsEdgeMeta('diego'))
+  await createEdge(grpRedFeather, paIsabel, NS, NS_ROLES, nsEdgeMeta('isabel'))
 
-  console.log('[catalyst-seed] Naming hierarchy created: 17 NAMESPACE_CONTAINS edges')
+  console.log('[catalyst-seed] Naming hierarchy created')
 
   // ─── Helper: Build and sign a data access delegation ──────────────
   async function buildSignedDelegation(

@@ -121,11 +121,16 @@ async function doSeed() {
 
   // ─── Users (DB only) ──────────────────────────────────────────────
   const USERS = [
-    { id: 'gc-user-001', name: 'Pastor James', email: 'james@gracecommunity.org', wallet: '0x0000000000000000000000000000000000010001', did: 'did:demo:gc-001' },
-    { id: 'gc-user-002', name: 'Dr. Sarah Mitchell', email: 'sarah@sbc.net', wallet: '0x0000000000000000000000000000000000010002', did: 'did:demo:gc-002' },
-    { id: 'gc-user-003', name: 'Dan Busby', email: 'dan@ecfa.org', wallet: '0x0000000000000000000000000000000000010003', did: 'did:demo:gc-003' },
-    { id: 'gc-user-004', name: 'John Chesnut', email: 'john@wycliffe.org', wallet: '0x0000000000000000000000000000000000010004', did: 'did:demo:gc-004' },
-    { id: 'gc-user-005', name: 'David Wills', email: 'david@ncf.org', wallet: '0x0000000000000000000000000000000000010005', did: 'did:demo:gc-005' },
+    // Local Grace Community Church + sub-ministry leaders
+    { id: 'gc-user-001', name: 'Pastor James',         email: 'james@gracecommunity.org',  wallet: '0x0000000000000000000000000000000000010001', did: 'did:demo:gc-001' },
+    { id: 'gc-user-006', name: 'Pastor Mike Thompson', email: 'mike@gracecommunity.org',   wallet: '0x0000000000000000000000000000000000010006', did: 'did:demo:gc-006' },
+    { id: 'gc-user-007', name: 'Janet Wilson',         email: 'janet@gracecommunity.org',  wallet: '0x0000000000000000000000000000000000010007', did: 'did:demo:gc-007' },
+    { id: 'gc-user-008', name: 'Marcus Lee',           email: 'marcus@gracecommunity.org', wallet: '0x0000000000000000000000000000000000010008', did: 'did:demo:gc-008' },
+    // Network + denomination + mission-agency + funding leaders
+    { id: 'gc-user-002', name: 'Dr. Sarah Mitchell',   email: 'sarah@sbc.net',             wallet: '0x0000000000000000000000000000000000010002', did: 'did:demo:gc-002' },
+    { id: 'gc-user-003', name: 'Dan Busby',            email: 'dan@ecfa.org',              wallet: '0x0000000000000000000000000000000000010003', did: 'did:demo:gc-003' },
+    { id: 'gc-user-004', name: 'John Chesnut',         email: 'john@wycliffe.org',         wallet: '0x0000000000000000000000000000000000010004', did: 'did:demo:gc-004' },
+    { id: 'gc-user-005', name: 'David Wills',          email: 'david@ncf.org',             wallet: '0x0000000000000000000000000000000000010005', did: 'did:demo:gc-005' },
   ]
   for (const u of USERS) upsertUser(u)
 
@@ -135,11 +140,14 @@ async function doSeed() {
   const gcUsers = await ensureCommunityUsers('gc-user-')
   const userMap = new Map(gcUsers.map(u => [u.key, u]))
 
-  const paPastorJames = userMap.get('gc-user-001')!.personAgentAddress as `0x${string}`
+  const paPastorJames   = userMap.get('gc-user-001')!.personAgentAddress as `0x${string}`
   const paSarahMitchell = userMap.get('gc-user-002')!.personAgentAddress as `0x${string}`
-  const paDanBusby = userMap.get('gc-user-003')!.personAgentAddress as `0x${string}`
-  const paJohnChesnut = userMap.get('gc-user-004')!.personAgentAddress as `0x${string}`
-  const paDavidWills = userMap.get('gc-user-005')!.personAgentAddress as `0x${string}`
+  const paDanBusby      = userMap.get('gc-user-003')!.personAgentAddress as `0x${string}`
+  const paJohnChesnut   = userMap.get('gc-user-004')!.personAgentAddress as `0x${string}`
+  const paDavidWills    = userMap.get('gc-user-005')!.personAgentAddress as `0x${string}`
+  const paMikeThompson  = userMap.get('gc-user-006')!.personAgentAddress as `0x${string}`
+  const paJanetWilson   = userMap.get('gc-user-007')!.personAgentAddress as `0x${string}`
+  const paMarcusLee     = userMap.get('gc-user-008')!.personAgentAddress as `0x${string}`
 
   // ─── Deploy Org Smart Accounts ───────────────────────────────────
   console.log('[gc-seed] Deploying org smart accounts...')
@@ -176,15 +184,16 @@ async function doSeed() {
   // Confirm button when the signed-in user's wallet sits in the target
   // agent's ATL_CONTROLLER list).
   const ctrl: Array<[`0x${string}`, string, string]> = [
-    // Pastor James shepherds Grace Community + sub-ministries.
+    // Local church + sub-ministries — each ministry has its own director;
+    // James only owns the parent church (no James-everywhere).
     [graceChurch,    userMap.get('gc-user-001')!.walletAddress, 'James → Grace Community'],
-    [youthMinistry,  userMap.get('gc-user-001')!.walletAddress, 'James → Grace Youth'],
-    [smallGroups,    userMap.get('gc-user-001')!.walletAddress, 'James → Grace Small Groups'],
-    [missionsTeam,   userMap.get('gc-user-001')!.walletAddress, 'James → Grace Missions'],
+    [youthMinistry,  userMap.get('gc-user-006')!.walletAddress, 'Mike Thompson → Youth'],
+    [smallGroups,    userMap.get('gc-user-007')!.walletAddress, 'Janet Wilson → Small Groups'],
+    [missionsTeam,   userMap.get('gc-user-008')!.walletAddress, 'Marcus Lee → Missions'],
     // Network — both senior leaders.
     [gcNetwork,      userMap.get('gc-user-001')!.walletAddress, 'James → Network'],
     [gcNetwork,      userMap.get('gc-user-002')!.walletAddress, 'Sarah Mitchell → Network'],
-    // Other top-level orgs — each persona's home org.
+    // Top-level org leaders.
     [sbc,            userMap.get('gc-user-002')!.walletAddress, 'Sarah Mitchell → SBC'],
     [ecfa,           userMap.get('gc-user-003')!.walletAddress, 'Dan → ECFA'],
     [wycliffe,       userMap.get('gc-user-004')!.walletAddress, 'John Chesnut → Wycliffe'],
@@ -223,11 +232,14 @@ async function doSeed() {
   // Person agents — distribute the demo users across the org cities so
   // shared-city scoring exercises pairs both within and across hubs.
   const gcPersonCities: Array<[string, string, string, string]> = [
-    ['gc-user-001', 'Atlanta',    'Georgia',    'US'],  // Pastor James
-    ['gc-user-002', 'Atlanta',    'Georgia',    'US'],  // Sarah Mitchell
-    ['gc-user-003', 'Sun Valley', 'California', 'US'],  // John Chesnut
-    ['gc-user-004', 'Sun Valley', 'California', 'US'],  // Dan Busby
-    ['gc-user-005', 'Winchester', 'Virginia',   'US'],  // David Wills
+    ['gc-user-001', 'Sun Valley', 'California', 'US'],  // Pastor James
+    ['gc-user-002', 'Nashville',  'Tennessee',  'US'],  // Sarah Mitchell
+    ['gc-user-003', 'Winchester', 'Virginia',   'US'],  // Dan Busby
+    ['gc-user-004', 'Orlando',    'Florida',    'US'],  // John Chesnut
+    ['gc-user-005', 'Alpharetta', 'Georgia',    'US'],  // David Wills
+    ['gc-user-006', 'Sun Valley', 'California', 'US'],  // Mike Thompson
+    ['gc-user-007', 'Sun Valley', 'California', 'US'],  // Janet Wilson
+    ['gc-user-008', 'Sun Valley', 'California', 'US'],  // Marcus Lee
   ]
   for (const [uid, city, region, country] of gcPersonCities) {
     const u = userMap.get(uid)
@@ -259,23 +271,29 @@ async function doSeed() {
   console.log('[gc-seed] Creating on-chain relationships...')
 
   // Person → Org governance + membership.
-  // OWNER edges mirror the ATL_CONTROLLER list registered above so an owner
-  // can approve PROPOSED relationship requests aimed at the org.
-  await createEdge(paPastorJames, graceChurch, ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
-  await createEdge(paPastorJames, youthMinistry, ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
-  await createEdge(paPastorJames, smallGroups, ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
-  await createEdge(paPastorJames, missionsTeam, ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
-  await createEdge(paPastorJames, gcNetwork, ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
-  await createEdge(paSarahMitchell, sbc, ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
-  await createEdge(paSarahMitchell, gcNetwork, ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
-  await createEdge(paDanBusby, ecfa, ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
-  await createEdge(paJohnChesnut, wycliffe, ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
-  await createEdge(paDavidWills, ncf, ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
+  // OWNER edges mirror ATL_CONTROLLER one-for-one. Sub-ministries each have
+  // their own director (no James-everywhere); James only owns the parent
+  // church + sits on the network alongside Sarah Mitchell.
+  await createEdge(paPastorJames,   graceChurch,   ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
+  await createEdge(paMikeThompson,  youthMinistry, ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
+  await createEdge(paJanetWilson,   smallGroups,   ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
+  await createEdge(paMarcusLee,     missionsTeam,  ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
+  await createEdge(paPastorJames,   gcNetwork,     ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
+  await createEdge(paSarahMitchell, gcNetwork,     ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
+  await createEdge(paSarahMitchell, sbc,           ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
+  await createEdge(paDanBusby,      ecfa,          ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
+  await createEdge(paJohnChesnut,   wycliffe,      ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
+  await createEdge(paDavidWills,    ncf,           ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
 
-  // Membership edges layered on top of the governance graph.
-  await createEdge(paDanBusby, gcNetwork, ORGANIZATION_MEMBERSHIP, [ROLE_MEMBER])
-  await createEdge(paJohnChesnut, gcNetwork, ORGANIZATION_MEMBERSHIP, [ROLE_MEMBER])
-  await createEdge(paDavidWills, gcNetwork, ORGANIZATION_MEMBERSHIP, [ROLE_BOARD_MEMBER])
+  // Membership edges layered on top of the governance graph — sub-ministry
+  // directors are members of the parent church; senior staff sit on the
+  // network board.
+  await createEdge(paMikeThompson, graceChurch, ORGANIZATION_MEMBERSHIP, [ROLE_OPERATOR])
+  await createEdge(paJanetWilson,  graceChurch, ORGANIZATION_MEMBERSHIP, [ROLE_OPERATOR])
+  await createEdge(paMarcusLee,    graceChurch, ORGANIZATION_MEMBERSHIP, [ROLE_OPERATOR])
+  await createEdge(paDanBusby,     gcNetwork,   ORGANIZATION_MEMBERSHIP, [ROLE_MEMBER])
+  await createEdge(paJohnChesnut,  gcNetwork,   ORGANIZATION_MEMBERSHIP, [ROLE_MEMBER])
+  await createEdge(paDavidWills,   gcNetwork,   ORGANIZATION_MEMBERSHIP, [ROLE_BOARD_MEMBER])
 
   // Org → Org ALLIANCE (5 edges)
   await createEdge(gcNetwork, graceChurch, ALLIANCE, [ROLE_UPSTREAM, ROLE_DOWNSTREAM])
@@ -297,7 +315,12 @@ async function doSeed() {
 
   // HAS_MEMBER edges
   console.log('[gc-seed] Creating HAS_MEMBER edges...')
-  const allGcAgents = [gcNetwork, graceChurch, sbc, ecfa, wycliffe, ncf, youthMinistry, smallGroups, missionsTeam, paPastorJames, paSarahMitchell, paDanBusby, paJohnChesnut, paDavidWills]
+  const allGcAgents = [
+    gcNetwork, graceChurch, sbc, ecfa, wycliffe, ncf,
+    youthMinistry, smallGroups, missionsTeam,
+    paPastorJames, paSarahMitchell, paDanBusby, paJohnChesnut, paDavidWills,
+    paMikeThompson, paJanetWilson, paMarcusLee,
+  ]
   for (const agent of allGcAgents) {
     await createEdge(hubGC, agent, HAS_MEMBER as `0x${string}`, [ROLE_MEMBER])
   }
@@ -347,11 +370,14 @@ async function doSeed() {
       await regName(gcNode, 'youth', youthMinistry, 'youth.globalchurch.agent')
       await regName(gcNode, 'smallgroups', smallGroups, 'smallgroups.globalchurch.agent')
       await regName(gcNode, 'missions', missionsTeam, 'missions.globalchurch.agent')
-      await regName(gcNode, 'james', paPastorJames, 'james.globalchurch.agent')
-      await regName(gcNode, 'sarah', paSarahMitchell, 'sarah.globalchurch.agent')
-      await regName(gcNode, 'dan', paDanBusby, 'dan.globalchurch.agent')
-      await regName(gcNode, 'chesnut', paJohnChesnut, 'chesnut.globalchurch.agent')
-      await regName(gcNode, 'wills', paDavidWills, 'wills.globalchurch.agent')
+      await regName(gcNode, 'james',   paPastorJames,   'james.globalchurch.agent')
+      await regName(gcNode, 'sarah',   paSarahMitchell, 'sarah.globalchurch.agent')
+      await regName(gcNode, 'dan',     paDanBusby,      'dan.globalchurch.agent')
+      await regName(gcNode, 'chesnut', paJohnChesnut,   'chesnut.globalchurch.agent')
+      await regName(gcNode, 'wills',   paDavidWills,    'wills.globalchurch.agent')
+      await regName(gcNode, 'mike',    paMikeThompson,  'mike.globalchurch.agent')
+      await regName(gcNode, 'janet',   paJanetWilson,   'janet.globalchurch.agent')
+      await regName(gcNode, 'marcus',  paMarcusLee,     'marcus.globalchurch.agent')
       console.log('[gc-seed] Names registered under globalchurch.agent')
     }
   }

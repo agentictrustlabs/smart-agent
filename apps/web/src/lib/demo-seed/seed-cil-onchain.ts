@@ -119,13 +119,19 @@ async function doSeed() {
 
   // ─── Users (DB only) ──────────────────────────────────────────────
   const USERS = [
-    { id: 'cil-user-001', name: 'Cameron Henrion', email: 'cameron@ilad.org', wallet: '0x00000000000000000000000000000000000c0001', did: 'did:demo:cil-001' },
-    { id: 'cil-user-002', name: 'Nick Courchesne', email: 'nick@ilad.org', wallet: '0x00000000000000000000000000000000000c0002', did: 'did:demo:cil-002' },
-    { id: 'cil-user-003', name: 'Afia Mensah', email: 'afia@market.tg', wallet: '0x00000000000000000000000000000000000c0003', did: 'did:demo:cil-003' },
-    { id: 'cil-user-004', name: 'Kossi Agbeko', email: 'kossi@repairs.tg', wallet: '0x00000000000000000000000000000000000c0004', did: 'did:demo:cil-004' },
-    { id: 'cil-user-005', name: 'Yaw', email: 'yaw@ilad-togo.org', wallet: '0x00000000000000000000000000000000000c0005', did: 'did:demo:cil-005' },
-    { id: 'cil-user-006', name: 'John F. Kim', email: 'john@cil.org', wallet: '0x00000000000000000000000000000000000c0006', did: 'did:demo:cil-006' },
-    { id: 'cil-user-007', name: 'Paul Martel', email: 'paul@funder.org', wallet: '0x00000000000000000000000000000000000c0007', did: 'did:demo:cil-007' },
+    // CIL HQ — Admin + Funder
+    { id: 'cil-user-006', name: 'John F. Kim',    email: 'john@cil.org',          wallet: '0x00000000000000000000000000000000000c0006', did: 'did:demo:cil-006' },
+    { id: 'cil-user-007', name: 'Paul Martel',    email: 'paul@funder.org',       wallet: '0x00000000000000000000000000000000000c0007', did: 'did:demo:cil-007' },
+    // ILAD field operations
+    { id: 'cil-user-001', name: 'Cameron Henrion', email: 'cameron@ilad.org',     wallet: '0x00000000000000000000000000000000000c0001', did: 'did:demo:cil-001' },
+    { id: 'cil-user-002', name: 'Nick Courchesne', email: 'nick@ilad.org',        wallet: '0x00000000000000000000000000000000000c0002', did: 'did:demo:cil-002' },
+    { id: 'cil-user-005', name: 'Yaw',             email: 'yaw@ilad-togo.org',    wallet: '0x00000000000000000000000000000000000c0005', did: 'did:demo:cil-005' },
+    // Portfolio business owners
+    { id: 'cil-user-003', name: 'Afia Mensah',    email: 'afia@market.tg',        wallet: '0x00000000000000000000000000000000000c0003', did: 'did:demo:cil-003' },
+    { id: 'cil-user-004', name: 'Kossi Agbeko',   email: 'kossi@repairs.tg',      wallet: '0x00000000000000000000000000000000000c0004', did: 'did:demo:cil-004' },
+    // Cohort coordinators — one per wave so each cohort has a distinct owner
+    { id: 'cil-user-008', name: 'Akosua Boateng', email: 'akosua@cil.org',        wallet: '0x00000000000000000000000000000000000c0008', did: 'did:demo:cil-008' },
+    { id: 'cil-user-009', name: 'Kwame Asante',   email: 'kwame@cil.org',         wallet: '0x00000000000000000000000000000000000c0009', did: 'did:demo:cil-009' },
   ]
   for (const u of USERS) upsertUser(u)
 
@@ -142,6 +148,8 @@ async function doSeed() {
   const paYaw     = userMap.get('cil-user-005')!.personAgentAddress as `0x${string}`
   const paJohn    = userMap.get('cil-user-006')!.personAgentAddress as `0x${string}`
   const paPaul    = userMap.get('cil-user-007')!.personAgentAddress as `0x${string}`
+  const paAkosua  = userMap.get('cil-user-008')!.personAgentAddress as `0x${string}`
+  const paKwame   = userMap.get('cil-user-009')!.personAgentAddress as `0x${string}`
 
   // ─── Deploy Org Smart Accounts ───────────────────────────────────
   console.log('[cil-seed] Deploying org smart accounts...')
@@ -152,7 +160,7 @@ async function doSeed() {
   const ravah       = await deploy(400003)
   const afiaMarket  = await deploy(400004)
   const kossiRepair = await deploy(400005)
-  const lomeHub     = await deploy(400006)
+  const lomeCluster = await deploy(400006)
   const wave1       = await deploy(400007)
   const wave2       = await deploy(400008)
 
@@ -165,7 +173,7 @@ async function doSeed() {
   await register(ravah,       'Ravah Capital Togo', 'Capital deployment vehicle for Togo portfolio', TYPE_ORGANIZATION)
   await register(afiaMarket,  "Afia's Market", 'Portfolio business — market stall in Grand Marche', TYPE_ORGANIZATION)
   await register(kossiRepair, 'Kossi Mobile Repairs', 'Portfolio business — mobile repair shop', TYPE_ORGANIZATION)
-  await register(lomeHub,     'Lome Business Hub', 'Cohort gathering point in Lome', TYPE_ORGANIZATION)
+  await register(lomeCluster,     'Lomé Business Cluster', 'Cohort gathering point in Lome', TYPE_ORGANIZATION)
   await register(wave1,       'Wave 1 Cohort', 'First batch of funded businesses', TYPE_ORGANIZATION)
   await register(wave2,       'Wave 2 Cohort', 'Second batch of funded businesses', TYPE_ORGANIZATION)
 
@@ -178,21 +186,21 @@ async function doSeed() {
   // Confirm button when the signed-in user's wallet sits in the target
   // agent's ATL_CONTROLLER list).
   const ctrl: Array<[`0x${string}`, string, string]> = [
-    // Collective Impact Labs — Admin + Funder
+    // CIL HQ — Admin + Funder co-own.
     [cil,         userMap.get('cil-user-006')!.walletAddress, 'John Kim → CIL'],
     [cil,         userMap.get('cil-user-007')!.walletAddress, 'Paul → CIL'],
-    // ILAD — Operations Lead, Reviewer, Local Manager
+    // ILAD field operations — Operations Lead + Reviewer co-own; Yaw is
+    // member-level, not an ILAD owner (he runs the local cluster).
     [ilad,        userMap.get('cil-user-001')!.walletAddress, 'Cameron → ILAD'],
     [ilad,        userMap.get('cil-user-002')!.walletAddress, 'Nick → ILAD'],
-    [ilad,        userMap.get('cil-user-005')!.walletAddress, 'Yaw → ILAD'],
-    // Portfolio businesses — owners
+    // Portfolio business owners
     [afiaMarket,  userMap.get('cil-user-003')!.walletAddress, "Afia → Afia's Market"],
     [kossiRepair, userMap.get('cil-user-004')!.walletAddress, 'Kossi → Repairs'],
-    // Lomé hub — Yaw runs it locally
-    [lomeHub,     userMap.get('cil-user-005')!.walletAddress, 'Yaw → Lomé Hub'],
-    // Cohorts — admin manages, funder approves
-    [wave1,       userMap.get('cil-user-006')!.walletAddress, 'John → Wave 1'],
-    [wave2,       userMap.get('cil-user-006')!.walletAddress, 'John → Wave 2'],
+    // Lomé Business Cluster — Yaw runs it locally as Cluster Manager.
+    [lomeCluster, userMap.get('cil-user-005')!.walletAddress, 'Yaw → Lomé Cluster'],
+    // Cohorts — distinct coordinator per wave (no double-up on John).
+    [wave1,       userMap.get('cil-user-008')!.walletAddress, 'Akosua → Wave 1'],
+    [wave2,       userMap.get('cil-user-009')!.walletAddress, 'Kwame → Wave 2'],
     // Capital vehicle — funder
     [ravah,       userMap.get('cil-user-007')!.walletAddress, 'Paul → Ravah'],
   ]
@@ -209,7 +217,7 @@ async function doSeed() {
   await setGeo(ravah,       '6.1375',  '1.2123')
   await setGeo(afiaMarket,  '6.1280',  '1.2310')     // Grand Marche area
   await setGeo(kossiRepair, '6.1350',  '1.2250')
-  await setGeo(lomeHub,     '6.1340',  '1.2200')
+  await setGeo(lomeCluster,     '6.1340',  '1.2200')
   await setGeo(wave1,       '6.1300',  '1.2280')
   await setGeo(wave2,       '6.1360',  '1.2190')
 
@@ -220,7 +228,7 @@ async function doSeed() {
   await setCity(ravah,       'Lomé',      'Maritime',  'TG')
   await setCity(afiaMarket,  'Lomé',      'Maritime',  'TG')
   await setCity(kossiRepair, 'Lomé',      'Maritime',  'TG')
-  await setCity(lomeHub,     'Lomé',      'Maritime',  'TG')
+  await setCity(lomeCluster,     'Lomé',      'Maritime',  'TG')
   await setCity(wave1,       'Lomé',      'Maritime',  'TG')
   await setCity(wave2,       'Lomé',      'Maritime',  'TG')
 
@@ -256,18 +264,17 @@ async function doSeed() {
   console.log('[cil-seed] Creating on-chain relationships...')
 
   // Person → Org governance + membership.
-  // OWNER edges mirror the ATL_CONTROLLER list registered above so an owner
-  // can approve PROPOSED relationship requests aimed at the org.
+  // OWNER edges mirror ATL_CONTROLLER one-for-one so any owner can
+  // approve PROPOSED requests aimed at their org.
   await createEdge(paJohn,    cil,         ORGANIZATION_GOVERNANCE,  [ROLE_OWNER])
   await createEdge(paPaul,    cil,         ORGANIZATION_GOVERNANCE,  [ROLE_OWNER])
   await createEdge(paCameron, ilad,        ORGANIZATION_GOVERNANCE,  [ROLE_OWNER])
   await createEdge(paNick,    ilad,        ORGANIZATION_GOVERNANCE,  [ROLE_OWNER])
-  await createEdge(paYaw,     ilad,        ORGANIZATION_GOVERNANCE,  [ROLE_OWNER])
-  await createEdge(paYaw,     lomeHub,     ORGANIZATION_GOVERNANCE,  [ROLE_OWNER])
+  await createEdge(paYaw,     lomeCluster, ORGANIZATION_GOVERNANCE,  [ROLE_OWNER])
   await createEdge(paAfia,    afiaMarket,  ORGANIZATION_GOVERNANCE,  [ROLE_OWNER])
   await createEdge(paKossi,   kossiRepair, ORGANIZATION_GOVERNANCE,  [ROLE_OWNER])
-  await createEdge(paJohn,    wave1,       ORGANIZATION_GOVERNANCE,  [ROLE_OWNER])
-  await createEdge(paJohn,    wave2,       ORGANIZATION_GOVERNANCE,  [ROLE_OWNER])
+  await createEdge(paAkosua,  wave1,       ORGANIZATION_GOVERNANCE,  [ROLE_OWNER])
+  await createEdge(paKwame,   wave2,       ORGANIZATION_GOVERNANCE,  [ROLE_OWNER])
   await createEdge(paPaul,    ravah,       ORGANIZATION_GOVERNANCE,  [ROLE_OWNER])
 
   // Membership edges layered on top of the governance graph.
@@ -280,9 +287,9 @@ async function doSeed() {
   // Org → Org ALLIANCE (5 edges)
   await createEdge(cil,     ilad,    ALLIANCE, [ROLE_STRATEGIC_PARTNER])
   await createEdge(cil,     ravah,   ALLIANCE, [ROLE_STRATEGIC_PARTNER])
-  await createEdge(ilad,    lomeHub, ALLIANCE, [ROLE_STRATEGIC_PARTNER])
-  await createEdge(lomeHub, wave1,   ALLIANCE, [ROLE_STRATEGIC_PARTNER])
-  await createEdge(lomeHub, wave2,   ALLIANCE, [ROLE_STRATEGIC_PARTNER])
+  await createEdge(ilad,    lomeCluster, ALLIANCE, [ROLE_STRATEGIC_PARTNER])
+  await createEdge(lomeCluster, wave1,   ALLIANCE, [ROLE_STRATEGIC_PARTNER])
+  await createEdge(lomeCluster, wave2,   ALLIANCE, [ROLE_STRATEGIC_PARTNER])
 
   // Org → Business GENERATIONAL_LINEAGE (2 edges)
   await createEdge(wave1, afiaMarket,  GENERATIONAL_LINEAGE, [ROLE_UPSTREAM, ROLE_DOWNSTREAM])
@@ -296,7 +303,10 @@ async function doSeed() {
 
   // HAS_MEMBER edges — connect all agents to the hub
   console.log('[cil-seed] Creating HAS_MEMBER edges...')
-  const allCilAgents = [cil, ilad, ravah, afiaMarket, kossiRepair, lomeHub, wave1, wave2, paCameron, paNick, paAfia, paKossi, paYaw, paJohn, paPaul]
+  const allCilAgents = [
+    cil, ilad, ravah, afiaMarket, kossiRepair, lomeCluster, wave1, wave2,
+    paCameron, paNick, paAfia, paKossi, paYaw, paJohn, paPaul, paAkosua, paKwame,
+  ]
   for (const agent of allCilAgents) {
     await createEdge(hubMission, agent, HAS_MEMBER as `0x${string}`, [ROLE_MEMBER])
   }
@@ -345,7 +355,7 @@ async function doSeed() {
       await regName(missionNode, 'ravah', ravah, 'ravah.mission.agent')
       await regName(missionNode, 'afia', afiaMarket, 'afia.mission.agent')
       await regName(missionNode, 'kossi', kossiRepair, 'kossi.mission.agent')
-      await regName(missionNode, 'lome', lomeHub, 'lome.mission.agent')
+      await regName(missionNode, 'lome', lomeCluster, 'lome.mission.agent')
       await regName(missionNode, 'wave1', wave1, 'wave1.mission.agent')
       await regName(missionNode, 'wave2', wave2, 'wave2.mission.agent')
       await regName(missionNode, 'cameron', paCameron, 'cameron.mission.agent')
@@ -355,6 +365,8 @@ async function doSeed() {
       await regName(missionNode, 'yaw', paYaw, 'yaw.mission.agent')
       await regName(missionNode, 'john', paJohn, 'john.mission.agent')
       await regName(missionNode, 'paul', paPaul, 'paul.mission.agent')
+      await regName(missionNode, 'akosua', paAkosua, 'akosua.mission.agent')
+      await regName(missionNode, 'kwame', paKwame, 'kwame.mission.agent')
       console.log('[cil-seed] Names registered under mission.agent')
     }
   }

@@ -231,13 +231,13 @@ function seedCatalystNetwork() {
       { personName: 'CSU campus ministry contact', proximity: 3, response: 'curious' },
     ])
     insertPrayers(u2, [
-      { title: 'Fort Collins Hub growth', schedule: 'daily', lastPrayed: daysAgo(1) },
+      { title: 'Fort Collins Network growth', schedule: 'daily', lastPrayed: daysAgo(1) },
       { title: 'Wellington Circle — Ana and new families', schedule: 'mon,wed,fri,sat' },
       { title: 'Bilingual worship team development', schedule: 'sun' },
     ])
     insert411(u2, 5)      // 5/6
     insertCOC(u2, 8, 4)   // 8/10 obeying, 4/10 teaching
-    insertPreferences(u2, 'en', 'Fort Collins Hub', 'Fort Collins, CO')
+    insertPreferences(u2, 'en', 'Fort Collins Network', 'Fort Collins, CO')
   }
 
   // ─── cat-user-003: Rosa Martinez (Hispanic Outreach Coordinator) ──
@@ -257,7 +257,7 @@ function seedCatalystNetwork() {
     ])
     insert411(u3, 4) // 4/6
     insertCOC(u3, 6, 2) // 6/10 obeying, 2/10 teaching
-    insertPreferences(u3, 'es', 'Fort Collins Hub', 'Fort Collins, CO')
+    insertPreferences(u3, 'es', 'Fort Collins Network', 'Fort Collins, CO')
   }
 
   // ─── cat-user-006: Ana Reyes (Circle Leader — Wellington) ─────────

@@ -49,7 +49,7 @@ const CIL = {
 // Catalyst NoCo addresses (must match seed-catalyst-onchain.ts)
 const CAT = {
   network: addr(0xb10001),        // Catalyst NoCo Network
-  hubFortCollins: addr(0xb10002), // Fort Collins Hub
+  hubFortCollins: addr(0xb10002), // Fort Collins Network (regional facilitator)
   circleWellington: addr(0xb10003),
   circleLaporte: addr(0xb10004),
   circleTimnath: addr(0xb10005),
