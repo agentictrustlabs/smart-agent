@@ -146,8 +146,15 @@ export async function GET(request: Request) {
             functionName: 'getMultiAddressProperty',
             args: [agentAddr as `0x${string}`, ATL_CONTROLLER as `0x${string}`],
           }) as string[]
+          // Dedup: ATL_CONTROLLER tolerates duplicate appends, so a
+          // re-run of boot-seed can leave the same wallet in the list
+          // many times. Collapse to one synthetic edge per (user, agent).
+          const seenCtrl = new Set<string>()
           for (const ctrl of controllers) {
-            const user = allUsers.find(u => u.walletAddress.toLowerCase() === ctrl.toLowerCase())
+            const key = ctrl.toLowerCase()
+            if (seenCtrl.has(key)) continue
+            seenCtrl.add(key)
+            const user = allUsers.find(u => u.walletAddress.toLowerCase() === key)
             if (user) {
               nameMap.set(user.walletAddress.toLowerCase(), user.name)
               addNode(user.walletAddress, 'eoa')

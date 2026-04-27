@@ -56,6 +56,12 @@ async function setController(agentAddr: `0x${string}`, walletAddr: string) {
   const res = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}`
   if (!res) return
   try {
+    const existing = await getPublicClient().readContract({
+      address: res, abi: agentAccountResolverAbi,
+      functionName: 'getMultiAddressProperty',
+      args: [agentAddr, ATL_CONTROLLER as `0x${string}`],
+    }) as string[]
+    if (existing.some(a => a.toLowerCase() === walletAddr.toLowerCase())) return
     await wc.writeContract({ address: res, abi: agentAccountResolverAbi, functionName: 'addMultiAddressProperty', args: [agentAddr, ATL_CONTROLLER as `0x${string}`, walletAddr as `0x${string}`] })
   } catch (_e) { console.warn(`[cil-seed] Controller failed:`, _e) }
 }

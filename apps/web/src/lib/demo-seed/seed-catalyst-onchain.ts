@@ -60,6 +60,15 @@ async function setController(agentAddr: `0x${string}`, walletAddr: string) {
   const res = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}`
   if (!res) return
   try {
+    // Idempotent: addMultiAddressProperty appends without dedup, so a
+    // re-run of boot-seed would otherwise produce N copies of the same
+    // controller address. Read first, skip if present.
+    const existing = await getPublicClient().readContract({
+      address: res, abi: agentAccountResolverAbi,
+      functionName: 'getMultiAddressProperty',
+      args: [agentAddr, ATL_CONTROLLER as `0x${string}`],
+    }) as string[]
+    if (existing.some(a => a.toLowerCase() === walletAddr.toLowerCase())) return
     await wc.writeContract({ address: res, abi: agentAccountResolverAbi, functionName: 'addMultiAddressProperty', args: [agentAddr, ATL_CONTROLLER as `0x${string}`, walletAddr as `0x${string}`] })
   } catch (_e) { console.warn(`[catalyst-seed] Controller failed:`, _e) }
 }
