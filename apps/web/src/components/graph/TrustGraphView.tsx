@@ -134,7 +134,10 @@ export function TrustGraphView({ orgAddress }: { orgAddress?: string }) {
     fetch(url).then((r) => r.json()).then(setRawData).catch(() => {})
   }, [orgAddress])
 
-  if (!rawData || rawData.nodes.length === 0) {
+  if (!rawData) {
+    return <div data-component="graph-empty"><p style={{ color: '#64748b', fontSize: 13 }}>Loading trust graph…</p></div>
+  }
+  if (rawData.nodes.length === 0) {
     return <div data-component="graph-empty"><p>No graph data yet.</p><p><a href="/deploy/person">Deploy a Person Agent</a> or <a href="/deploy/org">Deploy an Org Agent</a> to get started.</p></div>
   }
 
