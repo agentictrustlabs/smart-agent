@@ -56,7 +56,9 @@ export function PasskeyEnrollClient() {
               displayName,
             },
             challenge,
-            pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
+            // ES256 only — the chain account verifies P-256. RS256 keys
+            // can't validate on chain.
+            pubKeyCredParams: [{ type: 'public-key', alg: -7 }],
             authenticatorSelection: { residentKey: 'preferred', userVerification: 'preferred' },
             attestation: 'none',
             timeout: 60_000,

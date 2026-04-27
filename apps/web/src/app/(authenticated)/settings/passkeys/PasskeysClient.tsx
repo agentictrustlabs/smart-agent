@@ -31,7 +31,9 @@ export function PasskeysClient({ initial }: { initial: ListPasskeysResult }) {
             displayName: label || 'Smart Agent Demo',
           },
           challenge,
-          pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }], // ES256 + RS256 (RS256 only to silence Chrome dev warning)
+          // ES256 only — smart-account verifier is P-256. RS256 keys
+          // can't validate on chain.
+          pubKeyCredParams: [{ type: 'public-key', alg: -7 }],
           authenticatorSelection: {
             residentKey: 'preferred',
             userVerification: 'preferred',

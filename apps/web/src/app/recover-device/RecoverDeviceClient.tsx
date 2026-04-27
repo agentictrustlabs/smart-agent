@@ -70,10 +70,13 @@ export function RecoverDeviceClient() {
             rp: { name: 'Smart Agent', id: window.location.hostname },
             user: { id: crypto.getRandomValues(new Uint8Array(16)), name: email, displayName },
             challenge,
-            // -7 = ES256 (what we use); -257 = RS256 is here only to silence
-            // Chrome's "missing default algorithm" dev warning. The
-            // authenticator picks ES256 first; RS256 never wins selection.
-            pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
+            // ES256 only — the chain account verifies P-256. Including
+            // RS256 (-257) for the "Chrome dev warning" was a mistake; some
+            // authenticators (notably 1Password) actually pick RS256 when
+            // it's offered, producing a credential with no x/y in the COSE
+            // map (RSA uses -1=n, -2=e), which then fails parseAttestationObject
+            // with "COSE_Key: missing x/y coordinates".
+            pubKeyCredParams: [{ type: 'public-key', alg: -7 }],
             authenticatorSelection: { residentKey: 'preferred', userVerification: 'preferred' },
             attestation: 'none', timeout: 60_000,
           },

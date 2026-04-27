@@ -307,7 +307,10 @@ function ConnectStep({ hub, accent, hubSlug, error, setError }: {
               displayName: fullName,
             },
             challenge,
-            pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
+            // ES256 only. The smart account's on-chain verifier is P-256;
+            // an RS256 (-257) credential would parse without x/y and could
+            // never validate. Don't offer it.
+            pubKeyCredParams: [{ type: 'public-key', alg: -7 }],
             authenticatorSelection: { residentKey: 'preferred', userVerification: 'preferred' },
             attestation: 'none',
             timeout: 60_000,
