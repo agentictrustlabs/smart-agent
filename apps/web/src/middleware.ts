@@ -5,7 +5,7 @@ import type { NextRequest } from 'next/server'
  * Public paths bypass the auth gate. Anything under /api or /_next is
  * implicitly public — those routes do their own auth where needed.
  */
-const PUBLIC_PATHS = ['/', '/h', '/onboarding', '/dashboard', '/invite', '/setup', '/sign-in', '/sign-up', '/recover', '/passkey-enroll', '/recover-device']
+const PUBLIC_PATHS = ['/', '/h', '/onboarding', '/dashboard', '/invite', '/setup', '/sign-in', '/sign-up', '/recover', '/passkey-enroll', '/recover-device', '/demo']
 
 const SESSION_COOKIE = 'smart-agent-session'
 

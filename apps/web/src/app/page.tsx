@@ -43,6 +43,23 @@ export default function HomePage() {
             <p className="mt-5 max-w-2xl text-lg leading-8 text-[#5d6478]">
               Choose a hub to continue. Each hub has its own landing page, demo users, and entry flow.
             </p>
+
+            <div className="mt-5">
+              <Link
+                href="/demo"
+                className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold no-underline transition"
+                style={{
+                  background: 'rgba(63, 110, 232, 0.08)',
+                  color: '#3f6ee8',
+                  border: '1px solid rgba(63, 110, 232, 0.20)',
+                }}
+              >
+                Sign in as a demo user →
+              </Link>
+              <span className="ml-3 text-xs text-[#94a3b8]">
+                fully provisioned: wallet, person agent, hub membership, city tag
+              </span>
+            </div>
           </div>
         </section>
 
