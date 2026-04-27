@@ -8,175 +8,7 @@ Smart Agent A2A server starting on port 3100
   Agent card: http://localhost:3100/.well-known/agent.json
 Smart Agent A2A server listening on http://localhost:3100
 <-- GET /health
---> GET /health [32m200[0m 1ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 1ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 1ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 1ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
+--> GET /health [32m200[0m 0ms
 <-- GET /.well-known/agent.json
 --> GET /.well-known/agent.json [32m200[0m 0ms
 <-- GET /.well-known/agent.json
@@ -288,8 +120,6 @@ Smart Agent A2A server listening on http://localhost:3100
 <-- GET /.well-known/agent.json
 --> GET /.well-known/agent.json [32m200[0m 0ms
 <-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
 --> GET /.well-known/agent.json [32m200[0m 1ms
 <-- GET /.well-known/agent.json
 --> GET /.well-known/agent.json [32m200[0m 0ms
@@ -303,40 +133,6 @@ Smart Agent A2A server listening on http://localhost:3100
 --> GET /.well-known/agent.json [32m200[0m 0ms
 <-- GET /.well-known/agent.json
 --> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 1ms
 <-- GET /.well-known/agent.json
 --> GET /.well-known/agent.json [32m200[0m 0ms
 <-- GET /.well-known/agent.json
@@ -392,6 +188,18 @@ Smart Agent A2A server listening on http://localhost:3100
 <-- GET /.well-known/agent.json
 --> GET /.well-known/agent.json [32m200[0m 0ms
 <-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
 --> GET /.well-known/agent.json [32m200[0m 0ms
 <-- GET /.well-known/agent.json
 --> GET /.well-known/agent.json [32m200[0m 0ms
@@ -407,6 +215,2226 @@ Smart Agent A2A server listening on http://localhost:3100
 --> GET /.well-known/agent.json [32m200[0m 0ms
 <-- GET /.well-known/agent.json
 --> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
 <-- GET /.well-known/agent.json
 --> GET /.well-known/agent.json [32m200[0m 0ms
 <-- GET /.well-known/agent.json
