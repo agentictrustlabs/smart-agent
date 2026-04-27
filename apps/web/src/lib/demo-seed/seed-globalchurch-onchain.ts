@@ -258,16 +258,23 @@ async function doSeed() {
   } else {
   console.log('[gc-seed] Creating on-chain relationships...')
 
-  // Person → Org governance/membership (10 edges)
+  // Person → Org governance + membership.
+  // OWNER edges mirror the ATL_CONTROLLER list registered above so an owner
+  // can approve PROPOSED relationship requests aimed at the org.
   await createEdge(paPastorJames, graceChurch, ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
-  await createEdge(paPastorJames, gcNetwork, ORGANIZATION_MEMBERSHIP, [ROLE_BOARD_MEMBER])
+  await createEdge(paPastorJames, youthMinistry, ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
+  await createEdge(paPastorJames, smallGroups, ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
+  await createEdge(paPastorJames, missionsTeam, ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
+  await createEdge(paPastorJames, gcNetwork, ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
   await createEdge(paSarahMitchell, sbc, ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
-  await createEdge(paSarahMitchell, gcNetwork, ORGANIZATION_MEMBERSHIP, [ROLE_OPERATOR])
+  await createEdge(paSarahMitchell, gcNetwork, ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
   await createEdge(paDanBusby, ecfa, ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
-  await createEdge(paDanBusby, gcNetwork, ORGANIZATION_MEMBERSHIP, [ROLE_MEMBER])
   await createEdge(paJohnChesnut, wycliffe, ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
-  await createEdge(paJohnChesnut, gcNetwork, ORGANIZATION_MEMBERSHIP, [ROLE_MEMBER])
   await createEdge(paDavidWills, ncf, ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
+
+  // Membership edges layered on top of the governance graph.
+  await createEdge(paDanBusby, gcNetwork, ORGANIZATION_MEMBERSHIP, [ROLE_MEMBER])
+  await createEdge(paJohnChesnut, gcNetwork, ORGANIZATION_MEMBERSHIP, [ROLE_MEMBER])
   await createEdge(paDavidWills, gcNetwork, ORGANIZATION_MEMBERSHIP, [ROLE_BOARD_MEMBER])
 
   // Org → Org ALLIANCE (5 edges)

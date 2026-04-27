@@ -1,6 +1,6 @@
 import { db, schema } from '@/db'
 import { eq } from 'drizzle-orm'
-import { getPublicClient, getWalletClient } from '@/lib/contracts'
+import { getPublicClient, getWalletClient, getEdgesBySubject, getEdge, getEdgeRoles } from '@/lib/contracts'
 import {
   agentAccountResolverAbi,
   ATL_CONTROLLER,
@@ -8,6 +8,7 @@ import {
   ATL_ACTIVITY_LOG,
   ATL_TRACKED_MEMBERS,
   ATL_TEMPLATE_ID,
+  ROLE_OWNER,
   TYPE_AI_AGENT,
   TYPE_ORGANIZATION,
   TYPE_PERSON,
@@ -148,25 +149,91 @@ export async function listRegisteredAgents(): Promise<RegisteredAgent[]> {
   return results
 }
 
+/**
+ * Agents the user controls — combines two ownership signals:
+ *   1. Resolver ATL_CONTROLLER list contains the user's wallet EOA.
+ *   2. There's a confirmed/active ORGANIZATION_GOVERNANCE edge with ROLE_OWNER
+ *      from the user's person agent to the org.
+ *
+ * The /relationships page uses this set to decide whether the signed-in user
+ * can confirm a PROPOSED edge whose object is the agent. Combining both
+ * sources means an OWNER edge alone is enough to enable approval, even when
+ * the controller list hasn't been updated.
+ */
 export async function getControlledAgentsForUser(userId: string): Promise<RegisteredAgent[]> {
   const user = await db.select().from(schema.users).where(eq(schema.users.id, userId)).limit(1)
   if (!user[0]) return []
 
   const wallet = user[0].walletAddress.toLowerCase()
+  const personAgent = user[0].personAgentAddress?.toLowerCase()
   const agents = await listRegisteredAgents()
-  return agents.filter(agent => agent.controllers.some(controller => controller.toLowerCase() === wallet))
+  const ownedAddrs = new Set<string>()
+
+  // Signal 1: resolver controller list.
+  for (const a of agents) {
+    if (a.controllers.some(c => c.toLowerCase() === wallet)) ownedAddrs.add(a.address.toLowerCase())
+  }
+
+  // Signal 2: outgoing OWNER edges from the user's person agent.
+  if (personAgent) {
+    try {
+      const edgeIds = await getEdgesBySubject(personAgent as `0x${string}`)
+      const enriched = await Promise.all(edgeIds.map(async id => {
+        try {
+          const [e, roles] = await Promise.all([getEdge(id), getEdgeRoles(id)])
+          return { e, roles }
+        } catch { return null }
+      }))
+      for (const item of enriched) {
+        if (!item) continue
+        // Status 2 = Confirmed, 3 = Active. Skip Proposed/Rejected/Revoked.
+        if (item.e.status !== 2 && item.e.status !== 3) continue
+        if (!item.roles.some(r => r.toLowerCase() === (ROLE_OWNER as string).toLowerCase())) continue
+        ownedAddrs.add(item.e.object_.toLowerCase())
+      }
+    } catch { /* best-effort */ }
+  }
+
+  return agents.filter(a => ownedAddrs.has(a.address.toLowerCase()))
 }
 
 export async function findAgentOwnerUserIds(agentAddress: string): Promise<string[]> {
   const agents = await listRegisteredAgents()
   const agent = agents.find(entry => entry.address.toLowerCase() === agentAddress.toLowerCase())
-  if (!agent || agent.controllers.length === 0) return []
-
   const users = await db.select().from(schema.users)
-  const walletSet = new Set(agent.controllers.map(controller => controller.toLowerCase()))
-  return users
-    .filter(user => walletSet.has(user.walletAddress.toLowerCase()))
-    .map(user => user.id)
+
+  const ownerIds = new Set<string>()
+
+  // Controllers
+  if (agent && agent.controllers.length > 0) {
+    const walletSet = new Set(agent.controllers.map(c => c.toLowerCase()))
+    for (const u of users) {
+      if (walletSet.has(u.walletAddress.toLowerCase())) ownerIds.add(u.id)
+    }
+  }
+
+  // OWNER edges where the user's person agent is the subject.
+  for (const u of users) {
+    const pa = u.personAgentAddress?.toLowerCase()
+    if (!pa) continue
+    try {
+      const edgeIds = await getEdgesBySubject(pa as `0x${string}`)
+      for (const id of edgeIds) {
+        try {
+          const e = await getEdge(id)
+          if (e.object_.toLowerCase() !== agentAddress.toLowerCase()) continue
+          if (e.status !== 2 && e.status !== 3) continue
+          const roles = await getEdgeRoles(id)
+          if (roles.some(r => r.toLowerCase() === (ROLE_OWNER as string).toLowerCase())) {
+            ownerIds.add(u.id)
+            break
+          }
+        } catch { /* */ }
+      }
+    } catch { /* */ }
+  }
+
+  return [...ownerIds]
 }
 
 export async function getAgentTemplateId(agentAddress: string): Promise<string | null> {

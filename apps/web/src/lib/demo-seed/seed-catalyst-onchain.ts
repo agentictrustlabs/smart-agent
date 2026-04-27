@@ -281,16 +281,30 @@ async function doSeed() {
   } else {
   console.log('[catalyst-seed] Creating on-chain relationships (this takes ~60 seconds)...')
 
-  // Person → Org (13 edges)
+  // Person → Org governance + membership.
+  // The OWNER edges align with the ATL_CONTROLLER list registered above:
+  // every (person, org) controller pair has a matching ORGANIZATION_GOVERNANCE
+  // + ROLE_OWNER edge so ownership is visible in the trust graph and an
+  // owner can approve PROPOSED relationship requests aimed at the org.
   await createEdge(paMaria, network, ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
-  await createEdge(paSarah, network, ORGANIZATION_GOVERNANCE, [ROLE_BOARD_MEMBER])
+  await createEdge(paSarah, network, ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
   await createEdge(paDavid, hub, ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
+  await createEdge(paRosa, hub, ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
+  await createEdge(paAna, grpWellington, ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
+  await createEdge(paMiguel, grpLaporte, ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
+  // Maria stewards the unowned circles + analytics as Program Director.
+  await createEdge(paMaria, grpTimnath, ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
+  await createEdge(paMaria, grpLoveland, ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
+  await createEdge(paMaria, grpBerthoud, ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
+  await createEdge(paMaria, grpJohnstown, ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
+  await createEdge(paMaria, grpRedFeather, ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
+  await createEdge(paMaria, analytics, ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
+
+  // Membership / advisory edges layered on top of the governance graph.
   await createEdge(paDavid, network, ORGANIZATION_MEMBERSHIP, [ROLE_OPERATOR])
   await createEdge(paRosa, hub, ORGANIZATION_MEMBERSHIP, [ROLE_OPERATOR])
   await createEdge(paCarlos, hub, ORGANIZATION_MEMBERSHIP, [ROLE_MEMBER])
-  await createEdge(paAna, grpWellington, ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
   await createEdge(paAna, hub, ORGANIZATION_MEMBERSHIP, [ROLE_MEMBER])
-  await createEdge(paMiguel, grpLaporte, ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
   await createEdge(paMiguel, hub, ORGANIZATION_MEMBERSHIP, [ROLE_MEMBER])
   await createEdge(paDavid, grpWellington, ORGANIZATION_MEMBERSHIP, [ROLE_ADVISOR])
   await createEdge(paRosa, grpLaporte, ORGANIZATION_MEMBERSHIP, [ROLE_ADVISOR])

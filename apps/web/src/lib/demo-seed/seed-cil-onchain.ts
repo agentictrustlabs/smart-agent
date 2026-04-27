@@ -255,17 +255,26 @@ async function doSeed() {
   } else {
   console.log('[cil-seed] Creating on-chain relationships...')
 
-  // Person → Org (11 edges)
+  // Person → Org governance + membership.
+  // OWNER edges mirror the ATL_CONTROLLER list registered above so an owner
+  // can approve PROPOSED relationship requests aimed at the org.
   await createEdge(paJohn,    cil,         ORGANIZATION_GOVERNANCE,  [ROLE_OWNER])
-  await createEdge(paPaul,    cil,         ORGANIZATION_GOVERNANCE,  [ROLE_BOARD_MEMBER])
+  await createEdge(paPaul,    cil,         ORGANIZATION_GOVERNANCE,  [ROLE_OWNER])
   await createEdge(paCameron, ilad,        ORGANIZATION_GOVERNANCE,  [ROLE_OWNER])
+  await createEdge(paNick,    ilad,        ORGANIZATION_GOVERNANCE,  [ROLE_OWNER])
+  await createEdge(paYaw,     ilad,        ORGANIZATION_GOVERNANCE,  [ROLE_OWNER])
+  await createEdge(paYaw,     lomeHub,     ORGANIZATION_GOVERNANCE,  [ROLE_OWNER])
+  await createEdge(paAfia,    afiaMarket,  ORGANIZATION_GOVERNANCE,  [ROLE_OWNER])
+  await createEdge(paKossi,   kossiRepair, ORGANIZATION_GOVERNANCE,  [ROLE_OWNER])
+  await createEdge(paJohn,    wave1,       ORGANIZATION_GOVERNANCE,  [ROLE_OWNER])
+  await createEdge(paJohn,    wave2,       ORGANIZATION_GOVERNANCE,  [ROLE_OWNER])
+  await createEdge(paPaul,    ravah,       ORGANIZATION_GOVERNANCE,  [ROLE_OWNER])
+
+  // Membership edges layered on top of the governance graph.
   await createEdge(paCameron, ravah,       ORGANIZATION_MEMBERSHIP,  [ROLE_OPERATOR])
   await createEdge(paNick,    ilad,        ORGANIZATION_MEMBERSHIP,  [ROLE_OPERATOR])
   await createEdge(paYaw,     ilad,        ORGANIZATION_MEMBERSHIP,  [ROLE_OPERATOR])
-  await createEdge(paYaw,     lomeHub,     ORGANIZATION_GOVERNANCE,  [ROLE_OWNER])
-  await createEdge(paAfia,    afiaMarket,  ORGANIZATION_GOVERNANCE,  [ROLE_OWNER])
   await createEdge(paAfia,    wave1,       ORGANIZATION_MEMBERSHIP,  [ROLE_MEMBER])
-  await createEdge(paKossi,   kossiRepair, ORGANIZATION_GOVERNANCE,  [ROLE_OWNER])
   await createEdge(paKossi,   wave1,       ORGANIZATION_MEMBERSHIP,  [ROLE_MEMBER])
 
   // Org → Org ALLIANCE (5 edges)
