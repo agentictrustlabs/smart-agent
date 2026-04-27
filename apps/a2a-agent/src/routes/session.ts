@@ -145,7 +145,50 @@ session.post('/package', async (c) => {
     })
 
     if (result !== ERC1271_MAGIC_VALUE) {
-      return c.json({ error: 'Delegation signature invalid — ERC-1271 rejected' }, 401)
+      // Detailed diagnostics so we can see WHY a passkey signature is
+      // rejected. Helpful when the OS picker offered a credential whose
+      // digest isn't in the account's _passkeys mapping, or when the
+      // clientDataJSON challenge doesn't decode to the delegation hash.
+      const sig = body.delegation.signature as `0x${string}`
+      const sigPrefix = sig.slice(0, 4) // '0x01' for WebAuthn, plain for ECDSA
+      let diag = ''
+      if (sigPrefix === '0x01') {
+        try {
+          // Decode the WebAuthn assertion struct to see which digest the
+          // client submitted vs what's actually registered on the account.
+          const { decodeAbiParameters } = await import('viem')
+          const [a] = decodeAbiParameters(
+            [{ type: 'tuple', components: [
+              { name: 'authenticatorData',  type: 'bytes'   },
+              { name: 'clientDataJSON',     type: 'string'  },
+              { name: 'challengeIndex',     type: 'uint256' },
+              { name: 'typeIndex',          type: 'uint256' },
+              { name: 'r',                  type: 'uint256' },
+              { name: 's',                  type: 'uint256' },
+              { name: 'credentialIdDigest', type: 'bytes32' },
+            ]}],
+            ('0x' + sig.slice(4)) as `0x${string}`,
+          ) as unknown as [{ credentialIdDigest: string; clientDataJSON: string }]
+          const passkeyCount = await publicClient.readContract({
+            address: body.delegation.delegator as `0x${string}`,
+            abi: agentAccountAbi,
+            functionName: 'passkeyCount',
+          }) as bigint
+          const stored = await publicClient.readContract({
+            address: body.delegation.delegator as `0x${string}`,
+            abi: agentAccountAbi,
+            functionName: 'getPasskey',
+            args: [a.credentialIdDigest as `0x${string}`],
+          }) as readonly [bigint, bigint]
+          diag = ` (sig path=passkey, account passkeyCount=${passkeyCount}, submitted digest=${a.credentialIdDigest}, getPasskey(digest)=(${stored[0]}, ${stored[1]}), clientDataJSON=${a.clientDataJSON.slice(0, 80)}…, hash=${delegationHash})`
+        } catch (e) {
+          diag = ` (assertion decode failed: ${(e as Error).message})`
+        }
+      } else {
+        diag = ` (sig path=ECDSA, prefix=${sigPrefix})`
+      }
+      console.warn('[session/package] ERC-1271 rejected', diag)
+      return c.json({ error: `Delegation signature invalid — ERC-1271 rejected${diag}` }, 401)
     }
   } catch (err) {
     return c.json({ error: `ERC-1271 verification failed: ${err instanceof Error ? err.message : 'unknown'}` }, 401)
