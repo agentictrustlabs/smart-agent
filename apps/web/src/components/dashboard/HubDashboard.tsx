@@ -116,25 +116,31 @@ async function GenericDashboard({
   const allRoles = new Set<string>()
   for (const org of userOrgs) for (const r of org.roles) allRoles.add(r)
 
-  const orgsMeta = await Promise.all(userOrgs.map(async (org) => {
-    const meta = await getAgentMetadata(org.address)
-    return { ...org, primaryName: meta.primaryName }
-  }))
+  // Fan out the per-org RPC reads in parallel.
+  const [orgsMeta, aiAddrsPerOrg, connectedOrgLists] = await Promise.all([
+    Promise.all(userOrgs.map(async (org) => {
+      const meta = await getAgentMetadata(org.address)
+      return { ...org, primaryName: meta.primaryName }
+    })),
+    Promise.all(userOrgs.map(o => getAiAgentsForOrg(o.address).catch(() => []))),
+    Promise.all(userOrgs.map(o => getConnectedOrgs(o.address).catch(() => []))),
+  ])
 
   type AIAgentInfo = { name: string; primaryName: string; type: string; orgName: string; address: string }
-  const aiAgents: AIAgentInfo[] = []
-  for (const org of userOrgs) {
-    const aiAddrs = await getAiAgentsForOrg(org.address)
-    for (const addr of aiAddrs) {
-      const meta = await getAgentMetadata(addr)
-      aiAgents.push({ name: meta.displayName, primaryName: meta.primaryName, type: meta.aiAgentClass || 'custom', orgName: org.name, address: addr })
+  const aiAgentTasks: Array<Promise<AIAgentInfo>> = []
+  for (let i = 0; i < userOrgs.length; i++) {
+    const org = userOrgs[i]
+    for (const addr of aiAddrsPerOrg[i]) {
+      aiAgentTasks.push(getAgentMetadata(addr).then(meta => ({
+        name: meta.displayName, primaryName: meta.primaryName,
+        type: meta.aiAgentClass || 'custom', orgName: org.name, address: addr,
+      })))
     }
   }
+  const aiAgents: AIAgentInfo[] = await Promise.all(aiAgentTasks)
 
   let connectedOrgCount = 0
-  for (const org of userOrgs) {
-    try { connectedOrgCount += (await getConnectedOrgs(org.address)).length } catch { /* ignored */ }
-  }
+  for (const c of connectedOrgLists) connectedOrgCount += c.length
 
   let kbAgentCount = 0
   let kbEdgeCount = 0
@@ -403,39 +409,55 @@ async function CatalystFieldDashboard({
   const thisWeek = new Date(); thisWeek.setDate(thisWeek.getDate() - 7)
   const weekCount = activities.filter(a => new Date(a.activityDate) >= thisWeek).length
 
-  let totalCircles = userOrgs.length
-  for (const org of userOrgs) { try { const c = await getConnectedOrgs(org.address); totalCircles += c.length } catch { /* */ } }
-
-  let oikosCount = 0
-  try { const { eq } = await import('drizzle-orm'); oikosCount = (await db.select().from(schema.circles).where(eq(schema.circles.userId, currentUser.id))).length } catch { /* */ }
-
-  let prayerDueCount = 0
-  try {
-    const { eq } = await import('drizzle-orm')
-    const allPrayers = await db.select().from(schema.prayers).where(eq(schema.prayers.userId, currentUser.id))
-    const days = ['sun','mon','tue','wed','thu','fri','sat']
-    const today = days[new Date().getDay()]
-    prayerDueCount = allPrayers.filter(p => !p.answered && (p.schedule === 'daily' || p.schedule.includes(today))).length
-  } catch { /* */ }
-
+  // Fan out every per-org RPC + the unrelated DB queries in parallel —
+  // these used to run serially and dominated the catalyst home render
+  // (5–10 s on the demo seed, vs ~50 ms for hubs that don't take this
+  // path).
+  const { eq } = await import('drizzle-orm')
   const { getTrainingProgress } = await import('@/lib/actions/grow.action')
-  const progress = await getTrainingProgress(currentUser.id)
+  const [
+    connectedOrgLists,
+    oikosRows,
+    allPrayers,
+    progress,
+    orgsMeta,
+    aiAddrsPerOrg,
+  ] = await Promise.all([
+    Promise.all(userOrgs.map(o => getConnectedOrgs(o.address).catch(() => []))),
+    db.select().from(schema.circles).where(eq(schema.circles.userId, currentUser.id)).catch(() => []),
+    db.select().from(schema.prayers).where(eq(schema.prayers.userId, currentUser.id)).catch(() => []),
+    getTrainingProgress(currentUser.id),
+    Promise.all(userOrgs.map(async (org) => {
+      const meta = await getAgentMetadata(org.address)
+      return { ...org, primaryName: meta.primaryName }
+    })),
+    Promise.all(userOrgs.map(o => getAiAgentsForOrg(o.address).catch(() => []))),
+  ])
+
+  let totalCircles = userOrgs.length
+  for (const c of connectedOrgLists) totalCircles += c.length
+
+  const oikosCount = oikosRows.length
+
+  const days = ['sun','mon','tue','wed','thu','fri','sat']
+  const today = days[new Date().getDay()]
+  const prayerDueCount = allPrayers.filter(p => !p.answered && (p.schedule === 'daily' || p.schedule.includes(today))).length
+
   const walkPct = Math.round((progress.filter(p => p.completed === 1).length / 28) * 100)
 
-  const orgsMeta = await Promise.all(userOrgs.map(async (org) => {
-    const meta = await getAgentMetadata(org.address)
-    return { ...org, primaryName: meta.primaryName }
-  }))
-
+  // Resolve every AI agent's metadata in one parallel batch.
   type AIAgentInfo = { name: string; primaryName: string; type: string; orgName: string; address: string }
-  const aiAgents: AIAgentInfo[] = []
-  for (const org of userOrgs) {
-    const aiAddrs = await getAiAgentsForOrg(org.address)
-    for (const addr of aiAddrs) {
-      const meta = await getAgentMetadata(addr)
-      aiAgents.push({ name: meta.displayName, primaryName: meta.primaryName, type: meta.aiAgentClass || 'custom', orgName: org.name, address: addr })
+  const aiAgentTasks: Array<Promise<AIAgentInfo>> = []
+  for (let i = 0; i < userOrgs.length; i++) {
+    const org = userOrgs[i]
+    for (const addr of aiAddrsPerOrg[i]) {
+      aiAgentTasks.push(getAgentMetadata(addr).then(meta => ({
+        name: meta.displayName, primaryName: meta.primaryName,
+        type: meta.aiAgentClass || 'custom', orgName: org.name, address: addr,
+      })))
     }
   }
+  const aiAgents: AIAgentInfo[] = await Promise.all(aiAgentTasks)
 
   return (
     <div>
@@ -515,30 +537,28 @@ async function DelegationSection({ userId }: { userId: string }) {
   const { getAgentMetadata: getMeta } = await import('@/lib/agent-metadata')
   const { listMyRelationshipsAction } = await import('@/lib/actions/list-my-relationships.action')
 
-  const incoming = await getIncomingDelegations(userId)
-  const outgoing = await getOutgoingDelegations(userId)
-  const coachRel = await getCoachRelationship(userId)
-  const disciples = await getDisciples(userId)
-  const onChainRels = await listMyRelationshipsAction()
+  // Top-level data fetches in parallel.
+  const [incoming, outgoing, coachRel, disciples, onChainRels] = await Promise.all([
+    getIncomingDelegations(userId),
+    getOutgoingDelegations(userId),
+    getCoachRelationship(userId),
+    getDisciples(userId),
+    listMyRelationshipsAction(),
+  ])
 
-  // Always render the pane — even when empty — so the user has a place
-  // to click "Add relationship" before any rows exist.
-
+  // Resolve every counterparty name in one parallel batch instead of N
+  // serial RPC reads.
+  const nameTargets = new Set<string>()
+  if (coachRel) nameTargets.add(coachRel.coachId)
+  for (const d of disciples) nameTargets.add(d.discipleId)
+  for (const d of incoming) nameTargets.add(d.grantor)
+  for (const d of outgoing) nameTargets.add(d.grantee)
+  const targetArr = [...nameTargets]
+  const metas = await Promise.all(targetArr.map(a => getMeta(a).catch(() => null)))
   const nameCache = new Map<string, string>()
-  async function agentName(addr: string): Promise<string> {
-    if (nameCache.has(addr)) return nameCache.get(addr)!
-    try {
-      const meta = await getMeta(addr)
-      const name = meta.primaryName || ''
-      nameCache.set(addr, name)
-      return name
-    } catch { return '' }
+  for (let i = 0; i < targetArr.length; i++) {
+    nameCache.set(targetArr[i], metas[i]?.primaryName ?? '')
   }
-
-  if (coachRel) await agentName(coachRel.coachId)
-  for (const d of disciples) await agentName(d.discipleId)
-  for (const d of incoming) await agentName(d.grantor)
-  for (const d of outgoing) await agentName(d.grantee)
 
   const totalCount = (coachRel ? 1 : 0) + disciples.length + incoming.length + outgoing.length + onChainRels.length
   const isEmpty = totalCount === 0

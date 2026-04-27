@@ -55,28 +55,29 @@ export async function listMyRelationshipsAction(): Promise<MyRelationshipRow[]> 
   try { outIds = await getEdgesBySubject(person) } catch { /* */ }
   try { inIds = await getEdgesByObject(person) } catch { /* */ }
 
+  // Dedupe edge IDs across out/in (a self-edge would appear in both).
   const seen = new Set<string>()
-  const rows: MyRelationshipRow[] = []
-  const enrich = async (edgeId: `0x${string}`, direction: RelationshipDirection) => {
-    if (seen.has(edgeId)) return
-    seen.add(edgeId)
+  const pending: Array<{ edgeId: `0x${string}`; direction: RelationshipDirection }> = []
+  for (const id of outIds) { if (!seen.has(id)) { seen.add(id); pending.push({ edgeId: id, direction: 'outgoing' }) } }
+  for (const id of inIds)  { if (!seen.has(id)) { seen.add(id); pending.push({ edgeId: id, direction: 'incoming' }) } }
+
+  // Hydrate every edge in parallel — getEdge + getEdgeRoles + getAgentMetadata
+  // overlap. Sequential awaits used to dominate dashboard render time.
+  const rows = (await Promise.all(pending.map(async ({ edgeId, direction }): Promise<MyRelationshipRow | null> => {
     let edge: Awaited<ReturnType<typeof getEdge>>
-    try { edge = await getEdge(edgeId) } catch { return }
-    if (edge.status === 5 || edge.status === 6) return // revoked/rejected — hide
+    try { edge = await getEdge(edgeId) } catch { return null }
+    if (edge.status === 5 || edge.status === 6) return null
 
     const counterparty = direction === 'outgoing' ? edge.object_ : edge.subject
-    let roles: `0x${string}`[] = []
-    try { roles = await getEdgeRoles(edgeId) } catch { /* */ }
+    const [roles, meta] = await Promise.all([
+      getEdgeRoles(edgeId).catch(() => [] as `0x${string}`[]),
+      getAgentMetadata(counterparty).catch(() => null),
+    ])
 
-    let displayName = `${counterparty.slice(0, 6)}…${counterparty.slice(-4)}`
-    let primaryName: string | null = null
-    try {
-      const meta = await getAgentMetadata(counterparty)
-      if (meta.displayName) displayName = meta.displayName
-      primaryName = meta.primaryName || null
-    } catch { /* */ }
+    const displayName = meta?.displayName || `${counterparty.slice(0, 6)}…${counterparty.slice(-4)}`
+    const primaryName = meta?.primaryName || null
 
-    rows.push({
+    return {
       edgeId,
       direction,
       counterpartyAddress: counterparty,
@@ -86,11 +87,8 @@ export async function listMyRelationshipsAction(): Promise<MyRelationshipRow[]> 
       roleLabels: roles.map(r => roleName(r) || 'Role'),
       status: edge.status,
       statusLabel: STATUS_LABELS[edge.status] ?? `Status ${edge.status}`,
-    })
-  }
-
-  for (const id of outIds) await enrich(id, 'outgoing')
-  for (const id of inIds) await enrich(id, 'incoming')
+    }
+  }))).filter((r): r is MyRelationshipRow => r !== null)
 
   // Sort: pending first (so the user notices), then confirmed/active.
   rows.sort((a, b) => {

@@ -108,38 +108,31 @@ export async function listRegisteredAgents(): Promise<RegisteredAgent[]> {
       functionName: 'agentCount',
     }) as bigint
 
-    for (let i = 0n; i < count; i++) {
-      const agentAddr = await client.readContract({
-        address: resolverAddr,
-        abi: agentAccountResolverAbi,
-        functionName: 'getAgentAt',
-        args: [i],
-      }) as `0x${string}`
-
-      const core = await client.readContract({
-        address: resolverAddr,
-        abi: agentAccountResolverAbi,
-        functionName: 'getCore',
-        args: [agentAddr],
-      }) as {
-        displayName: string
-        description: string
-        agentType: `0x${string}`
-      }
-
-      const controllers = await client.readContract({
-        address: resolverAddr,
-        abi: agentAccountResolverAbi,
-        functionName: 'getMultiAddressProperty',
-        args: [agentAddr, ATL_CONTROLLER as `0x${string}`],
-      }) as string[]
-
+    // Fan out each agent index → addr in parallel, then per-agent
+    // getCore + getMultiAddressProperty in parallel. Sequential awaits
+    // here meant 3 round-trips per agent × 50 agents = 150 serial RPC
+    // calls on every dashboard render.
+    const indices = Array.from({ length: Number(count) }, (_, i) => BigInt(i))
+    const addrs = await Promise.all(indices.map(i =>
+      client.readContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'getAgentAt', args: [i] }) as Promise<`0x${string}`>,
+    ))
+    const cores = await Promise.all(addrs.map(a =>
+      (client.readContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'getCore', args: [a] }) as Promise<{ displayName: string; description: string; agentType: `0x${string}` }>)
+        .catch(() => null),
+    ))
+    const controllerLists = await Promise.all(addrs.map(a =>
+      (client.readContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'getMultiAddressProperty', args: [a, ATL_CONTROLLER as `0x${string}`] }) as Promise<string[]>)
+        .catch(() => [] as string[]),
+    ))
+    for (let i = 0; i < addrs.length; i++) {
+      const core = cores[i]
+      if (!core) continue
       results.push({
-        address: agentAddr,
-        name: core.displayName || `${agentAddr.slice(0, 6)}...${agentAddr.slice(-4)}`,
+        address: addrs[i],
+        name: core.displayName || `${addrs[i].slice(0, 6)}...${addrs[i].slice(-4)}`,
         description: core.description || '',
         kind: kindFromType(core.agentType),
-        controllers,
+        controllers: controllerLists[i],
       })
     }
   } catch {

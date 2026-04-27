@@ -82,16 +82,37 @@ export async function getAgentMetadata(agentAddress: string): Promise<AgentMetad
 
       if (isReg) {
         meta.isResolverRegistered = true
-        const core = await client.readContract({
-          address: resolverAddr, abi: agentAccountResolverAbi,
-          functionName: 'getCore', args: [addr],
-        }) as { displayName: string; description: string; agentType: `0x${string}`; agentClass: `0x${string}`; metadataURI: string; active: boolean }
+        // Fan out core + every property read in parallel — 10 RPCs that
+        // used to run serially per agent. Caller often invokes this for
+        // many agents at once (org dashboard does N orgs), so the per-
+        // agent waterfall was the dominant bottleneck.
+        const readStr = (predicate: `0x${string}`) =>
+          client.readContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'getStringProperty', args: [addr, predicate] }) as Promise<string>
+        const readMulti = (predicate: `0x${string}`) =>
+          client.readContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'getMultiStringProperty', args: [addr, predicate] }) as Promise<string[]>
+
+        const [
+          core, capabilities, trustModels,
+          primaryName, nameLabel, a2aEndpoint, mcpServer,
+          latitude, longitude, spatialCRS, spatialType,
+        ] = await Promise.all([
+          client.readContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'getCore', args: [addr] }) as Promise<{ displayName: string; description: string; agentType: `0x${string}`; agentClass: `0x${string}`; metadataURI: string; active: boolean }>,
+          readMulti(ATL_CAPABILITY as `0x${string}`).catch(() => [] as string[]),
+          readMulti(ATL_SUPPORTED_TRUST as `0x${string}`).catch(() => [] as string[]),
+          readStr(ATL_PRIMARY_NAME as `0x${string}`).catch(() => ''),
+          readStr(ATL_NAME_LABEL as `0x${string}`).catch(() => ''),
+          readStr(ATL_A2A_ENDPOINT as `0x${string}`).catch(() => ''),
+          readStr(ATL_MCP_SERVER as `0x${string}`).catch(() => ''),
+          readStr(ATL_LATITUDE as `0x${string}`).catch(() => ''),
+          readStr(ATL_LONGITUDE as `0x${string}`).catch(() => ''),
+          readStr(ATL_SPATIAL_CRS as `0x${string}`).catch(() => ''),
+          readStr(ATL_SPATIAL_TYPE as `0x${string}`).catch(() => ''),
+        ])
 
         if (core.displayName) meta.displayName = core.displayName
         if (core.description) meta.description = core.description
         if (core.metadataURI) meta.metadataURI = core.metadataURI
         meta.isActive = core.active
-
         if (TYPE_MAP[core.agentType]) {
           meta.agentType = TYPE_MAP[core.agentType]
           meta.agentTypeLabel = AGENT_TYPE_LABELS[core.agentType] ?? meta.agentTypeLabel
@@ -99,17 +120,16 @@ export async function getAgentMetadata(agentAddress: string): Promise<AgentMetad
         if (AI_CLASS_LABELS[core.agentClass]) {
           meta.aiAgentClass = AI_CLASS_LABELS[core.agentClass]
         }
-
-        meta.capabilities = await client.readContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'getMultiStringProperty', args: [addr, ATL_CAPABILITY as `0x${string}`] }) as string[]
-        meta.trustModels = await client.readContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'getMultiStringProperty', args: [addr, ATL_SUPPORTED_TRUST as `0x${string}`] }) as string[]
-        meta.primaryName = await client.readContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'getStringProperty', args: [addr, ATL_PRIMARY_NAME as `0x${string}`] }) as string
-        meta.nameLabel = await client.readContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'getStringProperty', args: [addr, ATL_NAME_LABEL as `0x${string}`] }) as string
-        meta.a2aEndpoint = await client.readContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'getStringProperty', args: [addr, ATL_A2A_ENDPOINT as `0x${string}`] }) as string
-        meta.mcpServer = await client.readContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'getStringProperty', args: [addr, ATL_MCP_SERVER as `0x${string}`] }) as string
-        meta.latitude = await client.readContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'getStringProperty', args: [addr, ATL_LATITUDE as `0x${string}`] }) as string
-        meta.longitude = await client.readContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'getStringProperty', args: [addr, ATL_LONGITUDE as `0x${string}`] }) as string
-        meta.spatialCRS = await client.readContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'getStringProperty', args: [addr, ATL_SPATIAL_CRS as `0x${string}`] }) as string
-        meta.spatialType = await client.readContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'getStringProperty', args: [addr, ATL_SPATIAL_TYPE as `0x${string}`] }) as string
+        meta.capabilities = capabilities
+        meta.trustModels = trustModels
+        meta.primaryName = primaryName
+        meta.nameLabel = nameLabel
+        meta.a2aEndpoint = a2aEndpoint
+        meta.mcpServer = mcpServer
+        meta.latitude = latitude
+        meta.longitude = longitude
+        meta.spatialCRS = spatialCRS
+        meta.spatialType = spatialType
       }
     } catch { /* ignored */ }
   }

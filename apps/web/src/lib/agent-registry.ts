@@ -126,26 +126,36 @@ export async function getOrgsForPersonAgent(personAgentAddress: string): Promise
 
 /**
  * Find AI agents operated by an org (ORGANIZATIONAL_CONTROL edges where subject is AI).
+ * Edges + cores fetched in parallel — sequential awaits used to dominate
+ * the catalyst dashboard render time (every org with N incoming edges
+ * cost N round-trips).
  */
 export async function getAiAgentsForOrg(orgAddress: string): Promise<string[]> {
-  const aiAddrs: string[] = []
   const addr = resolver()
-  if (!addr) return aiAddrs
+  if (!addr) return []
   const client = getPublicClient()
 
-  try {
-    const edgeIds = await getEdgesByObject(orgAddress as `0x${string}`)
-    for (const edgeId of edgeIds) {
-      const edge = await getEdge(edgeId)
-      if (edge.status < 2) continue
-      try {
-        const core = await client.readContract({ address: addr, abi: agentAccountResolverAbi, functionName: 'getCore', args: [edge.subject as `0x${string}`] }) as { agentType: `0x${string}` }
-        if (core.agentType === TYPE_AI_AGENT) {
-          if (!aiAddrs.includes(edge.subject)) aiAddrs.push(edge.subject)
-        }
-      } catch { /* ignored */ }
-    }
-  } catch { /* ignored */ }
+  let edgeIds: `0x${string}`[] = []
+  try { edgeIds = await getEdgesByObject(orgAddress as `0x${string}`) } catch { return [] }
+  if (edgeIds.length === 0) return []
+
+  const edges = await Promise.all(edgeIds.map(id => getEdge(id).catch(() => null)))
+  const candidateSubjects = new Set<string>()
+  for (const edge of edges) {
+    if (!edge || edge.status < 2) continue
+    candidateSubjects.add(edge.subject)
+  }
+  if (candidateSubjects.size === 0) return []
+
+  const subjectArr = [...candidateSubjects]
+  const cores = await Promise.all(subjectArr.map(s =>
+    (client.readContract({ address: addr, abi: agentAccountResolverAbi, functionName: 'getCore', args: [s as `0x${string}`] }) as Promise<{ agentType: `0x${string}` }>)
+      .catch(() => null),
+  ))
+  const aiAddrs: string[] = []
+  for (let i = 0; i < subjectArr.length; i++) {
+    if (cores[i]?.agentType === TYPE_AI_AGENT) aiAddrs.push(subjectArr[i])
+  }
   return aiAddrs
 }
 
