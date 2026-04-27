@@ -222,6 +222,12 @@ function ConnectStep({ hub, accent, hubSlug, error, setError }: {
     serverError?: string
   }>(null)
 
+  const [signinProgress, setSigninProgress] = useState<null | {
+    fullName: string
+    step: 'passkey' | 'verify' | 'agent' | 'done' | 'error'
+    errorMessage?: string
+  }>(null)
+
   // Debounced availability check while the user is typing. The cleanup
   // sets `cancelled` so an already-fired fetch from a previous keystroke
   // doesn't overwrite state with a stale answer (e.g. you type "rich",
@@ -425,6 +431,7 @@ function ConnectStep({ hub, accent, hubSlug, error, setError }: {
     if (!window.PublicKeyCredential) { setError('WebAuthn not supported in this browser.'); return }
     const enteredName = signinAgentName.trim()
     if (!enteredName) { setError('Enter your .agent name (e.g. richp.agent).'); return }
+    setSigninProgress({ fullName: enteredName, step: 'passkey' })
     startPending(async () => {
       try {
         const challResp = await fetch('/api/auth/passkey-challenge', { cache: 'no-store' })
@@ -450,9 +457,14 @@ function ConnectStep({ hub, accent, hubSlug, error, setError }: {
             allowCredentials: allowCredentials.length > 0 ? allowCredentials : undefined,
           },
         }) as PublicKeyCredential | null
-        if (!cred) { setError('Cancelled.'); return }
+        if (!cred) {
+          setSigninProgress({ fullName: enteredName, step: 'error', errorMessage: 'Passkey prompt cancelled.' })
+          setError('Cancelled.')
+          return
+        }
         const resp = cred.response as AuthenticatorAssertionResponse
         const credentialIdBase64Url = base64UrlEncode(new Uint8Array(cred.rawId))
+        setSigninProgress({ fullName: enteredName, step: 'verify' })
         const verify = await fetch('/api/auth/passkey-verify', {
           method: 'POST',
           headers: { 'content-type': 'application/json', origin: window.location.origin },
@@ -470,9 +482,75 @@ function ConnectStep({ hub, accent, hubSlug, error, setError }: {
           }),
         })
         const body = await verify.json()
-        if (!verify.ok || !body.success) { setError(body.error ?? verify.statusText); return }
-        window.location.reload()
-      } catch (err) { setError((err as Error).message) }
+        if (!verify.ok || !body.success) {
+          const msg = body.error ?? verify.statusText
+          setSigninProgress({ fullName: enteredName, step: 'error', errorMessage: msg })
+          setError(msg)
+          return
+        }
+
+        // Bootstrap the A2A session right after sign-in so the profile
+        // surface doesn't pop another OS prompt later. Two-step: server
+        // prepares an unsigned delegation, browser signs its hash with
+        // the same passkey, server completes via ERC-1271.
+        setSigninProgress({ fullName: enteredName, step: 'agent' })
+        try {
+          const initRes = await fetch('/api/a2a/bootstrap/client', { method: 'POST' })
+          if (!initRes.ok) {
+            const e = await initRes.json().catch(() => ({})) as { error?: string }
+            throw new Error(e.error ?? `bootstrap init failed: HTTP ${initRes.status}`)
+          }
+          const { delegationHash, sessionId, delegation } = await initRes.json() as {
+            delegationHash: string; sessionId: string; delegation: unknown
+          }
+          const hex = delegationHash.startsWith('0x') ? delegationHash.slice(2) : delegationHash
+          const hashBytes = new Uint8Array(hex.length / 2)
+          for (let i = 0; i < hashBytes.length; i++) hashBytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16)
+          const dhAb = new ArrayBuffer(hashBytes.length)
+          new Uint8Array(dhAb).set(hashBytes)
+          const credIdAb2 = new ArrayBuffer(cred.rawId.byteLength)
+          new Uint8Array(credIdAb2).set(new Uint8Array(cred.rawId))
+          const cred2 = await navigator.credentials.get({
+            publicKey: {
+              challenge: dhAb,
+              rpId: window.location.hostname,
+              userVerification: 'preferred',
+              timeout: 60_000,
+              allowCredentials: [{ type: 'public-key', id: credIdAb2 }],
+            },
+          }) as PublicKeyCredential | null
+          if (!cred2) throw new Error('Passkey prompt cancelled — agent connection not established')
+          const aresp = cred2.response as AuthenticatorAssertionResponse
+          const passkeySig = packWebAuthnSignature({
+            credentialIdBytes: new Uint8Array(cred2.rawId),
+            authenticatorData: new Uint8Array(aresp.authenticatorData),
+            clientDataJSON: new Uint8Array(aresp.clientDataJSON),
+            derSignature: new Uint8Array(aresp.signature),
+          })
+          const taggedSig = ('0x01' + passkeySig.slice(2)) as `0x${string}`
+          const completeRes = await fetch('/api/a2a/bootstrap/complete', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ sessionId, delegation, delegationSignature: taggedSig }),
+          })
+          if (!completeRes.ok) {
+            const e = await completeRes.json().catch(() => ({})) as { error?: string }
+            throw new Error(e.error ?? `bootstrap complete failed: HTTP ${completeRes.status}`)
+          }
+        } catch (e) {
+          const msg = `agent bootstrap: ${(e as Error).message}`
+          setSigninProgress({ fullName: enteredName, step: 'error', errorMessage: msg })
+          setError(msg)
+          return
+        }
+
+        setSigninProgress({ fullName: enteredName, step: 'done' })
+        setTimeout(() => { window.location.reload() }, 600)
+      } catch (err) {
+        const msg = (err as Error).message
+        setSigninProgress({ fullName: enteredName, step: 'error', errorMessage: msg })
+        setError(msg)
+      }
     })
   }
 
@@ -625,7 +703,95 @@ function ConnectStep({ hub, accent, hubSlug, error, setError }: {
           onDismiss={() => setSignupProgress(null)}
         />
       )}
+
+      {signinProgress && (
+        <SigninProgressModal
+          fullName={signinProgress.fullName}
+          step={signinProgress.step}
+          errorMessage={signinProgress.errorMessage}
+          accent={accent}
+          onDismiss={() => setSigninProgress(null)}
+        />
+      )}
     </Card>
+  )
+}
+
+// ─── Signin Progress Modal ──────────────────────────────────────────
+
+function SigninProgressModal({
+  fullName, step, errorMessage, accent, onDismiss,
+}: {
+  fullName: string
+  step: 'passkey' | 'verify' | 'agent' | 'done' | 'error'
+  errorMessage?: string
+  accent: string
+  onDismiss: () => void
+}) {
+  const stepOrder: Array<{ key: typeof step; label: string }> = [
+    { key: 'passkey', label: 'Picking your passkey' },
+    { key: 'verify',  label: 'Verifying signature on chain' },
+    { key: 'agent',   label: 'Connecting your agent (A2A session)' },
+    { key: 'done',    label: 'Signing in' },
+  ]
+  const currentIdx = stepOrder.findIndex(s => s.key === step)
+  const errorIdx = step === 'error'
+    ? Math.max(0, stepOrder.findIndex(s => s.key === (errorMessage?.startsWith('agent') ? 'agent' : 'verify')))
+    : -1
+
+  return (
+    <div role="dialog" aria-label="Sign-in progress" style={{
+      position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      zIndex: 9999, padding: 16,
+    }}>
+      <div style={{
+        background: '#fff', borderRadius: 14, padding: '1.4rem 1.5rem',
+        maxWidth: 460, width: '100%',
+        boxShadow: '0 20px 60px rgba(15,23,42,0.30)',
+        border: '1px solid #e5e7eb',
+      }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 6 }}>
+          {step === 'done' ? 'Signed in' : step === 'error' ? 'Sign-in failed' : 'Signing in'}
+        </div>
+        <h2 style={{ fontSize: 18, fontWeight: 700, color: '#0f172a', margin: '0 0 14px' }}>{fullName}</h2>
+
+        {stepOrder.map((s, i) => {
+          let status: 'ok' | 'pending' | 'fail' | 'idle' = 'idle'
+          if (step === 'done') status = 'ok'
+          else if (step === 'error') status = i < errorIdx ? 'ok' : i === errorIdx ? 'fail' : 'idle'
+          else status = i < currentIdx ? 'ok' : i === currentIdx ? 'pending' : 'idle'
+          return <SignupStep key={s.key} status={status} label={s.label} />
+        })}
+
+        {step === 'error' && (
+          <div style={{ marginTop: 12, padding: '0.55rem 0.8rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, fontSize: 12, color: '#b91c1c' }}>
+            {errorMessage ?? 'Unknown error'}
+          </div>
+        )}
+        {step === 'done' && (
+          <div style={{ marginTop: 12, padding: '0.55rem 0.8rem', background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: 8, fontSize: 12, color: '#047857', fontWeight: 600 }}>
+            Welcome back, {fullName}. Loading your hub home…
+          </div>
+        )}
+
+        {(step === 'error' || step === 'done') && (
+          <div style={{ marginTop: 14, display: 'flex', justifyContent: 'flex-end' }}>
+            <button
+              type="button"
+              onClick={onDismiss}
+              style={{
+                padding: '0.45rem 0.9rem', background: 'transparent',
+                color: accent, border: `1px solid ${accent}55`,
+                borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+              }}
+            >
+              {step === 'error' ? 'Close' : 'Dismiss'}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
   )
 }
 
