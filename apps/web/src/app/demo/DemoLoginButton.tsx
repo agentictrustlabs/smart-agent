@@ -54,22 +54,29 @@ export function DemoLoginButton({ userKey, accent }: { userKey: string; accent: 
   const [readiness, setReadiness] = useState<ReadinessPayload | null>(null)
   const [signedIn, setSignedIn] = useState(false)
   const [name, setName] = useState<string>('')
+  const [navTarget, setNavTarget] = useState<string | null>(null)
   const router = useRouter()
-  const cancelled = useRef(false)
+  // userCancelled is a *user-action* flag (Cancel button only). The polling
+  // loop's own teardown (when we transition phase to 'navigating') must NOT
+  // set it, otherwise the scheduled router.push is suppressed and the
+  // dialog hangs at "Ready. Loading…".
+  const userCancelled = useRef(false)
   const signedInRef = useRef(false)
 
+  // ── Polling loop: drives readiness fetches + sign-in. Stops when
+  //    userReady triggers a navTarget; cleanup only flips the local
+  //    `stopped` flag so the navigation effect below can still fire.
   useEffect(() => {
     if (phase !== 'progressing') return
-    cancelled.current = false
     let stopped = false
 
     async function tick() {
-      while (!stopped && !cancelled.current) {
+      while (!stopped && !userCancelled.current) {
         let d: ReadinessPayload | null = null
         try {
           const r = await fetch('/api/system-readiness', { cache: 'no-store' })
           d = await r.json() as ReadinessPayload
-          if (cancelled.current) return
+          if (userCancelled.current) return
           setReadiness(d)
         } catch { /* network blip — keep polling */ }
 
@@ -85,7 +92,6 @@ export function DemoLoginButton({ userKey, accent }: { userKey: string; accent: 
               const j = await res.json().catch(() => ({})) as { error?: string }
               setErr(j.error ?? `HTTP ${res.status}`)
               setPhase('error')
-              stopped = true
               return
             }
             const body = await res.json().catch(() => ({})) as { user?: { name?: string } }
@@ -95,21 +101,17 @@ export function DemoLoginButton({ userKey, accent }: { userKey: string; accent: 
           } catch (e) {
             setErr(e instanceof Error ? e.message : 'demo-login failed')
             setPhase('error')
-            stopped = true
             return
           }
           // loop again immediately to refetch readiness with the cookie now set
           continue
         }
 
-        // Step B — user-side readiness flips true → navigate to the
-        // resolved hub home directly (no /dashboard hop).
+        // Step B — user-side readiness flips true → hand off to the
+        // navigation effect by setting navTarget. Polling stops here.
         if (d?.userReady && signedInRef.current) {
-          stopped = true
-          const target = pickHubHomePath(d.user)
+          setNavTarget(pickHubHomePath(d.user))
           setPhase('navigating')
-          // Brief pause so the user sees the all-green state.
-          setTimeout(() => { if (!cancelled.current) router.push(target) }, 350)
           return
         }
 
@@ -117,14 +119,27 @@ export function DemoLoginButton({ userKey, accent }: { userKey: string; accent: 
       }
     }
     tick()
-    return () => { stopped = true; cancelled.current = true }
-  }, [phase, router, userKey])
+    return () => { stopped = true }
+  }, [phase, userKey])
+
+  // ── Navigation effect: fires once a navTarget is set. Independent of
+  //    the polling effect so its setTimeout can't be cancelled by the
+  //    poller's teardown.
+  useEffect(() => {
+    if (!navTarget) return
+    const id = setTimeout(() => {
+      if (!userCancelled.current) router.push(navTarget)
+    }, 350)
+    return () => clearTimeout(id)
+  }, [navTarget, router])
 
   function go() {
     setErr(null)
     setReadiness(null)
     setSignedIn(false)
     signedInRef.current = false
+    userCancelled.current = false
+    setNavTarget(null)
     setPhase('opening')
     // The dialog opens synchronously; readiness polling kicks in via
     // the effect once we transition to 'progressing'.
@@ -132,11 +147,12 @@ export function DemoLoginButton({ userKey, accent }: { userKey: string; accent: 
   }
 
   function cancel() {
-    cancelled.current = true
+    userCancelled.current = true
     setPhase('idle')
     setSignedIn(false)
     signedInRef.current = false
     setReadiness(null)
+    setNavTarget(null)
   }
 
   const inFlight = phase !== 'idle' && phase !== 'error'
