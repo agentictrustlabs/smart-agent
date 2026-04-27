@@ -159,24 +159,8 @@ export async function enrollOAuthAddPasskeyAction(args: EnrollAddPasskeyArgs): P
     })
     if (!txAdd.success) return { success: false, error: `addPasskey failed: ${txAdd.error}` }
 
-    // Mirror the credential server-side so future passkey-signed flows
-    // (recovery, repair) can constrain the OS picker to only credentials
-    // actually registered on this account, even on a fresh browser where
-    // localStorage hints aren't available.
-    try {
-      await db.insert(schema.passkeys).values({
-        id: crypto.randomUUID(),
-        userId: userRow.id,
-        accountAddress: accountAddr.toLowerCase(),
-        credentialIdBase64Url: args.credentialIdBase64Url,
-        credentialIdDigest: credentialIdDigest,
-        pubKeyX: args.pubKeyX,
-        pubKeyY: args.pubKeyY,
-        label: null,
-      }).onConflictDoNothing()
-    } catch (e) {
-      console.warn('[enroll-oauth] failed to mirror passkey to DB (non-fatal):', (e as Error).message)
-    }
+    // No server-side passkey mirror — on-chain account._passkeys[digest]
+    // is the source of truth.
 
     // Build the recovery delegation; signing happens client-side (passkey).
     const serverEOA = privateKeyToAccount(DEPLOYER_KEY).address as `0x${string}`

@@ -183,13 +183,10 @@ export async function prepareReAuthBootstrapAction(): Promise<PrepareReAuthResul
       chainId: CHAIN_ID,
     })
 
-    // Pull every credentialId we've mirrored for this account so the client
-    // can constrain the OS passkey picker to credentials that actually exist
-    // on-chain. Without this, a user on a fresh browser sees their full
-    // passkey list and may pick one tied to a different site / account → AA24.
-    const passkeyRows = await db.select().from(schema.passkeys)
-      .where(eq(schema.passkeys.accountAddress, accountAddr.toLowerCase()))
-    const knownCredentialIds = passkeyRows.map(p => p.credentialIdBase64Url)
+    // No server-side passkey mirror — the OS picker is unconstrained.
+    // Local browser hints (localStorage smart-agent.passkeys.local) cover
+    // the common case; users on a fresh browser pick from their full list.
+    const knownCredentialIds: string[] = []
 
     return {
       success: true,
@@ -308,36 +305,8 @@ export async function completeReAuthBootstrapAction(args: CompleteReAuthArgs): P
       return { success: false, error: `UserOp reverted: ${reverts[0].args.revertReason}`, txHash }
     }
 
-    // Backfill the passkey mirror for legacy accounts: if the user's repair
-    // succeeded with a credentialId we don't have on file yet, persist it so
-    // future repair / recovery flows can constrain the OS picker.
-    if (args.credentialIdBase64Url) {
-      try {
-        const { keccak256 } = await import('viem')
-        const session = await requireSession()
-        const userRow = await db.select().from(schema.users)
-          .where(eq(schema.users.did, session.userId)).limit(1).then(r => r[0])
-        if (userRow) {
-          const credIdBytes = base64UrlDecode(args.credentialIdBase64Url)
-          const digest = keccak256(credIdBytes)
-          await db.insert(schema.passkeys).values({
-            id: crypto.randomUUID(),
-            userId: userRow.id,
-            accountAddress: args.unsignedOp.sender.toLowerCase(),
-            credentialIdBase64Url: args.credentialIdBase64Url,
-            credentialIdDigest: digest,
-            // x/y not available here; backfill later via /passkey-enroll's
-            // re-enrollment if we ever need them. Only the credentialId is
-            // needed for `allowCredentials` lookup.
-            pubKeyX: '0',
-            pubKeyY: '0',
-            label: 'repaired',
-          }).onConflictDoNothing()
-        }
-      } catch (e) {
-        console.warn('[repair] failed to backfill passkey mirror (non-fatal):', (e as Error).message)
-      }
-    }
+    // No server-side passkey mirror — the on-chain account._passkeys[digest]
+    // mapping is the source of truth. Login resolves accounts by .agent name.
 
     return { success: true, txHash }
   } catch (err) {

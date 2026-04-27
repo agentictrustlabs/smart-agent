@@ -2,6 +2,8 @@
  * POST /api/auth/passkey-verify
  *
  *   Body: {
+ *     name?,                       // .agent name (preferred discovery key)
+ *     accountAddress?,             // explicit address fallback
  *     token,                       // from /api/auth/passkey-challenge
  *     challenge,                   // base64url, what the device signed
  *     credentialIdBase64Url,
@@ -12,30 +14,43 @@
  *
  * Server:
  *   1. Verify the (token, challenge) pair via verifyChallenge.
- *   2. Look up the user row by credentialIdDigest (= keccak(credentialIdBytes)).
+ *   2. Resolve the smart account address. Preferred path: caller passes
+ *      `name` (e.g. "richp.agent"); we resolve via AgentNameUniversalResolver
+ *      → smart account. Fallback path: caller passes accountAddress directly.
  *   3. Pack the WebAuthn assertion as 0x01 || abi.encode(WebAuthnLib.Assertion).
  *   4. Call account.isValidSignature(challengeHash, packedSig). If it returns
  *      ERC1271_MAGIC_VALUE the passkey checks out.
- *   5. Mint a session JWT (kind=session, via=passkey) and set the cookie.
+ *   5. Look up the user row by smartAccountAddress and mint a session JWT.
  *
  * No client-side P-256 math, no JS port of WebAuthnLib — verification reuses
  * the on-chain logic via ERC-1271. Same code path the contract uses for
  * UserOp validation, so the trust surface is identical.
+ *
+ * The `passkeys` table is no longer consulted: .agent name is the discovery
+ * key. The chain remains source of truth for which credentials authorise
+ * which account.
  */
 
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import {
-  keccak256,
   toBytes,
   toHex,
   encodeAbiParameters,
   createPublicClient,
   http,
   getAddress,
+  keccak256,
+  isAddress,
 } from 'viem'
 import { localhost } from 'viem/chains'
-import { agentAccountAbi, parseDerSignature, normaliseLowS } from '@smart-agent/sdk'
+import {
+  agentAccountAbi,
+  agentNameUniversalResolverAbi,
+  parseDerSignature,
+  normaliseLowS,
+  namehash,
+} from '@smart-agent/sdk'
 import { db, schema } from '@/db'
 import { eq } from 'drizzle-orm'
 import { mintSession, SESSION_COOKIE } from '@/lib/auth/native-session'
@@ -47,6 +62,10 @@ const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? '31337')
 const ERC1271_MAGIC = '0x1626ba7e'
 
 interface VerifyBody {
+  /** .agent name to resolve (preferred). e.g. "richp.agent". */
+  name?: string
+  /** Explicit smart-account address (skips name resolution). */
+  accountAddress?: string
   token: string
   challenge: string                 // base64url of the 32-byte server-issued challenge
   credentialIdBase64Url: string
@@ -68,36 +87,41 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'invalid or expired challenge' }, { status: 401 })
   }
 
-  // Lookup the user for this credential. Two paths so we work for every
-  // signup history:
-  //   (a) modern: server-side `passkeys` mirror — the canonical source for
-  //       every passkey enrolled post-Phase-2-cleanup.
-  //   (b) legacy passkey-signup: user.id was set to the credentialIdDigest
-  //       (lowercased hex) before the mirror existed. Fallback covers users
-  //       who signed up via that path and never re-enrolled.
-  const credIdBytes = base64UrlDecode(body.credentialIdBase64Url)
-  const credentialIdDigest = keccak256(credIdBytes) // 0x...
-  const credIdHex = credentialIdDigest.toLowerCase()
+  // Resolve the smart-account address. Preferred path: caller supplies a
+  // `.agent` name we resolve via AgentNameUniversalResolver. Fallback:
+  // explicit accountAddress. No `passkeys` table lookup — the chain
+  // (AgentAccount._passkeys) is the source of truth for which credentials
+  // authorise this account, surfaced via isValidSignature below.
+  const publicClient = createPublicClient({ chain: { ...localhost, id: CHAIN_ID }, transport: http(RPC_URL) })
 
-  const passkeyRow = await db.select().from(schema.passkeys)
-    .where(eq(schema.passkeys.credentialIdBase64Url, body.credentialIdBase64Url))
-    .limit(1).then(r => r[0])
-  let row = passkeyRow
-    ? await db.select().from(schema.users)
-        .where(eq(schema.users.id, passkeyRow.userId)).limit(1).then(r => r[0])
-    : undefined
-  if (!row) {
-    // Legacy passkey-signup: user.id was set to the lowercased credIdHex.
-    row = await db.select().from(schema.users)
-      .where(eq(schema.users.id, credIdHex)).limit(1).then(r => r[0])
+  let accountAddr: `0x${string}` | null = null
+  if (body.name && body.name.trim().length > 0) {
+    const universal = process.env.AGENT_NAME_UNIVERSAL_RESOLVER_ADDRESS as `0x${string}` | undefined
+    if (!universal) {
+      return NextResponse.json({ error: 'name resolver not configured' }, { status: 500 })
+    }
+    try {
+      const node = namehash(body.name.trim())
+      const resolved = await publicClient.readContract({
+        address: universal, abi: agentNameUniversalResolverAbi,
+        functionName: 'resolveNode', args: [node as `0x${string}`],
+      }) as `0x${string}`
+      if (!resolved || resolved === '0x0000000000000000000000000000000000000000') {
+        return NextResponse.json({ error: `unknown name: ${body.name}` }, { status: 404 })
+      }
+      accountAddr = getAddress(resolved)
+    } catch (err) {
+      return NextResponse.json({ error: `name resolution failed: ${(err as Error).message}` }, { status: 400 })
+    }
+  } else if (body.accountAddress && isAddress(body.accountAddress)) {
+    accountAddr = getAddress(body.accountAddress as `0x${string}`)
+  } else {
+    return NextResponse.json({ error: 'name or accountAddress required' }, { status: 400 })
   }
-
-  if (!row || !row.smartAccountAddress) {
-    return NextResponse.json({ error: 'unknown credential' }, { status: 404 })
-  }
-  const accountAddr = getAddress(row.smartAccountAddress as `0x${string}`)
 
   // Build the assertion payload our PasskeyValidator/WebAuthnLib expects.
+  const credIdBytes = base64UrlDecode(body.credentialIdBase64Url)
+  const credentialIdDigest = keccak256(credIdBytes)
   const authData = base64UrlDecode(body.authenticatorDataBase64Url)
   const clientDataJSON = base64UrlDecode(body.clientDataJSONBase64Url)
   const cdjStr = new TextDecoder().decode(clientDataJSON)
@@ -146,7 +170,6 @@ export async function POST(request: Request) {
   // challenge — base64url-decoded.
   const challengeHash = toHex(base64UrlDecode(body.challenge)) as `0x${string}`
 
-  const publicClient = createPublicClient({ chain: { ...localhost, id: CHAIN_ID }, transport: http(RPC_URL) })
   let isValid = false
   try {
     const result = (await publicClient.readContract({
@@ -163,9 +186,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'invalid passkey signature' }, { status: 401 })
   }
 
+  // Look up the user row by smartAccountAddress so we can mint a session
+  // with the right did / name / email. Match case-insensitively because
+  // user.smartAccountAddress is stored lowercased.
+  const accountLower = accountAddr.toLowerCase()
+  const row = await db.select().from(schema.users)
+    .where(eq(schema.users.smartAccountAddress, accountLower))
+    .limit(1).then(r => r[0])
+  if (!row) {
+    return NextResponse.json({ error: 'no user record for this account' }, { status: 404 })
+  }
+
   // Mint session.
   const cookieStore = await cookies()
-  const did = row.did ?? `did:passkey:${CHAIN_ID}:${accountAddr.toLowerCase()}`
+  const did = row.did ?? `did:passkey:${CHAIN_ID}:${accountLower}`
   const jwt = mintSession({
     sub: did,
     walletAddress: row.walletAddress,

@@ -192,7 +192,8 @@ export async function startFreshAccount(): Promise<{ success: boolean; error?: s
       await db.delete(schema.recoveryDelegations)
         .where(eq(schema.recoveryDelegations.accountAddress, user.smartAccountAddress.toLowerCase()))
     }
-    await db.delete(schema.passkeys).where(eq(schema.passkeys.userId, user.id))
+    // No passkeys table to clean up — login resolves by .agent name and
+    // the chain account stores the digest list.
 
     await db.update(schema.users).set({
       accountSaltRotation: newRotation,

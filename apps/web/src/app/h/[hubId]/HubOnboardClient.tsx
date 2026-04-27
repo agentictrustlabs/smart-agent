@@ -200,6 +200,7 @@ function ConnectStep({ hub, accent, hubSlug, error, setError }: {
   setError: (e: string | null) => void
 }) {
   const [signupName, setSignupName] = useState('')
+  const [signinAgentName, setSigninAgentName] = useState('')
   const [mode, setMode] = useState<'signup' | 'signin'>('signup')
   const [pending, startPending] = useTransition()
 
@@ -280,6 +281,8 @@ function ConnectStep({ hub, accent, hubSlug, error, setError }: {
   function onPasskeySignin() {
     setError(null)
     if (!window.PublicKeyCredential) { setError('WebAuthn not supported in this browser.'); return }
+    const enteredName = signinAgentName.trim()
+    if (!enteredName) { setError('Enter your .agent name (e.g. richp.agent).'); return }
     startPending(async () => {
       try {
         const challResp = await fetch('/api/auth/passkey-challenge', { cache: 'no-store' })
@@ -287,6 +290,10 @@ function ConnectStep({ hub, accent, hubSlug, error, setError }: {
         const challengeBytes = base64UrlDecode(challenge)
         const challengeAb = new ArrayBuffer(challengeBytes.length)
         new Uint8Array(challengeAb).set(challengeBytes)
+        // No allowCredentials — the OS picker uses discoverable creds and
+        // the user picks the matching passkey themselves. localStorage
+        // hints below narrow the picker to passkeys this browser has seen
+        // before, but only when present (fresh devices skip the hint).
         const known = JSON.parse(localStorage.getItem('smart-agent.passkeys.local') ?? '[]') as Array<{ id: string; name: string }>
         const allowCredentials = known.map(k => ({
           type: 'public-key' as const,
@@ -306,6 +313,11 @@ function ConnectStep({ hub, accent, hubSlug, error, setError }: {
           method: 'POST',
           headers: { 'content-type': 'application/json', origin: window.location.origin },
           body: JSON.stringify({
+            // .agent name is the account discovery key — server resolves
+            // it to a smart-account address via the universal name resolver
+            // and runs isValidSignature on that address. No DB credential
+            // mapping consulted on the server.
+            name: enteredName,
             token, challenge,
             credentialIdBase64Url,
             authenticatorDataBase64Url: base64UrlEncode(new Uint8Array(resp.authenticatorData)),
@@ -374,6 +386,12 @@ function ConnectStep({ hub, accent, hubSlug, error, setError }: {
           </>
         ) : (
           <>
+            <Input
+              label="Your .agent name"
+              value={signinAgentName}
+              onChange={(e) => setSigninAgentName(e.target.value)}
+              placeholder="e.g. richp.agent"
+            />
             <button
               type="button"
               onClick={onPasskeySignin}

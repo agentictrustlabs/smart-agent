@@ -230,28 +230,8 @@ export async function completeRecoveryAction(args: CompleteArgs): Promise<Comple
       return { success: false, error: `recovery tx reverted (${txHash})`, txHash }
     }
 
-    // Mirror the freshly-activated passkey so future passkey-signed flows
-    // (repair, future recovery) can constrain the OS picker to credentials
-    // that actually validate on-chain.
-    try {
-      const userRow = await db.select().from(schema.users)
-        .where(eq(schema.users.did, session.userId)).limit(1).then(r => r[0])
-      if (userRow) {
-        const newDigest = keccak256(base64UrlDecode(intent.newCredentialId))
-        await db.insert(schema.passkeys).values({
-          id: crypto.randomUUID(),
-          userId: userRow.id,
-          accountAddress: accountAddr.toLowerCase(),
-          credentialIdBase64Url: intent.newCredentialId,
-          credentialIdDigest: newDigest,
-          pubKeyX: intent.newPubKeyX,
-          pubKeyY: intent.newPubKeyY,
-          label: 'recovery',
-        }).onConflictDoNothing()
-      }
-    } catch (e) {
-      console.warn('[recovery] failed to mirror new passkey (non-fatal):', (e as Error).message)
-    }
+    // No server-side passkey mirror — on-chain account._passkeys[digest]
+    // is the source of truth for which credentials authorise this account.
 
     await db.update(schema.recoveryIntents)
       .set({ status: 1 })

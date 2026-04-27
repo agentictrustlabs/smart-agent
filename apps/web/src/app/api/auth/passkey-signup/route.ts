@@ -171,22 +171,10 @@ export async function POST(request: Request) {
     personAgentAddress: null,
   })
 
-  // Mirror the passkey into the dedicated table so lookup at /passkey-verify
-  // and /repair time can constrain the OS picker via `allowCredentials`.
-  try {
-    await db.insert(schema.passkeys).values({
-      id: crypto.randomUUID(),
-      userId: credIdHex,
-      accountAddress: accountAddrLower,
-      credentialIdBase64Url: body.credentialIdBase64Url,
-      credentialIdDigest,
-      pubKeyX: body.pubKeyX,
-      pubKeyY: body.pubKeyY,
-      label: 'signup',
-    }).onConflictDoNothing()
-  } catch (e) {
-    console.warn('[passkey-signup] failed to mirror passkey (non-fatal):', (e as Error).message)
-  }
+  // No server-side passkey mirror anymore — login resolves the smart
+  // account by .agent name and verifies via on-chain isValidSignature.
+  // The account's _passkeys[digest] mapping is the source of truth for
+  // which credentials authorise the account.
 
   // 4. Mint session JWT.
   const cookieStore = await cookies()
