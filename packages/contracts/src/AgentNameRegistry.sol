@@ -94,6 +94,7 @@ contract AgentNameRegistry {
     bytes32 public constant KIND_AGENT = keccak256("namespace:Agent");
     bytes32 public constant KIND_GEO = keccak256("namespace:Geo");
     bytes32 public constant KIND_PEOPLE_GROUP = keccak256("namespace:PeopleGroup");
+    bytes32 public constant KIND_SKILL = keccak256("namespace:Skill");
 
     // ─── Constructor ────────────────────────────────────────────────
 

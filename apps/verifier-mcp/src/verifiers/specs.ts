@@ -125,10 +125,33 @@ function geoLocationRequest(d: CredentialKindDescriptor): RequestBuilder {
   })
 }
 
+function skillsRequest(d: CredentialKindDescriptor): RequestBuilder {
+  return () => ({
+    name: 'Skills audit',
+    version: '1.0',
+    nonce: Nonce.generate(),
+    requested_attributes: {
+      attr_holder:    { name: 'holder' },
+      attr_skill:     { name: 'skillName', restrictions: [{ cred_def_id: d.credDefId }] },
+      attr_relation:  { name: 'relation',  restrictions: [{ cred_def_id: d.credDefId }] },
+      attr_issuer:    { name: 'issuerDid', restrictions: [{ cred_def_id: d.credDefId }] },
+    },
+    requested_predicates: {
+      pred_proficiency: {
+        name: 'proficiencyScore',
+        p_type: '>=',
+        p_value: 4000,  // ≈ "advanced" floor; verifier asks for at least Advanced
+        restrictions: [{ cred_def_id: d.credDefId }],
+      },
+    },
+  })
+}
+
 const REQUEST_BUILDERS: Record<string, (d: CredentialKindDescriptor) => RequestBuilder> = {
   OrgMembershipCredential:    orgMembershipRequest,
   GuardianOfMinorCredential:  guardianRequest,
   GeoLocationCredential:      geoLocationRequest,
+  SkillsCredential:           skillsRequest,
 }
 
 const SELECTIONS: Record<string, PresentationSelection> = {
@@ -143,6 +166,10 @@ const SELECTIONS: Record<string, PresentationSelection> = {
   GeoLocationCredential: {
     revealReferents: ['attr_holder', 'attr_country', 'attr_region', 'attr_relation'],
     predicateReferents: ['pred_confidence'],
+  },
+  SkillsCredential: {
+    revealReferents: ['attr_holder', 'attr_skill', 'attr_relation', 'attr_issuer'],
+    predicateReferents: ['pred_proficiency'],
   },
 }
 

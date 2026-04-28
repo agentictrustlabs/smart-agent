@@ -75,6 +75,18 @@ export const geo = {
     call<{ credentialJson: string }>(ssiConfig.geoUrl, '/credential/issue', { body: args }),
 }
 
+export const skill = {
+  agentCard: () => call<{ name: string; did: string; credentialTypes: string[] }>(ssiConfig.skillUrl, '/.well-known/agent.json'),
+  offer: (credentialType: string) => call<{
+    credentialOfferJson: string
+    credDefId: string
+    schemaId: string
+    issuerId: string
+  }>(ssiConfig.skillUrl, '/credential/offer', { body: { credentialType } }),
+  issue: (args: { credentialOfferJson: string; credentialRequestJson: string; attributes: Record<string, string> }) =>
+    call<{ credentialJson: string }>(ssiConfig.skillUrl, '/credential/issue', { body: args }),
+}
+
 export interface VerifierRequestResponse {
   presentationRequest: Record<string, unknown> & { name: string; nonce: string }
   selection: { revealReferents: string[]; predicateReferents: string[] }

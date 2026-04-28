@@ -107,6 +107,7 @@ export const ATL_DELEGATION_MANAGER = keccak256(toBytes('atl:delegationManager')
 export const KIND_AGENT        = keccak256(toBytes('namespace:Agent'))
 export const KIND_GEO          = keccak256(toBytes('namespace:Geo'))
 export const KIND_PEOPLE_GROUP = keccak256(toBytes('namespace:PeopleGroup'))
+export const KIND_SKILL        = keccak256(toBytes('namespace:Skill'))
 
 // ─── Geo feature kinds (GeoFeatureRegistry) ─────────────────────────
 export const GEO_KIND_PLANET       = keccak256(toBytes('geo:Planet'))
@@ -137,6 +138,65 @@ export const GEO_VISIBILITY = {
   OffchainOnly: 4,
 } as const
 export type GeoVisibility = typeof GEO_VISIBILITY[keyof typeof GEO_VISIBILITY]
+
+// ─── Skill kinds (SkillDefinitionRegistry) ──────────────────────────
+export const SKILL_KIND_OASF_LEAF = keccak256(toBytes('skill:OasfLeaf'))
+export const SKILL_KIND_DOMAIN    = keccak256(toBytes('skill:Domain'))
+export const SKILL_KIND_CUSTOM    = keccak256(toBytes('skill:Custom'))
+
+// ─── Skill claim relations (AgentSkillRegistry) ─────────────────────
+// v0 modalities — subject can self-attest these (proficiencyScore capped).
+export const SKILL_REL_HAS_SKILL        = keccak256(toBytes('skill:hasSkill'))
+export const SKILL_REL_PRACTICES_SKILL  = keccak256(toBytes('skill:practicesSkill'))
+export const SKILL_REL_CERTIFIED_IN     = keccak256(toBytes('skill:certifiedIn'))
+// v1 cross-issuance acts — third party attests on the subject's behalf.
+// Forbidden in mintSelf; require EIP-712 endorsement for mintWithEndorsement.
+export const SKILL_REL_ENDORSES_SKILL   = keccak256(toBytes('skill:endorsesSkill'))
+export const SKILL_REL_MENTORS_IN       = keccak256(toBytes('skill:mentorsIn'))
+export const SKILL_REL_CAN_TRAIN_OTHERS = keccak256(toBytes('skill:canTrainOthersIn'))
+
+/** Reverse table for RDF/SPARQL serialisation. Lower-case 0x-hex keys. */
+export const SKILL_REL_HASH_TO_LABEL: Readonly<Record<string, string>> = Object.freeze({
+  [SKILL_REL_HAS_SKILL.toLowerCase()]:        'skill:hasSkill',
+  [SKILL_REL_PRACTICES_SKILL.toLowerCase()]:  'skill:practicesSkill',
+  [SKILL_REL_CERTIFIED_IN.toLowerCase()]:     'skill:certifiedIn',
+  [SKILL_REL_ENDORSES_SKILL.toLowerCase()]:   'skill:endorsesSkill',
+  [SKILL_REL_MENTORS_IN.toLowerCase()]:       'skill:mentorsIn',
+  [SKILL_REL_CAN_TRAIN_OTHERS.toLowerCase()]: 'skill:canTrainOthersIn',
+})
+
+/** Skill claim visibility — same enum shape as geo (matches AgentSkillRegistry). */
+export const SKILL_VISIBILITY = {
+  Public: 0,
+  PublicCoarse: 1,
+  PrivateCommitment: 2,
+  PrivateZk: 3,
+  OffchainOnly: 4,
+} as const
+export type SkillVisibility = typeof SKILL_VISIBILITY[keyof typeof SKILL_VISIBILITY]
+
+/** Display thresholds for proficiencyScore (0–10000). UI presentation only. */
+export const SKILL_PROFICIENCY_LABEL = {
+  Basic:     0,
+  Advanced:  4000,
+  Certified: 6500,
+  Expert:    8500,
+} as const
+export type SkillProficiencyLabel = keyof typeof SKILL_PROFICIENCY_LABEL
+
+/** Map a 0–10000 score to a display label. */
+export function skillProficiencyLabel(score: number): SkillProficiencyLabel {
+  if (score >= SKILL_PROFICIENCY_LABEL.Expert) return 'Expert'
+  if (score >= SKILL_PROFICIENCY_LABEL.Certified) return 'Certified'
+  if (score >= SKILL_PROFICIENCY_LABEL.Advanced) return 'Advanced'
+  return 'Basic'
+}
+
+/** Locked-in policy id for skill-overlap scoring. */
+export const SKILL_OVERLAP_POLICY_ID = keccak256(toBytes('smart-agent.skill-overlap.v1'))
+
+/** Cap on self-attested proficiencyScore (mirrors contract constant). */
+export const SKILL_SELF_MAX_PROFICIENCY = 6000
 
 /**
  * Pure namehash for a top-level label (parent = bytes32(0)). Mirrors

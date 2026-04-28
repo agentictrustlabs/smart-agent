@@ -38,6 +38,9 @@ import "../src/CredentialRegistry.sol";
 import "../src/DaimoP256Verifier.sol";
 import "../src/GeoFeatureRegistry.sol";
 import "../src/GeoClaimRegistry.sol";
+import "../src/SkillDefinitionRegistry.sol";
+import "../src/AgentSkillRegistry.sol";
+import "../src/SkillIssuerRegistry.sol";
 import "../src/zk/GeoH3InclusionVerifier.sol";
 import "account-abstraction/interfaces/IEntryPoint.sol";
 import "account-abstraction/core/EntryPoint.sol";
@@ -217,12 +220,22 @@ contract Deploy is Script {
         // production each would have its own steward AgentAccount.
         nameRegistry.initializeRoot("geo", deployer, address(nameResolver), nameRegistry.KIND_GEO());
         nameRegistry.initializeRoot("pg",  deployer, address(nameResolver), nameRegistry.KIND_PEOPLE_GROUP());
+        // v1: `.skill` TLD for developer-friendly aliases of canonical skillIds.
+        nameRegistry.initializeRoot("skill", deployer, address(nameResolver), nameRegistry.KIND_SKILL());
 
         // ─── Geo registries ───────────────────────────────────────────
         GeoFeatureRegistry geoFeatures = new GeoFeatureRegistry(nameRegistry);
         console.log("GeoFeatureRegistry:", address(geoFeatures));
         GeoClaimRegistry geoClaims = new GeoClaimRegistry(geoFeatures);
         console.log("GeoClaimRegistry:", address(geoClaims));
+
+        // ─── Skill registries (mirrors geo, with .skill TLD wired) ────
+        SkillDefinitionRegistry skillDefs = new SkillDefinitionRegistry(address(nameRegistry));
+        console.log("SkillDefinitionRegistry:", address(skillDefs));
+        AgentSkillRegistry skillClaims = new AgentSkillRegistry(skillDefs);
+        console.log("AgentSkillRegistry:", address(skillClaims));
+        SkillIssuerRegistry skillIssuers = new SkillIssuerRegistry(deployer);
+        console.log("SkillIssuerRegistry:", address(skillIssuers));
 
         // ─── ZK verifier for geo H3 inclusion ──────────────────────────
         // snarkjs-generated groth16 verifier; the holder wallet (Phase 6)
@@ -298,6 +311,9 @@ contract Deploy is Script {
         _logEnv("GEO_FEATURE_REGISTRY_ADDRESS", address(geoFeatures));
         _logEnv("GEO_CLAIM_REGISTRY_ADDRESS", address(geoClaims));
         _logEnv("GEO_H3_INCLUSION_VERIFIER_ADDRESS", address(geoH3Verifier));
+        _logEnv("SKILL_DEFINITION_REGISTRY_ADDRESS", address(skillDefs));
+        _logEnv("AGENT_SKILL_REGISTRY_ADDRESS", address(skillClaims));
+        _logEnv("SKILL_ISSUER_REGISTRY_ADDRESS", address(skillIssuers));
     }
 
     function _logEnv(string memory key, address addr) internal pure {

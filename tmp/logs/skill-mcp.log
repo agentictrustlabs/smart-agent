@@ -1,0 +1,20 @@
+
+> @smart-agent/skill-mcp@0.0.1 dev /home/barb/smart-agent/apps/skill-mcp
+> tsx src/index.ts
+
+[skill-mcp] Smart Agent Skill Steward @ did:ethr:31337:0xa84585fb6728f413d4d89ec972c45e94686bf38e
+[skill-mcp] listening on http://localhost:3800
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 2ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- POST /credential/offer
+--> POST /credential/offer [33m400[0m 13ms
+<-- POST /credential/offer
+--> POST /credential/offer [32m200[0m 212ms

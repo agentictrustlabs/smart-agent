@@ -21,6 +21,9 @@ import { seedCILOnChain } from '@/lib/demo-seed/seed-cil-onchain'
 import { seedCatalystOnChain } from '@/lib/demo-seed/seed-catalyst-onchain'
 import { seedGlobalChurchOnChain } from '@/lib/demo-seed/seed-globalchurch-onchain'
 import { seedGeoOnChain } from '@/lib/demo-seed/seed-geo-onchain'
+import { seedSkillsOnChain } from '@/lib/demo-seed/seed-skills-onchain'
+import { seedSkillIssuersOnChain } from '@/lib/demo-seed/seed-skill-issuers-onchain'
+import { seedDemoSkillClaimsOnChain } from '@/lib/demo-seed/seed-demo-skill-claims'
 import { ensureDevP256Stub } from '@/lib/dev-p256-stub'
 
 export interface BootState {
@@ -32,16 +35,23 @@ export interface BootState {
   error: string | null
 }
 
-const state: BootState = {
-  started: false,
-  startedAt: null,
-  completed: false,
-  completedAt: null,
-  phase: 'idle',
-  error: null,
+// Stash the boot-state on globalThis so dev-mode HMR module reloads don't
+// reset `completed` to `false` and cause the late skill-seed top-up to
+// re-run on every page load (each top-up is ~10s of RPC reads, which
+// stacks up under the test runner).
+type BootGuard = { state: BootState; inflight: Promise<void> | null }
+const _boot = globalThis as unknown as { __saBootGuard?: BootGuard }
+if (!_boot.__saBootGuard) {
+  _boot.__saBootGuard = {
+    state: {
+      started: false, startedAt: null,
+      completed: false, completedAt: null,
+      phase: 'idle', error: null,
+    },
+    inflight: null,
+  }
 }
-
-let inflight: Promise<void> | null = null
+const state: BootState = _boot.__saBootGuard.state
 
 /**
  * Quick on-chain probe: have the three hub agents already been seeded?
@@ -69,7 +79,7 @@ async function chainSeedingComplete(): Promise<boolean> {
 /** Run all three community seeds to completion. Idempotent / concurrent-safe. */
 export function triggerBootSeed(): Promise<void> {
   if (state.completed) return Promise.resolve()
-  if (inflight) return inflight
+  if (_boot.__saBootGuard!.inflight) return _boot.__saBootGuard!.inflight!
 
   state.started = true
   state.startedAt = new Date().toISOString()
@@ -78,7 +88,7 @@ export function triggerBootSeed(): Promise<void> {
   // string while a fresh attempt is making real progress.
   state.error = null
 
-  inflight = (async () => {
+  const inflight = (async () => {
     try {
       // -1. If the chain already has all three hub agents registered, an
       //     earlier seed run completed and the in-memory flag was cleared
@@ -86,10 +96,21 @@ export function triggerBootSeed(): Promise<void> {
       //     work — otherwise dev edits stall every passkey signin while
       //     the seed re-checks every agent it already wrote.
       if (await chainSeedingComplete()) {
+        // Even when the chain says hubs+orgs are seeded, the v1 skill-claim
+        // seed may not have run yet (it's an idempotent step added after
+        // the original chainSeedingComplete check was written). Run it
+        // explicitly here — re-runs hit ClaimExists and exit cheaply.
+        try {
+          await seedSkillsOnChain()
+          await seedSkillIssuersOnChain()
+          await seedDemoSkillClaimsOnChain()
+        } catch (e) {
+          console.warn('[boot-seed] late skill seed error (non-fatal):', (e as Error).message)
+        }
         state.completed = true
         state.completedAt = new Date().toISOString()
         state.phase = 'ready'
-        console.log('[boot-seed] chain already seeded — skipping')
+        console.log('[boot-seed] chain already seeded — skill claims topped up, ready')
         return
       }
 
@@ -125,6 +146,26 @@ export function triggerBootSeed(): Promise<void> {
         console.warn('[boot-seed] geo seed error (non-fatal):', (e as Error).message)
       }
 
+      // 2a′. Skill definitions — published once at boot so the profile
+      //      panel and trust-search column have something to bind against.
+      //      Idempotent at the per-skill level.
+      state.phase = 'on-chain seed: skill definitions'
+      try {
+        await seedSkillsOnChain()
+      } catch (e) {
+        console.warn('[boot-seed] skills seed error (non-fatal):', (e as Error).message)
+      }
+
+      // 2a″. Skill issuer registry — register the demo skill-mcp issuer
+      //      so cross-issued claim demos surface a registered issuer at
+      //      scoring time. Idempotent at the contract level.
+      state.phase = 'on-chain seed: skill issuers'
+      try {
+        await seedSkillIssuersOnChain()
+      } catch (e) {
+        console.warn('[boot-seed] skill issuer seed error (non-fatal):', (e as Error).message)
+      }
+
       // 2b. Seed each hub's on-chain orgs + relationships sequentially.
       //     We used to run these in parallel, but every seed now mints
       //     ~30 GeoClaims with the same deployer key — viem's nonce
@@ -136,6 +177,16 @@ export function triggerBootSeed(): Promise<void> {
       await seedGlobalChurchOnChain()
       await seedCatalystOnChain()
       await seedCILOnChain()
+
+      // 2c. Demo skill claims — runs after person-agents exist so
+      //     getPersonAgentForUser resolves. Idempotent: deterministic
+      //     nonce hits ClaimExists on re-run.
+      state.phase = 'on-chain seed: demo skill claims'
+      try {
+        await seedDemoSkillClaimsOnChain()
+      } catch (e) {
+        console.warn('[boot-seed] demo skill claims error (non-fatal):', (e as Error).message)
+      }
 
       // 3. Push fresh on-chain state into the GraphDB KB so the /agents
       //    directory + KPI counters reflect today's deploy. Subsequent edge
@@ -157,10 +208,10 @@ export function triggerBootSeed(): Promise<void> {
       state.phase = `failed: ${state.error}`
       // Leave completed=false so next poll retries.
     } finally {
-      inflight = null
+      _boot.__saBootGuard!.inflight = null
     }
   })()
-
+  _boot.__saBootGuard!.inflight = inflight
   return inflight
 }
 

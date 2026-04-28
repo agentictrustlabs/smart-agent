@@ -25,7 +25,7 @@ import {
   type IssuerKey,
 } from '@smart-agent/sdk'
 import { loadSignerForCurrentUser } from '@/lib/ssi/signer'
-import { person, org, family, geo } from '@/lib/ssi/clients'
+import { person, org, family, geo, skill } from '@/lib/ssi/clients'
 import { ssiConfig } from '@/lib/ssi/config'
 import { getSignerContext } from './wallet-provision.action'
 import { hashWalletAction, type SignerContext } from '@/lib/credentials/wallet-helpers'
@@ -48,6 +48,7 @@ function issuerClientByKey(key: IssuerKey): IssuerClient {
     case 'org':    return org as IssuerClient
     case 'family': return family as IssuerClient
     case 'geo':    return geo as IssuerClient
+    case 'skill':  return skill as IssuerClient
   }
 }
 

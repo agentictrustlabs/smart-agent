@@ -50,6 +50,7 @@ SERVICES=(
   "a2a-agent:3100:@smart-agent/a2a-agent"
   "geo-mcp:3600:@smart-agent/geo-mcp"
   "verifier-mcp:3700:@smart-agent/verifier-mcp"
+  "skill-mcp:3800:@smart-agent/skill-mcp"
 )
 WEB_PORT=3000
 WEB_FILTER="@smart-agent/web"
@@ -78,6 +79,9 @@ WIPE_PATHS=(
   "apps/*/geo-private.db"
   "apps/*/geo-private.db-shm"
   "apps/*/geo-private.db-wal"
+  "apps/*/skill-private.db"
+  "apps/*/skill-private.db-shm"
+  "apps/*/skill-private.db-wal"
   "apps/*/verifier-nonces.db"
   "apps/*/verifier-nonces.db-shm"
   "apps/*/verifier-nonces.db-wal"

@@ -1,4 +1,4 @@
-import { createPublicClient, createWalletClient, http, nonceManager } from 'viem'
+import { createPublicClient, createWalletClient, http } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { foundry, sepolia } from 'viem/chains'
 import {
@@ -105,36 +105,77 @@ async function withDeployerLock<T>(fn: () => Promise<T>, label?: string): Promis
   }
 }
 
+// Process-wide deployer nonce counter. We bypass viem's `nonceManager` because
+// it desynced under concurrent boot-seed load: nonces would skip ahead while
+// txs lower in the sequence got dropped, leaving the wallet client waiting
+// forever on `waitForTransactionReceipt`. This counter is the single source
+// of truth — initialised lazily from the chain, incremented locally on every
+// successful broadcast, re-synced on broadcast failure.
+type DeployerNonceState = { nonce: number | null }
+const _gNonce = globalThis as unknown as { __saDeployerNonce?: DeployerNonceState }
+if (!_gNonce.__saDeployerNonce) _gNonce.__saDeployerNonce = { nonce: null }
+const deployerNonce = _gNonce.__saDeployerNonce
+
+async function nextDeployerNonce(account: `0x${string}`): Promise<number> {
+  if (deployerNonce.nonce === null) {
+    const pc = createPublicClient({ chain: getChain(), transport: http(RPC_URL) })
+    deployerNonce.nonce = Number(await pc.getTransactionCount({ address: account, blockTag: 'pending' }))
+  }
+  const n = deployerNonce.nonce
+  deployerNonce.nonce = n + 1
+  return n
+}
+
+function rollbackDeployerNonce() {
+  if (deployerNonce.nonce !== null) deployerNonce.nonce = null
+}
+
 /** Server-side wallet client for writing transactions (uses deployer key).
  *  Returned client serialises writeContract / sendTransaction across the
  *  whole Node process to avoid nonce collisions.
  *
- *  The account is created with viem's process-wide nonce manager so
- *  concurrent writers (sign-up + boot-seed) coordinate the next-nonce via
- *  a single source of truth instead of each call independently fetching
- *  getTransactionCount and racing on the same value. */
+ *  Each call passes an explicit `nonce` from a process-wide monotonic
+ *  counter (`nextDeployerNonce`), which is initialised from chain on first
+ *  use. On broadcast failure we drop the cached counter so the next call
+ *  resyncs against `getTransactionCount('pending')` — preventing the
+ *  pre-existing viem `nonceManager` desync that would skip forward and
+ *  hang on receipts that never arrive. */
 export function getWalletClient() {
   const privateKey = process.env.DEPLOYER_PRIVATE_KEY as `0x${string}`
   if (!privateKey) throw new Error('DEPLOYER_PRIVATE_KEY not set')
-  const account = privateKeyToAccount(privateKey, { nonceManager })
+  const account = privateKeyToAccount(privateKey)
   const base = createWalletClient({
     account,
     chain: getChain(),
     transport: http(RPC_URL),
   })
-  // Capture the originals BEFORE wrapping. If we close over `base.writeContract`
-  // and then Object.assign over it, the wrapper recurses into itself and
-  // deadlocks on the deployer lock (each call queues a second waiter).
   type WriteArgs = Parameters<typeof base.writeContract>[0]
   type SendArgs  = Parameters<typeof base.sendTransaction>[0]
   const originalWriteContract = base.writeContract.bind(base)
   const originalSendTransaction = base.sendTransaction.bind(base)
+
   const writeContract = ((args: WriteArgs) =>
-    withDeployerLock(() => originalWriteContract(args as never),
-      `writeContract(${(args as { functionName?: string }).functionName ?? '?'})`)) as typeof base.writeContract
+    withDeployerLock(async () => {
+      const nonce = await nextDeployerNonce(account.address)
+      try {
+        return await originalWriteContract({ ...(args as object), nonce } as never)
+      } catch (err) {
+        rollbackDeployerNonce()
+        throw err
+      }
+    }, `writeContract(${(args as { functionName?: string }).functionName ?? '?'})`)) as typeof base.writeContract
+
   const sendTransaction = ((args: SendArgs) =>
-    withDeployerLock(() => originalSendTransaction(args as never),
-      'sendTransaction')) as typeof base.sendTransaction
+    withDeployerLock(async () => {
+      const nonce = await nextDeployerNonce(account.address)
+      try {
+        return await originalSendTransaction({ ...(args as object), nonce } as never)
+      } catch (err) {
+        rollbackDeployerNonce()
+        throw err
+      }
+    }, 'sendTransaction')) as typeof base.sendTransaction
+
   return Object.assign(base, { writeContract, sendTransaction })
 }
 

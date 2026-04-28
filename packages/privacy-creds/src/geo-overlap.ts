@@ -215,3 +215,24 @@ export function geoEvidenceCommit(args: GeoOverlapInput): `0x${string}` {
   }
   return keccak256(toBytes(canon(evidence)))
 }
+
+/**
+ * Stage-B′ blinding helper for geo overlap. Mirrors `blindSkillEvidenceCommit`
+ * — the caller hashes its evidenceCommit with a per-search nonce before
+ * shipping the score externally, preventing cross-search fingerprinting
+ * of the caller's held geo credential set.
+ *
+ * Usage at the wire boundary:
+ *   const blinded = blindGeoEvidenceCommit(result.evidenceCommit, nonce)
+ *   ship({ score: result.score, evidenceCommit: blinded })
+ *
+ * The peer cannot reconstruct the unblinded commit without the nonce,
+ * and a fresh nonce per search means two requests over the same caller
+ * state hash to different blinded values.
+ */
+export function blindGeoEvidenceCommit(
+  evidenceCommit: `0x${string}`,
+  searchNonce: string,
+): `0x${string}` {
+  return keccak256(toBytes(`${evidenceCommit}|${searchNonce}`))
+}

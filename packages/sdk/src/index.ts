@@ -24,6 +24,9 @@ export {
   agentNameUniversalResolverAbi,
   geoFeatureRegistryAbi,
   geoClaimRegistryAbi,
+  skillDefinitionRegistryAbi,
+  agentSkillRegistryAbi,
+  skillIssuerRegistryAbi,
 } from './abi'
 
 // ─── Account Client ──────────────────────────────────────────────────
@@ -175,16 +178,26 @@ export {
   ATL_ENTRY_POINT, ATL_IMPLEMENTATION, ATL_DELEGATION_MANAGER,
   AGENT_TYPE_LABELS, AI_CLASS_LABELS,
   // Multi-root namespace + geo
-  KIND_AGENT, KIND_GEO, KIND_PEOPLE_GROUP,
+  KIND_AGENT, KIND_GEO, KIND_PEOPLE_GROUP, KIND_SKILL,
   GEO_KIND_PLANET, GEO_KIND_COUNTRY, GEO_KIND_STATE, GEO_KIND_COUNTY,
   GEO_KIND_MUNICIPALITY, GEO_KIND_NEIGHBORHOOD, GEO_KIND_ZIPCODE, GEO_KIND_CUSTOM,
   GEO_REL_SERVES_WITHIN, GEO_REL_OPERATES_IN, GEO_REL_LICENSED_IN,
   GEO_REL_COMPLETED_TASK_IN, GEO_REL_VALIDATED_PRESENCE_IN, GEO_REL_STEWARD_OF,
   GEO_REL_RESIDENT_OF, GEO_REL_ORIGIN_IN,
   GEO_VISIBILITY,
+  // Skills
+  SKILL_KIND_OASF_LEAF, SKILL_KIND_DOMAIN, SKILL_KIND_CUSTOM,
+  SKILL_REL_HAS_SKILL, SKILL_REL_PRACTICES_SKILL, SKILL_REL_CERTIFIED_IN,
+  SKILL_REL_ENDORSES_SKILL, SKILL_REL_MENTORS_IN, SKILL_REL_CAN_TRAIN_OTHERS,
+  SKILL_REL_HASH_TO_LABEL,
+  SKILL_VISIBILITY,
+  SKILL_PROFICIENCY_LABEL,
+  SKILL_OVERLAP_POLICY_ID,
+  SKILL_SELF_MAX_PROFICIENCY,
+  skillProficiencyLabel,
   namehashRoot,
 } from './predicates'
-export type { GeoVisibility } from './predicates'
+export type { GeoVisibility, SkillVisibility, SkillProficiencyLabel } from './predicates'
 
 // ─── Agent Naming (.agent namespace) ─────────────────────────────────
 export {
@@ -199,6 +212,16 @@ export { GeoFeatureClient, GEO_FEATURE_KIND_HASHES, GEO_COORD_SCALE } from './ge
 export type { GeoFeatureRecord, PublishFeatureInput, GeoFeatureKindLabel } from './geo-feature'
 export { GeoClaimClient } from './geo-claim'
 export type { GeoClaimRecord, MintClaimInput, GeoRelation, GeoVisibilityLabel } from './geo-claim'
+
+// ─── Skills (mirrors geo) ────────────────────────────────────────────
+export { SkillDefinitionClient } from './skill-definition'
+export type { SkillRecord, PublishSkillInput, SkillKindLabel } from './skill-definition'
+export { AgentSkillClient } from './skill-claim'
+export type { SkillClaim, MintInput as SkillMintInput, SkillRelationLabel } from './skill-claim'
+export { SkillIssuerClient, ANY_SKILL as SKILL_ISSUER_ANY_SKILL } from './skill-issuer'
+export type { IssuerProfile as SkillIssuerProfile, RegisterIssuerInput as RegisterSkillIssuerInput } from './skill-issuer'
+export { canonicalSkillName, canonicalizeLabel, namehashOfSkillFqn } from './skill-name-canon'
+export type { CanonicalSkillName } from './skill-name-canon'
 
 // ─── Credential kinds (AnonCreds) ────────────────────────────────────
 export { CREDENTIAL_KINDS, findCredentialKind } from './credential-types'

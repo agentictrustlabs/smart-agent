@@ -11,6 +11,7 @@ export const ssiConfig = {
   familyUrl: process.env.FAMILY_MCP_URL ?? 'http://localhost:3500',
   geoUrl: process.env.GEO_MCP_URL ?? 'http://localhost:3600',
   verifierUrl: process.env.VERIFIER_MCP_URL ?? 'http://localhost:3700',
+  skillUrl: process.env.SKILL_MCP_URL ?? 'http://localhost:3800',
   chainId: Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? '31337'),
   verifierContract: (process.env.SSI_ACTION_VERIFIER_ADDRESS ??
     '0x0000000000000000000000000000000000000000') as `0x${string}`,

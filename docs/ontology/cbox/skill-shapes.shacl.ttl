@@ -1,0 +1,112 @@
+@prefix sh:      <http://www.w3.org/ns/shacl#> .
+@prefix saskill: <https://smartagent.io/ontology/skill#> .
+@prefix sageo:   <https://smartagent.io/ontology/geo#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+
+# =============================================================================
+# Skill SHACL constraints  (CI-checked invariants)
+# =============================================================================
+#
+# These shapes mirror the security review's findings folded into the
+# v0 plan. They run in CI against the GraphDB content for the
+# data/onchain named graph; failures fail the build.
+
+# ─── Privacy fence ─────────────────────────────────────────────────────
+#
+# Every triple in the public graph (data/onchain) must carry
+# saskill:visibility = sageo:Public OR sageo:PublicCoarse. Catches
+# private claims accidentally routed to the wrong graph.
+
+saskill:PublicGraphVisibilityShape a sh:NodeShape ;
+    sh:targetClass saskill:SkillClaim ;
+    sh:property [
+        sh:path saskill:visibility ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:in ( sageo:Public sageo:PublicCoarse ) ;
+        sh:message "data/onchain SkillClaim must have visibility Public or PublicCoarse — private variants belong in data/private." ;
+    ] .
+
+# ─── Self-cert forbidden ───────────────────────────────────────────────
+#
+# A claim with relation = saskill:CertifiedIn cannot have
+# subjectAgent == issuer. Mirrors the on-chain SelfCertNotAllowed revert.
+
+saskill:NoSelfCertShape a sh:NodeShape ;
+    sh:targetNode saskill:SkillClaim ;
+    sh:sparql [
+        sh:message "Self-attestation not allowed for cross-issuance relations (CertifiedIn / EndorsesSkill / MentorsIn / CanTrainOthersIn)." ;
+        sh:prefixes saskill:Prefixes ;
+        sh:select """
+            PREFIX saskill: <https://smartagent.io/ontology/skill#>
+            SELECT $this ?subject ?issuer ?relation
+            WHERE {
+              $this saskill:relation ?relation ;
+                    saskill:subjectAgent ?subject ;
+                    saskill:issuer ?issuer .
+              FILTER (?subject = ?issuer)
+              FILTER (?relation IN (saskill:CertifiedIn, saskill:EndorsesSkill, saskill:MentorsIn, saskill:CanTrainOthersIn))
+            }
+        """ ;
+    ] .
+
+# ─── Self-attest proficiency ceiling ───────────────────────────────────
+#
+# Self-attested claims are capped at proficiencyScore ≤ 6000.
+# Cross-issued claims are uncapped (the EIP-712 issuer signature
+# is the trust gate).
+
+saskill:SelfAttestProficiencyShape a sh:NodeShape ;
+    sh:targetNode saskill:SkillClaim ;
+    sh:sparql [
+        sh:message "Self-attested claim exceeds proficiencyScore ≤ 6000 cap (issuer must sign for higher)." ;
+        sh:prefixes saskill:Prefixes ;
+        sh:select """
+            PREFIX saskill: <https://smartagent.io/ontology/skill#>
+            SELECT $this ?subject ?issuer ?score
+            WHERE {
+              $this saskill:subjectAgent ?subject ;
+                    saskill:issuer ?issuer ;
+                    saskill:proficiencyScore ?score .
+              FILTER (?subject = ?issuer && ?score > 6000)
+            }
+        """ ;
+    ] .
+
+# ─── Score range ───────────────────────────────────────────────────────
+
+saskill:ScoreRangeShape a sh:NodeShape ;
+    sh:targetClass saskill:SkillClaim ;
+    sh:property [
+        sh:path saskill:proficiencyScore ;
+        sh:datatype xsd:integer ;
+        sh:minInclusive 0 ;
+        sh:maxInclusive 10000 ;
+        sh:message "proficiencyScore must be in 0..10000." ;
+    ] ;
+    sh:property [
+        sh:path saskill:confidence ;
+        sh:datatype xsd:integer ;
+        sh:minInclusive 0 ;
+        sh:maxInclusive 100 ;
+        sh:message "confidence must be in 0..100." ;
+    ] .
+
+# ─── Required claim metadata ───────────────────────────────────────────
+
+saskill:RequiredFieldsShape a sh:NodeShape ;
+    sh:targetClass saskill:SkillClaim ;
+    sh:property [ sh:path saskill:claimId ;       sh:minCount 1 ; sh:maxCount 1 ; ] ;
+    sh:property [ sh:path saskill:subjectAgent ;  sh:minCount 1 ; sh:maxCount 1 ; ] ;
+    sh:property [ sh:path saskill:issuer ;        sh:minCount 1 ; sh:maxCount 1 ; ] ;
+    sh:property [ sh:path saskill:targetSkill ;   sh:minCount 1 ; sh:maxCount 1 ; ] ;
+    sh:property [ sh:path saskill:relation ;      sh:minCount 1 ; sh:maxCount 1 ; ] ;
+    sh:property [ sh:path saskill:visibility ;    sh:minCount 1 ; sh:maxCount 1 ; ] ;
+    sh:property [ sh:path saskill:policyId ;      sh:minCount 1 ; sh:maxCount 1 ; ] .
+
+# Prefix declaration block referenced by the sh:sparql constraints above.
+saskill:Prefixes a sh:PrefixDeclaration ;
+    sh:declare [ sh:prefix "saskill" ; sh:namespace "https://smartagent.io/ontology/skill#"^^xsd:anyURI ] ,
+               [ sh:prefix "sageo"   ; sh:namespace "https://smartagent.io/ontology/geo#"^^xsd:anyURI ] .

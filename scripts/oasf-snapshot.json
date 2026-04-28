@@ -1,0 +1,50 @@
+{
+  "release": "oasf-0.5.2",
+  "_note": "Minimal hand-curated subset. v2 replaces with a full upstream pull of the OASF JSON-LD release. Update OASF_RELEASE_TAG when refreshing.",
+  "concepts": [
+    {
+      "id": "communication.write.grant_writing",
+      "prefLabel": "Grant writing",
+      "altLabels": ["Grant proposal writing"],
+      "definition": "Authoring competitive grant proposals for foundations, government programs, and donor-advised funds.",
+      "kind": "OasfLeaf",
+      "oasfUri": "https://oasf.linuxfoundation.org/schema/0.5.2/communication/write/grant_writing"
+    },
+    {
+      "id": "communication.write",
+      "prefLabel": "Written communication",
+      "kind": "Domain"
+    },
+    {
+      "id": "communication.translate",
+      "prefLabel": "Translation",
+      "altLabels": ["Language translation"],
+      "kind": "OasfLeaf",
+      "oasfUri": "https://oasf.linuxfoundation.org/schema/0.5.2/communication/translate"
+    },
+    {
+      "id": "knowledge.research.literature_review",
+      "prefLabel": "Literature review",
+      "altLabels": ["Research synthesis"],
+      "kind": "OasfLeaf",
+      "oasfUri": "https://oasf.linuxfoundation.org/schema/0.5.2/knowledge/research/literature_review"
+    },
+    {
+      "id": "knowledge.research",
+      "prefLabel": "Research",
+      "kind": "Domain"
+    },
+    {
+      "id": "reasoning.planning.project_management",
+      "prefLabel": "Project management",
+      "altLabels": ["Programme management"],
+      "kind": "OasfLeaf",
+      "oasfUri": "https://oasf.linuxfoundation.org/schema/0.5.2/reasoning/planning/project_management"
+    },
+    {
+      "id": "reasoning.planning",
+      "prefLabel": "Planning",
+      "kind": "Domain"
+    }
+  ]
+}

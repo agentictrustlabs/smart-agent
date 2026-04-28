@@ -12,6 +12,7 @@
     "./formats/anoncreds-v1": "./src/formats/anoncreds-v1/index.ts",
     "./trust-overlap": "./src/trust-overlap.ts",
     "./geo-overlap": "./src/geo-overlap.ts",
+    "./skill-overlap": "./src/skill-overlap.ts",
     "./h3-merkle": "./src/h3-merkle.ts",
     "./session-grant": "./src/session-grant/index.ts"
   },

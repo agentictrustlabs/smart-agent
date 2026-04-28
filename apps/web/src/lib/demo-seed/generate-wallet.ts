@@ -7,14 +7,11 @@
  */
 
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts'
-import { createWalletClient, createPublicClient, http, parseEther } from 'viem'
-import { localhost } from 'viem/chains'
+import { parseEther } from 'viem'
 import { keccak256, encodePacked, toBytes } from 'viem'
 import { deploySmartAccount, getPublicClient, getWalletClient } from '@/lib/contracts'
 import { agentAccountResolverAbi, ATL_CONTROLLER } from '@smart-agent/sdk'
 
-const RPC_URL = process.env.RPC_URL ?? 'http://127.0.0.1:8545'
-const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? '31337')
 const DEPLOYER_KEY = process.env.DEPLOYER_PRIVATE_KEY as `0x${string}`
 
 const TYPE_PERSON = keccak256(toBytes('atl:PersonAgent'))
@@ -34,24 +31,21 @@ export async function generateDemoWallet(userName?: string): Promise<{
   const privateKey = generatePrivateKey()
   const account = privateKeyToAccount(privateKey)
 
-  // 2. Fund from deployer (1 ETH for gas)
+  // 2. Fund from deployer (1 ETH for gas).
+  //    Route through `getWalletClient()` so the funding tx goes through
+  //    the process-wide deployer-lock + nonce counter — a separate viem
+  //    wallet client here would race with concurrent boot-seed writes
+  //    and hand out duplicate / skipped nonces.
   if (DEPLOYER_KEY) {
-    const deployerAccount = privateKeyToAccount(DEPLOYER_KEY)
-    const walletClient = createWalletClient({
-      account: deployerAccount,
-      chain: { ...localhost, id: CHAIN_ID },
-      transport: http(RPC_URL),
-    })
-    const publicClient = createPublicClient({
-      chain: { ...localhost, id: CHAIN_ID },
-      transport: http(RPC_URL),
-    })
-
-    const hash = await walletClient.sendTransaction({
+    const wc = getWalletClient()
+    const pc = getPublicClient()
+    const hash = await wc.sendTransaction({
+      account: wc.account!,
+      chain: wc.chain ?? null,
       to: account.address,
       value: parseEther('1'),
     })
-    await publicClient.waitForTransactionReceipt({ hash })
+    await pc.waitForTransactionReceipt({ hash })
   }
 
   // 3. Deploy AgentAccount (deployer creates, user's EOA is owner)

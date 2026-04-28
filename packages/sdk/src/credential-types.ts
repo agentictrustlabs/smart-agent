@@ -32,7 +32,7 @@
  *      pick the new kind up automatically.
  */
 
-export type IssuerKey = 'org' | 'family' | 'geo'
+export type IssuerKey = 'org' | 'family' | 'geo' | 'skill'
 
 export interface CredentialKindDescriptor {
   /** Stable string used in `credential_metadata.credential_type` rows
@@ -118,10 +118,33 @@ const GEO_LOCATION: CredentialKindDescriptor = {
   issuerKey: 'geo',
 }
 
+const SKILLS_CREDENTIAL: CredentialKindDescriptor = {
+  credentialType: 'SkillsCredential',
+  schemaId:       'https://smartagent.io/schemas/Skills/1.0',
+  credDefId:      'https://smartagent.io/creddefs/Skills/1.0/v1',
+  attributeNames: [
+    'skillId', 'skillName',
+    'relation',          // 'hasSkill' | 'practicesSkill' | 'certifiedIn'
+    'proficiencyScore',  // '0'..'10000'
+    'confidence',        // '0'..'100'
+    'issuerName',        // human-readable (audited against DID alsoKnownAs)
+    'issuerDid',         // cryptographic identity check
+    'validFrom', 'validUntil', 'issuedAt',
+  ],
+  displayName: 'Skill credential',
+  noun:        'skill',
+  description:
+    'Receive an AnonCreds credential binding you to a skill or capability with ' +
+    'optional proficiency and issuer attestation. Held in your private vault — ' +
+    'verifiers only learn the binding when you choose to present it.',
+  issuerKey: 'skill',
+}
+
 export const CREDENTIAL_KINDS: readonly CredentialKindDescriptor[] = [
   ORG_MEMBERSHIP,
   GUARDIAN_OF_MINOR,
   GEO_LOCATION,
+  SKILLS_CREDENTIAL,
 ]
 
 /** Lookup helper — returns null if `credentialType` is unknown. */

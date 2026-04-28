@@ -1,0 +1,222 @@
+@prefix saskill: <https://smartagent.io/ontology/skill#> .
+@prefix skos:    <http://www.w3.org/2004/02/skos/core#> .
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+
+# =============================================================================
+# Smart Agent Skill Vocabulary  (C-Box, hand-curated for v0)
+# =============================================================================
+#
+# Concrete skill instances grouped under saskill:SkillScheme. Mirrors
+# cbox/hub-vocabulary.ttl in pattern (instances live in C-Box; T-Box
+# stays for classes / properties).
+#
+# v0 ships a hand-curated ~30 skills relevant to the demo communities
+# (Catalyst NoCo, Mission Collective, Global.Church). Full OASF import
+# is deferred to v1 — the cost of adding it now is taxonomy-curation
+# overhead the search-quality story doesn't yet justify.
+#
+# Naming: each instance IRI is .../skill/<scheme>/<conceptId>. The
+# matching on-chain skillId is keccak256("skill|<scheme>|<conceptId>|").
+
+# ─── Communication & writing ──────────────────────────────────────────
+
+<https://smartagent.io/skill/custom/grant-writing>
+    a saskill:Custom ;
+    skos:inScheme saskill:SkillScheme ;
+    skos:prefLabel "Grant writing"@en ;
+    skos:altLabel "Grant proposal writing"@en, "Foundation grant authoring"@en ;
+    skos:broader <https://smartagent.io/skill/custom/nonprofit-development> ;
+    skos:definition "Authoring competitive grant proposals for foundations, government programs, and donor-advised funds." .
+
+<https://smartagent.io/skill/custom/technical-writing>
+    a saskill:Custom ;
+    skos:inScheme saskill:SkillScheme ;
+    skos:prefLabel "Technical writing"@en ;
+    skos:altLabel "Technical documentation", "Developer documentation" .
+
+<https://smartagent.io/skill/custom/copywriting>
+    a saskill:Custom ;
+    skos:inScheme saskill:SkillScheme ;
+    skos:prefLabel "Copywriting"@en ;
+    skos:altLabel "Marketing copy", "Brand copy" .
+
+<https://smartagent.io/skill/custom/translation-spanish-english>
+    a saskill:Custom ;
+    skos:inScheme saskill:SkillScheme ;
+    skos:prefLabel "Spanish ↔ English translation"@en ;
+    skos:altLabel "Spanish translation", "English translation" .
+
+# ─── Nonprofit / community ────────────────────────────────────────────
+
+<https://smartagent.io/skill/custom/nonprofit-development>
+    a saskill:Domain ;
+    skos:inScheme saskill:SkillScheme ;
+    skos:prefLabel "Nonprofit development"@en ;
+    skos:scopeNote "Development & fundraising for 501(c)(3) and equivalent organisations." .
+
+<https://smartagent.io/skill/custom/community-organizing>
+    a saskill:Custom ;
+    skos:inScheme saskill:SkillScheme ;
+    skos:prefLabel "Community organizing"@en ;
+    skos:altLabel "Grassroots organizing" .
+
+<https://smartagent.io/skill/custom/volunteer-coordination>
+    a saskill:Custom ;
+    skos:inScheme saskill:SkillScheme ;
+    skos:prefLabel "Volunteer coordination"@en ;
+    skos:broader <https://smartagent.io/skill/custom/nonprofit-development> .
+
+<https://smartagent.io/skill/custom/case-management>
+    a saskill:Custom ;
+    skos:inScheme saskill:SkillScheme ;
+    skos:prefLabel "Case management"@en ;
+    skos:scopeNote "Coordinating services for individuals/families across providers." .
+
+<https://smartagent.io/skill/custom/social-work>
+    a saskill:Domain ;
+    skos:inScheme saskill:SkillScheme ;
+    skos:prefLabel "Social work"@en .
+
+# ─── Care & counselling ───────────────────────────────────────────────
+
+<https://smartagent.io/skill/custom/counselling>
+    a saskill:Domain ;
+    skos:inScheme saskill:SkillScheme ;
+    skos:prefLabel "Counselling"@en ;
+    skos:altLabel "Counseling" .
+
+<https://smartagent.io/skill/custom/trauma-informed-care>
+    a saskill:Custom ;
+    skos:inScheme saskill:SkillScheme ;
+    skos:prefLabel "Trauma-informed care"@en ;
+    skos:broader <https://smartagent.io/skill/custom/counselling> .
+
+<https://smartagent.io/skill/custom/youth-mentorship>
+    a saskill:Custom ;
+    skos:inScheme saskill:SkillScheme ;
+    skos:prefLabel "Youth mentorship"@en ;
+    skos:altLabel "Youth ministry", "Youth mentoring" .
+
+<https://smartagent.io/skill/custom/esl-instruction>
+    a saskill:Custom ;
+    skos:inScheme saskill:SkillScheme ;
+    skos:prefLabel "ESL instruction"@en ;
+    skos:altLabel "English as a Second Language teaching", "Adult ESL" .
+
+# ─── Operations & finance ─────────────────────────────────────────────
+
+<https://smartagent.io/skill/custom/grant-administration>
+    a saskill:Custom ;
+    skos:inScheme saskill:SkillScheme ;
+    skos:prefLabel "Grant administration"@en ;
+    skos:broader <https://smartagent.io/skill/custom/nonprofit-development> .
+
+<https://smartagent.io/skill/custom/bookkeeping>
+    a saskill:Custom ;
+    skos:inScheme saskill:SkillScheme ;
+    skos:prefLabel "Bookkeeping"@en .
+
+<https://smartagent.io/skill/custom/program-evaluation>
+    a saskill:Custom ;
+    skos:inScheme saskill:SkillScheme ;
+    skos:prefLabel "Program evaluation"@en ;
+    skos:altLabel "Outcome measurement", "Impact evaluation" .
+
+<https://smartagent.io/skill/custom/operations-management>
+    a saskill:Custom ;
+    skos:inScheme saskill:SkillScheme ;
+    skos:prefLabel "Operations management"@en .
+
+# ─── Mission & ministry ───────────────────────────────────────────────
+
+<https://smartagent.io/skill/custom/missions-logistics>
+    a saskill:Custom ;
+    skos:inScheme saskill:SkillScheme ;
+    skos:prefLabel "Missions logistics"@en ;
+    skos:scopeNote "Cross-border travel, supply chain, and team coordination for mission organisations." .
+
+<https://smartagent.io/skill/custom/church-planting>
+    a saskill:Custom ;
+    skos:inScheme saskill:SkillScheme ;
+    skos:prefLabel "Church planting"@en .
+
+<https://smartagent.io/skill/custom/discipleship>
+    a saskill:Custom ;
+    skos:inScheme saskill:SkillScheme ;
+    skos:prefLabel "Discipleship"@en ;
+    skos:scopeNote "Forming small groups for ongoing spiritual formation. Distinct from 'oikos' personal-network ministry." .
+
+<https://smartagent.io/skill/custom/pastoral-care>
+    a saskill:Custom ;
+    skos:inScheme saskill:SkillScheme ;
+    skos:prefLabel "Pastoral care"@en .
+
+# ─── Software & data ──────────────────────────────────────────────────
+
+<https://smartagent.io/skill/custom/software-engineering>
+    a saskill:Domain ;
+    skos:inScheme saskill:SkillScheme ;
+    skos:prefLabel "Software engineering"@en .
+
+<https://smartagent.io/skill/custom/typescript>
+    a saskill:Custom ;
+    skos:inScheme saskill:SkillScheme ;
+    skos:prefLabel "TypeScript"@en ;
+    skos:broader <https://smartagent.io/skill/custom/software-engineering> .
+
+<https://smartagent.io/skill/custom/solidity>
+    a saskill:Custom ;
+    skos:inScheme saskill:SkillScheme ;
+    skos:prefLabel "Solidity"@en ;
+    skos:altLabel "Smart contract development" ;
+    skos:broader <https://smartagent.io/skill/custom/software-engineering> .
+
+<https://smartagent.io/skill/custom/data-analysis>
+    a saskill:Custom ;
+    skos:inScheme saskill:SkillScheme ;
+    skos:prefLabel "Data analysis"@en .
+
+<https://smartagent.io/skill/custom/sparql>
+    a saskill:Custom ;
+    skos:inScheme saskill:SkillScheme ;
+    skos:prefLabel "SPARQL"@en ;
+    skos:altLabel "RDF query authoring" ;
+    skos:broader <https://smartagent.io/skill/custom/data-analysis> .
+
+# ─── Governance & legal ───────────────────────────────────────────────
+
+<https://smartagent.io/skill/custom/board-governance>
+    a saskill:Custom ;
+    skos:inScheme saskill:SkillScheme ;
+    skos:prefLabel "Board governance"@en .
+
+<https://smartagent.io/skill/custom/legal-services-immigration>
+    a saskill:Custom ;
+    skos:inScheme saskill:SkillScheme ;
+    skos:prefLabel "Immigration legal services"@en ;
+    skos:altLabel "Immigration law", "Refugee legal aid" .
+
+<https://smartagent.io/skill/custom/policy-advocacy>
+    a saskill:Custom ;
+    skos:inScheme saskill:SkillScheme ;
+    skos:prefLabel "Policy advocacy"@en .
+
+# ─── Capital & business ───────────────────────────────────────────────
+
+<https://smartagent.io/skill/custom/microfinance>
+    a saskill:Custom ;
+    skos:inScheme saskill:SkillScheme ;
+    skos:prefLabel "Microfinance"@en ;
+    skos:scopeNote "Small-loan programs for entrepreneurs in underserved markets." .
+
+<https://smartagent.io/skill/custom/business-coaching>
+    a saskill:Custom ;
+    skos:inScheme saskill:SkillScheme ;
+    skos:prefLabel "Business coaching"@en .
+
+<https://smartagent.io/skill/custom/revenue-share-modelling>
+    a saskill:Custom ;
+    skos:inScheme saskill:SkillScheme ;
+    skos:prefLabel "Revenue-share modelling"@en ;
+    skos:scopeNote "Designing and pricing revenue-share contracts (e.g. ILAD's Ravah model)." .

@@ -4,6 +4,7 @@ import type { ComponentType } from 'react'
 import { CREDENTIAL_KINDS, type CredentialKindDescriptor } from '@smart-agent/sdk'
 import { OrgMembershipForm } from './forms/OrgMembershipForm'
 import { GeoLocationForm } from './forms/GeoLocationForm'
+import { SkillsForm } from './forms/SkillsForm'
 import type { CredentialFormPropsWithHandle } from './forms/types'
 
 /**
@@ -22,6 +23,7 @@ export type FormComponent = ComponentType<CredentialFormPropsWithHandle>
 const FORMS: Record<string, FormComponent> = {
   OrgMembershipCredential: OrgMembershipForm,
   GeoLocationCredential:   GeoLocationForm,
+  SkillsCredential:        SkillsForm,
   // GuardianOfMinorCredential — issuance UI not wired yet (verifier still
   // works because verifier-mcp's spec is separate).
 }

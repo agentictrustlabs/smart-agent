@@ -1,0 +1,41 @@
+@prefix sa:      <https://smartagent.io/ontology/core#> .
+@prefix saskill: <https://smartagent.io/ontology/skill#> .
+@prefix sageo:   <https://smartagent.io/ontology/geo#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+
+# =============================================================================
+# Skill A-Box example  (template, not loaded into GraphDB)
+# =============================================================================
+#
+# Reference shape for what GraphDB sync emits per public skill claim.
+# Lives in data/onchain named graph at runtime; in this static file we
+# show the triple shape only.
+#
+# Real claims are written by apps/web/src/lib/ontology/graphdb-sync.ts
+# and apps/web/src/lib/ontology/kb-write-through.ts. This file exists
+# so an ontologist can read the expected layout without spinning up
+# the dev stack.
+
+# Example: cat-user-009 (Luis) practices grant writing at advanced level.
+
+<https://smartagent.io/agent/0xa646eb2b407e16192eda18f09e05759644a03bf8>
+    saskill:hasSkillClaim
+        <https://smartagent.io/skill-claim/0xc0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ff> .
+
+<https://smartagent.io/skill-claim/0xc0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ff>
+    a saskill:SkillClaim ;
+    saskill:claimId          "0xc0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ff"^^xsd:hexBinary ;
+    saskill:subjectAgent     <https://smartagent.io/agent/0xa646eb2b407e16192eda18f09e05759644a03bf8> ;
+    saskill:issuer           <https://smartagent.io/agent/0xa646eb2b407e16192eda18f09e05759644a03bf8> ;
+    saskill:targetSkill      <https://smartagent.io/skill/custom/grant-writing> ;
+    saskill:skillVersion     "1"^^xsd:positiveInteger ;
+    saskill:relation         saskill:PracticesSkill ;
+    saskill:visibility       sageo:Public ;
+    saskill:proficiencyScore "5500"^^xsd:integer ;
+    saskill:confidence       "80"^^xsd:integer ;
+    saskill:evidenceCommit   "0x0000000000000000000000000000000000000000000000000000000000000000"^^xsd:hexBinary ;
+    saskill:policyId         "0x..."^^xsd:hexBinary ;
+    saskill:validAfter       "0"^^xsd:nonNegativeInteger ;
+    saskill:validUntil       "0"^^xsd:nonNegativeInteger ;
+    saskill:revoked          false ;
+    saskill:mintedAtEpoch    "0"^^xsd:nonNegativeInteger .

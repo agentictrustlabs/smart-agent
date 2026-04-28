@@ -1,0 +1,215 @@
+@prefix sa:      <https://smartagent.io/ontology/core#> .
+@prefix saskill: <https://smartagent.io/ontology/skill#> .
+@prefix sageo:   <https://smartagent.io/ontology/geo#> .
+@prefix san:     <https://smartagent.io/ontology/namespace#> .
+@prefix skos:    <http://www.w3.org/2004/02/skos/core#> .
+@prefix oasf:    <https://oasf.linuxfoundation.org/schema/0.1/> .
+@prefix dul:     <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#> .
+@prefix prov:    <http://www.w3.org/ns/prov#> .
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+
+# =============================================================================
+# Smart Agent Skill Ontology  (T-Box, SKOS-aligned)
+# =============================================================================
+#
+# saskill:Skill is a subclass of skos:Concept so every SKOS query
+# (skos:broader / narrower / related / prefLabel / altLabel) targets
+# saskill:Skill instances exactly the same way it would target any
+# SKOS concept. The on-chain skillId anchors a versioned record;
+# canonical SKOS triples (synonyms, broader hierarchy, OASF mapping)
+# live in the off-chain JSON-LD blob referenced by metadataURI and
+# their root is committed to ontologyMerkleRoot.
+#
+# Concrete skill *instances* (e.g. oasf:communication.write.grant_writing)
+# live in cbox/skill-vocabulary.ttl, NOT in this file. T-Box stays for
+# classes / properties only — same split as cbox/controlled-vocabularies.ttl.
+
+<https://smartagent.io/ontology/skill> a owl:Ontology ;
+    rdfs:label "Smart Agent Skill Ontology" ;
+    rdfs:comment "Agent-level capability claims. Mirrors the geo pattern (sageo:GeoFeature / sageo:GeoClaim)." ;
+    owl:versionInfo "v0" ;
+    owl:imports <https://smartagent.io/ontology/core> ,
+                <http://www.w3.org/2004/02/skos/core> .
+
+# ─── Top class ────────────────────────────────────────────────────────
+
+saskill:Skill a owl:Class ;
+    rdfs:subClassOf skos:Concept ;
+    rdfs:label "Smart Agent Skill" ;
+    rdfs:comment "A capability concept anchored by a versioned on-chain SkillRecord. Skill hierarchy lives in the SKOS graph (skos:broader / narrower) — NOT on chain — so taxonomy edits don't force a contract version bump." .
+
+saskill:SkillScheme a skos:ConceptScheme ;
+    skos:prefLabel "Smart Agent Skill Vocabulary"@en ;
+    rdfs:comment "Top-level concept scheme grouping every saskill:Skill. Concrete instances are in cbox/skill-vocabulary.ttl." .
+
+# ─── Skill kinds ──────────────────────────────────────────────────────
+
+saskill:OasfLeaf a owl:Class ; rdfs:subClassOf saskill:Skill ;
+    rdfs:label "OASF leaf concept" ;
+    rdfs:comment "A leaf concept imported from the Linux Foundation OASF capability schema." .
+saskill:Domain a owl:Class ; rdfs:subClassOf saskill:Skill ;
+    rdfs:label "Skill domain" ;
+    rdfs:comment "A grouping concept (e.g. communication, software-engineering)." .
+saskill:Custom a owl:Class ; rdfs:subClassOf saskill:Skill ;
+    rdfs:label "Custom skill" ;
+    rdfs:comment "Skill defined outside an external taxonomy — community / project-specific." .
+
+# ─── Versioning + provenance ──────────────────────────────────────────
+
+saskill:skillId a owl:DatatypeProperty ;
+    rdfs:domain saskill:Skill ;
+    rdfs:range  xsd:hexBinary ;
+    rdfs:comment "Stable bytes32 id across versions. Produced as keccak256(scheme|conceptId|variant)." .
+
+saskill:skillVersion a owl:DatatypeProperty ;
+    rdfs:domain saskill:Skill ;
+    rdfs:range  xsd:positiveInteger .
+
+saskill:conceptHash a owl:DatatypeProperty ;
+    rdfs:domain saskill:Skill ;
+    rdfs:range  xsd:hexBinary ;
+    rdfs:comment "keccak256(canonical SKOS prefLabel + ancestors). Used to detect taxonomy drift between two OASF imports of the same concept." .
+
+saskill:ontologyMerkleRoot a owl:DatatypeProperty ;
+    rdfs:domain saskill:Skill ;
+    rdfs:range  xsd:hexBinary ;
+    rdfs:comment "Merkle root over the canonical (URDNA2015 N-Quads) SKOS subtree for this skill." .
+
+saskill:predecessorMerkleRoot a owl:DatatypeProperty ;
+    rdfs:domain saskill:Skill ;
+    rdfs:range  xsd:hexBinary ;
+    rdfs:comment "Prior version's ontologyMerkleRoot, or zero for v1. Mirrors sageo:sourceSetRoot for diff traceability." .
+
+saskill:metadataURI a owl:DatatypeProperty ;
+    rdfs:domain saskill:Skill ;
+    rdfs:range  xsd:anyURI ;
+    rdfs:comment "Off-chain JSON-LD pointing at the full SKOS / OASF mapping payload, including saskill:oasfRelease tag." .
+
+saskill:oasfRelease a owl:DatatypeProperty ;
+    rdfs:domain saskill:Skill ;
+    rdfs:range  xsd:string ;
+    rdfs:comment "OASF release tag this skill was imported under (e.g. \"oasf-0.5.2\"). Pinned so identical reimports produce identical conceptHash." .
+
+saskill:steward a owl:ObjectProperty ;
+    rdfs:domain saskill:Skill ;
+    rdfs:range  sa:Agent ;
+    rdfs:comment "AgentAccount that owns / maintains this skill definition." .
+
+# ─── OASF / external alignment ────────────────────────────────────────
+
+saskill:oasfMapping a owl:ObjectProperty ;
+    rdfs:domain saskill:Skill ;
+    rdfs:range  oasf:Capability ;
+    rdfs:comment "Maps to a Linux Foundation OASF capability. Treated as input controlled vocabulary, NOT canonical." .
+
+# =============================================================================
+# Skill claim
+# =============================================================================
+
+saskill:SkillClaim a owl:Class ;
+    rdfs:subClassOf sa:Claim ;
+    rdfs:label "Skill claim" ;
+    rdfs:comment "A claim that a particular agent has, practices, or is certified in a skill. Versioned (saskill:skillVersion) so taxonomy edits don't silently re-target prior claims." .
+
+# ─── Relations ────────────────────────────────────────────────────────
+
+saskill:Relation a owl:Class ;
+    rdfs:label "Skill claim relation kind" .
+
+# v0 modalities — subject can self-attest these (capped proficiency).
+saskill:HasSkill          a saskill:Relation ; rdfs:label "has skill" .
+saskill:PracticesSkill    a saskill:Relation ; rdfs:label "practices skill" .
+saskill:CertifiedIn       a saskill:Relation ; rdfs:label "certified in" .
+# v1 cross-issuance acts — third party attests on subject's behalf.
+saskill:EndorsesSkill     a saskill:Relation ; rdfs:label "endorses skill" .
+saskill:MentorsIn         a saskill:Relation ; rdfs:label "mentors in" .
+saskill:CanTrainOthersIn  a saskill:Relation ; rdfs:label "can train others in" .
+
+# ─── Visibility (reuses sageo:Visibility — already general) ───────────
+
+# Not redeclared here; cbox/skill-shapes.shacl.ttl SHACL constraint
+# requires saskill:visibility ranges in {sageo:Public, sageo:PublicCoarse,
+# sageo:PrivateCommitment, sageo:PrivateZk, sageo:OffchainOnly}.
+
+# ─── Claim properties ─────────────────────────────────────────────────
+
+saskill:claimId a owl:DatatypeProperty ;
+    rdfs:domain saskill:SkillClaim ;
+    rdfs:range  xsd:hexBinary .
+
+saskill:subjectAgent a owl:ObjectProperty ;
+    rdfs:domain saskill:SkillClaim ;
+    rdfs:range  sa:Agent ;
+    rdfs:comment "Agent the claim is about." .
+
+saskill:issuer a owl:ObjectProperty ;
+    rdfs:domain saskill:SkillClaim ;
+    rdfs:range  sa:Agent ;
+    rdfs:comment "Agent that authorised the claim. Equal to subjectAgent for self-attestation; different for cross-issued (proven by EIP-712 signature on chain)." .
+
+saskill:targetSkill a owl:ObjectProperty ;
+    rdfs:domain saskill:SkillClaim ;
+    rdfs:range  saskill:Skill .
+
+saskill:relation a owl:ObjectProperty ;
+    rdfs:domain saskill:SkillClaim ;
+    rdfs:range  saskill:Relation .
+
+saskill:visibility a owl:ObjectProperty ;
+    rdfs:domain saskill:SkillClaim ;
+    rdfs:range  sageo:Visibility .
+
+saskill:proficiencyScore a owl:DatatypeProperty ;
+    rdfs:domain saskill:SkillClaim ;
+    rdfs:range  xsd:integer ;
+    rdfs:comment "0..10000 (basis points of 0..1.0). UI maps to Basic / Advanced / Certified / Expert labels." .
+
+saskill:confidence a owl:DatatypeProperty ;
+    rdfs:domain saskill:SkillClaim ;
+    rdfs:range  xsd:integer ;
+    rdfs:comment "0..100. 100 = strongest issuer assertion." .
+
+saskill:evidenceCommit a owl:DatatypeProperty ;
+    rdfs:domain saskill:SkillClaim ;
+    rdfs:range  xsd:hexBinary ;
+    rdfs:comment "Commitment over off-chain evidence; ZK-targetable. Stage-B′ blinds this with a per-search nonce when scoring." .
+
+saskill:edgeRef a owl:ObjectProperty ;
+    rdfs:domain saskill:SkillClaim ;
+    rdfs:comment "Optional AgentRelationship edge id (issuer→subject) for substrate provenance." .
+
+saskill:assertionRef a owl:ObjectProperty ;
+    rdfs:domain saskill:SkillClaim ;
+    rdfs:comment "Optional AgentAssertion id for ATL substrate provenance." .
+
+saskill:policyId a owl:DatatypeProperty ;
+    rdfs:domain saskill:SkillClaim ;
+    rdfs:range  xsd:hexBinary ;
+    rdfs:comment "keccak256 of the scoring policy id this claim was minted under (e.g. \"smart-agent.skill-overlap.v1\")." .
+
+saskill:validAfter a owl:DatatypeProperty ;
+    rdfs:domain saskill:SkillClaim ;
+    rdfs:range  xsd:nonNegativeInteger .
+
+saskill:validUntil a owl:DatatypeProperty ;
+    rdfs:domain saskill:SkillClaim ;
+    rdfs:range  xsd:nonNegativeInteger .
+
+saskill:revoked a owl:DatatypeProperty ;
+    rdfs:domain saskill:SkillClaim ;
+    rdfs:range  xsd:boolean .
+
+saskill:mintedAtEpoch a owl:DatatypeProperty ;
+    rdfs:domain saskill:SkillClaim ;
+    rdfs:range  xsd:nonNegativeInteger ;
+    rdfs:comment "Issuer→subject revocationEpoch at mint time. Readers compare to the current epoch to detect bulk invalidation." .
+
+# ─── Convenience: agent ←→ skill ──────────────────────────────────────
+
+saskill:hasSkillClaim a owl:ObjectProperty ;
+    rdfs:domain sa:Agent ;
+    rdfs:range  saskill:SkillClaim ;
+    rdfs:comment "Convenience inverse-of-subjectAgent for reverse traversal." .

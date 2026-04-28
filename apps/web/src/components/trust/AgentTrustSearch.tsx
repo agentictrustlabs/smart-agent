@@ -127,10 +127,23 @@ export function AgentTrustSearch() {
           return
         }
         // Status='no-resolver' may mean either configuration error or
-        // (when error mentions no_session) the user has no grant. Fall
-        // back to the legacy passkey flow only in the latter case.
-        const isNoSession = sessionRes.error?.includes('no session-grant cookie') ?? false
-        if (!isNoSession) {
+        // any session-grant denial (no cookie, idle expiry, hard expiry,
+        // revoked, epoch mismatch). All of those are recoverable via the
+        // passkey fallback — the user re-signs and we mint a fresh action.
+        // Configuration errors aren't recoverable, so we still surface
+        // those.
+        const sessionDenialPatterns = [
+          'no session-grant cookie',
+          'session_idle',
+          'session_expired',
+          'session_revoked',
+          'unknown_session',
+          'epoch_mismatch',
+        ]
+        const isSessionDenial = sessionDenialPatterns.some(p =>
+          (sessionRes.error ?? '').includes(p) || (sessionRes.message ?? '').includes(p),
+        )
+        if (!isSessionDenial) {
           setErr(sessionRes.message ?? sessionRes.error ?? 'trust search failed')
           setPhase('idle')
           return
@@ -191,6 +204,9 @@ export function AgentTrustSearch() {
           body: prep.body,
           agentMeta: prep.agentMeta,
           callerGeo: prep.callerGeo ?? null,
+          callerSkills: prep.callerSkills,
+          callerOrgs: prep.callerOrgs,
+          callerSubject: prep.body.callerAddress as `0x${string}`,
         })
         if (res.error) { setErr(res.error); setHits([]); setPhase('idle'); return }
         setHits(res.hits)
@@ -322,6 +338,7 @@ export function AgentTrustSearch() {
                       )}
                       <span title="org-overlap.v1">org {h.orgScore.toFixed(1)}</span>
                       <span title="geo-overlap.v1 (coarse + location-aware)">geo {h.geoScore.toFixed(1)}</span>
+                      <span title="skill-overlap.v1 (public claim ∩ caller claims)">skill {h.skillScore.toFixed(1)}</span>
                       <span>{h.sharedCount} shared</span>
                       {h.geoTag?.city && (
                         <span style={{ color: '#3f6ee8' }}>📍 {h.geoTag.city}</span>
@@ -330,11 +347,23 @@ export function AgentTrustSearch() {
                     {h.geoExplanation && h.geoExplanation.length > 0 && (
                       <div style={{ fontSize: 10, color: '#64748b', marginTop: 4, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                         {h.geoExplanation.map((e, i) => (
-                          <span key={i} style={{
+                          <span key={`geo-${i}`} style={{
                             background: '#f5f8ff', border: '1px solid #e0e7ff',
                             color: '#3f6ee8', padding: '1px 6px', borderRadius: 4,
                           }}>
                             {e.relation.replace(/^geo:/, '')} +{e.contribution.toFixed(2)}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {h.skillExplanation && h.skillExplanation.length > 0 && (
+                      <div style={{ fontSize: 10, color: '#64748b', marginTop: 4, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        {h.skillExplanation.map((e, i) => (
+                          <span key={`skill-${i}`} style={{
+                            background: '#fff7ed', border: '1px solid #fed7aa',
+                            color: '#c2410c', padding: '1px 6px', borderRadius: 4,
+                          }}>
+                            {e.relation.replace(/^skill:/, '')} +{e.contribution.toFixed(2)}
                           </span>
                         ))}
                       </div>

@@ -51,6 +51,12 @@ import {
   type MatchAgainstPublicSetBody,
 } from '@smart-agent/privacy-creds'
 import { geoOverlapScore, type CoarseGeoTag, type GeoClaimInput } from '@smart-agent/privacy-creds/geo-overlap'
+import {
+  skillOverlapScore,
+  type SkillClaimInput,
+  type SkillRelationLabel as SkillRelLabel,
+} from '@smart-agent/privacy-creds/skill-overlap'
+import { agentSkillRegistryAbi, SKILL_REL_HASH_TO_LABEL } from '@smart-agent/sdk'
 import { person } from '@/lib/ssi/clients'
 import { ssiConfig } from '@/lib/ssi/config'
 import { dispatchWalletAction, DispatchError } from '@/lib/wallet-action/dispatch'
@@ -93,18 +99,23 @@ export interface AgentMeta {
    *  Stage-B input for geoOverlapScore — populated only when both
    *  caller lat/lon and matching public claims exist. */
   geoMatchedClaims?: GeoClaimInput[]
+  /** Candidate's public skill claims, fetched lazily for the skill-overlap
+   *  pass. Holds the raw rows; scoring happens in the merge step. */
+  skillClaims?: import('@smart-agent/privacy-creds/skill-overlap').SkillClaimInput[]
 }
 
 export interface TrustSearchHit {
   address: `0x${string}`
   displayName: string
   primaryName: string | null
-  /** Combined org-overlap + geo-overlap score. */
+  /** Combined org-overlap + geo-overlap + skill-overlap score. */
   score: number
   /** Org-overlap component (smart-agent.trust-overlap.v1). */
   orgScore: number
   /** Geo-overlap component (smart-agent.geo-overlap.v1). */
   geoScore: number
+  /** Skill-overlap component (smart-agent.skill-overlap.v1). */
+  skillScore: number
   /** Number of org memberships shared with the caller. */
   sharedCount: number
   /** Candidate's coarse geo tag (city/region/country) — null if untagged. */
@@ -112,6 +123,8 @@ export interface TrustSearchHit {
   /** Per-row geo trust explanation: which relations contributed and at
    *  what score. Empty when no public claims matched. */
   geoExplanation: Array<{ relation: string; contribution: number }>
+  /** Per-row skill trust explanation: which skill+relation pairs contributed. */
+  skillExplanation: Array<{ skillLabel: string; relation: string; contribution: number }>
   evidenceCommit: `0x${string}`
 }
 
@@ -141,6 +154,12 @@ export interface TrustSearchPrepared {
   body?: MatchAgainstPublicSetBody
   /** Agent metadata keyed by candidate id (lower-case address). */
   agentMeta?: Record<string, AgentMeta>
+  /** Caller's public skill claims (input to skill-overlap.v1 scoring). */
+  callerSkills?: SkillClaimInput[]
+  /** Caller's org-overlap set (lowercased hex). Skill scoring uses
+   *  this to cap issuer-trust when the certifier is also one of the
+   *  caller's orgs (avoids double-counting with org-overlap). */
+  callerOrgs?: string[]
 }
 
 // ─── Public API ─────────────────────────────────────────────────────
@@ -251,6 +270,17 @@ export async function prepareTrustSearch(opts: { query?: string; limit?: number 
     }
   }
 
+  // Skill overlap (smart-agent.skill-overlap.v1) — read every candidate's
+  // public skill claims so the merge step can score against the caller's
+  // own claims. v0 ships only on-chain public skill data; v1 will add a
+  // held-vault Stage-B′ pattern equivalent to the geo path above.
+  for (const c of candidates) {
+    const skillClaims = await readPublicSkillClaims(c.meta.address)
+    if (skillClaims.length > 0) c.meta.skillClaims = skillClaims
+  }
+  const callerSkills = await readPublicSkillClaims(myPersonAgent)
+  const callerOrgs = await getPublicOrgsForAgent(resolverAddr, myPersonAgent)
+
   return {
     status: 'ready',
     holderWalletId,
@@ -265,6 +295,8 @@ export async function prepareTrustSearch(opts: { query?: string; limit?: number 
     body,
     agentMeta,
     callerGeo,
+    callerSkills,
+    callerOrgs,
   }
 }
 
@@ -275,6 +307,9 @@ export async function completeTrustSearch(input: {
   body: MatchAgainstPublicSetBody
   agentMeta: Record<string, AgentMeta>
   callerGeo?: CoarseGeoTag | null
+  callerSkills?: SkillClaimInput[]
+  callerOrgs?: string[]
+  callerSubject?: `0x${string}`
 }): Promise<{ hits: TrustSearchHit[]; error?: string }> {
   try {
     const signer = await getSignerContext()
@@ -324,16 +359,20 @@ export async function completeTrustSearch(input: {
           if (rough > 0) geoExplanation.push({ relation: c.relation, contribution: rough })
         }
       }
+      const skill = scoreSkillOverlapForCandidate(meta, input.callerSkills, input.callerOrgs, input.callerSubject)
+
       return {
         address,
         displayName: meta?.displayName || fallbackName,
         primaryName: meta?.primaryName ?? null,
-        score: orgScore + geoScore,
+        score: orgScore + geoScore + skill.score,
         orgScore,
         geoScore,
+        skillScore: skill.score,
         sharedCount: h.sharedCount,
         geoTag: meta?.geoTag ?? null,
         geoExplanation,
+        skillExplanation: skill.explanation,
         evidenceCommit: h.evidenceCommit,
       }
     })
@@ -402,16 +441,22 @@ export async function runTrustSearchViaSession(
           if (rough > 0) geoExplanation.push({ relation: c.relation, contribution: rough })
         }
       }
+      const skill = scoreSkillOverlapForCandidate(
+        meta, prepared.callerSkills, prepared.callerOrgs,
+        prepared.body?.callerAddress as `0x${string}` | undefined,
+      )
       return {
         address,
         displayName: meta?.displayName || fallbackName,
         primaryName: meta?.primaryName ?? null,
-        score: orgScore + geoScore,
+        score: orgScore + geoScore + skill.score,
         orgScore,
         geoScore,
+        skillScore: skill.score,
         sharedCount: h.sharedCount,
         geoTag: meta?.geoTag ?? null,
         geoExplanation,
+        skillExplanation: skill.explanation,
         evidenceCommit: h.evidenceCommit,
       }
     })
@@ -965,4 +1010,99 @@ async function getPublicOrgsForAgent(
   } catch { /* */ }
 
   return Array.from(orgs)
+}
+
+// ─── Skill helpers (S5 of skills v0) ──────────────────────────────────
+
+/**
+ * Read a single agent's public skill claims from AgentSkillRegistry,
+ * shaped as `SkillClaimInput` for the overlap scorer. Filters out
+ * non-public visibilities and any revoked rows. Returns [] if the
+ * registry isn't deployed.
+ */
+async function readPublicSkillClaims(agent: `0x${string}`): Promise<SkillClaimInput[]> {
+  const reg = process.env.AGENT_SKILL_REGISTRY_ADDRESS as `0x${string}` | undefined
+  if (!reg) return []
+  const client = getPublicClient()
+  let ids: `0x${string}`[] = []
+  try {
+    ids = (await client.readContract({
+      address: reg, abi: agentSkillRegistryAbi,
+      functionName: 'claimsBySubject', args: [agent],
+    })) as `0x${string}`[]
+  } catch { return [] }
+
+  const out: SkillClaimInput[] = []
+  for (const id of ids) {
+    try {
+      const c = (await client.readContract({
+        address: reg, abi: agentSkillRegistryAbi,
+        functionName: 'getClaim', args: [id],
+      })) as {
+        skillId: `0x${string}`
+        relation: `0x${string}`
+        visibility: number
+        proficiencyScore: number
+        confidence: number
+        issuer: `0x${string}`
+        evidenceCommit: `0x${string}`
+        validUntil: bigint
+        revoked: boolean
+      }
+      if (c.revoked) continue
+      if (c.visibility !== 0 && c.visibility !== 1) continue   // Public + PublicCoarse only
+      const relLabel = SKILL_REL_HASH_TO_LABEL[c.relation.toLowerCase()]
+      if (!relLabel) continue
+      const visibilityLabel = c.visibility === 0 ? 'Public' : 'PublicCoarse'
+      out.push({
+        skillId: c.skillId.toLowerCase(),
+        relation: stripPrefix(relLabel) as SkillRelLabel,
+        proficiencyScore: c.proficiencyScore,
+        confidence: c.confidence,
+        issuer: c.issuer.toLowerCase(),
+        visibility: visibilityLabel,
+        validUntil: Number(c.validUntil),
+        evidenceCommit: c.evidenceCommit.toLowerCase(),
+      })
+    } catch { /* skip bad row */ }
+  }
+  return out
+}
+
+function stripPrefix(label: string): string {
+  // SKILL_REL_HASH_TO_LABEL stores 'skill:hasSkill' etc — strip the prefix.
+  return label.startsWith('skill:') ? label.slice('skill:'.length) : label
+}
+
+/**
+ * Compute skill-overlap contribution for one candidate. Returns a
+ * `score` and `explanation` rows ready to slot into the trust-search
+ * hit. Empty `meta.skillClaims` or empty `callerSkills` zero out.
+ */
+function scoreSkillOverlapForCandidate(
+  meta: AgentMeta | undefined,
+  callerSkills: SkillClaimInput[] | undefined,
+  callerOrgs: string[] | undefined,
+  callerSubject: `0x${string}` | undefined,
+): { score: number; explanation: Array<{ skillLabel: string; relation: string; contribution: number }> } {
+  if (!meta?.skillClaims || meta.skillClaims.length === 0) return { score: 0, explanation: [] }
+  if (!callerSkills || callerSkills.length === 0) return { score: 0, explanation: [] }
+  const subject = (callerSubject ?? '0x0000000000000000000000000000000000000000').toLowerCase()
+  const orgsSet = new Set((callerOrgs ?? []).map(s => s.toLowerCase()))
+
+  const result = skillOverlapScore({
+    callerSubject: subject,
+    callerHeld: callerSkills,
+    candidatePublic: meta.skillClaims,
+    callerOrgs: orgsSet,
+  })
+
+  return {
+    score: result.score,
+    explanation: result.matches.map(m => ({
+      skillLabel: m.skillId.slice(0, 12) + '…',
+      relation: `skill:${m.relation}`,
+      contribution: Number(m.contribution.toFixed(4)),
+    })),
+  }
 }

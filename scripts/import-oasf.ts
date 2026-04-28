@@ -1,0 +1,136 @@
+/**
+ * OASF → SKOS importer.
+ *
+ * Reads an OASF (Linux Foundation Open Agentic Schema Framework) snapshot
+ * file (JSON-LD or JSON) and emits a SKOS-shaped Turtle file ready to
+ * merge with `docs/ontology/cbox/skill-vocabulary.ttl`.
+ *
+ * v1 cut: this is the offline transform step. Stewards run it locally
+ * and commit the resulting `.ttl` along with `OASF_RELEASE_TAG` pinned
+ * via env. The deploy-time `seed-skills-onchain.ts` reads the pin and
+ * binds it to each `SkillRecord`'s `metadataURI` so two stewards
+ * re-importing the same release produce identical conceptHash.
+ *
+ * Inputs (env or argv):
+ *   OASF_SNAPSHOT  — path to oasf-<release>.json   (default: scripts/oasf-snapshot.json)
+ *   OASF_RELEASE_TAG — e.g. 'oasf-0.5.2'           (default: read from snapshot.release)
+ *   OUT_TTL         — output path                  (default: docs/ontology/cbox/skill-vocabulary-oasf.ttl)
+ *
+ * Snapshot shape expected (Anthropic-style minimal subset of the OASF
+ * spec — full JSON-LD parsing is in v2):
+ *
+ *   {
+ *     "release": "oasf-0.5.2",
+ *     "concepts": [
+ *       {
+ *         "id": "communication.write.grant_writing",
+ *         "prefLabel": "Grant writing",
+ *         "altLabels": ["Grant proposal writing"],
+ *         "definition": "...",
+ *         "broader": "communication.write",
+ *         "oasfUri": "https://oasf.linuxfoundation.org/schema/0.5.2/...",
+ *         "kind": "OasfLeaf"   // OasfLeaf | Domain | Custom
+ *       }, …
+ *     ]
+ *   }
+ *
+ * Usage:
+ *   pnpm tsx scripts/import-oasf.ts
+ *
+ * Out of scope (v2):
+ *   - URDNA2015 canonical N-Quads + Merkle root computation
+ *   - Diff against prior release for `predecessorMerkleRoot`
+ *   - On-chain `publish` calls to SkillDefinitionRegistry
+ */
+
+import { readFileSync, writeFileSync, existsSync } from 'node:fs'
+import { resolve } from 'node:path'
+
+interface OasfConcept {
+  id: string
+  prefLabel: string
+  altLabels?: string[]
+  definition?: string
+  broader?: string
+  oasfUri?: string
+  kind?: 'OasfLeaf' | 'Domain' | 'Custom'
+}
+interface OasfSnapshot {
+  release: string
+  concepts: OasfConcept[]
+}
+
+const SNAPSHOT_PATH = process.env.OASF_SNAPSHOT
+  ?? resolve(__dirname, 'oasf-snapshot.json')
+const OUT_PATH = process.env.OUT_TTL
+  ?? resolve(__dirname, '..', 'docs', 'ontology', 'cbox', 'skill-vocabulary-oasf.ttl')
+
+function canonicalIri(conceptId: string): string {
+  // Match SkillDefinitionClient.skillIdFor: scheme `oasf`, conceptId is
+  // the dotted OASF id verbatim. The IRI is the SKOS concept identifier
+  // we mint into the local vocabulary.
+  const slug = conceptId.replace(/_/g, '-').toLowerCase()
+  return `https://smartagent.io/skill/oasf/${slug}`
+}
+
+function escape(s: string): string {
+  return s.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n')
+}
+
+function emitConcept(c: OasfConcept, release: string): string {
+  const iri = canonicalIri(c.id)
+  const lines: string[] = []
+  lines.push(`<${iri}>`)
+  lines.push(`    a saskill:${c.kind ?? 'OasfLeaf'} ;`)
+  lines.push(`    skos:inScheme saskill:SkillScheme ;`)
+  lines.push(`    skos:prefLabel "${escape(c.prefLabel)}"@en ;`)
+  if (c.altLabels && c.altLabels.length > 0) {
+    const labels = c.altLabels.map(l => `"${escape(l)}"@en`).join(', ')
+    lines.push(`    skos:altLabel ${labels} ;`)
+  }
+  if (c.definition) lines.push(`    skos:definition "${escape(c.definition)}"@en ;`)
+  if (c.broader) lines.push(`    skos:broader <${canonicalIri(c.broader)}> ;`)
+  if (c.oasfUri) lines.push(`    saskill:oasfMapping <${c.oasfUri}> ;`)
+  lines.push(`    saskill:oasfRelease "${escape(release)}" .`)
+  return lines.join('\n')
+}
+
+function main() {
+  if (!existsSync(SNAPSHOT_PATH)) {
+    console.error(`[oasf-import] no snapshot at ${SNAPSHOT_PATH}`)
+    console.error(`Provide OASF_SNAPSHOT env or place oasf-snapshot.json in scripts/.`)
+    console.error(`Snapshot shape:\n  { release: "oasf-0.5.2", concepts: [ {id, prefLabel, ...}, ... ] }`)
+    process.exit(2)
+  }
+
+  const raw = readFileSync(SNAPSHOT_PATH, 'utf-8')
+  const snap = JSON.parse(raw) as OasfSnapshot
+  if (!snap.release || !Array.isArray(snap.concepts)) {
+    console.error('[oasf-import] snapshot missing required {release, concepts[]}')
+    process.exit(2)
+  }
+  const release = process.env.OASF_RELEASE_TAG ?? snap.release
+
+  console.log(`[oasf-import] importing ${snap.concepts.length} concepts from release ${release}`)
+
+  const header = [
+    `@prefix saskill: <https://smartagent.io/ontology/skill#> .`,
+    `@prefix skos:    <http://www.w3.org/2004/02/skos/core#> .`,
+    `@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .`,
+    `@prefix oasf:    <https://oasf.linuxfoundation.org/schema/> .`,
+    ``,
+    `# =============================================================================`,
+    `# OASF skill vocabulary — auto-generated from ${release}`,
+    `# =============================================================================`,
+    `# Generated by scripts/import-oasf.ts.`,
+    `# DO NOT EDIT BY HAND. Re-run the importer to refresh from a new release.`,
+    ``,
+  ].join('\n')
+
+  const body = snap.concepts.map(c => emitConcept(c, release)).join('\n\n')
+
+  writeFileSync(OUT_PATH, header + '\n' + body + '\n', 'utf-8')
+  console.log(`[oasf-import] wrote ${OUT_PATH}`)
+}
+
+main()

@@ -16,6 +16,8 @@ export { GraphDBClient, GraphDBError } from './graphdb-client'
 export { PREFIXES, DATA_GRAPH } from './sparql'
 export { GeoDiscoveryClient } from './geo-sparql'
 export type { GeoFeatureRef } from './geo-sparql'
+export { SkillDiscoveryClient } from './skill-sparql'
+export type { SkillConceptRef } from './skill-sparql'
 
 export type {
   GraphDBConfig,

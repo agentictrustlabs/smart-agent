@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { getPublicClient, getEdgesBySubject, getEdgesByObject, getEdge, getEdgeRoles } from '@/lib/contracts'
+import { AgentSkillsPanel } from '@/components/agent/AgentSkillsPanel'
 import {
   agentControlAbi, agentAccountAbi, agentReviewRecordAbi,
   agentValidationProfileAbi, agentTrustProfileAbi, agentDisputeRecordAbi,
@@ -626,6 +627,16 @@ export default async function AgentSettingsPage({
               </tbody>
             </table>
           )}
+        </section>
+      )}
+
+      {/* ─── Skills (public on-chain) ──────────────────────────────── */}
+      {(agentType === 'person' || agentType === 'org') && (
+        <section data-component="graph-section">
+          {/* AgentSkillsPanel is an async Server Component; renders nothing
+              when there are no public skill claims, so wrapping in a section
+              is safe. */}
+          <AgentSkillsPanel agentAddress={agentAddress} />
         </section>
       )}
 
