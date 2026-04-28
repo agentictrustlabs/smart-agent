@@ -302,21 +302,24 @@ export async function completeTrustSearch(input: {
       const orgScore = h.score
       let geoScore = 0
       const geoExplanation: Array<{ relation: string; contribution: number }> = []
-      if (callerGeo && meta?.geoTag) {
+      // Score geo overlap when EITHER the caller has a public coarse tag
+      // (Stage A) OR there are held-credential matched claims (Stage B′).
+      // Missing tags get zeroed inside coarseTagOverlap, so passing an
+      // empty CoarseGeoTag is safe and lets the held-credential
+      // contribution still come through for users with no public city set.
+      const hasMatchedClaims = (meta?.geoMatchedClaims?.length ?? 0) > 0
+      const EMPTY_TAG: CoarseGeoTag = { city: null, region: null, country: null }
+      if ((callerGeo && meta?.geoTag) || hasMatchedClaims) {
         const geo = geoOverlapScore({
-          caller: callerGeo,
-          candidate: meta.geoTag,
-          matchedClaims: meta.geoMatchedClaims,
+          caller: callerGeo ?? EMPTY_TAG,
+          candidate: meta?.geoTag ?? EMPTY_TAG,
+          matchedClaims: meta?.geoMatchedClaims,
         })
         geoScore = geo.score
-        // Coarse-tier explanation
         if (geo.coarseScore > 0) {
           geoExplanation.push({ relation: 'coarse:city/region/country', contribution: geo.coarseScore })
         }
-        // Per-claim explanation (relation hash → label is already stored)
-        for (const c of meta.geoMatchedClaims ?? []) {
-          // approximate per-claim contribution: same formula as the scorer
-          // but used for explanation, not for re-scoring.
+        for (const c of meta?.geoMatchedClaims ?? []) {
           const rough = roughClaimContribution(c)
           if (rough > 0) geoExplanation.push({ relation: c.relation, contribution: rough })
         }
@@ -379,17 +382,22 @@ export async function runTrustSearchViaSession(
       const orgScore = h.score
       let geoScore = 0
       const geoExplanation: Array<{ relation: string; contribution: number }> = []
-      if (callerGeo && meta?.geoTag) {
+      // Score geo overlap when EITHER the caller has a public coarse tag
+      // (Stage A) OR there are held-credential matched claims (Stage B′).
+      // Missing tags get zeroed inside coarseTagOverlap.
+      const hasMatchedClaims = (meta?.geoMatchedClaims?.length ?? 0) > 0
+      const EMPTY_TAG: CoarseGeoTag = { city: null, region: null, country: null }
+      if ((callerGeo && meta?.geoTag) || hasMatchedClaims) {
         const geo = geoOverlapScore({
-          caller: callerGeo,
-          candidate: meta.geoTag,
-          matchedClaims: meta.geoMatchedClaims,
+          caller: callerGeo ?? EMPTY_TAG,
+          candidate: meta?.geoTag ?? EMPTY_TAG,
+          matchedClaims: meta?.geoMatchedClaims,
         })
         geoScore = geo.score
         if (geo.coarseScore > 0) {
           geoExplanation.push({ relation: 'coarse:city/region/country', contribution: geo.coarseScore })
         }
-        for (const c of meta.geoMatchedClaims ?? []) {
+        for (const c of meta?.geoMatchedClaims ?? []) {
           const rough = roughClaimContribution(c)
           if (rough > 0) geoExplanation.push({ relation: c.relation, contribution: rough })
         }

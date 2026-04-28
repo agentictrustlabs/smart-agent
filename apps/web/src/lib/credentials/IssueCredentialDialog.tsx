@@ -128,6 +128,12 @@ export function IssueCredentialDialog({
         }
 
         // ─── 2. Issue the credential. ─────────────────────────────
+        // The session-EOA dispatch path requires a grant cookie. The
+        // provision path above can succeed without one (it's idempotent
+        // on existing wallets) — so a SIWE user whose wallet was already
+        // provisioned looks like `useSessionPath = true` here even though
+        // dispatchWalletAction would reject. Try the session path first
+        // and fall through to the legacy chain on no_session.
         if (useSessionPath) {
           setPhase('completing')
           const fin = await issueCredentialViaSession({
@@ -137,11 +143,14 @@ export function IssueCredentialDialog({
             attributes: result.attributes,
             extraIssueArgs: result.extraIssueArgs,
           })
-          if (!fin.success || !fin.credentialId) {
+          if (fin.success && fin.credentialId) {
+            onIssued(fin.credentialId); return
+          }
+          if (fin.errorCode !== 'no_session') {
             setErr(fin.error ?? 'Issuance failed'); setPhase('idle'); return
           }
-          onIssued(fin.credentialId)
-          return
+          // no_session → fall through to the legacy WalletAction-signed
+          // path below. SIWE users get one MetaMask popup.
         }
 
         // Legacy passkey-signed path.

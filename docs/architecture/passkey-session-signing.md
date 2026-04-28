@@ -1,22 +1,23 @@
 # Passkey-Rooted Delegated Session Signing
 
-> **Status**: design — pre-implementation. Sister documents:
+> **Status**: shipped (M1–M5 complete). Sister documents:
 > [`anoncreds-ssi-flow.md`](./anoncreds-ssi-flow.md),
 > [`auth-and-onboarding.md`](./auth-and-onboarding.md). Execution
 > tracking lives in [`../specs/passkey-session-signing-plan.md`](../specs/passkey-session-signing-plan.md).
+> Implementation summary: [§17](#17-implementation-as-shipped).
 
 ## 1. Problem
 
-Today every privileged operation in the web app — credential issuance,
-trust search, presentation creation, wallet provisioning — requires a
-fresh WebAuthn ceremony. Inventoried touchpoints:
+Before this work, every privileged operation in the web app — credential
+issuance, trust search, presentation creation, wallet provisioning —
+required a fresh WebAuthn ceremony. Inventoried touchpoints (pre-shipment):
 
-| Category | Sites | Prompts |
-| --- | --- | --- |
-| **Signup** | `credentials.create` + A2A delegation `get` + ProvisionHolderWallet `signWalletActionClient` | 3 |
-| **Sign-in** | identity assertion + A2A delegation + (first-time wallet provision) | 2 (3 first-time) |
-| **Normal app ops** | `IssueCredentialDialog` (×2 inside one flow), `AgentTrustSearch`, `HeldCredentialsPanel` Test verification | 1 per action |
-| **Account control** | add/remove passkey, recovery device, delegation changes | 1 per action |
+| Category | Sites | Prompts (before) | Prompts (now) |
+| --- | --- | --- | --- |
+| **Signup** | `credentials.create` + A2A delegation `get` + ProvisionHolderWallet `signWalletActionClient` | 3 | **2** |
+| **Sign-in** | identity assertion + A2A delegation + (first-time wallet provision) | 2 (3 first-time) | **1** |
+| **Normal app ops** | `IssueCredentialDialog` (×2 inside one flow), `AgentTrustSearch`, `HeldCredentialsPanel` Test verification | 1 per action | **0** (session-EOA dispatch) |
+| **Account control** | add/remove passkey, recovery device, delegation changes | 1 per action | **1 per action** (intentional, unchanged) |
 
 The **account-control** prompts are correct and stay. The pain is in
 "Normal app ops": every Discover Agents run and every Test verification
@@ -1302,3 +1303,250 @@ process boundary). Tracked in the post-M5 backlog.
 - Low: tracked in backlog.
 
 Architecture is **green-light to start M1 implementation.**
+
+## 17. Implementation as shipped
+
+This section captures the actual file layout and behaviour of the
+M1–M5 milestones — ground truth that supersedes any earlier "design
+intent" wording where the two diverge. Everything below is committed
+and exercised end-to-end by the playwright suite.
+
+### 17.1 Schemas + canonicalization (M1)
+
+`packages/privacy-creds/src/session-grant/`:
+
+| File | Exports |
+| --- | --- |
+| `types.ts` | `SessionGrantV1`, `WalletActionV1`, `SessionRecord`, `AuditLogEntry`, `ActorEnvelopeV1`, `RiskLevel`, `SessionWalletActionType`, `SESSION_GRANT_DEFAULTS` |
+| `canonicalize.ts` | `hashCanonical()` — sha256 over RFC 8785-style sorted-key JSON; returns `0x…` hex |
+| `derive-challenge.ts` | `deriveSessionGrantChallenge(grant, serverNonce)` — `sha256("SessionGrant:v1" \|\| grantHash \|\| serverNonce)`, base64url |
+| `risk-classifier.ts` | `classifyRisk(actionType)`, `riskLessOrEqual(a, b)`, `sessionEligible(actionType, maxRisk)` — single source of truth shared by web (dispatch) and person-mcp (verifier) |
+
+Subpath export: `@smart-agent/privacy-creds/session-grant`. The barrel
+file (`packages/privacy-creds/src/index.ts`) does NOT re-export these,
+deliberately, so the browser bundle never pulls in the AnonCreds
+native binding via the root.
+
+The `WalletActionV1` schema deliberately has **no** client-supplied
+`risk` field (audit C2). The verifier classifies risk server-side by
+inspecting `action.action.type`.
+
+### 17.2 KMS / custody (M1)
+
+`apps/web/src/lib/key-custody/`:
+
+| File | Role |
+| --- | --- |
+| `types.ts` | `CustodyBackend`, `DerivedSigner` interfaces |
+| `dev-pepper.ts` | HKDF-SHA256 over master IKM (= `sha256("smart-agent.master-key.v1" \|\| SERVER_PEPPER)`); each `sessionId` derives a distinct secp256k1 key in process; `forget()` zeroes the `PrivateKeyAccount` reference |
+| `aws-kms.ts` | Production stub — wired but not implemented; throws if `SESSION_SIGNER_BACKEND=aws-kms` is selected without the SDK present |
+| `index.ts` | `getKeyCustody()` factory; defaults to `dev-pepper` |
+
+The dev backend uses HKDF Extract+Expand with retry-on-out-of-range
+(bumps an info byte) so every UUID `sessionId` produces a valid
+secp256k1 private key.
+
+### 17.3 SessionRecord storage (M1)
+
+`apps/person-mcp/src/session-store/index.ts`. SQLite tables on the
+existing person-mcp handle:
+
+- `sessions` — primary SessionRecord with `session_id_hash` index for
+  cookie lookup
+- `revocation_epochs` — per-account epoch counter (panic button)
+- `action_nonces_v2` — UNIQUE constraint on `(account, actionNonce)`
+  for replay protection; opportunistic GC by `expires_at_ms`
+- `audit_log` — append-only with `prev_entry_hash` chain per account
+
+Public functions: `insertSession`, `getSessionByCookieValue`,
+`getSessionById`, `listActiveSessionsForAccount`, `bumpIdleDeadline`,
+`revokeSession`, `getRevocationEpoch`, `bumpRevocationEpoch` (atomic),
+`consumeActionNonce` (throws on UNIQUE collision), `appendAuditEntry`,
+`listAuditLogForAccount`.
+
+### 17.4 Verifier (M1)
+
+`apps/person-mcp/src/auth/verify-delegated-action.ts` — the
+13-step deterministic chain. In order:
+
+1. Canonicalize action → `actionHash`.
+2. Load `SessionRecord` by `sessionId`.
+3. Reject if revoked / past hard TTL / past idle TTL.
+4. Compare `getRevocationEpoch(account)` to `session.revocationEpoch`.
+5. Sanity: `action.sessionId == session.sessionId`,
+   `action.actor.smartAccountAddress == session.smartAccountAddress`,
+   `action.actor.sessionSignerAddress == session.sessionSignerAddress`.
+6. Audience: `session.grant.audience.includes(serviceName)` AND
+   `action.audience.service == serviceName`.
+7. **Server-side** risk classification via `classifyRisk(action.type)`;
+   reject if `> session.grant.scope.maxRisk`.
+8. `action.type ∈ session.grant.scope.walletActions`.
+9. Hard rails: `AddPasskey`, `RemovePasskey`, `RecoveryUpdate`,
+   `CreateDelegation` are **always rejected** here regardless of grant.
+10. `CreatePresentation` only: `enforceVerifierPolicy` checks
+    `audience.verifierDid` against `grant.scope.verifiers`.
+11. `now < action.timing.expiresAt`; window ≤ `maxActionExpirySeconds`.
+12. ECDSA verify against `session.sessionSignerAddress`
+    (`recoverAddress({ hash: actionHash, signature })`).
+13. Burn nonce (`consumeActionNonce`); slide `idleExpiresAt`; append
+    "allowed" audit entry.
+
+`enforceConstraints` lives next to it and rejects account-mutation
+flags as a defense-in-depth invariant check (the grant builder never
+sets `allowAccountMutation: true`, but the verifier enforces it
+anyway).
+
+### 17.5 Wallet-action dispatch (M2)
+
+`apps/web/src/lib/wallet-action/dispatch.ts` exports
+`dispatchWalletAction({ actionType, payload, service, verifierDid?,
+verifierDomain? })`:
+
+1. Reads `__Host-smart-agent-grant` (or dev `smart-agent-grant`) cookie.
+2. Looks up `SessionRecord` via person-mcp
+   `/session-store/by-cookie/:cookieValue`.
+3. Re-derives the session-EOA via `getKeyCustody().signWithDerivedSigner`.
+4. Builds `WalletActionV1` (canonical `payloadHash`, fresh `actionId`
+   and `actionNonce`, 2-minute window).
+5. Signs the canonical action hash with the derived signer.
+6. POSTs `{ action, actionSignature, sessionId, payload }` to
+   person-mcp `/wallet-action/dispatch`.
+
+Person-mcp's `/wallet-action/dispatch` handler (`apps/person-mcp/src/auth/dispatch-routes.ts`):
+
+1. Verifies `hashCanonical(payload) === action.action.payloadHash`
+   (audit M3).
+2. Calls `verifyDelegatedWalletAction` (the 13-step chain above).
+3. Routes by `action.action.type` to a per-type handler:
+
+   | Action type | Handler |
+   | --- | --- |
+   | `ProvisionHolderWallet` | `provisionHolderWallet(payload, signer)` — reuses askar profile + linkSecret creation logic from the legacy `/wallet/provision` route |
+   | `AcceptCredentialOffer` | `acceptCredentialOffer(payload)` — runs `holderCreateCredentialRequest` and stores request metadata; the issuer-side `/credentials/store` step uses the one-shot `requestId` as its own auth, no further signature needed |
+   | `MatchAgainstPublicSet` | `matchAgainstPublicSet(payload)` — same scoring code as the legacy `/wallet/match-against-public-set` route; persists score-only audit |
+   | `CreatePresentation` | `createPresentation(payload, action)` — runs `evaluateProofPolicy` + `holderCreatePresentation` + pairwise-handle binding |
+   | `MatchAgainstPublicGeoSet`, `RotateLinkSecret`, `RevokeCredential` | reserved; return `501 not_implemented` |
+
+The verifier audit-appends "allowed" before any handler runs. Handler
+errors don't poison the audit chain — they bubble up as
+`handler_failed` to the client; the action nonce is already burned so
+the caller can't replay.
+
+### 17.6 Sign-in / sign-up ceremonies (M1)
+
+`apps/web/src/app/api/auth/session-grant/start/route.ts`:
+- Resolves the `.agent` name → smart-account address via
+  `AgentNameUniversalResolver`.
+- Mints a fresh `sessionId = randomUUID()`.
+- Derives `sessionSignerAddress` via custody (immediately forgets).
+- Reads `revocationEpoch` from person-mcp.
+- Builds the default `SessionGrantV1` (8h hard TTL, audiences =
+  `['person-mcp', 'a2a-agent', 'verifier-mcp', 'web']`,
+  `maxRisk: 'medium'`).
+- Returns `{ challenge, grant, grantHash, signedToken }`. The signed
+  token is a 5-minute JWT carrying `{ sub: account, sessionId,
+  grantHash, serverNonce, grant }`.
+
+`apps/web/src/app/api/auth/session-grant/finalize/route.ts`:
+- Verifies the signed token + checks `grantHashRebuilt === claims.grantHash`.
+- Re-fetches epoch; aborts if it advanced (panic-revoke from another tab).
+- Reconstructs the challenge bytes from `(grantHash, serverNonce)`.
+- Packs the WebAuthn assertion (`0x01 || abi.encode(Assertion)`) and
+  calls `account.isValidSignature(challengeHash, packedSig)` once.
+- On `ERC1271_MAGIC_VALUE`: persists `SessionRecord` on person-mcp,
+  sets the legacy app session JWT, sets the grant cookie (TTL bounded
+  by `grant.session.expiresAt`).
+- The cached `verifiedPasskeyPubkey` field stores `credentialIdDigest`
+  (full COSE-key X/Y read deferred to M5 settings polish).
+
+`apps/web/src/app/h/[hubId]/HubOnboardClient.tsx`:
+- **Sign-in (button flow)**: `/session-grant/start → navigator.credentials.get → /session-grant/finalize`. One prompt. The `condUIAbortRef` aborts any in-flight conditional-UI `navigator.credentials.get` before invoking the explicit ceremony to avoid the browser's "A request is already pending" rejection.
+- **Sign-in (conditional UI)**: kept on the legacy `/passkey-verify` path because conditional UI doesn't know the user's name until the assertion resolves; grant is minted lazily on first wallet action.
+- **Sign-up**: `navigator.credentials.create` (passkey 1) → `/api/auth/passkey-signup` (server-side smart-account deploy + name register) → `/session-grant/start` → `navigator.credentials.get` (passkey 2) → `/session-grant/finalize`. Wallet provisioning runs through `provisionHolderWalletViaSession()` (no prompt). Total: 2 prompts.
+
+### 17.7 A2A consolidation (M4)
+
+`apps/a2a-agent/src/middleware/require-session.ts` — unified
+middleware that accepts BOTH:
+- New SessionGrant.v1: bearer token = session-id, looked up on
+  person-mcp via `/session-store/by-cookie`. Synthesizes a session-row
+  shape so route handlers don't need to branch.
+- Legacy a2a sessions table (delegation-bootstrapped): unchanged.
+
+Both paths populate the same `c.get('session')` shape. New routes
+(see `require-grant.ts`) can opt for grant-only auth.
+
+`apps/web/src/lib/actions/a2a-session.action.ts:getA2ASessionToken()`
+prefers the grant cookie, falls back to legacy `a2a-session`. All
+server actions that talk to a2a-agent (`profile.action.ts`,
+`data-delegation.action.ts`, `/api/a2a/*`) inherited this transparently.
+
+The signin flow's second-passkey-prompt (legacy A2A delegation
+handshake) is gone for grant-cookie users: `runPostCredentialSignin`
+guards it with `if (signedToken === null)` so only conditional-UI
+fallback users still hit it.
+
+### 17.8 Settings UX + security tests (M5)
+
+`apps/web/src/app/(authenticated)/settings/SessionsPanel.tsx` —
+rendered as the "Active Sessions" tab on `/settings`. Shows every
+non-revoked SessionRecord for the signed-in user's account: id prefix,
+audience list, risk ceiling, idle / hard expiry. Per-row **Revoke**
+button (calls `revokeSessionAction`) and a destructive **Revoke all
+sessions** panic button (calls `bumpRevocationEpochAction`).
+
+`scripts/test-grant-security.ts` — 7-case automated regression suite
+that exercises the verifier's rejection paths against a live
+person-mcp on `PERSON_MCP_URL`:
+
+1. unknown_session is rejected
+2. AddPasskey action does not return 200
+3. dispatch rejects payload not matching payloadHash
+4. audit log endpoint shape (returns `entries: []` for unknown account)
+5. revocation epoch defaults to 0 for new account
+6. bump-epoch increments atomically
+7. dispatch rejects unknown action type
+
+Run with `pnpm exec tsx scripts/test-grant-security.ts` from the
+`apps/person-mcp` workspace. Exit code = number of failed cases.
+
+### 17.9 What deviates from §1–§16 and why
+
+- **`verifiedPasskeyPubkey` field**. §4.3 specified `{ x, y }` of the
+  COSE key. Shipped value stores the `credentialIdDigest` instead;
+  full X/Y lookup against `AgentAccount._passkeys` is deferred to a
+  future Settings polish so the panel can display "which device's
+  passkey signed this grant?" Functionally equivalent for grant
+  validity since the verifier doesn't read this field per-action.
+- **Conditional-UI sign-in**. §3.4 implied the unified ceremony
+  covers all sign-in paths. Conditional UI (`mediation: 'conditional'`)
+  resolves the credential before we know the user's name (it comes
+  from `userHandle`), so we keep the legacy `/passkey-verify` path
+  for that branch. First subsequent wallet action lazily mints the
+  grant via the dispatch path.
+- **Nonce manager fix**. Production-grade fix discovered during M5
+  testing: the deployer wallet now uses viem's process-wide
+  `nonceManager` singleton (`apps/web/src/lib/contracts.ts`) so
+  concurrent writers (signup + boot-seed) coordinate next-nonce via a
+  single in-memory counter. Without this, the deployer-lock guarded
+  ordering but each fresh `createWalletClient()` independently fetched
+  `getTransactionCount` and raced on the same value.
+
+### 17.10 Geo-overlap session integration (post-M5)
+
+Discovered during user testing: held AnonCred geo credentials weren't
+contributing to trust-search scores even though the ZK-private machinery
+was in place. Root cause: the geo-overlap scorer had three stages but
+only two were wired:
+
+| Stage | Caller has… | Candidate has… | Wired? |
+| --- | --- | --- | --- |
+| A (coarse) | `atl:city/region/country` ATL tag | same coarse tag | ✓ |
+| B (lat/lon) | public `latitude`/`longitude` set | public `GeoClaim` whose feature bbox contains caller's point | ✓ |
+| **B′ (held)** | **AnonCred geo credential (private vault)** | **public `GeoClaim` for same `featureId`** | **fixed** |
+
+`apps/web/src/lib/actions/trust-search.action.ts` now also runs
+`matchHeldGeoAgainstCandidate` for every candidate when the caller has
+any held geo credentials. The matched pairs feed `geoOverlapScore` the
+same way Stage-B claims do; the held featureIds never leave person-mcp.
+End-to-end test: `apps/web/src/app/api/test/geo-trust-e2e/route.ts`.

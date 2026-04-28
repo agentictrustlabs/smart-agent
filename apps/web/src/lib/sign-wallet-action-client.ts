@@ -71,6 +71,13 @@ export async function signWalletActionClient(
     if (!eth) throw new Error('No injected wallet detected')
     const accounts = await eth.request({ method: 'eth_requestAccounts' }) as string[]
     if (!accounts[0]) throw new Error('Wallet returned no accounts')
+
+    // Make sure MetaMask is on the right chain BEFORE signing typed data —
+    // eth_signTypedData_v4 rejects when the domain.chainId mismatches the
+    // wallet's active chain. Auto-switch (and add the chain if it isn't
+    // present yet, e.g. Anvil 31337 in dev).
+    await ensureChain(eth, signer.chainId)
+
     const typedData = {
       domain: walletActionDomain(signer.chainId, signer.verifyingContract),
       types: {
@@ -160,4 +167,50 @@ export async function signWalletActionClient(
   }
 
   throw new Error(`signer kind '${signer.kind}' is server-side only`)
+}
+
+/**
+ * Ensure the injected wallet is on the chain we're about to sign for.
+ *
+ * `eth_signTypedData_v4` enforces that `domain.chainId` matches the
+ * wallet's currently selected network — otherwise MetaMask returns
+ * `Provided chainId "X" must match the active chainId "Y"`.
+ *
+ * We try `wallet_switchEthereumChain` first; if MetaMask responds with
+ * code 4902 ("unrecognised chain"), fall back to
+ * `wallet_addEthereumChain` and then try the switch again. Anvil's
+ * default chainId 31337 is the common case in dev — we name it
+ * "Smart Agent Local" so users see something recognisable.
+ */
+async function ensureChain(eth: Eip1193Provider, targetChainId: number): Promise<void> {
+  const hex = '0x' + targetChainId.toString(16)
+  const current = (await eth.request({ method: 'eth_chainId' })) as string
+  if (current?.toLowerCase() === hex.toLowerCase()) return
+
+  const trySwitch = async () => {
+    await eth.request({
+      method: 'wallet_switchEthereumChain',
+      params: [{ chainId: hex }],
+    })
+  }
+
+  try {
+    await trySwitch()
+  } catch (err) {
+    const code = (err as { code?: number })?.code
+    if (code !== 4902) throw err  // not an "unrecognised chain" error
+    // Add it, then retry the switch.
+    const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL ?? 'http://127.0.0.1:8545'
+    const chainName = targetChainId === 31337 ? 'Smart Agent Local (Anvil)' : `Chain ${targetChainId}`
+    await eth.request({
+      method: 'wallet_addEthereumChain',
+      params: [{
+        chainId: hex,
+        chainName,
+        rpcUrls: [rpcUrl],
+        nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+      }],
+    })
+    await trySwitch()
+  }
 }

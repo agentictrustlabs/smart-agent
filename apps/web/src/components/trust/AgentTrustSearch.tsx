@@ -10,6 +10,11 @@ import {
   type TrustSearchPrepared,
 } from '@/lib/actions/trust-search.action'
 import { signWalletActionClient } from '@/lib/sign-wallet-action-client'
+import {
+  prepareWalletProvisionIfNeeded,
+  submitWalletProvision,
+  provisionHolderWalletViaSession,
+} from '@/lib/actions/ssi/wallet-provision.action'
 
 /**
  * Discover-agents panel for the hub home.
@@ -30,10 +35,62 @@ export function AgentTrustSearch() {
   const [open, setOpen] = useState(false)
   const [hits, setHits] = useState<TrustSearchHit[] | null>(null)
   const [filter, setFilter] = useState('')
-  const [phase, setPhase] = useState<'idle' | 'preparing' | 'signing' | 'submitting'>('idle')
+  const [phase, setPhase] = useState<'idle' | 'preparing' | 'provisioning' | 'signing' | 'submitting'>('idle')
   const [err, setErr] = useState<string | null>(null)
   const [info, setInfo] = useState<string | null>(null)
   const [pending, start] = useTransition()
+
+  /**
+   * Auto-provision the holder wallet so first-time trust-search users
+   * (especially SIWE / Google) don't get stuck behind the legacy
+   * "Provision a holder wallet (via Anonymous registration) before
+   * running trust search." gate. Tries the session-EOA dispatch path
+   * first; falls back to the legacy WalletAction flow which prompts
+   * MetaMask once for SIWE users (no prompt for stored-EOA demo users).
+   *
+   * Returns true if a wallet exists or was just created; false on
+   * failure (with `setErr`/`setInfo` already populated by the caller).
+   */
+  async function ensureHolderWallet(): Promise<boolean> {
+    setPhase('provisioning')
+    // Path 1: session-EOA dispatch (passkey users with a grant cookie).
+    const session = await provisionHolderWalletViaSession()
+    if (session.success) return true
+    if (session.errorCode !== 'no_session') {
+      setErr(session.error ?? 'wallet provision failed')
+      return false
+    }
+
+    // Path 2: legacy WalletAction. SIWE → one MetaMask popup; demo
+    // users sign server-side with their stored EOA (no popup); passkey
+    // users without a grant get a passkey prompt.
+    const prep = await prepareWalletProvisionIfNeeded()
+    if (!prep.success || !prep.signer) {
+      setErr(prep.error ?? 'prepare provision failed')
+      return false
+    }
+    if (prep.alreadyProvisioned) return true
+    if (!prep.needsProvision) {
+      setErr('provision: unexpected response shape')
+      return false
+    }
+    setPhase('signing')
+    const sig = await signWalletActionClient(
+      prep.needsProvision.action,
+      prep.needsProvision.hash,
+      prep.signer,
+    )
+    setPhase('submitting')
+    const subm = await submitWalletProvision({
+      action: prep.needsProvision.action,
+      signature: sig,
+    })
+    if (!subm.success || !subm.holderWalletId) {
+      setErr(subm.error ?? 'wallet provision submit failed')
+      return false
+    }
+    return true
+  }
 
   function runSearch() {
     setErr(null); setInfo(null); setHits(null)
@@ -41,7 +98,17 @@ export function AgentTrustSearch() {
       try {
         // Try the unified session-grant path first — no passkey prompt.
         setPhase('submitting')
-        const sessionRes = await runTrustSearchViaSession({ limit: 200 })
+        let sessionRes = await runTrustSearchViaSession({ limit: 200 })
+
+        // First-time users (any auth method) hit no-wallet; auto-provision
+        // and retry instead of dead-ending with a copy-paste error.
+        if (sessionRes.status === 'no-wallet') {
+          const ok = await ensureHolderWallet()
+          if (!ok) { setHits([]); setPhase('idle'); return }
+          setPhase('submitting')
+          sessionRes = await runTrustSearchViaSession({ limit: 200 })
+        }
+
         if (sessionRes.status === 'ready') {
           setHits(sessionRes.hits)
           setPhase('idle')
@@ -71,8 +138,14 @@ export function AgentTrustSearch() {
 
         // ─── Legacy passkey-signed fallback ───────────────────────
         setPhase('preparing')
-        const prep: TrustSearchPrepared = await prepareTrustSearch({ limit: 200 })
+        let prep: TrustSearchPrepared = await prepareTrustSearch({ limit: 200 })
 
+        if (prep.status === 'no-wallet') {
+          const ok = await ensureHolderWallet()
+          if (!ok) { setHits([]); setPhase('idle'); return }
+          setPhase('preparing')
+          prep = await prepareTrustSearch({ limit: 200 })
+        }
         if (prep.status === 'no-wallet') {
           setInfo(prep.message ?? 'No holder wallet provisioned yet.')
           setHits([])
@@ -123,7 +196,11 @@ export function AgentTrustSearch() {
         setHits(res.hits)
         setPhase('idle')
       } catch (e) {
-        setErr(e instanceof Error ? e.message : 'trust search failed')
+        const msg = e instanceof Error ? e.message : String(e ?? 'trust search failed')
+        // Console log too — UI shows a one-liner but the stack helps
+        // when the surface error doesn't say enough on its own.
+        console.error('[trust-search] failed:', e)
+        setErr(msg)
         setPhase('idle')
       }
     })
@@ -192,6 +269,7 @@ export function AgentTrustSearch() {
           {(pending || phase !== 'idle') && (
             <div style={{ fontSize: 12, color: '#94a3b8' }}>
               {phase === 'preparing' && 'Building candidate set…'}
+              {phase === 'provisioning' && 'Provisioning holder wallet…'}
               {phase === 'signing' && 'Awaiting signature (wallet/passkey)…'}
               {phase === 'submitting' && 'Scoring inside ssi-wallet-mcp…'}
             </div>

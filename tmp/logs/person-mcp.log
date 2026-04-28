@@ -9531,3 +9531,1878 @@
 --> GET /health [32m200[0m 0ms
 <-- GET /health
 --> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /wallet/person_0xb454b9b9205f3552e6d8e6e6a5d148c0172370b0a76ebd27ec33e90dfe64cded/default
+--> GET /wallet/person_0xb454b9b9205f3552e6d8e6e6a5d148c0172370b0a76ebd27ec33e90dfe64cded/default [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- POST /tools/ssi_create_wallet_action
+--> POST /tools/ssi_create_wallet_action [32m200[0m 1ms
+<-- POST /tools/ssi_list_my_credentials
+--> POST /tools/ssi_list_my_credentials [32m200[0m 1ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 1ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 0ms
+<-- GET /session-store/by-cookie/e6c92f01-1ac1-4db2-94a6-356ed49195be
+--> GET /session-store/by-cookie/e6c92f01-1ac1-4db2-94a6-356ed49195be [32m200[0m 1ms
+<-- POST /wallet-action/dispatch
+--> POST /wallet-action/dispatch [32m200[0m 28ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /wallet/person_cat-user-001/default
+--> GET /wallet/person_cat-user-001/default [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /wallet/person_cat-user-001/default
+--> GET /wallet/person_cat-user-001/default [32m200[0m 0ms
+<-- POST /tools/ssi_create_wallet_action
+--> POST /tools/ssi_create_wallet_action [32m200[0m 1ms
+<-- POST /tools/ssi_start_credential_exchange
+<-- POST /credentials/request
+--> POST /credentials/request [32m200[0m 42ms
+--> POST /tools/ssi_start_credential_exchange [32m200[0m 44ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- POST /tools/ssi_finish_credential_exchange
+<-- POST /credentials/store
+--> POST /credentials/store [32m200[0m 18ms
+--> POST /tools/ssi_finish_credential_exchange [32m200[0m 20ms
+<-- GET /wallet/person_cat-user-001/default
+--> GET /wallet/person_cat-user-001/default [32m200[0m 0ms
+<-- POST /tools/ssi_create_wallet_action
+--> POST /tools/ssi_create_wallet_action [32m200[0m 1ms
+<-- POST /tools/ssi_list_my_credentials
+--> POST /tools/ssi_list_my_credentials [32m200[0m 1ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 0ms
+<-- GET /wallet/person_cat-user-001/default
+--> GET /wallet/person_cat-user-001/default [32m200[0m 0ms
+<-- POST /tools/ssi_create_wallet_action
+--> POST /tools/ssi_create_wallet_action [32m200[0m 0ms
+<-- POST /tools/ssi_list_my_credentials
+--> POST /tools/ssi_list_my_credentials [32m200[0m 1ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 1ms
+<-- POST /tools/ssi_match_against_public_set
+<-- POST /wallet/match-against-public-set
+--> POST /wallet/match-against-public-set [32m200[0m 20ms
+--> POST /tools/ssi_match_against_public_set [32m200[0m 24ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /wallet/person_cat-user-001/default
+--> GET /wallet/person_cat-user-001/default [32m200[0m 0ms
+<-- POST /tools/ssi_create_wallet_action
+--> POST /tools/ssi_create_wallet_action [32m200[0m 0ms
+<-- POST /tools/ssi_start_credential_exchange
+<-- POST /credentials/request
+--> POST /credentials/request [32m200[0m 40ms
+--> POST /tools/ssi_start_credential_exchange [32m200[0m 42ms
+<-- POST /tools/ssi_finish_credential_exchange
+<-- POST /credentials/store
+--> POST /credentials/store [32m200[0m 14ms
+--> POST /tools/ssi_finish_credential_exchange [32m200[0m 16ms
+<-- GET /wallet/person_cat-user-001/default
+--> GET /wallet/person_cat-user-001/default [32m200[0m 0ms
+<-- POST /tools/ssi_create_wallet_action
+--> POST /tools/ssi_create_wallet_action [32m200[0m 0ms
+<-- POST /tools/ssi_list_my_credentials
+--> POST /tools/ssi_list_my_credentials [32m200[0m 0ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 0ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 0ms
+<-- GET /wallet/person_cat-user-001/default
+--> GET /wallet/person_cat-user-001/default [32m200[0m 1ms
+<-- POST /tools/ssi_create_wallet_action
+--> POST /tools/ssi_create_wallet_action [32m200[0m 0ms
+<-- POST /tools/ssi_list_my_credentials
+--> POST /tools/ssi_list_my_credentials [32m200[0m 0ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 0ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- POST /tools/ssi_match_against_public_set
+<-- POST /wallet/match-against-public-set
+--> POST /wallet/match-against-public-set [32m200[0m 12ms
+--> POST /tools/ssi_match_against_public_set [32m200[0m 16ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /wallet/person_cat-user-001/default
+--> GET /wallet/person_cat-user-001/default [32m200[0m 0ms
+<-- POST /tools/ssi_create_wallet_action
+--> POST /tools/ssi_create_wallet_action [32m200[0m 1ms
+<-- POST /tools/ssi_start_credential_exchange
+<-- POST /credentials/request
+--> POST /credentials/request [32m200[0m 40ms
+--> POST /tools/ssi_start_credential_exchange [32m200[0m 42ms
+<-- POST /tools/ssi_finish_credential_exchange
+<-- POST /credentials/store
+--> POST /credentials/store [32m200[0m 13ms
+--> POST /tools/ssi_finish_credential_exchange [32m200[0m 15ms
+<-- GET /wallet/person_cat-user-001/default
+--> GET /wallet/person_cat-user-001/default [32m200[0m 1ms
+<-- POST /tools/ssi_create_wallet_action
+--> POST /tools/ssi_create_wallet_action [32m200[0m 0ms
+<-- POST /tools/ssi_list_my_credentials
+--> POST /tools/ssi_list_my_credentials [32m200[0m 1ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 0ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 0ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /wallet/person_cat-user-001/default
+--> GET /wallet/person_cat-user-001/default [32m200[0m 0ms
+<-- POST /tools/ssi_create_wallet_action
+--> POST /tools/ssi_create_wallet_action [32m200[0m 1ms
+<-- POST /tools/ssi_list_my_credentials
+--> POST /tools/ssi_list_my_credentials [32m200[0m 0ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 1ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 0ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 0ms
+<-- POST /tools/ssi_match_against_public_set
+<-- POST /wallet/match-against-public-set
+--> POST /wallet/match-against-public-set [32m200[0m 17ms
+--> POST /tools/ssi_match_against_public_set [32m200[0m 22ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /wallet/person_cat-user-001/default
+--> GET /wallet/person_cat-user-001/default [32m200[0m 0ms
+<-- POST /tools/ssi_create_wallet_action
+--> POST /tools/ssi_create_wallet_action [32m200[0m 0ms
+<-- POST /tools/ssi_start_credential_exchange
+<-- POST /credentials/request
+--> POST /credentials/request [32m200[0m 42ms
+--> POST /tools/ssi_start_credential_exchange [32m200[0m 43ms
+<-- POST /tools/ssi_finish_credential_exchange
+<-- POST /credentials/store
+--> POST /credentials/store [32m200[0m 14ms
+--> POST /tools/ssi_finish_credential_exchange [32m200[0m 16ms
+<-- GET /wallet/person_cat-user-001/default
+--> GET /wallet/person_cat-user-001/default [32m200[0m 0ms
+<-- POST /tools/ssi_create_wallet_action
+--> POST /tools/ssi_create_wallet_action [32m200[0m 1ms
+<-- POST /tools/ssi_list_my_credentials
+--> POST /tools/ssi_list_my_credentials [32m200[0m 0ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 0ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 0ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 1ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /wallet/person_cat-user-001/default
+--> GET /wallet/person_cat-user-001/default [32m200[0m 0ms
+<-- POST /tools/ssi_create_wallet_action
+--> POST /tools/ssi_create_wallet_action [32m200[0m 1ms
+<-- POST /tools/ssi_list_my_credentials
+--> POST /tools/ssi_list_my_credentials [32m200[0m 1ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 0ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 0ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 1ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 0ms
+<-- POST /tools/ssi_match_against_public_set
+<-- POST /wallet/match-against-public-set
+--> POST /wallet/match-against-public-set [32m200[0m 22ms
+--> POST /tools/ssi_match_against_public_set [32m200[0m 26ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /wallet/person_0xb454b9b9205f3552e6d8e6e6a5d148c0172370b0a76ebd27ec33e90dfe64cded/default
+--> GET /wallet/person_0xb454b9b9205f3552e6d8e6e6a5d148c0172370b0a76ebd27ec33e90dfe64cded/default [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- POST /tools/ssi_create_wallet_action
+--> POST /tools/ssi_create_wallet_action [32m200[0m 1ms
+<-- POST /tools/ssi_list_my_credentials
+--> POST /tools/ssi_list_my_credentials [32m200[0m 1ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 0ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 0ms
+<-- GET /session-store/by-cookie/e6c92f01-1ac1-4db2-94a6-356ed49195be
+--> GET /session-store/by-cookie/e6c92f01-1ac1-4db2-94a6-356ed49195be [32m200[0m 0ms
+<-- POST /wallet-action/dispatch
+--> POST /wallet-action/dispatch [32m200[0m 14ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- POST /tools/ssi_list_my_credentials
+--> POST /tools/ssi_list_my_credentials [32m200[0m 0ms
+<-- POST /tools/ssi_list_proof_audit
+--> POST /tools/ssi_list_proof_audit [32m200[0m 1ms
+<-- POST /tools/ssi_list_wallets
+--> POST /tools/ssi_list_wallets [32m200[0m 0ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 1ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 0ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /wallet/person_cat-user-001/default
+--> GET /wallet/person_cat-user-001/default [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /wallet/person_cat-user-001/default
+--> GET /wallet/person_cat-user-001/default [32m200[0m 0ms
+<-- POST /tools/ssi_create_wallet_action
+--> POST /tools/ssi_create_wallet_action [32m200[0m 1ms
+<-- POST /tools/ssi_list_my_credentials
+--> POST /tools/ssi_list_my_credentials [32m200[0m 0ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 1ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 0ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 0ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 0ms
+<-- GET /wallet/person_cat-user-001/default
+--> GET /wallet/person_cat-user-001/default [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- POST /tools/ssi_create_wallet_action
+--> POST /tools/ssi_create_wallet_action [32m200[0m 0ms
+<-- POST /tools/ssi_list_my_credentials
+--> POST /tools/ssi_list_my_credentials [32m200[0m 0ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 1ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 0ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 1ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 1ms
+<-- POST /tools/ssi_match_against_public_set
+<-- POST /wallet/match-against-public-set
+--> POST /wallet/match-against-public-set [32m200[0m 25ms
+--> POST /tools/ssi_match_against_public_set [32m200[0m 32ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- POST /tools/ssi_list_my_credentials
+--> POST /tools/ssi_list_my_credentials [32m200[0m 0ms
+<-- POST /tools/ssi_list_proof_audit
+--> POST /tools/ssi_list_proof_audit [32m200[0m 1ms
+<-- POST /tools/ssi_list_wallets
+--> POST /tools/ssi_list_wallets [32m200[0m 0ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 0ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 1ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 0ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 0ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 0ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 0ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 0ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 1ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 0ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 1ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 0ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 1ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 0ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 1ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 0ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 0ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 0ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 0ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 0ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 1ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 0ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 0ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 0ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 1ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 0ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 0ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 0ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 0ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 0ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /session-store/epoch/0x68dD3F6F2dA397D15148AFa97ee6E3dbf1ACa0D7
+--> GET /session-store/epoch/0x68dD3F6F2dA397D15148AFa97ee6E3dbf1ACa0D7 [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /session-store/epoch/0x68dD3F6F2dA397D15148AFa97ee6E3dbf1ACa0D7
+--> GET /session-store/epoch/0x68dD3F6F2dA397D15148AFa97ee6E3dbf1ACa0D7 [32m200[0m 0ms
+<-- POST /session-store/insert
+--> POST /session-store/insert [32m200[0m 1ms
+<-- GET /wallet/person_0xb454b9b9205f3552e6d8e6e6a5d148c0172370b0a76ebd27ec33e90dfe64cded/default
+--> GET /wallet/person_0xb454b9b9205f3552e6d8e6e6a5d148c0172370b0a76ebd27ec33e90dfe64cded/default [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- POST /tools/ssi_list_my_credentials
+--> POST /tools/ssi_list_my_credentials [32m200[0m 1ms
+<-- POST /tools/ssi_list_proof_audit
+--> POST /tools/ssi_list_proof_audit [32m200[0m 1ms
+<-- POST /tools/ssi_list_wallets
+--> POST /tools/ssi_list_wallets [32m200[0m 0ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 0ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 0ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /wallet/person_0xb454b9b9205f3552e6d8e6e6a5d148c0172370b0a76ebd27ec33e90dfe64cded/default
+--> GET /wallet/person_0xb454b9b9205f3552e6d8e6e6a5d148c0172370b0a76ebd27ec33e90dfe64cded/default [32m200[0m 0ms
+<-- POST /tools/ssi_create_wallet_action
+--> POST /tools/ssi_create_wallet_action [32m200[0m 1ms
+<-- POST /tools/ssi_list_my_credentials
+--> POST /tools/ssi_list_my_credentials [32m200[0m 1ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 1ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 1ms
+<-- GET /session-store/by-cookie/4ff48710-91ea-465e-9a70-9b2db9e280c2
+--> GET /session-store/by-cookie/4ff48710-91ea-465e-9a70-9b2db9e280c2 [32m200[0m 1ms
+<-- POST /wallet-action/dispatch
+--> POST /wallet-action/dispatch [32m200[0m 15ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /wallet/person_0xb454b9b9205f3552e6d8e6e6a5d148c0172370b0a76ebd27ec33e90dfe64cded/default
+--> GET /wallet/person_0xb454b9b9205f3552e6d8e6e6a5d148c0172370b0a76ebd27ec33e90dfe64cded/default [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- POST /tools/ssi_create_wallet_action
+--> POST /tools/ssi_create_wallet_action [32m200[0m 0ms
+<-- POST /tools/ssi_list_my_credentials
+--> POST /tools/ssi_list_my_credentials [32m200[0m 1ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 1ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 0ms
+<-- GET /session-store/by-cookie/4ff48710-91ea-465e-9a70-9b2db9e280c2
+--> GET /session-store/by-cookie/4ff48710-91ea-465e-9a70-9b2db9e280c2 [32m200[0m 0ms
+<-- POST /wallet-action/dispatch
+--> POST /wallet-action/dispatch [32m200[0m 19ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /wallet/person_0x6172d6cb48f4e72cf42a6b413412152a588fcdcf/default
+--> GET /wallet/person_0x6172d6cb48f4e72cf42a6b413412152a588fcdcf/default [33m404[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_dee24440c2ab454782779ef5dff99fc3
+--> GET /session-store/by-cookie/sa_dee24440c2ab454782779ef5dff99fc3 [32m200[0m 1ms
+<-- POST /tools/update_profile
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/update_profile [32m200[0m 8ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /wallet/person_0x6172d6cb48f4e72cf42a6b413412152a588fcdcf/default
+--> GET /wallet/person_0x6172d6cb48f4e72cf42a6b413412152a588fcdcf/default [33m404[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /wallet/person_0x6172d6cb48f4e72cf42a6b413412152a588fcdcf/default
+--> GET /wallet/person_0x6172d6cb48f4e72cf42a6b413412152a588fcdcf/default [33m404[0m 0ms
+<-- GET /wallet/person_0x6172d6cb48f4e72cf42a6b413412152a588fcdcf/default
+--> GET /wallet/person_0x6172d6cb48f4e72cf42a6b413412152a588fcdcf/default [33m404[0m 0ms
+<-- GET /wallet/person_0x6172d6cb48f4e72cf42a6b413412152a588fcdcf/default
+--> GET /wallet/person_0x6172d6cb48f4e72cf42a6b413412152a588fcdcf/default [33m404[0m 0ms
+<-- POST /tools/ssi_create_wallet_action
+--> POST /tools/ssi_create_wallet_action [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /wallet/person_0x6172d6cb48f4e72cf42a6b413412152a588fcdcf/default
+--> GET /wallet/person_0x6172d6cb48f4e72cf42a6b413412152a588fcdcf/default [33m404[0m 0ms
+<-- GET /wallet/person_0x6172d6cb48f4e72cf42a6b413412152a588fcdcf/default
+--> GET /wallet/person_0x6172d6cb48f4e72cf42a6b413412152a588fcdcf/default [33m404[0m 0ms
+<-- GET /wallet/person_0x6172d6cb48f4e72cf42a6b413412152a588fcdcf/default
+--> GET /wallet/person_0x6172d6cb48f4e72cf42a6b413412152a588fcdcf/default [33m404[0m 0ms
+<-- POST /tools/ssi_create_wallet_action
+--> POST /tools/ssi_create_wallet_action [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /wallet/person_0x6172d6cb48f4e72cf42a6b413412152a588fcdcf/default
+--> GET /wallet/person_0x6172d6cb48f4e72cf42a6b413412152a588fcdcf/default [33m404[0m 0ms
+<-- GET /wallet/person_0x6172d6cb48f4e72cf42a6b413412152a588fcdcf/default
+--> GET /wallet/person_0x6172d6cb48f4e72cf42a6b413412152a588fcdcf/default [33m404[0m 1ms
+<-- GET /wallet/person_0x6172d6cb48f4e72cf42a6b413412152a588fcdcf/default
+--> GET /wallet/person_0x6172d6cb48f4e72cf42a6b413412152a588fcdcf/default [33m404[0m 0ms
+<-- POST /tools/ssi_create_wallet_action
+--> POST /tools/ssi_create_wallet_action [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /wallet/person_0x6172d6cb48f4e72cf42a6b413412152a588fcdcf/default
+--> GET /wallet/person_0x6172d6cb48f4e72cf42a6b413412152a588fcdcf/default [33m404[0m 0ms
+<-- GET /wallet/person_0x6172d6cb48f4e72cf42a6b413412152a588fcdcf/default
+--> GET /wallet/person_0x6172d6cb48f4e72cf42a6b413412152a588fcdcf/default [33m404[0m 0ms
+<-- GET /wallet/person_0x6172d6cb48f4e72cf42a6b413412152a588fcdcf/default
+--> GET /wallet/person_0x6172d6cb48f4e72cf42a6b413412152a588fcdcf/default [33m404[0m 1ms
+<-- POST /tools/ssi_create_wallet_action
+--> POST /tools/ssi_create_wallet_action [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- POST /tools/ssi_provision_wallet
+<-- POST /wallet/provision
+--> POST /wallet/provision [32m200[0m 5ms
+--> POST /tools/ssi_provision_wallet [32m200[0m 14ms
+<-- GET /wallet/person_0x6172d6cb48f4e72cf42a6b413412152a588fcdcf/default
+--> GET /wallet/person_0x6172d6cb48f4e72cf42a6b413412152a588fcdcf/default [32m200[0m 0ms
+<-- POST /tools/ssi_create_wallet_action
+--> POST /tools/ssi_create_wallet_action [32m200[0m 1ms
+<-- POST /tools/ssi_list_my_credentials
+--> POST /tools/ssi_list_my_credentials [32m200[0m 0ms
+<-- GET /wallet/person_0x6172d6cb48f4e72cf42a6b413412152a588fcdcf/default
+--> GET /wallet/person_0x6172d6cb48f4e72cf42a6b413412152a588fcdcf/default [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- POST /tools/ssi_create_wallet_action
+--> POST /tools/ssi_create_wallet_action [32m200[0m 1ms
+<-- POST /tools/ssi_list_my_credentials
+--> POST /tools/ssi_list_my_credentials [32m200[0m 0ms
+<-- POST /tools/ssi_match_against_public_set
+<-- POST /wallet/match-against-public-set
+--> POST /wallet/match-against-public-set [32m200[0m 24ms
+--> POST /tools/ssi_match_against_public_set [32m200[0m 33ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /wallet/person_0x6172d6cb48f4e72cf42a6b413412152a588fcdcf/default
+--> GET /wallet/person_0x6172d6cb48f4e72cf42a6b413412152a588fcdcf/default [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- POST /tools/ssi_list_my_credentials
+--> POST /tools/ssi_list_my_credentials [32m200[0m 0ms
+<-- POST /tools/ssi_list_proof_audit
+--> POST /tools/ssi_list_proof_audit [32m200[0m 1ms
+<-- POST /tools/ssi_list_wallets
+--> POST /tools/ssi_list_wallets [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /wallet/person_0x6172d6cb48f4e72cf42a6b413412152a588fcdcf/default
+--> GET /wallet/person_0x6172d6cb48f4e72cf42a6b413412152a588fcdcf/default [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /wallet/person_0x6172d6cb48f4e72cf42a6b413412152a588fcdcf/default
+--> GET /wallet/person_0x6172d6cb48f4e72cf42a6b413412152a588fcdcf/default [32m200[0m 0ms
+<-- POST /tools/ssi_create_wallet_action
+--> POST /tools/ssi_create_wallet_action [32m200[0m 1ms
+<-- POST /tools/ssi_start_credential_exchange
+<-- POST /credentials/request
+--> POST /credentials/request [32m200[0m 46ms
+--> POST /tools/ssi_start_credential_exchange [32m200[0m 48ms
+<-- POST /tools/ssi_finish_credential_exchange
+<-- POST /credentials/store
+--> POST /credentials/store [32m200[0m 22ms
+--> POST /tools/ssi_finish_credential_exchange [32m200[0m 24ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- POST /tools/ssi_list_my_credentials
+--> POST /tools/ssi_list_my_credentials [32m200[0m 1ms
+<-- POST /tools/ssi_list_proof_audit
+--> POST /tools/ssi_list_proof_audit [32m200[0m 1ms
+<-- POST /tools/ssi_list_wallets
+--> POST /tools/ssi_list_wallets [32m200[0m 0ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /wallet/person_0x6172d6cb48f4e72cf42a6b413412152a588fcdcf/default
+--> GET /wallet/person_0x6172d6cb48f4e72cf42a6b413412152a588fcdcf/default [32m200[0m 0ms
+<-- POST /tools/ssi_create_wallet_action
+--> POST /tools/ssi_create_wallet_action [32m200[0m 1ms
+<-- POST /tools/ssi_list_my_credentials
+--> POST /tools/ssi_list_my_credentials [32m200[0m 0ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 1ms
+<-- GET /wallet/person_0x6172d6cb48f4e72cf42a6b413412152a588fcdcf/default
+--> GET /wallet/person_0x6172d6cb48f4e72cf42a6b413412152a588fcdcf/default [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- POST /tools/ssi_create_wallet_action
+--> POST /tools/ssi_create_wallet_action [32m200[0m 0ms
+<-- POST /tools/ssi_list_my_credentials
+--> POST /tools/ssi_list_my_credentials [32m200[0m 0ms
+<-- POST /tools/ssi_get_credential_details
+--> POST /tools/ssi_get_credential_details [32m200[0m 0ms
+<-- POST /tools/ssi_match_against_public_set
+<-- POST /wallet/match-against-public-set
+--> POST /wallet/match-against-public-set [32m200[0m 25ms
+--> POST /tools/ssi_match_against_public_set [32m200[0m 30ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
