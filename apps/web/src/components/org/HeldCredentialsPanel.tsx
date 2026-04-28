@@ -110,6 +110,7 @@ export function HeldCredentialsPanel() {
           predicates,
         },
         verifiedAt: Date.now(),
+        proofSummary: fin.proofSummary,
       })
     } catch (e) {
       setVerifyFor(c.id, { phase: 'failed', reason: e instanceof Error ? e.message : 'failed' })
@@ -424,9 +425,15 @@ function VerifiedDetail({
         <KvLine k="verified at" v={new Date(v.verifiedAt).toLocaleString()} />
       </div>
 
+      {v.proofSummary && <ProofTechniqueBlock summary={v.proofSummary} />}
+
       {v.request.predicates.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 2 }}>
-          <span style={{ color: '#64748b', fontSize: 10 }}>Predicates proven (no value disclosed):</span>
+          <span style={{ color: '#64748b', fontSize: 10 }}>
+            Predicates proven via{' '}
+            <i>{v.proofSummary?.predicateTechnique ?? 'range proof'}</i>
+            {' '}(value never disclosed):
+          </span>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
             {v.request.predicates.map((p, i) => (
               <code key={i} style={{
@@ -441,7 +448,10 @@ function VerifiedDetail({
 
       {Object.keys(v.revealed).length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 2 }}>
-          <span style={{ color: '#64748b', fontSize: 10 }}>Attributes revealed:</span>
+          <span style={{ color: '#64748b', fontSize: 10 }}>
+            Attributes revealed via{' '}
+            <i>{v.proofSummary?.selectiveDisclosureTechnique ?? 'selective disclosure'}</i>:
+          </span>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
             {Object.entries(v.revealed).map(([k, val]) => (
               <code key={k} style={{
@@ -449,6 +459,23 @@ function VerifiedDetail({
                 background: '#eff6ff', color: '#1e40af',
                 fontFamily: 'ui-monospace, monospace',
               }}>{k} = {val}</code>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {v.proofSummary && v.proofSummary.hiddenAttrs.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 2 }}>
+          <span style={{ color: '#64748b', fontSize: 10 }}>
+            Attributes hidden (committed-but-not-revealed):
+          </span>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+            {v.proofSummary.hiddenAttrs.map(name => (
+              <code key={name} style={{
+                fontSize: 10, padding: '1px 6px', borderRadius: 3,
+                background: '#f1f5f9', color: '#64748b',
+                fontFamily: 'ui-monospace, monospace',
+              }}>{name}</code>
             ))}
           </div>
         </div>
@@ -475,6 +502,45 @@ function KvLine({ k, v, mono }: { k: string; v: string; mono?: boolean }) {
           wordBreak: 'break-all',
         }}
       >{v}</span>
+    </div>
+  )
+}
+
+function ProofTechniqueBlock({ summary }: { summary: ProofSummary }) {
+  return (
+    <div style={{
+      marginTop: 4, padding: '0.4rem 0.5rem',
+      background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 6,
+      display: 'flex', flexDirection: 'column', gap: 2,
+      fontSize: 10, color: '#475569',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span style={{
+          fontSize: 9, fontWeight: 700, letterSpacing: '0.04em',
+          textTransform: 'uppercase', color: '#3730a3',
+          background: '#e0e7ff', padding: '1px 6px', borderRadius: 3,
+        }}>zero-knowledge proof</span>
+        <span style={{ fontWeight: 600, color: '#171c28' }}>{summary.format}</span>
+      </div>
+      <KvLine k="signature" v={summary.signatureScheme} />
+      <KvLine k="selective disclosure" v={summary.selectiveDisclosureTechnique} />
+      <KvLine k="predicates" v={`${summary.predicateTechnique} (${summary.rangeProofs.length})`} />
+      <KvLine k="credentials used" v={String(summary.credentialCount)} />
+      <KvLine k="revocation" v={summary.revocationChecked ? 'checked (CKS non-revocation proof)' : 'not enabled'} />
+      {summary.identifiers.length > 0 && (
+        <div style={{ marginTop: 2 }}>
+          <span style={{ color: '#94a3b8' }}>schema/credDef anchors:</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 1, marginTop: 2 }}>
+            {summary.identifiers.map((id, i) => (
+              <div key={i} style={{ paddingLeft: 8, fontFamily: 'ui-monospace, monospace', fontSize: 9, color: '#64748b', wordBreak: 'break-all' }}>
+                {id.schemaId}<br />
+                {id.credDefId}
+                {id.revRegId && <><br />{id.revRegId}</>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

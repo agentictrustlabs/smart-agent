@@ -15,8 +15,8 @@ import {
   ROLE_OWNER, ROLE_BOARD_MEMBER, ROLE_OPERATOR, ROLE_MEMBER, ROLE_ADVISOR, ROLE_OPERATED_AGENT,
   ROLE_STRATEGIC_PARTNER, ROLE_UPSTREAM, ROLE_DOWNSTREAM, ROLE_COACH, ROLE_DISCIPLE,
   ATL_LATITUDE, ATL_LONGITUDE, ATL_SPATIAL_CRS, ATL_SPATIAL_TYPE, ATL_CONTROLLER,
-  ATL_CITY, ATL_REGION, ATL_COUNTRY,
   ATL_PRIMARY_NAME, ATL_NAME_LABEL,
+  GeoFeatureClient, GeoClaimClient, type GeoRelation,
 } from '@smart-agent/sdk'
 import { agentAccountResolverAbi } from '@smart-agent/sdk'
 import { keccak256, toBytes } from 'viem'
@@ -88,15 +88,72 @@ async function setGeo(addr: `0x${string}`, lat: string, lon: string) {
   } catch (_e) { console.warn(`[catalyst-seed] Geo failed for ${addr}:`, _e) }
 }
 
-async function setCity(addr: `0x${string}`, city: string, region: string, country: string) {
+/**
+ * Mint a Public GeoClaim binding `subject` to a city's `.geo` feature.
+ * Replaces the legacy `atl:city / atl:region / atl:country` resolver
+ * properties — coarse-tier overlap is now derived from these claims by
+ * walking `claimsBySubject` → looking up the feature → parsing its
+ * `metadataURI` for city/region/country.
+ *
+ * Idempotent at the deterministic-nonce layer: same (subject, feature,
+ * relation, nonce) yields the same `claimId`; the contract's
+ * `ClaimExists` check makes a re-run a no-op.
+ */
+async function mintGeoClaim(args: {
+  subject: `0x${string}`
+  cityKey: string                  // "us/colorado/loveland"
+  relation: GeoRelation            // 'residentOf' | 'operatesIn' | …
+  confidence: number               // 0..100
+}) {
   const wc = getWalletClient()
-  const resolver = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}`
-  if (!resolver) return
+  const pc = getPublicClient()
+  const featReg = process.env.GEO_FEATURE_REGISTRY_ADDRESS as `0x${string}` | undefined
+  const claimReg = process.env.GEO_CLAIM_REGISTRY_ADDRESS as `0x${string}` | undefined
+  if (!featReg || !claimReg) return
+  const [country, region, city] = args.cityKey.split('/')
+  const featureId = GeoFeatureClient.featureIdFor({ countryCode: country, region, city })
+  const featureClient = new GeoFeatureClient(pc, featReg)
+  const claimClient = new GeoClaimClient(pc, claimReg)
+
+  let version: bigint
   try {
-    await wc.writeContract({ address: resolver, abi: agentAccountResolverAbi, functionName: 'setStringProperty', args: [addr, ATL_CITY as `0x${string}`, city] })
-    await wc.writeContract({ address: resolver, abi: agentAccountResolverAbi, functionName: 'setStringProperty', args: [addr, ATL_REGION as `0x${string}`, region] })
-    await wc.writeContract({ address: resolver, abi: agentAccountResolverAbi, functionName: 'setStringProperty', args: [addr, ATL_COUNTRY as `0x${string}`, country] })
-  } catch (_e) { console.warn(`[catalyst-seed] City failed for ${addr}:`, _e) }
+    const latest = await featureClient.getLatest(featureId)
+    version = latest.version
+  } catch {
+    console.warn(`[catalyst-seed] feature ${args.cityKey} not published yet — skip claim for ${args.subject}`)
+    return
+  }
+  if (version === 0n) return
+
+  // Deterministic nonce so re-runs hit the contract's ClaimExists guard
+  // instead of stacking duplicate claims for the same (subject, feature,
+  // relation) tuple. keccak fits the bytes32 nonce slot.
+  const nonceLabel = `seed:${args.subject.toLowerCase()}|${args.cityKey}|${args.relation}|v1`
+  const nonce = keccak256(toBytes(nonceLabel)) as `0x${string}`
+  const evidenceCommit = keccak256(toBytes(`evidence:${nonceLabel}`)) as `0x${string}`
+
+  try {
+    const hash = await claimClient.mint(wc, {
+      subjectAgent: args.subject,
+      issuer: args.subject,             // self-asserted seed claim
+      featureId,
+      featureVersion: version,
+      relation: args.relation,
+      visibility: 'Public',
+      evidenceCommit,
+      confidence: args.confidence,
+      policyId: 'smart-agent.geo-overlap.v1',
+      nonce,
+    })
+    await pc.waitForTransactionReceipt({ hash })
+  } catch (_e) {
+    // The contract's ClaimExists revert is the idempotent path; only
+    // truly unexpected reverts get logged.
+    const msg = (_e as Error)?.message ?? ''
+    if (!/ClaimExists/.test(msg)) {
+      console.warn(`[catalyst-seed] geo-claim mint failed for ${args.subject} → ${args.cityKey}:`, msg.slice(0, 120))
+    }
+  }
 }
 
 function upsertUser(u: { id: string; name: string; email: string; wallet: string; did: string }) {
@@ -258,41 +315,53 @@ async function doSeed() {
   await setGeo(grpJohnstown, '40.3369', '-104.9522')  // Johnstown
   await setGeo(grpRedFeather, '40.8028', '-105.5819') // Red Feather Lakes
 
-  // City / region / country tags — coarse-tier input for geo-overlap.v1.
-  // Person agents inherit their host city from the circle they belong to;
-  // the seed sets controllers for orgs but not for persons here, so the
-  // person tags land via the per-person setCity calls below.
-  console.log('[catalyst-seed] Setting city tags...')
-  await setCity(network,       'Fort Collins',     'Colorado', 'US')
-  await setCity(hub,           'Fort Collins',     'Colorado', 'US')
-  await setCity(grpWellington, 'Wellington',       'Colorado', 'US')
-  await setCity(grpLaporte,    'Laporte',          'Colorado', 'US')
-  await setCity(grpTimnath,    'Timnath',          'Colorado', 'US')
-  await setCity(grpLoveland,   'Loveland',         'Colorado', 'US')
-  await setCity(grpBerthoud,   'Berthoud',         'Colorado', 'US')
-  await setCity(grpJohnstown,  'Johnstown',        'Colorado', 'US')
-  await setCity(grpRedFeather, 'Red Feather Lakes','Colorado', 'US')
+  // Geo affiliation — public on-chain `GeoClaimRegistry` rows binding
+  // each demo agent to its city's `.geo` feature. This replaces the
+  // legacy `atl:city / atl:region / atl:country` resolver writes; the
+  // coarse tier of geo-overlap.v1 is now derived from these claims.
+  //
+  //   Circles → operatesIn  (the org operates within the city polygon)
+  //   People  → residentOf  (the person is anchored to that city)
+  //
+  // Both are Public Visibility so anyone reading the registry sees them.
+  console.log('[catalyst-seed] Minting geo claims (operatesIn / residentOf) ...')
+  // Circle org → city. ROLE_OPERATES_IN equivalent for orgs.
+  await mintGeoClaim({ subject: network,       cityKey: 'us/colorado/fortcollins',  relation: 'operatesIn', confidence: 100 })
+  await mintGeoClaim({ subject: hub,           cityKey: 'us/colorado/fortcollins',  relation: 'operatesIn', confidence: 100 })
+  await mintGeoClaim({ subject: grpWellington, cityKey: 'us/colorado/wellington',   relation: 'operatesIn', confidence: 100 })
+  await mintGeoClaim({ subject: grpLaporte,    cityKey: 'us/colorado/laporte',      relation: 'operatesIn', confidence: 100 })
+  await mintGeoClaim({ subject: grpTimnath,    cityKey: 'us/colorado/timnath',      relation: 'operatesIn', confidence: 100 })
+  await mintGeoClaim({ subject: grpLoveland,   cityKey: 'us/colorado/loveland',     relation: 'operatesIn', confidence: 100 })
+  await mintGeoClaim({ subject: grpBerthoud,   cityKey: 'us/colorado/berthoud',     relation: 'operatesIn', confidence: 100 })
+  await mintGeoClaim({ subject: grpJohnstown,  cityKey: 'us/colorado/johnstown',    relation: 'operatesIn', confidence: 100 })
+  await mintGeoClaim({ subject: grpRedFeather, cityKey: 'us/colorado/redfeather',   relation: 'operatesIn', confidence: 100 })
 
-  // Person-agent cities: every Catalyst demo user is anchored in the town
-  // they actually serve so the trust-search panel exercises same-city and
-  // same-region cohorts.
-  const personCityMap: Array<[string, string, string, string]> = [
-    ['cat-user-001', 'Fort Collins',     'Colorado', 'US'],  // Maria
-    ['cat-user-002', 'Fort Collins',     'Colorado', 'US'],  // David
-    ['cat-user-003', 'Fort Collins',     'Colorado', 'US'],  // Rosa
-    ['cat-user-004', 'Fort Collins',     'Colorado', 'US'],  // Carlos
-    ['cat-user-005', 'Fort Collins',     'Colorado', 'US'],  // Sarah Thompson
-    ['cat-user-006', 'Wellington',       'Colorado', 'US'],  // Ana
-    ['cat-user-007', 'Laporte',          'Colorado', 'US'],  // Miguel
-    ['cat-user-008', 'Timnath',          'Colorado', 'US'],  // Elena
-    ['cat-user-009', 'Loveland',         'Colorado', 'US'],  // Luis
-    ['cat-user-010', 'Berthoud',         'Colorado', 'US'],  // Sofia
-    ['cat-user-011', 'Johnstown',        'Colorado', 'US'],  // Diego
-    ['cat-user-012', 'Red Feather Lakes', 'Colorado', 'US'], // Isabel
+  // Person → city. residentOf gets a stage-B weight of 1.0 in
+  // geo-overlap.v1 — the strongest local-affinity signal we ship.
+  const personGeoMap: Array<[string, string]> = [
+    ['cat-user-001', 'us/colorado/fortcollins'],  // Maria
+    ['cat-user-002', 'us/colorado/fortcollins'],  // David
+    ['cat-user-003', 'us/colorado/fortcollins'],  // Rosa
+    ['cat-user-004', 'us/colorado/fortcollins'],  // Carlos
+    ['cat-user-005', 'us/colorado/fortcollins'],  // Sarah Thompson
+    ['cat-user-006', 'us/colorado/wellington'],   // Ana
+    ['cat-user-007', 'us/colorado/laporte'],      // Miguel
+    ['cat-user-008', 'us/colorado/timnath'],      // Elena
+    ['cat-user-009', 'us/colorado/loveland'],     // Luis
+    ['cat-user-010', 'us/colorado/berthoud'],     // Sofia
+    ['cat-user-011', 'us/colorado/johnstown'],    // Diego
+    ['cat-user-012', 'us/colorado/redfeather'],   // Isabel
   ]
-  for (const [uid, city, region, country] of personCityMap) {
+  for (const [uid, cityKey] of personGeoMap) {
     const u = userMap.get(uid)
-    if (u?.personAgentAddress) await setCity(u.personAgentAddress as `0x${string}`, city, region, country)
+    if (u?.personAgentAddress) {
+      await mintGeoClaim({
+        subject: u.personAgentAddress as `0x${string}`,
+        cityKey,
+        relation: 'residentOf',
+        confidence: 90,
+      })
+    }
   }
 
   // ─── On-Chain Relationships (22 edges) ────────────────────────────

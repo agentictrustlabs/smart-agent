@@ -5,36 +5,4 @@
 [verifier-mcp] Smart Agent Trusted Auditor @ did:ethr:31337:0x8fd379246834eac74b8419ffda202cf8051f7a03
 [verifier-mcp] listening on http://localhost:3700
 <-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /verify/specs
---> GET /verify/specs [32m200[0m 0ms
-<-- POST /verify/GeoLocationCredential/request
---> POST /verify/GeoLocationCredential/request [32m200[0m 7ms
-<-- POST /verify/GeoLocationCredential/check
---> POST /verify/GeoLocationCredential/check [32m200[0m 71ms
-<-- POST /verify/OrgMembershipCredential/request
---> POST /verify/OrgMembershipCredential/request [32m200[0m 1ms
-<-- POST /verify/OrgMembershipCredential/check
---> POST /verify/OrgMembershipCredential/check [32m200[0m 46ms
-<-- POST /verify/GeoLocationCredential/request
---> POST /verify/GeoLocationCredential/request [32m200[0m 1ms
-<-- POST /verify/GeoLocationCredential/check
---> POST /verify/GeoLocationCredential/check [32m200[0m 38ms
-<-- POST /verify/OrgMembershipCredential/request
---> POST /verify/OrgMembershipCredential/request [32m200[0m 2ms
-<-- POST /verify/OrgMembershipCredential/check
---> POST /verify/OrgMembershipCredential/check [32m200[0m 37ms
-<-- POST /verify/GeoLocationCredential/request
---> POST /verify/GeoLocationCredential/request [32m200[0m 2ms
-<-- POST /verify/GeoLocationCredential/check
---> POST /verify/GeoLocationCredential/check [32m200[0m 38ms
-<-- POST /verify/OrgMembershipCredential/request
---> POST /verify/OrgMembershipCredential/request [32m200[0m 1ms
-<-- POST /verify/OrgMembershipCredential/check
---> POST /verify/OrgMembershipCredential/check [32m200[0m 35ms
-<-- POST /verify/OrgMembershipCredential/request
---> POST /verify/OrgMembershipCredential/request [32m200[0m 1ms
-<-- POST /verify/OrgMembershipCredential/check
---> POST /verify/OrgMembershipCredential/check [32m200[0m 34ms
+--> GET /health [32m200[0m 1ms

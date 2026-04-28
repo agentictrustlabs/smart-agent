@@ -28,7 +28,7 @@
 
 import { getAddress } from 'viem'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
-import { getPublicClient, getEdgesByObject, getEdge } from '@/lib/contracts'
+import { getPublicClient, getEdgesByObject, getEdgesBySubject, getEdge } from '@/lib/contracts'
 import {
   agentAccountResolverAbi,
   geoClaimRegistryAbi,
@@ -36,8 +36,9 @@ import {
   TYPE_PERSON,
   TYPE_ORGANIZATION,
   HAS_MEMBER,
+  ORGANIZATION_MEMBERSHIP,
+  ORGANIZATION_GOVERNANCE,
   ATL_PRIMARY_NAME,
-  ATL_CITY, ATL_REGION, ATL_COUNTRY,
   ATL_LATITUDE, ATL_LONGITUDE,
   GEO_VISIBILITY,
   GEO_COORD_SCALE,
@@ -53,7 +54,27 @@ import { geoOverlapScore, type CoarseGeoTag, type GeoClaimInput } from '@smart-a
 import { person } from '@/lib/ssi/clients'
 import { ssiConfig } from '@/lib/ssi/config'
 
-const HAS_MEMBER_HEX = (HAS_MEMBER as string).toLowerCase()
+/**
+ * Relationship-type hashes that link an agent to an Organization for the
+ * purpose of trust-overlap scoring. We accept all three because they all
+ * represent affiliation with that org from the holder's POV:
+ *
+ *   • HAS_MEMBER             — explicit "this org has this member" join
+ *                              (typical direction: org → person)
+ *   • ORGANIZATION_MEMBERSHIP — explicit member relationship
+ *                              (typical direction: person → org)
+ *   • ORGANIZATION_GOVERNANCE — board / owner / executive
+ *                              (typical direction: person → org;
+ *                              owners are clearly affiliated)
+ *
+ * We accept either edge direction (subject ↔ object) so seeds and signups
+ * that pick different directions still produce overlap.
+ */
+const ORG_AFFILIATION_HEXES = new Set([
+  (HAS_MEMBER as string).toLowerCase(),
+  (ORGANIZATION_MEMBERSHIP as string).toLowerCase(),
+  (ORGANIZATION_GOVERNANCE as string).toLowerCase(),
+])
 const WALLET_CONTEXT = 'default'
 const SEARCH_LIMIT = 200
 
@@ -465,28 +486,92 @@ async function collectCandidates(args: {
   return out
 }
 
-/** Read ATL_CITY / ATL_REGION / ATL_COUNTRY off an agent. Returns null if
- *  every field is empty so callers can skip geo scoring for untagged agents. */
+/**
+ * Coarse geo tag for an agent — derived purely from on-chain claims in
+ * `GeoClaimRegistry`. Walks `claimsBySubject(agent)`, picks the strongest
+ * **non-revoked Public** residency-style claim (preferring `residentOf`
+ * over `operatesIn`/`stewardOf`/`originIn`), and parses the linked
+ * feature's `metadataURI` for `country/region/city` slugs.
+ *
+ * The legacy `atl:city / atl:region / atl:country` resolver properties
+ * are **not** consulted any more — coarse-tier overlap is fully claim-
+ * driven so the public on-chain `GeoClaim` is the single source of truth.
+ *
+ * Returns null if the agent has no qualifying claim.
+ */
 async function readCoarseGeoTag(
-  resolverAddr: `0x${string}`,
+  _resolverAddr: `0x${string}`,
   agentAddr: `0x${string}`,
 ): Promise<CoarseGeoTag | null> {
+  const claimReg = process.env.GEO_CLAIM_REGISTRY_ADDRESS as `0x${string}` | undefined
+  const featReg  = process.env.GEO_FEATURE_REGISTRY_ADDRESS as `0x${string}` | undefined
+  if (!claimReg || !featReg) return null
   const client = getPublicClient()
-  async function read(predicate: `0x${string}`): Promise<string> {
-    try {
-      return (await client.readContract({
-        address: resolverAddr, abi: agentAccountResolverAbi,
-        functionName: 'getStringProperty', args: [agentAddr, predicate],
-      })) as string
-    } catch { return '' }
+
+  let claimIds: `0x${string}`[]
+  try {
+    claimIds = (await client.readContract({
+      address: claimReg, abi: geoClaimRegistryAbi,
+      functionName: 'claimsBySubject', args: [agentAddr],
+    })) as `0x${string}`[]
+  } catch { return null }
+  if (claimIds.length === 0) return null
+
+  await ensureRelationLookup()
+
+  // Preference order — `residentOf` is the strongest "this is where the
+  // agent is anchored" signal; orgs typically use `operatesIn`. The first
+  // non-revoked Public claim of the highest-priority kind wins.
+  const PRIORITY: Record<string, number> = {
+    'geo:residentOf':   100,
+    'geo:operatesIn':    80,
+    'geo:stewardOf':     60,
+    'geo:originIn':      40,
   }
-  const [city, region, country] = await Promise.all([
-    read(ATL_CITY as `0x${string}`),
-    read(ATL_REGION as `0x${string}`),
-    read(ATL_COUNTRY as `0x${string}`),
-  ])
-  if (!city && !region && !country) return null
-  return { city: city || null, region: region || null, country: country || null }
+
+  let best: { priority: number; featureId: `0x${string}`; featureVersion: bigint } | null = null
+  for (const cid of claimIds) {
+    try {
+      const claim = (await client.readContract({
+        address: claimReg, abi: geoClaimRegistryAbi,
+        functionName: 'getClaim', args: [cid],
+      })) as {
+        relation: `0x${string}`; visibility: number; revoked: boolean
+        featureId: `0x${string}`; featureVersion: bigint
+      }
+      if (claim.revoked) continue
+      if (claim.visibility !== GEO_VISIBILITY.Public && claim.visibility !== GEO_VISIBILITY.PublicCoarse) continue
+      const label = RELATION_HASH_TO_LABEL[claim.relation.toLowerCase()]
+      if (!label) continue
+      const priority = PRIORITY[label] ?? 0
+      if (priority === 0) continue
+      if (!best || priority > best.priority) {
+        best = { priority, featureId: claim.featureId, featureVersion: claim.featureVersion }
+      }
+    } catch { /* skip bad row */ }
+  }
+  if (!best) return null
+
+  // Parse the feature's `metadataURI` (`https://.../geo/<country>/<region>/<city>/v1.json`)
+  // for the coarse slugs. The same URI parser is used by the geo-claim
+  // action's `labelFromMetadataURI`; we inline it here to avoid a server
+  // import cycle.
+  try {
+    const f = (await client.readContract({
+      address: featReg, abi: geoFeatureRegistryAbi,
+      functionName: 'getFeature', args: [best.featureId, best.featureVersion],
+    })) as { metadataURI: string }
+    const m = f.metadataURI.match(/\/geo\/([^/]+)\/([^/]+)\/([^/]+)\//)
+    if (!m) return null
+    const [, country, region, city] = m
+    return {
+      city:    city || null,
+      region:  region || null,
+      country: country || null,
+    }
+  } catch {
+    return null
+  }
 }
 
 /** Read ATL_LATITUDE / ATL_LONGITUDE off an agent. Returns null if either
@@ -611,23 +696,58 @@ async function getPublicOrgsForAgent(
   agentAddr: `0x${string}`,
 ): Promise<string[]> {
   const client = getPublicClient()
-  const out: string[] = []
+  const orgs = new Set<string>()
+
+  // Helper: `counterparty` is the OTHER endpoint (the one that's-supposed-to
+  // be the org). Push it if it's an active TYPE_ORGANIZATION.
+  async function pushIfOrg(counterparty: `0x${string}`): Promise<void> {
+    try {
+      const core = await client.readContract({
+        address: resolverAddr, abi: agentAccountResolverAbi,
+        functionName: 'getCore', args: [counterparty],
+      }) as { agentType: `0x${string}`; active: boolean }
+      if (core.agentType === TYPE_ORGANIZATION && core.active) {
+        orgs.add(counterparty.toLowerCase())
+      }
+    } catch { /* skip */ }
+  }
+
+  // Self-inclusion when the candidate IS an Organization: the trust-
+  // overlap math intersects "orgs caller is in" ∩ "orgs candidate is in",
+  // designed for person↔person scoring. When the candidate is itself an
+  // Org, the natural question is "does the caller affiliate with this
+  // org?" — answered by including the org's own address in its public
+  // set. Caller's heldSet (which contains the org via any GOVERNANCE /
+  // MEMBERSHIP / HAS_MEMBER edge) then intersects → score 1.0.
+  await pushIfOrg(agentAddr)
+
+  // Incoming: agent is the OBJECT. Subject is the candidate counterparty.
+  // Catches the canonical HAS_MEMBER direction (org → person).
   try {
-    const edgeIds = await getEdgesByObject(agentAddr)
-    for (const id of edgeIds) {
+    const incoming = await getEdgesByObject(agentAddr)
+    for (const id of incoming) {
       try {
         const edge = await getEdge(id)
         if (edge.status < 2) continue
-        if ((edge.relationshipType ?? '').toLowerCase() !== HAS_MEMBER_HEX) continue
-        const core = await client.readContract({
-          address: resolverAddr, abi: agentAccountResolverAbi,
-          functionName: 'getCore', args: [edge.subject as `0x${string}`],
-        }) as { agentType: `0x${string}`; active: boolean }
-        if (core.agentType === TYPE_ORGANIZATION && core.active) {
-          out.push(edge.subject.toLowerCase())
-        }
+        if (!ORG_AFFILIATION_HEXES.has((edge.relationshipType ?? '').toLowerCase())) continue
+        await pushIfOrg(edge.subject as `0x${string}`)
       } catch { /* skip */ }
     }
   } catch { /* */ }
-  return out
+
+  // Outgoing: agent is the SUBJECT. Object is the candidate counterparty.
+  // Catches person → org governance (owner) and person → org membership.
+  try {
+    const outgoing = await getEdgesBySubject(agentAddr)
+    for (const id of outgoing) {
+      try {
+        const edge = await getEdge(id) as { object_: `0x${string}`; relationshipType: `0x${string}`; status: number }
+        if (edge.status < 2) continue
+        if (!ORG_AFFILIATION_HEXES.has((edge.relationshipType ?? '').toLowerCase())) continue
+        await pushIfOrg(edge.object_)
+      } catch { /* skip */ }
+    }
+  } catch { /* */ }
+
+  return Array.from(orgs)
 }

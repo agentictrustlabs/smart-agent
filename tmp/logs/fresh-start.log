@@ -1,20 +1,22 @@
 
-[1;36m=== 1/8  Stopping anvil + every dev service[0m  (13:59:51)
-  killing pid(s) 3238115 on :8545
-  killing pid(s) 3612191 on :3000
-  killing pid(s) 3241612 on :3400
-  killing pid(s) 3241611 on :3500
-  killing pid(s) 3241610 on :3200
-  killing pid(s) 3446360 on :3100
+[1;36m=== 1/8  Stopping anvil + every dev service[0m  (16:57:15)
+  killing pid(s) 3936895 on :8545
+  killing pid(s) 3940736 on :3000
+  killing pid(s) 3940495 on :3400
+  killing pid(s) 3940487 on :3500
+  killing pid(s) 3940493 on :3200
+  killing pid(s) 3940535 on :3100
+  killing pid(s) 3940494 on :3600
+  killing pid(s) 3940492 on :3700
 
-[1;36m=== 2/8  Wiping DB + Askar state[0m  (13:59:52)
+[1;36m=== 2/8  Wiping DB + Askar state[0m  (16:57:16)
   removed: 26 path globs
 
-[1;36m=== 3/8  Starting fresh anvil (chain id 31337)[0m  (13:59:52)
-  anvil → pid=3775716 log=/home/barb/smart-agent/tmp/logs/anvil.log
+[1;36m=== 3/8  Starting fresh anvil (chain id 31337)[0m  (16:57:16)
+  anvil → pid=3941771 log=/home/barb/smart-agent/tmp/logs/anvil.log
   ✓ anvil up
 
-[1;36m=== 4/8  Deploying contracts + seeding ontology[0m  (13:59:53)
+[1;36m=== 4/8  Deploying contracts + seeding ontology[0m  (16:57:17)
 === Deploying contracts to local Anvil ===
 === Extracted addresses ===
 === Updated /home/barb/smart-agent/apps/web/.env ===
@@ -25,17 +27,17 @@
 === Seeding Relationship Type Registry ===
 === Type Registry seeded: 17 relationship types ===
 
-[1;36m=== 5/8  Post-deploy seeds[0m  (14:00:00)
+[1;36m=== 5/8  Post-deploy seeds[0m  (16:57:24)
   (ontology + relationship-type-registry seeded inline by deploy-local.sh)
   (per-hub on-chain seed runs in-process via /api/boot-seed)
 
-[1;36m=== 6/8  Starting backend services[0m  (14:00:00)
-  org-mcp → pid=3779184 log=/home/barb/smart-agent/tmp/logs/org-mcp.log
-  family-mcp → pid=3779188 log=/home/barb/smart-agent/tmp/logs/family-mcp.log
-  person-mcp → pid=3779192 log=/home/barb/smart-agent/tmp/logs/person-mcp.log
-  a2a-agent → pid=3779201 log=/home/barb/smart-agent/tmp/logs/a2a-agent.log
-  geo-mcp → pid=3779206 log=/home/barb/smart-agent/tmp/logs/geo-mcp.log
-  verifier-mcp → pid=3779214 log=/home/barb/smart-agent/tmp/logs/verifier-mcp.log
+[1;36m=== 6/8  Starting backend services[0m  (16:57:24)
+  org-mcp → pid=3945195 log=/home/barb/smart-agent/tmp/logs/org-mcp.log
+  family-mcp → pid=3945199 log=/home/barb/smart-agent/tmp/logs/family-mcp.log
+  person-mcp → pid=3945203 log=/home/barb/smart-agent/tmp/logs/person-mcp.log
+  a2a-agent → pid=3945207 log=/home/barb/smart-agent/tmp/logs/a2a-agent.log
+  geo-mcp → pid=3945216 log=/home/barb/smart-agent/tmp/logs/geo-mcp.log
+  verifier-mcp → pid=3945225 log=/home/barb/smart-agent/tmp/logs/verifier-mcp.log
   ✓ org-mcp up
   ✓ family-mcp up
   ✓ person-mcp up
@@ -43,15 +45,16 @@
   ✓ geo-mcp up
   ✓ verifier-mcp up
 
-[1;36m=== 7/8  Starting web (Next.js)[0m  (14:00:04)
-  web → pid=3779589 log=/home/barb/smart-agent/tmp/logs/web.log
+[1;36m=== 7/8  Starting web (Next.js)[0m  (16:57:31)
+  web → pid=3945576 log=/home/barb/smart-agent/tmp/logs/web.log
   ✓ web up
 
-[1;36m=== 8/8  Triggering /api/boot-seed (also runs final on-chain → KB sync)[0m  (14:00:18)
+[1;36m=== 8/8  Triggering /api/boot-seed (also runs final on-chain → KB sync)[0m  (16:57:38)
   polling /api/system-readiness …
   ⚠ readiness still false after 240s — see tmp/logs/web.log
   forcing on-chain → GraphDB sync …
 
-[1;36m=== Done — fresh stack at http://localhost:3000[0m  (14:04:43)
+[1;36m=== Done — fresh stack at http://localhost:3000[0m  (17:02:19)
 Tail logs:   tail -f /home/barb/smart-agent/tmp/logs/<service>.log
 Stop later:  for f in /home/barb/smart-agent/tmp/pids/*.pid; do kill "$(cat "$f")" 2>/dev/null || true; done
+"$f")" 2>/dev/null || true; done

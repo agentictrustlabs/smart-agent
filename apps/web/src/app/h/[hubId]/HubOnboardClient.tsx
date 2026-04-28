@@ -20,6 +20,11 @@ import {
   completeReAuthBootstrapAction,
 } from '@/lib/actions/onboarding/repair-account.action'
 import { getHubOnboardingState, type HubOnboardingState } from '@/lib/actions/onboarding/hub-onboard.action'
+import {
+  prepareWalletProvisionIfNeeded,
+  submitWalletProvision,
+} from '@/lib/actions/ssi/wallet-provision.action'
+import { signWalletActionClient } from '@/lib/sign-wallet-action-client'
 import { packWebAuthnSignature, parseAttestationObject } from '@smart-agent/sdk'
 
 type Eip1193Provider = {
@@ -221,14 +226,14 @@ function ConnectStep({ hub, accent, hubSlug, error, setError }: {
   const [signupProgress, setSignupProgress] = useState<null | {
     fullName: string
     predictedAddress?: string | null
-    step: 'passkey' | 'chain' | 'agent' | 'done' | 'error'
+    step: 'passkey' | 'chain' | 'agent' | 'wallet' | 'done' | 'error'
     errorMessage?: string
     serverError?: string
   }>(null)
 
   const [signinProgress, setSigninProgress] = useState<null | {
     fullName: string
-    step: 'passkey' | 'verify' | 'agent' | 'done' | 'error'
+    step: 'passkey' | 'verify' | 'agent' | 'wallet' | 'done' | 'error'
     errorMessage?: string
   }>(null)
 
@@ -337,15 +342,21 @@ function ConnectStep({ hub, accent, hubSlug, error, setError }: {
     startPending(async () => {
       try {
         const challenge = crypto.getRandomValues(new Uint8Array(32))
-        // Use the .agent name as the WebAuthn user.name + displayName so
-        // the OS/password-manager labels the saved credential with the
-        // user's chosen identity. At sign-in time the picker shows the
-        // .agent name directly, no synthetic display name to remember.
+        // Encode the .agent name as `user.id` — the authenticator stores
+        // these bytes verbatim and returns them as `userHandle` on every
+        // future assertion. That lets conditional-UI sign-in look up the
+        // account directly from the assertion: the user picks their
+        // passkey from the browser autofill bar and we resolve the
+        // .agent name from the userHandle, no name input needed.
+        //
+        // .agent names are short (well under WebAuthn's 64-byte
+        // userHandle cap). UTF-8 encoded for transport.
+        const userIdBytes = new TextEncoder().encode(fullName)
         const cred = await navigator.credentials.create({
           publicKey: {
             rp: { name: 'Smart Agent', id: window.location.hostname },
             user: {
-              id: crypto.getRandomValues(new Uint8Array(16)),
+              id: userIdBytes,
               name: fullName,
               displayName: fullName,
             },
@@ -452,6 +463,42 @@ function ConnectStep({ hub, accent, hubSlug, error, setError }: {
           return
         }
 
+        // ─── Provision the AnonCreds holder wallet ──────────────────
+        // Without this, the dashboard's Discover Agents would refuse to
+        // run ("Provision a holder wallet via Anonymous registration
+        // before running trust search") and the "+ Get {noun} credential"
+        // dropdown actions would all stop on the same gate. We do it
+        // here while the user is already in a passkey-prompt mindset
+        // rather than surfacing a fourth-prompt surprise on first use.
+        setSignupProgress({ fullName, predictedAddress, step: 'wallet' })
+        try {
+          const prep = await prepareWalletProvisionIfNeeded()
+          if (!prep.success || !prep.signer) {
+            throw new Error(prep.error ?? 'prepare provision failed')
+          }
+          if (prep.needsProvision) {
+            const sig = await signWalletActionClient(
+              prep.needsProvision.action,
+              prep.needsProvision.hash,
+              prep.signer,
+            )
+            const subm = await submitWalletProvision({
+              action: prep.needsProvision.action,
+              signature: sig,
+            })
+            if (!subm.success || !subm.holderWalletId) {
+              throw new Error(subm.error ?? 'provision submit failed')
+            }
+          }
+          // alreadyProvisioned → no-op (idempotent)
+        } catch (e) {
+          // Non-fatal: holder wallet can be created later from the dropdown
+          // (+ Get org credential / + Get geo credential) — user just won't
+          // be able to run trust search until then. Surface as a warning
+          // instead of blocking the onboarding completion.
+          console.warn('[onboard] holder wallet provision failed:', (e as Error).message)
+        }
+
         setSignupProgress({ fullName, predictedAddress, step: 'done' })
         // Brief pause so the user sees all steps complete before nav.
         setTimeout(() => { window.location.reload() }, 600)
@@ -461,6 +508,186 @@ function ConnectStep({ hub, accent, hubSlug, error, setError }: {
         setError(msg)
       }
     })
+  }
+
+  // ─── Conditional-UI passkey autofill ─────────────────────────────
+  //
+  // When the browser supports it (Chrome / Edge / Safari current),
+  // start a non-modal `navigator.credentials.get({ mediation: 'conditional' })`
+  // on mount. The browser will surface the user's saved passkeys in
+  // the input's autofill bar; picking one resolves the call without
+  // a modal prompt. The .agent name comes back via `userHandle`
+  // (we encoded it as `user.id` at registration), so the user
+  // doesn't have to type their name first.
+  //
+  // Falls back silently when:
+  //   • the API isn't available (older browsers),
+  //   • the user types and submits via the button flow first,
+  //   • the userHandle isn't a UTF-8 .agent name (legacy creds
+  //     registered before this change — they still work via the
+  //     button flow).
+  useEffect(() => {
+    if (mode !== 'signin') return
+    if (typeof window === 'undefined' || !window.PublicKeyCredential) return
+    if (typeof PublicKeyCredential.isConditionalMediationAvailable !== 'function') return
+    let cancelled = false
+    const ac = new AbortController()
+    void (async () => {
+      try {
+        const ok = await PublicKeyCredential.isConditionalMediationAvailable()
+        if (!ok || cancelled) return
+        const challResp = await fetch('/api/auth/passkey-challenge', { cache: 'no-store' })
+        if (!challResp.ok) return
+        const { challenge, token } = await challResp.json() as { challenge: string; token: string }
+        const challengeBytes = base64UrlDecode(challenge)
+        const challengeAb = new ArrayBuffer(challengeBytes.length)
+        new Uint8Array(challengeAb).set(challengeBytes)
+        const cred = await navigator.credentials.get({
+          mediation: 'conditional' as CredentialMediationRequirement,
+          signal: ac.signal,
+          publicKey: {
+            challenge: challengeAb,
+            rpId: window.location.hostname,
+            userVerification: 'preferred',
+            timeout: 60_000,
+            // No allowCredentials — conditional UI scopes itself to
+            // the credentials the OS has for this RP automatically.
+          },
+        }) as PublicKeyCredential | null
+        if (!cred || cancelled) return
+        const aresp = cred.response as AuthenticatorAssertionResponse
+        const userHandleBytes = aresp.userHandle ? new Uint8Array(aresp.userHandle) : null
+        if (!userHandleBytes) return
+        let resolvedName: string
+        try {
+          resolvedName = new TextDecoder('utf-8', { fatal: true }).decode(userHandleBytes)
+        } catch { return /* legacy random userHandle — fall through to button flow */ }
+        if (!/^[a-z0-9.-]+\.agent$/.test(resolvedName)) return
+
+        // Drop into the existing post-credential pipeline. We can't
+        // tail-call the button-flow function because it expects the
+        // user to have ALREADY clicked through name resolution; here
+        // we resolved the name from userHandle. So we run the same
+        // verify/bootstrap/wallet sequence inline.
+        startPending(() => runPostCredentialSignin(cred, resolvedName, challenge, token))
+      } catch (e) {
+        // Silently swallow — the user can still type their name and
+        // click the button. AbortError is expected on unmount.
+        if ((e as Error)?.name !== 'AbortError') {
+          console.warn('[signin] conditional-UI failed:', (e as Error).message)
+        }
+      }
+    })()
+    return () => { cancelled = true; ac.abort() }
+  }, [mode])
+
+  /**
+   * Shared post-credential pipeline: verify → A2A bootstrap → wallet
+   * provision → reload. Used by both the button flow and conditional UI.
+   */
+  async function runPostCredentialSignin(
+    cred: PublicKeyCredential,
+    enteredName: string,
+    challenge: string,
+    token: string,
+  ): Promise<void> {
+    const resp = cred.response as AuthenticatorAssertionResponse
+    const credentialIdBase64Url = base64UrlEncode(new Uint8Array(cred.rawId))
+    setSigninProgress({ fullName: enteredName, step: 'verify' })
+    const verify = await fetch('/api/auth/passkey-verify', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', origin: window.location.origin },
+      body: JSON.stringify({
+        name: enteredName,
+        token, challenge,
+        credentialIdBase64Url,
+        authenticatorDataBase64Url: base64UrlEncode(new Uint8Array(resp.authenticatorData)),
+        clientDataJSONBase64Url: base64UrlEncode(new Uint8Array(resp.clientDataJSON)),
+        signatureBase64Url: base64UrlEncode(new Uint8Array(resp.signature)),
+      }),
+    })
+    const body = await verify.json()
+    if (!verify.ok || !body.success) {
+      const msg = body.error ?? verify.statusText
+      setSigninProgress({ fullName: enteredName, step: 'error', errorMessage: msg })
+      setError(msg)
+      return
+    }
+
+    // A2A bootstrap (uses the same passkey credential id we just signed
+    // with, so the picker auto-pulls it without a generic modal).
+    setSigninProgress({ fullName: enteredName, step: 'agent' })
+    try {
+      const initRes = await fetch('/api/a2a/bootstrap/client', { method: 'POST' })
+      if (!initRes.ok) {
+        const e = await initRes.json().catch(() => ({})) as { error?: string }
+        throw new Error(e.error ?? `bootstrap init failed: HTTP ${initRes.status}`)
+      }
+      const { delegationHash, sessionId, delegation } = await initRes.json() as {
+        delegationHash: string; sessionId: string; delegation: unknown
+      }
+      const hex = delegationHash.startsWith('0x') ? delegationHash.slice(2) : delegationHash
+      const hashBytes = new Uint8Array(hex.length / 2)
+      for (let i = 0; i < hashBytes.length; i++) hashBytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16)
+      const dhAb = new ArrayBuffer(hashBytes.length)
+      new Uint8Array(dhAb).set(hashBytes)
+      const credIdAb2 = new ArrayBuffer(cred.rawId.byteLength)
+      new Uint8Array(credIdAb2).set(new Uint8Array(cred.rawId))
+      const cred2 = await navigator.credentials.get({
+        publicKey: {
+          challenge: dhAb,
+          rpId: window.location.hostname,
+          userVerification: 'preferred',
+          timeout: 60_000,
+          allowCredentials: [{ type: 'public-key', id: credIdAb2 }],
+        },
+      }) as PublicKeyCredential | null
+      if (!cred2) throw new Error('Passkey prompt cancelled — agent connection not established')
+      const aresp = cred2.response as AuthenticatorAssertionResponse
+      const passkeySig = packWebAuthnSignature({
+        credentialIdBytes: new Uint8Array(cred2.rawId),
+        authenticatorData: new Uint8Array(aresp.authenticatorData),
+        clientDataJSON: new Uint8Array(aresp.clientDataJSON),
+        derSignature: new Uint8Array(aresp.signature),
+      })
+      const taggedSig = ('0x01' + passkeySig.slice(2)) as `0x${string}`
+      const completeRes = await fetch('/api/a2a/bootstrap/complete', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ sessionId, delegation, delegationSignature: taggedSig }),
+      })
+      if (!completeRes.ok) {
+        const e = await completeRes.json().catch(() => ({})) as { error?: string }
+        throw new Error(e.error ?? `bootstrap complete failed: HTTP ${completeRes.status}`)
+      }
+    } catch (e) {
+      const msg = `agent bootstrap: ${(e as Error).message}`
+      setSigninProgress({ fullName: enteredName, step: 'error', errorMessage: msg })
+      setError(msg)
+      return
+    }
+
+    // Idempotent holder-wallet provisioning.
+    try {
+      const prep = await prepareWalletProvisionIfNeeded()
+      if (prep.success && prep.signer && prep.needsProvision) {
+        setSigninProgress({ fullName: enteredName, step: 'wallet' })
+        const sig = await signWalletActionClient(
+          prep.needsProvision.action,
+          prep.needsProvision.hash,
+          prep.signer,
+        )
+        await submitWalletProvision({
+          action: prep.needsProvision.action,
+          signature: sig,
+        })
+      }
+    } catch (e) {
+      console.warn('[signin] holder wallet provision failed:', (e as Error).message)
+    }
+
+    setSigninProgress({ fullName: enteredName, step: 'done' })
+    setTimeout(() => { window.location.reload() }, 600)
   }
 
   function onPasskeySignin() {
@@ -502,90 +729,7 @@ function ConnectStep({ hub, accent, hubSlug, error, setError }: {
           setError('Cancelled.')
           return
         }
-        const resp = cred.response as AuthenticatorAssertionResponse
-        const credentialIdBase64Url = base64UrlEncode(new Uint8Array(cred.rawId))
-        setSigninProgress({ fullName: enteredName, step: 'verify' })
-        const verify = await fetch('/api/auth/passkey-verify', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json', origin: window.location.origin },
-          body: JSON.stringify({
-            // .agent name is the account discovery key — server resolves
-            // it to a smart-account address via the universal name resolver
-            // and runs isValidSignature on that address. No DB credential
-            // mapping consulted on the server.
-            name: enteredName,
-            token, challenge,
-            credentialIdBase64Url,
-            authenticatorDataBase64Url: base64UrlEncode(new Uint8Array(resp.authenticatorData)),
-            clientDataJSONBase64Url: base64UrlEncode(new Uint8Array(resp.clientDataJSON)),
-            signatureBase64Url: base64UrlEncode(new Uint8Array(resp.signature)),
-          }),
-        })
-        const body = await verify.json()
-        if (!verify.ok || !body.success) {
-          const msg = body.error ?? verify.statusText
-          setSigninProgress({ fullName: enteredName, step: 'error', errorMessage: msg })
-          setError(msg)
-          return
-        }
-
-        // Bootstrap the A2A session right after sign-in so the profile
-        // surface doesn't pop another OS prompt later. Two-step: server
-        // prepares an unsigned delegation, browser signs its hash with
-        // the same passkey, server completes via ERC-1271.
-        setSigninProgress({ fullName: enteredName, step: 'agent' })
-        try {
-          const initRes = await fetch('/api/a2a/bootstrap/client', { method: 'POST' })
-          if (!initRes.ok) {
-            const e = await initRes.json().catch(() => ({})) as { error?: string }
-            throw new Error(e.error ?? `bootstrap init failed: HTTP ${initRes.status}`)
-          }
-          const { delegationHash, sessionId, delegation } = await initRes.json() as {
-            delegationHash: string; sessionId: string; delegation: unknown
-          }
-          const hex = delegationHash.startsWith('0x') ? delegationHash.slice(2) : delegationHash
-          const hashBytes = new Uint8Array(hex.length / 2)
-          for (let i = 0; i < hashBytes.length; i++) hashBytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16)
-          const dhAb = new ArrayBuffer(hashBytes.length)
-          new Uint8Array(dhAb).set(hashBytes)
-          const credIdAb2 = new ArrayBuffer(cred.rawId.byteLength)
-          new Uint8Array(credIdAb2).set(new Uint8Array(cred.rawId))
-          const cred2 = await navigator.credentials.get({
-            publicKey: {
-              challenge: dhAb,
-              rpId: window.location.hostname,
-              userVerification: 'preferred',
-              timeout: 60_000,
-              allowCredentials: [{ type: 'public-key', id: credIdAb2 }],
-            },
-          }) as PublicKeyCredential | null
-          if (!cred2) throw new Error('Passkey prompt cancelled — agent connection not established')
-          const aresp = cred2.response as AuthenticatorAssertionResponse
-          const passkeySig = packWebAuthnSignature({
-            credentialIdBytes: new Uint8Array(cred2.rawId),
-            authenticatorData: new Uint8Array(aresp.authenticatorData),
-            clientDataJSON: new Uint8Array(aresp.clientDataJSON),
-            derSignature: new Uint8Array(aresp.signature),
-          })
-          const taggedSig = ('0x01' + passkeySig.slice(2)) as `0x${string}`
-          const completeRes = await fetch('/api/a2a/bootstrap/complete', {
-            method: 'POST',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ sessionId, delegation, delegationSignature: taggedSig }),
-          })
-          if (!completeRes.ok) {
-            const e = await completeRes.json().catch(() => ({})) as { error?: string }
-            throw new Error(e.error ?? `bootstrap complete failed: HTTP ${completeRes.status}`)
-          }
-        } catch (e) {
-          const msg = `agent bootstrap: ${(e as Error).message}`
-          setSigninProgress({ fullName: enteredName, step: 'error', errorMessage: msg })
-          setError(msg)
-          return
-        }
-
-        setSigninProgress({ fullName: enteredName, step: 'done' })
-        setTimeout(() => { window.location.reload() }, 600)
+        await runPostCredentialSignin(cred, enteredName, challenge, token)
       } catch (err) {
         const msg = (err as Error).message
         setSigninProgress({ fullName: enteredName, step: 'error', errorMessage: msg })
@@ -732,7 +876,12 @@ function ConnectStep({ hub, accent, hubSlug, error, setError }: {
                   placeholder="e.g. richp"
                   autoCapitalize="none"
                   autoCorrect="off"
-                  autoComplete="username"
+                  // `username webauthn` makes browsers (Chrome / Edge /
+                  // Safari with conditional UI) surface the user's
+                  // saved passkeys in the autofill bar above the
+                  // input — picking one resolves the in-flight
+                  // navigator.credentials.get below without any modal.
+                  autoComplete="username webauthn"
                   spellCheck={false}
                   style={{
                     flex: 1, minWidth: 0,
@@ -837,16 +986,39 @@ function SigninProgressModal({
   fullName, step, errorMessage, accent, onDismiss,
 }: {
   fullName: string
-  step: 'passkey' | 'verify' | 'agent' | 'done' | 'error'
+  step: 'passkey' | 'verify' | 'agent' | 'wallet' | 'done' | 'error'
   errorMessage?: string
   accent: string
   onDismiss: () => void
 }) {
-  const stepOrder: Array<{ key: typeof step; label: string }> = [
-    { key: 'passkey', label: 'Picking your passkey' },
-    { key: 'verify',  label: 'Verifying signature on chain' },
-    { key: 'agent',   label: 'Connecting your agent (A2A session)' },
-    { key: 'done',    label: 'Signing in' },
+  // Each prompt step has a short label + a "what you're authorizing"
+  // hint + a passkey-prompt counter so the user can anticipate how many
+  // taps are still ahead. WebAuthn ceremonies sign exactly one challenge
+  // each, so we can't combine them — clear narration is the lever.
+  const stepOrder: Array<{ key: typeof step; label: string; hint?: string; badge?: string }> = [
+    {
+      key: 'passkey',
+      label: 'Pick your passkey',
+      hint: 'Authorizes proof of identity for this sign-in attempt.',
+      badge: '🔑 1 / 2',
+    },
+    {
+      key: 'verify',
+      label: 'Verify signature on chain',
+      hint: 'AgentAccount checks your passkey against its on-chain mapping.',
+    },
+    {
+      key: 'agent',
+      label: 'Connect your agent (A2A session)',
+      hint: 'Second prompt — signs a session delegation so your agent can act on your behalf without re-prompting.',
+      badge: '🔑 2 / 2',
+    },
+    {
+      key: 'wallet',
+      label: 'Provision AnonCreds holder wallet',
+      hint: 'Only on first sign-in — primes the private vault for credentials and trust search. Skipped if your wallet already exists.',
+    },
+    { key: 'done', label: 'Signed in' },
   ]
   const currentIdx = stepOrder.findIndex(s => s.key === step)
   const errorIdx = step === 'error'
@@ -870,12 +1042,22 @@ function SigninProgressModal({
         </div>
         <h2 style={{ fontSize: 18, fontWeight: 700, color: '#0f172a', margin: '0 0 14px' }}>{fullName}</h2>
 
+        <div style={{
+          marginBottom: 14, padding: '0.55rem 0.75rem',
+          background: '#eff6ff', border: '1px solid #bfdbfe',
+          borderRadius: 8, fontSize: 12, color: '#1e40af', lineHeight: 1.5,
+        }}>
+          You&apos;ll see <b>2 passkey prompts</b> — one to prove identity,
+          one to sign a session delegation so your agent can act on your behalf.
+          A third may appear on first sign-in to provision your AnonCreds wallet.
+        </div>
+
         {stepOrder.map((s, i) => {
           let status: 'ok' | 'pending' | 'fail' | 'idle' = 'idle'
           if (step === 'done') status = 'ok'
           else if (step === 'error') status = i < errorIdx ? 'ok' : i === errorIdx ? 'fail' : 'idle'
           else status = i < currentIdx ? 'ok' : i === currentIdx ? 'pending' : 'idle'
-          return <SignupStep key={s.key} status={status} label={s.label} />
+          return <SignupStep key={s.key} status={status} label={s.label} hint={s.hint} badge={s.badge} />
         })}
 
         {step === 'error' && (
@@ -930,7 +1112,7 @@ function SignupProgressModal({
 }: {
   fullName: string
   predictedAddress: string | null
-  step: 'passkey' | 'chain' | 'agent' | 'done' | 'error'
+  step: 'passkey' | 'chain' | 'agent' | 'wallet' | 'done' | 'error'
   errorMessage?: string
   accent: string
   onDismiss: () => void
@@ -955,22 +1137,38 @@ function SignupProgressModal({
     return () => clearInterval(id)
   }, [step, chainSubsteps.length])
 
-  const steps: Array<{ label: string; status: 'ok' | 'pending' | 'fail' | 'idle' }> = [
+  // Each step's `hint` explains what the user is authorizing if a
+  // WebAuthn prompt is involved. WebAuthn ceremonies sign exactly one
+  // EIP-712 challenge each, so the three signups prompts can't be
+  // merged into one — the explanations are how we keep the cadence
+  // from feeling arbitrary.
+  type StepRow = { label: string; status: 'ok' | 'pending' | 'fail' | 'idle'; hint?: string; badge?: string }
+  const steps: StepRow[] = [
     {
-      label: 'Creating passkey on this device',
+      label: 'Create passkey on this device',
       status: step === 'passkey' ? 'pending' : step === 'error' && !errorMessage?.includes('chain') ? 'fail' : 'ok',
+      hint: 'First prompt — your authenticator generates a fresh P-256 key bound to your .agent name.',
+      badge: '🔑 1 / 3',
     },
-    ...chainSubsteps.map((label, i) => {
+    ...chainSubsteps.map((label, i): StepRow => {
       let status: 'ok' | 'pending' | 'fail' | 'idle' = 'idle'
-      if (step === 'done' || step === 'agent') status = 'ok'
+      if (step === 'done' || step === 'agent' || step === 'wallet') status = 'ok'
       else if (step === 'error') status = i < chainIdx ? 'ok' : i === chainIdx ? 'fail' : 'idle'
       else if (step === 'chain') status = i < chainIdx ? 'ok' : i === chainIdx ? 'pending' : 'idle'
       else status = 'idle'
       return { label, status }
     }),
     {
-      label: 'Connecting your agent (A2A session)',
-      status: step === 'done' ? 'ok' : step === 'agent' ? 'pending' : 'idle',
+      label: 'Connect your agent (A2A session)',
+      status: step === 'done' || step === 'wallet' ? 'ok' : step === 'agent' ? 'pending' : 'idle',
+      hint: 'Second prompt — signs a session delegation so your agent can talk to other agents on your behalf without re-prompting.',
+      badge: '🔑 2 / 3',
+    },
+    {
+      label: 'Provision AnonCreds holder wallet',
+      status: step === 'done' ? 'ok' : step === 'wallet' ? 'pending' : 'idle',
+      hint: 'Third prompt — primes your private vault so you can receive credentials and run trust search. One-time setup.',
+      badge: '🔑 3 / 3',
     },
   ]
 
@@ -997,9 +1195,20 @@ function SignupProgressModal({
           </div>
         )}
 
+        <div style={{
+          marginBottom: 14, padding: '0.55rem 0.75rem',
+          background: '#eff6ff', border: '1px solid #bfdbfe',
+          borderRadius: 8, fontSize: 12, color: '#1e40af', lineHeight: 1.5,
+        }}>
+          You&apos;ll authorize <b>3 actions</b> with your passkey:
+          create the passkey, connect your agent, and provision your wallet.
+          Each prompt signs a separate cryptographic challenge — they can&apos;t
+          be combined into one tap.
+        </div>
+
         <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
           {steps.map((s) => (
-            <SignupStep key={s.label} status={s.status} label={s.label} />
+            <SignupStep key={s.label} status={s.status} label={s.label} hint={s.hint} badge={s.badge} />
           ))}
         </div>
 
@@ -1035,7 +1244,14 @@ function SignupProgressModal({
   )
 }
 
-function SignupStep({ status, label }: { status: 'ok' | 'pending' | 'fail' | 'idle'; label: string }) {
+function SignupStep({ status, label, hint, badge }: {
+  status: 'ok' | 'pending' | 'fail' | 'idle'
+  label: string
+  /** Secondary line — what the step actually does. Renders dim. */
+  hint?: string
+  /** Tag rendered to the right (e.g. "🔑 passkey 2/3"). */
+  badge?: string
+}) {
   const dot =
     status === 'ok' ? '#10b981' :
     status === 'fail' ? '#ef4444' :
@@ -1043,16 +1259,35 @@ function SignupStep({ status, label }: { status: 'ok' | 'pending' | 'fail' | 'id
     '#cbd5e1'
   const pulse = status === 'pending' ? { animation: 'sa-pulse 1.4s ease-in-out infinite' as const } : {}
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0.32rem 0' }}>
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '0.4rem 0' }}>
       <span aria-hidden style={{
         width: 10, height: 10, borderRadius: '50%',
-        background: dot, flexShrink: 0, ...pulse,
+        background: dot, flexShrink: 0, marginTop: 5, ...pulse,
       }} />
-      <span style={{
-        fontSize: 13,
-        color: status === 'idle' ? '#94a3b8' : '#0f172a',
-        fontWeight: status === 'pending' ? 600 : 500,
-      }}>{label}</span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+          <span style={{
+            fontSize: 13,
+            color: status === 'idle' ? '#94a3b8' : '#0f172a',
+            fontWeight: status === 'pending' ? 600 : 500,
+          }}>{label}</span>
+          {badge && (
+            <span style={{
+              fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 999,
+              background: status === 'pending' ? '#dbeafe' : '#f1f5f9',
+              color: status === 'pending' ? '#1e40af' : '#64748b',
+              letterSpacing: '0.04em',
+            }}>{badge}</span>
+          )}
+        </div>
+        {hint && (
+          <div style={{
+            fontSize: 11, marginTop: 1,
+            color: status === 'idle' ? '#cbd5e1' : '#64748b',
+            lineHeight: 1.4,
+          }}>{hint}</div>
+        )}
+      </div>
       <style jsx>{`
         @keyframes sa-pulse {
           0%, 100% { opacity: 1; }

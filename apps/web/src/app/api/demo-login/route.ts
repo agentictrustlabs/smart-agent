@@ -87,6 +87,38 @@ export async function POST(request: Request) {
     console.warn('[demo-login] Community seed failed:', err)
   }
 
+  // Provision the holder wallet (idempotent) so AnonCreds-aware features
+  // — trust search, "Test verification", "Get {noun} credential" — work
+  // immediately without forcing the user to issue a credential first.
+  // The session cookie isn't readable inside this same request, so we
+  // pass principal + private key directly to the helper.
+  try {
+    const { provisionHolderWalletForDemoUser } = await import(
+      '@/lib/demo-seed/provision-holder-wallet'
+    )
+    const r = await provisionHolderWalletForDemoUser({
+      principal: `person_${userId}`,
+      privateKey: user.privateKey as `0x${string}`,
+    })
+    if (!r.ok) {
+      console.warn('[demo-login] Holder-wallet provision failed:', r.error)
+    }
+  } catch (err) {
+    console.warn('[demo-login] Holder-wallet provision threw:', err)
+  }
+
+  // KB write-through — the new person agent (and any community-seed
+  // edges that just landed on chain) need to be mirrored into GraphDB
+  // so /agents and other DiscoveryService-backed views see this user
+  // without a manual /api/ontology-sync. Debounced + idempotent —
+  // failures log and move on.
+  try {
+    const { scheduleKbSync } = await import('@/lib/ontology/kb-write-through')
+    scheduleKbSync()
+  } catch (err) {
+    console.warn('[demo-login] KB sync schedule threw:', err)
+  }
+
   const response = NextResponse.json({
     success: true,
     user: {

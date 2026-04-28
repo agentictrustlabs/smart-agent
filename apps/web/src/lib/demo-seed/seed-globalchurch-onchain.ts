@@ -12,8 +12,8 @@ import {
   ROLE_OWNER, ROLE_BOARD_MEMBER, ROLE_OPERATOR, ROLE_MEMBER,
   ROLE_UPSTREAM, ROLE_DOWNSTREAM,
   ATL_LATITUDE, ATL_LONGITUDE, ATL_SPATIAL_CRS, ATL_SPATIAL_TYPE, ATL_CONTROLLER,
-  ATL_CITY, ATL_REGION, ATL_COUNTRY,
   ATL_GENMAP_DATA, ATL_PRIMARY_NAME, ATL_NAME_LABEL,
+  GeoFeatureClient, GeoClaimClient, type GeoRelation,
   agentNameRegistryAbi, agentNameResolverAbi,
 } from '@smart-agent/sdk'
 import { agentAccountResolverAbi } from '@smart-agent/sdk'
@@ -80,15 +80,57 @@ async function setGeo(addr: `0x${string}`, lat: string, lon: string) {
   } catch (_e) { console.warn(`[gc-seed] Geo failed for ${addr}:`, _e) }
 }
 
-async function setCity(addr: `0x${string}`, city: string, region: string, country: string) {
+/** See seed-catalyst-onchain.ts for the design notes — same shape here. */
+async function mintGeoClaim(args: {
+  subject: `0x${string}`
+  cityKey: string
+  relation: GeoRelation
+  confidence: number
+}) {
   const wc = getWalletClient()
-  const resolver = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}`
-  if (!resolver) return
+  const pc = getPublicClient()
+  const featReg = process.env.GEO_FEATURE_REGISTRY_ADDRESS as `0x${string}` | undefined
+  const claimReg = process.env.GEO_CLAIM_REGISTRY_ADDRESS as `0x${string}` | undefined
+  if (!featReg || !claimReg) return
+  const [country, region, city] = args.cityKey.split('/')
+  const featureId = GeoFeatureClient.featureIdFor({ countryCode: country, region, city })
+  const featureClient = new GeoFeatureClient(pc, featReg)
+  const claimClient = new GeoClaimClient(pc, claimReg)
+
+  let version: bigint
   try {
-    await wc.writeContract({ address: resolver, abi: agentAccountResolverAbi, functionName: 'setStringProperty', args: [addr, ATL_CITY as `0x${string}`, city] })
-    await wc.writeContract({ address: resolver, abi: agentAccountResolverAbi, functionName: 'setStringProperty', args: [addr, ATL_REGION as `0x${string}`, region] })
-    await wc.writeContract({ address: resolver, abi: agentAccountResolverAbi, functionName: 'setStringProperty', args: [addr, ATL_COUNTRY as `0x${string}`, country] })
-  } catch (_e) { console.warn(`[gc-seed] City failed for ${addr}:`, _e) }
+    const latest = await featureClient.getLatest(featureId)
+    version = latest.version
+  } catch {
+    console.warn(`[gc-seed] feature ${args.cityKey} not published yet — skip claim for ${args.subject}`)
+    return
+  }
+  if (version === 0n) return
+
+  const nonceLabel = `seed:${args.subject.toLowerCase()}|${args.cityKey}|${args.relation}|v1`
+  const nonce = keccak256(toBytes(nonceLabel)) as `0x${string}`
+  const evidenceCommit = keccak256(toBytes(`evidence:${nonceLabel}`)) as `0x${string}`
+
+  try {
+    const hash = await claimClient.mint(wc, {
+      subjectAgent: args.subject,
+      issuer: args.subject,
+      featureId,
+      featureVersion: version,
+      relation: args.relation,
+      visibility: 'Public',
+      evidenceCommit,
+      confidence: args.confidence,
+      policyId: 'smart-agent.geo-overlap.v1',
+      nonce,
+    })
+    await pc.waitForTransactionReceipt({ hash })
+  } catch (_e) {
+    const msg = (_e as Error)?.message ?? ''
+    if (!/ClaimExists/.test(msg)) {
+      console.warn(`[gc-seed] geo-claim mint failed for ${args.subject} → ${args.cityKey}:`, msg.slice(0, 120))
+    }
+  }
 }
 
 async function setGenMapData(addr: `0x${string}`, data: string) {
@@ -223,33 +265,41 @@ async function doSeed() {
   await setGeo(smallGroups, '34.1758', '-118.3146')
   await setGeo(missionsTeam, '34.1762', '-118.3152')
 
-  // City tags — coarse-tier input for geo-overlap.v1.
-  console.log('[gc-seed] Setting city tags...')
-  await setCity(gcNetwork,    'Atlanta',     'Georgia',    'US')
-  await setCity(graceChurch,  'Sun Valley',  'California', 'US')
-  await setCity(sbc,          'Nashville',   'Tennessee',  'US')
-  await setCity(ecfa,         'Winchester',  'Virginia',   'US')
-  await setCity(wycliffe,     'Orlando',     'Florida',    'US')
-  await setCity(ncf,          'Alpharetta',  'Georgia',    'US')
-  await setCity(youthMinistry,  'Sun Valley',  'California', 'US')
-  await setCity(smallGroups,    'Sun Valley',  'California', 'US')
-  await setCity(missionsTeam,   'Sun Valley',  'California', 'US')
+  // Geo affiliation — Public GeoClaims (operatesIn / residentOf) bind
+  // each Global Church agent to its city's `.geo` feature.
+  console.log('[gc-seed] Minting geo claims...')
+  await mintGeoClaim({ subject: gcNetwork,     cityKey: 'us/georgia/atlanta',       relation: 'operatesIn', confidence: 100 })
+  await mintGeoClaim({ subject: graceChurch,   cityKey: 'us/california/sunvalley',  relation: 'operatesIn', confidence: 100 })
+  await mintGeoClaim({ subject: sbc,           cityKey: 'us/tennessee/nashville',   relation: 'operatesIn', confidence: 100 })
+  await mintGeoClaim({ subject: ecfa,          cityKey: 'us/virginia/winchester',   relation: 'operatesIn', confidence: 100 })
+  await mintGeoClaim({ subject: wycliffe,      cityKey: 'us/florida/orlando',       relation: 'operatesIn', confidence: 100 })
+  await mintGeoClaim({ subject: ncf,           cityKey: 'us/georgia/alpharetta',    relation: 'operatesIn', confidence: 100 })
+  await mintGeoClaim({ subject: youthMinistry, cityKey: 'us/california/sunvalley',  relation: 'operatesIn', confidence: 100 })
+  await mintGeoClaim({ subject: smallGroups,   cityKey: 'us/california/sunvalley',  relation: 'operatesIn', confidence: 100 })
+  await mintGeoClaim({ subject: missionsTeam,  cityKey: 'us/california/sunvalley',  relation: 'operatesIn', confidence: 100 })
 
   // Person agents — distribute the demo users across the org cities so
   // shared-city scoring exercises pairs both within and across hubs.
-  const gcPersonCities: Array<[string, string, string, string]> = [
-    ['gc-user-001', 'Sun Valley', 'California', 'US'],  // Pastor James
-    ['gc-user-002', 'Nashville',  'Tennessee',  'US'],  // Sarah Mitchell
-    ['gc-user-003', 'Winchester', 'Virginia',   'US'],  // Dan Busby
-    ['gc-user-004', 'Orlando',    'Florida',    'US'],  // John Chesnut
-    ['gc-user-005', 'Alpharetta', 'Georgia',    'US'],  // David Wills
-    ['gc-user-006', 'Sun Valley', 'California', 'US'],  // Mike Thompson
-    ['gc-user-007', 'Sun Valley', 'California', 'US'],  // Janet Wilson
-    ['gc-user-008', 'Sun Valley', 'California', 'US'],  // Marcus Lee
+  const gcPersonGeo: Array<[string, string]> = [
+    ['gc-user-001', 'us/california/sunvalley'], // Pastor James
+    ['gc-user-002', 'us/tennessee/nashville'],  // Sarah Mitchell
+    ['gc-user-003', 'us/virginia/winchester'],  // Dan Busby
+    ['gc-user-004', 'us/florida/orlando'],      // John Chesnut
+    ['gc-user-005', 'us/georgia/alpharetta'],   // David Wills
+    ['gc-user-006', 'us/california/sunvalley'], // Mike Thompson
+    ['gc-user-007', 'us/california/sunvalley'], // Janet Wilson
+    ['gc-user-008', 'us/california/sunvalley'], // Marcus Lee
   ]
-  for (const [uid, city, region, country] of gcPersonCities) {
+  for (const [uid, cityKey] of gcPersonGeo) {
     const u = userMap.get(uid)
-    if (u?.personAgentAddress) await setCity(u.personAgentAddress as `0x${string}`, city, region, country)
+    if (u?.personAgentAddress) {
+      await mintGeoClaim({
+        subject: u.personAgentAddress as `0x${string}`,
+        cityKey,
+        relation: 'residentOf',
+        confidence: 90,
+      })
+    }
   }
 
   // ─── GenMap Health Data ───────────────────────────────────────────

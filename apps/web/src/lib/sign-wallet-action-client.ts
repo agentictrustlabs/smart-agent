@@ -145,5 +145,19 @@ export async function signWalletActionClient(
     return ('0x01' + passkeySig.slice(2)) as `0x${string}`
   }
 
+  if (signer.kind === 'eoa') {
+    // Demo users (and other EOA-keyed accounts) have a server-stored
+    // private key. There's no wallet UI to pop — we round-trip to the
+    // server, sign with the holder's EOA key, and return the signature.
+    const { signWalletActionAsCurrentEoa } = await import(
+      '@/lib/actions/ssi/sign-action.action'
+    )
+    const r = await signWalletActionAsCurrentEoa(action)
+    if (r.error || !r.signature) {
+      throw new Error(r.error ?? 'EOA server signing failed')
+    }
+    return r.signature
+  }
+
   throw new Error(`signer kind '${signer.kind}' is server-side only`)
 }

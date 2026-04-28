@@ -117,12 +117,31 @@ const REL_LABEL_BY_HASH: Record<string, GeoRelation> = Object.fromEntries(
 
 const VIS_LABELS = ['Public', 'PublicCoarse', 'PrivateCommitment', 'PrivateZk', 'OffchainOnly'] as const
 
+/**
+ * List public geo locations for any on-chain agent address. Used by
+ * the agent viewer page to show "Geo Locations" for Person + Organization
+ * agents alongside Granted Authority and Reviews.
+ *
+ * Visibility: this reads only `GeoClaimRegistry` rows that are publicly
+ * indexed (anyone can call `claimsBySubject`). Holder-vault credentials
+ * are NEVER surfaced through this path.
+ */
+export async function listGeoLocationsForAgentAction(
+  agentAddr: `0x${string}`,
+): Promise<MyGeoClaimRow[]> {
+  return readGeoClaimsForSubject(agentAddr)
+}
+
 /** List the caller's public geo claims, with feature label resolved via metadataURI. */
 export async function listMyGeoClaimsAction(): Promise<MyGeoClaimRow[]> {
   const me = await getCurrentUser()
   if (!me) return []
   const personAgent = (await getPersonAgentForUser(me.id)) as `0x${string}` | null
   if (!personAgent) return []
+  return readGeoClaimsForSubject(personAgent)
+}
+
+async function readGeoClaimsForSubject(subject: `0x${string}`): Promise<MyGeoClaimRow[]> {
   const claimReg = process.env.GEO_CLAIM_REGISTRY_ADDRESS as `0x${string}` | undefined
   const featReg  = process.env.GEO_FEATURE_REGISTRY_ADDRESS as `0x${string}` | undefined
   if (!claimReg || !featReg) return []
@@ -132,7 +151,7 @@ export async function listMyGeoClaimsAction(): Promise<MyGeoClaimRow[]> {
   try {
     claimIds = (await client.readContract({
       address: claimReg, abi: geoClaimRegistryAbi,
-      functionName: 'claimsBySubject', args: [personAgent],
+      functionName: 'claimsBySubject', args: [subject],
     })) as `0x${string}`[]
   } catch { return [] }
 

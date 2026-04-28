@@ -7,7 +7,7 @@ import {
   agentValidationProfileAbi, agentTrustProfileAbi, agentDisputeRecordAbi,
   agentAccountResolverAbi,
   roleName, relationshipTypeName,
-  
+
   ATL_CAPABILITY, ATL_SUPPORTED_TRUST, ATL_A2A_ENDPOINT, ATL_MCP_SERVER,
   TYPE_PERSON, TYPE_ORGANIZATION, TYPE_AI_AGENT,
 } from '@smart-agent/sdk'
@@ -319,6 +319,21 @@ export default async function AgentSettingsPage({
     }
   }
 
+  // ─── Geo locations (Person + Organization only) ───────────────────
+  // Public on-chain `GeoClaimRegistry` rows for this agent. Anyone can
+  // read these — they're the public side of the geo model. Vault-only
+  // `GeoLocationCredential`s never appear here.
+  const geoLocations = (agentType === 'person' || agentType === 'org')
+    ? await (async () => {
+        try {
+          const { listGeoLocationsForAgentAction } = await import('@/lib/actions/geo-claim.action')
+          return await listGeoLocationsForAgentAction(agentAddress)
+        } catch {
+          return []
+        }
+      })()
+    : []
+
   // ─── Helpers ───────────────────────────────────────────────────────
   const typeLabel = agentType === 'ai' ? 'AI Agent' : agentType === 'org' ? 'Organization' : 'Person Agent'
   const aiSubtype = agentMeta.aiAgentClass || null
@@ -564,6 +579,55 @@ export default async function AgentSettingsPage({
           </div>
         )}
       </section>
+
+      {/* ─── Geo Locations (public on-chain) ───────────────────────── */}
+      {(agentType === 'person' || agentType === 'org') && (
+        <section data-component="graph-section">
+          <h2>Geo Locations ({geoLocations.length})</h2>
+          <p style={{ fontSize: '0.85rem', color: '#616161', marginBottom: '1rem' }}>
+            Public on-chain bindings between this agent and a <code>.geo</code> feature
+            (residentOf, operatesIn, servesWithin, …). Visible to anyone reading the
+            geo registry. Private vault-only credentials are <b>not</b> shown here.
+          </p>
+
+          {geoLocations.length === 0 ? (
+            <p data-component="text-muted">
+              No public geo locations published.
+              {agentType === 'person' && ' (Add one from the My Public Locations panel on the dashboard.)'}
+            </p>
+          ) : (
+            <table data-component="graph-table">
+              <thead>
+                <tr>
+                  <th>Feature</th>
+                  <th>Relation</th>
+                  <th>Visibility</th>
+                  <th>Confidence</th>
+                  <th>Created</th>
+                </tr>
+              </thead>
+              <tbody>
+                {geoLocations.map(loc => (
+                  <tr key={loc.claimId} style={loc.revoked ? { opacity: 0.6, background: '#fef2f2' } : undefined}>
+                    <td>
+                      <Link href={`/geo/${loc.featureId}`} style={{ color: '#1565c0' }}>
+                        {loc.featureLabel}
+                      </Link>
+                    </td>
+                    <td><code>{String(loc.relation).replace(/^geo:/, '')}</code></td>
+                    <td>{loc.visibility}</td>
+                    <td>{loc.confidence}%</td>
+                    <td>
+                      {new Date(loc.createdAt * 1000).toLocaleDateString()}
+                      {loc.revoked && <span style={{ color: '#b91c1c', marginLeft: 6 }}>· revoked</span>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </section>
+      )}
 
       {/* ─── Reviews ───────────────────────────────────────────────── */}
       <section data-component="graph-section">

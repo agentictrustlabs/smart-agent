@@ -114,27 +114,28 @@ export function triggerBootSeed(): Promise<void> {
         ensureCommunityUsers('cil-user-'),
       ])
 
-      // 2. Seed each hub's on-chain orgs + relationships in parallel for
-      //    the same reason. Each hub seed has its own per-hub lock that
-      //    short-circuits double-entry, so calling them simultaneously is
-      //    safe even if a poll re-trigger lands mid-flight.
-      state.phase = 'on-chain seed: all hubs'
-      await Promise.all([
-        seedGlobalChurchOnChain(),
-        seedCatalystOnChain(),
-        seedCILOnChain(),
-      ])
-
-      // 2b. Geo features + .geo name tree.
-      //     Runs after the hub seeds because city tags on agents are
-      //     useful even if the GeoFeatureRegistry write fails (the
-      //     coarse-tier of geo-overlap.v1 only needs ATL_CITY).
+      // 2a. Geo features + .geo name tree first — hub seeds mint
+      //     `residentOf` / `operatesIn` GeoClaims that pin a feature
+      //     version, so the features must already exist by the time the
+      //     hub seed runs.
       state.phase = 'on-chain seed: geo features'
       try {
         await seedGeoOnChain()
       } catch (e) {
         console.warn('[boot-seed] geo seed error (non-fatal):', (e as Error).message)
       }
+
+      // 2b. Seed each hub's on-chain orgs + relationships sequentially.
+      //     We used to run these in parallel, but every seed now mints
+      //     ~30 GeoClaims with the same deployer key — viem's nonce
+      //     manager can't keep three concurrent batches in lockstep, and
+      //     the pre-flight balance funding races trip "nonce too low"
+      //     reverts. Per-hub locks make sequential safe under poll
+      //     re-triggers.
+      state.phase = 'on-chain seed: all hubs'
+      await seedGlobalChurchOnChain()
+      await seedCatalystOnChain()
+      await seedCILOnChain()
 
       // 3. Push fresh on-chain state into the GraphDB KB so the /agents
       //    directory + KPI counters reflect today's deploy. Subsequent edge

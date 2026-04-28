@@ -12,8 +12,8 @@ import {
   ROLE_OWNER, ROLE_BOARD_MEMBER, ROLE_OPERATOR, ROLE_MEMBER,
   ROLE_STRATEGIC_PARTNER, ROLE_UPSTREAM, ROLE_DOWNSTREAM,
   ATL_LATITUDE, ATL_LONGITUDE, ATL_SPATIAL_CRS, ATL_SPATIAL_TYPE, ATL_CONTROLLER,
-  ATL_CITY, ATL_REGION, ATL_COUNTRY,
   ATL_GENMAP_DATA, ATL_PRIMARY_NAME, ATL_NAME_LABEL,
+  GeoFeatureClient, GeoClaimClient, type GeoRelation,
   agentNameRegistryAbi, agentNameResolverAbi,
 } from '@smart-agent/sdk'
 import { agentAccountResolverAbi } from '@smart-agent/sdk'
@@ -80,15 +80,57 @@ async function setGeo(addr: `0x${string}`, lat: string, lon: string) {
   } catch (_e) { console.warn(`[cil-seed] Geo failed for ${addr}:`, _e) }
 }
 
-async function setCity(addr: `0x${string}`, city: string, region: string, country: string) {
+/** See seed-catalyst-onchain.ts for the design notes — same shape here. */
+async function mintGeoClaim(args: {
+  subject: `0x${string}`
+  cityKey: string
+  relation: GeoRelation
+  confidence: number
+}) {
   const wc = getWalletClient()
-  const resolver = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}`
-  if (!resolver) return
+  const pc = getPublicClient()
+  const featReg = process.env.GEO_FEATURE_REGISTRY_ADDRESS as `0x${string}` | undefined
+  const claimReg = process.env.GEO_CLAIM_REGISTRY_ADDRESS as `0x${string}` | undefined
+  if (!featReg || !claimReg) return
+  const [country, region, city] = args.cityKey.split('/')
+  const featureId = GeoFeatureClient.featureIdFor({ countryCode: country, region, city })
+  const featureClient = new GeoFeatureClient(pc, featReg)
+  const claimClient = new GeoClaimClient(pc, claimReg)
+
+  let version: bigint
   try {
-    await wc.writeContract({ address: resolver, abi: agentAccountResolverAbi, functionName: 'setStringProperty', args: [addr, ATL_CITY as `0x${string}`, city] })
-    await wc.writeContract({ address: resolver, abi: agentAccountResolverAbi, functionName: 'setStringProperty', args: [addr, ATL_REGION as `0x${string}`, region] })
-    await wc.writeContract({ address: resolver, abi: agentAccountResolverAbi, functionName: 'setStringProperty', args: [addr, ATL_COUNTRY as `0x${string}`, country] })
-  } catch (_e) { console.warn(`[cil-seed] City failed for ${addr}:`, _e) }
+    const latest = await featureClient.getLatest(featureId)
+    version = latest.version
+  } catch {
+    console.warn(`[cil-seed] feature ${args.cityKey} not published yet — skip claim for ${args.subject}`)
+    return
+  }
+  if (version === 0n) return
+
+  const nonceLabel = `seed:${args.subject.toLowerCase()}|${args.cityKey}|${args.relation}|v1`
+  const nonce = keccak256(toBytes(nonceLabel)) as `0x${string}`
+  const evidenceCommit = keccak256(toBytes(`evidence:${nonceLabel}`)) as `0x${string}`
+
+  try {
+    const hash = await claimClient.mint(wc, {
+      subjectAgent: args.subject,
+      issuer: args.subject,
+      featureId,
+      featureVersion: version,
+      relation: args.relation,
+      visibility: 'Public',
+      evidenceCommit,
+      confidence: args.confidence,
+      policyId: 'smart-agent.geo-overlap.v1',
+      nonce,
+    })
+    await pc.waitForTransactionReceipt({ hash })
+  } catch (_e) {
+    const msg = (_e as Error)?.message ?? ''
+    if (!/ClaimExists/.test(msg)) {
+      console.warn(`[cil-seed] geo-claim mint failed for ${args.subject} → ${args.cityKey}:`, msg.slice(0, 120))
+    }
+  }
 }
 
 async function setGenMapData(addr: `0x${string}`, data: string) {
@@ -227,22 +269,31 @@ async function doSeed() {
   await setGeo(wave1,       '6.1300',  '1.2280')
   await setGeo(wave2,       '6.1360',  '1.2190')
 
-  // City tags — coarse-tier input for geo-overlap.v1.
-  console.log('[cil-seed] Setting city tags...')
-  await setCity(cil,         'New York',  'New York',  'US')
-  await setCity(ilad,        'Lomé',      'Maritime',  'TG')
-  await setCity(ravah,       'Lomé',      'Maritime',  'TG')
-  await setCity(afiaMarket,  'Lomé',      'Maritime',  'TG')
-  await setCity(kossiRepair, 'Lomé',      'Maritime',  'TG')
-  await setCity(lomeCluster,     'Lomé',      'Maritime',  'TG')
-  await setCity(wave1,       'Lomé',      'Maritime',  'TG')
-  await setCity(wave2,       'Lomé',      'Maritime',  'TG')
+  // Geo affiliation — Public GeoClaims (operatesIn / residentOf) bind
+  // each CIL agent to its city's `.geo` feature. See seed-catalyst-onchain
+  // for the design notes (replaces the legacy atl:city/region/country path).
+  console.log('[cil-seed] Minting geo claims...')
+  await mintGeoClaim({ subject: cil,         cityKey: 'us/newyork/newyork', relation: 'operatesIn', confidence: 100 })
+  await mintGeoClaim({ subject: ilad,        cityKey: 'tg/maritime/lome',   relation: 'operatesIn', confidence: 100 })
+  await mintGeoClaim({ subject: ravah,       cityKey: 'tg/maritime/lome',   relation: 'operatesIn', confidence: 100 })
+  await mintGeoClaim({ subject: afiaMarket,  cityKey: 'tg/maritime/lome',   relation: 'operatesIn', confidence: 100 })
+  await mintGeoClaim({ subject: kossiRepair, cityKey: 'tg/maritime/lome',   relation: 'operatesIn', confidence: 100 })
+  await mintGeoClaim({ subject: lomeCluster, cityKey: 'tg/maritime/lome',   relation: 'operatesIn', confidence: 100 })
+  await mintGeoClaim({ subject: wave1,       cityKey: 'tg/maritime/lome',   relation: 'operatesIn', confidence: 100 })
+  await mintGeoClaim({ subject: wave2,       cityKey: 'tg/maritime/lome',   relation: 'operatesIn', confidence: 100 })
 
   // Person agents — every CIL demo user is anchored in Lomé so the
   // panel scores same-city rich-overlap among the cohort, with cross-
   // hub trust (NYC) emerging only via shared org memberships.
   for (const u of cilUsers) {
-    if (u.personAgentAddress) await setCity(u.personAgentAddress as `0x${string}`, 'Lomé', 'Maritime', 'TG')
+    if (u.personAgentAddress) {
+      await mintGeoClaim({
+        subject: u.personAgentAddress as `0x${string}`,
+        cityKey: 'tg/maritime/lome',
+        relation: 'residentOf',
+        confidence: 90,
+      })
+    }
   }
 
   // ─── GenMap Health Data ───────────────────────────────────────────

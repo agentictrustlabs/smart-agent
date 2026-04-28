@@ -12,11 +12,23 @@ import {
   agentRelationshipAbi,
   agentAccountResolverAbi,
   HAS_MEMBER,
+  ORGANIZATION_MEMBERSHIP,
+  ORGANIZATION_GOVERNANCE,
   TYPE_ORGANIZATION,
 } from '@smart-agent/sdk'
 import { config } from '../config.js'
 
-const HAS_MEMBER_HEX = (HAS_MEMBER as string).toLowerCase()
+/**
+ * Relationship-type hashes that count as "agent is affiliated with this
+ * Organization" for org-overlap scoring. Mirrors the same set in the
+ * web action's `getPublicOrgsForAgent`. We accept either edge direction
+ * so seeds and signups that pick different directions still match.
+ */
+const ORG_AFFILIATION_HEXES = new Set([
+  (HAS_MEMBER as string).toLowerCase(),
+  (ORGANIZATION_MEMBERSHIP as string).toLowerCase(),
+  (ORGANIZATION_GOVERNANCE as string).toLowerCase(),
+])
 
 let _client: PublicClient | null = null
 function client(): PublicClient {
@@ -40,9 +52,12 @@ function resolverAddr(): `0x${string}` | null {
 }
 
 /**
- * Active or confirmed HAS_MEMBER edges where the candidate is the object
- * (the member) and the subject is an Organization. Returns lowercase
- * 0x-addresses of the Org subjects.
+ * Active or confirmed affiliation edges between a person agent and an
+ * active Organization. Counts HAS_MEMBER (org → person), ORGANIZATION_
+ * MEMBERSHIP (either direction), and ORGANIZATION_GOVERNANCE (person →
+ * org, owner-style) — owners are clearly affiliated.
+ *
+ * Returns lowercase 0x-addresses of the Org counterparties (deduped).
  */
 export async function getOnChainOrgsForPrincipal(principal: `0x${string}`): Promise<string[]> {
   const rel = relationshipAddr()
@@ -50,39 +65,59 @@ export async function getOnChainOrgsForPrincipal(principal: `0x${string}`): Prom
   if (!rel || !res) return []
   const c = client()
 
-  let edgeIds: `0x${string}`[]
-  try {
-    edgeIds = (await c.readContract({
-      address: rel,
-      abi: agentRelationshipAbi,
-      functionName: 'getEdgesByObject',
-      args: [principal],
-    })) as `0x${string}`[]
-  } catch { return [] }
+  const orgs = new Set<string>()
 
-  const out: string[] = []
-  for (const id of edgeIds) {
+  async function pushIfOrg(counterparty: `0x${string}`): Promise<void> {
     try {
-      const edge = await c.readContract({
-        address: rel,
-        abi: agentRelationshipAbi,
-        functionName: 'getEdge',
-        args: [id],
-      }) as { subject: `0x${string}`; relationshipType: `0x${string}`; status: number }
-      if (edge.status < 2) continue
-      if ((edge.relationshipType ?? '').toLowerCase() !== HAS_MEMBER_HEX) continue
       const core = await c.readContract({
-        address: res,
-        abi: agentAccountResolverAbi,
-        functionName: 'getCore',
-        args: [edge.subject],
+        address: res!, abi: agentAccountResolverAbi,
+        functionName: 'getCore', args: [counterparty],
       }) as { agentType: `0x${string}`; active: boolean }
       if (core.agentType === TYPE_ORGANIZATION && core.active) {
-        out.push(edge.subject.toLowerCase())
+        orgs.add(counterparty.toLowerCase())
       }
-    } catch { /* skip bad edge */ }
+    } catch { /* skip */ }
   }
-  return out
+
+  // Incoming: principal is OBJECT, subject is the candidate counterparty.
+  try {
+    const incoming = await c.readContract({
+      address: rel, abi: agentRelationshipAbi,
+      functionName: 'getEdgesByObject', args: [principal],
+    }) as `0x${string}`[]
+    for (const id of incoming) {
+      try {
+        const edge = await c.readContract({
+          address: rel, abi: agentRelationshipAbi,
+          functionName: 'getEdge', args: [id],
+        }) as { subject: `0x${string}`; object_: `0x${string}`; relationshipType: `0x${string}`; status: number }
+        if (edge.status < 2) continue
+        if (!ORG_AFFILIATION_HEXES.has((edge.relationshipType ?? '').toLowerCase())) continue
+        await pushIfOrg(edge.subject)
+      } catch { /* skip */ }
+    }
+  } catch { /* */ }
+
+  // Outgoing: principal is SUBJECT, object is the candidate counterparty.
+  try {
+    const outgoing = await c.readContract({
+      address: rel, abi: agentRelationshipAbi,
+      functionName: 'getEdgesBySubject', args: [principal],
+    }) as `0x${string}`[]
+    for (const id of outgoing) {
+      try {
+        const edge = await c.readContract({
+          address: rel, abi: agentRelationshipAbi,
+          functionName: 'getEdge', args: [id],
+        }) as { subject: `0x${string}`; object_: `0x${string}`; relationshipType: `0x${string}`; status: number }
+        if (edge.status < 2) continue
+        if (!ORG_AFFILIATION_HEXES.has((edge.relationshipType ?? '').toLowerCase())) continue
+        await pushIfOrg(edge.object_)
+      } catch { /* skip */ }
+    }
+  } catch { /* */ }
+
+  return Array.from(orgs)
 }
 
 /**
