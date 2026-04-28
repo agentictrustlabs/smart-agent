@@ -229,6 +229,28 @@ export async function prepareTrustSearch(opts: { query?: string; limit?: number 
     }
   }
 
+  // Stage-B′ (held-credential overlap): if the caller holds AnonCred geo
+  // credentials, intersect their (featureId, relation) pairs with each
+  // candidate's public on-chain geo claims. The held credentials never
+  // leave the wallet — we only use them locally to compute the score
+  // contribution, exactly the way the org-overlap path uses
+  // listCredentialMetadata membership credentials. Without this, a user
+  // who has a held "residentOf loveland" credential but no public
+  // lat/lon set gets zero geo score from candidates also located in
+  // Loveland — which is what just bit rich20.
+  const callerHeldGeo = await getCallerHeldGeoFeatures(principal)
+  if (callerHeldGeo.length > 0) {
+    for (const c of candidates) {
+      const matched = await matchHeldGeoAgainstCandidate({
+        candidate: c.meta.address,
+        callerHeldGeo,
+      })
+      if (matched.length > 0) {
+        c.meta.geoMatchedClaims = [...(c.meta.geoMatchedClaims ?? []), ...matched]
+      }
+    }
+  }
+
   return {
     status: 'ready',
     holderWalletId,
@@ -761,6 +783,114 @@ async function matchedGeoClaimsForCandidate(args: {
         confidence: claim.confidence,
         issuedAt: new Date(Number(claim.createdAt) * 1000).toISOString(),
         issuerTrust: 0.5, // self-asserted default
+        visibility: claim.visibility === GEO_VISIBILITY.PublicCoarse ? 'PublicCoarse' : 'Public',
+      })
+    } catch { /* skip bad row */ }
+  }
+  return out
+}
+
+/**
+ * Read the caller's held AnonCred geo credentials and project to
+ * { featureId, relation, confidence } tuples. Anything without a
+ * featureId attribute (legacy credential format, or non-geo type
+ * misclassified as geo) is dropped.
+ *
+ * Privacy: this lookup is local to the holder's own person-mcp; the
+ * featureIds never leave this server. They get used only to compute
+ * a numeric score contribution against each candidate's PUBLIC claim
+ * set. The matched relations end up in `geoExplanation` for the
+ * caller to review — they don't leak in the score wire format.
+ */
+interface HeldGeoFeature {
+  featureId: `0x${string}`
+  relation: string  // human label, lower-case
+  confidence: number
+}
+
+async function getCallerHeldGeoFeatures(principal: string): Promise<HeldGeoFeature[]> {
+  try {
+    const list = await person.callTool<{ credentials: Array<{
+      id: string; credentialType: string
+    }> }>('ssi_list_my_credentials', { principal })
+    const geoRows = list.credentials.filter(c =>
+      /geolocation|geo[_-]?credential|residency|residentof|operatesin/i.test(c.credentialType),
+    )
+    if (geoRows.length === 0) return []
+
+    const out: HeldGeoFeature[] = []
+    for (const row of geoRows) {
+      try {
+        const detail = await person.callTool<{
+          credential?: { attributes?: Record<string, string> }
+        }>('ssi_get_credential_details', { principal, credentialId: row.id })
+        const attrs = detail.credential?.attributes ?? {}
+        const featureId = (attrs.featureId ?? '').toLowerCase()
+        if (!/^0x[0-9a-f]{64}$/.test(featureId)) continue
+        const relation = (attrs.relation ?? '').toLowerCase()
+        if (!relation) continue
+        const confidence = Math.max(0, Math.min(100, Number(attrs.confidence ?? '50')))
+        out.push({ featureId: featureId as `0x${string}`, relation, confidence })
+      } catch { /* skip bad row */ }
+    }
+    return out
+  } catch {
+    return []
+  }
+}
+
+/**
+ * For one candidate: fetch their public geo claims and intersect with
+ * the caller's held featureIds. Each match becomes a GeoClaimInput row
+ * tagged with the matched relation so geoOverlapScore picks it up the
+ * same way as Stage-B claims.
+ */
+async function matchHeldGeoAgainstCandidate(args: {
+  candidate: `0x${string}`
+  callerHeldGeo: HeldGeoFeature[]
+}): Promise<GeoClaimInput[]> {
+  const claimReg = process.env.GEO_CLAIM_REGISTRY_ADDRESS as `0x${string}` | undefined
+  if (!claimReg) return []
+  await ensureRelationLookup()
+  const client = getPublicClient()
+
+  let claimIds: `0x${string}`[] = []
+  try {
+    claimIds = (await client.readContract({
+      address: claimReg, abi: geoClaimRegistryAbi,
+      functionName: 'claimsBySubject', args: [args.candidate],
+    })) as `0x${string}`[]
+  } catch { return [] }
+
+  const heldByFeature = new Map<string, HeldGeoFeature>()
+  for (const f of args.callerHeldGeo) heldByFeature.set(f.featureId.toLowerCase(), f)
+
+  const out: GeoClaimInput[] = []
+  for (const cid of claimIds) {
+    try {
+      const claim = (await client.readContract({
+        address: claimReg, abi: geoClaimRegistryAbi,
+        functionName: 'getClaim', args: [cid],
+      })) as {
+        relation: `0x${string}`; visibility: number; revoked: boolean
+        confidence: number; featureId: `0x${string}`; featureVersion: bigint
+        createdAt: bigint
+      }
+      if (claim.revoked) continue
+      if (claim.visibility !== GEO_VISIBILITY.Public && claim.visibility !== GEO_VISIBILITY.PublicCoarse) continue
+      const fid = claim.featureId.toLowerCase()
+      const held = heldByFeature.get(fid)
+      if (!held) continue
+      // Optional relation match: if the held credential's relation differs
+      // from the candidate's claim relation, still count but with reduced
+      // weight via confidence floor. Same featureId already implies real
+      // geographic overlap.
+      const relLabel = RELATION_HASH_TO_LABEL[claim.relation.toLowerCase()] ?? held.relation
+      out.push({
+        relation: relLabel,
+        confidence: Math.min(claim.confidence, held.confidence),
+        issuedAt: new Date(Number(claim.createdAt) * 1000).toISOString(),
+        issuerTrust: 0.5,
         visibility: claim.visibility === GEO_VISIBILITY.PublicCoarse ? 'PublicCoarse' : 'Public',
       })
     } catch { /* skip bad row */ }

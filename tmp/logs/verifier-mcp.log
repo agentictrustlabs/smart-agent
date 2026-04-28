@@ -6,3 +6,19 @@
 [verifier-mcp] listening on http://localhost:3700
 <-- GET /health
 --> GET /health [32m200[0m 0ms
+<-- POST /verify/GeoLocationCredential/request
+--> POST /verify/GeoLocationCredential/request [32m200[0m 78ms
+<-- POST /verify/GeoLocationCredential/request
+--> POST /verify/GeoLocationCredential/request [32m200[0m 2ms
+<-- POST /verify/GeoLocationCredential/request
+--> POST /verify/GeoLocationCredential/request [32m200[0m 1ms
+<-- POST /verify/GeoLocationCredential/check
+--> POST /verify/GeoLocationCredential/check [32m200[0m 199ms
+<-- POST /verify/GeoLocationCredential/request
+--> POST /verify/GeoLocationCredential/request [32m200[0m 2ms
+<-- POST /verify/OrgMembershipCredential/request
+--> POST /verify/OrgMembershipCredential/request [32m200[0m 1ms
+<-- POST /verify/OrgMembershipCredential/check
+--> POST /verify/OrgMembershipCredential/check [32m200[0m 138ms
+<-- POST /verify/OrgMembershipCredential/request
+--> POST /verify/OrgMembershipCredential/request [32m200[0m 1ms

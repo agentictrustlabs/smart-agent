@@ -59141,3 +59141,3596 @@ Version: viem@2.47.10
 [deployer-lock] #3516 acquired after 0ms
 [deployer-lock] #3516 fn done in 27ms
 [deployer-lock] #3516 released (held 28ms)
+[deployer-lock] #3517 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #3517 acquired after 1ms
+[deployer-lock] #3517 fn done in 24ms
+[deployer-lock] #3517 released (held 25ms)
+[deployer-lock] #3518 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3518 acquired after 1ms
+[deployer-lock] #3518 fn done in 35ms
+[deployer-lock] #3518 released (held 36ms)
+[deployer-lock] #3519 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3519 acquired after 0ms
+[deployer-lock] #3519 fn done in 23ms
+[deployer-lock] #3519 released (held 23ms)
+[deployer-lock] #3520 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3520 acquired after 0ms
+[deployer-lock] #3520 fn done in 24ms
+[deployer-lock] #3520 released (held 24ms)
+[deployer-lock] #3521 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #3521 acquired after 1ms
+[deployer-lock] #3521 fn done in 31ms
+[deployer-lock] #3521 released (held 33ms)
+[deployer-lock] #3522 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3522 acquired after 1ms
+[deployer-lock] #3522 fn done in 38ms
+[deployer-lock] #3522 released (held 40ms)
+[deployer-lock] #3523 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3523 acquired after 0ms
+[deployer-lock] #3523 fn done in 24ms
+[deployer-lock] #3523 released (held 25ms)
+[deployer-lock] #3524 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3524 acquired after 0ms
+[deployer-lock] #3524 fn done in 24ms
+[deployer-lock] #3524 released (held 24ms)
+[deployer-lock] #3525 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #3525 acquired after 0ms
+[deployer-lock] #3525 fn done in 69ms
+[deployer-lock] #3525 released (held 69ms)
+[deployer-lock] #3526 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3526 acquired after 0ms
+[deployer-lock] #3527 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3528 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3529 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3530 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3531 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3532 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3533 writeContract(makeAssertion) queued (depth=1)
+[catalyst-seed] Naming hierarchy created
+[catalyst-seed] Creating data access delegation: Ana → Maria
+[deployer-lock] #3534 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3535 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3536 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3526 fn done in 5477ms
+[deployer-lock] #3526 released (held 5478ms)
+[deployer-lock] #3527 acquired after 5366ms
+[deployer-lock] #3537 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3538 writeContract(setEdgeStatus) queued (depth=1)
+ GET /api/boot-seed 200 in 11745ms
+[deployer-lock] #3527 fn done in 866ms
+[deployer-lock] #3527 released (held 6233ms)
+[deployer-lock] #3528 acquired after 5949ms
+[deployer-lock] #3528 fn done in 154ms
+[deployer-lock] #3528 released (held 6104ms)
+[deployer-lock] #3529 acquired after 5213ms
+ GET /api/system-readiness 200 in 108ms
+[deployer-lock] #3529 fn done in 150ms
+[deployer-lock] #3529 released (held 5363ms)
+[deployer-lock] #3530 acquired after 5341ms
+[deployer-lock] #3530 fn done in 112ms
+[deployer-lock] #3530 released (held 5454ms)
+[deployer-lock] #3531 acquired after 5128ms
+[deployer-lock] #3531 fn done in 131ms
+[deployer-lock] #3531 released (held 5259ms)
+[deployer-lock] #3532 acquired after 5233ms
+[deployer-lock] #3532 fn done in 107ms
+[deployer-lock] #3532 released (held 5341ms)
+[deployer-lock] #3533 acquired after 5324ms
+[deployer-lock] #3533 fn done in 109ms
+[deployer-lock] #3533 released (held 5434ms)
+[deployer-lock] #3534 acquired after 2667ms
+[deployer-lock] #3534 fn done in 98ms
+[deployer-lock] #3534 released (held 2765ms)
+[deployer-lock] #3535 acquired after 2450ms
+[deployer-lock] #3535 fn done in 117ms
+[deployer-lock] #3535 released (held 2567ms)
+[deployer-lock] #3536 acquired after 1904ms
+[deployer-lock] #3536 fn done in 115ms
+[deployer-lock] #3536 released (held 2020ms)
+[deployer-lock] #3537 acquired after 1191ms
+[deployer-lock] #3537 fn done in 102ms
+[deployer-lock] #3537 released (held 1293ms)
+[deployer-lock] #3538 acquired after 1279ms
+[deployer-lock] #3538 fn done in 110ms
+[deployer-lock] #3538 released (held 1389ms)
+[deployer-lock] #3539 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3539 acquired after 0ms
+[deployer-lock] #3539 fn done in 22ms
+[deployer-lock] #3539 released (held 22ms)
+ POST /h/catalyst 200 in 34200ms
+ GET /api/boot-seed 200 in 76ms
+[deployer-lock] #3540 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3540 acquired after 1ms
+[deployer-lock] #3541 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3542 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3540 fn done in 102ms
+[deployer-lock] #3540 released (held 104ms)
+[deployer-lock] #3541 acquired after 15ms
+ GET /api/system-readiness 200 in 126ms
+[deployer-lock] #3541 fn done in 133ms
+[deployer-lock] #3541 released (held 148ms)
+[deployer-lock] #3542 acquired after 147ms
+[deployer-lock] #3543 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3544 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3542 fn done in 116ms
+[deployer-lock] #3542 released (held 263ms)
+[deployer-lock] #3543 acquired after 56ms
+[deployer-lock] #3545 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3546 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3543 fn done in 107ms
+[deployer-lock] #3543 released (held 163ms)
+[deployer-lock] #3544 acquired after 113ms
+[deployer-lock] #3547 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3544 fn done in 117ms
+[deployer-lock] #3544 released (held 230ms)
+[deployer-lock] #3545 acquired after 213ms
+[deployer-lock] #3545 fn done in 116ms
+[deployer-lock] #3545 released (held 330ms)
+[deployer-lock] #3546 acquired after 280ms
+[deployer-lock] #3548 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3549 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3546 fn done in 106ms
+[deployer-lock] #3546 released (held 387ms)
+[deployer-lock] #3547 acquired after 263ms
+[deployer-lock] #3547 fn done in 119ms
+[deployer-lock] #3547 released (held 382ms)
+[deployer-lock] #3548 acquired after 186ms
+[deployer-lock] #3548 fn done in 116ms
+[deployer-lock] #3548 released (held 303ms)
+[deployer-lock] #3549 acquired after 246ms
+[deployer-lock] #3549 fn done in 102ms
+[deployer-lock] #3549 released (held 349ms)
+ POST /h/catalyst 200 in 2448ms
+[deployer-lock] #3550 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3550 acquired after 1ms
+[deployer-lock] #3551 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3552 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3553 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3550 fn done in 111ms
+[deployer-lock] #3550 released (held 112ms)
+[deployer-lock] #3551 acquired after 86ms
+[deployer-lock] #3554 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3555 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3551 fn done in 134ms
+[deployer-lock] #3551 released (held 220ms)
+[deployer-lock] #3552 acquired after 221ms
+ GET /api/boot-seed 200 in 103ms
+[deployer-lock] #3556 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3552 fn done in 139ms
+[deployer-lock] #3552 released (held 361ms)
+[deployer-lock] #3553 acquired after 331ms
+[deployer-lock] #3557 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3553 fn done in 138ms
+[deployer-lock] #3553 released (held 469ms)
+[deployer-lock] #3554 acquired after 390ms
+[deployer-lock] #3558 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3554 fn done in 140ms
+[deployer-lock] #3554 released (held 530ms)
+[deployer-lock] #3555 acquired after 438ms
+[deployer-lock] #3559 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3555 fn done in 143ms
+[deployer-lock] #3555 released (held 581ms)
+[deployer-lock] #3556 acquired after 478ms
+[deployer-lock] #3560 writeContract(setEdgeStatus) queued (depth=1)
+ ○ Compiling /h/[hubId]/home ...
+[deployer-lock] #3556 fn done in 119ms
+[deployer-lock] #3556 released (held 597ms)
+[deployer-lock] #3557 acquired after 468ms
+[deployer-lock] #3557 fn done in 125ms
+[deployer-lock] #3557 released (held 594ms)
+[deployer-lock] #3558 acquired after 429ms
+[deployer-lock] #3558 fn done in 154ms
+[deployer-lock] #3558 released (held 583ms)
+[deployer-lock] #3559 acquired after 491ms
+[deployer-lock] #3559 fn done in 125ms
+[deployer-lock] #3559 released (held 617ms)
+[deployer-lock] #3560 acquired after 524ms
+[deployer-lock] #3560 fn done in 131ms
+[deployer-lock] #3560 released (held 655ms)
+[deployer-lock] #3561 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #3561 acquired after 0ms
+[deployer-lock] #3562 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3561 fn done in 112ms
+[deployer-lock] #3561 released (held 112ms)
+[deployer-lock] #3562 acquired after 4ms
+ POST /h/catalyst 200 in 6604ms
+[deployer-lock] #3563 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3562 fn done in 170ms
+[deployer-lock] #3562 released (held 175ms)
+[deployer-lock] #3563 acquired after 73ms
+[deployer-lock] #3564 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3563 fn done in 111ms
+[deployer-lock] #3563 released (held 185ms)
+[deployer-lock] #3564 acquired after 42ms
+[deployer-lock] #3564 fn done in 3450ms
+[deployer-lock] #3564 released (held 3492ms)
+[deployer-lock] #3565 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3565 acquired after 0ms
+[deployer-lock] #3565 fn done in 900ms
+[deployer-lock] #3565 released (held 900ms)
+[deployer-lock] #3566 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #3566 acquired after 1ms
+[deployer-lock] #3567 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3568 writeContract(setEdgeStatus) queued (depth=1)
+[catalyst-seed] Data delegation created: Ana → Maria (on-chain)
+[catalyst-seed] Creating coaching relationship: David → Ana
+[deployer-lock] #3569 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3570 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3566 fn done in 2638ms
+[deployer-lock] #3566 released (held 2640ms)
+[deployer-lock] #3567 acquired after 2190ms
+[deployer-lock] #3571 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3572 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3567 fn done in 2131ms
+[deployer-lock] #3567 released (held 4321ms)
+[deployer-lock] #3568 acquired after 4298ms
+[deployer-lock] #3573 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3574 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3575 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3568 fn done in 1177ms
+[deployer-lock] #3568 released (held 5475ms)
+[deployer-lock] #3569 acquired after 3577ms
+[deployer-lock] #3576 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3577 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3578 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3569 fn done in 1192ms
+[deployer-lock] #3569 released (held 4770ms)
+[deployer-lock] #3570 acquired after 4537ms
+[deployer-lock] #3570 fn done in 170ms
+[deployer-lock] #3570 released (held 4707ms)
+[deployer-lock] #3571 acquired after 2639ms
+[deployer-lock] #3571 fn done in 695ms
+[deployer-lock] #3571 released (held 3334ms)
+[deployer-lock] #3572 acquired after 3347ms
+[deployer-lock] #3579 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3572 fn done in 2110ms
+[deployer-lock] #3572 released (held 5457ms)
+[deployer-lock] #3573 acquired after 4480ms
+[deployer-lock] #3580 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3581 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3573 fn done in 180ms
+[deployer-lock] #3573 released (held 4660ms)
+[deployer-lock] #3574 acquired after 4529ms
+[deployer-lock] #3574 fn done in 350ms
+[deployer-lock] #3574 released (held 4879ms)
+[deployer-lock] #3575 acquired after 4757ms
+[deployer-lock] #3575 fn done in 144ms
+[deployer-lock] #3575 released (held 4901ms)
+[deployer-lock] #3576 acquired after 4628ms
+[deployer-lock] #3576 fn done in 151ms
+[deployer-lock] #3576 released (held 4779ms)
+[deployer-lock] #3577 acquired after 4752ms
+[deployer-lock] #3577 fn done in 423ms
+[deployer-lock] #3577 released (held 5176ms)
+[deployer-lock] #3578 acquired after 4722ms
+[deployer-lock] #3582 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3583 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3584 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3578 fn done in 2921ms
+[deployer-lock] #3578 released (held 7644ms)
+[deployer-lock] #3579 acquired after 6161ms
+[deployer-lock] #3585 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3586 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3587 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3588 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3589 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3579 fn done in 1618ms
+[deployer-lock] #3579 released (held 7779ms)
+[deployer-lock] #3580 acquired after 5683ms
+[deployer-lock] #3580 fn done in 951ms
+[deployer-lock] #3580 released (held 6635ms)
+[deployer-lock] #3581 acquired after 6635ms
+[deployer-lock] #3590 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3581 fn done in 616ms
+[deployer-lock] #3581 released (held 7251ms)
+[deployer-lock] #3582 acquired after 4146ms
+[deployer-lock] #3591 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3582 fn done in 1669ms
+[deployer-lock] #3582 released (held 5815ms)
+[deployer-lock] #3583 acquired after 5800ms
+ ✓ Compiled /h/[hubId]/home in 28s (4802 modules)
+[deployer-lock] #3583 fn done in 147ms
+[deployer-lock] #3583 released (held 5947ms)
+[deployer-lock] #3584 acquired after 5071ms
+[deployer-lock] #3584 fn done in 118ms
+[deployer-lock] #3584 released (held 5189ms)
+[deployer-lock] #3585 acquired after 4501ms
+[deployer-lock] #3585 fn done in 102ms
+[deployer-lock] #3585 released (held 4604ms)
+[deployer-lock] #3586 acquired after 4112ms
+[deployer-lock] #3586 fn done in 421ms
+[deployer-lock] #3586 released (held 4533ms)
+[deployer-lock] #3587 acquired after 4140ms
+[deployer-lock] #3592 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3587 fn done in 183ms
+[deployer-lock] #3587 released (held 4323ms)
+[deployer-lock] #3588 acquired after 4322ms
+[deployer-lock] #3588 fn done in 176ms
+[deployer-lock] #3588 released (held 4498ms)
+[deployer-lock] #3589 acquired after 4482ms
+[deployer-lock] #3589 fn done in 98ms
+[deployer-lock] #3589 released (held 4580ms)
+[deployer-lock] #3590 acquired after 3450ms
+[deployer-lock] #3590 fn done in 816ms
+[deployer-lock] #3590 released (held 4266ms)
+[deployer-lock] #3591 acquired after 2327ms
+[deployer-lock] #3593 writeContract(makeAssertion) queued (depth=1)
+ GET /api/system-readiness 200 in 30679ms
+[deployer-lock] #3591 fn done in 648ms
+[deployer-lock] #3591 released (held 2975ms)
+[deployer-lock] #3592 acquired after 1913ms
+[deployer-lock] #3592 fn done in 947ms
+[deployer-lock] #3592 released (held 2860ms)
+[deployer-lock] #3593 acquired after 1593ms
+ GET /h/catalyst/home 200 in 3528ms
+ GET /h/catalyst/home 200 in 27437ms
+[deployer-lock] #3593 fn done in 416ms
+[deployer-lock] #3593 released (held 2009ms)
+[deployer-lock] #3594 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #3594 acquired after 0ms
+[deployer-lock] #3595 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3596 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3597 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3598 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3599 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3600 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3601 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3602 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3594 fn done in 1832ms
+[deployer-lock] #3594 released (held 1832ms)
+[deployer-lock] #3595 acquired after 1734ms
+[deployer-lock] #3603 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3604 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3595 fn done in 136ms
+[deployer-lock] #3595 released (held 1871ms)
+[deployer-lock] #3596 acquired after 1871ms
+ GET /api/boot-seed 200 in 171ms
+[deployer-lock] #3596 fn done in 246ms
+[deployer-lock] #3596 released (held 2117ms)
+[deployer-lock] #3597 acquired after 2119ms
+[deployer-lock] #3605 writeContract(makeAssertion) queued (depth=1)
+[boot-seed] chain already seeded — skipping
+[deployer-lock] #3597 fn done in 604ms
+[deployer-lock] #3597 released (held 2723ms)
+[deployer-lock] #3598 acquired after 2725ms
+[deployer-lock] #3598 fn done in 181ms
+[deployer-lock] #3598 released (held 2906ms)
+[deployer-lock] #3599 acquired after 2904ms
+[deployer-lock] #3599 fn done in 332ms
+[deployer-lock] #3599 released (held 3236ms)
+[deployer-lock] #3600 acquired after 1726ms
+[deployer-lock] #3600 fn done in 3466ms
+[deployer-lock] #3600 released (held 5193ms)
+[deployer-lock] #3601 acquired after 5191ms
+[deployer-lock] #3606 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3601 fn done in 560ms
+[deployer-lock] #3601 released (held 5751ms)
+[deployer-lock] #3602 acquired after 5665ms
+[deployer-lock] #3607 writeContract(setEdgeStatus) queued (depth=1)
+ GET /api/system-readiness 200 in 4431ms
+[deployer-lock] #3608 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3602 fn done in 105ms
+[deployer-lock] #3602 released (held 5771ms)
+[deployer-lock] #3603 acquired after 5643ms
+ GET /h/catalyst/home 200 in 43700ms
+[deployer-lock] #3603 fn done in 160ms
+[deployer-lock] #3603 released (held 5804ms)
+[deployer-lock] #3604 acquired after 5710ms
+[deployer-lock] #3604 fn done in 130ms
+[deployer-lock] #3604 released (held 5841ms)
+[deployer-lock] #3605 acquired after 5381ms
+[deployer-lock] #3605 fn done in 125ms
+[deployer-lock] #3605 released (held 5506ms)
+[deployer-lock] #3606 acquired after 915ms
+[deployer-lock] #3606 fn done in 110ms
+[deployer-lock] #3606 released (held 1026ms)
+[deployer-lock] #3607 acquired after 636ms
+[deployer-lock] #3607 fn done in 122ms
+[deployer-lock] #3607 released (held 758ms)
+[deployer-lock] #3608 acquired after 671ms
+[deployer-lock] #3608 fn done in 121ms
+[deployer-lock] #3608 released (held 793ms)
+[deployer-lock] #3609 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3609 acquired after 0ms
+[deployer-lock] #3609 fn done in 114ms
+[deployer-lock] #3609 released (held 114ms)
+[deployer-lock] #3610 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3610 acquired after 1ms
+[deployer-lock] #3610 fn done in 148ms
+[deployer-lock] #3610 released (held 149ms)
+ ○ Compiling /api/user-context ...
+[deployer-lock] #3611 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #3611 acquired after 1ms
+[deployer-lock] #3611 fn done in 168ms
+[deployer-lock] #3611 released (held 169ms)
+[deployer-lock] #3612 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3612 acquired after 0ms
+[deployer-lock] #3612 fn done in 56ms
+[deployer-lock] #3612 released (held 56ms)
+[deployer-lock] #3613 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3613 acquired after 0ms
+[deployer-lock] #3613 fn done in 103ms
+[deployer-lock] #3613 released (held 103ms)
+ ✓ Compiled /api/user-context in 2.2s (4804 modules)
+[deployer-lock] #3614 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3614 acquired after 0ms
+[deployer-lock] #3615 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3616 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3617 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3618 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3619 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3620 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3621 writeContract(setEdgeStatus) queued (depth=1)
+[catalyst-seed] Setting up .agent naming hierarchy...
+[catalyst-seed] .agent root: 0xe449d9dc25bfd945e775919216d40d92f831825808b665fa388d7f0a087ba57e
+[deployer-lock] #3622 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3623 writeContract(setAddr) queued (depth=1)
+[deployer-lock] #3614 fn done in 128ms
+[deployer-lock] #3614 released (held 129ms)
+[deployer-lock] #3615 acquired after 126ms
+[deployer-lock] #3615 fn done in 155ms
+[deployer-lock] #3615 released (held 281ms)
+[deployer-lock] #3616 acquired after 278ms
+[deployer-lock] #3616 fn done in 113ms
+[deployer-lock] #3616 released (held 391ms)
+[deployer-lock] #3617 acquired after 350ms
+[deployer-lock] #3617 fn done in 121ms
+[deployer-lock] #3617 released (held 472ms)
+[deployer-lock] #3618 acquired after 471ms
+[deployer-lock] #3618 fn done in 165ms
+[deployer-lock] #3618 released (held 636ms)
+[deployer-lock] #3619 acquired after 636ms
+[deployer-lock] #3619 fn done in 489ms
+[deployer-lock] #3619 released (held 1125ms)
+[deployer-lock] #3620 acquired after 1122ms
+[deployer-lock] #3624 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3620 fn done in 175ms
+[deployer-lock] #3620 released (held 1298ms)
+[deployer-lock] #3621 acquired after 1290ms
+[deployer-lock] #3621 fn done in 215ms
+[deployer-lock] #3621 released (held 1505ms)
+[deployer-lock] #3622 acquired after 1455ms
+[deployer-lock] #3622 fn done in 126ms
+[deployer-lock] #3622 released (held 1581ms)
+[deployer-lock] #3623 acquired after 1579ms
+[deployer-lock] #3623 fn done in 940ms
+[deployer-lock] #3623 released (held 2519ms)
+[catalyst-seed] catalyst.agent registered: yes
+[deployer-lock] #3624 acquired after 1453ms
+[deployer-lock] #3625 writeContract(setAddr) queued (depth=1)
+[deployer-lock] #3624 fn done in 105ms
+[deployer-lock] #3624 released (held 1558ms)
+[deployer-lock] #3625 acquired after 37ms
+ ✓ Compiled in 0ms (4806 modules)
+[deployer-lock] #3625 fn done in 172ms
+[deployer-lock] #3625 released (held 209ms)
+[deployer-lock] #3626 writeContract(setAddr) queued (depth=0)
+[deployer-lock] #3626 acquired after 0ms
+[deployer-lock] #3627 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3626 fn done in 53ms
+[deployer-lock] #3626 released (held 54ms)
+[deployer-lock] #3627 acquired after 34ms
+[deployer-lock] #3628 writeContract(setAddr) queued (depth=1)
+[deployer-lock] #3627 fn done in 96ms
+[deployer-lock] #3627 released (held 130ms)
+[deployer-lock] #3628 acquired after 10ms
+[deployer-lock] #3628 fn done in 404ms
+[deployer-lock] #3628 released (held 414ms)
+[deployer-lock] #3629 writeContract(setAddr) queued (depth=0)
+[deployer-lock] #3629 acquired after 0ms
+[deployer-lock] #3629 fn done in 133ms
+[deployer-lock] #3629 released (held 133ms)
+[deployer-lock] #3630 writeContract(setAddr) queued (depth=0)
+[deployer-lock] #3630 acquired after 0ms
+[deployer-lock] #3630 fn done in 96ms
+[deployer-lock] #3630 released (held 96ms)
+[deployer-lock] #3631 writeContract(setAddr) queued (depth=0)
+[deployer-lock] #3631 acquired after 1ms
+[deployer-lock] #3632 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3633 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3634 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3635 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3636 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3631 fn done in 98ms
+[deployer-lock] #3631 released (held 100ms)
+[deployer-lock] #3632 acquired after 73ms
+ ✓ Compiled in 1ms (4806 modules)
+[deployer-lock] #3637 writeContract(setAddr) queued (depth=1)
+[deployer-lock] #3632 fn done in 158ms
+[deployer-lock] #3632 released (held 232ms)
+[deployer-lock] #3633 acquired after 233ms
+[deployer-lock] #3633 fn done in 133ms
+[deployer-lock] #3633 released (held 366ms)
+[deployer-lock] #3634 acquired after 367ms
+[deployer-lock] #3638 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3634 fn done in 125ms
+[deployer-lock] #3634 released (held 492ms)
+[deployer-lock] #3635 acquired after 487ms
+[deployer-lock] #3639 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3635 fn done in 439ms
+[deployer-lock] #3635 released (held 926ms)
+[deployer-lock] #3636 acquired after 916ms
+[deployer-lock] #3640 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3641 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3642 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3636 fn done in 63ms
+[deployer-lock] #3636 released (held 979ms)
+[deployer-lock] #3637 acquired after 824ms
+[deployer-lock] #3637 fn done in 174ms
+[deployer-lock] #3637 released (held 998ms)
+[deployer-lock] #3638 acquired after 756ms
+[deployer-lock] #3643 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3644 writeContract(setAddr) queued (depth=1)
+[deployer-lock] #3638 fn done in 169ms
+[deployer-lock] #3638 released (held 925ms)
+[deployer-lock] #3639 acquired after 754ms
+[deployer-lock] #3639 fn done in 137ms
+[deployer-lock] #3639 released (held 891ms)
+[deployer-lock] #3640 acquired after 526ms
+[deployer-lock] #3640 fn done in 730ms
+[deployer-lock] #3640 released (held 1256ms)
+[deployer-lock] #3641 acquired after 1249ms
+[deployer-lock] #3641 fn done in 60ms
+[deployer-lock] #3641 released (held 1309ms)
+[deployer-lock] #3642 acquired after 1282ms
+ ✓ Compiled in 1ms (4806 modules)
+ GET /api/auth/session 200 in 12603ms
+ GET /api/auth/session 200 in 12569ms
+ GET /api/auth/session 200 in 12618ms
+ GET /api/auth/session 200 in 12622ms
+[deployer-lock] #3645 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3646 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3647 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3642 fn done in 410ms
+[deployer-lock] #3642 released (held 1693ms)
+[deployer-lock] #3643 acquired after 1396ms
+[deployer-lock] #3643 fn done in 129ms
+[deployer-lock] #3643 released (held 1525ms)
+[deployer-lock] #3644 acquired after 1525ms
+[deployer-lock] #3644 fn done in 108ms
+[deployer-lock] #3644 released (held 1633ms)
+[deployer-lock] #3645 acquired after 316ms
+[deployer-lock] #3648 writeContract(setAddr) queued (depth=1)
+[deployer-lock] #3645 fn done in 114ms
+[deployer-lock] #3645 released (held 431ms)
+[deployer-lock] #3646 acquired after 414ms
+[deployer-lock] #3646 fn done in 338ms
+[deployer-lock] #3646 released (held 753ms)
+[deployer-lock] #3647 acquired after 743ms
+[deployer-lock] #3647 fn done in 181ms
+[deployer-lock] #3647 released (held 924ms)
+[deployer-lock] #3648 acquired after 631ms
+[deployer-lock] #3648 fn done in 158ms
+[deployer-lock] #3648 released (held 789ms)
+[deployer-lock] #3649 writeContract(setAddr) queued (depth=0)
+[deployer-lock] #3649 acquired after 1ms
+[deployer-lock] #3649 fn done in 36ms
+[deployer-lock] #3649 released (held 37ms)
+[deployer-lock] #3650 writeContract(setAddr) queued (depth=0)
+[deployer-lock] #3650 acquired after 0ms
+[catalyst-seed] Setting up .agent naming hierarchy...
+[catalyst-seed] Coaching delegation created: Ana → David (on-chain)
+[catalyst-seed] NoCo Catalyst community deployed: 18 agents, 25+ on-chain edges
+[catalyst-seed] Naming hierarchy created
+[catalyst-seed] Creating data access delegation: Ana → Maria
+[catalyst-seed] .agent root: 0xe449d9dc25bfd945e775919216d40d92f831825808b665fa388d7f0a087ba57e
+[deployer-lock] #3651 writeContract(setAddr) queued (depth=1)
+[deployer-lock] #3650 fn done in 128ms
+[deployer-lock] #3650 released (held 128ms)
+[deployer-lock] #3651 acquired after 28ms
+ GET /api/boot-seed 200 in 9719ms
+[deployer-lock] #3652 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3653 writeContract(setAddr) queued (depth=1)
+[catalyst-seed] Naming hierarchy created
+[catalyst-seed] Creating data access delegation: Ana → Maria
+[boot-seed] chain already seeded — skipping
+[deployer-lock] #3651 fn done in 1202ms
+[deployer-lock] #3651 released (held 1230ms)
+[catalyst-seed] catalyst.agent registered: yes
+[deployer-lock] #3652 acquired after 723ms
+[deployer-lock] #3654 writeContract(setAddr) queued (depth=1)
+[deployer-lock] #3655 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3652 fn done in 178ms
+[deployer-lock] #3652 released (held 901ms)
+[deployer-lock] #3653 acquired after 883ms
+ GET /api/system-readiness 200 in 164ms
+[deployer-lock] #3656 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3653 fn done in 120ms
+[deployer-lock] #3653 released (held 1003ms)
+[deployer-lock] #3654 acquired after 148ms
+[deployer-lock] #3657 writeContract(setAddr) queued (depth=1)
+[deployer-lock] #3654 fn done in 126ms
+[deployer-lock] #3654 released (held 274ms)
+[deployer-lock] #3655 acquired after 260ms
+[deployer-lock] #3658 writeContract(setAddr) queued (depth=1)
+[deployer-lock] #3655 fn done in 126ms
+[deployer-lock] #3655 released (held 387ms)
+[deployer-lock] #3656 acquired after 276ms
+[deployer-lock] #3656 fn done in 117ms
+[deployer-lock] #3656 released (held 393ms)
+[deployer-lock] #3657 acquired after 269ms
+[deployer-lock] #3657 fn done in 163ms
+[deployer-lock] #3657 released (held 432ms)
+[deployer-lock] #3658 acquired after 304ms
+[deployer-lock] #3659 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3660 writeContract(setAddr) queued (depth=1)
+[deployer-lock] #3658 fn done in 128ms
+[deployer-lock] #3658 released (held 434ms)
+[deployer-lock] #3659 acquired after 89ms
+[deployer-lock] #3661 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3662 writeContract(setAddr) queued (depth=1)
+ GET /api/user-context 200 in 16910ms
+[deployer-lock] #3659 fn done in 193ms
+[deployer-lock] #3659 released (held 282ms)
+[deployer-lock] #3660 acquired after 237ms
+[deployer-lock] #3663 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3660 fn done in 77ms
+[deployer-lock] #3660 released (held 317ms)
+[deployer-lock] #3661 acquired after 231ms
+[deployer-lock] #3664 writeContract(setAddr) queued (depth=1)
+[deployer-lock] #3661 fn done in 148ms
+[deployer-lock] #3661 released (held 380ms)
+[deployer-lock] #3662 acquired after 326ms
+[deployer-lock] #3662 fn done in 709ms
+[deployer-lock] #3662 released (held 1037ms)
+[deployer-lock] #3663 acquired after 887ms
+[deployer-lock] #3665 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3666 writeContract(setAddr) queued (depth=1)
+[deployer-lock] #3663 fn done in 894ms
+[deployer-lock] #3663 released (held 1782ms)
+[deployer-lock] #3664 acquired after 1633ms
+[deployer-lock] #3667 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3668 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3669 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3670 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3664 fn done in 1602ms
+[deployer-lock] #3664 released (held 3235ms)
+[deployer-lock] #3665 acquired after 2504ms
+[deployer-lock] #3671 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3672 writeContract(setAddr) queued (depth=1)
+[deployer-lock] #3665 fn done in 127ms
+[deployer-lock] #3665 released (held 2631ms)
+[deployer-lock] #3666 acquired after 2328ms
+ GET /api/boot-seed 200 in 94ms
+[deployer-lock] #3666 fn done in 134ms
+[deployer-lock] #3666 released (held 2462ms)
+[deployer-lock] #3667 acquired after 1455ms
+ GET /api/system-readiness 200 in 91ms
+[deployer-lock] #3673 writeContract(setAddr) queued (depth=1)
+[deployer-lock] #3667 fn done in 124ms
+[deployer-lock] #3667 released (held 1579ms)
+[deployer-lock] #3668 acquired after 1319ms
+[deployer-lock] #3668 fn done in 124ms
+[deployer-lock] #3668 released (held 1443ms)
+[deployer-lock] #3669 acquired after 524ms
+[deployer-lock] #3674 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3669 fn done in 139ms
+[deployer-lock] #3669 released (held 664ms)
+[deployer-lock] #3670 acquired after 664ms
+[deployer-lock] #3670 fn done in 123ms
+[deployer-lock] #3670 released (held 788ms)
+[deployer-lock] #3671 acquired after 694ms
+[deployer-lock] #3675 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3671 fn done in 126ms
+[deployer-lock] #3671 released (held 820ms)
+[deployer-lock] #3672 acquired after 800ms
+[deployer-lock] #3672 fn done in 138ms
+[deployer-lock] #3672 released (held 938ms)
+[deployer-lock] #3673 acquired after 673ms
+[deployer-lock] #3676 writeContract(setAddr) queued (depth=1)
+[deployer-lock] #3673 fn done in 141ms
+[deployer-lock] #3673 released (held 814ms)
+[deployer-lock] #3674 acquired after 617ms
+[deployer-lock] #3677 writeContract(setAddr) queued (depth=1)
+[deployer-lock] #3674 fn done in 125ms
+[deployer-lock] #3674 released (held 742ms)
+[deployer-lock] #3675 acquired after 501ms
+[deployer-lock] #3675 fn done in 117ms
+[deployer-lock] #3675 released (held 618ms)
+[deployer-lock] #3676 acquired after 258ms
+[deployer-lock] #3676 fn done in 146ms
+[deployer-lock] #3676 released (held 406ms)
+[deployer-lock] #3677 acquired after 376ms
+[deployer-lock] #3678 writeContract(setAddr) queued (depth=1)
+[deployer-lock] #3677 fn done in 142ms
+[deployer-lock] #3677 released (held 518ms)
+[deployer-lock] #3678 acquired after 127ms
+[deployer-lock] #3679 writeContract(setAddr) queued (depth=1)
+[deployer-lock] #3678 fn done in 130ms
+[deployer-lock] #3678 released (held 257ms)
+[deployer-lock] #3679 acquired after 120ms
+[deployer-lock] #3680 writeContract(setAddr) queued (depth=1)
+[deployer-lock] #3679 fn done in 125ms
+[deployer-lock] #3679 released (held 245ms)
+[deployer-lock] #3680 acquired after 18ms
+[deployer-lock] #3681 writeContract(setAddr) queued (depth=1)
+[deployer-lock] #3680 fn done in 137ms
+[deployer-lock] #3680 released (held 155ms)
+[deployer-lock] #3681 acquired after 15ms
+[deployer-lock] #3682 writeContract(setAddr) queued (depth=1)
+[deployer-lock] #3681 fn done in 139ms
+[deployer-lock] #3681 released (held 154ms)
+[deployer-lock] #3682 acquired after 123ms
+[deployer-lock] #3683 writeContract(setAddr) queued (depth=1)
+[deployer-lock] #3682 fn done in 172ms
+[deployer-lock] #3682 released (held 295ms)
+[deployer-lock] #3683 acquired after 168ms
+[deployer-lock] #3684 writeContract(setAddr) queued (depth=1)
+[deployer-lock] #3683 fn done in 92ms
+[deployer-lock] #3683 released (held 260ms)
+[deployer-lock] #3684 acquired after 20ms
+[deployer-lock] #3685 writeContract(setAddr) queued (depth=1)
+[deployer-lock] #3684 fn done in 119ms
+[deployer-lock] #3684 released (held 140ms)
+[deployer-lock] #3685 acquired after 16ms
+[deployer-lock] #3686 writeContract(setAddr) queued (depth=1)
+[deployer-lock] #3685 fn done in 116ms
+[deployer-lock] #3685 released (held 132ms)
+[deployer-lock] #3686 acquired after 20ms
+[deployer-lock] #3687 writeContract(setAddr) queued (depth=1)
+[deployer-lock] #3686 fn done in 143ms
+[deployer-lock] #3686 released (held 163ms)
+[catalyst-seed] Name registry populated
+[deployer-lock] #3688 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3687 acquired after 15ms
+[deployer-lock] #3687 fn done in 114ms
+[deployer-lock] #3687 released (held 129ms)
+[deployer-lock] #3688 acquired after 116ms
+[deployer-lock] #3689 writeContract(setAddr) queued (depth=1)
+[deployer-lock] #3688 fn done in 134ms
+[deployer-lock] #3688 released (held 250ms)
+[deployer-lock] #3690 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3689 acquired after 118ms
+[deployer-lock] #3689 fn done in 130ms
+[deployer-lock] #3689 released (held 248ms)
+[deployer-lock] #3690 acquired after 134ms
+[deployer-lock] #3691 writeContract(setAddr) queued (depth=1)
+[deployer-lock] #3690 fn done in 117ms
+[deployer-lock] #3690 released (held 251ms)
+[deployer-lock] #3692 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3691 acquired after 108ms
+[deployer-lock] #3691 fn done in 112ms
+[deployer-lock] #3691 released (held 220ms)
+[deployer-lock] #3692 acquired after 115ms
+[deployer-lock] #3693 writeContract(setAddr) queued (depth=1)
+[deployer-lock] #3692 fn done in 122ms
+[deployer-lock] #3692 released (held 237ms)
+[deployer-lock] #3694 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3693 acquired after 104ms
+[deployer-lock] #3693 fn done in 115ms
+[deployer-lock] #3693 released (held 219ms)
+[deployer-lock] #3694 acquired after 117ms
+[deployer-lock] #3695 writeContract(setAddr) queued (depth=1)
+[deployer-lock] #3694 fn done in 115ms
+[deployer-lock] #3694 released (held 232ms)
+[deployer-lock] #3696 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3695 acquired after 14ms
+[deployer-lock] #3695 fn done in 130ms
+[deployer-lock] #3695 released (held 144ms)
+[deployer-lock] #3696 acquired after 132ms
+[deployer-lock] #3697 writeContract(setAddr) queued (depth=1)
+[deployer-lock] #3696 fn done in 127ms
+[deployer-lock] #3696 released (held 259ms)
+[deployer-lock] #3698 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3697 acquired after 112ms
+[deployer-lock] #3697 fn done in 143ms
+[deployer-lock] #3697 released (held 255ms)
+[deployer-lock] #3698 acquired after 146ms
+ GET /api/boot-seed 200 in 50ms
+[deployer-lock] #3699 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3700 writeContract(setAddr) queued (depth=1)
+[deployer-lock] #3698 fn done in 207ms
+[deployer-lock] #3698 released (held 353ms)
+[deployer-lock] #3701 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3699 acquired after 35ms
+[deployer-lock] #3702 writeContract(setEdgeStatus) queued (depth=1)
+ GET /api/system-readiness 200 in 70ms
+[deployer-lock] #3699 fn done in 110ms
+[deployer-lock] #3699 released (held 145ms)
+[deployer-lock] #3700 acquired after 145ms
+[deployer-lock] #3703 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3700 fn done in 126ms
+[deployer-lock] #3700 released (held 271ms)
+[deployer-lock] #3701 acquired after 241ms
+[deployer-lock] #3704 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3705 writeContract(setAddr) queued (depth=1)
+[deployer-lock] #3706 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3701 fn done in 135ms
+[deployer-lock] #3701 released (held 376ms)
+[deployer-lock] #3707 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3702 acquired after 350ms
+[deployer-lock] #3708 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3702 fn done in 135ms
+[deployer-lock] #3702 released (held 485ms)
+[deployer-lock] #3703 acquired after 338ms
+[deployer-lock] #3703 fn done in 120ms
+[deployer-lock] #3703 released (held 458ms)
+[deployer-lock] #3704 acquired after 385ms
+[deployer-lock] #3704 fn done in 122ms
+[deployer-lock] #3704 released (held 507ms)
+[deployer-lock] #3705 acquired after 501ms
+[deployer-lock] #3705 fn done in 123ms
+[deployer-lock] #3705 released (held 625ms)
+[deployer-lock] #3706 acquired after 582ms
+[deployer-lock] #3709 writeContract(setAddr) queued (depth=1)
+[deployer-lock] #3710 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3706 fn done in 135ms
+[deployer-lock] #3706 released (held 717ms)
+[deployer-lock] #3707 acquired after 642ms
+[deployer-lock] #3711 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3707 fn done in 123ms
+[deployer-lock] #3707 released (held 765ms)
+[deployer-lock] #3712 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3708 acquired after 715ms
+[deployer-lock] #3708 fn done in 128ms
+[deployer-lock] #3708 released (held 843ms)
+[deployer-lock] #3709 acquired after 374ms
+[deployer-lock] #3709 fn done in 117ms
+[deployer-lock] #3709 released (held 493ms)
+[deployer-lock] #3710 acquired after 393ms
+[deployer-lock] #3713 writeContract(setAddr) queued (depth=1)
+[deployer-lock] #3710 fn done in 152ms
+[deployer-lock] #3710 released (held 545ms)
+[deployer-lock] #3711 acquired after 409ms
+[deployer-lock] #3711 fn done in 118ms
+[deployer-lock] #3711 released (held 527ms)
+[deployer-lock] #3712 acquired after 526ms
+[deployer-lock] #3712 fn done in 177ms
+[deployer-lock] #3712 released (held 703ms)
+[deployer-lock] #3714 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3713 acquired after 435ms
+[deployer-lock] #3713 fn done in 67ms
+[deployer-lock] #3713 released (held 502ms)
+[deployer-lock] #3714 acquired after 69ms
+[deployer-lock] #3715 writeContract(setAddr) queued (depth=1)
+[deployer-lock] #3714 fn done in 111ms
+[deployer-lock] #3714 released (held 180ms)
+[deployer-lock] #3716 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3715 acquired after 15ms
+[deployer-lock] #3715 fn done in 137ms
+[deployer-lock] #3715 released (held 153ms)
+[deployer-lock] #3716 acquired after 140ms
+[deployer-lock] #3717 writeContract(setAddr) queued (depth=1)
+[deployer-lock] #3716 fn done in 116ms
+[deployer-lock] #3716 released (held 256ms)
+[deployer-lock] #3718 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3717 acquired after 12ms
+[deployer-lock] #3717 fn done in 161ms
+[deployer-lock] #3717 released (held 173ms)
+[catalyst-seed] Name registry populated
+[deployer-lock] #3719 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3718 acquired after 164ms
+[deployer-lock] #3718 fn done in 126ms
+[deployer-lock] #3718 released (held 290ms)
+[deployer-lock] #3720 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3719 acquired after 127ms
+[deployer-lock] #3719 fn done in 131ms
+[deployer-lock] #3719 released (held 258ms)
+[deployer-lock] #3721 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3720 acquired after 132ms
+[deployer-lock] #3720 fn done in 125ms
+[deployer-lock] #3720 released (held 257ms)
+[deployer-lock] #3722 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3721 acquired after 126ms
+[deployer-lock] #3721 fn done in 124ms
+[deployer-lock] #3721 released (held 251ms)
+[deployer-lock] #3723 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3722 acquired after 128ms
+[deployer-lock] #3722 fn done in 136ms
+[deployer-lock] #3722 released (held 264ms)
+[deployer-lock] #3724 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3723 acquired after 140ms
+[deployer-lock] #3723 fn done in 125ms
+[deployer-lock] #3723 released (held 265ms)
+[deployer-lock] #3725 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3724 acquired after 126ms
+[deployer-lock] #3724 fn done in 144ms
+[deployer-lock] #3724 released (held 270ms)
+[deployer-lock] #3726 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3725 acquired after 145ms
+[deployer-lock] #3725 fn done in 130ms
+[deployer-lock] #3725 released (held 275ms)
+[deployer-lock] #3727 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3726 acquired after 131ms
+[deployer-lock] #3726 fn done in 112ms
+[deployer-lock] #3726 released (held 243ms)
+[deployer-lock] #3728 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3727 acquired after 113ms
+[deployer-lock] #3727 fn done in 156ms
+[deployer-lock] #3727 released (held 269ms)
+[deployer-lock] #3729 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3728 acquired after 157ms
+[deployer-lock] #3728 fn done in 111ms
+[deployer-lock] #3728 released (held 268ms)
+[deployer-lock] #3730 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3729 acquired after 113ms
+[deployer-lock] #3729 fn done in 136ms
+[deployer-lock] #3729 released (held 250ms)
+[deployer-lock] #3731 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3730 acquired after 139ms
+[deployer-lock] #3732 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3730 fn done in 130ms
+[deployer-lock] #3730 released (held 269ms)
+[deployer-lock] #3733 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3731 acquired after 132ms
+ GET /api/boot-seed 200 in 43ms
+[deployer-lock] #3731 fn done in 120ms
+[deployer-lock] #3731 released (held 252ms)
+[deployer-lock] #3734 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3732 acquired after 130ms
+[deployer-lock] #3732 fn done in 122ms
+[deployer-lock] #3732 released (held 252ms)
+[deployer-lock] #3733 acquired after 245ms
+ GET /api/system-readiness 200 in 163ms
+[deployer-lock] #3733 fn done in 128ms
+[deployer-lock] #3733 released (held 373ms)
+[deployer-lock] #3735 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3734 acquired after 252ms
+[deployer-lock] #3736 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3734 fn done in 143ms
+[deployer-lock] #3734 released (held 395ms)
+[deployer-lock] #3737 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3735 acquired after 145ms
+[catalyst-seed] Data delegation created: Ana → Maria (on-chain)
+[catalyst-seed] Creating coaching relationship: David → Ana
+[deployer-lock] #3735 fn done in 121ms
+[deployer-lock] #3735 released (held 267ms)
+[deployer-lock] #3738 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3736 acquired after 243ms
+[deployer-lock] #3739 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3740 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3736 fn done in 113ms
+[deployer-lock] #3736 released (held 356ms)
+[deployer-lock] #3737 acquired after 237ms
+[deployer-lock] #3737 fn done in 120ms
+[deployer-lock] #3737 released (held 357ms)
+[deployer-lock] #3741 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3738 acquired after 235ms
+[catalyst-seed] Data delegation created: Ana → Maria (on-chain)
+[catalyst-seed] Creating coaching relationship: David → Ana
+[deployer-lock] #3738 fn done in 153ms
+[deployer-lock] #3738 released (held 388ms)
+[deployer-lock] #3742 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3739 acquired after 385ms
+[deployer-lock] #3743 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3739 fn done in 3307ms
+[deployer-lock] #3739 released (held 3692ms)
+[deployer-lock] #3740 acquired after 3587ms
+[deployer-lock] #3744 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3740 fn done in 138ms
+[deployer-lock] #3740 released (held 3725ms)
+[deployer-lock] #3741 acquired after 3603ms
+[deployer-lock] #3745 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3741 fn done in 122ms
+[deployer-lock] #3741 released (held 3725ms)
+[deployer-lock] #3746 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3742 acquired after 3574ms
+[deployer-lock] #3747 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3742 fn done in 127ms
+[deployer-lock] #3742 released (held 3702ms)
+[deployer-lock] #3748 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3743 acquired after 405ms
+[deployer-lock] #3743 fn done in 132ms
+[deployer-lock] #3743 released (held 537ms)
+[deployer-lock] #3744 acquired after 396ms
+[deployer-lock] #3744 fn done in 110ms
+[deployer-lock] #3744 released (held 507ms)
+[deployer-lock] #3745 acquired after 403ms
+[deployer-lock] #3745 fn done in 156ms
+[deployer-lock] #3745 released (held 559ms)
+[deployer-lock] #3746 acquired after 534ms
+[deployer-lock] #3746 fn done in 125ms
+[deployer-lock] #3746 released (held 659ms)
+[deployer-lock] #3749 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3747 acquired after 568ms
+[deployer-lock] #3747 fn done in 131ms
+[deployer-lock] #3747 released (held 700ms)
+[deployer-lock] #3748 acquired after 665ms
+[deployer-lock] #3748 fn done in 141ms
+[deployer-lock] #3748 released (held 806ms)
+[deployer-lock] #3750 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3749 acquired after 276ms
+[deployer-lock] #3749 fn done in 143ms
+[deployer-lock] #3749 released (held 419ms)
+[deployer-lock] #3751 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3750 acquired after 145ms
+[deployer-lock] #3750 fn done in 130ms
+[deployer-lock] #3750 released (held 276ms)
+[deployer-lock] #3752 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3751 acquired after 133ms
+[deployer-lock] #3751 fn done in 151ms
+[deployer-lock] #3751 released (held 284ms)
+[deployer-lock] #3753 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3752 acquired after 153ms
+ POST /h/catalyst/home 200 in 17912ms
+ POST /h/catalyst/home 200 in 184ms
+[deployer-lock] #3752 fn done in 240ms
+[deployer-lock] #3752 released (held 393ms)
+[deployer-lock] #3754 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3753 acquired after 241ms
+[deployer-lock] #3753 fn done in 161ms
+[deployer-lock] #3753 released (held 403ms)
+[deployer-lock] #3755 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3754 acquired after 163ms
+[deployer-lock] #3754 fn done in 105ms
+[deployer-lock] #3754 released (held 268ms)
+[deployer-lock] #3756 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3755 acquired after 106ms
+[deployer-lock] #3755 fn done in 114ms
+[deployer-lock] #3755 released (held 220ms)
+[deployer-lock] #3757 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3756 acquired after 114ms
+[deployer-lock] #3756 fn done in 114ms
+[deployer-lock] #3756 released (held 229ms)
+[deployer-lock] #3758 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3757 acquired after 116ms
+[deployer-lock] #3757 fn done in 113ms
+[deployer-lock] #3757 released (held 229ms)
+[deployer-lock] #3759 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3758 acquired after 115ms
+[deployer-lock] #3758 fn done in 135ms
+[deployer-lock] #3758 released (held 250ms)
+[deployer-lock] #3760 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3759 acquired after 136ms
+[deployer-lock] #3759 fn done in 120ms
+[deployer-lock] #3759 released (held 257ms)
+[deployer-lock] #3761 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3760 acquired after 121ms
+ POST /h/catalyst/home 200 in 819ms
+[deployer-lock] #3760 fn done in 197ms
+[deployer-lock] #3760 released (held 319ms)
+[deployer-lock] #3762 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3761 acquired after 198ms
+ POST /h/catalyst/home 200 in 154ms
+[deployer-lock] #3761 fn done in 121ms
+[deployer-lock] #3761 released (held 319ms)
+[deployer-lock] #3763 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3762 acquired after 124ms
+[deployer-lock] #3764 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3762 fn done in 132ms
+[deployer-lock] #3762 released (held 256ms)
+[deployer-lock] #3765 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3763 acquired after 136ms
+ GET /api/boot-seed 200 in 49ms
+[deployer-lock] #3763 fn done in 126ms
+[deployer-lock] #3763 released (held 262ms)
+[deployer-lock] #3766 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3764 acquired after 215ms
+[deployer-lock] #3764 fn done in 108ms
+[deployer-lock] #3764 released (held 323ms)
+[deployer-lock] #3765 acquired after 235ms
+ GET /api/system-readiness 200 in 149ms
+[deployer-lock] #3765 fn done in 124ms
+[deployer-lock] #3765 released (held 359ms)
+[deployer-lock] #3767 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3766 acquired after 234ms
+[catalyst-seed] Naming hierarchy created
+[catalyst-seed] Creating data access delegation: Ana → Maria
+[deployer-lock] #3766 fn done in 128ms
+[deployer-lock] #3766 released (held 362ms)
+[deployer-lock] #3768 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3767 acquired after 131ms
+[deployer-lock] #3769 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3767 fn done in 117ms
+[deployer-lock] #3767 released (held 248ms)
+[deployer-lock] #3770 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3768 acquired after 119ms
+[deployer-lock] #3768 fn done in 116ms
+[deployer-lock] #3768 released (held 236ms)
+[deployer-lock] #3771 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3769 acquired after 125ms
+[deployer-lock] #3772 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3769 fn done in 142ms
+[deployer-lock] #3769 released (held 267ms)
+[deployer-lock] #3770 acquired after 260ms
+[deployer-lock] #3773 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3770 fn done in 136ms
+[deployer-lock] #3770 released (held 397ms)
+[deployer-lock] #3774 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3771 acquired after 280ms
+[deployer-lock] #3771 fn done in 126ms
+[deployer-lock] #3771 released (held 407ms)
+[deployer-lock] #3775 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3772 acquired after 287ms
+[deployer-lock] #3772 fn done in 135ms
+[deployer-lock] #3772 released (held 422ms)
+[deployer-lock] #3773 acquired after 285ms
+[deployer-lock] #3776 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3773 fn done in 135ms
+[deployer-lock] #3773 released (held 420ms)
+[deployer-lock] #3774 acquired after 402ms
+[deployer-lock] #3777 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3774 fn done in 135ms
+[deployer-lock] #3774 released (held 537ms)
+[deployer-lock] #3778 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3775 acquired after 412ms
+[deployer-lock] #3779 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3775 fn done in 107ms
+[deployer-lock] #3775 released (held 520ms)
+[deployer-lock] #3780 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3776 acquired after 300ms
+[deployer-lock] #3776 fn done in 113ms
+[deployer-lock] #3776 released (held 413ms)
+[deployer-lock] #3777 acquired after 295ms
+[deployer-lock] #3781 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3777 fn done in 139ms
+[deployer-lock] #3777 released (held 435ms)
+[deployer-lock] #3778 acquired after 369ms
+[deployer-lock] #3778 fn done in 124ms
+[deployer-lock] #3778 released (held 493ms)
+[deployer-lock] #3782 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3779 acquired after 415ms
+[deployer-lock] #3779 fn done in 138ms
+[deployer-lock] #3779 released (held 553ms)
+[deployer-lock] #3780 acquired after 525ms
+[deployer-lock] #3780 fn done in 137ms
+[deployer-lock] #3780 released (held 662ms)
+[deployer-lock] #3783 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3781 acquired after 424ms
+ ○ Compiling /catalyst/me ...
+[deployer-lock] #3781 fn done in 1783ms
+[deployer-lock] #3781 released (held 2207ms)
+[deployer-lock] #3782 acquired after 2075ms
+[deployer-lock] #3784 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3785 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3782 fn done in 1263ms
+[deployer-lock] #3782 released (held 3338ms)
+[deployer-lock] #3786 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3783 acquired after 3063ms
+[deployer-lock] #3787 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3788 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3783 fn done in 126ms
+[deployer-lock] #3783 released (held 3189ms)
+[deployer-lock] #3789 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3784 acquired after 184ms
+[deployer-lock] #3790 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3784 fn done in 101ms
+[deployer-lock] #3784 released (held 287ms)
+[deployer-lock] #3785 acquired after 242ms
+[deployer-lock] #3785 fn done in 133ms
+[deployer-lock] #3785 released (held 377ms)
+[deployer-lock] #3786 acquired after 369ms
+[deployer-lock] #3791 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3786 fn done in 175ms
+[deployer-lock] #3786 released (held 544ms)
+[deployer-lock] #3792 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3787 acquired after 482ms
+[deployer-lock] #3793 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3787 fn done in 499ms
+[deployer-lock] #3787 released (held 981ms)
+[deployer-lock] #3788 acquired after 954ms
+[deployer-lock] #3788 fn done in 267ms
+[deployer-lock] #3788 released (held 1221ms)
+[deployer-lock] #3789 acquired after 1186ms
+[deployer-lock] #3794 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3789 fn done in 142ms
+[deployer-lock] #3789 released (held 1328ms)
+[deployer-lock] #3795 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3790 acquired after 1241ms
+[deployer-lock] #3790 fn done in 2740ms
+[deployer-lock] #3790 released (held 3981ms)
+[deployer-lock] #3791 acquired after 3761ms
+[deployer-lock] #3796 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3797 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3791 fn done in 103ms
+[deployer-lock] #3791 released (held 3864ms)
+[deployer-lock] #3792 acquired after 3759ms
+[deployer-lock] #3798 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3792 fn done in 155ms
+[deployer-lock] #3792 released (held 3914ms)
+[deployer-lock] #3799 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3793 acquired after 3887ms
+[deployer-lock] #3793 fn done in 181ms
+[deployer-lock] #3793 released (held 4069ms)
+[deployer-lock] #3794 acquired after 3194ms
+[deployer-lock] #3794 fn done in 1071ms
+[deployer-lock] #3794 released (held 4265ms)
+[deployer-lock] #3795 acquired after 4258ms
+[deployer-lock] #3800 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3801 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3802 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3795 fn done in 2398ms
+[deployer-lock] #3795 released (held 6657ms)
+[deployer-lock] #3803 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3796 acquired after 3852ms
+ ✓ Compiled /catalyst/me in 11.3s (4808 modules)
+[deployer-lock] #3796 fn done in 121ms
+[deployer-lock] #3796 released (held 3973ms)
+[deployer-lock] #3797 acquired after 3950ms
+[deployer-lock] #3797 fn done in 157ms
+[deployer-lock] #3797 released (held 4107ms)
+[deployer-lock] #3798 acquired after 3979ms
+[deployer-lock] #3798 fn done in 135ms
+[deployer-lock] #3798 released (held 4114ms)
+[deployer-lock] #3799 acquired after 4073ms
+[deployer-lock] #3804 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3799 fn done in 107ms
+[deployer-lock] #3799 released (held 4180ms)
+[deployer-lock] #3805 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3800 acquired after 2581ms
+[deployer-lock] #3800 fn done in 424ms
+[deployer-lock] #3800 released (held 3005ms)
+[deployer-lock] #3801 acquired after 1567ms
+[deployer-lock] #3806 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3801 fn done in 179ms
+[deployer-lock] #3801 released (held 1746ms)
+[deployer-lock] #3802 acquired after 1148ms
+[deployer-lock] #3802 fn done in 167ms
+[deployer-lock] #3802 released (held 1315ms)
+[deployer-lock] #3803 acquired after 1301ms
+[deployer-lock] #3803 fn done in 91ms
+[deployer-lock] #3803 released (held 1392ms)
+[deployer-lock] #3807 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3804 acquired after 872ms
+[deployer-lock] #3804 fn done in 796ms
+[deployer-lock] #3804 released (held 1668ms)
+[deployer-lock] #3805 acquired after 1665ms
+[deployer-lock] #3805 fn done in 144ms
+[deployer-lock] #3805 released (held 1810ms)
+[deployer-lock] #3808 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3806 acquired after 1207ms
+ GET /api/boot-seed 200 in 10787ms
+[deployer-lock] #3806 fn done in 515ms
+[deployer-lock] #3806 released (held 1723ms)
+[deployer-lock] #3807 acquired after 1461ms
+[deployer-lock] #3809 writeContract(setEdgeStatus) queued (depth=1)
+[boot-seed] chain already seeded — skipping
+[deployer-lock] #3807 fn done in 510ms
+[deployer-lock] #3807 released (held 1971ms)
+[deployer-lock] #3810 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3808 acquired after 1029ms
+[deployer-lock] #3808 fn done in 344ms
+[deployer-lock] #3808 released (held 1373ms)
+[deployer-lock] #3811 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3809 acquired after 673ms
+[deployer-lock] #3809 fn done in 173ms
+[deployer-lock] #3809 released (held 846ms)
+[deployer-lock] #3810 acquired after 521ms
+ GET /catalyst/me 200 in 15155ms
+ GET /api/system-readiness 200 in 164ms
+[deployer-lock] #3810 fn done in 130ms
+[deployer-lock] #3810 released (held 652ms)
+[deployer-lock] #3812 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3811 acquired after 307ms
+[deployer-lock] #3811 fn done in 672ms
+[deployer-lock] #3811 released (held 979ms)
+[deployer-lock] #3813 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3812 acquired after 674ms
+[deployer-lock] #3814 writeContract(makeAssertion) queued (depth=1)
+[catalyst-seed] Data delegation created: Ana → Maria (on-chain)
+[catalyst-seed] Creating coaching relationship: David → Ana
+[deployer-lock] #3815 writeContract(makeAssertion) queued (depth=1)
+ POST /h/[hubId]/home 200 in 643ms
+ POST /catalyst/me 200 in 792ms
+[deployer-lock] #3812 fn done in 117ms
+[deployer-lock] #3812 released (held 791ms)
+[deployer-lock] #3816 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3813 acquired after 117ms
+[deployer-lock] #3817 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3813 fn done in 118ms
+[deployer-lock] #3813 released (held 235ms)
+[deployer-lock] #3818 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3814 acquired after 231ms
+[deployer-lock] #3819 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3814 fn done in 123ms
+[deployer-lock] #3814 released (held 354ms)
+[deployer-lock] #3815 acquired after 349ms
+[deployer-lock] #3815 fn done in 123ms
+[deployer-lock] #3815 released (held 472ms)
+[deployer-lock] #3816 acquired after 368ms
+[deployer-lock] #3820 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3816 fn done in 123ms
+[deployer-lock] #3816 released (held 491ms)
+[deployer-lock] #3821 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3817 acquired after 375ms
+[deployer-lock] #3822 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3817 fn done in 131ms
+[deployer-lock] #3817 released (held 506ms)
+[deployer-lock] #3818 acquired after 506ms
+[deployer-lock] #3818 fn done in 117ms
+[deployer-lock] #3818 released (held 624ms)
+[deployer-lock] #3823 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3819 acquired after 573ms
+[deployer-lock] #3819 fn done in 146ms
+[deployer-lock] #3819 released (held 720ms)
+[deployer-lock] #3820 acquired after 520ms
+[deployer-lock] #3820 fn done in 106ms
+[deployer-lock] #3820 released (held 626ms)
+[deployer-lock] #3821 acquired after 514ms
+ POST /catalyst/me 200 in 1075ms
+[deployer-lock] #3821 fn done in 160ms
+[deployer-lock] #3821 released (held 675ms)
+[deployer-lock] #3824 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3822 acquired after 646ms
+[deployer-lock] #3822 fn done in 133ms
+[deployer-lock] #3822 released (held 779ms)
+[deployer-lock] #3823 acquired after 556ms
+ POST /catalyst/me 200 in 236ms
+[deployer-lock] #3823 fn done in 120ms
+[deployer-lock] #3823 released (held 677ms)
+[deployer-lock] #3825 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3824 acquired after 256ms
+[deployer-lock] #3826 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3824 fn done in 132ms
+[deployer-lock] #3824 released (held 389ms)
+[deployer-lock] #3827 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3825 acquired after 134ms
+[deployer-lock] #3825 fn done in 188ms
+[deployer-lock] #3825 released (held 322ms)
+[deployer-lock] #3826 acquired after 318ms
+[deployer-lock] #3826 fn done in 126ms
+[deployer-lock] #3826 released (held 444ms)
+[deployer-lock] #3827 acquired after 320ms
+ GET /catalyst/me 200 in 645ms
+[deployer-lock] #3828 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3827 fn done in 163ms
+[deployer-lock] #3827 released (held 483ms)
+[deployer-lock] #3829 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3828 acquired after 9ms
+ GET /catalyst/me 200 in 468ms
+[deployer-lock] #3828 fn done in 129ms
+[deployer-lock] #3828 released (held 139ms)
+[deployer-lock] #3829 acquired after 132ms
+[deployer-lock] #3829 fn done in 121ms
+[deployer-lock] #3829 released (held 253ms)
+[deployer-lock] #3830 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3830 acquired after 0ms
+[deployer-lock] #3830 fn done in 135ms
+[deployer-lock] #3830 released (held 135ms)
+[deployer-lock] #3831 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3831 acquired after 0ms
+[deployer-lock] #3831 fn done in 121ms
+[deployer-lock] #3831 released (held 122ms)
+[deployer-lock] #3832 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3832 acquired after 1ms
+[deployer-lock] #3832 fn done in 153ms
+[deployer-lock] #3832 released (held 154ms)
+[deployer-lock] #3833 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3833 acquired after 1ms
+[deployer-lock] #3833 fn done in 120ms
+[deployer-lock] #3833 released (held 121ms)
+[deployer-lock] #3834 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3834 acquired after 2ms
+[deployer-lock] #3834 fn done in 129ms
+[deployer-lock] #3834 released (held 131ms)
+[deployer-lock] #3835 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3835 acquired after 0ms
+[deployer-lock] #3835 fn done in 120ms
+[deployer-lock] #3835 released (held 120ms)
+[deployer-lock] #3836 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3836 acquired after 0ms
+[deployer-lock] #3837 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3836 fn done in 124ms
+[deployer-lock] #3836 released (held 124ms)
+[deployer-lock] #3838 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3837 acquired after 84ms
+ GET /api/boot-seed 200 in 80ms
+[deployer-lock] #3837 fn done in 114ms
+[deployer-lock] #3837 released (held 198ms)
+[deployer-lock] #3838 acquired after 115ms
+ GET /api/system-readiness 200 in 62ms
+[deployer-lock] #3838 fn done in 123ms
+[deployer-lock] #3838 released (held 238ms)
+[deployer-lock] #3839 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3839 acquired after 0ms
+[deployer-lock] #3839 fn done in 127ms
+[deployer-lock] #3839 released (held 127ms)
+[deployer-lock] #3840 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #3840 acquired after 1ms
+[deployer-lock] #3840 fn done in 125ms
+[deployer-lock] #3840 released (held 127ms)
+[deployer-lock] #3841 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3841 acquired after 1ms
+[deployer-lock] #3841 fn done in 58ms
+[deployer-lock] #3841 released (held 59ms)
+ POST /h/catalyst/home 200 in 22690ms
+[deployer-lock] #3842 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3842 acquired after 2ms
+[deployer-lock] #3842 fn done in 43ms
+[deployer-lock] #3842 released (held 45ms)
+ GET /api/auth/session 200 in 96ms
+[deployer-lock] #3843 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3843 acquired after 0ms
+ GET /api/auth/session 200 in 389ms
+ GET /api/auth/session 200 in 395ms
+[deployer-lock] #3844 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3843 fn done in 354ms
+[deployer-lock] #3843 released (held 355ms)
+[deployer-lock] #3844 acquired after 49ms
+[catalyst-seed] Naming hierarchy created
+[catalyst-seed] Creating data access delegation: Ana → Maria
+[deployer-lock] #3844 fn done in 93ms
+[deployer-lock] #3844 released (held 143ms)
+ GET /api/system-readiness 200 in 728ms
+ GET /api/system-readiness 200 in 737ms
+[deployer-lock] #3845 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3845 acquired after 1ms
+[deployer-lock] #3846 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3845 fn done in 85ms
+[deployer-lock] #3845 released (held 87ms)
+[deployer-lock] #3846 acquired after 63ms
+[deployer-lock] #3847 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3846 fn done in 134ms
+[deployer-lock] #3846 released (held 198ms)
+[deployer-lock] #3847 acquired after 22ms
+[deployer-lock] #3847 fn done in 232ms
+[deployer-lock] #3847 released (held 255ms)
+ GET /api/system-readiness 200 in 369ms
+ GET /api/user-context 200 in 1293ms
+[deployer-lock] #3848 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #3848 acquired after 0ms
+[deployer-lock] #3848 fn done in 75ms
+[deployer-lock] #3848 released (held 75ms)
+ POST /catalyst/me 200 in 93ms
+ GET /api/user-context 200 in 437ms
+[deployer-lock] #3849 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3849 acquired after 0ms
+[deployer-lock] #3849 fn done in 17ms
+[deployer-lock] #3849 released (held 17ms)
+ POST /catalyst/me 200 in 116ms
+[deployer-lock] #3850 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3850 acquired after 0ms
+[deployer-lock] #3850 fn done in 32ms
+[deployer-lock] #3850 released (held 32ms)
+ GET /api/boot-seed 200 in 48ms
+ GET /api/system-readiness 200 in 52ms
+[deployer-lock] #3851 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3851 acquired after 0ms
+[deployer-lock] #3851 fn done in 41ms
+[deployer-lock] #3851 released (held 41ms)
+ GET /api/system-readiness 200 in 266ms
+[deployer-lock] #3852 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3852 acquired after 1ms
+[deployer-lock] #3852 fn done in 24ms
+[deployer-lock] #3852 released (held 25ms)
+[deployer-lock] #3853 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3853 acquired after 0ms
+[deployer-lock] #3853 fn done in 17ms
+[deployer-lock] #3853 released (held 17ms)
+[deployer-lock] #3854 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #3854 acquired after 0ms
+[deployer-lock] #3854 fn done in 23ms
+[deployer-lock] #3854 released (held 23ms)
+[deployer-lock] #3855 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3855 acquired after 0ms
+[deployer-lock] #3855 fn done in 16ms
+[deployer-lock] #3855 released (held 16ms)
+[deployer-lock] #3856 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3856 acquired after 1ms
+[deployer-lock] #3856 fn done in 13ms
+[deployer-lock] #3856 released (held 14ms)
+[catalyst-seed] Coaching delegation created: Ana → David (on-chain)
+[catalyst-seed] NoCo Catalyst community deployed: 18 agents, 25+ on-chain edges
+[catalyst-seed] Coaching delegation created: Ana → David (on-chain)
+[catalyst-seed] NoCo Catalyst community deployed: 18 agents, 25+ on-chain edges
+[deployer-lock] #3857 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #3857 acquired after 1ms
+[deployer-lock] #3857 fn done in 36ms
+[deployer-lock] #3857 released (held 37ms)
+ GET /api/system-readiness 200 in 3089ms
+[deployer-lock] #3858 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3858 acquired after 0ms
+[deployer-lock] #3858 fn done in 22ms
+[deployer-lock] #3858 released (held 23ms)
+ GET /api/boot-seed 200 in 62ms
+[deployer-lock] #3859 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #3859 acquired after 0ms
+ GET /api/system-readiness 200 in 92ms
+[deployer-lock] #3859 fn done in 51ms
+[deployer-lock] #3859 released (held 51ms)
+[deployer-lock] #3860 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #3860 acquired after 1ms
+[deployer-lock] #3860 fn done in 40ms
+[deployer-lock] #3860 released (held 41ms)
+[deployer-lock] #3861 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #3861 acquired after 0ms
+[deployer-lock] #3861 fn done in 32ms
+[deployer-lock] #3861 released (held 32ms)
+[deployer-lock] #3862 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3862 acquired after 0ms
+[deployer-lock] #3862 fn done in 19ms
+[deployer-lock] #3862 released (held 19ms)
+[deployer-lock] #3863 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #3863 acquired after 1ms
+[deployer-lock] #3863 fn done in 24ms
+[deployer-lock] #3863 released (held 25ms)
+[deployer-lock] #3864 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #3864 acquired after 1ms
+[deployer-lock] #3864 fn done in 76ms
+[deployer-lock] #3864 released (held 77ms)
+ GET /api/system-readiness 200 in 303ms
+[deployer-lock] #3865 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3865 acquired after 0ms
+[deployer-lock] #3865 fn done in 27ms
+[deployer-lock] #3865 released (held 28ms)
+[deployer-lock] #3866 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #3866 acquired after 0ms
+[deployer-lock] #3866 fn done in 26ms
+[deployer-lock] #3866 released (held 26ms)
+[deployer-lock] #3867 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3867 acquired after 0ms
+[deployer-lock] #3867 fn done in 49ms
+[deployer-lock] #3867 released (held 49ms)
+ GET /api/boot-seed 200 in 102ms
+ GET /api/system-readiness 200 in 140ms
+ GET /api/system-readiness 200 in 64ms
+[deployer-lock] #3868 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3868 acquired after 1ms
+[deployer-lock] #3868 fn done in 32ms
+[deployer-lock] #3868 released (held 33ms)
+[deployer-lock] #3869 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3869 acquired after 1ms
+[deployer-lock] #3869 fn done in 29ms
+[deployer-lock] #3869 released (held 31ms)
+[deployer-lock] #3870 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3870 acquired after 0ms
+[deployer-lock] #3870 fn done in 19ms
+[deployer-lock] #3870 released (held 19ms)
+[catalyst-seed] Data delegation created: Ana → Maria (on-chain)
+[catalyst-seed] Creating coaching relationship: David → Ana
+[deployer-lock] #3871 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3871 acquired after 0ms
+[deployer-lock] #3871 fn done in 22ms
+[deployer-lock] #3871 released (held 23ms)
+[deployer-lock] #3872 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3872 acquired after 1ms
+[deployer-lock] #3872 fn done in 31ms
+[deployer-lock] #3872 released (held 32ms)
+[deployer-lock] #3873 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3873 acquired after 1ms
+[deployer-lock] #3873 fn done in 24ms
+[deployer-lock] #3873 released (held 26ms)
+ GET /api/system-readiness 200 in 118ms
+ POST /catalyst/me 200 in 128ms
+[deployer-lock] #3874 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3874 acquired after 0ms
+[deployer-lock] #3874 fn done in 32ms
+[deployer-lock] #3874 released (held 32ms)
+ ○ Compiling /api/a2a/bootstrap ...
+[deployer-lock] #3875 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3875 acquired after 0ms
+[deployer-lock] #3875 fn done in 124ms
+[deployer-lock] #3875 released (held 124ms)
+[deployer-lock] #3876 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #3876 acquired after 1ms
+[deployer-lock] #3876 fn done in 90ms
+[deployer-lock] #3876 released (held 91ms)
+[deployer-lock] #3877 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3877 acquired after 0ms
+[deployer-lock] #3877 fn done in 67ms
+[deployer-lock] #3877 released (held 68ms)
+[deployer-lock] #3878 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #3878 acquired after 1ms
+[deployer-lock] #3879 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3880 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3881 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3878 fn done in 113ms
+[deployer-lock] #3878 released (held 114ms)
+[deployer-lock] #3879 acquired after 112ms
+ ✓ Compiled /api/a2a/bootstrap in 1982ms (4800 modules)
+[deployer-lock] #3882 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3879 fn done in 149ms
+[deployer-lock] #3879 released (held 261ms)
+[deployer-lock] #3880 acquired after 203ms
+[deployer-lock] #3880 fn done in 116ms
+[deployer-lock] #3880 released (held 319ms)
+[deployer-lock] #3881 acquired after 310ms
+[deployer-lock] #3881 fn done in 128ms
+[deployer-lock] #3881 released (held 438ms)
+[deployer-lock] #3882 acquired after 261ms
+[deployer-lock] #3882 fn done in 349ms
+[deployer-lock] #3882 released (held 610ms)
+[deployer-lock] #3883 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #3883 acquired after 0ms
+[deployer-lock] #3883 fn done in 62ms
+[deployer-lock] #3883 released (held 62ms)
+ ✓ Compiled in 1ms (4800 modules)
+[deployer-lock] #3884 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3884 acquired after 0ms
+[deployer-lock] #3884 fn done in 30ms
+[deployer-lock] #3884 released (held 30ms)
+[deployer-lock] #3885 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #3885 acquired after 0ms
+[deployer-lock] #3885 fn done in 161ms
+[deployer-lock] #3885 released (held 161ms)
+[deployer-lock] #3886 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3886 acquired after 1ms
+[deployer-lock] #3886 fn done in 67ms
+[deployer-lock] #3886 released (held 68ms)
+[deployer-lock] #3887 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3887 acquired after 0ms
+ ✓ Compiled in 1ms (4800 modules)
+[deployer-lock] #3887 fn done in 148ms
+[deployer-lock] #3887 released (held 149ms)
+[deployer-lock] #3888 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #3888 acquired after 0ms
+[deployer-lock] #3889 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3888 fn done in 160ms
+[deployer-lock] #3888 released (held 160ms)
+[deployer-lock] #3889 acquired after 129ms
+[catalyst-seed] Coaching delegation created: Ana → David (on-chain)
+[catalyst-seed] NoCo Catalyst community deployed: 18 agents, 25+ on-chain edges
+[deployer-lock] #3890 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3891 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3889 fn done in 79ms
+[deployer-lock] #3889 released (held 208ms)
+[deployer-lock] #3890 acquired after 30ms
+[deployer-lock] #3890 fn done in 125ms
+[deployer-lock] #3890 released (held 155ms)
+[deployer-lock] #3891 acquired after 146ms
+[deployer-lock] #3891 fn done in 130ms
+[deployer-lock] #3891 released (held 276ms)
+[deployer-lock] #3892 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #3892 acquired after 0ms
+[deployer-lock] #3893 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3892 fn done in 72ms
+[deployer-lock] #3892 released (held 72ms)
+[deployer-lock] #3893 acquired after 5ms
+ ✓ Compiled in 1ms (4800 modules)
+ GET /api/boot-seed 200 in 9545ms
+ POST /api/a2a/bootstrap 400 in 10790ms
+[deployer-lock] #3894 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3895 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3896 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3897 writeContract(setEdgeStatus) queued (depth=1)
+[boot-seed] chain already seeded — skipping
+[deployer-lock] #3893 fn done in 4040ms
+[deployer-lock] #3893 released (held 4045ms)
+[deployer-lock] #3894 acquired after 483ms
+[deployer-lock] #3898 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3899 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3900 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3894 fn done in 183ms
+[deployer-lock] #3894 released (held 666ms)
+[deployer-lock] #3895 acquired after 505ms
+[deployer-lock] #3895 fn done in 143ms
+[deployer-lock] #3895 released (held 648ms)
+[deployer-lock] #3896 acquired after 635ms
+[deployer-lock] #3896 fn done in 100ms
+[deployer-lock] #3896 released (held 735ms)
+[deployer-lock] #3897 acquired after 536ms
+[deployer-lock] #3897 fn done in 151ms
+[deployer-lock] #3897 released (held 688ms)
+[deployer-lock] #3898 acquired after 447ms
+[deployer-lock] #3898 fn done in 419ms
+[deployer-lock] #3898 released (held 867ms)
+[deployer-lock] #3899 acquired after 867ms
+[deployer-lock] #3899 fn done in 245ms
+[deployer-lock] #3899 released (held 1112ms)
+[deployer-lock] #3900 acquired after 1088ms
+[deployer-lock] #3900 fn done in 169ms
+[deployer-lock] #3900 released (held 1257ms)
+ ✓ Compiled in 1ms (4800 modules)
+ GET /api/system-readiness 200 in 12490ms
+ GET /api/system-readiness 200 in 9406ms
+ GET /catalyst/me 200 in 12554ms
+[deployer-lock] #3901 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #3901 acquired after 1ms
+[deployer-lock] #3902 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3903 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3904 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3901 fn done in 85ms
+[deployer-lock] #3901 released (held 86ms)
+[deployer-lock] #3902 acquired after 83ms
+ ✓ Compiled in 1ms (4800 modules)
+[deployer-lock] #3902 fn done in 114ms
+[deployer-lock] #3902 released (held 198ms)
+[deployer-lock] #3903 acquired after 197ms
+[deployer-lock] #3905 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3903 fn done in 129ms
+[deployer-lock] #3903 released (held 326ms)
+[deployer-lock] #3904 acquired after 310ms
+[deployer-lock] #3906 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3904 fn done in 408ms
+[deployer-lock] #3904 released (held 719ms)
+[deployer-lock] #3905 acquired after 488ms
+[deployer-lock] #3907 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3908 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3905 fn done in 180ms
+[deployer-lock] #3905 released (held 668ms)
+[deployer-lock] #3906 acquired after 567ms
+[deployer-lock] #3906 fn done in 157ms
+[deployer-lock] #3906 released (held 724ms)
+[deployer-lock] #3907 acquired after 334ms
+[deployer-lock] #3907 fn done in 100ms
+[deployer-lock] #3907 released (held 435ms)
+[deployer-lock] #3908 acquired after 434ms
+[deployer-lock] #3908 fn done in 764ms
+[deployer-lock] #3908 released (held 1198ms)
+ ✓ Compiled in 1ms (4800 modules)
+ GET /api/system-readiness 200 in 7011ms
+ GET /api/system-readiness 200 in 7118ms
+ GET /api/system-readiness 200 in 7235ms
+ ✓ Compiled in 1ms (4800 modules)
+ GET /api/auth/session 200 in 8792ms
+[deployer-lock] #3909 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3909 acquired after 0ms
+[deployer-lock] #3909 fn done in 37ms
+[deployer-lock] #3909 released (held 37ms)
+[deployer-lock] #3910 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3910 acquired after 0ms
+[deployer-lock] #3910 fn done in 29ms
+[deployer-lock] #3910 released (held 29ms)
+[deployer-lock] #3911 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3911 acquired after 0ms
+[deployer-lock] #3912 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3911 fn done in 66ms
+[deployer-lock] #3911 released (held 66ms)
+[deployer-lock] #3912 acquired after 51ms
+[deployer-lock] #3913 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3912 fn done in 162ms
+[deployer-lock] #3912 released (held 213ms)
+[deployer-lock] #3913 acquired after 64ms
+[deployer-lock] #3914 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3913 fn done in 94ms
+[deployer-lock] #3913 released (held 159ms)
+[deployer-lock] #3914 acquired after 83ms
+[deployer-lock] #3914 fn done in 755ms
+[deployer-lock] #3914 released (held 838ms)
+ ✓ Compiled /api/a2a/bootstrap/client in 1ms (4800 modules)
+[deployer-lock] #3915 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3915 acquired after 1ms
+ GET /api/system-readiness 200 in 6636ms
+ GET /api/system-readiness 200 in 8246ms
+[deployer-lock] #3915 fn done in 103ms
+[deployer-lock] #3915 released (held 105ms)
+[deployer-lock] #3916 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3916 acquired after 0ms
+[deployer-lock] #3916 fn done in 6085ms
+[deployer-lock] #3916 released (held 6086ms)
+[deployer-lock] #3917 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3917 acquired after 0ms
+[deployer-lock] #3918 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3919 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3920 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3917 fn done in 90ms
+[deployer-lock] #3917 released (held 91ms)
+[deployer-lock] #3918 acquired after 85ms
+[deployer-lock] #3921 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3918 fn done in 121ms
+[deployer-lock] #3918 released (held 207ms)
+[deployer-lock] #3919 acquired after 208ms
+[deployer-lock] #3919 fn done in 714ms
+[deployer-lock] #3919 released (held 922ms)
+[deployer-lock] #3920 acquired after 918ms
+[catalyst-seed] Coaching delegation created: Ana → David (on-chain)
+[catalyst-seed] NoCo Catalyst community deployed: 18 agents, 25+ on-chain edges
+[deployer-lock] #3920 fn done in 164ms
+[deployer-lock] #3920 released (held 1082ms)
+[deployer-lock] #3921 acquired after 894ms
+[deployer-lock] #3921 fn done in 123ms
+[deployer-lock] #3921 released (held 1017ms)
+[deployer-lock] #3922 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #3922 acquired after 0ms
+[deployer-lock] #3923 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3924 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3925 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3926 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3927 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3922 fn done in 772ms
+[deployer-lock] #3922 released (held 772ms)
+[deployer-lock] #3923 acquired after 758ms
+[deployer-lock] #3923 fn done in 361ms
+[deployer-lock] #3923 released (held 1119ms)
+[deployer-lock] #3924 acquired after 1120ms
+[deployer-lock] #3928 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3924 fn done in 826ms
+[deployer-lock] #3924 released (held 1946ms)
+[deployer-lock] #3925 acquired after 1946ms
+[deployer-lock] #3929 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3925 fn done in 415ms
+[deployer-lock] #3925 released (held 2362ms)
+[deployer-lock] #3926 acquired after 1893ms
+[deployer-lock] #3926 fn done in 121ms
+[deployer-lock] #3926 released (held 2014ms)
+[deployer-lock] #3927 acquired after 1760ms
+[deployer-lock] #3930 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3927 fn done in 496ms
+[deployer-lock] #3927 released (held 2256ms)
+[deployer-lock] #3928 acquired after 1054ms
+[deployer-lock] #3931 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3928 fn done in 178ms
+[deployer-lock] #3928 released (held 1232ms)
+[deployer-lock] #3929 acquired after 809ms
+[deployer-lock] #3929 fn done in 184ms
+[deployer-lock] #3929 released (held 994ms)
+[deployer-lock] #3930 acquired after 859ms
+[deployer-lock] #3930 fn done in 107ms
+[deployer-lock] #3930 released (held 966ms)
+[deployer-lock] #3931 acquired after 319ms
+[deployer-lock] #3931 fn done in 882ms
+[deployer-lock] #3931 released (held 1201ms)
+ ✓ Compiled in 9.2s (6329 modules)
+ GET /api/boot-seed 200 in 13361ms
+ GET /api/system-readiness 200 in 21405ms
+ GET /api/system-readiness 200 in 18817ms
+ POST /api/a2a/bootstrap/client 200 in 19796ms
+[boot-seed] chain already seeded — skipping
+ GET /api/system-readiness 200 in 11426ms
+ GET /api/system-readiness 200 in 10313ms
+ GET /api/system-readiness 200 in 4717ms
+ GET /api/system-readiness 200 in 107ms
+ GET /api/auth/session 200 in 391ms
+ GET /api/system-readiness 200 in 439ms
+ GET /api/system-readiness 200 in 454ms
+ GET /api/system-readiness 200 in 491ms
+[deployer-lock] #3932 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3932 acquired after 1ms
+[deployer-lock] #3932 fn done in 19ms
+[deployer-lock] #3932 released (held 20ms)
+[deployer-lock] #3933 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #3933 acquired after 1ms
+[deployer-lock] #3933 fn done in 53ms
+[deployer-lock] #3933 released (held 54ms)
+[deployer-lock] #3934 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3934 acquired after 0ms
+[deployer-lock] #3934 fn done in 24ms
+[deployer-lock] #3934 released (held 24ms)
+[deployer-lock] #3935 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3935 acquired after 0ms
+[deployer-lock] #3935 fn done in 21ms
+[deployer-lock] #3935 released (held 21ms)
+[deployer-lock] #3936 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3936 acquired after 0ms
+[deployer-lock] #3936 fn done in 23ms
+[deployer-lock] #3936 released (held 23ms)
+[deployer-lock] #3937 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #3937 acquired after 0ms
+[deployer-lock] #3937 fn done in 31ms
+[deployer-lock] #3937 released (held 32ms)
+ GET /api/system-readiness 200 in 176ms
+ GET /api/boot-seed 200 in 82ms
+ GET /api/system-readiness 200 in 86ms
+[deployer-lock] #3938 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3938 acquired after 1ms
+[deployer-lock] #3938 fn done in 27ms
+[deployer-lock] #3938 released (held 28ms)
+[deployer-lock] #3939 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3939 acquired after 1ms
+[deployer-lock] #3939 fn done in 27ms
+[deployer-lock] #3939 released (held 28ms)
+[deployer-lock] #3940 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #3940 acquired after 0ms
+[deployer-lock] #3940 fn done in 58ms
+[deployer-lock] #3940 released (held 58ms)
+[deployer-lock] #3941 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #3941 acquired after 0ms
+[deployer-lock] #3941 fn done in 45ms
+[deployer-lock] #3941 released (held 45ms)
+[deployer-lock] #3942 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #3942 acquired after 0ms
+[deployer-lock] #3942 fn done in 56ms
+[deployer-lock] #3942 released (held 56ms)
+ GET /api/system-readiness 200 in 492ms
+[deployer-lock] #3943 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3943 acquired after 0ms
+[deployer-lock] #3943 fn done in 62ms
+[deployer-lock] #3943 released (held 63ms)
+ GET /api/system-readiness 200 in 146ms
+ GET /api/boot-seed 200 in 76ms
+[deployer-lock] #3944 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #3944 acquired after 0ms
+[deployer-lock] #3944 fn done in 20ms
+[deployer-lock] #3944 released (held 20ms)
+ GET /api/system-readiness 200 in 88ms
+[deployer-lock] #3945 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3945 acquired after 0ms
+[deployer-lock] #3945 fn done in 23ms
+[deployer-lock] #3945 released (held 24ms)
+[deployer-lock] #3946 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3946 acquired after 1ms
+[deployer-lock] #3946 fn done in 32ms
+[deployer-lock] #3946 released (held 33ms)
+[deployer-lock] #3947 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3947 acquired after 1ms
+[deployer-lock] #3947 fn done in 30ms
+[deployer-lock] #3947 released (held 31ms)
+[deployer-lock] #3948 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3948 acquired after 0ms
+[deployer-lock] #3948 fn done in 27ms
+[deployer-lock] #3948 released (held 27ms)
+[deployer-lock] #3949 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3949 acquired after 0ms
+[deployer-lock] #3949 fn done in 20ms
+[deployer-lock] #3949 released (held 20ms)
+ GET /api/system-readiness 200 in 105ms
+[deployer-lock] #3950 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3950 acquired after 0ms
+[deployer-lock] #3950 fn done in 26ms
+[deployer-lock] #3950 released (held 26ms)
+ GET /api/boot-seed 200 in 53ms
+[deployer-lock] #3951 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #3951 acquired after 1ms
+[deployer-lock] #3951 fn done in 24ms
+[deployer-lock] #3951 released (held 25ms)
+ GET /api/system-readiness 200 in 58ms
+ GET /api/system-readiness 200 in 125ms
+[deployer-lock] #3952 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3952 acquired after 0ms
+[deployer-lock] #3952 fn done in 15ms
+[deployer-lock] #3952 released (held 16ms)
+[deployer-lock] #3953 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3953 acquired after 0ms
+[deployer-lock] #3953 fn done in 19ms
+[deployer-lock] #3953 released (held 19ms)
+[deployer-lock] #3954 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3954 acquired after 1ms
+[deployer-lock] #3954 fn done in 25ms
+[deployer-lock] #3954 released (held 26ms)
+[deployer-lock] #3955 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #3955 acquired after 0ms
+[deployer-lock] #3955 fn done in 64ms
+[deployer-lock] #3955 released (held 64ms)
+ ○ Compiling /api/a2a/bootstrap/complete ...
+[deployer-lock] #3956 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3956 acquired after 0ms
+[deployer-lock] #3957 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3958 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3959 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3956 fn done in 103ms
+[deployer-lock] #3956 released (held 103ms)
+[deployer-lock] #3957 acquired after 68ms
+[deployer-lock] #3960 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3961 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3957 fn done in 216ms
+[deployer-lock] #3957 released (held 284ms)
+[deployer-lock] #3958 acquired after 275ms
+[deployer-lock] #3958 fn done in 141ms
+[deployer-lock] #3958 released (held 416ms)
+[deployer-lock] #3959 acquired after 406ms
+[deployer-lock] #3959 fn done in 347ms
+[deployer-lock] #3959 released (held 753ms)
+[deployer-lock] #3960 acquired after 701ms
+[deployer-lock] #3960 fn done in 199ms
+[deployer-lock] #3960 released (held 901ms)
+[deployer-lock] #3961 acquired after 901ms
+[deployer-lock] #3961 fn done in 74ms
+[deployer-lock] #3961 released (held 975ms)
+ ✓ Compiled /api/a2a/bootstrap/complete in 10.6s (6329 modules)
+[deployer-lock] #3962 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #3962 acquired after 0ms
+ ✓ Compiled in 1ms (4802 modules)
+[deployer-lock] #3963 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3962 fn done in 201ms
+[deployer-lock] #3962 released (held 201ms)
+[deployer-lock] #3963 acquired after 12ms
+[deployer-lock] #3963 fn done in 109ms
+[deployer-lock] #3963 released (held 122ms)
+[deployer-lock] #3964 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3964 acquired after 0ms
+[deployer-lock] #3964 fn done in 54ms
+[deployer-lock] #3964 released (held 54ms)
+[deployer-lock] #3965 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3965 acquired after 1ms
+[deployer-lock] #3966 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3967 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3965 fn done in 156ms
+[deployer-lock] #3965 released (held 157ms)
+[deployer-lock] #3966 acquired after 154ms
+[deployer-lock] #3966 fn done in 146ms
+[deployer-lock] #3966 released (held 300ms)
+[deployer-lock] #3967 acquired after 299ms
+[deployer-lock] #3967 fn done in 136ms
+[deployer-lock] #3967 released (held 435ms)
+ ✓ Compiled in 1ms (4802 modules)
+ ✓ Compiled in 12ms (4802 modules)
+ GET /api/boot-seed 200 in 10702ms
+ POST /api/a2a/bootstrap/complete 200 in 19360ms
+[deployer-lock] #3968 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3968 acquired after 0ms
+[deployer-lock] #3969 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3970 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3971 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3972 writeContract(makeAssertion) queued (depth=1)
+[boot-seed] chain already seeded — skipping
+[deployer-lock] #3973 writeContract(setEdgeStatus) queued (depth=1)
+ GET /api/system-readiness 200 in 11934ms
+ GET /api/system-readiness 200 in 11678ms
+ GET /api/system-readiness 200 in 9292ms
+[deployer-lock] #3968 fn done in 516ms
+[deployer-lock] #3968 released (held 516ms)
+[deployer-lock] #3969 acquired after 514ms
+[deployer-lock] #3969 fn done in 104ms
+[deployer-lock] #3969 released (held 618ms)
+[deployer-lock] #3970 acquired after 619ms
+[deployer-lock] #3970 fn done in 120ms
+[deployer-lock] #3970 released (held 739ms)
+[deployer-lock] #3971 acquired after 739ms
+[deployer-lock] #3974 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3971 fn done in 140ms
+[deployer-lock] #3971 released (held 879ms)
+[deployer-lock] #3972 acquired after 880ms
+[deployer-lock] #3972 fn done in 481ms
+[deployer-lock] #3972 released (held 1361ms)
+[deployer-lock] #3973 acquired after 922ms
+[deployer-lock] #3973 fn done in 245ms
+[deployer-lock] #3973 released (held 1167ms)
+[deployer-lock] #3974 acquired after 748ms
+[deployer-lock] #3974 fn done in 142ms
+[deployer-lock] #3974 released (held 891ms)
+ ✓ Compiled in 1ms (4802 modules)
+ GET /catalyst/me 200 in 12109ms
+[deployer-lock] #3975 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #3975 acquired after 0ms
+[deployer-lock] #3976 writeContract(makeAssertion) queued (depth=1)
+[catalyst-seed] Naming hierarchy created
+[catalyst-seed] Creating data access delegation: Ana → Maria
+[deployer-lock] #3977 writeContract(setEdgeStatus) queued (depth=1)
+ ✓ Compiled in 1ms (4802 modules)
+[deployer-lock] #3975 fn done in 396ms
+[deployer-lock] #3975 released (held 396ms)
+[deployer-lock] #3976 acquired after 387ms
+[catalyst-seed] Naming hierarchy created
+[catalyst-seed] Creating data access delegation: Ana → Maria
+[catalyst-seed] Naming hierarchy created
+[catalyst-seed] Creating data access delegation: Ana → Maria
+[deployer-lock] #3978 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3976 fn done in 172ms
+[deployer-lock] #3976 released (held 560ms)
+[deployer-lock] #3977 acquired after 494ms
+[deployer-lock] #3979 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3980 writeContract(setEdgeStatus) queued (depth=1)
+ GET /api/system-readiness 200 in 11803ms
+[deployer-lock] #3977 fn done in 145ms
+[deployer-lock] #3977 released (held 639ms)
+[deployer-lock] #3978 acquired after 150ms
+[deployer-lock] #3978 fn done in 120ms
+[deployer-lock] #3978 released (held 270ms)
+[deployer-lock] #3979 acquired after 238ms
+[deployer-lock] #3981 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3979 fn done in 421ms
+[deployer-lock] #3979 released (held 659ms)
+[deployer-lock] #3980 acquired after 568ms
+[deployer-lock] #3980 fn done in 208ms
+[deployer-lock] #3980 released (held 776ms)
+[deployer-lock] #3981 acquired after 223ms
+[deployer-lock] #3981 fn done in 155ms
+[deployer-lock] #3981 released (held 378ms)
+ ✓ Compiled in 0ms (4802 modules)
+ ✓ Compiled in 1ms (4802 modules)
+ GET /api/system-readiness 200 in 9139ms
+ GET /api/system-readiness 200 in 9233ms
+ GET /api/system-readiness 200 in 6525ms
+ GET /api/system-readiness 200 in 9265ms
+[deployer-lock] #3982 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3982 acquired after 1ms
+[deployer-lock] #3983 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3982 fn done in 27ms
+[deployer-lock] #3982 released (held 28ms)
+[deployer-lock] #3983 acquired after 23ms
+[deployer-lock] #3984 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3983 fn done in 117ms
+[deployer-lock] #3983 released (held 140ms)
+[deployer-lock] #3984 acquired after 88ms
+[deployer-lock] #3984 fn done in 475ms
+[deployer-lock] #3984 released (held 563ms)
+[deployer-lock] #3985 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #3985 acquired after 0ms
+[deployer-lock] #3986 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3985 fn done in 186ms
+[deployer-lock] #3985 released (held 187ms)
+[deployer-lock] #3986 acquired after 122ms
+[deployer-lock] #3987 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3986 fn done in 127ms
+[deployer-lock] #3986 released (held 249ms)
+[deployer-lock] #3987 acquired after 111ms
+[deployer-lock] #3987 fn done in 141ms
+[deployer-lock] #3987 released (held 252ms)
+ ✓ Compiled in 1ms (4802 modules)
+ POST /catalyst/me 200 in 8887ms
+[deployer-lock] #3988 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #3988 acquired after 1ms
+[deployer-lock] #3989 writeContract(setEdgeStatus) queued (depth=1)
+ GET /api/system-readiness 200 in 6748ms
+ GET /api/system-readiness 200 in 8812ms
+[deployer-lock] #3988 fn done in 228ms
+[deployer-lock] #3988 released (held 229ms)
+[deployer-lock] #3989 acquired after 225ms
+ GET /api/boot-seed 200 in 251ms
+[deployer-lock] #3989 fn done in 357ms
+[deployer-lock] #3989 released (held 583ms)
+[deployer-lock] #3990 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #3990 acquired after 0ms
+[deployer-lock] #3991 writeContract(makeAssertion) queued (depth=1)
+[boot-seed] chain already seeded — skipping
+ GET /api/system-readiness 200 in 4371ms
+[deployer-lock] #3992 writeContract(makeAssertion) queued (depth=1)
+ GET /api/system-readiness 200 in 2118ms
+[deployer-lock] #3993 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #3990 fn done in 396ms
+[deployer-lock] #3990 released (held 396ms)
+[deployer-lock] #3991 acquired after 132ms
+[deployer-lock] #3994 writeContract(setEdgeStatus) queued (depth=1)
+ GET /api/system-readiness 200 in 136ms
+[deployer-lock] #3991 fn done in 216ms
+[deployer-lock] #3991 released (held 348ms)
+[deployer-lock] #3992 acquired after 254ms
+[deployer-lock] #3992 fn done in 71ms
+[deployer-lock] #3992 released (held 325ms)
+[deployer-lock] #3993 acquired after 302ms
+[deployer-lock] #3993 fn done in 126ms
+[deployer-lock] #3993 released (held 428ms)
+[deployer-lock] #3994 acquired after 268ms
+[deployer-lock] #3994 fn done in 122ms
+[deployer-lock] #3994 released (held 390ms)
+ GET /api/system-readiness 200 in 169ms
+[catalyst-seed] Data delegation created: Ana → Maria (on-chain)
+[catalyst-seed] Creating coaching relationship: David → Ana
+[deployer-lock] #3995 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3995 acquired after 0ms
+[deployer-lock] #3995 fn done in 30ms
+[deployer-lock] #3995 released (held 31ms)
+ GET /api/system-readiness 200 in 161ms
+[catalyst-seed] Data delegation created: Ana → Maria (on-chain)
+[catalyst-seed] Creating coaching relationship: David → Ana
+ ○ Compiling /api/auth/logout ...
+[deployer-lock] #3996 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #3996 acquired after 0ms
+[catalyst-seed] Data delegation created: Ana → Maria (on-chain)
+[catalyst-seed] Creating coaching relationship: David → Ana
+[deployer-lock] #3997 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3996 fn done in 85ms
+[deployer-lock] #3996 released (held 85ms)
+[deployer-lock] #3997 acquired after 2ms
+[deployer-lock] #3998 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3997 fn done in 108ms
+[deployer-lock] #3997 released (held 111ms)
+[deployer-lock] #3998 acquired after 10ms
+[deployer-lock] #3999 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #4000 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #3998 fn done in 146ms
+[deployer-lock] #3998 released (held 156ms)
+[deployer-lock] #3999 acquired after 58ms
+[deployer-lock] #3999 fn done in 736ms
+[deployer-lock] #3999 released (held 794ms)
+[deployer-lock] #4000 acquired after 762ms
+ ✓ Compiled /api/auth/logout in 4.4s (4801 modules)
+[deployer-lock] #4000 fn done in 172ms
+[deployer-lock] #4000 released (held 935ms)
+ ✓ Compiled in 1ms (4801 modules)
+[deployer-lock] #4001 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4001 acquired after 1ms
+[deployer-lock] #4001 fn done in 146ms
+[deployer-lock] #4001 released (held 147ms)
+[deployer-lock] #4002 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #4002 acquired after 0ms
+[deployer-lock] #4002 fn done in 96ms
+[deployer-lock] #4002 released (held 97ms)
+[deployer-lock] #4003 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4003 acquired after 0ms
+[deployer-lock] #4003 fn done in 532ms
+[deployer-lock] #4003 released (held 532ms)
+[deployer-lock] #4004 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4004 acquired after 0ms
+ ✓ Compiled in 12ms (4801 modules)
+[deployer-lock] #4005 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #4006 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #4007 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #4008 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #4004 fn done in 2484ms
+[deployer-lock] #4004 released (held 2485ms)
+[deployer-lock] #4005 acquired after 968ms
+[deployer-lock] #4005 fn done in 116ms
+[deployer-lock] #4005 released (held 1084ms)
+[deployer-lock] #4006 acquired after 196ms
+[deployer-lock] #4006 fn done in 112ms
+[deployer-lock] #4006 released (held 308ms)
+[deployer-lock] #4007 acquired after 290ms
+[deployer-lock] #4009 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #4007 fn done in 507ms
+[deployer-lock] #4007 released (held 797ms)
+[deployer-lock] #4008 acquired after 780ms
+[deployer-lock] #4008 fn done in 55ms
+[deployer-lock] #4008 released (held 835ms)
+[deployer-lock] #4009 acquired after 182ms
+[deployer-lock] #4010 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #4011 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #4009 fn done in 146ms
+[deployer-lock] #4009 released (held 328ms)
+[deployer-lock] #4010 acquired after 16ms
+[deployer-lock] #4010 fn done in 116ms
+[deployer-lock] #4010 released (held 133ms)
+[deployer-lock] #4011 acquired after 131ms
+[deployer-lock] #4011 fn done in 133ms
+[deployer-lock] #4011 released (held 264ms)
+ ✓ Compiled in 1ms (4801 modules)
+ GET /api/boot-seed 200 in 9429ms
+ POST /api/auth/logout 200 in 13002ms
+[boot-seed] chain already seeded — skipping
+[deployer-lock] #4012 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #4012 acquired after 1ms
+[deployer-lock] #4013 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #4014 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #4012 fn done in 58ms
+[deployer-lock] #4012 released (held 59ms)
+[deployer-lock] #4013 acquired after 55ms
+ ✓ Compiled / in 1ms (4801 modules)
+[deployer-lock] #4013 fn done in 463ms
+[deployer-lock] #4013 released (held 518ms)
+[deployer-lock] #4014 acquired after 467ms
+[deployer-lock] #4015 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #4016 writeContract(setEdgeStatus) queued (depth=1)
+ GET /api/system-readiness 200 in 10598ms
+[deployer-lock] #4017 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #4014 fn done in 180ms
+[deployer-lock] #4014 released (held 647ms)
+[deployer-lock] #4015 acquired after 177ms
+[deployer-lock] #4015 fn done in 103ms
+[deployer-lock] #4015 released (held 280ms)
+[deployer-lock] #4016 acquired after 235ms
+[deployer-lock] #4018 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #4016 fn done in 371ms
+[deployer-lock] #4016 released (held 606ms)
+[deployer-lock] #4017 acquired after 480ms
+[deployer-lock] #4017 fn done in 150ms
+[deployer-lock] #4017 released (held 630ms)
+[deployer-lock] #4018 acquired after 154ms
+[deployer-lock] #4018 fn done in 153ms
+[deployer-lock] #4018 released (held 307ms)
+[deployer-lock] #4019 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4019 acquired after 1ms
+[deployer-lock] #4020 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #4021 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #4022 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #4019 fn done in 72ms
+[deployer-lock] #4019 released (held 73ms)
+[deployer-lock] #4020 acquired after 65ms
+ ✓ Compiled in 2ms (4805 modules)
+[deployer-lock] #4023 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #4024 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #4020 fn done in 164ms
+[deployer-lock] #4020 released (held 229ms)
+[deployer-lock] #4021 acquired after 203ms
+[deployer-lock] #4025 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #4021 fn done in 120ms
+[deployer-lock] #4021 released (held 324ms)
+[deployer-lock] #4022 acquired after 299ms
+[deployer-lock] #4022 fn done in 588ms
+[deployer-lock] #4022 released (held 887ms)
+[deployer-lock] #4023 acquired after 743ms
+[deployer-lock] #4023 fn done in 165ms
+[deployer-lock] #4023 released (held 908ms)
+[deployer-lock] #4024 acquired after 895ms
+[deployer-lock] #4024 fn done in 221ms
+[deployer-lock] #4024 released (held 1116ms)
+[deployer-lock] #4025 acquired after 1059ms
+[deployer-lock] #4025 fn done in 97ms
+[deployer-lock] #4025 released (held 1156ms)
+ GET /api/system-readiness 200 in 9517ms
+ GET /api/system-readiness 200 in 9523ms
+ GET /api/system-readiness 200 in 12669ms
+ GET /api/system-readiness 200 in 12695ms
+ GET /api/system-readiness 200 in 2742ms
+ GET /api/system-readiness 200 in 6762ms
+ GET / 200 in 10254ms
+[catalyst-seed] Coaching delegation created: Ana → David (on-chain)
+[catalyst-seed] NoCo Catalyst community deployed: 18 agents, 25+ on-chain edges
+[deployer-lock] #4026 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4026 acquired after 0ms
+[deployer-lock] #4026 fn done in 30ms
+[deployer-lock] #4026 released (held 30ms)
+ GET /api/auth/session 200 in 96ms
+ GET /api/auth/session 200 in 132ms
+ GET /api/auth/session 200 in 140ms
+[deployer-lock] #4027 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4027 acquired after 0ms
+[deployer-lock] #4027 fn done in 22ms
+[deployer-lock] #4027 released (held 22ms)
+[deployer-lock] #4028 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #4028 acquired after 0ms
+[deployer-lock] #4028 fn done in 45ms
+[deployer-lock] #4028 released (held 45ms)
+[catalyst-seed] Coaching delegation created: Ana → David (on-chain)
+[catalyst-seed] NoCo Catalyst community deployed: 18 agents, 25+ on-chain edges
+[deployer-lock] #4029 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #4029 acquired after 0ms
+[deployer-lock] #4029 fn done in 28ms
+[deployer-lock] #4029 released (held 28ms)
+ GET /h/catalyst 200 in 2240ms
+ GET /api/boot-seed 200 in 167ms
+[deployer-lock] #4030 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4030 acquired after 0ms
+[boot-seed] chain already seeded — skipping
+[deployer-lock] #4031 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #4030 fn done in 390ms
+[deployer-lock] #4030 released (held 391ms)
+[deployer-lock] #4031 acquired after 3ms
+[deployer-lock] #4031 fn done in 144ms
+[deployer-lock] #4031 released (held 147ms)
+ GET /api/system-readiness 200 in 162ms
+[deployer-lock] #4032 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4032 acquired after 1ms
+[deployer-lock] #4032 fn done in 19ms
+[deployer-lock] #4032 released (held 20ms)
+[deployer-lock] #4033 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4033 acquired after 0ms
+[deployer-lock] #4033 fn done in 18ms
+[deployer-lock] #4033 released (held 18ms)
+ GET /api/auth/session 200 in 68ms
+ ○ Compiling /api/auth/passkey-challenge ...
+[catalyst-seed] Coaching delegation created: Ana → David (on-chain)
+[catalyst-seed] NoCo Catalyst community deployed: 18 agents, 25+ on-chain edges
+[deployer-lock] #4034 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #4034 acquired after 0ms
+[deployer-lock] #4035 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #4036 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #4034 fn done in 3658ms
+[deployer-lock] #4034 released (held 3658ms)
+[deployer-lock] #4035 acquired after 3341ms
+[deployer-lock] #4037 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #4035 fn done in 1146ms
+[deployer-lock] #4035 released (held 4487ms)
+[deployer-lock] #4036 acquired after 4410ms
+[deployer-lock] #4036 fn done in 123ms
+[deployer-lock] #4036 released (held 4533ms)
+[deployer-lock] #4037 acquired after 130ms
+[deployer-lock] #4037 fn done in 100ms
+[deployer-lock] #4037 released (held 230ms)
+[deployer-lock] #4038 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #4038 acquired after 0ms
+[deployer-lock] #4039 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #4040 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #4038 fn done in 599ms
+[deployer-lock] #4038 released (held 599ms)
+[deployer-lock] #4039 acquired after 519ms
+[deployer-lock] #4039 fn done in 283ms
+[deployer-lock] #4039 released (held 802ms)
+[deployer-lock] #4040 acquired after 334ms
+[deployer-lock] #4041 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #4040 fn done in 1121ms
+[deployer-lock] #4040 released (held 1456ms)
+[deployer-lock] #4041 acquired after 40ms
+[deployer-lock] #4042 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #4041 fn done in 101ms
+[deployer-lock] #4041 released (held 141ms)
+[deployer-lock] #4042 acquired after 7ms
+[deployer-lock] #4042 fn done in 434ms
+[deployer-lock] #4042 released (held 441ms)
+[deployer-lock] #4043 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4043 acquired after 0ms
+[deployer-lock] #4043 fn done in 52ms
+[deployer-lock] #4043 released (held 53ms)
+ ✓ Compiled /api/auth/check-agent-name in 15.5s (6334 modules)
+ GET /api/auth/passkey-challenge 200 in 17196ms
+ GET /api/boot-seed 200 in 9864ms
+ GET /api/auth/check-agent-name?label=richq20 200 in 9909ms
+[deployer-lock] #4044 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4044 acquired after 0ms
+[deployer-lock] #4045 writeContract(makeAssertion) queued (depth=1)
+[boot-seed] chain already seeded — skipping
+[deployer-lock] #4044 fn done in 34ms
+[deployer-lock] #4044 released (held 34ms)
+[deployer-lock] #4045 acquired after 34ms
+[deployer-lock] #4045 fn done in 139ms
+[deployer-lock] #4045 released (held 173ms)
+ GET /api/system-readiness 200 in 124ms
+[deployer-lock] #4046 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #4046 acquired after 1ms
+[deployer-lock] #4046 fn done in 26ms
+[deployer-lock] #4046 released (held 28ms)
+ ○ Compiling /api/auth/session-grant/start ...
+[deployer-lock] #4047 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #4047 acquired after 0ms
+[deployer-lock] #4047 fn done in 29ms
+[deployer-lock] #4047 released (held 29ms)
+[deployer-lock] #4048 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4048 acquired after 1ms
+[deployer-lock] #4048 fn done in 42ms
+[deployer-lock] #4048 released (held 43ms)
+[deployer-lock] #4049 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4049 acquired after 0ms
+[deployer-lock] #4049 fn done in 144ms
+[deployer-lock] #4049 released (held 144ms)
+ ✓ Compiled /api/auth/session-grant/start in 5s (4819 modules)
+ GET /api/boot-seed 200 in 3995ms
+ POST /api/auth/session-grant/start 200 in 7240ms
+[deployer-lock] #4050 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4050 acquired after 0ms
+[boot-seed] chain already seeded — skipping
+[deployer-lock] #4051 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #4050 fn done in 346ms
+[deployer-lock] #4050 released (held 346ms)
+[deployer-lock] #4051 acquired after 11ms
+[deployer-lock] #4052 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #4051 fn done in 150ms
+[deployer-lock] #4051 released (held 161ms)
+[deployer-lock] #4052 acquired after 2ms
+ GET /api/system-readiness 200 in 120ms
+[deployer-lock] #4052 fn done in 116ms
+[deployer-lock] #4052 released (held 118ms)
+[deployer-lock] #4053 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #4053 acquired after 0ms
+[deployer-lock] #4053 fn done in 34ms
+[deployer-lock] #4053 released (held 34ms)
+[deployer-lock] #4054 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4054 acquired after 1ms
+[deployer-lock] #4054 fn done in 58ms
+[deployer-lock] #4054 released (held 59ms)
+[deployer-lock] #4055 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #4055 acquired after 1ms
+ GET /api/boot-seed 200 in 151ms
+[deployer-lock] #4055 fn done in 94ms
+[deployer-lock] #4055 released (held 95ms)
+ GET /api/system-readiness 200 in 94ms
+[deployer-lock] #4056 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4056 acquired after 0ms
+[deployer-lock] #4056 fn done in 25ms
+[deployer-lock] #4056 released (held 25ms)
+[deployer-lock] #4057 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #4057 acquired after 0ms
+[deployer-lock] #4057 fn done in 21ms
+[deployer-lock] #4057 released (held 21ms)
+[deployer-lock] #4058 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4058 acquired after 0ms
+[deployer-lock] #4058 fn done in 24ms
+[deployer-lock] #4058 released (held 24ms)
+ GET /api/boot-seed 200 in 49ms
+ GET /api/system-readiness 200 in 67ms
+[deployer-lock] #4059 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4059 acquired after 0ms
+[deployer-lock] #4059 fn done in 21ms
+[deployer-lock] #4059 released (held 22ms)
+[deployer-lock] #4060 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4060 acquired after 0ms
+[deployer-lock] #4060 fn done in 25ms
+[deployer-lock] #4060 released (held 25ms)
+[deployer-lock] #4061 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4061 acquired after 1ms
+[deployer-lock] #4061 fn done in 25ms
+[deployer-lock] #4061 released (held 26ms)
+ ○ Compiling /api/auth/session-grant/finalize ...
+ ✓ Compiled /api/auth/session-grant/finalize in 1992ms (4804 modules)
+[deployer-lock] #4062 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #4062 acquired after 0ms
+[deployer-lock] #4063 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #4064 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #4062 fn done in 29ms
+[deployer-lock] #4062 released (held 29ms)
+[deployer-lock] #4063 acquired after 26ms
+[deployer-lock] #4063 fn done in 131ms
+[deployer-lock] #4063 released (held 157ms)
+[deployer-lock] #4064 acquired after 157ms
+[deployer-lock] #4064 fn done in 543ms
+[deployer-lock] #4064 released (held 700ms)
+ GET /api/boot-seed 200 in 6760ms
+ POST /api/auth/session-grant/finalize 200 in 7421ms
+[boot-seed] chain already seeded — skipping
+ GET /api/system-readiness 200 in 226ms
+ POST /h/catalyst 200 in 833ms
+[deployer-lock] #4065 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4065 acquired after 0ms
+[deployer-lock] #4065 fn done in 25ms
+[deployer-lock] #4065 released (held 25ms)
+[deployer-lock] #4066 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #4066 acquired after 1ms
+[deployer-lock] #4066 fn done in 38ms
+[deployer-lock] #4066 released (held 39ms)
+[catalyst-seed] Naming hierarchy created
+[catalyst-seed] Creating data access delegation: Ana → Maria
+[deployer-lock] #4067 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4067 acquired after 0ms
+[deployer-lock] #4067 fn done in 94ms
+[deployer-lock] #4067 released (held 94ms)
+ GET /api/boot-seed 200 in 356ms
+[deployer-lock] #4068 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4068 acquired after 0ms
+[deployer-lock] #4068 fn done in 235ms
+[deployer-lock] #4068 released (held 235ms)
+ GET /api/system-readiness 200 in 168ms
+[deployer-lock] #4069 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4069 acquired after 0ms
+[deployer-lock] #4069 fn done in 134ms
+[deployer-lock] #4069 released (held 134ms)
+ GET /h/catalyst 307 in 5337ms
+[deployer-lock] #4070 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4070 acquired after 1ms
+[deployer-lock] #4070 fn done in 203ms
+[deployer-lock] #4070 released (held 204ms)
+[deployer-lock] #4071 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #4071 acquired after 1ms
+[deployer-lock] #4072 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #4071 fn done in 508ms
+[deployer-lock] #4071 released (held 510ms)
+[deployer-lock] #4072 acquired after 96ms
+[deployer-lock] #4072 fn done in 167ms
+[deployer-lock] #4072 released (held 263ms)
+ GET /api/boot-seed 200 in 499ms
+ GET /h/catalyst/home 200 in 4073ms
+ GET /api/system-readiness 200 in 82ms
+ GET /api/auth/session 200 in 120ms
+ ○ Compiling /api/user-context ...
+[deployer-lock] #4073 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #4073 acquired after 0ms
+[deployer-lock] #4073 fn done in 85ms
+[deployer-lock] #4073 released (held 86ms)
+ ✓ Compiled /api/user-context in 1965ms (4806 modules)
+[deployer-lock] #4074 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4074 acquired after 0ms
+[deployer-lock] #4074 fn done in 49ms
+[deployer-lock] #4074 released (held 49ms)
+[deployer-lock] #4075 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #4075 acquired after 0ms
+[deployer-lock] #4075 fn done in 89ms
+[deployer-lock] #4075 released (held 89ms)
+ ✓ Compiled in 1ms (4806 modules)
+ GET /api/auth/session 200 in 4430ms
+ GET /api/auth/session 200 in 4436ms
+ GET /api/auth/session 200 in 4442ms
+[catalyst-seed] Data delegation created: Ana → Maria (on-chain)
+[catalyst-seed] Creating coaching relationship: David → Ana
+ ✓ Compiled in 1ms (4806 modules)
+[deployer-lock] #4076 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4076 acquired after 0ms
+[deployer-lock] #4076 fn done in 72ms
+[deployer-lock] #4076 released (held 72ms)
+[deployer-lock] #4077 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4077 acquired after 0ms
+[deployer-lock] #4077 fn done in 33ms
+[deployer-lock] #4077 released (held 34ms)
+[deployer-lock] #4078 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4078 acquired after 1ms
+[deployer-lock] #4078 fn done in 71ms
+[deployer-lock] #4078 released (held 72ms)
+ ✓ Compiled in 1ms (4806 modules)
+[deployer-lock] #4079 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #4079 acquired after 1ms
+[deployer-lock] #4080 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #4081 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #4079 fn done in 47ms
+[deployer-lock] #4079 released (held 48ms)
+[deployer-lock] #4080 acquired after 42ms
+[deployer-lock] #4080 fn done in 139ms
+[deployer-lock] #4080 released (held 181ms)
+[deployer-lock] #4081 acquired after 178ms
+[deployer-lock] #4081 fn done in 581ms
+[deployer-lock] #4081 released (held 759ms)
+ GET /api/user-context 200 in 15765ms
+[deployer-lock] #4082 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #4082 acquired after 0ms
+[deployer-lock] #4083 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #4084 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #4082 fn done in 112ms
+[deployer-lock] #4082 released (held 112ms)
+[deployer-lock] #4083 acquired after 94ms
+ GET /api/boot-seed 200 in 16252ms
+[deployer-lock] #4083 fn done in 788ms
+[deployer-lock] #4083 released (held 883ms)
+[deployer-lock] #4084 acquired after 821ms
+[boot-seed] chain already seeded — skipping
+[deployer-lock] #4085 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #4086 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #4084 fn done in 264ms
+[deployer-lock] #4084 released (held 1085ms)
+[deployer-lock] #4085 acquired after 60ms
+[deployer-lock] #4085 fn done in 697ms
+[deployer-lock] #4085 released (held 757ms)
+[deployer-lock] #4086 acquired after 721ms
+[deployer-lock] #4086 fn done in 143ms
+[deployer-lock] #4086 released (held 864ms)
+ GET /api/system-readiness 200 in 833ms
+ GET /catalyst/me 200 in 628ms
+ POST /h/[hubId]/home 200 in 316ms
+ POST /catalyst/me 200 in 607ms
+ POST /h/catalyst/home 200 in 4424ms
+ POST /catalyst/me 200 in 340ms
+ POST /catalyst/me 200 in 69ms
+[deployer-lock] #4087 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4087 acquired after 1ms
+[deployer-lock] #4087 fn done in 50ms
+[deployer-lock] #4087 released (held 51ms)
+[deployer-lock] #4088 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4088 acquired after 0ms
+[deployer-lock] #4088 fn done in 102ms
+[deployer-lock] #4088 released (held 102ms)
+[deployer-lock] #4089 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4089 acquired after 0ms
+[deployer-lock] #4089 fn done in 46ms
+[deployer-lock] #4089 released (held 46ms)
+ GET /api/boot-seed 200 in 82ms
+ GET /api/system-readiness 200 in 133ms
+ POST /h/[hubId]/home 200 in 1924ms
+ POST /catalyst/me 200 in 2014ms
+ POST /h/[hubId]/home 200 in 188ms
+ POST /catalyst/me 200 in 271ms
+ POST /catalyst/me 200 in 223ms
+ POST /catalyst/me 200 in 72ms
+ GET /catalyst/me 200 in 168ms
+ GET /api/auth/session 200 in 133ms
+ GET /api/auth/session 200 in 222ms
+ GET /api/auth/session 200 in 416ms
+ GET /api/system-readiness 200 in 455ms
+ GET /api/system-readiness 200 in 505ms
+ GET /api/user-context 200 in 776ms
+ GET /api/system-readiness 200 in 225ms
+ GET /api/user-context 200 in 434ms
+ POST /catalyst/me 200 in 340ms
+ POST /catalyst/me 200 in 108ms
+[deployer-lock] #4090 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #4090 acquired after 0ms
+[deployer-lock] #4090 fn done in 24ms
+[deployer-lock] #4090 released (held 25ms)
+[deployer-lock] #4091 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #4091 acquired after 1ms
+[deployer-lock] #4091 fn done in 27ms
+[deployer-lock] #4091 released (held 28ms)
+[deployer-lock] #4092 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #4092 acquired after 1ms
+[deployer-lock] #4092 fn done in 101ms
+[deployer-lock] #4092 released (held 102ms)
+ GET /api/boot-seed 200 in 73ms
+ GET /api/system-readiness 200 in 73ms
+ GET /api/system-readiness 200 in 116ms
+[deployer-lock] #4093 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4093 acquired after 1ms
+[deployer-lock] #4093 fn done in 20ms
+[deployer-lock] #4093 released (held 21ms)
+ GET /api/system-readiness 200 in 209ms
+[catalyst-seed] Coaching delegation created: Ana → David (on-chain)
+[catalyst-seed] NoCo Catalyst community deployed: 18 agents, 25+ on-chain edges
+[deployer-lock] #4094 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4094 acquired after 0ms
+[deployer-lock] #4094 fn done in 27ms
+[deployer-lock] #4094 released (held 28ms)
+ GET /api/boot-seed 200 in 64ms
+ GET /api/system-readiness 200 in 71ms
+ GET /api/system-readiness 200 in 121ms
+ POST /catalyst/me 200 in 230ms
+[deployer-lock] #4095 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4095 acquired after 1ms
+[deployer-lock] #4095 fn done in 35ms
+[deployer-lock] #4095 released (held 36ms)
+[deployer-lock] #4096 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4096 acquired after 2ms
+[deployer-lock] #4096 fn done in 28ms
+[deployer-lock] #4096 released (held 30ms)
+ GET /api/boot-seed 200 in 86ms
+ GET /api/system-readiness 200 in 122ms
+ GET /api/system-readiness 200 in 61ms
+[deployer-lock] #4097 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #4097 acquired after 1ms
+[deployer-lock] #4097 fn done in 20ms
+[deployer-lock] #4097 released (held 21ms)
+ GET /catalyst/me 200 in 612ms
+[deployer-lock] #4098 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #4098 acquired after 0ms
+[deployer-lock] #4098 fn done in 25ms
+[deployer-lock] #4098 released (held 25ms)
+ GET /api/auth/session 200 in 169ms
+ GET /api/auth/session 200 in 242ms
+ GET /api/auth/session 200 in 250ms
+ GET /api/auth/session 200 in 328ms
+ GET /api/system-readiness 200 in 464ms
+ GET /api/boot-seed 200 in 148ms
+ GET /api/user-context 200 in 800ms
+ GET /api/system-readiness 200 in 390ms
+ GET /api/system-readiness 200 in 201ms
+ POST /catalyst/me 200 in 106ms
+ POST /catalyst/me 200 in 89ms
+[deployer-lock] #4099 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4099 acquired after 0ms
+[deployer-lock] #4099 fn done in 30ms
+[deployer-lock] #4099 released (held 30ms)
+[deployer-lock] #4100 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4100 acquired after 0ms
+[deployer-lock] #4100 fn done in 35ms
+[deployer-lock] #4100 released (held 36ms)
+ GET /api/system-readiness 200 in 156ms
+[deployer-lock] #4101 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4101 acquired after 0ms
+[deployer-lock] #4101 fn done in 128ms
+[deployer-lock] #4101 released (held 128ms)
+ GET /api/boot-seed 200 in 782ms
+[deployer-lock] #4102 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4102 acquired after 1ms
+[deployer-lock] #4102 fn done in 442ms
+[deployer-lock] #4102 released (held 444ms)
+ GET /api/system-readiness 200 in 1732ms
+ GET /api/system-readiness 200 in 156ms
+ GET /h/catalyst/home 200 in 4306ms
+ GET /api/auth/session 200 in 88ms
+ GET /api/auth/session 200 in 139ms
+ GET /api/auth/session 200 in 191ms
+ GET /api/user-context 200 in 444ms
+ GET /api/user-context 200 in 592ms
+[deployer-lock] #4103 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #4103 acquired after 0ms
+[deployer-lock] #4103 fn done in 43ms
+[deployer-lock] #4103 released (held 44ms)
+ POST /h/catalyst/home 200 in 1965ms
+ POST /h/catalyst/home 200 in 193ms
+ POST /h/catalyst/home 200 in 160ms
+ POST /h/catalyst/home 200 in 69ms
+[deployer-lock] #4104 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #4104 acquired after 0ms
+[deployer-lock] #4104 fn done in 41ms
+[deployer-lock] #4104 released (held 41ms)
+ GET /api/boot-seed 200 in 96ms
+ GET /api/system-readiness 200 in 129ms
+ POST /h/catalyst/home 200 in 1695ms
+ ○ Compiling /_not-found ...
+[deployer-lock] #4105 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4105 acquired after 0ms
+[deployer-lock] #4106 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #4105 fn done in 69ms
+[deployer-lock] #4105 released (held 69ms)
+[deployer-lock] #4106 acquired after 32ms
+[deployer-lock] #4107 writeContract(setEdgeStatus) queued (depth=1)
+ POST /h/catalyst/home 200 in 4355ms
+[deployer-lock] #4106 fn done in 204ms
+[deployer-lock] #4106 released (held 236ms)
+[deployer-lock] #4107 acquired after 28ms
+[deployer-lock] #4107 fn done in 126ms
+[deployer-lock] #4107 released (held 155ms)
+ GET /api/boot-seed 200 in 131ms
+ GET /api/system-readiness 200 in 3271ms
+[deployer-lock] #4108 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4108 acquired after 0ms
+[deployer-lock] #4108 fn done in 28ms
+[deployer-lock] #4108 released (held 28ms)
+[deployer-lock] #4109 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #4109 acquired after 0ms
+[deployer-lock] #4109 fn done in 168ms
+[deployer-lock] #4109 released (held 168ms)
+ ✓ Compiled /_not-found in 10s (6320 modules)
+ GET /catalyst/me/settings 404 in 10224ms
+ ○ Compiling /onboarding ...
+ ✓ Compiled /onboarding in 1749ms (4792 modules)
+[deployer-lock] #4110 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #4110 acquired after 0ms
+ GET /api/boot-seed 200 in 696ms
+[deployer-lock] #4110 fn done in 826ms
+[deployer-lock] #4110 released (held 826ms)
+[boot-seed] chain already seeded — skipping
+[deployer-lock] #4111 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4111 acquired after 1ms
+[deployer-lock] #4112 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #4111 fn done in 159ms
+[deployer-lock] #4111 released (held 161ms)
+[deployer-lock] #4112 acquired after 128ms
+[deployer-lock] #4112 fn done in 189ms
+[deployer-lock] #4112 released (held 317ms)
+ GET /api/system-readiness 200 in 186ms
+ POST /onboarding 200 in 3623ms
+ POST /catalyst/me/settings 404 in 3692ms
+ POST /onboarding 200 in 66ms
+ POST /catalyst/me/settings 404 in 115ms
+ ○ Compiling /wallet ...
+[deployer-lock] #4113 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4113 acquired after 0ms
+[deployer-lock] #4114 writeContract(setEdgeStatus) queued (depth=1)
+[deployer-lock] #4113 fn done in 49ms
+[deployer-lock] #4113 released (held 49ms)
+[deployer-lock] #4114 acquired after 45ms
+ ✓ Compiled /wallet in 4.9s (4805 modules)
+[deployer-lock] #4114 fn done in 135ms
+[deployer-lock] #4114 released (held 181ms)
+ GET /api/boot-seed 200 in 514ms
+ POST /wallet 200 in 5827ms
+[boot-seed] chain already seeded — skipping
+ POST /catalyst/me/settings 404 in 6145ms
+ GET /api/system-readiness 200 in 102ms
+ GET /catalyst/me/settings 404 in 122ms
+ GET /catalyst/me/settings 404 in 209ms
+ GET /api/auth/session 200 in 127ms
+ GET /api/auth/session 200 in 170ms
+ GET /api/auth/session 200 in 177ms
+[deployer-lock] #4115 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #4115 acquired after 0ms
+[deployer-lock] #4116 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #4115 fn done in 1435ms
+[deployer-lock] #4115 released (held 1435ms)
+[deployer-lock] #4116 acquired after 1432ms
+[deployer-lock] #4116 fn done in 450ms
+[deployer-lock] #4116 released (held 1883ms)
+[deployer-lock] #4117 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4117 acquired after 1ms
+ GET /api/boot-seed 200 in 117ms
+[deployer-lock] #4117 fn done in 192ms
+[deployer-lock] #4117 released (held 193ms)
+ GET /api/system-readiness 200 in 1167ms
+ GET /h/catalyst/home 200 in 4048ms
+ GET /api/auth/session 200 in 76ms
+ GET /api/auth/session 200 in 163ms
+ GET /api/auth/session 200 in 168ms
+ GET /api/auth/session 200 in 172ms
+[deployer-lock] #4118 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4118 acquired after 1ms
+[deployer-lock] #4118 fn done in 93ms
+[deployer-lock] #4118 released (held 94ms)
+[deployer-lock] #4119 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4119 acquired after 0ms
+[deployer-lock] #4119 fn done in 48ms
+[deployer-lock] #4119 released (held 48ms)
+ POST /h/catalyst/home 200 in 2683ms
+ GET /api/boot-seed 200 in 79ms
+ POST /h/catalyst/home 200 in 181ms
+ GET /api/system-readiness 200 in 104ms
+ POST /h/catalyst/home 200 in 295ms
+ POST /h/catalyst/home 200 in 70ms
+ POST /h/catalyst/home 200 in 1448ms
+ POST /h/catalyst/home 200 in 177ms
+[deployer-lock] #4120 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4120 acquired after 1ms
+ POST /h/catalyst/home 200 in 272ms
+[deployer-lock] #4120 fn done in 24ms
+[deployer-lock] #4120 released (held 25ms)
+ POST /h/catalyst/home 200 in 74ms
+[deployer-lock] #4121 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #4121 acquired after 1ms
+[deployer-lock] #4121 fn done in 18ms
+[deployer-lock] #4121 released (held 19ms)
+ POST /h/catalyst/home 200 in 963ms
+ GET /api/boot-seed 200 in 111ms
+ GET /api/system-readiness 200 in 124ms
+ POST /h/catalyst/home 200 in 1060ms
+[deployer-lock] #4122 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #4122 acquired after 0ms
+[deployer-lock] #4122 fn done in 15ms
+[deployer-lock] #4122 released (held 15ms)
+[catalyst-seed] Naming hierarchy created
+[catalyst-seed] Creating data access delegation: Ana → Maria
+[deployer-lock] #4123 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4123 acquired after 0ms
+[deployer-lock] #4123 fn done in 29ms
+[deployer-lock] #4123 released (held 29ms)
+ GET /api/boot-seed 200 in 71ms
+ GET /api/system-readiness 200 in 67ms
+[deployer-lock] #4124 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4124 acquired after 1ms
+[deployer-lock] #4124 fn done in 25ms
+[deployer-lock] #4124 released (held 26ms)
+[deployer-lock] #4125 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4125 acquired after 1ms
+[deployer-lock] #4125 fn done in 30ms
+[deployer-lock] #4125 released (held 31ms)
+ POST /h/catalyst/home 200 in 216ms
+ POST /h/catalyst/home 200 in 373ms
+ GET /api/boot-seed 200 in 55ms
+ GET /api/system-readiness 200 in 64ms
+[deployer-lock] #4126 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4126 acquired after 1ms
+[deployer-lock] #4126 fn done in 26ms
+[deployer-lock] #4126 released (held 27ms)
+[deployer-lock] #4127 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #4127 acquired after 1ms
+[deployer-lock] #4127 fn done in 26ms
+[deployer-lock] #4127 released (held 27ms)
+ GET /api/boot-seed 200 in 85ms
+ GET /api/system-readiness 200 in 72ms
+[deployer-lock] #4128 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #4128 acquired after 1ms
+[deployer-lock] #4128 fn done in 39ms
+[deployer-lock] #4128 released (held 40ms)
+[catalyst-seed] Data delegation created: Ana → Maria (on-chain)
+[catalyst-seed] Creating coaching relationship: David → Ana
+[deployer-lock] #4129 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4129 acquired after 0ms
+ POST /h/catalyst/home 200 in 830ms
+[deployer-lock] #4129 fn done in 118ms
+[deployer-lock] #4129 released (held 118ms)
+ GET /api/boot-seed 200 in 73ms
+ GET /api/system-readiness 200 in 62ms
+[catalyst-seed] Naming hierarchy created
+[catalyst-seed] Creating data access delegation: Ana → Maria
+[deployer-lock] #4130 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4130 acquired after 0ms
+[deployer-lock] #4130 fn done in 29ms
+[deployer-lock] #4130 released (held 29ms)
+[deployer-lock] #4131 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4131 acquired after 1ms
+[deployer-lock] #4131 fn done in 27ms
+[deployer-lock] #4131 released (held 28ms)
+ GET /api/boot-seed 200 in 75ms
+ GET /api/system-readiness 200 in 59ms
+[deployer-lock] #4132 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4132 acquired after 0ms
+[deployer-lock] #4132 fn done in 26ms
+[deployer-lock] #4132 released (held 26ms)
+ POST /h/catalyst/home 200 in 353ms
+ POST /h/catalyst/home 200 in 179ms
+[deployer-lock] #4133 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #4133 acquired after 1ms
+[deployer-lock] #4133 fn done in 26ms
+[deployer-lock] #4133 released (held 27ms)
+ GET /api/boot-seed 200 in 65ms
+ GET /api/system-readiness 200 in 75ms
+[deployer-lock] #4134 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #4134 acquired after 0ms
+[deployer-lock] #4134 fn done in 29ms
+[deployer-lock] #4134 released (held 30ms)
+[deployer-lock] #4135 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4135 acquired after 1ms
+[deployer-lock] #4135 fn done in 146ms
+[deployer-lock] #4135 released (held 147ms)
+ GET /api/boot-seed 200 in 71ms
+ GET /api/system-readiness 200 in 65ms
+[catalyst-seed] Data delegation created: Ana → Maria (on-chain)
+[catalyst-seed] Creating coaching relationship: David → Ana
+[deployer-lock] #4136 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4136 acquired after 0ms
+[deployer-lock] #4136 fn done in 24ms
+[deployer-lock] #4136 released (held 26ms)
+[deployer-lock] #4137 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4137 acquired after 0ms
+[deployer-lock] #4137 fn done in 28ms
+[deployer-lock] #4137 released (held 28ms)
+[deployer-lock] #4138 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4138 acquired after 6ms
+[deployer-lock] #4139 writeContract(makeAssertion) queued (depth=1)
+[deployer-lock] #4138 fn done in 1074ms
+[deployer-lock] #4138 released (held 1080ms)
+[deployer-lock] #4139 acquired after 38ms
+[deployer-lock] #4139 fn done in 135ms
+[deployer-lock] #4139 released (held 174ms)
+ POST /h/catalyst/home 200 in 3157ms
+ GET /api/boot-seed 200 in 249ms
+ GET /api/system-readiness 200 in 105ms
+ POST /h/catalyst/home 200 in 590ms
+[deployer-lock] #4140 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #4140 acquired after 1ms
+[catalyst-seed] Coaching delegation created: Ana → David (on-chain)
+[catalyst-seed] NoCo Catalyst community deployed: 18 agents, 25+ on-chain edges
+[deployer-lock] #4140 fn done in 1806ms
+[deployer-lock] #4140 released (held 1807ms)
+ GET /api/boot-seed 200 in 703ms
+[deployer-lock] #4141 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4141 acquired after 0ms
+[deployer-lock] #4141 fn done in 95ms
+[deployer-lock] #4141 released (held 96ms)
+ GET /api/system-readiness 200 in 215ms
+ GET /h/catalyst/home 200 in 10451ms
+ GET /api/auth/session 200 in 97ms
+ GET /api/auth/session 200 in 169ms
+ GET /api/auth/session 200 in 175ms
+ GET /api/auth/session 200 in 186ms
+ GET /api/user-context 200 in 3185ms
+ POST /h/catalyst/home 200 in 2360ms
+[deployer-lock] #4142 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #4142 acquired after 0ms
+[deployer-lock] #4142 fn done in 21ms
+[deployer-lock] #4142 released (held 21ms)
+ POST /h/catalyst/home 200 in 189ms
+ GET /api/boot-seed 200 in 143ms
+ GET /api/system-readiness 200 in 139ms
+ POST /h/catalyst/home 200 in 298ms
+ POST /h/catalyst/home 200 in 71ms
+ POST /h/catalyst/home 200 in 1564ms
+ POST /h/catalyst/home 200 in 226ms
+ POST /h/catalyst/home 200 in 175ms
+ POST /h/catalyst/home 200 in 65ms
+ POST /h/catalyst/home 200 in 609ms
+[deployer-lock] #4143 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #4143 acquired after 0ms
+[deployer-lock] #4143 fn done in 14ms
+[deployer-lock] #4143 released (held 15ms)
+ GET /api/boot-seed 200 in 67ms
+ GET /api/system-readiness 200 in 71ms
+[catalyst-seed] Coaching delegation created: Ana → David (on-chain)
+[catalyst-seed] NoCo Catalyst community deployed: 18 agents, 25+ on-chain edges
+ GET /api/boot-seed 200 in 58ms
+ GET /api/system-readiness 200 in 59ms
+ GET /api/boot-seed 200 in 72ms
+ GET /api/system-readiness 200 in 84ms
+ POST /h/catalyst/home 200 in 346ms
+ GET /api/auth/session 200 in 57ms
+ GET /api/boot-seed 200 in 69ms
+ GET /api/system-readiness 200 in 120ms
+ GET /api/boot-seed 200 in 125ms
+ GET /api/system-readiness 200 in 72ms
+ GET /api/boot-seed 200 in 62ms
+ GET /api/system-readiness 200 in 62ms
+ POST /h/catalyst/home 200 in 246ms
+ GET /api/boot-seed 200 in 74ms
+ GET /api/system-readiness 200 in 61ms
+ GET /api/boot-seed 200 in 83ms
+ GET /api/system-readiness 200 in 86ms
+ GET /api/boot-seed 200 in 120ms
+ GET /api/system-readiness 200 in 68ms
+ GET /api/boot-seed 200 in 509ms
+ GET /api/system-readiness 200 in 1686ms
+ GET /api/boot-seed 200 in 180ms
+ GET /api/system-readiness 200 in 127ms
+ GET /api/boot-seed 200 in 82ms
+ GET /api/system-readiness 200 in 94ms
+ GET /api/boot-seed 200 in 91ms
+ GET /api/system-readiness 200 in 357ms
+ GET /api/boot-seed 200 in 21ms
+ GET /api/system-readiness 200 in 27ms
+ GET /api/boot-seed 200 in 30ms
+ GET /api/system-readiness 200 in 30ms
+ GET /api/boot-seed 200 in 35ms
+ GET /api/system-readiness 200 in 24ms
+ GET /api/boot-seed 200 in 44ms
+ GET /api/system-readiness 200 in 34ms
+ GET /api/boot-seed 200 in 20ms
+ GET /api/system-readiness 200 in 32ms
+ GET /api/boot-seed 200 in 21ms
+ GET /api/system-readiness 200 in 45ms
+ GET /api/boot-seed 200 in 23ms
+ GET /api/system-readiness 200 in 30ms
+ GET /api/boot-seed 200 in 18ms
+ GET /api/system-readiness 200 in 46ms
+ GET /h/catalyst/home 200 in 1292ms
+ GET /api/auth/session 200 in 68ms
+ GET /api/auth/session 200 in 97ms
+ GET /api/auth/session 200 in 98ms
+ GET /api/auth/session 200 in 100ms
+ GET /api/user-context 200 in 177ms
+ POST /h/catalyst/home 200 in 909ms
+ POST /h/catalyst/home 200 in 71ms
+ POST /h/catalyst/home 200 in 69ms
+ POST /h/catalyst/home 200 in 26ms
+ POST /h/catalyst/home 200 in 434ms
+ POST /h/catalyst/home 200 in 64ms
+ GET /api/boot-seed 200 in 32ms
+ GET /api/system-readiness 200 in 49ms
+ POST /h/catalyst/home 200 in 106ms
+ POST /h/catalyst/home 200 in 58ms
+ GET /api/boot-seed 200 in 18ms
+ GET /api/system-readiness 200 in 22ms
+ ○ Compiling /api/auth/logout ...
+ ✓ Compiled /api/auth/logout in 4.7s (4790 modules)
+ GET /api/boot-seed 200 in 1971ms
+ POST /api/auth/logout 200 in 5399ms
+[boot-seed] chain already seeded — skipping
+ GET /api/system-readiness 200 in 793ms
+ GET / 200 in 804ms
+ GET /api/auth/session 200 in 35ms
+ GET /api/auth/session 200 in 53ms
+ GET /api/auth/session 200 in 54ms
+ GET /h/catalyst 200 in 703ms
+ GET /api/boot-seed 200 in 40ms
+ GET /api/system-readiness 200 in 60ms
+ GET /api/auth/session 200 in 25ms
+ GET /api/boot-seed 200 in 17ms
+ GET /api/system-readiness 200 in 19ms
+ ○ Compiling /api/auth/passkey-challenge ...
+ ✓ Compiled /api/auth/passkey-challenge in 1940ms (4792 modules)
+ GET /api/auth/passkey-challenge 200 in 2003ms
+ GET /api/boot-seed 200 in 131ms
+[boot-seed] chain already seeded — skipping
+ GET /api/system-readiness 200 in 48ms
+ ○ Compiling /api/auth/check-agent-name ...
+ ✓ Compiled /api/auth/check-agent-name in 1829ms (4794 modules)
+ GET /api/auth/check-agent-name?label=richq20 200 in 731ms
+ ○ Compiling /api/auth/session-grant/start ...
+ ✓ Compiled /api/auth/session-grant/start in 3.2s (4806 modules)
+ GET /api/boot-seed 200 in 2685ms
+ POST /api/auth/session-grant/start 200 in 4026ms
+[boot-seed] chain already seeded — skipping
+ GET /api/system-readiness 200 in 62ms
+ GET /api/boot-seed 200 in 15ms
+ GET /api/system-readiness 200 in 25ms
+ GET /api/boot-seed 200 in 16ms
+ GET /api/system-readiness 200 in 29ms
+ GET /api/boot-seed 200 in 28ms
+ GET /api/system-readiness 200 in 51ms
+ ○ Compiling /api/auth/session-grant/finalize ...
+ ✓ Compiled /api/auth/session-grant/finalize in 615ms (4808 modules)
+ POST /api/auth/session-grant/finalize 200 in 742ms
+ POST /h/catalyst 200 in 292ms
+ GET /h/catalyst 307 in 1891ms
+ GET /api/boot-seed 200 in 495ms
+[boot-seed] chain already seeded — skipping
+ GET /api/system-readiness 200 in 565ms
+ GET /h/catalyst/home 200 in 2308ms
+ GET /api/auth/session 200 in 62ms
+ GET /api/auth/session 200 in 90ms
+ GET /api/auth/session 200 in 113ms
+ GET /api/auth/session 200 in 114ms
+ GET /api/user-context 200 in 236ms
+ POST /h/catalyst/home 200 in 746ms
+ POST /h/catalyst/home 200 in 64ms
+ POST /h/catalyst/home 200 in 63ms
+ POST /h/catalyst/home 200 in 31ms
+ POST /h/catalyst/home 200 in 479ms
+ POST /h/catalyst/home 200 in 62ms
+ POST /h/catalyst/home 200 in 52ms
+ POST /h/catalyst/home 200 in 29ms
+ GET /api/boot-seed 200 in 55ms
+ GET /api/system-readiness 200 in 27ms
+ POST /h/catalyst/home 200 in 289ms
+ GET /api/boot-seed 200 in 20ms
+ GET /api/system-readiness 200 in 22ms
+ POST /h/catalyst/home 200 in 114ms
+ GET /api/auth/session 200 in 21ms
+ GET /api/boot-seed 200 in 20ms
+ GET /api/system-readiness 200 in 23ms
+ GET /api/boot-seed 200 in 19ms
+ GET /api/system-readiness 200 in 21ms
+ GET /api/boot-seed 200 in 22ms
+ GET /api/system-readiness 200 in 27ms
+ POST /h/catalyst/home 200 in 75ms
+ GET /api/boot-seed 200 in 17ms
+ GET /api/system-readiness 200 in 25ms
+ GET /api/boot-seed 200 in 19ms
+ GET /api/system-readiness 200 in 52ms
+ GET /api/boot-seed 200 in 18ms
+ GET /api/system-readiness 200 in 23ms
+ GET /api/boot-seed 200 in 19ms
+ GET /api/system-readiness 200 in 22ms
+ GET /api/boot-seed 200 in 16ms
+ GET /api/system-readiness 200 in 26ms
+ GET /api/boot-seed 200 in 15ms
+ GET /api/system-readiness 200 in 28ms
+ GET /api/boot-seed 200 in 16ms
+ GET /api/system-readiness 200 in 21ms
+ GET /api/boot-seed 200 in 39ms
+ GET /api/system-readiness 200 in 23ms
+ GET /api/boot-seed 200 in 494ms
+ GET /api/system-readiness 200 in 37ms
+ GET /api/boot-seed 200 in 20ms
+ GET /api/system-readiness 200 in 24ms
+ GET /api/boot-seed 200 in 18ms
+ GET /api/system-readiness 200 in 55ms
+ GET /api/boot-seed 200 in 17ms
+ GET /api/system-readiness 200 in 25ms
+ GET /api/boot-seed 200 in 15ms
+ GET /api/system-readiness 200 in 22ms
+ GET /api/boot-seed 200 in 16ms
+ GET /api/system-readiness 200 in 55ms
+ GET /api/boot-seed 200 in 18ms
+ GET /api/system-readiness 200 in 19ms
+ GET /api/boot-seed 200 in 14ms
+ GET /api/system-readiness 200 in 26ms
+ GET /api/boot-seed 200 in 14ms
+ GET /api/system-readiness 200 in 22ms
+ GET /api/boot-seed 200 in 15ms
+ GET /api/system-readiness 200 in 20ms
+ GET /api/boot-seed 200 in 14ms
+ GET /api/system-readiness 200 in 23ms
+ GET /api/boot-seed 200 in 36ms
+ GET /api/system-readiness 200 in 31ms
+ GET /api/boot-seed 200 in 16ms
+ GET /api/system-readiness 200 in 21ms
+ GET /api/boot-seed 200 in 16ms
+ GET /api/system-readiness 200 in 22ms
+ GET /api/boot-seed 200 in 16ms
+ GET /api/system-readiness 200 in 22ms
+ GET /api/boot-seed 200 in 14ms
+ GET /api/system-readiness 200 in 32ms
+ GET /api/boot-seed 200 in 15ms
+ GET /api/system-readiness 200 in 52ms
+ GET /api/boot-seed 200 in 15ms
+ GET /api/system-readiness 200 in 21ms
+ GET /api/boot-seed 200 in 17ms
+ GET /api/system-readiness 200 in 22ms
+ GET /api/boot-seed 200 in 16ms
+ GET /api/system-readiness 200 in 45ms
+ GET /api/boot-seed 200 in 15ms
+ GET /api/system-readiness 200 in 21ms
+ GET /api/boot-seed 200 in 15ms
+ GET /api/system-readiness 200 in 18ms
+ GET /api/boot-seed 200 in 38ms
+ GET /api/system-readiness 200 in 25ms
+ GET /api/boot-seed 200 in 15ms
+ GET /api/system-readiness 200 in 24ms
+ GET /api/boot-seed 200 in 17ms
+ GET /api/system-readiness 200 in 27ms
+ GET /api/boot-seed 200 in 53ms
+ GET /api/system-readiness 200 in 215ms
+ ✓ Compiled in 10.2s (6330 modules)
+ ✓ Compiled in 0ms (4784 modules)
+ ✓ Compiled in 0ms (4784 modules)
+ ✓ Compiled in 1ms (4784 modules)
+ GET /api/boot-seed 200 in 2170ms
+[boot-seed] chain already seeded — skipping
+ ✓ Compiled in 0ms (4784 modules)
+ GET /h/catalyst/home 200 in 3885ms
+ GET /api/system-readiness 200 in 2475ms
+ ✓ Compiled in 2.7s (6330 modules)
+ GET /api/boot-seed 200 in 2775ms
+[boot-seed] chain already seeded — skipping
+ GET /api/system-readiness 200 in 40ms
+ GET /h/catalyst/home 200 in 714ms
+ GET /api/boot-seed 200 in 17ms
+ GET /api/system-readiness 200 in 23ms
+ ✓ Compiled in 2.8s (6334 modules)
+ GET /api/boot-seed 200 in 2888ms
+[boot-seed] chain already seeded — skipping
+ GET /api/system-readiness 200 in 37ms
+ GET /h/catalyst/home 200 in 659ms
+ ✓ Compiled in 1164ms (6330 modules)
+ GET /api/boot-seed 200 in 153ms
+[boot-seed] chain already seeded — skipping
+ GET /api/system-readiness 200 in 317ms
+ GET /h/catalyst/home 200 in 1704ms
+ GET /api/boot-seed 200 in 23ms
+ GET /api/system-readiness 200 in 28ms
+ GET /api/boot-seed 200 in 14ms
+ GET /api/system-readiness 200 in 43ms
+ GET /api/boot-seed 200 in 17ms
+ GET /api/system-readiness 200 in 25ms
+ ✓ Compiled in 840ms (6330 modules)
+ GET /api/boot-seed 200 in 45ms
+[boot-seed] chain already seeded — skipping
+ GET /api/system-readiness 200 in 57ms
+ GET /h/catalyst/home 200 in 1024ms
+ GET /api/boot-seed 200 in 21ms
+ GET /api/system-readiness 200 in 28ms
+ GET /api/boot-seed 200 in 17ms
+ GET /api/system-readiness 200 in 21ms
+ GET /api/boot-seed 200 in 17ms
+ GET /api/system-readiness 200 in 24ms
+ GET /api/boot-seed 200 in 19ms
+ GET /api/system-readiness 200 in 35ms
+ GET /api/boot-seed 200 in 18ms
+ GET /api/system-readiness 200 in 23ms
+ GET /api/boot-seed 200 in 35ms
+ GET /api/system-readiness 200 in 38ms
+ GET /api/boot-seed 200 in 17ms
+ GET /api/system-readiness 200 in 21ms
+ GET /api/boot-seed 200 in 14ms
+ GET /api/system-readiness 200 in 22ms
+ GET /api/boot-seed 200 in 17ms
+ GET /api/system-readiness 200 in 24ms
+ GET /api/system-readiness 200 in 23ms
+ GET /api/boot-seed 200 in 15ms
+ GET /api/system-readiness 200 in 22ms
+ GET /api/boot-seed 200 in 35ms
+ GET /api/system-readiness 200 in 22ms
+ GET /api/boot-seed 200 in 17ms
+ GET /api/system-readiness 200 in 24ms
+ GET /api/boot-seed 200 in 20ms
+ GET /api/system-readiness 200 in 21ms
+ GET /api/boot-seed 200 in 17ms
+ GET /api/system-readiness 200 in 22ms
+ GET /api/boot-seed 200 in 333ms
+ GET /api/system-readiness 200 in 33ms
+ GET /api/boot-seed 200 in 16ms
+ GET /api/system-readiness 200 in 24ms
+ GET /api/boot-seed 200 in 17ms
+ GET /api/system-readiness 200 in 19ms
+ GET /api/boot-seed 200 in 44ms
+ GET /api/system-readiness 200 in 27ms
+ GET /api/boot-seed 200 in 18ms
+ GET /api/system-readiness 200 in 23ms
+ GET /api/boot-seed 200 in 14ms
+ GET /api/system-readiness 200 in 62ms
+ GET /h/catalyst/home 200 in 1454ms
+ ○ Compiling /api/user-context ...
+ ✓ Compiled /api/user-context in 4.9s (4786 modules)
+ ✓ Compiled (4788 modules)
+ GET /api/boot-seed 200 in 3958ms
+ GET /api/auth/session 200 in 8178ms
+ GET /api/auth/session 200 in 8181ms
+ GET /api/auth/session 200 in 8184ms
+ GET /api/auth/session 200 in 8186ms
+[boot-seed] chain already seeded — skipping
+ GET /api/user-context 200 in 8679ms
+ GET /api/system-readiness 200 in 139ms
+ POST /h/catalyst/home 200 in 808ms
+ POST /h/catalyst/home 200 in 69ms
+ POST /h/catalyst/home 200 in 59ms
+ POST /h/catalyst/home 200 in 27ms
+ POST /h/catalyst/home 200 in 448ms
+ POST /h/catalyst/home 200 in 67ms
+ POST /h/catalyst/home 200 in 51ms
+ POST /h/catalyst/home 200 in 25ms
+ GET /api/boot-seed 200 in 52ms
+ GET /api/system-readiness 200 in 28ms
+ POST /h/catalyst/home 200 in 301ms
+ GET /api/boot-seed 200 in 67ms
+ GET /api/system-readiness 200 in 56ms
+ POST /h/catalyst/home 200 in 427ms
+ POST /h/catalyst/home 200 in 33ms
+ POST /h/catalyst/home 200 in 319ms
+ POST /h/catalyst/home 200 in 50ms
+ GET /api/boot-seed 200 in 18ms
+ GET /api/system-readiness 200 in 48ms
+ GET /api/boot-seed 200 in 17ms
+ GET /api/system-readiness 200 in 23ms
+ GET /api/boot-seed 200 in 18ms
+ GET /api/system-readiness 200 in 20ms
+ GET /api/boot-seed 200 in 41ms
+ GET /api/system-readiness 200 in 23ms
+ POST /h/catalyst/home 200 in 1820ms
+ GET /api/boot-seed 200 in 21ms
+ GET /api/system-readiness 200 in 27ms
+ GET /api/boot-seed 200 in 17ms
+ GET /api/system-readiness 200 in 21ms
+ GET /api/boot-seed 200 in 20ms
+ GET /api/system-readiness 200 in 24ms
+ GET /api/boot-seed 200 in 67ms
+ GET /api/system-readiness 200 in 23ms
+ GET /api/boot-seed 200 in 18ms
+ GET /api/system-readiness 200 in 22ms
+ GET /api/boot-seed 200 in 15ms
+ GET /api/system-readiness 200 in 43ms
+ GET /api/boot-seed 200 in 18ms
+ GET /api/system-readiness 200 in 20ms
+ GET /api/boot-seed 200 in 16ms
+ GET /api/system-readiness 200 in 22ms
+ GET /api/boot-seed 200 in 604ms
+ GET /api/system-readiness 200 in 35ms
+ GET /api/boot-seed 200 in 17ms
+ GET /api/system-readiness 200 in 21ms
+ GET /api/boot-seed 200 in 20ms
+ GET /api/system-readiness 200 in 21ms
+ POST /h/catalyst/home 200 in 144ms
+ POST /h/catalyst/home 200 in 57ms
+ GET /api/boot-seed 200 in 22ms
+ GET /api/system-readiness 200 in 25ms
+ GET /api/boot-seed 200 in 16ms
+ GET /api/system-readiness 200 in 22ms
+ POST /h/catalyst/home 200 in 74ms
+ POST /h/catalyst/home 200 in 128ms
+ GET /api/boot-seed 200 in 18ms
+ GET /api/system-readiness 200 in 49ms
+ GET /api/boot-seed 200 in 15ms
+ GET /api/system-readiness 200 in 21ms
+ GET /api/boot-seed 200 in 20ms
+ GET /api/system-readiness 200 in 22ms
+ GET /api/boot-seed 200 in 18ms
+ GET /api/system-readiness 200 in 43ms
+ GET /api/boot-seed 200 in 15ms
+ GET /api/system-readiness 200 in 19ms
+ GET /api/boot-seed 200 in 16ms
+ GET /api/system-readiness 200 in 21ms
+ GET /api/boot-seed 200 in 22ms
+ GET /api/system-readiness 200 in 31ms
+ GET /api/boot-seed 200 in 18ms
+ GET /api/system-readiness 200 in 28ms
+ GET /api/boot-seed 200 in 18ms
+ GET /api/system-readiness 200 in 21ms
+ GET /api/boot-seed 200 in 32ms
+ GET /api/system-readiness 200 in 22ms
+ GET /api/boot-seed 200 in 18ms
+ GET /api/system-readiness 200 in 23ms
+ GET /api/boot-seed 200 in 16ms
+ GET /api/system-readiness 200 in 46ms
+ GET /h/catalyst/home 200 in 1445ms
+ GET /api/auth/session 200 in 38ms
+ GET /api/auth/session 200 in 67ms
+ GET /api/auth/session 200 in 68ms
+ GET /api/auth/session 200 in 70ms
+ GET /api/user-context 200 in 169ms
+ POST /h/catalyst/home 200 in 867ms
+ POST /h/catalyst/home 200 in 75ms
+ POST /h/catalyst/home 200 in 97ms
+ POST /h/catalyst/home 200 in 2778ms
+ GET /api/boot-seed 200 in 33ms
+ GET /api/system-readiness 200 in 38ms
+ POST /h/catalyst/home 200 in 591ms
+ POST /h/catalyst/home 200 in 68ms
+ POST /h/catalyst/home 200 in 55ms
+ POST /h/catalyst/home 200 in 28ms
+ POST /h/catalyst/home 200 in 1858ms
+ GET /api/boot-seed 200 in 16ms
+ GET /api/system-readiness 200 in 22ms
+ GET /api/boot-seed 200 in 17ms
+ GET /api/system-readiness 200 in 24ms
+ GET /api/boot-seed 200 in 45ms
+ GET /api/system-readiness 200 in 29ms
+ GET /api/boot-seed 200 in 22ms
+ GET /api/system-readiness 200 in 24ms
+ GET /api/boot-seed 200 in 21ms
+ GET /api/system-readiness 200 in 43ms
+ GET /api/boot-seed 200 in 16ms
+ GET /api/system-readiness 200 in 23ms
+ GET /api/boot-seed 200 in 18ms
+ GET /api/system-readiness 200 in 27ms
+ GET /api/boot-seed 200 in 17ms
+ GET /api/system-readiness 200 in 48ms
+ GET /api/boot-seed 200 in 20ms
+ GET /api/system-readiness 200 in 20ms
+ GET /api/boot-seed 200 in 18ms
+ GET /api/system-readiness 200 in 25ms
+ GET /api/boot-seed 200 in 16ms
+ GET /api/system-readiness 200 in 22ms
+ GET /api/boot-seed 200 in 17ms
+ GET /api/system-readiness 200 in 25ms
+ GET /api/boot-seed 200 in 16ms
+ GET /api/system-readiness 200 in 21ms
+ GET /api/boot-seed 200 in 34ms
+ GET /api/system-readiness 200 in 22ms
+ GET /api/boot-seed 200 in 18ms
+ GET /api/system-readiness 200 in 23ms
+ GET /api/boot-seed 200 in 229ms
+ GET /api/system-readiness 200 in 576ms
+ GET /api/boot-seed 200 in 39ms
+ GET /api/system-readiness 200 in 25ms
+ GET /api/boot-seed 200 in 16ms
+ GET /api/system-readiness 200 in 24ms
+ GET /api/boot-seed 200 in 17ms
+ GET /api/system-readiness 200 in 22ms
+ GET /api/boot-seed 200 in 15ms
+ GET /api/system-readiness 200 in 21ms
+ GET /api/boot-seed 200 in 45ms
+ GET /api/system-readiness 200 in 22ms
+ GET /api/boot-seed 200 in 20ms
+ GET /api/system-readiness 200 in 22ms
+ GET /api/boot-seed 200 in 47ms
+ GET /api/system-readiness 200 in 24ms
+ GET /api/boot-seed 200 in 20ms
+ GET /api/system-readiness 200 in 23ms
+ GET /api/boot-seed 200 in 14ms
+ GET /api/system-readiness 200 in 22ms
+ GET /api/boot-seed 200 in 19ms
+ GET /api/system-readiness 200 in 27ms
+ GET /api/boot-seed 200 in 18ms
+ GET /api/system-readiness 200 in 22ms
+ GET /api/boot-seed 200 in 14ms
+ GET /api/system-readiness 200 in 39ms
+ GET /api/boot-seed 200 in 17ms
+ GET /api/system-readiness 200 in 21ms
+ GET /api/boot-seed 200 in 16ms
+ GET /api/system-readiness 200 in 23ms
+ GET /api/boot-seed 200 in 15ms
+ GET /api/system-readiness 200 in 38ms
+ GET /api/boot-seed 200 in 22ms
+ GET /api/system-readiness 200 in 22ms
+ GET /api/boot-seed 200 in 14ms
+ GET /api/system-readiness 200 in 21ms
+ GET /api/boot-seed 200 in 17ms
+ GET /api/system-readiness 200 in 41ms
+ GET /api/boot-seed 200 in 14ms
+ GET /api/system-readiness 200 in 25ms
+ GET /api/boot-seed 200 in 17ms
+ GET /api/system-readiness 200 in 26ms
+ GET /api/boot-seed 200 in 16ms
+ GET /api/system-readiness 200 in 23ms
+ GET /api/boot-seed 200 in 23ms
+ GET /api/system-readiness 200 in 23ms
+ GET /api/boot-seed 200 in 15ms
+ GET /api/system-readiness 200 in 22ms
+ GET /api/boot-seed 200 in 36ms
+ GET /api/system-readiness 200 in 23ms
+ GET /api/boot-seed 200 in 15ms
+ GET /api/system-readiness 200 in 21ms
+ GET /api/boot-seed 200 in 16ms
+ GET /api/system-readiness 200 in 19ms
+ GET /api/boot-seed 200 in 16ms
+ GET /api/system-readiness 200 in 27ms
+ GET /api/boot-seed 200 in 17ms
+ GET /api/system-readiness 200 in 22ms
+ GET /api/boot-seed 200 in 17ms
+ GET /api/system-readiness 200 in 42ms
+ GET /api/boot-seed 200 in 17ms
+ GET /api/system-readiness 200 in 24ms
+ ✓ Compiled in 13.1s (6330 modules)
+ GET /api/boot-seed 200 in 8600ms
+[boot-seed] chain already seeded — skipping
+ GET /api/system-readiness 200 in 39ms
+ GET /h/catalyst/home 200 in 641ms
+ GET /api/boot-seed 200 in 16ms
+ GET /api/system-readiness 200 in 20ms
+ GET /api/boot-seed 200 in 15ms
+ GET /api/system-readiness 200 in 24ms
+ GET /api/boot-seed 200 in 18ms
+ GET /api/system-readiness 200 in 20ms
+ GET /api/boot-seed 200 in 39ms
+ GET /api/system-readiness 200 in 25ms
+ ✓ Compiled in 793ms (6330 modules)
+ GET /h/catalyst/home 200 in 738ms
+ GET /api/boot-seed 200 in 50ms
+[boot-seed] chain already seeded — skipping
+ GET /api/system-readiness 200 in 31ms
+ GET /api/boot-seed 200 in 16ms
+ GET /api/system-readiness 200 in 56ms
+ GET /api/boot-seed 200 in 17ms
+ GET /api/system-readiness 200 in 22ms
+ GET /api/boot-seed 200 in 16ms
+ GET /api/system-readiness 200 in 22ms
+ GET /api/boot-seed 200 in 17ms
+ GET /api/system-readiness 200 in 50ms
+ GET /api/boot-seed 200 in 19ms
+ GET /api/system-readiness 200 in 23ms
+ GET /api/boot-seed 200 in 18ms
+ GET /api/system-readiness 200 in 21ms
+ GET /api/boot-seed 200 in 19ms
+ GET /api/system-readiness 200 in 26ms
+ GET /api/boot-seed 200 in 21ms
+ GET /api/system-readiness 200 in 26ms
+ GET /api/boot-seed 200 in 19ms
+ GET /api/system-readiness 200 in 26ms
+ GET /api/boot-seed 200 in 39ms
+ GET /api/system-readiness 200 in 21ms
+ GET /api/boot-seed 200 in 37ms
+ GET /api/system-readiness 200 in 31ms
+ GET /api/boot-seed 200 in 21ms
+ GET /api/system-readiness 200 in 46ms
+ GET /api/boot-seed 200 in 19ms
+ GET /api/system-readiness 200 in 21ms
+ GET /api/boot-seed 200 in 943ms
+ GET /api/system-readiness 200 in 32ms
+ GET /api/boot-seed 200 in 17ms
+ GET /api/system-readiness 200 in 23ms
+ GET /api/boot-seed 200 in 18ms
+ GET /api/system-readiness 200 in 19ms
+ GET /api/boot-seed 200 in 50ms
+ GET /api/system-readiness 200 in 26ms
+ GET /api/boot-seed 200 in 16ms
+ GET /api/system-readiness 200 in 21ms
+ GET /api/boot-seed 200 in 18ms
+ GET /api/system-readiness 200 in 57ms
+ GET /api/boot-seed 200 in 20ms
+ GET /api/system-readiness 200 in 27ms
+ GET /api/boot-seed 200 in 16ms
+ GET /api/system-readiness 200 in 27ms
+ GET /api/boot-seed 200 in 18ms
+ GET /api/system-readiness 200 in 42ms
+ GET /api/boot-seed 200 in 18ms
+ GET /api/system-readiness 200 in 22ms
+ GET /api/boot-seed 200 in 19ms
+ GET /api/system-readiness 200 in 20ms
+ GET /api/boot-seed 200 in 40ms
+ GET /api/system-readiness 200 in 25ms
+ GET /api/boot-seed 200 in 16ms
+ GET /api/system-readiness 200 in 24ms
+ GET /api/boot-seed 200 in 16ms
+ GET /api/system-readiness 200 in 24ms
+ GET /api/boot-seed 200 in 21ms
+ GET /api/system-readiness 200 in 23ms
+ GET /api/boot-seed 200 in 20ms
+ GET /api/system-readiness 200 in 30ms
+ GET /api/boot-seed 200 in 14ms
+ GET /api/system-readiness 200 in 47ms
+ GET /api/boot-seed 200 in 17ms
+ GET /api/system-readiness 200 in 20ms
+ GET /api/boot-seed 200 in 18ms
+ GET /api/system-readiness 200 in 20ms
+ GET /api/boot-seed 200 in 17ms
+ GET /api/system-readiness 200 in 50ms
+ GET /api/boot-seed 200 in 15ms
+ GET /api/system-readiness 200 in 21ms
+ GET /h/catalyst/home 200 in 1508ms
+ ○ Compiling /api/user-context ...
+ ✓ Compiled /api/user-context in 2.3s (4786 modules)
+ ✓ Compiled in 2ms (4788 modules)
+ ✓ Compiled in 1ms (4788 modules)
+ ✓ Compiled in 0ms (4788 modules)
+ GET /api/auth/session 200 in 8495ms
+ GET /api/auth/session 200 in 8498ms
+ GET /api/auth/session 200 in 8500ms
+ GET /api/auth/session 200 in 8501ms
+ GET /api/boot-seed 200 in 6924ms
+[boot-seed] chain already seeded — skipping
+ GET /api/system-readiness 200 in 114ms
+ GET /api/user-context 200 in 9577ms
+ POST /h/catalyst/home 200 in 842ms
+ POST /h/catalyst/home 200 in 70ms
+ POST /h/catalyst/home 200 in 61ms
+ POST /h/catalyst/home 200 in 24ms
+ POST /h/catalyst/home 200 in 468ms
+ POST /h/catalyst/home 200 in 72ms
+ POST /h/catalyst/home 200 in 51ms
+ POST /h/catalyst/home 200 in 26ms
+ GET /api/boot-seed 200 in 19ms
+ GET /api/system-readiness 200 in 24ms
+ GET /api/boot-seed 200 in 24ms
+ GET /api/system-readiness 200 in 26ms
+ GET /api/boot-seed 200 in 17ms
+ GET /api/system-readiness 200 in 21ms
+ GET /api/boot-seed 200 in 20ms
+ GET /api/system-readiness 200 in 42ms
+ GET /api/boot-seed 200 in 20ms
+ GET /api/system-readiness 200 in 22ms
+ GET /api/boot-seed 200 in 16ms
+ GET /api/system-readiness 200 in 21ms
+ GET /api/boot-seed 200 in 19ms
+ GET /api/system-readiness 200 in 40ms
+ GET /api/boot-seed 200 in 14ms
+ GET /api/system-readiness 200 in 21ms
+ GET /api/boot-seed 200 in 18ms
+ GET /api/system-readiness 200 in 22ms
+ GET /api/boot-seed 200 in 41ms
+ GET /api/system-readiness 200 in 30ms
+ GET /api/boot-seed 200 in 19ms
+ GET /api/system-readiness 200 in 23ms
+ GET /api/boot-seed 200 in 15ms
+ GET /api/system-readiness 200 in 24ms
+ GET /api/boot-seed 200 in 19ms
+ GET /api/system-readiness 200 in 22ms
+ GET /api/boot-seed 200 in 19ms
+ GET /api/system-readiness 200 in 20ms
+ GET /api/boot-seed 200 in 260ms
+ GET /api/system-readiness 200 in 33ms
+ GET /api/boot-seed 200 in 15ms
+ GET /api/system-readiness 200 in 26ms
+ GET /api/boot-seed 200 in 17ms
+ GET /api/system-readiness 200 in 56ms
+ GET /api/boot-seed 200 in 19ms
+ GET /api/system-readiness 200 in 31ms
+ GET /api/boot-seed 200 in 16ms
+ GET /api/system-readiness 200 in 22ms

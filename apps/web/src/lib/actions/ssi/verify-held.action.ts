@@ -29,6 +29,7 @@ import { loadSignerForCurrentUser } from '@/lib/ssi/signer'
 import { person, verifier } from '@/lib/ssi/clients'
 import { ssiConfig } from '@/lib/ssi/config'
 import { requireSession } from '@/lib/auth/session'
+import { dispatchWalletAction, DispatchError } from '@/lib/wallet-action/dispatch'
 
 type SignerKind = 'eoa' | 'passkey' | 'siwe'
 
@@ -257,6 +258,89 @@ export async function completeVerifyHeldCredential(input: {
       proofSummary,
     }
   } catch (err) {
+    return { success: false, error: (err as Error).message }
+  }
+}
+
+/**
+ * Session-grant path: verify a held credential WITHOUT a passkey prompt.
+ *
+ * Goes end-to-end in one server-side call:
+ *   1. Look up the credential row + verifier presentation request.
+ *   2. dispatchWalletAction('CreatePresentation', { holderWalletId,
+ *      presentationRequest, credentialSelections, allowedReveal,
+ *      allowedPredicates, ... }) — derived session-EOA signs.
+ *   3. Forward the resulting AnonCreds proof to verifier-mcp /verify/<type>/check.
+ *
+ * Returns errorCode='no_session' if the user has no grant cookie — caller
+ * should fall back to prepareVerifyHeldCredential / completeVerifyHeldCredential.
+ */
+export async function verifyHeldCredentialViaSession(input: {
+  credentialId: string
+}): Promise<CompleteVerifyResult & { errorCode?: string }> {
+  try {
+    const ctx = await loadSignerForCurrentUser()
+    const principal = ctx.principal
+
+    const list = await person.callTool<{ credentials: Array<{
+      id: string; holderWalletRef: string; credentialType: string; walletContext: string
+    }> }>('ssi_list_my_credentials', { principal })
+    const row = list.credentials.find(c => c.id === input.credentialId)
+    if (!row) return { success: false, error: 'unknown credential' }
+
+    const req = await verifier.request(row.credentialType)
+
+    const allowedReveal = req.selection.revealReferents
+      .map(r => referentToAttrName(req.presentationRequest, r))
+      .filter((x): x is string => Boolean(x))
+    const allowedPredicates = req.selection.predicateReferents
+      .map(r => predicateFromRequest(req.presentationRequest, r))
+      .filter((x): x is { attribute: string; operator: '>=' | '<=' | '>' | '<'; value: number } => Boolean(x))
+
+    const dispatched = await dispatchWalletAction<{
+      ok: boolean
+      presentation: string
+      auditSummary: { revealedAttrs: string[]; pairwiseHandle: string }
+    }>({
+      actionType: 'CreatePresentation',
+      service: 'person-mcp',
+      verifierDid: req.verifierId,
+      payload: {
+        holderWalletId: row.holderWalletRef,
+        presentationRequest: req.presentationRequest,
+        credentialSelections: [{
+          credentialId: input.credentialId,
+          revealReferents: req.selection.revealReferents,
+          predicateReferents: req.selection.predicateReferents,
+        }],
+        allowedReveal,
+        allowedPredicates,
+        forbiddenAttrs: [],
+        counterpartyId: req.verifierId,
+        purpose: `audit_${row.credentialType}`,
+      },
+    })
+
+    const check = await verifier.check(row.credentialType, {
+      presentation: dispatched.presentation,
+      presentationRequest: req.presentationRequest,
+    })
+
+    const proofSummary = summarizeProof(dispatched.presentation, req.presentationRequest)
+
+    return {
+      success: true,
+      verified: check.verified,
+      reason: check.reason,
+      revealedAttrs: dispatched.auditSummary?.revealedAttrs,
+      revealedValues: check.revealedAttrs,
+      pairwiseHandle: dispatched.auditSummary?.pairwiseHandle,
+      proofSummary,
+    }
+  } catch (err) {
+    if (err instanceof DispatchError) {
+      return { success: false, error: err.detail, errorCode: err.code }
+    }
     return { success: false, error: (err as Error).message }
   }
 }

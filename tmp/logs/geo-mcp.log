@@ -8,3 +8,11 @@
 --> GET /health [32m200[0m 0ms
 <-- POST /credential/offer
 --> POST /credential/offer [32m200[0m 112ms
+<-- POST /credential/offer
+--> POST /credential/offer [32m200[0m 35ms
+<-- POST /credential/issue
+--> POST /credential/issue [32m200[0m 70ms
+<-- POST /credential/offer
+--> POST /credential/offer [32m200[0m 2ms
+<-- POST /credential/issue
+--> POST /credential/issue [32m200[0m 25ms

@@ -5,6 +5,7 @@ import { walletStatusAction, type CredentialRow } from '@/lib/actions/ssi/list.a
 import {
   prepareVerifyHeldCredential,
   completeVerifyHeldCredential,
+  verifyHeldCredentialViaSession,
   type ProofSummary,
 } from '@/lib/actions/ssi/verify-held.action'
 import { signWalletActionClient } from '@/lib/sign-wallet-action-client'
@@ -55,8 +56,61 @@ export function HeldCredentialsPanel() {
   }
 
   async function testVerification(c: CredentialRow) {
-    setVerifyFor(c.id, { phase: 'busy', label: 'Fetching request…' })
+    setVerifyFor(c.id, { phase: 'busy', label: 'Verifying…' })
     try {
+      // Try the unified session-grant path FIRST. The session-EOA signs
+      // the CreatePresentation action server-side; no passkey prompt.
+      const sessionRes = await verifyHeldCredentialViaSession({ credentialId: c.id })
+      if (sessionRes.success || sessionRes.errorCode !== 'no_session') {
+        // Either it succeeded, or it failed for a non-session reason —
+        // either way, surface the result without falling back to passkey.
+        if (!sessionRes.success || !sessionRes.verified) {
+          setVerifyFor(c.id, {
+            phase: 'failed',
+            reason: sessionRes.error ?? sessionRes.reason ?? 'not verified',
+          })
+          return
+        }
+        // Look up verifier metadata + presentation request via prepare so
+        // the verified-state UI has labels to show. We don't sign anything
+        // here — this is a metadata fetch.
+        const prep = await prepareVerifyHeldCredential({ credentialId: c.id })
+        if (!prep.success || !prep.presentationRequest || !prep.verifierIdentity) {
+          setVerifyFor(c.id, { phase: 'failed', reason: prep.error ?? 'metadata fetch failed' })
+          return
+        }
+        const req = prep.presentationRequest as {
+          name?: string
+          requested_attributes?: Record<string, { name: string }>
+          requested_predicates?: Record<string, { name: string; p_type: string; p_value: number }>
+        }
+        const predicates = Object.values(req.requested_predicates ?? {}).map(p => ({
+          attribute: p.name, operator: p.p_type, value: p.p_value,
+        }))
+        const requestedAttrNames = Object.values(req.requested_attributes ?? {}).map(a => a.name)
+        setVerifyFor(c.id, {
+          phase: 'verified',
+          revealed: sessionRes.revealedValues ?? {},
+          pairwise: sessionRes.pairwiseHandle,
+          verifier: {
+            label: prep.verifierIdentity.label,
+            verifierId: prep.verifierIdentity.verifierId,
+            verifierAddress: prep.verifierIdentity.verifierAddress,
+          },
+          request: {
+            name: req.name ?? 'audit',
+            requestedAttrNames,
+            predicates,
+          },
+          verifiedAt: Date.now(),
+          proofSummary: sessionRes.proofSummary,
+        })
+        return
+      }
+
+      // Fallback: legacy passkey-signed path for users without a grant
+      // (SIWE / Google / EOA-only sessions until M4 unifies them).
+      setVerifyFor(c.id, { phase: 'busy', label: 'Fetching request…' })
       const prep = await prepareVerifyHeldCredential({ credentialId: c.id })
       if (!prep.success || !prep.signer || !prep.toSign || !prep.presentationRequest || !prep.selection || !prep.verifierIdentity || !prep.credentialType) {
         setVerifyFor(c.id, { phase: 'failed', reason: prep.error ?? 'prepare failed' })
