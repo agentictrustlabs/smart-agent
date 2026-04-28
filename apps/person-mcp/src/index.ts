@@ -150,6 +150,8 @@ import { proofRoutes } from './ssi/api/proofs.js'
 import { auditRoutes } from './ssi/api/audit.js'
 import { oid4vpRoutes } from './ssi/api/oid4vp.js'
 import { matchPublicSetRoutes } from './ssi/api/match-public-set.js'
+import { walletActionRoutes } from './auth/wallet-action-routes.js'
+import { dispatchRoutes } from './auth/dispatch-routes.js'
 
 app.route('/', walletRoutes)
 app.route('/', credentialRoutes)
@@ -157,6 +159,8 @@ app.route('/', proofRoutes)
 app.route('/', auditRoutes)
 app.route('/', oid4vpRoutes)
 app.route('/', matchPublicSetRoutes)
+app.route('/', walletActionRoutes)
+app.route('/', dispatchRoutes)
 
 app.get('/.well-known/ssi-wallet.json', (c) =>
   c.json({

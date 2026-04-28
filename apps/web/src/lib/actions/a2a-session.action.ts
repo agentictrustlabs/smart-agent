@@ -124,7 +124,12 @@ export async function bootstrapA2ASession(): Promise<{
 
 export async function getA2ASessionToken(): Promise<string | null> {
   const cookieStore = await cookies()
-  return cookieStore.get(A2A_SESSION_COOKIE)?.value ?? null
+  // Prefer the unified session-grant cookie (M4); a2a-agent's middleware
+  // accepts both grant and legacy session-table tokens via Bearer auth.
+  const { grantCookieName } = await import('@/lib/auth/session-cookie')
+  return cookieStore.get(grantCookieName())?.value
+    ?? cookieStore.get(A2A_SESSION_COOKIE)?.value
+    ?? null
 }
 
 export async function clearA2ASession(): Promise<void> {

@@ -133,29 +133,37 @@ test.describe('Connect + onboarding', () => {
   test.beforeAll(async () => { await installP256Stub() })
 
   test('passkey: signup → onboarding wizard → catalyst', async ({ page }) => {
-    test.setTimeout(180_000)
+    test.setTimeout(240_000)
     const virt = await addVirtualAuthenticator(page)
 
-    await page.goto(`${BASE}/sign-up`)
-    await page.getByTestId('signup-name').fill('Pw Passkey')
-    await page.getByTestId('signup-submit').click()
-    await page.waitForURL((u) => !u.pathname.startsWith('/sign-up'), { timeout: 60_000 })
+    // /sign-up redirects to /; signup happens from a hub landing now.
+    const label = `pwp${Date.now().toString().slice(-6)}`
+    const fullName = `${label}.agent`
+    await page.goto(`${BASE}/h/catalyst`)
+    await page.waitForLoadState('networkidle')
+    await page.getByTestId('hub-onboard-signup-name').fill(label)
+    await expect(page.getByTestId('hub-onboard-passkey-signup')).toBeEnabled({ timeout: 30_000 })
+    await page.getByTestId('hub-onboard-passkey-signup').click()
 
-    // Confirm session was minted.
+    // Two-prompt signup (registration + session-grant) followed by holder
+    // wallet provisioning via session-EOA. Poll the session API since the
+    // post-signup reload may keep the user on /h/catalyst showing the
+    // next onboarding card rather than redirecting to /home.
+    await expect.poll(
+      async () => {
+        const r = await page.request.get(`${BASE}/api/auth/session`)
+        const body = await r.json() as { user: { name?: string } | null }
+        return body.user?.name ?? null
+      },
+      { timeout: 180_000, intervals: [2_000] },
+    ).toBe(fullName)
+
     const sess = await page.request.get(`${BASE}/api/auth/session`)
-    const sessBody = await sess.json() as { user: { via: string } | null }
+    const sessBody = await sess.json() as { user: { via: string; name?: string } | null }
     expect(sessBody.user?.via).toBe('passkey')
 
-    // Drive directly to /onboarding — the layout guard redirects new users
-    // here on its own, but Playwright + Next dev hits a race where the guard
-    // returns early before the redirect commits, so we navigate explicitly.
-    await page.goto(`${BASE}/onboarding`)
-
-    const email = `pw-passkey-${Date.now()}@example.test`
-    const label = `pwpasskey${Date.now().toString().slice(-6)}`
-    await walkThroughOnboarding(page, { name: 'Pw Passkey', email, agentLabel: label })
-
-    // Final sanity: user-context resolves, personAgent exists.
+    // The new in-place hub onboarding registers the .agent name as part
+    // of the signup ceremony, so the personAgent is already resolvable.
     const ctx = await page.request.get(`${BASE}/api/user-context`)
     const ctxBody = await ctx.json() as { personAgent: { address: string; primaryName: string } | null }
     expect(ctxBody.personAgent).not.toBeNull()
@@ -194,15 +202,15 @@ test.describe('Connect + onboarding', () => {
       }
     }
 
-    // Drive directly to /onboarding (same reason as the passkey test).
-    await page.goto(`${BASE}/onboarding`)
-    const email = `pw-siwe-${Date.now()}@example.test`
-    const label = `pwsiwe${Date.now().toString().slice(-6)}`
-    await walkThroughOnboarding(page, { name: 'Pw SIWE', email, agentLabel: label })
-
-    const ctx = await page.request.get(`${BASE}/api/user-context`)
-    const ctxBody = await ctx.json() as { personAgent: { primaryName: string } | null }
-    expect(ctxBody.personAgent?.primaryName).toBe(`${label}.agent`)
+    // SIWE creates a user with a wallet but no .agent name yet. Confirm
+    // the session is minted and resolvable. Name registration happens via
+    // the hub onboarding card after the user picks one. That UI step is
+    // covered by the passkey test above; here we just assert the SIWE
+    // session itself works end-to-end.
+    const sess = await page.request.get(`${BASE}/api/auth/session`)
+    const sessBody = await sess.json() as { user: { via: string; walletAddress: string } | null }
+    expect(sessBody.user?.via).toBe('siwe')
+    expect(sessBody.user?.walletAddress.toLowerCase()).toBe(eoa.address.toLowerCase())
   })
 
   // ─── Test 3 — Google OAuth deterministic-salt invariant ──────────────

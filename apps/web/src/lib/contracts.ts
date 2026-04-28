@@ -1,4 +1,4 @@
-import { createPublicClient, createWalletClient, http } from 'viem'
+import { createPublicClient, createWalletClient, http, nonceManager } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { foundry, sepolia } from 'viem/chains'
 import {
@@ -107,11 +107,16 @@ async function withDeployerLock<T>(fn: () => Promise<T>, label?: string): Promis
 
 /** Server-side wallet client for writing transactions (uses deployer key).
  *  Returned client serialises writeContract / sendTransaction across the
- *  whole Node process to avoid nonce collisions. */
+ *  whole Node process to avoid nonce collisions.
+ *
+ *  The account is created with viem's process-wide nonce manager so
+ *  concurrent writers (sign-up + boot-seed) coordinate the next-nonce via
+ *  a single source of truth instead of each call independently fetching
+ *  getTransactionCount and racing on the same value. */
 export function getWalletClient() {
   const privateKey = process.env.DEPLOYER_PRIVATE_KEY as `0x${string}`
   if (!privateKey) throw new Error('DEPLOYER_PRIVATE_KEY not set')
-  const account = privateKeyToAccount(privateKey)
+  const account = privateKeyToAccount(privateKey, { nonceManager })
   const base = createWalletClient({
     account,
     chain: getChain(),

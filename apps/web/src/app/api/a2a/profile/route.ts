@@ -1,7 +1,20 @@
 import { NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
 import { getSession } from '@/lib/auth/session'
+import { grantCookieName } from '@/lib/auth/session-cookie'
 
 const A2A_AGENT_URL = process.env.A2A_AGENT_URL ?? 'http://localhost:3100'
+
+async function resolveA2AToken(request: Request): Promise<string | null> {
+  // Prefer client-supplied legacy header for in-flight sessions.
+  const headerToken = request.headers.get('x-a2a-session')
+  if (headerToken) return headerToken
+  // Fall back to either cookie (grant first, legacy second).
+  const cookieStore = await cookies()
+  return cookieStore.get(grantCookieName())?.value
+    ?? cookieStore.get('a2a-session')?.value
+    ?? null
+}
 
 /**
  * GET /api/a2a/profile
@@ -14,8 +27,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
   }
 
-  // Get the a2a session token from the cookie or header
-  const sessionToken = request.headers.get('x-a2a-session')
+  const sessionToken = await resolveA2AToken(request)
 
   if (!sessionToken) {
     return NextResponse.json({ error: 'No A2A session — connect your agent first' }, { status: 401 })
@@ -60,7 +72,7 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
   }
 
-  const sessionToken = request.headers.get('x-a2a-session')
+  const sessionToken = await resolveA2AToken(request)
   if (!sessionToken) {
     return NextResponse.json({ error: 'No A2A session' }, { status: 401 })
   }

@@ -6,3 +6,5 @@
 [geo-mcp] listening on http://localhost:3600
 <-- GET /health
 --> GET /health [32m200[0m 0ms
+<-- POST /credential/offer
+--> POST /credential/offer [32m200[0m 112ms

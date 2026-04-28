@@ -16,9 +16,13 @@ export async function GET(request: Request) {
     const targetPrincipal = searchParams.get('target')
     if (!targetPrincipal) return NextResponse.json({ success: false, error: 'Missing target' })
 
-    // Get A2A session token from cookie
+    // Prefer the unified session-grant cookie (M4); fall back to legacy
+    // a2a-session for users who haven't re-signed-in since the change.
     const cookieStore = await cookies()
-    const a2aToken = cookieStore.get('a2a-session')?.value
+    const { grantCookieName } = await import('@/lib/auth/session-cookie')
+    const grantToken = cookieStore.get(grantCookieName())?.value
+    const legacyToken = cookieStore.get('a2a-session')?.value
+    const a2aToken = grantToken ?? legacyToken
     if (!a2aToken) return NextResponse.json({ success: false, error: 'No A2A session' })
 
     // Use explicit grantee from query if provided, otherwise resolve from user

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import {
   prepareTrustSearch,
   completeTrustSearch,
+  runTrustSearchViaSession,
   type TrustSearchHit,
   type TrustSearchPrepared,
 } from '@/lib/actions/trust-search.action'
@@ -38,6 +39,37 @@ export function AgentTrustSearch() {
     setErr(null); setInfo(null); setHits(null)
     start(async () => {
       try {
+        // Try the unified session-grant path first — no passkey prompt.
+        setPhase('submitting')
+        const sessionRes = await runTrustSearchViaSession({ limit: 200 })
+        if (sessionRes.status === 'ready') {
+          setHits(sessionRes.hits)
+          setPhase('idle')
+          return
+        }
+        if (sessionRes.status === 'no-wallet') {
+          setInfo(sessionRes.message ?? 'No holder wallet provisioned yet.')
+          setHits([])
+          setPhase('idle')
+          return
+        }
+        if (sessionRes.status === 'no-candidates') {
+          setInfo(sessionRes.message ?? 'No agents to score.')
+          setHits([])
+          setPhase('idle')
+          return
+        }
+        // Status='no-resolver' may mean either configuration error or
+        // (when error mentions no_session) the user has no grant. Fall
+        // back to the legacy passkey flow only in the latter case.
+        const isNoSession = sessionRes.error?.includes('no session-grant cookie') ?? false
+        if (!isNoSession) {
+          setErr(sessionRes.message ?? sessionRes.error ?? 'trust search failed')
+          setPhase('idle')
+          return
+        }
+
+        // ─── Legacy passkey-signed fallback ───────────────────────
         setPhase('preparing')
         const prep: TrustSearchPrepared = await prepareTrustSearch({ limit: 200 })
 

@@ -7,6 +7,7 @@ import { getPublicClient } from '@/lib/contracts'
 import { agentControlAbi, agentIssuerProfileAbi } from '@smart-agent/sdk'
 import { ORG_TEMPLATES } from '@/lib/org-templates.data'
 import { SettingsTabs } from './SettingsTabs'
+import { SessionsPanel } from './SessionsPanel'
 
 export default async function SettingsPage() {
   const currentUser = await getCurrentUser()
@@ -191,6 +192,8 @@ export default async function SettingsPage() {
                 </div>
               </div>
             ),
+
+            sessions: <SessionsPanel />,
           }}
         </SettingsTabs>
       </Suspense>

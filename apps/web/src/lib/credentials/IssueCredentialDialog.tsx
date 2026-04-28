@@ -7,10 +7,12 @@ import type { CredentialFormContext, FormHandle, FormSubmissionResult } from './
 import {
   prepareWalletProvisionIfNeeded,
   submitWalletProvision,
+  provisionHolderWalletViaSession,
 } from '@/lib/actions/ssi/wallet-provision.action'
 import {
   prepareCredentialIssuance,
   completeCredentialIssuance,
+  issueCredentialViaSession,
 } from '@/lib/actions/ssi/request-credential.action'
 import { signWalletActionClient } from '@/lib/sign-wallet-action-client'
 
@@ -75,40 +77,74 @@ export function IssueCredentialDialog({
     setErr(null)
     start(async () => {
       try {
-        // ─── 1. Provision (or reuse) the holder wallet. ─────────────
+        // ─── 1. Provision (or reuse) the holder wallet via session-EOA. ─
         setPhase('preparing')
-        const prep = await prepareWalletProvisionIfNeeded()
-        if (!prep.success || !prep.signer) {
-          setErr(prep.error ?? 'Prepare failed'); setPhase('idle'); return
+        const sessionProvision = await provisionHolderWalletViaSession()
+        let holderWalletId: string | null = null
+        let walletContext: string | null = null
+        let useSessionPath = false
+        if (sessionProvision.success && sessionProvision.holderWalletId && sessionProvision.walletContext) {
+          holderWalletId = sessionProvision.holderWalletId
+          walletContext = sessionProvision.walletContext
+          useSessionPath = true
+        } else if (sessionProvision.errorCode !== 'no_session') {
+          setErr(sessionProvision.error ?? 'Provision failed'); setPhase('idle'); return
         }
 
-        let holderWalletId: string
-        let walletContext: string
-        if (prep.alreadyProvisioned) {
-          holderWalletId = prep.alreadyProvisioned.holderWalletId
-          walletContext = prep.alreadyProvisioned.walletContext
-        } else if (prep.needsProvision) {
-          setPhase('signing-provision')
-          const sig = await signWalletActionClient(
-            prep.needsProvision.action,
-            prep.needsProvision.hash,
-            prep.signer,
-          )
-          setPhase('submitting-provision')
-          const subm = await submitWalletProvision({
-            action: prep.needsProvision.action,
-            signature: sig,
-          })
-          if (!subm.success || !subm.holderWalletId || !subm.walletContext) {
-            setErr(subm.error ?? 'Provision failed'); setPhase('idle'); return
+        // Fallback: legacy passkey-signed path for users without a grant
+        // (SIWE / Google sign-ins until M4 unifies them).
+        if (!useSessionPath) {
+          const prep = await prepareWalletProvisionIfNeeded()
+          if (!prep.success || !prep.signer) {
+            setErr(prep.error ?? 'Prepare failed'); setPhase('idle'); return
           }
-          holderWalletId = subm.holderWalletId
-          walletContext  = subm.walletContext
-        } else {
-          setErr('Unexpected prepare response'); setPhase('idle'); return
+          if (prep.alreadyProvisioned) {
+            holderWalletId = prep.alreadyProvisioned.holderWalletId
+            walletContext = prep.alreadyProvisioned.walletContext
+          } else if (prep.needsProvision) {
+            setPhase('signing-provision')
+            const sig = await signWalletActionClient(
+              prep.needsProvision.action,
+              prep.needsProvision.hash,
+              prep.signer,
+            )
+            setPhase('submitting-provision')
+            const subm = await submitWalletProvision({
+              action: prep.needsProvision.action,
+              signature: sig,
+            })
+            if (!subm.success || !subm.holderWalletId || !subm.walletContext) {
+              setErr(subm.error ?? 'Provision failed'); setPhase('idle'); return
+            }
+            holderWalletId = subm.holderWalletId
+            walletContext = subm.walletContext
+          } else {
+            setErr('Unexpected prepare response'); setPhase('idle'); return
+          }
         }
 
-        // ─── 2. Fetch offer + AcceptCredentialOffer action. ─────────
+        if (!holderWalletId || !walletContext) {
+          setErr('No holder wallet available'); setPhase('idle'); return
+        }
+
+        // ─── 2. Issue the credential. ─────────────────────────────
+        if (useSessionPath) {
+          setPhase('completing')
+          const fin = await issueCredentialViaSession({
+            credentialType: descriptor.credentialType,
+            holderWalletId,
+            walletContext,
+            attributes: result.attributes,
+            extraIssueArgs: result.extraIssueArgs,
+          })
+          if (!fin.success || !fin.credentialId) {
+            setErr(fin.error ?? 'Issuance failed'); setPhase('idle'); return
+          }
+          onIssued(fin.credentialId)
+          return
+        }
+
+        // Legacy passkey-signed path.
         setPhase('preparing-offer')
         const accept = await prepareCredentialIssuance({
           credentialType: descriptor.credentialType,
@@ -121,7 +157,6 @@ export function IssueCredentialDialog({
           setErr(accept.error ?? 'Offer fetch failed'); setPhase('idle'); return
         }
 
-        // ─── 3. Client-sign AcceptCredentialOffer. ─────────────────
         setPhase('signing-accept')
         const acceptSig = await signWalletActionClient(
           accept.toSign.action,
@@ -129,7 +164,6 @@ export function IssueCredentialDialog({
           accept.signer,
         )
 
-        // ─── 4. Complete issuance. ─────────────────────────────────
         setPhase('completing')
         const fin = await completeCredentialIssuance({
           credentialType: descriptor.credentialType,

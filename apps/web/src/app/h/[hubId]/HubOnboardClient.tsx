@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useTransition } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -23,6 +23,7 @@ import { getHubOnboardingState, type HubOnboardingState } from '@/lib/actions/on
 import {
   prepareWalletProvisionIfNeeded,
   submitWalletProvision,
+  provisionHolderWalletViaSession,
 } from '@/lib/actions/ssi/wallet-provision.action'
 import { signWalletActionClient } from '@/lib/sign-wallet-action-client'
 import { packWebAuthnSignature, parseAttestationObject } from '@smart-agent/sdk'
@@ -215,6 +216,11 @@ function ConnectStep({ hub, accent, hubSlug, error, setError }: {
   } | null>(null)
   const [signinChecking, setSigninChecking] = useState(false)
   const [mode, setMode] = useState<'signup' | 'signin'>('signup')
+  // Conditional-UI passkey-get runs in the background on mount; keep a ref
+  // so an explicit button-click ceremony can abort it before invoking
+  // navigator.credentials.get itself (browsers reject overlapping calls
+  // with "A request is already pending").
+  const condUIAbortRef = useRef<AbortController | null>(null)
   const [pending, startPending] = useTransition()
 
   // Progress modal state during the multi-step signup. We don't have a
@@ -399,36 +405,36 @@ function ConnectStep({ hub, accent, hubSlug, error, setError }: {
         known.push({ id: parsed.credentialIdBase64Url, name: fullName })
         localStorage.setItem('smart-agent.passkeys.local', JSON.stringify(known))
 
-        // Bootstrap the A2A session right now so the profile / anoncred
-        // surfaces don't pop another OS prompt the moment the user lands
-        // on the dashboard. Two-step: server prepares an unsigned
-        // delegation, we sign its hash with the just-created passkey,
-        // server finalizes. Mandatory — if the user cancels the second
-        // OS prompt or the network call fails, we surface the error and
-        // let them retry from the dialog instead of silently dropping
-        // them on the dashboard with a stale or missing session.
+        // Mint the SessionGrant.v1 right after registration. ONE passkey
+        // prompt proves possession of the credential we just created AND
+        // authorises the grant (challenge contains grantHash). The grant
+        // covers a2a-agent, person-mcp, verifier-mcp — no separate A2A
+        // bootstrap needed (audit M4). After it lands, holder-wallet
+        // provisioning runs through the session-EOA dispatch path with
+        // zero additional prompts.
         setSignupProgress({ fullName, predictedAddress, step: 'agent' })
         try {
-          const initRes = await fetch('/api/a2a/bootstrap/client', { method: 'POST' })
-          if (!initRes.ok) {
-            const e = await initRes.json().catch(() => ({})) as { error?: string }
-            throw new Error(e.error ?? `bootstrap init failed: HTTP ${initRes.status}`)
+          const startResp = await fetch('/api/auth/session-grant/start', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ name: fullName }),
+          })
+          if (!startResp.ok) {
+            const e = await startResp.json().catch(() => ({})) as { error?: string }
+            throw new Error(e.error ?? `grant start: HTTP ${startResp.status}`)
           }
-          const { delegationHash, sessionId, delegation } = await initRes.json() as {
-            delegationHash: string; sessionId: string; delegation: unknown
+          const { challenge: grantChallenge, signedToken } = await startResp.json() as {
+            challenge: string; signedToken: string
           }
-          const hex = delegationHash.startsWith('0x') ? delegationHash.slice(2) : delegationHash
-          const hashBytes = new Uint8Array(hex.length / 2)
-          for (let i = 0; i < hashBytes.length; i++) hashBytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16)
-          const challengeAb = new ArrayBuffer(hashBytes.length)
-          new Uint8Array(challengeAb).set(hashBytes)
+          const challengeBytes = base64UrlDecode(grantChallenge)
+          const challengeAb = new ArrayBuffer(challengeBytes.length)
+          new Uint8Array(challengeAb).set(challengeBytes)
 
-          // Constrain the picker to the credential we just created.
           const credIdBytes = base64UrlDecode(parsed.credentialIdBase64Url)
           const credIdAb = new ArrayBuffer(credIdBytes.length)
           new Uint8Array(credIdAb).set(credIdBytes)
 
-          const cred = await navigator.credentials.get({
+          const cred2 = await navigator.credentials.get({
             publicKey: {
               challenge: challengeAb,
               rpId: window.location.hostname,
@@ -437,65 +443,43 @@ function ConnectStep({ hub, accent, hubSlug, error, setError }: {
               allowCredentials: [{ type: 'public-key', id: credIdAb }],
             },
           }) as PublicKeyCredential | null
-          if (!cred) throw new Error('Passkey prompt cancelled — agent connection not established')
+          if (!cred2) throw new Error('Passkey prompt cancelled — session grant not established')
 
-          const aresp = cred.response as AuthenticatorAssertionResponse
-          const passkeySig = packWebAuthnSignature({
-            credentialIdBytes: new Uint8Array(cred.rawId),
-            authenticatorData: new Uint8Array(aresp.authenticatorData),
-            clientDataJSON: new Uint8Array(aresp.clientDataJSON),
-            derSignature: new Uint8Array(aresp.signature),
-          })
-          const taggedSig = ('0x01' + passkeySig.slice(2)) as `0x${string}`
-          const completeRes = await fetch('/api/a2a/bootstrap/complete', {
+          const aresp = cred2.response as AuthenticatorAssertionResponse
+          const finalizeRes = await fetch('/api/auth/session-grant/finalize', {
             method: 'POST',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ sessionId, delegation, delegationSignature: taggedSig }),
+            headers: { 'content-type': 'application/json', origin: window.location.origin },
+            body: JSON.stringify({
+              signedToken,
+              credentialIdBase64Url: base64UrlEncode(new Uint8Array(cred2.rawId)),
+              authenticatorDataBase64Url: base64UrlEncode(new Uint8Array(aresp.authenticatorData)),
+              clientDataJSONBase64Url: base64UrlEncode(new Uint8Array(aresp.clientDataJSON)),
+              signatureBase64Url: base64UrlEncode(new Uint8Array(aresp.signature)),
+            }),
           })
-          if (!completeRes.ok) {
-            const e = await completeRes.json().catch(() => ({})) as { error?: string }
-            throw new Error(e.error ?? `bootstrap complete failed: HTTP ${completeRes.status}`)
+          if (!finalizeRes.ok) {
+            const e = await finalizeRes.json().catch(() => ({})) as { error?: string }
+            throw new Error(e.error ?? `grant finalize: HTTP ${finalizeRes.status}`)
           }
         } catch (e) {
-          const msg = `agent bootstrap: ${(e as Error).message}`
+          const msg = `session grant: ${(e as Error).message}`
           setSignupProgress({ fullName, predictedAddress, step: 'error', errorMessage: msg })
           setError(msg)
           return
         }
 
         // ─── Provision the AnonCreds holder wallet ──────────────────
-        // Without this, the dashboard's Discover Agents would refuse to
-        // run ("Provision a holder wallet via Anonymous registration
-        // before running trust search") and the "+ Get {noun} credential"
-        // dropdown actions would all stop on the same gate. We do it
-        // here while the user is already in a passkey-prompt mindset
-        // rather than surfacing a fourth-prompt surprise on first use.
+        // Goes through dispatchWalletAction — derived session-EOA signs,
+        // no passkey prompt. Idempotent.
         setSignupProgress({ fullName, predictedAddress, step: 'wallet' })
         try {
-          const prep = await prepareWalletProvisionIfNeeded()
-          if (!prep.success || !prep.signer) {
-            throw new Error(prep.error ?? 'prepare provision failed')
+          const r = await provisionHolderWalletViaSession()
+          if (!r.success && r.errorCode !== 'no_session') {
+            console.warn('[onboard] session-provision failed:', r.error)
           }
-          if (prep.needsProvision) {
-            const sig = await signWalletActionClient(
-              prep.needsProvision.action,
-              prep.needsProvision.hash,
-              prep.signer,
-            )
-            const subm = await submitWalletProvision({
-              action: prep.needsProvision.action,
-              signature: sig,
-            })
-            if (!subm.success || !subm.holderWalletId) {
-              throw new Error(subm.error ?? 'provision submit failed')
-            }
-          }
-          // alreadyProvisioned → no-op (idempotent)
         } catch (e) {
           // Non-fatal: holder wallet can be created later from the dropdown
-          // (+ Get org credential / + Get geo credential) — user just won't
-          // be able to run trust search until then. Surface as a warning
-          // instead of blocking the onboarding completion.
+          // (+ Get org credential / + Get geo credential).
           console.warn('[onboard] holder wallet provision failed:', (e as Error).message)
         }
 
@@ -532,6 +516,7 @@ function ConnectStep({ hub, accent, hubSlug, error, setError }: {
     if (typeof PublicKeyCredential.isConditionalMediationAvailable !== 'function') return
     let cancelled = false
     const ac = new AbortController()
+    condUIAbortRef.current = ac
     void (async () => {
       try {
         const ok = await PublicKeyCredential.isConditionalMediationAvailable()
@@ -569,7 +554,7 @@ function ConnectStep({ hub, accent, hubSlug, error, setError }: {
         // user to have ALREADY clicked through name resolution; here
         // we resolved the name from userHandle. So we run the same
         // verify/bootstrap/wallet sequence inline.
-        startPending(() => runPostCredentialSignin(cred, resolvedName, challenge, token))
+        startPending(() => runPostCredentialSignin(cred, resolvedName, challenge, token, null))
       } catch (e) {
         // Silently swallow — the user can still type their name and
         // click the button. AbortError is expected on unmount.
@@ -578,34 +563,63 @@ function ConnectStep({ hub, accent, hubSlug, error, setError }: {
         }
       }
     })()
-    return () => { cancelled = true; ac.abort() }
+    return () => {
+      cancelled = true
+      ac.abort()
+      if (condUIAbortRef.current === ac) condUIAbortRef.current = null
+    }
   }, [mode])
 
   /**
    * Shared post-credential pipeline: verify → A2A bootstrap → wallet
    * provision → reload. Used by both the button flow and conditional UI.
+   *
+   * Two paths:
+   *  - Button flow: caller has already invoked /session-grant/start and
+   *    holds `signedToken` for the new unified ceremony. Set legacyToken=null.
+   *  - Conditional-UI flow: caller used /passkey-challenge (legacy) and
+   *    passes legacyToken so we hit /passkey-verify. Grant minting is
+   *    deferred until the user takes a wallet action.
    */
   async function runPostCredentialSignin(
     cred: PublicKeyCredential,
     enteredName: string,
     challenge: string,
-    token: string,
+    legacyToken: string | null,
+    signedToken: string | null,
   ): Promise<void> {
     const resp = cred.response as AuthenticatorAssertionResponse
     const credentialIdBase64Url = base64UrlEncode(new Uint8Array(cred.rawId))
     setSigninProgress({ fullName: enteredName, step: 'verify' })
-    const verify = await fetch('/api/auth/passkey-verify', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', origin: window.location.origin },
-      body: JSON.stringify({
-        name: enteredName,
-        token, challenge,
-        credentialIdBase64Url,
-        authenticatorDataBase64Url: base64UrlEncode(new Uint8Array(resp.authenticatorData)),
-        clientDataJSONBase64Url: base64UrlEncode(new Uint8Array(resp.clientDataJSON)),
-        signatureBase64Url: base64UrlEncode(new Uint8Array(resp.signature)),
-      }),
-    })
+
+    let verify: Response
+    if (signedToken) {
+      verify = await fetch('/api/auth/session-grant/finalize', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', origin: window.location.origin },
+        body: JSON.stringify({
+          signedToken,
+          credentialIdBase64Url,
+          authenticatorDataBase64Url: base64UrlEncode(new Uint8Array(resp.authenticatorData)),
+          clientDataJSONBase64Url: base64UrlEncode(new Uint8Array(resp.clientDataJSON)),
+          signatureBase64Url: base64UrlEncode(new Uint8Array(resp.signature)),
+        }),
+      })
+    } else {
+      verify = await fetch('/api/auth/passkey-verify', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', origin: window.location.origin },
+        body: JSON.stringify({
+          name: enteredName,
+          token: legacyToken,
+          challenge,
+          credentialIdBase64Url,
+          authenticatorDataBase64Url: base64UrlEncode(new Uint8Array(resp.authenticatorData)),
+          clientDataJSONBase64Url: base64UrlEncode(new Uint8Array(resp.clientDataJSON)),
+          signatureBase64Url: base64UrlEncode(new Uint8Array(resp.signature)),
+        }),
+      })
+    }
     const body = await verify.json()
     if (!verify.ok || !body.success) {
       const msg = body.error ?? verify.statusText
@@ -614,73 +628,88 @@ function ConnectStep({ hub, accent, hubSlug, error, setError }: {
       return
     }
 
-    // A2A bootstrap (uses the same passkey credential id we just signed
-    // with, so the picker auto-pulls it without a generic modal).
-    setSigninProgress({ fullName: enteredName, step: 'agent' })
-    try {
-      const initRes = await fetch('/api/a2a/bootstrap/client', { method: 'POST' })
-      if (!initRes.ok) {
-        const e = await initRes.json().catch(() => ({})) as { error?: string }
-        throw new Error(e.error ?? `bootstrap init failed: HTTP ${initRes.status}`)
+    // A2A bootstrap. For users with a grant (just minted by /finalize) we
+    // skip the legacy delegation handshake entirely — the grant cookie
+    // already authorises 'a2a-agent' (see SessionGrant.audience). The
+    // a2a-agent's requireSession middleware accepts the grant cookie value
+    // as a Bearer token. Only users on the legacy passkey-verify path
+    // (conditional UI, SIWE, Google) still need the second passkey prompt.
+    if (signedToken === null) {
+      setSigninProgress({ fullName: enteredName, step: 'agent' })
+      try {
+        const initRes = await fetch('/api/a2a/bootstrap/client', { method: 'POST' })
+        if (!initRes.ok) {
+          const e = await initRes.json().catch(() => ({})) as { error?: string }
+          throw new Error(e.error ?? `bootstrap init failed: HTTP ${initRes.status}`)
+        }
+        const { delegationHash, sessionId, delegation } = await initRes.json() as {
+          delegationHash: string; sessionId: string; delegation: unknown
+        }
+        const hex = delegationHash.startsWith('0x') ? delegationHash.slice(2) : delegationHash
+        const hashBytes = new Uint8Array(hex.length / 2)
+        for (let i = 0; i < hashBytes.length; i++) hashBytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16)
+        const dhAb = new ArrayBuffer(hashBytes.length)
+        new Uint8Array(dhAb).set(hashBytes)
+        const credIdAb2 = new ArrayBuffer(cred.rawId.byteLength)
+        new Uint8Array(credIdAb2).set(new Uint8Array(cred.rawId))
+        const cred2 = await navigator.credentials.get({
+          publicKey: {
+            challenge: dhAb,
+            rpId: window.location.hostname,
+            userVerification: 'preferred',
+            timeout: 60_000,
+            allowCredentials: [{ type: 'public-key', id: credIdAb2 }],
+          },
+        }) as PublicKeyCredential | null
+        if (!cred2) throw new Error('Passkey prompt cancelled — agent connection not established')
+        const aresp = cred2.response as AuthenticatorAssertionResponse
+        const passkeySig = packWebAuthnSignature({
+          credentialIdBytes: new Uint8Array(cred2.rawId),
+          authenticatorData: new Uint8Array(aresp.authenticatorData),
+          clientDataJSON: new Uint8Array(aresp.clientDataJSON),
+          derSignature: new Uint8Array(aresp.signature),
+        })
+        const taggedSig = ('0x01' + passkeySig.slice(2)) as `0x${string}`
+        const completeRes = await fetch('/api/a2a/bootstrap/complete', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ sessionId, delegation, delegationSignature: taggedSig }),
+        })
+        if (!completeRes.ok) {
+          const e = await completeRes.json().catch(() => ({})) as { error?: string }
+          throw new Error(e.error ?? `bootstrap complete failed: HTTP ${completeRes.status}`)
+        }
+      } catch (e) {
+        const msg = `agent bootstrap: ${(e as Error).message}`
+        setSigninProgress({ fullName: enteredName, step: 'error', errorMessage: msg })
+        setError(msg)
+        return
       }
-      const { delegationHash, sessionId, delegation } = await initRes.json() as {
-        delegationHash: string; sessionId: string; delegation: unknown
-      }
-      const hex = delegationHash.startsWith('0x') ? delegationHash.slice(2) : delegationHash
-      const hashBytes = new Uint8Array(hex.length / 2)
-      for (let i = 0; i < hashBytes.length; i++) hashBytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16)
-      const dhAb = new ArrayBuffer(hashBytes.length)
-      new Uint8Array(dhAb).set(hashBytes)
-      const credIdAb2 = new ArrayBuffer(cred.rawId.byteLength)
-      new Uint8Array(credIdAb2).set(new Uint8Array(cred.rawId))
-      const cred2 = await navigator.credentials.get({
-        publicKey: {
-          challenge: dhAb,
-          rpId: window.location.hostname,
-          userVerification: 'preferred',
-          timeout: 60_000,
-          allowCredentials: [{ type: 'public-key', id: credIdAb2 }],
-        },
-      }) as PublicKeyCredential | null
-      if (!cred2) throw new Error('Passkey prompt cancelled — agent connection not established')
-      const aresp = cred2.response as AuthenticatorAssertionResponse
-      const passkeySig = packWebAuthnSignature({
-        credentialIdBytes: new Uint8Array(cred2.rawId),
-        authenticatorData: new Uint8Array(aresp.authenticatorData),
-        clientDataJSON: new Uint8Array(aresp.clientDataJSON),
-        derSignature: new Uint8Array(aresp.signature),
-      })
-      const taggedSig = ('0x01' + passkeySig.slice(2)) as `0x${string}`
-      const completeRes = await fetch('/api/a2a/bootstrap/complete', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ sessionId, delegation, delegationSignature: taggedSig }),
-      })
-      if (!completeRes.ok) {
-        const e = await completeRes.json().catch(() => ({})) as { error?: string }
-        throw new Error(e.error ?? `bootstrap complete failed: HTTP ${completeRes.status}`)
-      }
-    } catch (e) {
-      const msg = `agent bootstrap: ${(e as Error).message}`
-      setSigninProgress({ fullName: enteredName, step: 'error', errorMessage: msg })
-      setError(msg)
-      return
     }
 
-    // Idempotent holder-wallet provisioning.
+    // Idempotent holder-wallet provisioning. New unified path: server-side
+    // dispatch via session-EOA — no passkey prompt. Falls back to the
+    // legacy passkey-signed flow only if the user has no grant cookie
+    // (e.g. SIWE / Google sign-ins until M4 unifies them).
     try {
-      const prep = await prepareWalletProvisionIfNeeded()
-      if (prep.success && prep.signer && prep.needsProvision) {
-        setSigninProgress({ fullName: enteredName, step: 'wallet' })
-        const sig = await signWalletActionClient(
-          prep.needsProvision.action,
-          prep.needsProvision.hash,
-          prep.signer,
-        )
-        await submitWalletProvision({
-          action: prep.needsProvision.action,
-          signature: sig,
-        })
+      setSigninProgress({ fullName: enteredName, step: 'wallet' })
+      const sessionResult = await provisionHolderWalletViaSession()
+      if (!sessionResult.success && sessionResult.errorCode === 'no_session') {
+        // Fallback (rare on this signin path — passkey flow always sets a grant).
+        const prep = await prepareWalletProvisionIfNeeded()
+        if (prep.success && prep.signer && prep.needsProvision) {
+          const sig = await signWalletActionClient(
+            prep.needsProvision.action,
+            prep.needsProvision.hash,
+            prep.signer,
+          )
+          await submitWalletProvision({
+            action: prep.needsProvision.action,
+            signature: sig,
+          })
+        }
+      } else if (!sessionResult.success) {
+        console.warn('[signin] session-provision failed:', sessionResult.error)
       }
     } catch (e) {
       console.warn('[signin] holder wallet provision failed:', (e as Error).message)
@@ -699,18 +728,31 @@ function ConnectStep({ hub, accent, hubSlug, error, setError }: {
     if (!signinCheck.exists) { setError(`${signinCheck.fullName ?? label + '.agent'} is not registered — sign up instead?`); return }
     const enteredName = signinCheck.fullName ?? `${label}.agent`
     setSigninProgress({ fullName: enteredName, step: 'passkey' })
+    // Abort any in-flight conditional-UI navigator.credentials.get from
+    // the useEffect above — without this the browser rejects the explicit
+    // ceremony with "A request is already pending."
+    if (condUIAbortRef.current) {
+      condUIAbortRef.current.abort()
+      condUIAbortRef.current = null
+    }
     startPending(async () => {
       try {
-        const challResp = await fetch('/api/auth/passkey-challenge', { cache: 'no-store' })
-        const { challenge, token } = await challResp.json() as { challenge: string; token: string }
+        // Unified ceremony: /session-grant/start mints a SessionGrantV1,
+        // returns a challenge bound to its hash. One passkey prompt proves
+        // both identity (ERC-1271) AND consent (challenge contains grantHash).
+        const startResp = await fetch('/api/auth/session-grant/start', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ name: enteredName }),
+        })
+        if (!startResp.ok) {
+          const err = await startResp.json().catch(() => ({})) as { error?: string }
+          throw new Error(err.error ?? `session-grant start: HTTP ${startResp.status}`)
+        }
+        const { challenge, signedToken } = await startResp.json() as { challenge: string; signedToken: string }
         const challengeBytes = base64UrlDecode(challenge)
         const challengeAb = new ArrayBuffer(challengeBytes.length)
         new Uint8Array(challengeAb).set(challengeBytes)
-        // Filter localStorage hints to credentials registered to the
-        // .agent name the user just typed — picking any other passkey
-        // would yield a digest that isn't in this account's _passkeys
-        // mapping → ERC-1271 rejects. Fresh devices with no matching
-        // hint fall back to an unconstrained picker.
         const known = JSON.parse(localStorage.getItem('smart-agent.passkeys.local') ?? '[]') as Array<{ id: string; name: string }>
         const matched = known.filter(k => k.name === enteredName)
         const allowCredentials = matched.map(k => ({
@@ -729,7 +771,7 @@ function ConnectStep({ hub, accent, hubSlug, error, setError }: {
           setError('Cancelled.')
           return
         }
-        await runPostCredentialSignin(cred, enteredName, challenge, token)
+        await runPostCredentialSignin(cred, enteredName, challenge, null, signedToken)
       } catch (err) {
         const msg = (err as Error).message
         setSigninProgress({ fullName: enteredName, step: 'error', errorMessage: msg })
@@ -775,6 +817,7 @@ function ConnectStep({ hub, accent, hubSlug, error, setError }: {
                 autoCapitalize="none"
                 autoCorrect="off"
                 autoComplete="off"
+                data-testid="hub-onboard-signup-name"
                 aria-invalid={signupCheck && !signupCheck.available ? 'true' : undefined}
               />
               {/* Live availability hint. Coloured pill so the result
@@ -874,6 +917,7 @@ function ConnectStep({ hub, accent, hubSlug, error, setError }: {
                     setSigninLabel(idx >= 0 ? v.slice(0, idx) : v)
                   }}
                   placeholder="e.g. richp"
+                  data-testid="hub-onboard-signin-name"
                   autoCapitalize="none"
                   autoCorrect="off"
                   // `username webauthn` makes browsers (Chrome / Edge /
@@ -999,24 +1043,18 @@ function SigninProgressModal({
     {
       key: 'passkey',
       label: 'Pick your passkey',
-      hint: 'Authorizes proof of identity for this sign-in attempt.',
-      badge: '🔑 1 / 2',
+      hint: 'One ceremony — proves identity AND signs a session grant so your agent can act for you. The challenge contains the grant hash, so it can\'t be replayed for a different scope.',
+      badge: '🔑 1 / 1',
     },
     {
       key: 'verify',
       label: 'Verify signature on chain',
-      hint: 'AgentAccount checks your passkey against its on-chain mapping.',
-    },
-    {
-      key: 'agent',
-      label: 'Connect your agent (A2A session)',
-      hint: 'Second prompt — signs a session delegation so your agent can act on your behalf without re-prompting.',
-      badge: '🔑 2 / 2',
+      hint: 'AgentAccount checks your passkey against its on-chain mapping; the grant cookie is set on success.',
     },
     {
       key: 'wallet',
       label: 'Provision AnonCreds holder wallet',
-      hint: 'Only on first sign-in — primes the private vault for credentials and trust search. Skipped if your wallet already exists.',
+      hint: 'No prompt — the just-minted session-EOA signs the dispatch. Skipped if your wallet already exists.',
     },
     { key: 'done', label: 'Signed in' },
   ]
@@ -1047,9 +1085,10 @@ function SigninProgressModal({
           background: '#eff6ff', border: '1px solid #bfdbfe',
           borderRadius: 8, fontSize: 12, color: '#1e40af', lineHeight: 1.5,
         }}>
-          You&apos;ll see <b>2 passkey prompts</b> — one to prove identity,
-          one to sign a session delegation so your agent can act on your behalf.
-          A third may appear on first sign-in to provision your AnonCreds wallet.
+          You&apos;ll see <b>1 passkey prompt</b> — it both proves your identity
+          AND authorises a session grant so your agent can act on your behalf
+          without re-prompting. The grant covers everything: AnonCreds wallet
+          provisioning, A2A messaging, credential acceptance, presentations.
         </div>
 
         {stepOrder.map((s, i) => {
@@ -1137,18 +1176,17 @@ function SignupProgressModal({
     return () => clearInterval(id)
   }, [step, chainSubsteps.length])
 
-  // Each step's `hint` explains what the user is authorizing if a
-  // WebAuthn prompt is involved. WebAuthn ceremonies sign exactly one
-  // EIP-712 challenge each, so the three signups prompts can't be
-  // merged into one — the explanations are how we keep the cadence
-  // from feeling arbitrary.
+  // Two passkey ceremonies during signup — registration (WebAuthn-create
+  // returns an attestation; can't be reused) plus the unified session-
+  // grant signature (WebAuthn-get with grant-bound challenge). Wallet
+  // provisioning rides through the session-EOA, no third prompt.
   type StepRow = { label: string; status: 'ok' | 'pending' | 'fail' | 'idle'; hint?: string; badge?: string }
   const steps: StepRow[] = [
     {
       label: 'Create passkey on this device',
       status: step === 'passkey' ? 'pending' : step === 'error' && !errorMessage?.includes('chain') ? 'fail' : 'ok',
       hint: 'First prompt — your authenticator generates a fresh P-256 key bound to your .agent name.',
-      badge: '🔑 1 / 3',
+      badge: '🔑 1 / 2',
     },
     ...chainSubsteps.map((label, i): StepRow => {
       let status: 'ok' | 'pending' | 'fail' | 'idle' = 'idle'
@@ -1159,16 +1197,15 @@ function SignupProgressModal({
       return { label, status }
     }),
     {
-      label: 'Connect your agent (A2A session)',
+      label: 'Authorise session grant',
       status: step === 'done' || step === 'wallet' ? 'ok' : step === 'agent' ? 'pending' : 'idle',
-      hint: 'Second prompt — signs a session delegation so your agent can talk to other agents on your behalf without re-prompting.',
-      badge: '🔑 2 / 3',
+      hint: 'Second prompt — signs a session-grant challenge bound to the just-registered passkey. Covers all downstream agents (a2a, person-mcp, verifier-mcp). No further prompts after this.',
+      badge: '🔑 2 / 2',
     },
     {
       label: 'Provision AnonCreds holder wallet',
       status: step === 'done' ? 'ok' : step === 'wallet' ? 'pending' : 'idle',
-      hint: 'Third prompt — primes your private vault so you can receive credentials and run trust search. One-time setup.',
-      badge: '🔑 3 / 3',
+      hint: 'No prompt — the derived session-EOA signs the dispatch.',
     },
   ]
 
@@ -1200,10 +1237,10 @@ function SignupProgressModal({
           background: '#eff6ff', border: '1px solid #bfdbfe',
           borderRadius: 8, fontSize: 12, color: '#1e40af', lineHeight: 1.5,
         }}>
-          You&apos;ll authorize <b>3 actions</b> with your passkey:
-          create the passkey, connect your agent, and provision your wallet.
-          Each prompt signs a separate cryptographic challenge — they can&apos;t
-          be combined into one tap.
+          You&apos;ll see <b>2 passkey prompts</b> — registration creates the
+          credential on this device, then a single session-grant signature
+          authorises every downstream agent at once. Wallet provisioning
+          runs through the session-EOA after that, with no further prompts.
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>

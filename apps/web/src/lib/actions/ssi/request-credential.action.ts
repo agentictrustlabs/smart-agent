@@ -26,8 +26,10 @@ import {
 } from '@smart-agent/sdk'
 import { loadSignerForCurrentUser } from '@/lib/ssi/signer'
 import { person, org, family, geo } from '@/lib/ssi/clients'
+import { ssiConfig } from '@/lib/ssi/config'
 import { getSignerContext } from './wallet-provision.action'
 import { hashWalletAction, type SignerContext } from '@/lib/credentials/wallet-helpers'
+import { dispatchWalletAction, DispatchError } from '@/lib/wallet-action/dispatch'
 
 interface OfferResponse {
   credentialOfferJson: string
@@ -179,6 +181,93 @@ export async function completeCredentialIssuance(input: {
     if (fin.error || !fin.credentialId) return { success: false, error: fin.error ?? 'store failed' }
     return { success: true, credentialId: fin.credentialId }
   } catch (err) {
+    return { success: false, error: (err as Error).message }
+  }
+}
+
+/**
+ * One-shot credential issuance via session-grant — no passkey prompt.
+ *
+ * Flow:
+ *   1. Fetch credential offer from the issuer.
+ *   2. dispatchWalletAction('AcceptCredentialOffer', { holderWalletId,
+ *      credentialOfferJson, credDefId }) — server-signs with session-EOA.
+ *   3. Forward credentialRequestJson to the issuer to mint the credential.
+ *   4. POST /credentials/store on person-mcp (one-shot requestId is its own auth).
+ *
+ * Replaces the prepare/sign/complete trio for users who hold a session grant.
+ */
+export async function issueCredentialViaSession(input: {
+  credentialType: string
+  holderWalletId: string
+  walletContext: string
+  attributes: Record<string, string>
+  extraIssueArgs?: { targetOrgAddress?: string }
+}): Promise<{ success: boolean; credentialId?: string; error?: string; errorCode?: string }> {
+  try {
+    const descriptor = findCredentialKind(input.credentialType)
+    if (!descriptor) return { success: false, error: `unknown credential type: ${input.credentialType}` }
+
+    for (const name of descriptor.attributeNames) {
+      const v = input.attributes[name]
+      if (typeof v !== 'string') {
+        return { success: false, error: `attribute "${name}" missing or not stringified` }
+      }
+    }
+
+    const ctx = await loadSignerForCurrentUser()
+    const principal = ctx.principal
+    const client = issuerClientByKey(descriptor.issuerKey)
+    const offer = await client.offer(descriptor.credentialType)
+
+    const dispatched = await dispatchWalletAction<{
+      ok: boolean
+      requestId: string
+      credentialRequestJson: string
+    }>({
+      actionType: 'AcceptCredentialOffer',
+      service: 'person-mcp',
+      payload: {
+        holderWalletId: input.holderWalletId,
+        credentialOfferJson: offer.credentialOfferJson,
+        credDefId: offer.credDefId,
+      },
+    })
+
+    const issuance = await client.issue({
+      credentialOfferJson: offer.credentialOfferJson,
+      credentialRequestJson: dispatched.credentialRequestJson,
+      attributes: input.attributes,
+    })
+
+    // /credentials/store is authenticated by the one-shot requestId issued
+    // by the dispatch handler — no separate signature needed.
+    const storeRes = await fetch(`${ssiConfig.walletUrl}/credentials/store`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        holderWalletId: input.holderWalletId,
+        requestId: dispatched.requestId,
+        credentialJson: issuance.credentialJson,
+        credentialType: descriptor.credentialType,
+        issuerId: offer.issuerId,
+        schemaId: offer.schemaId,
+        ...(input.extraIssueArgs?.targetOrgAddress
+          ? { targetOrgAddress: input.extraIssueArgs.targetOrgAddress }
+          : {}),
+      }),
+    })
+    if (!storeRes.ok) {
+      const e = await storeRes.json().catch(() => ({})) as { error?: string }
+      return { success: false, error: e.error ?? `store failed: HTTP ${storeRes.status}` }
+    }
+    const { credentialId } = await storeRes.json() as { credentialId: string }
+    void principal
+    return { success: true, credentialId }
+  } catch (err) {
+    if (err instanceof DispatchError) {
+      return { success: false, error: err.detail, errorCode: err.code }
+    }
     return { success: false, error: (err as Error).message }
   }
 }

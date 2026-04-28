@@ -7,6 +7,7 @@ const TABS = [
   { key: 'governance', label: 'Governance' },
   { key: 'issuers', label: 'Authorities' },
   { key: 'ontology', label: 'Registry' },
+  { key: 'sessions', label: 'Active Sessions' },
 ]
 
 export function SettingsTabs({ children }: { children: Record<string, React.ReactNode> }) {

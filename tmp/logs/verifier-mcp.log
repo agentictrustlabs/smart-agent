@@ -5,4 +5,4 @@
 [verifier-mcp] Smart Agent Trusted Auditor @ did:ethr:31337:0x8fd379246834eac74b8419ffda202cf8051f7a03
 [verifier-mcp] listening on http://localhost:3700
 <-- GET /health
---> GET /health [32m200[0m 1ms
+--> GET /health [32m200[0m 0ms

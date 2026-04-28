@@ -53,6 +53,7 @@ import {
 import { geoOverlapScore, type CoarseGeoTag, type GeoClaimInput } from '@smart-agent/privacy-creds/geo-overlap'
 import { person } from '@/lib/ssi/clients'
 import { ssiConfig } from '@/lib/ssi/config'
+import { dispatchWalletAction, DispatchError } from '@/lib/wallet-action/dispatch'
 
 /**
  * Relationship-type hashes that link an agent to an Organization for the
@@ -315,6 +316,82 @@ export async function completeTrustSearch(input: {
     return { hits }
   } catch (err) {
     return { hits: [], error: (err as Error).message }
+  }
+}
+
+/**
+ * One-shot trust search via session-grant — no passkey prompt.
+ *
+ * Wraps prepare → dispatch(MatchAgainstPublicSet) → score-merge into a
+ * single call. The dispatch path on person-mcp invokes the same internal
+ * scorer the legacy /wallet/match-against-public-set route used.
+ */
+export async function runTrustSearchViaSession(
+  opts: { query?: string; limit?: number } = {},
+): Promise<{ hits: TrustSearchHit[]; status: TrustSearchPrepared['status']; error?: string; message?: string }> {
+  const prepared = await prepareTrustSearch(opts)
+  if (prepared.status !== 'ready' || !prepared.body || !prepared.holderWalletId) {
+    return { hits: [], status: prepared.status, message: prepared.message }
+  }
+
+  try {
+    const dispatched = await dispatchWalletAction<{
+      ok: boolean
+      hits: Array<{ id: string; score: number; sharedCount: number; evidenceCommit: `0x${string}` }>
+    }>({
+      actionType: 'MatchAgainstPublicSet',
+      service: 'person-mcp',
+      payload: {
+        holderWalletId: prepared.holderWalletId,
+        body: prepared.body,
+      },
+    })
+
+    const callerGeo = prepared.callerGeo ?? null
+    const agentMeta = prepared.agentMeta ?? {}
+
+    const hits: TrustSearchHit[] = dispatched.hits.map(h => {
+      const meta = agentMeta[h.id.toLowerCase()]
+      const address = meta?.address ?? (getAddress(h.id) as `0x${string}`)
+      const fallbackName = `${address.slice(0, 6)}…${address.slice(-4)}`
+      const orgScore = h.score
+      let geoScore = 0
+      const geoExplanation: Array<{ relation: string; contribution: number }> = []
+      if (callerGeo && meta?.geoTag) {
+        const geo = geoOverlapScore({
+          caller: callerGeo,
+          candidate: meta.geoTag,
+          matchedClaims: meta.geoMatchedClaims,
+        })
+        geoScore = geo.score
+        if (geo.coarseScore > 0) {
+          geoExplanation.push({ relation: 'coarse:city/region/country', contribution: geo.coarseScore })
+        }
+        for (const c of meta.geoMatchedClaims ?? []) {
+          const rough = roughClaimContribution(c)
+          if (rough > 0) geoExplanation.push({ relation: c.relation, contribution: rough })
+        }
+      }
+      return {
+        address,
+        displayName: meta?.displayName || fallbackName,
+        primaryName: meta?.primaryName ?? null,
+        score: orgScore + geoScore,
+        orgScore,
+        geoScore,
+        sharedCount: h.sharedCount,
+        geoTag: meta?.geoTag ?? null,
+        geoExplanation,
+        evidenceCommit: h.evidenceCommit,
+      }
+    })
+    hits.sort((a, b) => b.score - a.score || a.displayName.localeCompare(b.displayName))
+    return { hits, status: 'ready' }
+  } catch (err) {
+    if (err instanceof DispatchError) {
+      return { hits: [], status: 'no-resolver', error: err.detail, message: `${err.code}: ${err.detail}` }
+    }
+    return { hits: [], status: 'no-resolver', error: (err as Error).message }
   }
 }
 

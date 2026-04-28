@@ -36,7 +36,15 @@ export interface JwtClaims {
   /** Expires at (unix seconds). */
   exp: number
   /** Token kind — "session" today, room for "recovery" / "invite" later. */
-  kind?: 'session' | 'passkey-challenge'
+  kind?: 'session' | 'passkey-challenge' | 'session-grant-pending'
+  /** For kind=session-grant-pending: opaque sessionId minted at /start. */
+  sessionId?: string
+  /** For kind=session-grant-pending: SHA-256 of the canonical grant. */
+  grantHash?: string
+  /** For kind=session-grant-pending: random bytes mixed into the challenge. */
+  serverNonce?: string
+  /** For kind=session-grant-pending: full SessionGrantV1 body. */
+  grant?: unknown
   /** Optional user shape carried in the token to avoid an extra DB hit. */
   walletAddress?: string | null
   smartAccountAddress?: string | null

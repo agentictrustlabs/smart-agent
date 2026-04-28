@@ -7,11 +7,13 @@
  *     action for the client to sign.
  *   • submitWalletProvision — submits a client-signed provision action
  *     and returns the new holderWalletId.
+ *   • provisionHolderWalletViaSession — NEW unified flow. If a session-grant
+ *     cookie is present, dispatches the action via session-EOA — no passkey
+ *     prompt. Falls back to the legacy prepare/submit pair when no grant
+ *     exists (e.g. SIWE users until M4).
  *
  * Both steps are independent of credential type. They get used by every
- * `Get {noun} credential` flow before issuance can begin. Passkey users
- * will sign the provision action client-side via `signWalletActionClient`;
- * EOA / SIWE users go through the same shape via the same helper.
+ * `Get {noun} credential` flow before issuance can begin.
  */
 
 import type { WalletAction } from '@smart-agent/privacy-creds'
@@ -20,6 +22,7 @@ import { person } from '@/lib/ssi/clients'
 import { ssiConfig } from '@/lib/ssi/config'
 import { requireSession } from '@/lib/auth/session'
 import { hashWalletAction, type SignerContext } from '@/lib/credentials/wallet-helpers'
+import { dispatchWalletAction, DispatchError } from '@/lib/wallet-action/dispatch'
 
 const WALLET_CONTEXT = 'default'
 
@@ -133,6 +136,78 @@ export async function submitWalletProvision(input: {
     }
     return { success: true, holderWalletId: res.holderWalletId, walletContext: WALLET_CONTEXT }
   } catch (err) {
+    return { success: false, error: (err as Error).message }
+  }
+}
+
+/**
+ * One-shot provision via the session-grant ceremony — no passkey prompt.
+ *
+ * Idempotent: if a wallet for (principal, default) already exists, returns
+ * it. Otherwise dispatches a ProvisionHolderWallet WalletActionV1 signed by
+ * the derived session-EOA. The dispatch path on person-mcp verifies the
+ * signature, scope, and replay protection before executing the same
+ * provision logic the legacy submitWalletProvision triggered.
+ *
+ * Returns success=false with a "no_session" error if no grant cookie
+ * exists; callers should fall back to the legacy flow only when needed
+ * (during M2 transition; deletes in M4).
+ */
+export async function provisionHolderWalletViaSession(): Promise<{
+  success: boolean
+  holderWalletId?: string
+  walletContext?: string
+  idempotent?: boolean
+  error?: string
+  errorCode?: string
+}> {
+  try {
+    const ctx = await loadSignerForCurrentUser()
+    const principal = ctx.principal
+
+    // Idempotent: skip dispatch if already provisioned.
+    try {
+      const res = await fetch(
+        `${ssiConfig.walletUrl}/wallet/${encodeURIComponent(principal)}/${encodeURIComponent(WALLET_CONTEXT)}`,
+        { cache: 'no-store' },
+      )
+      if (res.ok) {
+        const j = (await res.json()) as { holderWalletId?: string }
+        if (j.holderWalletId) {
+          return {
+            success: true,
+            holderWalletId: j.holderWalletId,
+            walletContext: WALLET_CONTEXT,
+            idempotent: true,
+          }
+        }
+      }
+    } catch { /* fall through */ }
+
+    const result = await dispatchWalletAction<{
+      ok: boolean
+      holderWalletId?: string
+      walletContext?: string
+      idempotent?: boolean
+    }>({
+      actionType: 'ProvisionHolderWallet',
+      service: 'person-mcp',
+      payload: { personPrincipal: principal, walletContext: WALLET_CONTEXT },
+    })
+
+    if (!result.ok || !result.holderWalletId) {
+      return { success: false, error: 'dispatch returned no holderWalletId' }
+    }
+    return {
+      success: true,
+      holderWalletId: result.holderWalletId,
+      walletContext: result.walletContext ?? WALLET_CONTEXT,
+      idempotent: result.idempotent ?? false,
+    }
+  } catch (err) {
+    if (err instanceof DispatchError) {
+      return { success: false, error: err.detail, errorCode: err.code }
+    }
     return { success: false, error: (err as Error).message }
   }
 }

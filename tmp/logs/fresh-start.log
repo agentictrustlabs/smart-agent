@@ -57,4 +57,7 @@
 [1;36m=== Done — fresh stack at http://localhost:3000[0m  (17:02:19)
 Tail logs:   tail -f /home/barb/smart-agent/tmp/logs/<service>.log
 Stop later:  for f in /home/barb/smart-agent/tmp/pids/*.pid; do kill "$(cat "$f")" 2>/dev/null || true; done
-"$f")" 2>/dev/null || true; done
+Terminated
+Terminated
+Terminated
+Terminated
