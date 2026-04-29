@@ -24,6 +24,7 @@ import { seedGeoOnChain } from '@/lib/demo-seed/seed-geo-onchain'
 import { seedSkillsOnChain } from '@/lib/demo-seed/seed-skills-onchain'
 import { seedSkillIssuersOnChain } from '@/lib/demo-seed/seed-skill-issuers-onchain'
 import { seedDemoSkillClaimsOnChain } from '@/lib/demo-seed/seed-demo-skill-claims'
+import { seedDiscipleNetworksOnChain } from '@/lib/demo-seed/seed-disciple-networks-onchain'
 import { ensureDevP256Stub } from '@/lib/dev-p256-stub'
 
 export interface BootState {
@@ -103,6 +104,7 @@ export function triggerBootSeed(): Promise<void> {
         try {
           await seedSkillsOnChain()
           await seedSkillIssuersOnChain()
+          await seedDiscipleNetworksOnChain()
           await seedDemoSkillClaimsOnChain()
         } catch (e) {
           console.warn('[boot-seed] late skill seed error (non-fatal):', (e as Error).message)
@@ -177,6 +179,18 @@ export function triggerBootSeed(): Promise<void> {
       await seedGlobalChurchOnChain()
       await seedCatalystOnChain()
       await seedCILOnChain()
+
+      // 2b′. Catalyst sister networks (Harvest East, Great Lakes,
+      //      CityBridge). Adds the disciple-tools-flavoured org agents
+      //      + 12 actors representing missional archetypes (Multiplier,
+      //      Dispatcher, Strategist, Digital Responder, Multi-Gen Coach)
+      //      under the existing Catalyst hub. Idempotent.
+      state.phase = 'on-chain seed: disciple-tools sister networks'
+      try {
+        await seedDiscipleNetworksOnChain()
+      } catch (e) {
+        console.warn('[boot-seed] disciple networks seed error (non-fatal):', (e as Error).message)
+      }
 
       // 2c. Demo skill claims — runs after person-agents exist so
       //     getPersonAgentForUser resolves. Idempotent: deterministic

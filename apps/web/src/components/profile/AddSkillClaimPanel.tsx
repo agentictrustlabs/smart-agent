@@ -5,6 +5,7 @@ import {
   listSkillsAction,
   mintPublicSkillClaimAction,
   listMySkillClaimsAction,
+  listSkillsForAgentAction,
   type SkillRow,
   type MySkillClaimRow,
 } from '@/lib/actions/skill-claim.action'
@@ -29,7 +30,23 @@ const PROF_PRESET = [
   { label: 'Cap (60)', value: 60 },  // self-attest hard cap
 ]
 
-export function AddSkillClaimPanel() {
+/**
+ * Self-attest skill claim authoring panel.
+ *
+ * Defaults to publishing claims as the connected user's person agent
+ * ("My Public Skills"). When `subjectAgent` is passed (typically by the
+ * org-manage page), the panel publishes as that agent instead — the
+ * server-side action verifies the caller is authorised via
+ * `canManageAgent` before broadcasting.
+ */
+interface AddSkillClaimPanelProps {
+  /** Subject agent address. When omitted, defaults to the caller's person agent. */
+  subjectAgent?: `0x${string}`
+  /** Optional display name for the heading + status copy. */
+  subjectLabel?: string
+}
+
+export function AddSkillClaimPanel({ subjectAgent, subjectLabel }: AddSkillClaimPanelProps = {}) {
   const [skills, setSkills] = useState<SkillRow[] | null>(null)
   const [myClaims, setMyClaims] = useState<MySkillClaimRow[] | null>(null)
   const [skillId, setSkillId] = useState('')
@@ -41,12 +58,16 @@ export function AddSkillClaimPanel() {
   const [info, setInfo] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
 
+  const heading = subjectAgent
+    ? (subjectLabel ? `${subjectLabel} — Public Skills` : 'Public Skills')
+    : 'My Public Skills'
+
   useEffect(() => {
     if (skills && myClaims) return
     start(async () => {
       const [rows, mine] = await Promise.all([
         skills ? Promise.resolve(skills) : listSkillsAction(),
-        listMySkillClaimsAction(),
+        subjectAgent ? listSkillsForAgentAction(subjectAgent) : listMySkillClaimsAction(),
       ])
       setSkills(rows)
       setMyClaims(mine)
@@ -56,7 +77,7 @@ export function AddSkillClaimPanel() {
       }
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [subjectAgent])
 
   function publishSkill() {
     setInfo(null); setErr(null)
@@ -69,10 +90,13 @@ export function AddSkillClaimPanel() {
         relation,
         proficiencyScore: Math.round(proficiencyPct * 100),  // 0..60 → 0..6000
         confidence,
+        ...(subjectAgent ? { subjectAgent } : {}),
       })
       if (r.success) {
         setInfo(`Public skill claim added (${r.claimId?.slice(0, 10)}…). Anyone reading the skill registry can now see this binding.`)
-        const mine = await listMySkillClaimsAction()
+        const mine = subjectAgent
+          ? await listSkillsForAgentAction(subjectAgent)
+          : await listMySkillClaimsAction()
         setMyClaims(mine)
       } else {
         setErr(r.error ?? 'failed')
@@ -89,7 +113,7 @@ export function AddSkillClaimPanel() {
         <h2 style={{
           fontSize: '0.7rem', fontWeight: 700, color: '#9a8c7e',
           textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0,
-        }}>My Public Skills</h2>
+        }}>{heading}</h2>
         <span style={{ fontSize: 11, color: '#94a3b8' }}>
           {myClaims === null
             ? 'loading…'

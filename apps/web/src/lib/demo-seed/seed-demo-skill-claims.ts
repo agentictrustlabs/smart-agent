@@ -145,6 +145,48 @@ const BINDINGS: DemoSkillBinding[] = [
   // Kwame — Wave 2 Cohort: business coaching + revenue-share modelling
   { userId: 'cil-user-009', conceptId: 'custom:business-coaching',     relation: 'practicesSkill', proficiencyScore: 5200, confidence: 80 },
   { userId: 'cil-user-009', conceptId: 'custom:revenue-share-modelling', relation: 'hasSkill',     proficiencyScore: 4500, confidence: 75 },
+
+  // ─── Front Range House Churches (Catalyst sister) ─────────────────
+  // Annika — Network Admin: operations + program-eval (admin archetype)
+  { userId: 'fr-user-001', conceptId: 'custom:operations-management', relation: 'practicesSkill', proficiencyScore: 5500, confidence: 85 },
+  { userId: 'fr-user-001', conceptId: 'custom:program-evaluation',   relation: 'hasSkill',       proficiencyScore: 4500, confidence: 75 },
+  // Brent — Dispatcher: operations + community-organizing (lead routing flavour)
+  { userId: 'fr-user-002', conceptId: 'custom:operations-management', relation: 'practicesSkill', proficiencyScore: 5200, confidence: 80 },
+  { userId: 'fr-user-002', conceptId: 'custom:community-organizing',  relation: 'practicesSkill', proficiencyScore: 5000, confidence: 80 },
+  // Rachel — Multiplier (frontline disciple-maker): church-planting + discipleship
+  { userId: 'fr-user-003', conceptId: 'custom:church-planting',      relation: 'practicesSkill', proficiencyScore: 5800, confidence: 90 },
+  { userId: 'fr-user-003', conceptId: 'custom:discipleship',         relation: 'practicesSkill', proficiencyScore: 5800, confidence: 90 },
+  // Kenji — Multi-Gen Coach: discipleship + youth-mentorship (multi-gen leader development)
+  { userId: 'fr-user-004', conceptId: 'custom:discipleship',         relation: 'practicesSkill', proficiencyScore: 5800, confidence: 90 },
+  { userId: 'fr-user-004', conceptId: 'custom:youth-mentorship',     relation: 'practicesSkill', proficiencyScore: 5500, confidence: 85 },
+  // Lina — Strategist: program-eval + data-analysis (movement-vitality reading)
+  { userId: 'fr-user-005', conceptId: 'custom:program-evaluation',   relation: 'practicesSkill', proficiencyScore: 5800, confidence: 90 },
+  { userId: 'fr-user-005', conceptId: 'custom:data-analysis',        relation: 'practicesSkill', proficiencyScore: 5500, confidence: 85 },
+
+  // ─── Plains Church Planters (Catalyst sister) ─────────────────────
+  // Joseph — Network Admin: operations + program-eval
+  { userId: 'pl-user-001', conceptId: 'custom:operations-management', relation: 'practicesSkill', proficiencyScore: 5500, confidence: 85 },
+  { userId: 'pl-user-001', conceptId: 'custom:program-evaluation',   relation: 'hasSkill',       proficiencyScore: 4500, confidence: 75 },
+  // Sophia — Digital Responder: copywriting + community-organizing (digital evangelism)
+  { userId: 'pl-user-002', conceptId: 'custom:copywriting',          relation: 'practicesSkill', proficiencyScore: 5500, confidence: 85 },
+  { userId: 'pl-user-002', conceptId: 'custom:community-organizing', relation: 'practicesSkill', proficiencyScore: 5000, confidence: 80 },
+  // Peter — Multiplier (church planter): church-planting + pastoral-care
+  { userId: 'pl-user-003', conceptId: 'custom:church-planting',      relation: 'practicesSkill', proficiencyScore: 5800, confidence: 90 },
+  { userId: 'pl-user-003', conceptId: 'custom:pastoral-care',        relation: 'practicesSkill', proficiencyScore: 5500, confidence: 85 },
+  // Esther — Strategist: program-eval + missions-logistics (movement reporting)
+  { userId: 'pl-user-004', conceptId: 'custom:program-evaluation',   relation: 'practicesSkill', proficiencyScore: 5800, confidence: 90 },
+  { userId: 'pl-user-004', conceptId: 'custom:missions-logistics',   relation: 'practicesSkill', proficiencyScore: 5200, confidence: 80 },
+
+  // ─── Denver Metro Bridge (Catalyst sister) ────────────────────────
+  // Marcus — Network Admin: operations + program-eval
+  { userId: 'dm-user-001', conceptId: 'custom:operations-management', relation: 'practicesSkill', proficiencyScore: 5500, confidence: 85 },
+  { userId: 'dm-user-001', conceptId: 'custom:program-evaluation',   relation: 'hasSkill',       proficiencyScore: 4500, confidence: 75 },
+  // Priya — Multiplier (coffee-shop discipler): discipleship + community-organizing
+  { userId: 'dm-user-002', conceptId: 'custom:discipleship',         relation: 'practicesSkill', proficiencyScore: 5800, confidence: 90 },
+  { userId: 'dm-user-002', conceptId: 'custom:community-organizing', relation: 'practicesSkill', proficiencyScore: 5500, confidence: 85 },
+  // Terrence — Dispatcher: operations + case-management (lead routing + handoff)
+  { userId: 'dm-user-003', conceptId: 'custom:operations-management', relation: 'practicesSkill', proficiencyScore: 5500, confidence: 85 },
+  { userId: 'dm-user-003', conceptId: 'custom:case-management',      relation: 'practicesSkill', proficiencyScore: 5200, confidence: 80 },
 ]
 
 export async function seedDemoSkillClaimsOnChain(): Promise<void> {

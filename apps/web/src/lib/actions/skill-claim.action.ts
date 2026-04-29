@@ -19,7 +19,7 @@
 import { keccak256, stringToHex } from 'viem'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { getPublicClient, getWalletClient } from '@/lib/contracts'
-import { getPersonAgentForUser } from '@/lib/agent-registry'
+import { getPersonAgentForUser, canManageAgent } from '@/lib/agent-registry'
 import {
   skillDefinitionRegistryAbi,
   agentSkillRegistryAbi,
@@ -90,6 +90,13 @@ export interface MintSkillClaimInput {
   proficiencyScore: number
   /** 0..100. */
   confidence: number
+  /**
+   * Optional subject — defaults to the caller's person agent. Pass an
+   * org agent address (or any agent) the caller owns/controls to mint
+   * "the org practicesSkill X" instead of "I practiceSkill X". The
+   * server verifies authority via `canManageAgent` before broadcasting.
+   */
+  subjectAgent?: `0x${string}`
 }
 
 // ─── Reads ────────────────────────────────────────────────────────────
@@ -205,6 +212,17 @@ export async function mintPublicSkillClaimAction(
     const personAgent = (await getPersonAgentForUser(me.id)) as `0x${string}` | null
     if (!personAgent) return { success: false, error: 'No person agent — finish onboarding first' }
 
+    // Subject defaults to caller's person agent. When the caller passes
+    // an explicit subject (an org or other agent they manage), authorise
+    // by `canManageAgent` before signing. The on-chain `_isAuthorized`
+    // path also enforces this — the off-chain check just produces a
+    // friendlier error than a revert.
+    const subject = (input.subjectAgent ?? personAgent) as `0x${string}`
+    if (subject.toLowerCase() !== personAgent.toLowerCase()) {
+      const ok = await canManageAgent(personAgent, subject)
+      if (!ok) return { success: false, error: 'Not authorised to publish claims for that agent' }
+    }
+
     const claimRegistry = process.env.AGENT_SKILL_REGISTRY_ADDRESS as `0x${string}` | undefined
     if (!claimRegistry) return { success: false, error: 'AGENT_SKILL_REGISTRY_ADDRESS not set' }
 
@@ -218,17 +236,17 @@ export async function mintPublicSkillClaimAction(
 
     const wc = getWalletClient()
     const pc = getPublicClient()
-    const issuer = personAgent  // self
+    const issuer = subject  // self-attestation: subject == issuer
     const nonce = keccak256(stringToHex(
-      `${personAgent}|${input.skillId}|${input.relation}|${Date.now()}`,
+      `${subject}|${input.skillId}|${input.relation}|${Date.now()}`,
     ))
 
     const evidenceCommit = keccak256(stringToHex(
-      `evidence:skill:${personAgent}|${input.skillId}|${input.relation}`,
+      `evidence:skill:${subject}|${input.skillId}|${input.relation}`,
     )) as `0x${string}`
 
     const mintInput = {
-      subjectAgent: personAgent,
+      subjectAgent: subject,
       issuer,
       skillId: input.skillId,
       skillVersion: BigInt(input.skillVersion),
@@ -254,7 +272,7 @@ export async function mintPublicSkillClaimAction(
     await pc.waitForTransactionReceipt({ hash })
 
     const claimId = keccak256(
-      `0x${personAgent.slice(2)}${input.skillId.slice(2)}${REL_HASH[input.relation].slice(2)}${nonce.slice(2)}` as `0x${string}`,
+      `0x${subject.slice(2)}${input.skillId.slice(2)}${REL_HASH[input.relation].slice(2)}${nonce.slice(2)}` as `0x${string}`,
     )
     return { success: true, claimId }
   } catch (err) {

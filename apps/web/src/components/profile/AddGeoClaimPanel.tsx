@@ -5,6 +5,7 @@ import {
   listFeaturesAction,
   mintPublicGeoClaimAction,
   listMyGeoClaimsAction,
+  listGeoLocationsForAgentAction,
   type FeatureRow,
   type MyGeoClaimRow,
 } from '@/lib/actions/geo-claim.action'
@@ -27,7 +28,17 @@ const RELATIONS: GeoRelation[] = [
   'completedTaskIn', 'validatedPresenceIn', 'stewardOf', 'originIn',
 ]
 
-export function AddGeoClaimPanel() {
+/**
+ * Same shape as `AddSkillClaimPanel`: an optional `subjectAgent` swaps
+ * the subject from the caller's person agent to an agent they manage.
+ * The server enforces authority via `canManageAgent`.
+ */
+interface AddGeoClaimPanelProps {
+  subjectAgent?: `0x${string}`
+  subjectLabel?: string
+}
+
+export function AddGeoClaimPanel({ subjectAgent, subjectLabel }: AddGeoClaimPanelProps = {}) {
   const [features, setFeatures] = useState<FeatureRow[] | null>(null)
   const [myLocations, setMyLocations] = useState<MyGeoClaimRow[] | null>(null)
   const [featureId, setFeatureId] = useState('')
@@ -38,12 +49,16 @@ export function AddGeoClaimPanel() {
   const [info, setInfo] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
 
+  const heading = subjectAgent
+    ? (subjectLabel ? `${subjectLabel} — Public Locations` : 'Public Locations')
+    : 'My Public Locations'
+
   useEffect(() => {
     if (features && myLocations) return
     start(async () => {
       const [rows, mine] = await Promise.all([
         features ? Promise.resolve(features) : listFeaturesAction(),
-        listMyGeoClaimsAction(),
+        subjectAgent ? listGeoLocationsForAgentAction(subjectAgent) : listMyGeoClaimsAction(),
       ])
       setFeatures(rows)
       setMyLocations(mine)
@@ -53,7 +68,7 @@ export function AddGeoClaimPanel() {
       }
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [subjectAgent])
 
   function publishLocation() {
     setInfo(null); setErr(null)
@@ -64,10 +79,13 @@ export function AddGeoClaimPanel() {
         featureVersion,
         relation,
         confidence,
+        ...(subjectAgent ? { subjectAgent } : {}),
       })
       if (r.success) {
         setInfo(`Public location added (${r.claimId?.slice(0, 10)}…). Anyone reading the public geo registry can now see this binding.`)
-        const mine = await listMyGeoClaimsAction()
+        const mine = subjectAgent
+          ? await listGeoLocationsForAgentAction(subjectAgent)
+          : await listMyGeoClaimsAction()
         setMyLocations(mine)
       } else {
         setErr(r.error ?? 'failed')
@@ -84,7 +102,7 @@ export function AddGeoClaimPanel() {
         <h2 style={{
           fontSize: '0.7rem', fontWeight: 700, color: '#9a8c7e',
           textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0,
-        }}>My Public Locations</h2>
+        }}>{heading}</h2>
         <span style={{ fontSize: 11, color: '#94a3b8' }}>
           {myLocations === null
             ? 'loading…'

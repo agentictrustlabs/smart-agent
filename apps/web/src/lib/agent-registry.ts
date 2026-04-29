@@ -124,6 +124,61 @@ export async function getOrgsForPersonAgent(personAgentAddress: string): Promise
   return orgs
 }
 
+// Roles that grant write authority over an org agent. Mirrors the role
+// taxonomy in `roleName()`; we accept the canonical labels we expect
+// `getOrgsForPersonAgent` to surface.
+const MANAGE_ROLES = new Set([
+  'owner', 'controller', 'authorized-signer', 'ceo', 'treasurer',
+  'board-member', 'admin', 'governance',
+])
+
+/**
+ * Authority probe for org-level writes (skill / geo claims, metadata
+ * edits, etc.). Returns true iff `personAgent`:
+ *   • is the target itself, OR
+ *   • has an active relationship edge to `target` carrying any
+ *     management-class role, OR
+ *   • is listed under the target's `ATL_CONTROLLER` multi-address
+ *     resolver property.
+ *
+ * Read-only — exists so server actions can refuse subject substitution
+ * before talking to the chain. The on-chain contracts also enforce
+ * authority (mintSelf checks `_isAuthorized`); this helper avoids the
+ * gas-burning revert when the answer is obviously "no".
+ */
+export async function canManageAgent(
+  personAgent: string,
+  target: string,
+): Promise<boolean> {
+  const a = personAgent.toLowerCase()
+  const b = target.toLowerCase()
+  if (a === b) return true
+
+  // Path 1: relationship edges with a management-class role.
+  const orgs = await getOrgsForPersonAgent(personAgent)
+  const match = orgs.find(o => o.address.toLowerCase() === b)
+  if (match) {
+    const lower = match.roles.map(r => r.toLowerCase())
+    if (lower.some(r => MANAGE_ROLES.has(r))) return true
+  }
+
+  // Path 2: the target's ATL_CONTROLLER list directly contains the
+  // person agent. This catches v0 demo seeds (catalyst-seed sets
+  // ATL_CONTROLLER on every org → owner's person agent) where role
+  // edges might not yet be promoted to ACTIVE.
+  const addr = resolver()
+  if (!addr) return false
+  try {
+    const client = getPublicClient()
+    const ctrls = await client.readContract({
+      address: addr, abi: agentAccountResolverAbi,
+      functionName: 'getMultiAddressProperty',
+      args: [target as `0x${string}`, ATL_CONTROLLER as `0x${string}`],
+    }) as string[]
+    return ctrls.some(c => c.toLowerCase() === a)
+  } catch { return false }
+}
+
 /**
  * Find AI agents operated by an org (ORGANIZATIONAL_CONTROL edges where subject is AI).
  * Edges + cores fetched in parallel — sequential awaits used to dominate

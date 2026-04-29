@@ -97,6 +97,32 @@ export const DEMO_USER_META: Record<string, DemoUserMeta> = {
   'cil-user-007': { userId: 'did:demo:cil-007', email: 'paul@funder.org',           name: 'Paul Martel',         org: 'Collective Impact Labs',     role: 'Funder',                    hubId: 'cil' },
   'cil-user-008': { userId: 'did:demo:cil-008', email: 'akosua@cil.org',            name: 'Akosua Boateng',      org: 'Wave 1 Cohort',              role: 'Cohort Coordinator',        hubId: 'cil' },
   'cil-user-009': { userId: 'did:demo:cil-009', email: 'kwame@cil.org',             name: 'Kwame Asante',        org: 'Wave 2 Cohort',              role: 'Cohort Coordinator',        hubId: 'cil' },
+
+  // ─── Front Range House Churches (Catalyst sister — Estes / Loveland foothills) ──
+  // House-church multiplication in NoCo's mountain + foothills corridor.
+  // Mirrors the Harvest-East archetype set: admin, dispatcher, two
+  // frontline multipliers, a multi-gen coach, a strategist.
+  'fr-user-001': { userId: 'did:demo:fr-001', email: 'annika@frontrangehouses.org', name: 'Annika Hartwell',   org: 'Front Range House Churches',    role: 'Network Admin',             hubId: 'catalyst' },
+  'fr-user-002': { userId: 'did:demo:fr-002', email: 'brent@frontrangehouses.org',  name: 'Brent Saunders',    org: 'Front Range House Churches',    role: 'Dispatcher',                hubId: 'catalyst' },
+  'fr-user-003': { userId: 'did:demo:fr-003', email: 'rachel@frontrangehouses.org', name: 'Rachel Park',       org: 'Front Range House Churches',    role: 'Multiplier',                hubId: 'catalyst' },
+  'fr-user-004': { userId: 'did:demo:fr-004', email: 'kenji@frontrangehouses.org',  name: 'Kenji Tanaka',      org: 'Front Range House Churches',    role: 'Multi-Gen Coach',           hubId: 'catalyst' },
+  'fr-user-005': { userId: 'did:demo:fr-005', email: 'lina@frontrangehouses.org',   name: 'Lina Chen',         org: 'Front Range House Churches',    role: 'Strategist',                hubId: 'catalyst' },
+
+  // ─── Plains Church Planters (Catalyst sister — eastern CO plains) ──
+  // Greeley / Sterling / Yuma corridor church planting. Smaller team
+  // with a digital-responder lead because the plains catchment leans
+  // on radio + social media, not foot traffic.
+  'pl-user-001': { userId: 'did:demo:pl-001', email: 'joseph@plainscp.org',         name: 'Joseph Kane',       org: 'Plains Church Planters',        role: 'Network Admin',             hubId: 'catalyst' },
+  'pl-user-002': { userId: 'did:demo:pl-002', email: 'sophia@plainscp.org',         name: 'Sophia Mendoza',    org: 'Plains Church Planters',        role: 'Digital Responder',         hubId: 'catalyst' },
+  'pl-user-003': { userId: 'did:demo:pl-003', email: 'peter@plainscp.org',          name: 'Peter Nielsen',     org: 'Plains Church Planters',        role: 'Multiplier',                hubId: 'catalyst' },
+  'pl-user-004': { userId: 'did:demo:pl-004', email: 'esther@plainscp.org',         name: 'Esther Walsh',      org: 'Plains Church Planters',        role: 'Strategist',                hubId: 'catalyst' },
+
+  // ─── Denver Metro Bridge (Catalyst sister — Denver / Aurora / Lakewood) ──
+  // Urban disciple-making in the Denver metros — coffee-shop discipling,
+  // dispatcher routes leads across multiple neighborhood hubs.
+  'dm-user-001': { userId: 'did:demo:dm-001', email: 'marcus@denvermetrobridge.org',  name: 'Marcus Hill',     org: 'Denver Metro Bridge',           role: 'Network Admin',             hubId: 'catalyst' },
+  'dm-user-002': { userId: 'did:demo:dm-002', email: 'priya@denvermetrobridge.org',   name: 'Priya Nair',      org: 'Denver Metro Bridge',           role: 'Multiplier',                hubId: 'catalyst' },
+  'dm-user-003': { userId: 'did:demo:dm-003', email: 'terrence@denvermetrobridge.org', name: 'Terrence Owens', org: 'Denver Metro Bridge',           role: 'Dispatcher',                hubId: 'catalyst' },
 }
 
 /**

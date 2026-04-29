@@ -17,7 +17,7 @@
 import { keccak256, stringToHex } from 'viem'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { getPublicClient, getWalletClient } from '@/lib/contracts'
-import { getPersonAgentForUser } from '@/lib/agent-registry'
+import { getPersonAgentForUser, canManageAgent } from '@/lib/agent-registry'
 import {
   geoFeatureRegistryAbi,
   geoClaimRegistryAbi,
@@ -98,6 +98,14 @@ export interface MintGeoClaimInput {
   featureVersion: string
   relation: GeoRelation
   confidence: number    // 0..100
+  /**
+   * Optional subject — defaults to the caller's person agent. Pass an
+   * org/AI agent address the caller owns or controls to publish a geo
+   * claim for that agent (e.g. "Catalyst NoCo Network operatesIn
+   * Fort Collins"). Authorisation is checked server-side via
+   * `canManageAgent`.
+   */
+  subjectAgent?: `0x${string}`
 }
 
 export interface MyGeoClaimRow {
@@ -198,32 +206,41 @@ export async function mintPublicGeoClaimAction(input: MintGeoClaimInput): Promis
     const personAgent = (await getPersonAgentForUser(me.id)) as `0x${string}` | null
     if (!personAgent) return { success: false, error: 'No person agent — finish onboarding first' }
 
+    // Subject defaults to caller's person agent. Allow the caller to
+    // mint for an agent they manage (org / AI) — `canManageAgent`
+    // guards against subject substitution.
+    const subject = (input.subjectAgent ?? personAgent) as `0x${string}`
+    if (subject.toLowerCase() !== personAgent.toLowerCase()) {
+      const ok = await canManageAgent(personAgent, subject)
+      if (!ok) return { success: false, error: 'Not authorised to publish claims for that agent' }
+    }
+
     const claimRegistry = process.env.GEO_CLAIM_REGISTRY_ADDRESS as `0x${string}` | undefined
     if (!claimRegistry) return { success: false, error: 'GEO_CLAIM_REGISTRY_ADDRESS not set' }
 
     const wc = getWalletClient()
     const pc = getPublicClient()
-    const issuer = personAgent  // self-asserted
+    const issuer = subject  // self-asserted: subject == issuer
 
     const policyIdHash = keccak256(stringToHex('smart-agent.geo-overlap.v1'))
-    const nonce = keccak256(stringToHex(`${personAgent}|${input.featureId}|${input.relation}|${Date.now()}`))
+    const nonce = keccak256(stringToHex(`${subject}|${input.featureId}|${input.relation}|${Date.now()}`))
 
     // Note: the SDK's GeoClaimClient would also work, but the deployer
     // needs to be the signer authorised on the subject agent's
     // AgentAccount.isOwner — which is true for demo person agents and
-    // for the user's own person agent via setController.
+    // for org agents whose ATL_CONTROLLER list contains the caller.
     const hash = await wc.writeContract({
       address: claimRegistry,
       abi: geoClaimRegistryAbi,
       functionName: 'mint',
       args: [
-        personAgent,                    // subjectAgent
-        issuer,                         // issuer
+        subject,                         // subjectAgent
+        issuer,                          // issuer
         input.featureId,
         BigInt(input.featureVersion),
         REL_HASH[input.relation],
         GEO_VISIBILITY.Public,
-        keccak256(stringToHex(`evidence:${personAgent}|${input.featureId}|${input.relation}`)) as `0x${string}`, // placeholder evidenceCommit
+        keccak256(stringToHex(`evidence:${subject}|${input.featureId}|${input.relation}`)) as `0x${string}`,
         ZERO,                            // edgeId
         ZERO,                            // assertionId
         Math.max(0, Math.min(100, input.confidence)),
@@ -237,7 +254,7 @@ export async function mintPublicGeoClaimAction(input: MintGeoClaimInput): Promis
     // The contract returns the claimId in its event ClaimMinted; for
     // the demo we re-derive it the same way the contract does.
     const claimId = keccak256(
-      `0x${personAgent.slice(2)}${input.featureId.slice(2)}${REL_HASH[input.relation].slice(2)}${nonce.slice(2)}` as `0x${string}`,
+      `0x${subject.slice(2)}${input.featureId.slice(2)}${REL_HASH[input.relation].slice(2)}${nonce.slice(2)}` as `0x${string}`,
     )
     return { success: true, claimId }
   } catch (err) {
