@@ -2,19 +2,201 @@
 > @smart-agent/skill-mcp@0.0.1 dev /home/barb/smart-agent/apps/skill-mcp
 > tsx src/index.ts
 
-[skill-mcp] Smart Agent Skill Steward @ did:ethr:31337:0xa84585fb6728f413d4d89ec972c45e94686bf38e
-[skill-mcp] listening on http://localhost:3800
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 1ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 2ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 1ms
-<-- POST /credential/offer
---> POST /credential/offer [33m400[0m 13ms
-<-- POST /credential/offer
---> POST /credential/offer [32m200[0m 212ms
+[skill-mcp] fatal: ContractFunctionExecutionError: Nonce provided for the transaction is lower than the current nonce of the account.
+Try increasing the nonce or find the latest nonce with `getTransactionCount`.
+
+Request Arguments:
+  from:  0xA84585fb6728f413d4d89eC972c45E94686bf38e
+  to:    0xc5a5C42992dECbae36851359345FE25997F5C42d
+  data:  0x1ec756a60000000000000000000000000000000000000000000000000000000000000040000000000000000000000000a84585fb6728f413d4d89ec972c45e94686bf38e00000000000000000000000000000000000000000000000000000000000000396469643a657468723a33313333373a30786138343538356662363732386634313364346438396563393732633435653934363836626633386500000000000000
+ 
+Contract Call:
+  address:   0xc5a5C42992dECbae36851359345FE25997F5C42d
+  function:  registerIssuer(string did, address account)
+  args:                    (did:ethr:31337:0xa84585fb6728f413d4d89ec972c45e94686bf38e, 0xA84585fb6728f413d4d89eC972c45E94686bf38e)
+  sender:    0xA84585fb6728f413d4d89eC972c45E94686bf38e
+
+Docs: https://viem.sh/docs/contract/writeContract
+Details: transaction already imported
+Version: viem@2.47.10
+    at getContractError (/home/barb/smart-agent/node_modules/.pnpm/viem@2.47.10_bufferutil@4.1.0_typescript@5.9.3_utf-8-validate@6.0.6_zod@3.25.76/node_modules/viem/utils/errors/getContractError.ts:82:10)
+    at writeContract.internal (/home/barb/smart-agent/node_modules/.pnpm/viem@2.47.10_bufferutil@4.1.0_typescript@5.9.3_utf-8-validate@6.0.6_zod@3.25.76/node_modules/viem/actions/wallet/writeContract.ts:241:29)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async IssuerAgent.ensureIssuerRegistered (/home/barb/smart-agent/packages/privacy-creds/src/issuer/index.ts:136:18)
+    ... 2 lines matching cause stack trace ...
+    at async main (/home/barb/smart-agent/apps/skill-mcp/src/index.ts:34:3) {
+  cause: TransactionExecutionError: Nonce provided for the transaction is lower than the current nonce of the account.
+  Try increasing the nonce or find the latest nonce with `getTransactionCount`.
+  
+  Request Arguments:
+    from:  0xA84585fb6728f413d4d89eC972c45E94686bf38e
+    to:    0xc5a5C42992dECbae36851359345FE25997F5C42d
+    data:  0x1ec756a60000000000000000000000000000000000000000000000000000000000000040000000000000000000000000a84585fb6728f413d4d89ec972c45e94686bf38e00000000000000000000000000000000000000000000000000000000000000396469643a657468723a33313333373a30786138343538356662363732386634313364346438396563393732633435653934363836626633386500000000000000
+  
+  Details: transaction already imported
+  Version: viem@2.47.10
+      at getTransactionError (/home/barb/smart-agent/node_modules/.pnpm/viem@2.47.10_bufferutil@4.1.0_typescript@5.9.3_utf-8-validate@6.0.6_zod@3.25.76/node_modules/viem/utils/errors/getTransactionError.ts:44:10)
+      at sendTransaction (/home/barb/smart-agent/node_modules/.pnpm/viem@2.47.10_bufferutil@4.1.0_typescript@5.9.3_utf-8-validate@6.0.6_zod@3.25.76/node_modules/viem/actions/wallet/sendTransaction.ts:366:30)
+      ... 5 lines matching cause stack trace ...
+      at async main (/home/barb/smart-agent/apps/skill-mcp/src/index.ts:34:3) {
+    cause: NonceTooLowError: Nonce provided for the transaction is lower than the current nonce of the account.
+    Try increasing the nonce or find the latest nonce with `getTransactionCount`.
+    
+    Details: transaction already imported
+    Version: viem@2.47.10
+        at getNodeError (/home/barb/smart-agent/node_modules/.pnpm/viem@2.47.10_bufferutil@4.1.0_typescript@5.9.3_utf-8-validate@6.0.6_zod@3.25.76/node_modules/viem/utils/errors/getNodeError.ts:99:12)
+        at <anonymous> (/home/barb/smart-agent/node_modules/.pnpm/viem@2.47.10_bufferutil@4.1.0_typescript@5.9.3_utf-8-validate@6.0.6_zod@3.25.76/node_modules/viem/utils/errors/getTransactionError.ts:37:31)
+        at getTransactionError (/home/barb/smart-agent/node_modules/.pnpm/viem@2.47.10_bufferutil@4.1.0_typescript@5.9.3_utf-8-validate@6.0.6_zod@3.25.76/node_modules/viem/utils/errors/getTransactionError.ts:43:5)
+        at sendTransaction (/home/barb/smart-agent/node_modules/.pnpm/viem@2.47.10_bufferutil@4.1.0_typescript@5.9.3_utf-8-validate@6.0.6_zod@3.25.76/node_modules/viem/actions/wallet/sendTransaction.ts:366:30)
+        at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+        at async writeContract.internal (/home/barb/smart-agent/node_modules/.pnpm/viem@2.47.10_bufferutil@4.1.0_typescript@5.9.3_utf-8-validate@6.0.6_zod@3.25.76/node_modules/viem/actions/wallet/writeContract.ts:230:14)
+        at async IssuerAgent.ensureIssuerRegistered (/home/barb/smart-agent/packages/privacy-creds/src/issuer/index.ts:136:18)
+        at async IssuerAgent.ensureSchemaAndCredDef (/home/barb/smart-agent/packages/privacy-creds/src/issuer/index.ts:150:5)
+        at async ensureSkillsRegistered (/home/barb/smart-agent/apps/skill-mcp/src/issuers/skill.ts:61:3)
+        at async main (/home/barb/smart-agent/apps/skill-mcp/src/index.ts:34:3) {
+      details: 'transaction already imported',
+      docsPath: undefined,
+      metaMessages: undefined,
+      shortMessage: 'Nonce provided for the transaction is lower than the current nonce of the account.\n' +
+        'Try increasing the nonce or find the latest nonce with `getTransactionCount`.',
+      version: '2.47.10',
+      [cause]: [TransactionRejectedRpcError]
+    },
+    details: 'transaction already imported',
+    docsPath: undefined,
+    metaMessages: [
+      'Request Arguments:',
+      '  from:  0xA84585fb6728f413d4d89eC972c45E94686bf38e\n' +
+        '  to:    0xc5a5C42992dECbae36851359345FE25997F5C42d\n' +
+        '  data:  0x1ec756a60000000000000000000000000000000000000000000000000000000000000040000000000000000000000000a84585fb6728f413d4d89ec972c45e94686bf38e00000000000000000000000000000000000000000000000000000000000000396469643a657468723a33313333373a30786138343538356662363732386634313364346438396563393732633435653934363836626633386500000000000000'
+    ],
+    shortMessage: 'Nonce provided for the transaction is lower than the current nonce of the account.\n' +
+      'Try increasing the nonce or find the latest nonce with `getTransactionCount`.',
+    version: '2.47.10'
+  },
+  details: 'transaction already imported',
+  docsPath: '/docs/contract/writeContract',
+  metaMessages: [
+    'Request Arguments:',
+    '  from:  0xA84585fb6728f413d4d89eC972c45E94686bf38e\n' +
+      '  to:    0xc5a5C42992dECbae36851359345FE25997F5C42d\n' +
+      '  data:  0x1ec756a60000000000000000000000000000000000000000000000000000000000000040000000000000000000000000a84585fb6728f413d4d89ec972c45e94686bf38e00000000000000000000000000000000000000000000000000000000000000396469643a657468723a33313333373a30786138343538356662363732386634313364346438396563393732633435653934363836626633386500000000000000',
+    ' ',
+    'Contract Call:',
+    '  address:   0xc5a5C42992dECbae36851359345FE25997F5C42d\n' +
+      '  function:  registerIssuer(string did, address account)\n' +
+      '  args:                    (did:ethr:31337:0xa84585fb6728f413d4d89ec972c45e94686bf38e, 0xA84585fb6728f413d4d89eC972c45E94686bf38e)\n' +
+      '  sender:    0xA84585fb6728f413d4d89eC972c45E94686bf38e'
+  ],
+  shortMessage: 'Nonce provided for the transaction is lower than the current nonce of the account.\n' +
+    'Try increasing the nonce or find the latest nonce with `getTransactionCount`.',
+  version: '2.47.10',
+  abi: [
+    {
+      type: 'function',
+      name: 'registerIssuer',
+      stateMutability: 'nonpayable',
+      inputs: [Array],
+      outputs: []
+    },
+    {
+      type: 'function',
+      name: 'publishSchema',
+      stateMutability: 'nonpayable',
+      inputs: [Array],
+      outputs: []
+    },
+    {
+      type: 'function',
+      name: 'publishCredDef',
+      stateMutability: 'nonpayable',
+      inputs: [Array],
+      outputs: []
+    },
+    {
+      type: 'function',
+      name: 'getIssuer',
+      stateMutability: 'view',
+      inputs: [Array],
+      outputs: [Array]
+    },
+    {
+      type: 'function',
+      name: 'getIssuerByAddress',
+      stateMutability: 'view',
+      inputs: [Array],
+      outputs: [Array]
+    },
+    {
+      type: 'function',
+      name: 'isSchemaPublished',
+      stateMutability: 'view',
+      inputs: [Array],
+      outputs: [Array]
+    },
+    {
+      type: 'function',
+      name: 'isCredDefPublished',
+      stateMutability: 'view',
+      inputs: [Array],
+      outputs: [Array]
+    },
+    {
+      type: 'function',
+      name: 'schemaJsonHash',
+      stateMutability: 'view',
+      inputs: [Array],
+      outputs: [Array]
+    },
+    {
+      type: 'function',
+      name: 'credDefJsonHash',
+      stateMutability: 'view',
+      inputs: [Array],
+      outputs: [Array]
+    },
+    {
+      type: 'function',
+      name: 'schemaIssuerOf',
+      stateMutability: 'view',
+      inputs: [Array],
+      outputs: [Array]
+    },
+    {
+      type: 'function',
+      name: 'credDefIssuerOf',
+      stateMutability: 'view',
+      inputs: [Array],
+      outputs: [Array]
+    },
+    {
+      type: 'event',
+      name: 'IssuerRegistered',
+      anonymous: false,
+      inputs: [Array]
+    },
+    {
+      type: 'event',
+      name: 'SchemaPublished',
+      anonymous: false,
+      inputs: [Array]
+    },
+    {
+      type: 'event',
+      name: 'CredDefPublished',
+      anonymous: false,
+      inputs: [Array]
+    }
+  ],
+  args: [
+    'did:ethr:31337:0xa84585fb6728f413d4d89ec972c45e94686bf38e',
+    '0xA84585fb6728f413d4d89eC972c45E94686bf38e'
+  ],
+  contractAddress: '0xc5a5C42992dECbae36851359345FE25997F5C42d',
+  formattedArgs: undefined,
+  functionName: 'registerIssuer',
+  sender: '0xA84585fb6728f413d4d89eC972c45E94686bf38e'
+}
+/home/barb/smart-agent/apps/skill-mcp:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @smart-agent/skill-mcp@0.0.1 dev: `tsx src/index.ts`
+Exit status 1

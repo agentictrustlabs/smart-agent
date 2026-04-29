@@ -1,0 +1,121 @@
+@prefix sa:        <https://smartagent.io/ontology/core#> .
+@prefix saneed:    <https://smartagent.io/ontology/need#> .
+@prefix saoffer:   <https://smartagent.io/ontology/offering#> .
+@prefix sarole:    <https://smartagent.io/ontology/role#> .
+@prefix saskill:   <https://smartagent.io/ontology/skill#> .
+@prefix sageo:     <https://smartagent.io/ontology/geo#> .
+@prefix skos:      <http://www.w3.org/2004/02/skos/core#> .
+@prefix dul:       <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#> .
+@prefix prov:      <http://www.w3.org/ns/prov#> .
+@prefix rdf:       <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:      <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl:       <http://www.w3.org/2002/07/owl#> .
+@prefix xsd:       <http://www.w3.org/2001/XMLSchema#> .
+
+# =============================================================================
+# Smart Agent Need Ontology  (T-Box, PROV-O + DUL aligned)
+# =============================================================================
+#
+# Need has three layers:
+#
+#   • saneed:NeedType         — skos:Concept; the taxonomy slot ("circle-coach-needed")
+#   • saneed:Need             — dul:Description; the *described gap pattern*
+#   • saneed:NeedOccurrence   — dul:Situation;  the *contextual gap right now*
+#
+# This three-layer split (after the agent-team review of the user's
+# proposal) lets the same NeedType be referenced across many occurrences
+# without the ontology losing the distinction between "what kind of gap
+# is this" and "this specific gap".
+#
+# Requirements live as their own class so the same need can carry many
+# of them (role + skill + geo + availability + credential + capacity).
+
+<https://smartagent.io/ontology/need> a owl:Ontology ;
+    rdfs:label "Smart Agent Need Ontology" ;
+    rdfs:comment "Models gaps as first-class artifacts, distinct from how they're filled. Need :: NeedDescription :: NeedOccurrence." ;
+    owl:versionInfo "v0" ;
+    owl:imports <https://smartagent.io/ontology/core> ,
+                <http://www.w3.org/2004/02/skos/core> ,
+                <http://www.w3.org/ns/prov-o> .
+
+# ─── Top classes ─────────────────────────────────────────────────────
+
+saneed:NeedType a owl:Class ;
+    rdfs:subClassOf skos:Concept ;
+    rdfs:label "Need Type" ;
+    rdfs:comment "Taxonomic slot. Concrete need-type instances (e.g. needType:CircleCoachNeeded) live in cbox/need-types.ttl." .
+
+saneed:Need a owl:Class ;
+    rdfs:subClassOf dul:Description , prov:Entity ;
+    rdfs:label "Need (description)" ;
+    rdfs:comment "The described gap pattern. Carries hasRequirement edges. Slow-changing, per-template." .
+
+saneed:NeedOccurrence a owl:Class ;
+    rdfs:subClassOf dul:Situation , prov:Entity ;
+    rdfs:label "Need Occurrence" ;
+    rdfs:comment "An actual contextual gap: this group needs this thing now. Has a status, priority, validUntil. Generated NeedResourceMatch records reference the occurrence, not the description." .
+
+saneed:Requirement a owl:Class ;
+    rdfs:subClassOf dul:Description , prov:Entity ;
+    rdfs:label "Requirement" ;
+    rdfs:comment "A single condition that would count as fit (a role, a skill, a geo, an availability window, a credential, a capacity)." .
+
+saneed:NeedScheme a skos:ConceptScheme ;
+    skos:prefLabel "Smart Agent Need-Type Vocabulary"@en .
+
+# ─── Properties ──────────────────────────────────────────────────────
+
+saneed:hasActiveNeed a owl:ObjectProperty ;
+    rdfs:domain sa:Agent ;
+    rdfs:range  saneed:NeedOccurrence ;
+    rdfs:comment "Group/agent points to its current open occurrences. Renamed from sa:hasNeed to avoid the Need-vs-NeedType ambiguity the agent-team review flagged." .
+
+saneed:neededBy a owl:ObjectProperty ;
+    rdfs:domain saneed:NeedOccurrence ;
+    rdfs:range  sa:Agent .
+
+saneed:needDescription a owl:ObjectProperty ;
+    rdfs:domain saneed:NeedOccurrence ;
+    rdfs:range  saneed:Need .
+
+saneed:needType a owl:ObjectProperty ;
+    rdfs:range skos:Concept .
+
+saneed:needStatus a owl:ObjectProperty ;
+    rdfs:range skos:Concept .   # Open | InProgress | Met | Cancelled | Expired
+
+saneed:hasPriority a owl:ObjectProperty ;
+    rdfs:range skos:Concept .   # Critical | High | Normal | Low
+
+saneed:hasRequirement a owl:ObjectProperty ;
+    rdfs:domain saneed:Need , saneed:NeedOccurrence ;
+    rdfs:range  saneed:Requirement .
+
+saneed:requiresRole a owl:ObjectProperty ;
+    rdfs:domain saneed:Requirement , saneed:NeedOccurrence ;
+    rdfs:range  sarole:Role .
+
+saneed:requiresSkill a owl:ObjectProperty ;
+    rdfs:domain saneed:Requirement , saneed:NeedOccurrence ;
+    rdfs:range  saskill:Skill .
+
+saneed:requiresGeo a owl:ObjectProperty ;
+    rdfs:domain saneed:Requirement , saneed:NeedOccurrence ;
+    rdfs:range  sageo:GeoFeature .
+
+saneed:requiresAvailability a owl:ObjectProperty ;
+    rdfs:domain saneed:Requirement , saneed:NeedOccurrence ;
+    rdfs:range  sa:TimeWindow .
+
+saneed:requiresCapacity a owl:ObjectProperty ;
+    rdfs:domain saneed:Requirement , saneed:NeedOccurrence ;
+    rdfs:range  sa:Capacity .
+
+saneed:requiresCredential a owl:ObjectProperty ;
+    rdfs:domain saneed:Requirement , saneed:NeedOccurrence ;
+    rdfs:range  sa:CredentialType .
+
+saneed:fulfilledBy a owl:ObjectProperty ;
+    rdfs:domain saneed:NeedOccurrence ;
+    rdfs:range  prov:Activity ;
+    rdfs:comment "Reverse of fulfillsNeed; the activity that addressed the gap." .

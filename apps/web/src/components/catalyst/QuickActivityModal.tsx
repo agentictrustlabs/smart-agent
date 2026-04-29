@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { logActivity } from '@/lib/actions/activity.action'
+import { listOpenNeedsForActor, type PickerOption } from '@/lib/actions/discover.action'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -13,6 +14,10 @@ interface Props {
   defaultType?: string
   defaultTitle?: string
   defaultRelatedEntity?: string
+  /** Pre-fill the "Fulfills which need?" dropdown — e.g. /needs/[id] deep-link. */
+  defaultFulfillsNeedId?: string
+  /** Hub scope for the open-needs dropdown. Defaults to 'catalyst'. */
+  hubId?: string
   // Controlled mode
   isOpen?: boolean
   onClose?: () => void
@@ -34,6 +39,8 @@ export default function QuickActivityModal({
   defaultType,
   defaultTitle,
   defaultRelatedEntity,
+  defaultFulfillsNeedId,
+  hubId = 'catalyst',
   isOpen: controlledOpen,
   onClose,
   showFab = false,
@@ -50,10 +57,37 @@ export default function QuickActivityModal({
   const [participants, setParticipants] = useState(1)
   const [notes, setNotes] = useState('')
   const [date, setDate] = useState(today)
+  const [fulfillsNeedId, setFulfillsNeedId] = useState<string>(defaultFulfillsNeedId ?? '')
+
+  // Fetch open needs once when the modal opens.
+  const [needsOptions, setNeedsOptions] = useState<PickerOption[] | null>(null)
 
   // Controlled vs FAB mode
   const isControlled = controlledOpen !== undefined
   const isVisible = isControlled ? controlledOpen : fabOpen
+
+  // Lazy-load the open-needs list the first time the modal becomes
+  // visible. Cached for the session — re-opens reuse the in-state copy
+  // so the picker stays snappy. Re-runs when defaultFulfillsNeedId
+  // changes (deep-link from /needs/[id]).
+  useEffect(() => {
+    if (!isVisible) return
+    if (needsOptions !== null && !defaultFulfillsNeedId) return
+    let cancelled = false
+    listOpenNeedsForActor(hubId).then(rs => {
+      if (!cancelled) setNeedsOptions(rs)
+    }).catch(() => {
+      if (!cancelled) setNeedsOptions([])
+    })
+    return () => { cancelled = true }
+  }, [isVisible, hubId, needsOptions, defaultFulfillsNeedId])
+
+  // Sync prefill when prop changes.
+  useEffect(() => {
+    if (defaultFulfillsNeedId) setFulfillsNeedId(defaultFulfillsNeedId)
+  }, [defaultFulfillsNeedId])
+
+  const pickedNeed = needsOptions?.find(n => n.id === fulfillsNeedId)
 
   const close = useCallback(() => {
     if (isControlled && onClose) {
@@ -69,7 +103,8 @@ export default function QuickActivityModal({
     setParticipants(1)
     setNotes('')
     setDate(new Date().toISOString().split('T')[0])
-  }, [defaultType, defaultTitle])
+    setFulfillsNeedId(defaultFulfillsNeedId ?? '')
+  }, [defaultType, defaultTitle, defaultFulfillsNeedId])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -85,6 +120,7 @@ export default function QuickActivityModal({
         participants,
         activityDate: date,
         relatedEntity: defaultRelatedEntity || undefined,
+        fulfillsNeedId: fulfillsNeedId || undefined,
       })
 
       // Show success toast briefly
@@ -226,6 +262,53 @@ export default function QuickActivityModal({
                 style={{ ...inputStyle, resize: 'vertical' }}
               />
             </label>
+
+            {/* Fulfills which need? — closes the PROV chain.
+                Empty = "(none)" so the existing "log a personal activity"
+                flow stays the default. */}
+            <label style={labelStyle}>
+              Fulfills which need? (optional)
+              <select
+                value={fulfillsNeedId}
+                onChange={e => setFulfillsNeedId(e.target.value)}
+                style={inputStyle}
+                disabled={needsOptions === null}
+              >
+                <option value="">— None —</option>
+                {needsOptions === null && (
+                  <option value="" disabled>Loading…</option>
+                )}
+                {needsOptions !== null && needsOptions.length === 0 && (
+                  <option value="" disabled>(no open needs in this hub)</option>
+                )}
+                {/* Connected = needs on orgs you're a member of. */}
+                {needsOptions && needsOptions.some(n => n.scope === 'connected') && (
+                  <optgroup label="Your circles">
+                    {needsOptions.filter(n => n.scope === 'connected').map(n => (
+                      <option key={n.id} value={n.id}>
+                        {n.title} · {n.needTypeLabel}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+                {needsOptions && needsOptions.some(n => n.scope === 'hub') && (
+                  <optgroup label="Hub-wide">
+                    {needsOptions.filter(n => n.scope === 'hub').map(n => (
+                      <option key={n.id} value={n.id}>
+                        {n.title} · {n.needTypeLabel}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+              </select>
+            </label>
+            {pickedNeed && (
+              <div style={{ fontSize: '0.7rem', color: '#0f766e', background: 'rgba(13,148,136,0.06)', border: '1px solid rgba(13,148,136,0.20)', padding: '0.4rem 0.6rem', borderRadius: 6, marginTop: '-0.4rem' }}>
+                {pickedNeed.remaining <= 1
+                  ? <>This will close the need&apos;s fulfillment threshold and flip status → <strong>met</strong>.</>
+                  : <>{pickedNeed.remaining} more activit{pickedNeed.remaining === 1 ? 'y' : 'ies'} until status flips to met.</>}
+              </div>
+            )}
 
             {/* Date */}
             <label style={labelStyle}>

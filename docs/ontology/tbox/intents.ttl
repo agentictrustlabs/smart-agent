@@ -1,0 +1,206 @@
+@prefix sa:        <https://smartagent.io/ontology/core#> .
+@prefix saint:     <https://smartagent.io/ontology/intent#> .
+@prefix saoffer:   <https://smartagent.io/ontology/offering#> .
+@prefix saneed:    <https://smartagent.io/ontology/need#> .
+@prefix sarole:    <https://smartagent.io/ontology/role#> .
+@prefix skos:      <http://www.w3.org/2004/02/skos/core#> .
+@prefix dul:       <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#> .
+@prefix prov:      <http://www.w3.org/ns/prov#> .
+@prefix rdfs:      <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl:       <http://www.w3.org/2002/07/owl#> .
+@prefix xsd:       <http://www.w3.org/2001/XMLSchema#> .
+
+# =============================================================================
+# Smart Agent Intent / BDI Ontology  (T-Box, single-class + direction model)
+# =============================================================================
+#
+# Intent is the unifying surface above Need and Offering. A Need is an
+# Intent with direction=receive; an Offering is an Intent with
+# direction=give. There are NO direction subclasses — the structural
+# truth lives on `saint:direction` and `saint:object`. Subclasses would
+# embed the user-grammar ambiguity ("I need to contribute" — sounds
+# receive-shaped, structurally give-shaped) into the schema; we don't
+# want that.
+#
+# The matcher reads ONLY direction + object + topic. The intentType
+# leaf taxonomy in cbox/intent-types.ttl is a UI label only.
+
+<https://smartagent.io/ontology/intent> a owl:Ontology ;
+    rdfs:label "Smart Agent Intent / BDI Ontology" ;
+    rdfs:comment "Belief-Desire-Intent layer. Unifies Need and Offering as direction-typed Intent. Adds Outcome, OrchestrationPlan, IntentMatch, Belief, Desire." ;
+    owl:versionInfo "v0" ;
+    owl:imports <https://smartagent.io/ontology/core> ,
+                <http://www.w3.org/2004/02/skos/core> ,
+                <http://www.w3.org/ns/prov-o> .
+
+# ─── Top class ───────────────────────────────────────────────────────
+
+saint:Intent a owl:Class ;
+    rdfs:subClassOf dul:Plan , prov:Plan ;
+    rdfs:label "Intent" ;
+    rdfs:comment "An addressed, committed desire with a direction (receive | give) and an object (the value flowing). All matching, scoring, and orchestration reads `direction` + `object`." .
+
+# ─── Direction (closed enum, modelled as SKOS for SHACL friendliness) ──
+
+saint:Direction a owl:Class ;
+    rdfs:subClassOf skos:Concept ;
+    rdfs:label "Direction" ;
+    rdfs:comment "Two-valued: saint:Receive | saint:Give. Modelled as a class so SHACL can validate the enum and SPARQL queries can discriminate without string equality." .
+
+saint:Receive a saint:Direction ;
+    skos:prefLabel "receive"@en ;
+    skos:definition "The agent intends to receive value of the given object."@en .
+
+saint:Give a saint:Direction ;
+    skos:prefLabel "give"@en ;
+    skos:definition "The agent intends to give value of the given object."@en .
+
+# ─── BDI siblings ────────────────────────────────────────────────────
+
+saint:Belief a owl:Class ;
+    rdfs:subClassOf prov:Entity , dul:Description ;
+    rdfs:label "Belief" ;
+    rdfs:comment "What the agent holds true. Light wrapper over AgentAssertion — most beliefs are already on chain. Beliefs can inform an intent." .
+
+saint:Desire a owl:Class ;
+    rdfs:subClassOf dul:Description ;
+    rdfs:label "Desire" ;
+    rdfs:comment "Latent goal. NOT addressed. NOT actionable. A desire matures into an intent when it gets addressed and committed." .
+
+# ─── Outcome ─────────────────────────────────────────────────────────
+
+saint:Outcome a owl:Class ;
+    rdfs:subClassOf prov:Entity , dul:Situation ;
+    rdfs:label "Outcome" ;
+    rdfs:comment "The end-state the intent aims to produce. Independent of any single activity — multiple activities may contribute. The system observes outcome.metric to know if the intent has been fulfilled, not just touched." .
+
+# ─── Orchestration ───────────────────────────────────────────────────
+
+saint:OrchestrationPlan a owl:Class ;
+    rdfs:subClassOf dul:Plan , prov:Plan ;
+    rdfs:label "Orchestration Plan" ;
+    rdfs:comment "Decomposes one parent Intent into N sub-intents addressed at different agents. Replaces the would-be CollaborationIntent class — collaboration is two give-intents converged via this plan, not its own class." .
+
+saint:IntentMatch a owl:Class ;
+    rdfs:subClassOf dul:Situation , prov:Entity ;
+    rdfs:label "Intent Match" ;
+    rdfs:comment "Two compatible intents converged on the same object with complementary directions. Generalises NeedResourceMatch — the existing match table becomes a projection." .
+
+# ─── Properties — structural axes (matcher reads these) ─────────────
+
+saint:direction a owl:ObjectProperty ;
+    rdfs:domain saint:Intent ;
+    rdfs:range saint:Direction ;
+    rdfs:comment "saint:Receive or saint:Give. The matcher reads ONLY this and `object`." .
+
+saint:object a owl:ObjectProperty ;
+    rdfs:domain saint:Intent ;
+    rdfs:range skos:Concept ;
+    rdfs:comment "What value is flowing. Bridges to resource-types vocab — saoffer:ResourceType (resourceType:Information, resourceType:Money, etc.)." .
+
+saint:topic a owl:DatatypeProperty ;
+    rdfs:domain saint:Intent ;
+    rdfs:range xsd:string ;
+    rdfs:comment "Free-text scope: 'unreached people groups in NoCo', 'Loveland well-water filter project'." .
+
+saint:intentType a owl:ObjectProperty ;
+    rdfs:domain saint:Intent ;
+    rdfs:range skos:Concept ;
+    rdfs:comment "UI label only — derived from direction + object. The matcher does NOT branch on this." .
+
+# ─── Properties — expression (what makes an Intent actionable) ──────
+
+saint:expressedBy a owl:ObjectProperty ;
+    rdfs:domain saint:Intent ;
+    rdfs:range sa:Agent .
+
+saint:addressedTo a owl:ObjectProperty ;
+    rdfs:domain saint:Intent ;
+    rdfs:range sa:Agent ;
+    rdfs:comment "Who the intent is asked of — a person, org, hub, or 'self' for drafts." .
+
+saint:expressedAt a owl:DatatypeProperty ;
+    rdfs:domain saint:Intent ;
+    rdfs:range xsd:dateTime .
+
+saint:intentStatus a owl:ObjectProperty ;
+    rdfs:domain saint:Intent ;
+    rdfs:range skos:Concept ;
+    rdfs:comment "Drafted | Expressed | Acknowledged | InProgress | Fulfilled | Withdrawn | Abandoned" .
+
+# ─── Outcome properties ──────────────────────────────────────────────
+
+saint:intentExpects a owl:ObjectProperty ;
+    rdfs:domain saint:Intent ;
+    rdfs:range saint:Outcome ;
+    rdfs:comment "The outcome this intent commits to producing." .
+
+saint:achievesOutcome a owl:ObjectProperty ;
+    rdfs:domain prov:Activity ;
+    rdfs:range saint:Outcome ;
+    rdfs:comment "Activity that contributes to the outcome's achievement." .
+
+saint:outcomeStatus a owl:ObjectProperty ;
+    rdfs:domain saint:Outcome ;
+    rdfs:range skos:Concept .
+
+saint:outcomeMetric a owl:DatatypeProperty ;
+    rdfs:domain saint:Outcome ;
+    rdfs:range xsd:string ;
+    rdfs:comment "JSON describing how the outcome is measured: { kind: 'count'|'boolean'|'date'|'narrative', target: any, observed?: any }." .
+
+# ─── BDI plumbing ────────────────────────────────────────────────────
+
+saint:informsIntent a owl:ObjectProperty ;
+    rdfs:domain saint:Belief ;
+    rdfs:range saint:Intent ;
+    rdfs:comment "A belief that supplies the rationale for an intent." .
+
+saint:expressesDesire a owl:ObjectProperty ;
+    rdfs:domain saint:Intent ;
+    rdfs:range saint:Desire ;
+    rdfs:comment "Optional — the latent desire that matured into this intent." .
+
+# ─── Orchestration properties ────────────────────────────────────────
+
+saint:hasSubIntent a owl:ObjectProperty ;
+    rdfs:domain saint:OrchestrationPlan ;
+    rdfs:range saint:Intent .
+
+saint:planFor a owl:ObjectProperty ;
+    rdfs:domain saint:OrchestrationPlan ;
+    rdfs:range saint:Intent ;
+    rdfs:comment "The parent intent the plan decomposes." .
+
+saint:dependsOn a owl:ObjectProperty ;
+    rdfs:domain saint:Intent ;
+    rdfs:range saint:Intent ;
+    rdfs:comment "Sub-intent dependency — fulfilment ordering inside an orchestration plan." .
+
+saint:orchestratedBy a owl:ObjectProperty ;
+    rdfs:domain saint:Intent ;
+    rdfs:range sa:Agent .
+
+# ─── Match properties ────────────────────────────────────────────────
+
+saint:matchesIntent a owl:ObjectProperty ;
+    rdfs:domain saint:IntentMatch ;
+    rdfs:range saint:Intent ;
+    rdfs:comment "The receive-shaped side of the match." .
+
+saint:matchedAgainst a owl:ObjectProperty ;
+    rdfs:domain saint:IntentMatch ;
+    rdfs:range saint:Intent ;
+    rdfs:comment "The give-shaped side of the match." .
+
+saint:matchScore a owl:DatatypeProperty ;
+    rdfs:domain saint:IntentMatch ;
+    rdfs:range xsd:decimal ;
+    rdfs:comment "0..10000 basis points. Computed from object compatibility, topic similarity, geo / time / capacity / credential fit." .
+
+# ─── Activity → Intent linkage (closes the PROV chain) ──────────────
+
+saint:fulfillsIntent a owl:ObjectProperty ;
+    rdfs:domain prov:Activity ;
+    rdfs:range saint:Intent ;
+    rdfs:comment "The activity contributes toward fulfilling this intent. Generalises sah:fulfillsNeed (which stays as a SKOS-narrower of this property for back-compat)." .

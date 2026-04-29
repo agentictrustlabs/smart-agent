@@ -2443,3 +2443,22 @@ textarea { resize: vertical; }
 /* ─── Leaflet Map Overrides ─────────────────────────────────────────── */
 .map-agent-pin { background: transparent !important; border: none !important; }
 .edge-tooltip { font-size: 12px; font-weight: 600; padding: 4px 8px; }
+
+/* ─── Catalyst Home Responsive Layouts ──────────────────────────────── */
+@media (max-width: 768px) {
+  .catalyst-kpi-grid,
+  .catalyst-inventory-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .catalyst-work-grid,
+  .catalyst-field-grid {
+    grid-template-columns: 1fr !important;
+  }
+  /* Sticky footer CTA on mobile */
+  .catalyst-footer-cta {
+    position: sticky;
+    bottom: 0;
+    z-index: 30;
+    box-shadow: 0 -1px 8px rgba(0, 0, 0, 0.06);
+  }
+}

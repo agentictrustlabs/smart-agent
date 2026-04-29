@@ -1,0 +1,120 @@
+@prefix sa:        <https://smartagent.io/ontology/core#> .
+@prefix saoffer:   <https://smartagent.io/ontology/offering#> .
+@prefix sarole:    <https://smartagent.io/ontology/role#> .
+@prefix saskill:   <https://smartagent.io/ontology/skill#> .
+@prefix sageo:     <https://smartagent.io/ontology/geo#> .
+@prefix skos:      <http://www.w3.org/2004/02/skos/core#> .
+@prefix dul:       <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#> .
+@prefix prov:      <http://www.w3.org/ns/prov#> .
+@prefix rdfs:      <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl:       <http://www.w3.org/2002/07/owl#> .
+@prefix xsd:       <http://www.w3.org/2001/XMLSchema#> .
+
+# =============================================================================
+# Smart Agent Resource / Offering Ontology  (T-Box, PROV-O + DUL aligned)
+# =============================================================================
+#
+# Same three-layer split as Need:
+#
+#   • saoffer:ResourceType     — skos:Concept; the kind ("money", "prayer", "worker")
+#   • saoffer:Resource         — prov:Entity;  the thing that can help
+#   • saoffer:ResourceOffering — dul:Situation; the resource *made available* in context
+#
+# Why an Offering as a separate class: a person is not a "resource". A
+# person *makes available* a coaching offering during a window in a
+# place with capacity. The offering carries the situational context so
+# Rachel-the-person stays an agent (with dignity) and Rachel's-coaching-
+# offering becomes the matchable artifact.
+
+<https://smartagent.io/ontology/offering> a owl:Ontology ;
+    rdfs:label "Smart Agent Resource & Offering Ontology" ;
+    rdfs:comment "Models capacity made available, distinct from the agent who carries it. Resource + Offering + Capability." ;
+    owl:versionInfo "v0" ;
+    owl:imports <https://smartagent.io/ontology/core> ,
+                <http://www.w3.org/2004/02/skos/core> ,
+                <http://www.w3.org/ns/prov-o> .
+
+# ─── Top classes ─────────────────────────────────────────────────────
+
+saoffer:ResourceType a owl:Class ;
+    rdfs:subClassOf skos:Concept ;
+    rdfs:label "Resource Type" ;
+    rdfs:comment "Taxonomic slot. Concrete instances (resourceType:Money, resourceType:Prayer, resourceType:Worker, …) live in cbox/resource-types.ttl. 12 v0 kinds: skill, money, data, prayer, worker, scripture, church, organization, connector, venue, curriculum, credential." .
+
+saoffer:Resource a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "Resource" ;
+    rdfs:comment "Something that can help. Often also a dul:Object (money, scripture, venue) or refers back to a sa:Agent (a worker, a connector). The resource *itself* is what matters; capacity to deploy it is on the Offering." .
+
+saoffer:ResourceOffering a owl:Class ;
+    rdfs:subClassOf dul:Situation , prov:Entity ;
+    rdfs:label "Resource Offering" ;
+    rdfs:comment "The resource made available in context — has time window, geo, capacity, status, capabilities. NeedResourceMatch matches a NeedOccurrence to an Offering, not to a raw Resource." .
+
+saoffer:Capability a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "Capability" ;
+    rdfs:comment "Evidence that a resource or agent can do something. Carries skill, role, level, evidence pointer. Bridges to AgentSkillRegistry claims." .
+
+saoffer:OfferingScheme a skos:ConceptScheme ;
+    skos:prefLabel "Smart Agent Resource-Type Vocabulary"@en .
+
+# ─── Properties ──────────────────────────────────────────────────────
+
+saoffer:offersResource a owl:ObjectProperty ;
+    rdfs:domain sa:Agent ;
+    rdfs:range  saoffer:ResourceOffering ;
+    rdfs:comment "Agent → Offering. The user's note: don't say 'Rachel a saoffer:Resource'. Say Rachel saoffer:offersResource her-coaching-offering." .
+
+saoffer:offeredBy a owl:ObjectProperty ;
+    rdfs:domain saoffer:ResourceOffering ;
+    rdfs:range  sa:Agent .
+
+saoffer:offeredResource a owl:ObjectProperty ;
+    rdfs:domain saoffer:ResourceOffering ;
+    rdfs:range  saoffer:Resource .
+
+saoffer:resourceType a owl:ObjectProperty ;
+    rdfs:domain saoffer:Resource , saoffer:ResourceOffering ;
+    rdfs:range  skos:Concept .
+
+saoffer:availableInGeo a owl:ObjectProperty ;
+    rdfs:domain saoffer:ResourceOffering ;
+    rdfs:range  sageo:GeoFeature .
+
+saoffer:availableDuring a owl:ObjectProperty ;
+    rdfs:domain saoffer:ResourceOffering ;
+    rdfs:range  sa:TimeWindow .
+
+saoffer:availableCapacity a owl:DatatypeProperty ;
+    rdfs:domain saoffer:ResourceOffering ;
+    rdfs:range  xsd:string ;
+    rdfs:comment "JSON-encoded capacity (hours/week, dollars, count) so we don't pre-commit to a unit ontology." .
+
+saoffer:availabilityStatus a owl:ObjectProperty ;
+    rdfs:domain saoffer:ResourceOffering ;
+    rdfs:range  skos:Concept .   # Available | Reserved | Saturated | Paused | Withdrawn
+
+saoffer:hasCapability a owl:ObjectProperty ;
+    rdfs:range saoffer:Capability .
+
+saoffer:capabilitySkill a owl:ObjectProperty ;
+    rdfs:domain saoffer:Capability ;
+    rdfs:range  saskill:Skill .
+
+saoffer:capabilityRole a owl:ObjectProperty ;
+    rdfs:domain saoffer:Capability ;
+    rdfs:range  sarole:Role .
+
+saoffer:capabilityLevel a owl:ObjectProperty ;
+    rdfs:domain saoffer:Capability ;
+    rdfs:range  skos:Concept .   # Beginner | Intermediate | Experienced | Expert
+
+saoffer:capabilityEvidence a owl:ObjectProperty ;
+    rdfs:domain saoffer:Capability ;
+    rdfs:range  prov:Entity .
+
+# Validity window for the offering itself (separate from availableDuring).
+saoffer:validUntil a owl:DatatypeProperty ;
+    rdfs:domain saoffer:ResourceOffering ;
+    rdfs:range  xsd:dateTime .

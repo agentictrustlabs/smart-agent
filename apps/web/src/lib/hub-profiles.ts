@@ -245,8 +245,15 @@ export const HUB_PROFILES: HubProfile[] = [
     navItems: [
       { href: '/h/catalyst/home', label: 'Home', section: 'primary', exact: true, activePrefixes: ['/', '/dashboard', '/h/catalyst/home'] },
       { href: '/nurture', label: 'Nurture', section: 'primary', activePrefixes: ['/nurture', '/catalyst/prayer', '/catalyst/grow', '/catalyst/coach'] },
-      { href: '/oikos', label: 'Oikos', section: 'primary', activePrefixes: ['/oikos', '/circles', '/catalyst/circles'] },
-      { href: '/groups', label: 'Build', section: 'primary', activePrefixes: ['/groups', '/catalyst/groups', '/catalyst/members', '/catalyst/map'] },
+      // Phase 2 redesign: top-level "People" replaces Oikos. The
+      // /people landing navigates into /oikos (My People) and
+      // /members (Members) and stubs Discover for Phase 3.
+      // activePrefixes covers all three so the tab stays highlighted
+      // when the user drills into the existing pages.
+      { href: '/people', label: 'People', section: 'primary', activePrefixes: ['/people', '/oikos', '/circles', '/catalyst/circles', '/members', '/catalyst/members'] },
+      // Phase 2 redesign: rename Build → Groups (broader umbrella for
+      // circles, house churches, and metro hubs across sister networks).
+      { href: '/groups', label: 'Groups', section: 'primary', activePrefixes: ['/groups', '/catalyst/groups', '/catalyst/map'] },
       { href: '/steward', label: 'Steward', section: 'primary', requiresCapability: 'governance', activePrefixes: ['/steward', '/treasury', '/reviews', '/network', '/trust'] },
       { href: '/activity', label: 'Activity', section: 'primary', activePrefixes: ['/activity', '/catalyst/activities', '/activities'] },
       { href: '/agents', label: 'Agents', section: 'admin', requiresCapability: 'agents' },

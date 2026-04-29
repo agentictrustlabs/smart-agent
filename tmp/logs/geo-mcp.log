@@ -5,4 +5,4 @@
 [geo-mcp] Smart Agent Geo Steward @ did:ethr:31337:0x46a23e25df9a0f6c18729dda9ad1af3b6a131160
 [geo-mcp] listening on http://localhost:3600
 <-- GET /health
---> GET /health [32m200[0m 0ms
+--> GET /health [32m200[0m 1ms

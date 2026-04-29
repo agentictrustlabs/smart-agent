@@ -13,6 +13,8 @@ import { CatalystViewCtx } from '@/components/catalyst/CatalystViewContext'
 import type { ViewMode } from '@/components/catalyst/CatalystViewContext'
 import QuickActivityModal from '@/components/catalyst/QuickActivityModal'
 import { AgentPanel } from '@/components/agent/AgentPanel'
+import { CommandPalette } from '@/components/people/CommandPalette'
+import { PrincipalContextChip } from '@/components/shell/PrincipalContextChip'
 import { useAuth } from '@/hooks/use-auth'
 
 // No hardcoded tabs — primary navigation comes from the hub profile via HubContext
@@ -714,6 +716,9 @@ function HubLayoutInner({ children }: { children: React.ReactNode }) {
           minHeight: 0,
         }}>
           <main className="flex-1 px-6 py-5 pb-12 min-w-0">
+            {/* Single context strip — surfaces "Working as X · Role · Hub" so
+                pages don't have to re-render the chip themselves. */}
+            <PrincipalContextChip />
             {children}
           </main>
 
@@ -732,6 +737,8 @@ function HubLayoutInner({ children }: { children: React.ReactNode }) {
           showFab={true}
           {...fabDefaults}
         />
+
+        <CommandPalette />
 
         {/* ============================================================== */}
         {/* Bottom status bar                                               */}

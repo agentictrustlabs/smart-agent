@@ -25,6 +25,7 @@ import { seedSkillsOnChain } from '@/lib/demo-seed/seed-skills-onchain'
 import { seedSkillIssuersOnChain } from '@/lib/demo-seed/seed-skill-issuers-onchain'
 import { seedDemoSkillClaimsOnChain } from '@/lib/demo-seed/seed-demo-skill-claims'
 import { seedDiscipleNetworksOnChain } from '@/lib/demo-seed/seed-disciple-networks-onchain'
+import { seedCatalystNeedsAndOfferings } from '@/lib/demo-seed/seed-needs-resources'
 import { ensureDevP256Stub } from '@/lib/dev-p256-stub'
 
 export interface BootState {
@@ -200,6 +201,16 @@ export function triggerBootSeed(): Promise<void> {
         await seedDemoSkillClaimsOnChain()
       } catch (e) {
         console.warn('[boot-seed] demo skill claims error (non-fatal):', (e as Error).message)
+      }
+
+      // 2d. Catalyst Needs / Resources / Matches (Discover layer).
+      //     Runs after person + org agents exist + skill claims so the
+      //     match scorer has real evidence to work with.
+      state.phase = 'discover seed: needs + offerings + matches'
+      try {
+        await seedCatalystNeedsAndOfferings()
+      } catch (e) {
+        console.warn('[boot-seed] catalyst needs/resources seed error (non-fatal):', (e as Error).message)
       }
 
       // 3. Push fresh on-chain state into the GraphDB KB so the /agents

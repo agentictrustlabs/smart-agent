@@ -195,6 +195,15 @@ export const activityLogs = sqliteTable('activity_logs', {
   durationMinutes: integer('duration_minutes'),
   /** Optional link to related entity (e.g., group address, edge ID) */
   relatedEntity: text('related_entity'),
+  /** PROV chain — does this activity address an open need? */
+  fulfillsNeedId: text('fulfills_need_id'),
+  /** PROV chain — generalised intent link. Set alongside fulfillsNeedId for
+   *  receive-shaped intents; set alone for give/free-form intents. */
+  fulfillsIntentId: text('fulfills_intent_id'),
+  /** PROV chain — Outcome contributed to by this activity. */
+  achievesOutcomeId: text('achieves_outcome_id'),
+  /** PROV chain — does this activity draw on a specific resource offering? */
+  usesOfferingId: text('uses_offering_id'),
   /** Date of the activity (may differ from created_at) */
   activityDate: text('activity_date').notNull().$defaultFn(() => new Date().toISOString()),
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
@@ -325,5 +334,239 @@ export const messages = sqliteTable('messages', {
   body: text('body').notNull(),
   link: text('link'),
   read: integer('read').notNull().default(0),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+})
+
+// ─── Needs / Resources / Matches (Discover layer) ──────────────────
+//
+// Three-table layer that bridges Need ↔ Resource through the
+// NeedResourceMatch artifact. T-Box: docs/ontology/tbox/needs.ttl,
+// resources.ttl, matches.ttl. Resource-type / need-type vocabularies:
+// docs/ontology/cbox/resource-types.ttl. SHACL invariants:
+// docs/ontology/cbox/needs-shapes.shacl.ttl.
+//
+// Stays DB-only in v0; promote to on-chain in v1 only for resource
+// types where verifiability matters (funding commitments, scripture-
+// translation pledges, leadership credentials).
+
+/**
+ * NeedOccurrence — the contextual gap right now. Every active gap a
+ * group/agent has gets a row. The need-type taxonomy lives in the
+ * SKOS C-Box; this table just stores the type *concept URI* so the UI
+ * can render labels and the scorer can filter by type.
+ */
+export const needs = sqliteTable('needs', {
+  id: text('id').primaryKey(),
+  /** SKOS concept URI — e.g. "needType:CircleCoachNeeded". */
+  needType: text('need_type').notNull(),
+  /** Cached human label for fast UI rendering. */
+  needTypeLabel: text('need_type_label').notNull(),
+  /** Address of the agent (org/person/group) that holds the need. */
+  neededByAgent: text('needed_by_agent').notNull(),
+  /** Optional link back to the DB user that filed the need. */
+  neededByUserId: text('needed_by_user_id'),
+  /** Hub scope: 'catalyst' | 'cil' | 'global-church' | 'generic'. */
+  hubId: text('hub_id').notNull(),
+  title: text('title').notNull(),
+  detail: text('detail'),
+  priority: text('priority', {
+    enum: ['critical', 'high', 'normal', 'low'],
+  }).notNull().default('normal'),
+  status: text('status', {
+    enum: ['open', 'in-progress', 'met', 'cancelled', 'expired'],
+  }).notNull().default('open'),
+  /** JSON: { role?: string, skill?: string, geo?: string, time?: object, capacity?: object, credential?: string } */
+  requirements: text('requirements'),
+  /** ISO datetime — after this, status auto-transitions to 'expired'. */
+  validUntil: text('valid_until'),
+  createdBy: text('created_by').notNull(),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
+})
+
+/**
+ * ResourceOffering — what an agent has put forward. The agent stays an
+ * agent; the offering carries the situational context (geo, time,
+ * capacity, capabilities, status). Discover matches NeedOccurrences to
+ * Offerings, not to raw Resources.
+ */
+export const resourceOfferings = sqliteTable('resource_offerings', {
+  id: text('id').primaryKey(),
+  offeredByAgent: text('offered_by_agent').notNull(),
+  offeredByUserId: text('offered_by_user_id'),
+  hubId: text('hub_id').notNull(),
+  /** SKOS concept URI — e.g. "resourceType:Worker". One of the 12 v0 kinds. */
+  resourceType: text('resource_type').notNull(),
+  resourceTypeLabel: text('resource_type_label').notNull(),
+  title: text('title').notNull(),
+  detail: text('detail'),
+  status: text('status', {
+    enum: ['available', 'reserved', 'saturated', 'paused', 'withdrawn'],
+  }).notNull().default('available'),
+  /** JSON: hours-per-week, dollars, count, etc. — type-specific. */
+  capacity: text('capacity'),
+  /** featureId or place label (e.g. "us/colorado/wellington"). */
+  geo: text('geo'),
+  /** JSON: { start, end, recurrence } — e.g. { recurrence: "weekly", days: ["mon","wed"] }. */
+  timeWindow: text('time_window'),
+  /** JSON: [{ skill: string, role: string, level: string, evidence: string }]. */
+  capabilities: text('capabilities'),
+  validUntil: text('valid_until'),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+})
+
+/**
+ * NeedResourceMatch — the bridge artifact. Discover-generated; carries
+ * the score, the satisfied/missed requirements, the explanation. UI
+ * renders this as the match-detail surface; work-queue aggregator
+ * surfaces proposed matches as work items for the matched agent.
+ */
+export const needResourceMatches = sqliteTable('need_resource_matches', {
+  id: text('id').primaryKey(),
+  needId: text('need_id').notNull().references(() => needs.id),
+  offeringId: text('offering_id').notNull().references(() => resourceOfferings.id),
+  /** Convenience cache: who is the offering's agent. */
+  matchedAgent: text('matched_agent').notNull(),
+  status: text('status', {
+    enum: ['proposed', 'accepted', 'rejected', 'stale', 'fulfilled'],
+  }).notNull().default('proposed'),
+  /** 0..10000 basis points. <2000 not surfaced. <4000 not in default ranked list. */
+  score: integer('score').notNull(),
+  /** SKOS concept URI — e.g. "matchReason:SkillRoleGeoFit". */
+  reason: text('reason').notNull(),
+  /** JSON: list of requirement keys the offering satisfies. */
+  satisfies: text('satisfies'),
+  /** JSON: list of requirement keys the offering does NOT satisfy. */
+  misses: text('misses'),
+  /** Optional: link back to the DiscoverActivity row in activityLogs. */
+  generatedByActivity: text('generated_by_activity'),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
+})
+
+// ─── Intent / BDI Layer ───────────────────────────────────────────
+//
+// Single Intent class with `direction` (receive | give) and `object`
+// (the value flowing) as primary structural fields. Need = Intent
+// where direction=receive; Offering = Intent where direction=give.
+// The matcher reads ONLY direction + object + topic — the intentType
+// taxonomy is a UI label.
+//
+// T-Box: docs/ontology/tbox/intents.ttl
+// SKOS:  docs/ontology/cbox/intent-types.ttl
+// SHACL: docs/ontology/cbox/intent-shapes.shacl.ttl
+
+/**
+ * Intent — the unifying record above Need and Offering.
+ *
+ * direction = 'receive' → projects to a `needs` row (when payload fits).
+ * direction = 'give'    → projects to a `resource_offerings` row.
+ *
+ * Free-form intents (e.g. WantToContribute with no concrete offering
+ * shape yet) live in `intents` only — `projectionRef` is null.
+ */
+export const intents = sqliteTable('intents', {
+  id: text('id').primaryKey(),
+  /** Structural axis 1 — receive | give. Matcher reads this. */
+  direction: text('direction', { enum: ['receive', 'give'] }).notNull(),
+  /** Structural axis 2 — SKOS URI from cbox/resource-types.ttl
+   *  (e.g. 'resourceType:Money', 'resourceType:Worker'). Matcher reads this. */
+  object: text('object').notNull(),
+  /** Free-text scope — "unreached people groups in NoCo", etc. */
+  topic: text('topic'),
+  /** UI label only — intentType:NeedCoaching, intentType:OfferIntroduction, etc.
+   *  Matcher does NOT branch on this. */
+  intentType: text('intent_type').notNull(),
+  intentTypeLabel: text('intent_type_label').notNull(),
+  expressedByAgent: text('expressed_by_agent').notNull(),
+  expressedByUserId: text('expressed_by_user_id'),
+  /** addressedTo: 'agent:0x…' | 'hub:catalyst' | 'network:catalyst' | 'self'. */
+  addressedTo: text('addressed_to').notNull(),
+  hubId: text('hub_id').notNull(),
+  title: text('title').notNull(),
+  detail: text('detail'),
+  /** JSON payload — direction-typed shape (requirements for receive,
+   *  capabilities/capacity for give). */
+  payload: text('payload'),
+  status: text('status', {
+    enum: ['drafted', 'expressed', 'acknowledged', 'in-progress', 'fulfilled', 'withdrawn', 'abandoned'],
+  }).notNull().default('expressed'),
+  priority: text('priority', { enum: ['critical', 'high', 'normal', 'low'] }).notNull().default('normal'),
+  visibility: text('visibility', { enum: ['public', 'public-coarse', 'private', 'off-chain'] }).notNull().default('public'),
+  /** Outcome JSON — { description, metric, status } cached on the intent
+   *  for fast UI; full Outcome rows live in `outcomes`. */
+  expectedOutcome: text('expected_outcome'),
+  /** Soft FK back to needs.id (when direction='receive') or
+   *  resource_offerings.id (when direction='give'). The projection. */
+  projectionRef: text('projection_ref'),
+  validUntil: text('valid_until'),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
+})
+
+/** Outcome — the success criterion an intent commits to. */
+export const outcomes = sqliteTable('outcomes', {
+  id: text('id').primaryKey(),
+  intentId: text('intent_id').notNull().references(() => intents.id),
+  description: text('description').notNull(),
+  /** JSON: { kind: 'count'|'boolean'|'date'|'narrative', target: any, observed?: any }. */
+  metric: text('metric').notNull(),
+  status: text('status', { enum: ['pending', 'partial', 'achieved', 'not-achieved'] }).notNull().default('pending'),
+  observedAt: text('observed_at'),
+  observedBy: text('observed_by'),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+})
+
+/** OrchestrationPlan — decomposes a parent intent into sub-intents
+ *  routed to different agents. Replaces a CollaborationIntent class. */
+export const orchestrationPlans = sqliteTable('orchestration_plans', {
+  id: text('id').primaryKey(),
+  parentIntentId: text('parent_intent_id').notNull().references(() => intents.id),
+  authorAgent: text('author_agent').notNull(),
+  /** JSON: { steps: [{ subIntentId, dependsOn?: [subIntentId], targetAgent }], rationale }. */
+  blueprint: text('blueprint').notNull(),
+  status: text('status', { enum: ['draft', 'active', 'paused', 'completed', 'abandoned'] }).notNull().default('active'),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+})
+
+/** Belief — light wrapper over AgentAssertion. Most beliefs are on
+ *  chain; this table is for off-chain working beliefs that inform
+ *  intent expression but don't yet warrant an Assertion mint. */
+export const beliefs = sqliteTable('beliefs', {
+  id: text('id').primaryKey(),
+  heldByAgent: text('held_by_agent').notNull(),
+  /** Optional: backing AgentAssertion id from the on-chain contract. */
+  assertionId: text('assertion_id'),
+  statement: text('statement').notNull(),
+  /** Confidence 0..100 — 100 = held with certainty. */
+  confidence: integer('confidence').notNull().default(75),
+  /** Optional FK — a belief that informs / supplies rationale for an intent. */
+  informsIntentId: text('informs_intent_id'),
+  validUntil: text('valid_until'),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+})
+
+/**
+ * RoleAssignment — time-bound situational role-play. Replaces
+ * "Kenji a role:Coach" with "Kenji plays Coach FOR Rachel IN this
+ * pathway DURING this window". Created automatically when a match is
+ * accepted; lapsed/ended manually or on validUntil.
+ */
+export const roleAssignments = sqliteTable('role_assignments', {
+  id: text('id').primaryKey(),
+  bearerAgent: text('bearer_agent').notNull(),
+  /** Role hash — matches the AgentRelationship taxonomy in packages/sdk. */
+  rolePlayed: text('role_played').notNull(),
+  /** Pathway / Group / Hub address — the context the role is played within. */
+  contextEntity: text('context_entity').notNull(),
+  /** Optional: the agent the role is played FOR (e.g. Rachel for Kenji-as-Coach). */
+  targetAgent: text('target_agent'),
+  /** Link back to the match that established this assignment, if any. */
+  sourceMatchId: text('source_match_id'),
+  startsAt: text('starts_at'),
+  endsAt: text('ends_at'),
+  status: text('status', {
+    enum: ['active', 'lapsed', 'ended'],
+  }).notNull().default('active'),
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
 })

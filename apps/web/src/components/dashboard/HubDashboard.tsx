@@ -1,6 +1,7 @@
 import Link from 'next/link'
+import { Suspense } from 'react'
 import { cookies } from 'next/headers'
-import { eq } from 'drizzle-orm'
+import { eq, desc } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { getUserOrgs } from '@/lib/get-user-orgs'
 import { getConnectedOrgs } from '@/lib/get-org-members'
@@ -15,9 +16,19 @@ import { HeldCredentialsPanel } from '@/components/org/HeldCredentialsPanel'
 import { AgentTrustSearch } from '@/components/trust/AgentTrustSearch'
 import { AddGeoClaimPanel } from '@/components/profile/AddGeoClaimPanel'
 import { AddSkillClaimPanel } from '@/components/profile/AddSkillClaimPanel'
+import { MyWorkPanel } from '@/components/work-queue/MyWorkPanel'
+import { DashboardForMode } from '@/components/dashboard/modes/DashboardForMode'
 import { AddRelationshipPanel } from '@/components/profile/AddRelationshipPanel'
 import { HUB_SLUG_MAP } from '@/lib/hub-routes'
 import type { HubId } from '@/lib/hub-profiles'
+import { getHubProfile } from '@/lib/hub-profiles'
+import { defaultModeForRole } from '@/lib/work-queue/role-modes'
+import type { WorkMode } from '@/lib/work-queue/types'
+import { DEMO_USER_META } from '@/lib/auth/session'
+import { CatalystFooterCTA } from '@/components/catalyst/CatalystFooterCTA'
+import { CatalystFieldZone } from '@/components/catalyst/CatalystFieldZone'
+import { CatalystAttentionStrip, CatalystAttentionStripSkeleton } from '@/components/catalyst/CatalystAttentionStrip'
+import { OpenNeedsStrip } from '@/components/discover/OpenNeedsStrip'
 
 /**
  * Hub-aware dashboard view. Pure render — caller (a route) decides which
@@ -50,7 +61,7 @@ const CIL = {
 
 interface HubDashboardProps {
   hubId: HubId
-  currentUser: { id: string; name: string; email?: string | null }
+  currentUser: { id: string; name: string; email?: string | null; did?: string | null }
   /** Hub on-chain address — drives hub-scoped actions like "Create org". */
   hubAddress?: string | null
   hubName?: string
@@ -235,6 +246,8 @@ async function GenericDashboard({
         <KpiCard label="TRUST GRAPH" href="/agents"><span style={{ fontSize: '1.75rem', fontWeight: 700, color: C.accent }}>{kbEdgeCount}</span><span style={{ fontSize: '0.72rem', color: C.textMuted }}>relationships</span></KpiCard>
       </div>
 
+      <MyWorkPanel />
+      <DashboardForMode onChainRoles={userOrgs.flatMap(o => o.roles)} />
       <AddGeoClaimPanel />
       <AddSkillClaimPanel />
       <AgentTrustSearch />
@@ -394,7 +407,7 @@ async function CatalystFieldDashboard({
   hubId, currentUser, userOrgs, firstName, greeting, primaryName, hubAddress, hubName,
 }: {
   hubId: HubId
-  currentUser: { id: string; name: string }
+  currentUser: { id: string; name: string; did?: string | null }
   userOrgs: Array<{ address: string; name: string; roles: string[] }>
   firstName: string
   greeting: string
@@ -406,15 +419,24 @@ async function CatalystFieldDashboard({
   const orgUserIds = new Set<string>([currentUser.id])
   for (let i = 1; i <= 7; i++) orgUserIds.add(`cat-user-00${i}`)
 
-  const allActivities = await db.select().from(schema.activityLogs)
-  const activities = allActivities.filter(a => orgAddresses.has(a.orgAddress.toLowerCase()) || orgUserIds.has(a.userId))
-  const thisWeek = new Date(); thisWeek.setDate(thisWeek.getDate() - 7)
-  const weekCount = activities.filter(a => new Date(a.activityDate) >= thisWeek).length
+  // Push the org/user filter into the DB instead of scanning every
+  // activity_logs row in JS. With the catalyst seed at ~111 activities
+  // this saved ~150ms per render; grows linearly with demo activity.
+  const { inArray, or } = await import('drizzle-orm')
+  const orgFilter = userOrgs.length > 0 ? inArray(schema.activityLogs.orgAddress, userOrgs.map(o => o.address.toLowerCase())) : undefined
+  const userFilter = inArray(schema.activityLogs.userId, [...orgUserIds])
+  const where = orgFilter ? or(orgFilter, userFilter) : userFilter
+  const activities = await db.select().from(schema.activityLogs)
+    .where(where)
+    .orderBy(desc(schema.activityLogs.activityDate))
+    .limit(120)
+  const thisWeekIso = new Date(Date.now() - 7 * 86_400_000).toISOString().slice(0, 10)
+  const weekCount = activities.filter(a => a.activityDate >= thisWeekIso).length
 
-  // Fan out every per-org RPC + the unrelated DB queries in parallel —
-  // these used to run serially and dominated the catalyst home render
-  // (5–10 s on the demo seed, vs ~50 ms for hubs that don't take this
-  // path).
+  // Fan out every per-org RPC + the unrelated DB queries in parallel.
+  // PERF: dropped getAiAgentsForOrg from the critical path — the AI-agents
+  // count was only used to render the inventory-row tile, which now shows
+  // "—" linking to /agents where the full list is computed lazily.
   const { eq } = await import('drizzle-orm')
   const { getTrainingProgress } = await import('@/lib/actions/grow.action')
   const [
@@ -422,112 +444,295 @@ async function CatalystFieldDashboard({
     oikosRows,
     allPrayers,
     progress,
-    orgsMeta,
-    aiAddrsPerOrg,
   ] = await Promise.all([
     Promise.all(userOrgs.map(o => getConnectedOrgs(o.address).catch(() => []))),
     db.select().from(schema.circles).where(eq(schema.circles.userId, currentUser.id)).catch(() => []),
     db.select().from(schema.prayers).where(eq(schema.prayers.userId, currentUser.id)).catch(() => []),
     getTrainingProgress(currentUser.id),
-    Promise.all(userOrgs.map(async (org) => {
-      const meta = await getAgentMetadata(org.address)
-      return { ...org, primaryName: meta.primaryName }
-    })),
-    Promise.all(userOrgs.map(o => getAiAgentsForOrg(o.address).catch(() => []))),
   ])
 
-  let totalCircles = userOrgs.length
-  for (const c of connectedOrgLists) totalCircles += c.length
+  // Aggregate connected (sister) circles for "My Circles" count + field list.
+  type ConnectedRow = { address: string; name: string }
+  const connectedCircles: ConnectedRow[] = []
+  for (let i = 0; i < userOrgs.length; i++) {
+    for (const c of connectedOrgLists[i]) {
+      if (!connectedCircles.find(x => x.address === c.address)) {
+        connectedCircles.push({ address: c.address, name: c.name })
+      }
+    }
+  }
+  const totalCircles = userOrgs.length + connectedCircles.length
 
   const oikosCount = oikosRows.length
-
   const days = ['sun','mon','tue','wed','thu','fri','sat']
   const today = days[new Date().getDay()]
   const prayerDueCount = allPrayers.filter(p => !p.answered && (p.schedule === 'daily' || p.schedule.includes(today))).length
-
   const walkPct = Math.round((progress.filter(p => p.completed === 1).length / 28) * 100)
 
-  // Resolve every AI agent's metadata in one parallel batch.
-  type AIAgentInfo = { name: string; primaryName: string; type: string; orgName: string; address: string }
-  const aiAgentTasks: Array<Promise<AIAgentInfo>> = []
-  for (let i = 0; i < userOrgs.length; i++) {
-    const org = userOrgs[i]
-    for (const addr of aiAddrsPerOrg[i]) {
-      aiAgentTasks.push(getAgentMetadata(addr).then(meta => ({
-        name: meta.displayName, primaryName: meta.primaryName,
-        type: meta.aiAgentClass || 'custom', orgName: org.name, address: addr,
-      })))
-    }
-  }
-  const aiAgents: AIAgentInfo[] = await Promise.all(aiAgentTasks)
+  // ─── Mode resolution (drives KPI branching + persona subhead) ──
+  const role = pickRoleForUser(currentUser.did ?? null, userOrgs.flatMap(o => o.roles))
+  const mode: WorkMode = defaultModeForRole(role)
 
+  // ─── Hub profile (eyebrow text on the hero) ────────────────────
+  const hubProfile = getHubProfile(hubId)
+
+  // ─── Attention items moved into <CatalystAttentionStrip> ───────
+  // The strip is rendered behind a Suspense boundary so the rest of
+  // the page (hero, KPIs, work zone) doesn't block on the chain RPC
+  // (`listMyRelationshipsAction`) it triggers. Count-driven KPIs
+  // (`NEEDS ATTENTION` / `PENDING REQUESTS`) read undefined here and
+  // light up after the strip resolves on the client; the persona
+  // subhead picks a calmer label that doesn't need the count.
+
+  // ─── KPI selection (4 tiles, branched by mode) ─────────────────
+  const kpis = pickKpisForMode({ mode, oikosCount, prayerDueCount, totalCircles, walkPct, weekCount, pendingIncoming: 0, attentionCount: 0 })
+
+  // ─── First-org address for QuickActivityModal binding ──────────
+  const firstOrgAddr = userOrgs[0]?.address ?? hubAddress ?? null
+
+  // ─── Persona subhead (named by mode) ───────────────────────────
+  // Attention count is unknown until the suspended strip resolves;
+  // pass 0 so the subhead picks the "all clear" wording. The strip
+  // itself shows the real count once it streams in.
+  const subhead = personaSubhead({ mode, totalCircles, attentionCount: 0 })
+
+  // ─── Render ────────────────────────────────────────────────────
   return (
-    <div>
-      <h1 style={{ fontSize: '1.35rem', fontWeight: 700, color: C.text, margin: '0 0 0.25rem' }}>{greeting}, {firstName}</h1>
-      {primaryName && (
-        <div style={{ fontSize: '0.78rem', color: C.accent, fontFamily: 'ui-monospace, monospace', marginBottom: '0.75rem' }}>{primaryName}</div>
-      )}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem', marginBottom: '1rem' }}>
-        <KpiCard label="MY OIKOS" href="/oikos"><span style={{ fontSize: '1.75rem', fontWeight: 700, color: C.accent }}>{oikosCount}</span><span style={{ fontSize: '0.72rem', color: C.textMuted }}>people</span></KpiCard>
-        <KpiCard label="PRAY NOW" href="/nurture/prayer"><span style={{ fontSize: '1.75rem', fontWeight: 700, color: C.accent }}>{prayerDueCount}</span><span style={{ fontSize: '0.72rem', color: C.textMuted }}>due today</span></KpiCard>
-        <KpiCard label="MY CIRCLES" href="/groups"><span style={{ fontSize: '1.75rem', fontWeight: 700, color: C.accent }}>{totalCircles}</span><span style={{ fontSize: '0.72rem', color: C.textMuted }}>gatherings</span></KpiCard>
-        <KpiCard label="PERSONAL WALK" href="/nurture/grow"><span style={{ fontSize: '1.75rem', fontWeight: 700, color: C.accent }}>{walkPct}%</span></KpiCard>
-        <KpiCard label="SOW THIS WEEK" href="/activity"><span style={{ fontSize: '1.75rem', fontWeight: 700, color: C.accent }}>{weekCount}</span><span style={{ fontSize: '0.72rem', color: C.textMuted }}>activities</span></KpiCard>
+    <div style={{ paddingBottom: '4.5rem' }}>
+      {/* Zone 1 — Hero strip */}
+      <div style={{ marginBottom: '0.75rem' }}>
+        <div style={{ fontSize: '0.65rem', fontWeight: 700, color: C.accent, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.15rem' }}>
+          {hubProfile.name}{hubProfile.description ? ` · ${hubProfile.description.split('—')[0].trim()}` : ''}
+        </div>
+        <h1 style={{ fontSize: '1.45rem', fontWeight: 700, color: C.text, margin: '0 0 0.2rem' }}>
+          {greeting}, {firstName}
+        </h1>
+        <div style={{ fontSize: '0.85rem', color: C.textMuted, display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+          <span>{subhead}</span>
+          {primaryName && (
+            <span title={`Your unique name in this network: ${primaryName}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.2rem', fontSize: '0.7rem', color: C.textMuted, cursor: 'help' }}>
+              <span style={{ width: 14, height: 14, borderRadius: '50%', background: C.accentLight, color: C.accent, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.6rem' }}>?</span>
+            </span>
+          )}
+        </div>
       </div>
 
-      <DelegationSection userId={currentUser.id} />
+      {/* Zone 2 — Needs Attention (renders only when items > 0).
+          Suspense'd: the strip's data load (chain RPC for pending
+          relationships) shouldn't block the rest of the page. */}
+      <Suspense fallback={<CatalystAttentionStripSkeleton />}>
+        <CatalystAttentionStrip userId={currentUser.id} userOrgs={userOrgs} hubSlug="catalyst" />
+      </Suspense>
 
-      <AddGeoClaimPanel />
-      <AddSkillClaimPanel />
-      <AgentTrustSearch />
-
-      {(userOrgs.length > 0 || hubAddress) && (
+      {/* Zone 3 — Role-aware KPI row (4 tiles, or zero-state welcome) */}
+      {kpis.allZero ? (
         <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: '1rem 1.25rem', marginBottom: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.6rem' }}>
-            <h2 style={{ fontSize: '0.7rem', fontWeight: 700, color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>My Organizations</h2>
-            {hubAddress && <CreateOrgButton hubAddress={hubAddress} hubName={hubName} hubId={hubId} label="New" />}
+          <div style={{ fontSize: '0.95rem', fontWeight: 700, color: C.text, marginBottom: '0.35rem' }}>Welcome to {hubProfile.name}</div>
+          <div style={{ fontSize: '0.82rem', color: C.textMuted, marginBottom: '0.75rem' }}>You&apos;re a member — here are three first steps:</div>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <Link href="/groups" style={ctaBtn(C.accent)}>Find your group</Link>
+            <Link href="/oikos" style={ctaBtn(C.accent)}>Add someone to your oikos</Link>
+            <Link href="/nurture" style={ctaBtn(C.accent)}>Start nurture</Link>
           </div>
-          {orgsMeta.map(org => (
-            <div key={org.address} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.5rem 0', borderBottom: `1px solid ${C.border}` }}>
-              <span style={{ width: 32, height: 32, borderRadius: 8, background: C.accentLight, color: C.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.75rem', flexShrink: 0 }}>{org.name.charAt(0)}</span>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
-                  <Link href={`/agents/${org.address}`} style={{ fontWeight: 600, fontSize: '0.85rem', color: C.text, textDecoration: 'none' }}>{org.name}</Link>
-                  {org.primaryName && (
-                    <span style={{ fontFamily: 'monospace', fontSize: '0.68rem', color: C.accent, background: C.accentLight, padding: '0.05rem 0.35rem', borderRadius: 6, border: `1px solid ${C.accentBorder}` }}>{org.primaryName}</span>
-                  )}
-                </div>
-                <div style={{ display: 'flex', gap: '0.25rem', marginTop: '0.15rem' }}>
-                  {org.roles.map(r => (
-                    <span key={r} style={{ fontSize: '0.6rem', padding: '0.1rem 0.35rem', borderRadius: 4, background: '#f5f5f5', color: '#616161', textTransform: 'capitalize' }}>{r}</span>
-                  ))}
-                </div>
-              </div>
-            </div>
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.6rem', marginBottom: '1rem' }} className="catalyst-kpi-grid">
+          {kpis.tiles.map(tile => (
+            <KpiCard key={tile.label} label={tile.label} href={tile.href}>
+              <span style={{ fontSize: '1.7rem', fontWeight: 700, color: C.accent }}>{tile.value}</span>
+              <span style={{ fontSize: '0.72rem', color: C.textMuted }}>{tile.detail}</span>
+            </KpiCard>
           ))}
-          <HeldCredentialsPanel />
         </div>
       )}
 
-      {aiAgents.length > 0 && (
-        <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: '1rem 1.25rem', marginBottom: '1rem' }}>
-          <h2 style={{ fontSize: '0.7rem', fontWeight: 700, color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.6rem' }}>AI Agents</h2>
-          {aiAgents.map(agent => (
-            <div key={agent.address} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.5rem 0', borderBottom: `1px solid ${C.border}` }}>
-              <span style={{ width: 32, height: 32, borderRadius: 8, background: '#f3e5f5', color: '#7b1fa2', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.65rem', flexShrink: 0 }}>AI</span>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
-                  <Link href={`/agents/${agent.address}`} style={{ fontWeight: 600, fontSize: '0.85rem', color: C.text, textDecoration: 'none' }}>{agent.name}</Link>
-                  {agent.primaryName && (
-                    <span style={{ fontFamily: 'monospace', fontSize: '0.68rem', color: '#7b1fa2', background: '#f3e5f5', padding: '0.05rem 0.35rem', borderRadius: 6, border: '1px solid #e1bee7' }}>{agent.primaryName}</span>
-                  )}
-                </div>
-                <div style={{ fontSize: '0.72rem', color: C.textMuted }}>{agent.type} &middot; {agent.orgName}</div>
-              </div>
-            </div>
-          ))}
+      {/* Zone 4 — Work zone (2-col 60/40 on desktop; mode picker is in MyWorkPanel itself) */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.5fr) minmax(0, 1fr)', gap: '0.75rem', marginBottom: '1rem' }} className="catalyst-work-grid">
+        <div>
+          <MyWorkPanel />
         </div>
-      )}
+        <div>
+          <DashboardForMode onChainRoles={userOrgs.flatMap(o => o.roles)} />
+        </div>
+      </div>
+
+      {/* Zone 4.5 — Where the hub needs help (Discover layer).
+          Re-anchored from Zone 2.5 to here, AFTER the work zone, so
+          it doesn't twin with NeedsAttentionCard. Suspense'd so the
+          intents query never blocks first paint. */}
+      <Suspense fallback={<div style={{ height: 90, background: 'rgba(13,148,136,0.04)', borderRadius: 12, marginBottom: '1rem' }} aria-hidden />}>
+        <OpenNeedsStrip hubId={hubId} hubSlug="catalyst" />
+      </Suspense>
+
+      {/* Zone 5 — Field zone (activities + circles) */}
+      <CatalystFieldZone
+        activities={activities.slice(0, 5).map(a => ({
+          id: a.id,
+          activityType: a.activityType,
+          title: a.title,
+          activityDate: a.activityDate,
+          orgAddress: a.orgAddress,
+        }))}
+        myCircles={[...userOrgs.map(o => ({ address: o.address, name: o.name, role: o.roles[0] ?? 'member' })), ...connectedCircles.map(c => ({ address: c.address, name: c.name, role: 'connected' }))]}
+        firstOrgAddr={firstOrgAddr}
+      />
+
+      {/* Zone 6 — Inventory KPI row (4 link cards replace 4 panels) */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.6rem', marginBottom: '1rem' }} className="catalyst-inventory-grid">
+        <InventoryKpi label="CONNECTIONS" count={totalCircles + 0 /* connections counted in DelegationSection */} href="/me/relationships" detail="people you work with" />
+        <InventoryKpi label="GROUPS" count={userOrgs.length} href="/groups" detail="you're a member of" actionHref={hubAddress ? '/groups/new' : undefined} actionLabel={hubAddress ? '+ New' : undefined} />
+        <InventoryKpi label="AI AGENTS" count={undefined} href="/agents" detail="deployed in your orgs" />
+        <InventoryKpi label="CREDENTIALS" count={undefined} href="/me/credentials" detail="vault & shared" />
+      </div>
+
+      {/* DelegationSection demoted: it lives below the inventory row, but lighter
+          chrome. Suspense'd because it does many chain reads — the heaviest
+          remaining block on the home. Future: split into list-only on home +
+          form-only on /me/relationships. */}
+      <Suspense fallback={<div style={{ height: 100, background: '#fff', border: '1px solid #ece6db', borderRadius: 12, marginBottom: '1rem' }} aria-hidden />}>
+        <DelegationSection userId={currentUser.id} />
+      </Suspense>
+
+      {/* Zone 7 — Footer CTA strip */}
+      <CatalystFooterCTA mode={mode} firstOrgAddr={firstOrgAddr} />
+    </div>
+  )
+}
+
+// ─── Catalyst dashboard helpers ─────────────────────────────────────
+
+function pickRoleForUser(did: string | null, onChainRoles: string[]): string {
+  if (did) {
+    for (const meta of Object.values(DEMO_USER_META)) {
+      if (meta.userId === did) return meta.role
+    }
+  }
+  return onChainRoles[0] ?? ''
+}
+
+function ctaBtn(accent: string): React.CSSProperties {
+  return {
+    display: 'inline-block',
+    padding: '0.45rem 0.85rem',
+    background: accent,
+    color: '#fff',
+    borderRadius: 8,
+    fontWeight: 600,
+    fontSize: '0.8rem',
+    textDecoration: 'none',
+  }
+}
+
+interface KpiTile {
+  label: string
+  href: string
+  value: string | number
+  detail: string
+}
+
+function pickKpisForMode(args: {
+  mode: WorkMode
+  oikosCount: number
+  prayerDueCount: number
+  totalCircles: number
+  walkPct: number
+  weekCount: number
+  pendingIncoming: number
+  attentionCount: number
+}): { tiles: KpiTile[]; allZero: boolean } {
+  let tiles: KpiTile[] = []
+  switch (args.mode) {
+    case 'govern':
+      tiles = [
+        { label: 'ACTIVE GROUPS', href: '/groups', value: args.totalCircles, detail: 'across the hub' },
+        { label: 'THIS WEEK', href: '/activity', value: args.weekCount, detail: 'activities logged' },
+        { label: 'NEEDS ATTENTION', href: '#', value: args.attentionCount, detail: 'open items' },
+        { label: 'PENDING REQUESTS', href: '/relationships', value: args.pendingIncoming, detail: 'awaiting you' },
+      ]
+      break
+    case 'route':
+      tiles = [
+        { label: 'PENDING REQUESTS', href: '/relationships', value: args.pendingIncoming, detail: 'awaiting you' },
+        { label: 'THIS WEEK', href: '/activity', value: args.weekCount, detail: 'activities logged' },
+        { label: 'MY CIRCLES', href: '/groups', value: args.totalCircles, detail: 'gatherings' },
+        { label: 'NEEDS ATTENTION', href: '#', value: args.attentionCount, detail: 'open items' },
+      ]
+      break
+    case 'disciple':
+    case 'walk':
+    case 'discover':
+    default:
+      tiles = [
+        { label: 'MY OIKOS', href: '/oikos', value: args.oikosCount, detail: 'people' },
+        { label: 'PRAY NOW', href: '/nurture/prayer', value: args.prayerDueCount, detail: 'due today' },
+        { label: 'MY CIRCLES', href: '/groups', value: args.totalCircles, detail: 'gatherings' },
+        { label: 'PERSONAL WALK', href: '/nurture/grow', value: `${args.walkPct}%`, detail: 'this 4-week cycle' },
+      ]
+      break
+  }
+  const allZero = tiles.every(t => (typeof t.value === 'number' ? t.value === 0 : t.value === '0%'))
+  return { tiles, allZero }
+}
+
+function personaSubhead({ mode, totalCircles, attentionCount }: { mode: WorkMode; totalCircles: number; attentionCount: number }): string {
+  switch (mode) {
+    case 'govern':
+      return attentionCount > 0
+        ? `Hub Lead · ${totalCircles} group${totalCircles === 1 ? '' : 's'} · ${attentionCount} need${attentionCount === 1 ? 's' : ''} attention`
+        : `Hub Lead · ${totalCircles} group${totalCircles === 1 ? '' : 's'} · all clear`
+    case 'route':
+      return 'Coordinator · route incoming requests'
+    case 'disciple':
+      return totalCircles > 0
+        ? `Group Leader · ${totalCircles} circle${totalCircles === 1 ? '' : 's'} · log this week's gathering →`
+        : 'Group Leader · ready to start'
+    case 'walk':
+      return 'Disciple · keep going'
+    case 'discover':
+      return 'Discover · find a coach or a circle'
+    default:
+      return ''
+  }
+}
+
+function InventoryKpi({ label, count, href, detail, actionHref, actionLabel }: {
+  label: string
+  count: number | undefined
+  href: string
+  detail: string
+  actionHref?: string
+  actionLabel?: string
+}) {
+  // Use one outer card with `position: relative`, a Link covering the whole
+  // card via `position: absolute` (the navigation surface), and the action
+  // Link rendered after it as a sibling at z-index above the absolute Link.
+  // This keeps both anchors and avoids nesting them.
+  return (
+    <div style={{ position: 'relative', background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, padding: '0.65rem 0.8rem', display: 'flex', flexDirection: 'column', gap: '0.2rem', minHeight: 72 }}>
+      <Link
+        href={href}
+        aria-label={label}
+        style={{
+          position: 'absolute',
+          inset: 0,
+          borderRadius: 10,
+          textDecoration: 'none',
+          zIndex: 1,
+        }}
+      />
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'relative', zIndex: 2, pointerEvents: 'none' }}>
+        <span style={{ fontSize: '0.6rem', fontWeight: 700, color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</span>
+        {actionHref && actionLabel && (
+          <Link
+            href={actionHref}
+            style={{ fontSize: '0.65rem', color: C.accent, textDecoration: 'none', fontWeight: 600, pointerEvents: 'auto' }}
+          >
+            {actionLabel}
+          </Link>
+        )}
+      </div>
+      <span style={{ fontSize: '1.4rem', fontWeight: 700, color: C.accent, position: 'relative', zIndex: 2, pointerEvents: 'none' }}>{count !== undefined ? count : '—'}</span>
+      <span style={{ fontSize: '0.7rem', color: C.textMuted, position: 'relative', zIndex: 2, pointerEvents: 'none' }}>{detail}</span>
     </div>
   )
 }
@@ -577,20 +782,20 @@ async function DelegationSection({ userId }: { userId: string }) {
         <h2 style={{
           fontSize: '0.7rem', fontWeight: 700, color: '#9a8c7e',
           textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0,
-        }}>My Relationships</h2>
+        }}>My Connections</h2>
         <span style={{ fontSize: 11, color: '#94a3b8' }}>
-          {totalCount} {totalCount === 1 ? 'edge' : 'edges'}
+          {totalCount} {totalCount === 1 ? 'connection' : 'connections'}
         </span>
       </div>
 
-      {/* ─── New-relationship form (always visible) ───────────────── */}
+      {/* ─── New-connection form (always visible) ─────────────────── */}
       <AddRelationshipPanel />
 
-      {/* ─── Existing relationships / delegations list ────────────── */}
+      {/* ─── Existing connections / sharing list ──────────────────── */}
       <div style={{ marginTop: 6, paddingTop: 10, borderTop: '1px dashed #e5e7eb' }}>
         {isEmpty && (
           <div style={{ fontSize: 11, color: '#64748b' }}>
-            No relationships yet. Pick an agent + relationship type above and click Add.
+            No connections yet. Pick a person + relationship type above and click Add.
           </div>
         )}
         {coachRel && (
@@ -613,24 +818,39 @@ async function DelegationSection({ userId }: { userId: string }) {
         })}
         {onChainRels.map(r => {
           const isPending = r.status === 1
-          const dirIcon = r.direction === 'outgoing' ? 'Out' : 'In'
-          const detail = `${r.relationshipTypeLabel}${r.roleLabels.length ? ` · ${r.roleLabels.join(', ')}` : ''}${r.direction === 'incoming' ? ' (incoming)' : ''}`
+          // Chip = "Pending" while awaiting confirmation; otherwise the
+          // human-readable role (preferred — "Coach", "Member", "Trustee")
+          // falling back to the relationship type ("Coaching", "Governance").
+          // Direction is meaningless once a relationship is active, so we
+          // surface it only for pending rows via the detail text + the
+          // `review` CTA on incoming requests.
+          const chipLabel = isPending
+            ? 'Pending'
+            : (r.roleLabels[0] ?? r.relationshipTypeLabel)
+          const detailParts: string[] = [r.relationshipTypeLabel]
+          if (!isPending && r.roleLabels.length > 1) {
+            detailParts.push(r.roleLabels.slice(1).join(', '))
+          }
+          if (isPending) {
+            detailParts.push(r.direction === 'outgoing' ? 'you initiated · awaiting them' : 'awaiting your reply')
+          }
+          const detail = detailParts.join(' · ')
           return (
             <DelegationRow
               key={r.edgeId}
-              icon={dirIcon}
-              iconBg={isPending ? '#fde68a' : '#dbeafe'}
-              iconColor={isPending ? '#92400e' : '#1d4ed8'}
+              icon={chipLabel}
+              // Pending: amber. Confirmed/active: neutral slate so on-chain rows
+              // visually defer to the warmer Coach/Disciple/Shared/Received chips.
+              iconBg={isPending ? '#fde68a' : '#e2e8f0'}
+              iconColor={isPending ? '#92400e' : '#475569'}
               name={r.counterpartyDisplayName}
               agentName={r.counterpartyPrimaryName ?? undefined}
               detail={detail}
-              badgeLabel={isPending ? 'pending' : undefined}
-              badgeColor={isPending ? '#92400e' : undefined}
               tooltip={isPending
                 ? r.direction === 'outgoing'
-                  ? 'Awaiting counterparty confirmation'
-                  : 'Pending request from this agent — confirm on the Relationships page'
-                : `Status: ${r.statusLabel}`}
+                  ? `${r.relationshipTypeLabel} request — awaiting ${r.counterpartyDisplayName}'s confirmation`
+                  : `${r.relationshipTypeLabel} request from ${r.counterpartyDisplayName} — confirm on the Connections page`
+                : `${r.relationshipTypeLabel} · ${r.statusLabel}`}
               href={isPending && r.direction === 'incoming' ? '/relationships' : undefined}
               linkLabel={isPending && r.direction === 'incoming' ? 'review' : undefined}
             />

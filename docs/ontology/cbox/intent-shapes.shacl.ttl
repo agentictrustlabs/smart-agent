@@ -1,0 +1,125 @@
+@prefix sa:        <https://smartagent.io/ontology/core#> .
+@prefix saint:     <https://smartagent.io/ontology/intent#> .
+@prefix sh:        <http://www.w3.org/ns/shacl#> .
+@prefix skos:      <http://www.w3.org/2004/02/shacl#> .
+@prefix xsd:       <http://www.w3.org/2001/XMLSchema#> .
+
+# =============================================================================
+# SHACL Shapes — Intent / Outcome / OrchestrationPlan / IntentMatch
+# =============================================================================
+#
+# Validation invariants enforced at GraphDB-sync time. CI fails if any
+# triple in the data graph violates these shapes.
+
+# ─── Intent ─────────────────────────────────────────────────────────
+
+[] a sh:NodeShape ;
+    sh:targetClass saint:Intent ;
+    sh:property [
+        sh:path saint:direction ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:in ( saint:Receive saint:Give ) ;
+        sh:message "Every Intent must carry exactly one direction (saint:Receive | saint:Give). The matcher reads this — without it, the intent is not actionable." ;
+    ] ;
+    sh:property [
+        sh:path saint:object ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:nodeKind sh:IRI ;
+        sh:message "Every Intent must carry exactly one object (a SKOS concept URI from cbox/resource-types.ttl)." ;
+    ] ;
+    sh:property [
+        sh:path saint:expressedBy ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "Every Intent must name exactly one Agent that expressed it." ;
+    ] ;
+    sh:property [
+        sh:path saint:addressedTo ;
+        sh:minCount 1 ;
+        sh:message "Every Intent must be addressed to at least one Agent or audience. Drafts can address themselves." ;
+    ] ;
+    sh:property [
+        sh:path saint:intentStatus ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path saint:intentType ;
+        sh:maxCount 1 ;
+        sh:nodeKind sh:IRI ;
+        sh:message "intentType is a UI label. Optional but at most one — never branched on by the matcher." ;
+    ] .
+
+# ─── IntentMatch — directions MUST be opposite ─────────────────────
+
+[] a sh:NodeShape ;
+    sh:targetClass saint:IntentMatch ;
+    sh:property [
+        sh:path saint:matchesIntent ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "An IntentMatch must reference exactly one receive-shaped intent." ;
+    ] ;
+    sh:property [
+        sh:path saint:matchedAgainst ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "An IntentMatch must reference exactly one give-shaped intent (the counter-intent)." ;
+    ] ;
+    sh:property [
+        sh:path saint:matchScore ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:decimal ;
+        sh:minInclusive 0 ;
+        sh:maxInclusive 10000 ;
+    ] .
+# Note: the "directions are opposite" invariant is enforced as a
+# SPARQL constraint at the storage layer (the action validates before
+# insert). Pure SHACL can't easily express the
+# cross-property comparison, so we keep it action-side.
+
+# ─── Outcome ────────────────────────────────────────────────────────
+
+[] a sh:NodeShape ;
+    sh:targetClass saint:Outcome ;
+    sh:property [
+        sh:path saint:outcomeMetric ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "Every Outcome must carry a metric (JSON: { kind, target, observed? })." ;
+    ] ;
+    sh:property [
+        sh:path saint:outcomeStatus ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+    ] .
+
+# ─── OrchestrationPlan ─────────────────────────────────────────────
+
+[] a sh:NodeShape ;
+    sh:targetClass saint:OrchestrationPlan ;
+    sh:property [
+        sh:path saint:planFor ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "Every OrchestrationPlan must reference exactly one parent Intent." ;
+    ] ;
+    sh:property [
+        sh:path saint:hasSubIntent ;
+        sh:minCount 2 ;
+        sh:message "An OrchestrationPlan with fewer than 2 sub-intents is just an Intent — drop the wrapper." ;
+    ] .
+
+# ─── Belief — light wrapper, mostly informational ──────────────────
+
+[] a sh:NodeShape ;
+    sh:targetClass saint:Belief ;
+    sh:property [
+        sh:path saint:informsIntent ;
+        sh:nodeKind sh:IRI ;
+        sh:message "When a Belief points to an Intent, the link must be by IRI (the intent's id)." ;
+    ] .

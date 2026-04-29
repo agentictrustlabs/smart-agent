@@ -18,7 +18,7 @@ import {
   ATL_PRIMARY_NAME, ATL_NAME_LABEL,
   GeoFeatureClient, GeoClaimClient, type GeoRelation,
 } from '@smart-agent/sdk'
-import { agentAccountResolverAbi } from '@smart-agent/sdk'
+import { agentAccountResolverAbi, agentDisputeRecordAbi } from '@smart-agent/sdk'
 import { keccak256, toBytes } from 'viem'
 
 const TYPE_ORGANIZATION = keccak256(toBytes('atl:OrganizationAgent'))
@@ -336,6 +336,13 @@ async function doSeed() {
   await mintGeoClaim({ subject: grpJohnstown,  cityKey: 'us/colorado/johnstown',    relation: 'operatesIn', confidence: 100 })
   await mintGeoClaim({ subject: grpRedFeather, cityKey: 'us/colorado/redfeather',   relation: 'operatesIn', confidence: 100 })
 
+  // stewardOf claims express "this circle is the steward of church-planting in
+  // this place" — a stronger claim than operatesIn. Loveland claims its own
+  // city; Berthoud deliberately also claims Loveland to set up an engagement
+  // overlap that the dispute below resolves.
+  await mintGeoClaim({ subject: grpLoveland,   cityKey: 'us/colorado/loveland',     relation: 'stewardOf', confidence: 90 })
+  await mintGeoClaim({ subject: grpBerthoud,   cityKey: 'us/colorado/loveland',     relation: 'stewardOf', confidence: 70 })
+
   // Person → city. residentOf gets a stage-B weight of 1.0 in
   // geo-overlap.v1 — the strongest local-affinity signal we ship.
   const personGeoMap: Array<[string, string]> = [
@@ -411,6 +418,13 @@ async function doSeed() {
   await createEdge(paDavid, grpWellington,  ORGANIZATION_MEMBERSHIP, [ROLE_ADVISOR])
   await createEdge(paRosa,  grpLaporte,     ORGANIZATION_MEMBERSHIP, [ROLE_ADVISOR])
   await createEdge(paRosa,  grpRedFeather,  ORGANIZATION_MEMBERSHIP, [ROLE_ADVISOR])
+  await createEdge(paSarah, grpLoveland,    ORGANIZATION_MEMBERSHIP, [ROLE_ADVISOR])
+
+  // Coaching / mentorship edges (person → person). Director coaches a circle
+  // leader; hub lead coaches a community partner. Surfaces in the agent
+  // network graph and feeds the coaching panel.
+  await createEdge(paMaria,  paAna,    COACHING_MENTORSHIP as `0x${string}`, [ROLE_COACH as `0x${string}`, ROLE_DISCIPLE as `0x${string}`])
+  await createEdge(paDavid,  paCarlos, COACHING_MENTORSHIP as `0x${string}`, [ROLE_COACH as `0x${string}`, ROLE_DISCIPLE as `0x${string}`])
 
   // Org → Org ALLIANCE (network hierarchy)
   await createEdge(network, hub, ALLIANCE, [ROLE_STRATEGIC_PARTNER])
@@ -697,5 +711,38 @@ async function doSeed() {
     console.warn('[catalyst-seed] Coaching delegation failed:', err)
   }
 
-  console.log('[catalyst-seed] NoCo Catalyst community deployed: 18 agents, 25+ on-chain edges')
+  // ─── Engagement Dispute (Berthoud's stewardOf overlap on Loveland) ──
+  // The stewardOf claims above set up an engagement overlap: Loveland and
+  // Berthoud both claim to steward church-planting in Loveland. The hub
+  // files a FLAG dispute against Berthoud so the /reviews page surfaces it
+  // and the network graph can render the disputed engagement.
+  const disputeAddr = process.env.AGENT_DISPUTE_ADDRESS as `0x${string}` | undefined
+  if (disputeAddr) {
+    try {
+      const wc = getWalletClient()
+      const pc = getPublicClient()
+      const existing = await pc.readContract({
+        address: disputeAddr, abi: agentDisputeRecordAbi,
+        functionName: 'getDisputesBySubject', args: [grpBerthoud],
+      }) as bigint[]
+      if (existing.length === 0) {
+        const hash = await wc.writeContract({
+          address: disputeAddr, abi: agentDisputeRecordAbi,
+          functionName: 'fileDispute',
+          args: [
+            grpBerthoud,
+            1, // DisputeType.FLAG
+            'Engagement overlap: Berthoud Circle stewardOf claim duplicates Loveland Circle in Loveland CO',
+            '',
+          ],
+        })
+        await pc.waitForTransactionReceipt({ hash })
+        console.log('[catalyst-seed] Filed engagement-overlap dispute against Berthoud')
+      }
+    } catch (err) {
+      console.warn('[catalyst-seed] Dispute filing failed:', err)
+    }
+  }
+
+  console.log('[catalyst-seed] NoCo Catalyst community deployed: 18 agents, 27+ on-chain edges')
 }

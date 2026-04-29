@@ -1,0 +1,134 @@
+@prefix saint:        <https://smartagent.io/ontology/intent#> .
+@prefix intentType:   <https://smartagent.io/cbox/intent-type/> .
+@prefix resourceType: <https://smartagent.io/cbox/resource-type/> .
+@prefix intentStatus: <https://smartagent.io/cbox/intent-status/> .
+@prefix outcomeStatus: <https://smartagent.io/cbox/outcome-status/> .
+@prefix skos:         <http://www.w3.org/2004/02/skos/core#> .
+
+# =============================================================================
+# Smart Agent Intent-Type Vocabulary  (C-Box, SKOS)
+# =============================================================================
+#
+# Each intentType is a PAIR (direction, object). The label is what the
+# UI shows in the composer's intent-type chooser and the discovery
+# results. The matcher never reads intentType — it reads direction +
+# object directly. So adding new intent types is a UI / labelling
+# concern, not a system concern.
+#
+# Rule of thumb: same (direction, object) → same intent semantics.
+# Different label is fine when the user-facing words differ but the
+# structural pair is identical (e.g. "NeedHelp" and "NeedCoaching"
+# both share direction=receive + object=Worker; they differ only in
+# topic / payload).
+
+saint:IntentTypeScheme a skos:ConceptScheme ;
+    skos:prefLabel "Smart Agent Intent-Type Vocabulary"@en .
+
+# ─── Receive-shaped (Need-shaped) ──────────────────────────────────
+
+intentType:NeedInformation a skos:Concept ;
+    skos:prefLabel "Need information"@en ;
+    skos:definition "I need to know X. direction=receive, object=resourceType:Data."@en ;
+    skos:inScheme saint:IntentTypeScheme .
+
+intentType:NeedHelp a skos:Concept ;
+    skos:prefLabel "Need help"@en ;
+    skos:definition "I need someone to help with a task. direction=receive, object=resourceType:Worker."@en ;
+    skos:inScheme saint:IntentTypeScheme .
+
+intentType:NeedCoaching a skos:Concept ;
+    skos:prefLabel "Need coaching"@en ;
+    skos:definition "I need a coach / mentor. direction=receive, object=resourceType:Worker, requires role=Coach."@en ;
+    skos:inScheme saint:IntentTypeScheme .
+
+intentType:NeedFunding a skos:Concept ;
+    skos:prefLabel "Need funding"@en ;
+    skos:definition "I need money for a project. direction=receive, object=resourceType:Money."@en ;
+    skos:inScheme saint:IntentTypeScheme .
+
+intentType:NeedScripture a skos:Concept ;
+    skos:prefLabel "Need scripture"@en ;
+    skos:definition "I need heart-language scripture for a community. direction=receive, object=resourceType:Scripture."@en ;
+    skos:inScheme saint:IntentTypeScheme .
+
+intentType:NeedVenue a skos:Concept ;
+    skos:prefLabel "Need venue"@en ;
+    skos:definition "I need a place to gather. direction=receive, object=resourceType:Venue."@en ;
+    skos:inScheme saint:IntentTypeScheme .
+
+intentType:NeedSafePlace a skos:Concept ;
+    skos:prefLabel "Need safe place"@en ;
+    skos:definition "Sensitive — short-term housing, refuge. direction=receive, object=resourceType:Venue, visibility=private."@en ;
+    skos:inScheme saint:IntentTypeScheme .
+
+intentType:NeedTraumaCare a skos:Concept ;
+    skos:prefLabel "Need trauma-informed care"@en ;
+    skos:definition "Sensitive — trauma-care provider. direction=receive, object=resourceType:Worker, visibility=private."@en ;
+    skos:inScheme saint:IntentTypeScheme .
+
+intentType:NeedTreasurer a skos:Concept ;
+    skos:prefLabel "Need treasurer"@en ;
+    skos:definition "Need a financial steward. direction=receive, object=resourceType:Worker, requires role=Treasurer."@en ;
+    skos:inScheme saint:IntentTypeScheme .
+
+intentType:NeedConnector a skos:Concept ;
+    skos:prefLabel "Need an introduction"@en ;
+    skos:definition "Need someone who can introduce me to X. direction=receive, object=resourceType:Connector."@en ;
+    skos:inScheme saint:IntentTypeScheme .
+
+# ─── Give-shaped (Offering-shaped) ─────────────────────────────────
+
+intentType:WantToContribute a skos:Concept ;
+    skos:prefLabel "Want to contribute"@en ;
+    skos:definition "Open-ended give intent. 'I have time / energy / skill — place me where useful.' direction=give, object=resourceType:Worker. Note: user grammar may say 'need to contribute' — direction is still give."@en ;
+    skos:inScheme saint:IntentTypeScheme .
+
+intentType:OfferSkill a skos:Concept ;
+    skos:prefLabel "Offer skill"@en ;
+    skos:definition "I have a capability you can use. direction=give, object=resourceType:Skill."@en ;
+    skos:inScheme saint:IntentTypeScheme .
+
+intentType:OfferPrayer a skos:Concept ;
+    skos:prefLabel "Offer prayer"@en ;
+    skos:definition "Adopted, scheduled intercession. direction=give, object=resourceType:Prayer."@en ;
+    skos:inScheme saint:IntentTypeScheme .
+
+intentType:OfferIntroduction a skos:Concept ;
+    skos:prefLabel "Offer introduction"@en ;
+    skos:definition "Connector capacity — who I can introduce to. direction=give, object=resourceType:Connector."@en ;
+    skos:inScheme saint:IntentTypeScheme .
+
+intentType:OfferInformation a skos:Concept ;
+    skos:prefLabel "Offer information"@en ;
+    skos:definition "I have research / data / answers — ask me. direction=give, object=resourceType:Data."@en ;
+    skos:inScheme saint:IntentTypeScheme .
+
+intentType:OfferFunding a skos:Concept ;
+    skos:prefLabel "Offer funding"@en ;
+    skos:definition "I'll fund matching projects. direction=give, object=resourceType:Money."@en ;
+    skos:inScheme saint:IntentTypeScheme .
+
+intentType:OfferVenue a skos:Concept ;
+    skos:prefLabel "Offer venue"@en ;
+    skos:definition "Physical hosting capacity. direction=give, object=resourceType:Venue."@en ;
+    skos:inScheme saint:IntentTypeScheme .
+
+intentType:OfferTeaching a skos:Concept ;
+    skos:prefLabel "Offer teaching / curriculum"@en ;
+    skos:definition "Discipleship content / training material. direction=give, object=resourceType:Curriculum."@en ;
+    skos:inScheme saint:IntentTypeScheme .
+
+# ─── Status / outcome vocabularies ─────────────────────────────────
+
+intentStatus:Drafted       skos:prefLabel "Drafted"@en .
+intentStatus:Expressed     skos:prefLabel "Expressed"@en .
+intentStatus:Acknowledged  skos:prefLabel "Acknowledged"@en .
+intentStatus:InProgress    skos:prefLabel "In progress"@en .
+intentStatus:Fulfilled     skos:prefLabel "Fulfilled"@en .
+intentStatus:Withdrawn     skos:prefLabel "Withdrawn"@en .
+intentStatus:Abandoned     skos:prefLabel "Abandoned"@en .
+
+outcomeStatus:Pending      skos:prefLabel "Pending"@en .
+outcomeStatus:Partial      skos:prefLabel "Partial"@en .
+outcomeStatus:Achieved     skos:prefLabel "Achieved"@en .
+outcomeStatus:NotAchieved  skos:prefLabel "Not achieved"@en .

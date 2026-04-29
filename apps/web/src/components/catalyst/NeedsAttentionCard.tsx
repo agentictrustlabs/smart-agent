@@ -22,7 +22,13 @@ const TYPE_ICONS: Record<AttentionItem['type'], string> = {
 
 // ─── Component ──────────────────────────────────────────────────────
 
-export function NeedsAttentionCard({ items }: { items: AttentionItem[] }) {
+export function NeedsAttentionCard({ items, title, subtitle }: {
+  items: AttentionItem[]
+  /** Heading text. Defaults to "On your plate". */
+  title?: string
+  /** One-line clarifier under the heading explaining whose problem these are. */
+  subtitle?: string
+}) {
   if (items.length === 0) return null
 
   return (
@@ -35,17 +41,21 @@ export function NeedsAttentionCard({ items }: { items: AttentionItem[] }) {
         marginBottom: '1rem',
       }}
     >
-      <div
-        style={{
-          fontSize: '0.72rem',
-          fontWeight: 700,
-          color: '#d97706',
-          textTransform: 'uppercase',
-          letterSpacing: '0.05em',
-          marginBottom: '0.5rem',
-        }}
-      >
-        Needs Attention
+      <div style={{ marginBottom: '0.5rem' }}>
+        <div
+          style={{
+            fontSize: '0.72rem',
+            fontWeight: 700,
+            color: '#d97706',
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+          }}
+        >
+          {title ?? 'On your plate'}
+        </div>
+        <div style={{ fontSize: '0.72rem', color: '#9a8c7e', marginTop: '0.1rem' }}>
+          {subtitle ?? 'Things in your lane that need a decision'}
+        </div>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>

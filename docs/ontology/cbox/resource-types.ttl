@@ -1,0 +1,196 @@
+@prefix saoffer:    <https://smartagent.io/ontology/offering#> .
+@prefix resourceType: <https://smartagent.io/cbox/resource-type/> .
+@prefix needType:   <https://smartagent.io/cbox/need-type/> .
+@prefix matchReason: <https://smartagent.io/cbox/match-reason/> .
+@prefix matchStatus: <https://smartagent.io/cbox/match-status/> .
+@prefix needStatus: <https://smartagent.io/cbox/need-status/> .
+@prefix priority:   <https://smartagent.io/cbox/priority/> .
+@prefix availStatus: <https://smartagent.io/cbox/availability-status/> .
+@prefix capLevel:   <https://smartagent.io/cbox/capability-level/> .
+@prefix skos:       <http://www.w3.org/2004/02/skos/core#> .
+@prefix rdfs:       <http://www.w3.org/2000/01/rdf-schema#> .
+
+# =============================================================================
+# Smart Agent Resource Type Vocabulary  (C-Box, SKOS)
+# =============================================================================
+#
+# 12 v0 resource kinds. Hubs can extend via skos:broader (e.g. "ESL teacher"
+# → broader: resourceType:Worker). The match scorer dispatches per-type to
+# different evidence sources (skill claim vs. funding commitment vs.
+# prayer commitment).
+
+# ─── Top-level categorical groups ───────────────────────────────────
+
+resourceType:Human a saoffer:ResourceType ;
+    skos:prefLabel "Human capacity"@en ;
+    skos:inScheme saoffer:OfferingScheme ;
+    skos:topConceptOf saoffer:OfferingScheme .
+
+resourceType:Material a saoffer:ResourceType ;
+    skos:prefLabel "Material / financial"@en ;
+    skos:inScheme saoffer:OfferingScheme ;
+    skos:topConceptOf saoffer:OfferingScheme .
+
+resourceType:Spiritual a saoffer:ResourceType ;
+    skos:prefLabel "Spiritual / intercession"@en ;
+    skos:inScheme saoffer:OfferingScheme ;
+    skos:topConceptOf saoffer:OfferingScheme .
+
+resourceType:Knowledge a saoffer:ResourceType ;
+    skos:prefLabel "Knowledge / data / curriculum"@en ;
+    skos:inScheme saoffer:OfferingScheme ;
+    skos:topConceptOf saoffer:OfferingScheme .
+
+resourceType:Institutional a saoffer:ResourceType ;
+    skos:prefLabel "Institutional / organizational"@en ;
+    skos:inScheme saoffer:OfferingScheme ;
+    skos:topConceptOf saoffer:OfferingScheme .
+
+# ─── 12 v0 leaf kinds ───────────────────────────────────────────────
+
+resourceType:Skill a saoffer:ResourceType ;
+    skos:prefLabel "Skill"@en ;
+    skos:definition "A capability the agent personally carries — bridges to AgentSkillRegistry."@en ;
+    skos:broader resourceType:Human ;
+    skos:inScheme saoffer:OfferingScheme .
+
+resourceType:Money a saoffer:ResourceType ;
+    skos:prefLabel "Funding"@en ;
+    skos:definition "Restricted gift, grant, micro-finance, donor-advised fund disbursement."@en ;
+    skos:broader resourceType:Material ;
+    skos:inScheme saoffer:OfferingScheme .
+
+resourceType:Data a saoffer:ResourceType ;
+    skos:prefLabel "Data / Research"@en ;
+    skos:definition "Datasets, research findings, GraphDB content, demographic intel."@en ;
+    skos:broader resourceType:Knowledge ;
+    skos:inScheme saoffer:OfferingScheme .
+
+resourceType:Prayer a saoffer:ResourceType ;
+    skos:prefLabel "Prayer / Intercession"@en ;
+    skos:definition "Adopted, scheduled, committed prayer. Bridges to PrayerCommitment."@en ;
+    skos:broader resourceType:Spiritual ;
+    skos:inScheme saoffer:OfferingScheme .
+
+resourceType:Worker a saoffer:ResourceType ;
+    skos:prefLabel "Missional Worker"@en ;
+    skos:definition "A person available to deploy / coach / serve. The offering is the worker's availability, not the worker themselves."@en ;
+    skos:broader resourceType:Human ;
+    skos:inScheme saoffer:OfferingScheme .
+
+resourceType:Scripture a saoffer:ResourceType ;
+    skos:prefLabel "Scripture / Translation"@en ;
+    skos:definition "Heart-language scripture, oral Bible, translated curriculum. Bridges to Wycliffe, Progress.Bible."@en ;
+    skos:broader resourceType:Knowledge ;
+    skos:inScheme saoffer:OfferingScheme .
+
+resourceType:Church a saoffer:ResourceType ;
+    skos:prefLabel "Church / Gathering"@en ;
+    skos:definition "Local body, multiplication parent, host community. Bridges to GACX church-multiplication network."@en ;
+    skos:broader resourceType:Institutional ;
+    skos:inScheme saoffer:OfferingScheme .
+
+resourceType:Organization a saoffer:ResourceType ;
+    skos:prefLabel "Partnering Organization"@en ;
+    skos:definition "Org-level capability — alliance, partnership, sub-grantee. Bridges to ECFA, Lausanne issue networks, GACX."@en ;
+    skos:broader resourceType:Institutional ;
+    skos:inScheme saoffer:OfferingScheme .
+
+resourceType:Connector a saoffer:ResourceType ;
+    skos:prefLabel "Connector / Introducer"@en ;
+    skos:definition "Someone whose value is the introduction itself: who-do-you-know capacity. Cross-sector / cross-region bridges."@en ;
+    skos:broader resourceType:Human ;
+    skos:inScheme saoffer:OfferingScheme .
+
+resourceType:Venue a saoffer:ResourceType ;
+    skos:prefLabel "Place / Venue"@en ;
+    skos:definition "Physical hosting capacity — meeting space, lodging, event venue."@en ;
+    skos:broader resourceType:Material ;
+    skos:inScheme saoffer:OfferingScheme .
+
+resourceType:Curriculum a saoffer:ResourceType ;
+    skos:prefLabel "Curriculum / Content"@en ;
+    skos:definition "Discipleship content — BibleProject videos, T4T workbooks, Alpha course materials."@en ;
+    skos:broader resourceType:Knowledge ;
+    skos:inScheme saoffer:OfferingScheme .
+
+resourceType:Credential a saoffer:ResourceType ;
+    skos:prefLabel "Credential / Attestation"@en ;
+    skos:definition "Issuable credential — ECFA accreditation, ordination, leadership certification."@en ;
+    skos:broader resourceType:Institutional ;
+    skos:inScheme saoffer:OfferingScheme .
+
+# ─── Need types (v0 catalyst-relevant set) ──────────────────────────
+
+needType:CircleCoachNeeded a saoffer:ResourceType ;
+    skos:prefLabel "Circle needs a coach"@en ;
+    skos:inScheme saoffer:OfferingScheme .
+
+needType:Treasurer a saoffer:ResourceType ;
+    skos:prefLabel "Treasurer / financial steward needed"@en ;
+    skos:inScheme saoffer:OfferingScheme .
+
+needType:PrayerPartner a saoffer:ResourceType ;
+    skos:prefLabel "Prayer partner / intercessor needed"@en ;
+    skos:inScheme saoffer:OfferingScheme .
+
+needType:ConnectorToFunder a saoffer:ResourceType ;
+    skos:prefLabel "Introduction to a funder needed"@en ;
+    skos:inScheme saoffer:OfferingScheme .
+
+needType:HeartLanguageScripture a saoffer:ResourceType ;
+    skos:prefLabel "Heart-language scripture access needed"@en ;
+    skos:inScheme saoffer:OfferingScheme .
+
+needType:GroupLeaderApprentice a saoffer:ResourceType ;
+    skos:prefLabel "Group-leader apprentice needed"@en ;
+    skos:inScheme saoffer:OfferingScheme .
+
+needType:TrainerForT4T a saoffer:ResourceType ;
+    skos:prefLabel "T4T trainer needed"@en ;
+    skos:inScheme saoffer:OfferingScheme .
+
+needType:VenueForGathering a saoffer:ResourceType ;
+    skos:prefLabel "Venue for gathering needed"@en ;
+    skos:inScheme saoffer:OfferingScheme .
+
+needType:TraumaInformedCare a saoffer:ResourceType ;
+    skos:prefLabel "Trauma-informed care provider needed"@en ;
+    skos:inScheme saoffer:OfferingScheme .
+
+# ─── Status / priority / level vocabularies ─────────────────────────
+
+needStatus:Open       skos:prefLabel "Open"@en .
+needStatus:InProgress skos:prefLabel "In progress"@en .
+needStatus:Met        skos:prefLabel "Met"@en .
+needStatus:Cancelled  skos:prefLabel "Cancelled"@en .
+needStatus:Expired    skos:prefLabel "Expired"@en .
+
+priority:Critical skos:prefLabel "Critical"@en .
+priority:High     skos:prefLabel "High"@en .
+priority:Normal   skos:prefLabel "Normal"@en .
+priority:Low      skos:prefLabel "Low"@en .
+
+availStatus:Available  skos:prefLabel "Available"@en .
+availStatus:Reserved   skos:prefLabel "Reserved"@en .
+availStatus:Saturated  skos:prefLabel "Saturated"@en .
+availStatus:Paused     skos:prefLabel "Paused"@en .
+availStatus:Withdrawn  skos:prefLabel "Withdrawn"@en .
+
+capLevel:Beginner     skos:prefLabel "Beginner"@en .
+capLevel:Intermediate skos:prefLabel "Intermediate"@en .
+capLevel:Experienced  skos:prefLabel "Experienced"@en .
+capLevel:Expert       skos:prefLabel "Expert"@en .
+
+matchStatus:Proposed  skos:prefLabel "Proposed"@en .
+matchStatus:Accepted  skos:prefLabel "Accepted"@en .
+matchStatus:Rejected  skos:prefLabel "Rejected"@en .
+matchStatus:Stale     skos:prefLabel "Stale"@en .
+matchStatus:Fulfilled skos:prefLabel "Fulfilled"@en .
+
+matchReason:SkillRoleGeoFit     skos:prefLabel "Skill / role / geo fit"@en .
+matchReason:TrustGraphProximity skos:prefLabel "Trust-graph proximity"@en .
+matchReason:CredentialMatch     skos:prefLabel "Credential match"@en .
+matchReason:AvailabilityMatch   skos:prefLabel "Availability window match"@en .
+matchReason:CapacityFit         skos:prefLabel "Capacity fit"@en .
+matchReason:RoleAssignmentDirect skos:prefLabel "Already plays the requested role"@en .

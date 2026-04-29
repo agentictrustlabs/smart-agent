@@ -1,0 +1,114 @@
+@prefix sa:        <https://smartagent.io/ontology/core#> .
+@prefix saneed:    <https://smartagent.io/ontology/need#> .
+@prefix saoffer:   <https://smartagent.io/ontology/offering#> .
+@prefix samatch:   <https://smartagent.io/ontology/match#> .
+@prefix sh:        <http://www.w3.org/ns/shacl#> .
+@prefix skos:      <http://www.w3.org/2004/02/skos/core#> .
+@prefix xsd:       <http://www.w3.org/2001/XMLSchema#> .
+
+# =============================================================================
+# SHACL Shapes — Needs / Offerings / Matches
+# =============================================================================
+#
+# Validation invariants enforced at GraphDB-sync time. CI fails if any
+# triple in the data graph violates these shapes.
+
+# ─── NeedOccurrence ─────────────────────────────────────────────────
+
+[] a sh:NodeShape ;
+    sh:targetClass saneed:NeedOccurrence ;
+    sh:property [
+        sh:path saneed:neededBy ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "Every NeedOccurrence must name exactly one Agent that holds the need." ;
+    ] ;
+    sh:property [
+        sh:path saneed:needType ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "Every NeedOccurrence must carry exactly one needType (SKOS concept)." ;
+    ] ;
+    sh:property [
+        sh:path saneed:needStatus ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path saneed:hasPriority ;
+        sh:maxCount 1 ;
+    ] .
+
+# ─── ResourceOffering ───────────────────────────────────────────────
+
+[] a sh:NodeShape ;
+    sh:targetClass saoffer:ResourceOffering ;
+    sh:property [
+        sh:path saoffer:offeredBy ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "Every ResourceOffering must name exactly one Agent who offers it." ;
+    ] ;
+    sh:property [
+        sh:path saoffer:resourceType ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "Every ResourceOffering must carry exactly one resourceType (SKOS concept)." ;
+    ] ;
+    sh:property [
+        sh:path saoffer:availabilityStatus ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+    ] .
+
+# ─── NeedResourceMatch ──────────────────────────────────────────────
+
+[] a sh:NodeShape ;
+    sh:targetClass samatch:NeedResourceMatch ;
+    sh:property [
+        sh:path samatch:matchesNeed ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "Every NeedResourceMatch must reference exactly one NeedOccurrence." ;
+    ] ;
+    sh:property [
+        sh:path samatch:matchedOffering ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "Every NeedResourceMatch must reference exactly one ResourceOffering." ;
+    ] ;
+    sh:property [
+        sh:path samatch:matchScore ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:decimal ;
+        sh:minInclusive 0 ;
+        sh:maxInclusive 10000 ;
+        sh:message "matchScore must be 0..10000 basis points." ;
+    ] ;
+    sh:property [
+        sh:path samatch:matchStatus ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+    ] .
+
+# ─── RoleAssignment — must be situational, not global ────────────────
+
+[] a sh:NodeShape ;
+    sh:targetClass samatch:RoleAssignment ;
+    sh:property [
+        sh:path samatch:roleBearer ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path samatch:rolePlayed ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path samatch:roleContext ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "RoleAssignment must carry a context (Pathway / Group / Hub). Avoids 'Kenji a role:Coach' globally — Kenji plays Coach FOR Rachel IN this pathway." ;
+    ] .

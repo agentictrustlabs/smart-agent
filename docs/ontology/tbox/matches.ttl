@@ -1,0 +1,147 @@
+@prefix sa:        <https://smartagent.io/ontology/core#> .
+@prefix samatch:   <https://smartagent.io/ontology/match#> .
+@prefix saneed:    <https://smartagent.io/ontology/need#> .
+@prefix saoffer:   <https://smartagent.io/ontology/offering#> .
+@prefix sawq:      <https://smartagent.io/ontology/work-queue#> .
+@prefix skos:      <http://www.w3.org/2004/02/skos/core#> .
+@prefix dul:       <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#> .
+@prefix prov:      <http://www.w3.org/ns/prov#> .
+@prefix rdfs:      <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl:       <http://www.w3.org/2002/07/owl#> .
+@prefix xsd:       <http://www.w3.org/2001/XMLSchema#> .
+
+# =============================================================================
+# Smart Agent Match + Discover + Fulfillment Ontology  (T-Box)
+# =============================================================================
+#
+# The bridge between Need and Resource. The agent-team review stressed
+# that NeedResourceMatch is the most important addition to the model:
+# first-class object for search results, recommendations, explanations,
+# workflow handoff, approvals, and audit history.
+#
+# Discover → generates matches.
+# Fulfillment → consumes matches and the offerings they reference.
+
+<https://smartagent.io/ontology/match> a owl:Ontology ;
+    rdfs:label "Smart Agent Match / Discover / Fulfillment Ontology" ;
+    rdfs:comment "Bridge between Need and Resource. Discover generates Matches; matches turn into WorkItems; WorkItems trigger Activities; Activities fulfill Needs." ;
+    owl:versionInfo "v0" ;
+    owl:imports <https://smartagent.io/ontology/core> ,
+                <https://smartagent.io/ontology/need> ,
+                <https://smartagent.io/ontology/offering> ,
+                <http://www.w3.org/ns/prov-o> .
+
+# ─── Top classes ─────────────────────────────────────────────────────
+
+samatch:NeedResourceMatch a owl:Class ;
+    rdfs:subClassOf dul:Situation , prov:Entity ;
+    rdfs:label "Need-Resource Match" ;
+    rdfs:comment "A proposed, accepted, rejected, or stale fit between a NeedOccurrence and a ResourceOffering. Carries a score, a reason, a list of satisfied/missed requirements, and a generatedBy pointer to the DiscoverActivity." .
+
+samatch:DiscoverActivity a owl:Class ;
+    rdfs:subClassOf prov:Activity , dul:Action ;
+    rdfs:label "Discover Activity" ;
+    rdfs:comment "The activity that generated a set of matches. prov:used the NeedOccurrence(s) and ResourceOffering(s) it considered; prov:generated the NeedResourceMatch records." .
+
+samatch:FulfillmentActivity a owl:Class ;
+    rdfs:subClassOf prov:Activity , dul:Action ;
+    rdfs:label "Fulfillment Activity" ;
+    rdfs:comment "What actually happens to address the need. Distinct from DiscoverActivity: discover proposes, fulfillment acts. Carries fulfillsNeed + usesResource." .
+
+samatch:RoleAssignment a owl:Class ;
+    rdfs:subClassOf dul:Situation , prov:Entity ;
+    rdfs:label "Role Assignment" ;
+    rdfs:comment "Time-bound situational role-play. Replaces 'Kenji a role:Coach' globally. Use roleBearer + rolePlayed + roleContext + roleTarget + status." .
+
+# ─── Match properties ────────────────────────────────────────────────
+
+samatch:matchesNeed a owl:ObjectProperty ;
+    rdfs:domain samatch:NeedResourceMatch ;
+    rdfs:range  saneed:NeedOccurrence .
+
+samatch:matchedOffering a owl:ObjectProperty ;
+    rdfs:domain samatch:NeedResourceMatch ;
+    rdfs:range  saoffer:ResourceOffering .
+
+samatch:matchedResource a owl:ObjectProperty ;
+    rdfs:domain samatch:NeedResourceMatch ;
+    rdfs:range  saoffer:Resource .
+
+samatch:matchedAgent a owl:ObjectProperty ;
+    rdfs:domain samatch:NeedResourceMatch ;
+    rdfs:range  sa:Agent .
+
+samatch:satisfiesRequirement a owl:ObjectProperty ;
+    rdfs:domain samatch:NeedResourceMatch ;
+    rdfs:range  saneed:Requirement ;
+    rdfs:comment "Requirement IDs the offering satisfies. Drives the 'why does this fit?' explanation." .
+
+samatch:missesRequirement a owl:ObjectProperty ;
+    rdfs:domain samatch:NeedResourceMatch ;
+    rdfs:range  saneed:Requirement ;
+    rdfs:comment "Requirement IDs the offering does NOT satisfy. Drives the 'what's missing?' explanation." .
+
+samatch:matchScore a owl:DatatypeProperty ;
+    rdfs:domain samatch:NeedResourceMatch ;
+    rdfs:range  xsd:decimal ;
+    rdfs:comment "0..10000 basis points. <2000 not surfaced; <4000 not in default ranked list." .
+
+samatch:matchReason a owl:ObjectProperty ;
+    rdfs:domain samatch:NeedResourceMatch ;
+    rdfs:range  skos:Concept .   # SkillRoleGeoFit | TrustGraphProximity | CredentialMatch | …
+
+samatch:matchStatus a owl:ObjectProperty ;
+    rdfs:domain samatch:NeedResourceMatch ;
+    rdfs:range  skos:Concept .   # Proposed | Accepted | Rejected | Stale | Fulfilled
+
+samatch:matchGeneratedBy a owl:ObjectProperty ;
+    rdfs:domain samatch:NeedResourceMatch ;
+    rdfs:range  samatch:DiscoverActivity .
+
+# ─── Fulfillment properties ──────────────────────────────────────────
+
+samatch:fulfillsNeed a owl:ObjectProperty ;
+    rdfs:domain prov:Activity ;
+    rdfs:range  saneed:NeedOccurrence ;
+    rdfs:comment "Activity → Need. Closes the PROV chain: discover→match→fulfill→outcome." .
+
+samatch:usesResource a owl:ObjectProperty ;
+    rdfs:domain prov:Activity ;
+    rdfs:range  saoffer:ResourceOffering ;
+    rdfs:comment "Activity → Offering. Use prov:used as the underlying property; this is the typed alias." .
+
+samatch:assignedTo a owl:ObjectProperty ;
+    rdfs:range sa:Agent .
+
+samatch:forWorkMode a owl:ObjectProperty ;
+    rdfs:range sawq:WorkMode .
+
+samatch:triggeredBy a owl:ObjectProperty ;
+    rdfs:range prov:Entity .   # NeedOccurrence | Match | Event
+
+samatch:suggestsTask a owl:ObjectProperty ;
+    rdfs:range sa:Task .
+
+samatch:producedOutcome a owl:ObjectProperty ;
+    rdfs:range sa:Outcome .
+
+# ─── Role assignment properties ──────────────────────────────────────
+
+samatch:roleBearer a owl:ObjectProperty ;
+    rdfs:domain samatch:RoleAssignment ;
+    rdfs:range  sa:Agent .
+
+samatch:rolePlayed a owl:ObjectProperty ;
+    rdfs:domain samatch:RoleAssignment .
+
+samatch:roleContext a owl:ObjectProperty ;
+    rdfs:domain samatch:RoleAssignment ;
+    rdfs:range  prov:Entity .   # Pathway | Group | Hub
+
+samatch:roleTarget a owl:ObjectProperty ;
+    rdfs:domain samatch:RoleAssignment ;
+    rdfs:range  sa:Agent .
+
+samatch:roleStatus a owl:ObjectProperty ;
+    rdfs:domain samatch:RoleAssignment ;
+    rdfs:range  skos:Concept .   # Active | Lapsed | Ended
