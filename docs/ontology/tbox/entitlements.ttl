@@ -1,0 +1,160 @@
+@prefix sa:        <https://smartagent.io/ontology/core#> .
+@prefix saent:     <https://smartagent.io/ontology/entitlement#> .
+@prefix saint:     <https://smartagent.io/ontology/intent#> .
+@prefix samatch:   <https://smartagent.io/ontology/match#> .
+@prefix saoffer:   <https://smartagent.io/ontology/offering#> .
+@prefix hub:       <https://smartagent.io/ontology/hub-marketplace#> .
+@prefix vf:        <https://w3id.org/valueflows/ont/vf#> .
+@prefix ufo:       <http://www.ontologyofuniversals.com/ufo-c#> .
+@prefix skos:      <http://www.w3.org/2004/02/skos/core#> .
+@prefix dul:       <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#> .
+@prefix prov:      <http://www.w3.org/ns/prov#> .
+@prefix rdfs:      <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl:       <http://www.w3.org/2002/07/owl#> .
+@prefix xsd:       <http://www.w3.org/2001/XMLSchema#> .
+
+# =============================================================================
+# Smart Agent Entitlement & Fulfillment Ontology  (T-Box)
+# =============================================================================
+#
+# Entitlement is the workflow artifact that lives between an accepted
+# IntentMatch and the achievement of an Outcome. It carries terms,
+# capacity, and cadence; it generates FulfillmentWorkItems for both
+# parties; FulfillmentActivities consume its capacity and may achieve
+# its linked Outcome.
+#
+# Design choice: ONE Entitlement per accepted match. An Intent can be
+# fulfilled jointly by multiple Entitlements (e.g. several coaches
+# share the load). The Intent reaches `fulfilled` when ALL of its
+# accepted Entitlements are fulfilled.
+
+<https://smartagent.io/ontology/entitlement> a owl:Ontology ;
+    rdfs:label "Smart Agent Entitlement & Fulfillment Ontology" ;
+    rdfs:comment "Workflow layer between marketplace acceptance and outcome achievement." ;
+    owl:versionInfo "v0" ;
+    owl:imports <https://smartagent.io/ontology/core> ,
+                <https://smartagent.io/ontology/intent> ,
+                <https://smartagent.io/ontology/match> ,
+                <https://smartagent.io/ontology/offering> ,
+                <http://www.w3.org/ns/prov-o> .
+
+# ─── Top classes ─────────────────────────────────────────────────────
+
+saent:Entitlement a owl:Class ;
+    rdfs:subClassOf hub:ExchangeAgreement ;
+    skos:closeMatch hub:FulfillmentCase ;
+    skos:relatedMatch hub:ClaimRight ;
+    rdfs:label "Entitlement (v0 conflation — deprecated label)" ;
+    rdfs:comment "v0 CONFLATION — this single class projects three distinct ontology classes onto one record: hub:ExchangeAgreement (the contract) + a primary hub:ClaimRight (the right held by the Holder) + the operational hub:FulfillmentCase (the workspace). The user-facing term is being re-labelled to 'Engagement' in the catalyst UI; the technical name will split into the three proper classes in v1 once a single Agreement legitimately needs >1 ClaimRight or >1 Case. New code should reach for hub:* classes; this saent:Entitlement remains for back-compat with existing entitlements-table rows." .
+
+saent:FulfillmentWorkItem a owl:Class ;
+    rdfs:subClassOf hub:WorkItem ;
+    rdfs:label "Fulfillment Work Item" ;
+    rdfs:comment "A specific action attached to an Engagement. Either party can resolve a shared work item; the assignee field names the *primary* actor for routing notifications. Cadence-driven (one-shot or recurring). Aligned to hub:WorkItem in the marketplace-lifecycle spine." .
+
+saent:FulfillmentActivity a owl:Class ;
+    rdfs:subClassOf hub:FulfillmentActivity ;
+    rdfs:label "Fulfillment Activity" ;
+    rdfs:comment "An activity (existing activityLogs row) tagged with an entitlement reference. Consumes capacity, may resolve a work item, may achieve the linked outcome. Aligned to hub:FulfillmentActivity (and is a hub:EconomicEvent when the activity actually moves a resource — transfer, production, use, contribution)." .
+
+# ─── Properties ──────────────────────────────────────────────────────
+
+# Identification
+saent:sourceMatch a owl:ObjectProperty ;
+    rdfs:domain saent:Entitlement ;
+    rdfs:range samatch:NeedResourceMatch .
+
+saent:holderIntent a owl:ObjectProperty ;
+    rdfs:domain saent:Entitlement ;
+    rdfs:range saint:Intent ;
+    rdfs:comment "The receive-shaped intent being fulfilled." .
+
+saent:providerIntent a owl:ObjectProperty ;
+    rdfs:domain saent:Entitlement ;
+    rdfs:range saint:Intent ;
+    rdfs:comment "The give-shaped intent providing the resource." .
+
+saent:holderAgent a owl:ObjectProperty ;
+    rdfs:domain saent:Entitlement ;
+    rdfs:range sa:Agent ;
+    rdfs:comment "Who is entitled (the receiver)." .
+
+saent:providerAgent a owl:ObjectProperty ;
+    rdfs:domain saent:Entitlement ;
+    rdfs:range sa:Agent ;
+    rdfs:comment "Who grants the entitlement (the provider)." .
+
+# Terms
+saent:entitlementTerms a owl:DatatypeProperty ;
+    rdfs:domain saent:Entitlement ;
+    rdfs:range xsd:string ;
+    rdfs:comment "JSON: { object, topic, role?, skill?, geo?, scope, conditions? }. The accepted match's `satisfies` set + the offering's payload, frozen at mint time." .
+
+# Capacity (what's granted; what's left)
+saent:capacityUnit a owl:ObjectProperty ;
+    rdfs:domain saent:Entitlement ;
+    rdfs:range skos:Concept ;
+    rdfs:comment "SKOS concept from cbox/capacity-units.ttl — hours-per-week | dollars | slots | yes-no | sessions | introductions | bookings." .
+
+saent:capacityGranted a owl:DatatypeProperty ;
+    rdfs:domain saent:Entitlement ;
+    rdfs:range xsd:decimal .
+
+saent:capacityRemaining a owl:DatatypeProperty ;
+    rdfs:domain saent:Entitlement ;
+    rdfs:range xsd:decimal .
+
+# Cadence
+saent:cadence a owl:ObjectProperty ;
+    rdfs:domain saent:Entitlement ;
+    rdfs:range skos:Concept ;
+    rdfs:comment "SKOS concept from cbox/cadences.ttl — one-shot | weekly | biweekly | monthly | quarterly | on-demand." .
+
+# Outcome linkage
+saent:linkedOutcome a owl:ObjectProperty ;
+    rdfs:domain saent:Entitlement ;
+    rdfs:range saint:Outcome ;
+    rdfs:comment "The Outcome whose metric this entitlement helps advance. Multiple entitlements may share one Outcome when several agents jointly fulfill an intent." .
+
+# Lifecycle
+saent:entitlementStatus a owl:ObjectProperty ;
+    rdfs:domain saent:Entitlement ;
+    rdfs:range skos:Concept ;
+    rdfs:comment "granted | active | paused | suspended | fulfilled | revoked | expired. See cbox/entitlement-statuses.ttl." .
+
+saent:validFrom a owl:DatatypeProperty ;
+    rdfs:domain saent:Entitlement ;
+    rdfs:range xsd:dateTime .
+
+saent:validUntil a owl:DatatypeProperty ;
+    rdfs:domain saent:Entitlement ;
+    rdfs:range xsd:dateTime .
+
+# Activity ↔ Entitlement
+saent:fulfillsEntitlement a owl:ObjectProperty ;
+    rdfs:domain prov:Activity ;
+    rdfs:range saent:Entitlement ;
+    rdfs:comment "Closes the PROV chain: Activity → Entitlement → Match → Intent → Outcome. Generalises sah:fulfillsNeed and saint:fulfillsIntent — when set, the activity action backfills both legacy pointers from the entitlement." .
+
+# Work items
+saent:hasWorkItem a owl:ObjectProperty ;
+    rdfs:domain saent:Entitlement ;
+    rdfs:range saent:FulfillmentWorkItem .
+
+saent:workItemAssignee a owl:ObjectProperty ;
+    rdfs:domain saent:FulfillmentWorkItem ;
+    rdfs:range sa:Agent ;
+    rdfs:comment "The PRIMARY actor — used to route notifications and decide whose dashboard counts the item. Either party can resolve a shared item." .
+
+saent:taskKind a owl:ObjectProperty ;
+    rdfs:domain saent:FulfillmentWorkItem ;
+    rdfs:range skos:Concept ;
+    rdfs:comment "schedule-session | log-progress | confirm-receipt | provide-update | review | sign-off | check-in." .
+
+saent:resolvedByActivity a owl:ObjectProperty ;
+    rdfs:domain saent:FulfillmentWorkItem ;
+    rdfs:range prov:Activity .
+
+saent:workItemStatus a owl:ObjectProperty ;
+    rdfs:domain saent:FulfillmentWorkItem ;
+    rdfs:range skos:Concept .   # open | in-progress | done | skipped

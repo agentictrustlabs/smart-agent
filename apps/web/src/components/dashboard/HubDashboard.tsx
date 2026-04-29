@@ -29,6 +29,7 @@ import { CatalystFooterCTA } from '@/components/catalyst/CatalystFooterCTA'
 import { CatalystFieldZone } from '@/components/catalyst/CatalystFieldZone'
 import { CatalystAttentionStrip, CatalystAttentionStripSkeleton } from '@/components/catalyst/CatalystAttentionStrip'
 import { OpenNeedsStrip } from '@/components/discover/OpenNeedsStrip'
+import { ActiveFulfillmentsStrip } from '@/components/entitlements/ActiveFulfillmentsStrip'
 
 /**
  * Hub-aware dashboard view. Pure render — caller (a route) decides which
@@ -555,6 +556,13 @@ async function CatalystFieldDashboard({
           <DashboardForMode onChainRoles={userOrgs.flatMap(o => o.roles)} />
         </div>
       </div>
+
+      {/* Zone 4.4 — Active fulfillments (Entitlement layer).
+          The third primary band: marketplace acceptance turned into
+          work. Hidden until the user has ≥1 live entitlement. */}
+      <Suspense fallback={<div style={{ height: 90, background: 'rgba(139,94,60,0.04)', borderRadius: 12, marginBottom: '1rem' }} aria-hidden />}>
+        <ActiveFulfillmentsStrip userId={currentUser.id} hubSlug="catalyst" />
+      </Suspense>
 
       {/* Zone 4.5 — Where the hub needs help (Discover layer).
           Re-anchored from Zone 2.5 to here, AFTER the work zone, so

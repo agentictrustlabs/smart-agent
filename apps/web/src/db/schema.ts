@@ -200,6 +200,10 @@ export const activityLogs = sqliteTable('activity_logs', {
   /** PROV chain — generalised intent link. Set alongside fulfillsNeedId for
    *  receive-shaped intents; set alone for give/free-form intents. */
   fulfillsIntentId: text('fulfills_intent_id'),
+  /** PROV chain — closes the marketplace→fulfillment chain. When this
+   *  is set the activity action backfills fulfillsIntentId and
+   *  fulfillsNeedId from the entitlement's links. */
+  fulfillsEntitlementId: text('fulfills_entitlement_id'),
   /** PROV chain — Outcome contributed to by this activity. */
   achievesOutcomeId: text('achieves_outcome_id'),
   /** PROV chain — does this activity draw on a specific resource offering? */
@@ -546,6 +550,83 @@ export const beliefs = sqliteTable('beliefs', {
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
 })
 
+// ─── Entitlement / Fulfillment Layer ─────────────────────────────
+//
+// The workflow that lives between an accepted IntentMatch and the
+// achievement of an Outcome. Capacity, cadence, work items, activities.
+// Per-resource-type capacity-unit defaults live at
+// `packages/sdk/src/capacity-defaults.ts`.
+//
+// T-Box: docs/ontology/tbox/entitlements.ttl
+// SKOS:  docs/ontology/cbox/capacity-units.ttl
+// SHACL: docs/ontology/cbox/entitlement-shapes.shacl.ttl
+
+/**
+ * Entitlement — a granted right by Provider to Holder, anchored to an
+ * accepted IntentMatch. Carries terms, capacity, cadence, status.
+ *
+ * One Entitlement per accepted match. An Intent can be jointly fulfilled
+ * by multiple Entitlements; the Intent reaches `fulfilled` only when ALL
+ * of its accepted entitlements are fulfilled (per the user's design call).
+ */
+export const entitlements = sqliteTable('entitlements', {
+  id: text('id').primaryKey(),
+  /** Soft FK back to need_resource_matches.id. */
+  sourceMatchId: text('source_match_id').notNull(),
+  /** The intent being fulfilled (receive-shaped). */
+  holderIntentId: text('holder_intent_id').notNull(),
+  /** The intent providing the resource (give-shaped). */
+  providerIntentId: text('provider_intent_id').notNull(),
+  holderAgent: text('holder_agent').notNull(),
+  providerAgent: text('provider_agent').notNull(),
+  hubId: text('hub_id').notNull(),
+  /** JSON: { object, topic, role?, skill?, geo?, scope, conditions? } */
+  terms: text('terms').notNull(),
+  /** SKOS URI from cbox/capacity-units.ttl — e.g. 'capacityUnit:HoursPerWeek'. */
+  capacityUnit: text('capacity_unit').notNull(),
+  /** Total capacity granted at mint time. */
+  capacityGranted: integer('capacity_granted').notNull(),
+  /** Capacity remaining; clamped to zero on consume. */
+  capacityRemaining: integer('capacity_remaining').notNull(),
+  cadence: text('cadence', {
+    enum: ['one-shot', 'weekly', 'biweekly', 'monthly', 'quarterly', 'on-demand'],
+  }).notNull().default('weekly'),
+  /** Cached link to the outcome row this entitlement helps achieve. */
+  linkedOutcomeId: text('linked_outcome_id'),
+  status: text('status', {
+    enum: ['granted', 'active', 'paused', 'suspended', 'fulfilled', 'revoked', 'expired'],
+  }).notNull().default('granted'),
+  validFrom: text('valid_from').notNull(),
+  validUntil: text('valid_until'),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
+})
+
+/**
+ * FulfillmentWorkItem — a unit of action attached to an entitlement.
+ * Shared: `assigneeAgent` is the *primary* actor (routes notifications,
+ * counts on the assignee's dashboard) but EITHER party can resolve it.
+ */
+export const fulfillmentWorkItems = sqliteTable('fulfillment_work_items', {
+  id: text('id').primaryKey(),
+  entitlementId: text('entitlement_id').notNull().references(() => entitlements.id),
+  /** PRIMARY actor — for routing. Either party may resolve. */
+  assigneeAgent: text('assignee_agent').notNull(),
+  /** SKOS URI: 'taskKind:ScheduleSession' etc. */
+  taskKind: text('task_kind').notNull(),
+  title: text('title').notNull(),
+  detail: text('detail'),
+  /** Recurring items spawn next instances when previous resolves. */
+  cadence: text('cadence', { enum: ['one-shot', 'recurring'] }).notNull().default('one-shot'),
+  dueAt: text('due_at'),
+  /** Soft FK to activity_logs.id; populated when resolved. */
+  resolvedByActivityId: text('resolved_by_activity_id'),
+  status: text('status', {
+    enum: ['open', 'in-progress', 'done', 'skipped'],
+  }).notNull().default('open'),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+})
+
 /**
  * RoleAssignment — time-bound situational role-play. Replaces
  * "Kenji a role:Coach" with "Kenji plays Coach FOR Rachel IN this
@@ -563,6 +644,8 @@ export const roleAssignments = sqliteTable('role_assignments', {
   targetAgent: text('target_agent'),
   /** Link back to the match that established this assignment, if any. */
   sourceMatchId: text('source_match_id'),
+  /** Link back to the entitlement that established this assignment. */
+  sourceEntitlementId: text('source_entitlement_id'),
   startsAt: text('starts_at'),
   endsAt: text('ends_at'),
   status: text('status', {

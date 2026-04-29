@@ -16,6 +16,9 @@ interface Props {
   defaultRelatedEntity?: string
   /** Pre-fill the "Fulfills which need?" dropdown — e.g. /needs/[id] deep-link. */
   defaultFulfillsNeedId?: string
+  /** Pre-fill an entitlement id — supersedes need-id when set; the activity
+   *  will drive the entitlement capacity decrement + outcome cascade. */
+  defaultFulfillsEntitlementId?: string
   /** Hub scope for the open-needs dropdown. Defaults to 'catalyst'. */
   hubId?: string
   // Controlled mode
@@ -40,6 +43,7 @@ export default function QuickActivityModal({
   defaultTitle,
   defaultRelatedEntity,
   defaultFulfillsNeedId,
+  defaultFulfillsEntitlementId,
   hubId = 'catalyst',
   isOpen: controlledOpen,
   onClose,
@@ -121,6 +125,7 @@ export default function QuickActivityModal({
         activityDate: date,
         relatedEntity: defaultRelatedEntity || undefined,
         fulfillsNeedId: fulfillsNeedId || undefined,
+        fulfillsEntitlementId: defaultFulfillsEntitlementId || undefined,
       })
 
       // Show success toast briefly

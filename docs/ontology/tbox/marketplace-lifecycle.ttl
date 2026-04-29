@@ -1,0 +1,369 @@
+@prefix sa:        <https://smartagent.io/ontology/core#> .
+@prefix hub:       <https://smartagent.io/ontology/hub-marketplace#> .
+@prefix saint:     <https://smartagent.io/ontology/intent#> .
+@prefix saoffer:   <https://smartagent.io/ontology/offering#> .
+@prefix samatch:   <https://smartagent.io/ontology/match#> .
+@prefix saent:     <https://smartagent.io/ontology/entitlement#> .
+@prefix vf:        <https://w3id.org/valueflows/ont/vf#> .
+@prefix ufo:       <http://www.ontologyofuniversals.com/ufo-c#> .
+@prefix odrl:      <http://www.w3.org/ns/odrl/2/> .
+@prefix prov:      <http://www.w3.org/ns/prov#> .
+@prefix dul:       <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#> .
+@prefix skos:      <http://www.w3.org/2004/02/skos/core#> .
+@prefix rdfs:      <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl:       <http://www.w3.org/2002/07/owl#> .
+@prefix xsd:       <http://www.w3.org/2001/XMLSchema#> .
+
+
+# =============================================================================
+# Smart Agent Marketplace-Lifecycle Ontology
+#
+#   Anchored on:
+#     • UFO-C   — cognitive (Desire / Intention / Goal) +
+#                 social  (SocialRelator / SocialCommitment / SocialClaim)
+#     • VF      — economic flow (Intent / Proposal / Agreement /
+#                 Commitment / Claim / Plan / Process / EconomicEvent)
+#     • PROV-O  — execution provenance (Activity / Plan / Entity)
+#     • ODRL    — asset-permission policy where the right is a usage
+#                 authorization rather than a delivery claim
+#
+# This file is the "spine" — single class names you should reach for,
+# with proper external alignment. Other T-Box files (intents.ttl,
+# offerings.ttl, matches.ttl, entitlements.ttl) re-anchor their classes
+# to these via rdfs:subClassOf or skos:closeMatch.
+#
+# Reading this file: each class declares its place in TWO hierarchies —
+# the Smart Agent local one (rdfs:subClassOf hub:*) and the upper one
+# (rdfs:subClassOf vf:* / ufo:*). The local hierarchy is what the SDK
+# code references; the upper alignment is what makes the data
+# interoperable.
+# =============================================================================
+
+<https://smartagent.io/ontology/hub-marketplace> a owl:Ontology ;
+    rdfs:label "Smart Agent Marketplace-Lifecycle Ontology" ;
+    rdfs:comment "Spine of class names for the marketplace → fulfillment → outcome flow. Aligned to ValueFlows + UFO-C + PROV-O + ODRL." ;
+    owl:versionInfo "v0" ;
+    owl:imports <https://smartagent.io/ontology/core> ,
+                <http://www.w3.org/ns/prov-o> .
+
+# ─── Cognitive layer (UFO-C) ─────────────────────────────────────────
+
+hub:Desire a owl:Class ;
+    rdfs:subClassOf ufo:Desire ;
+    rdfs:label "Desire" ;
+    rdfs:comment "Motivational state of an agent toward a possible future condition. Latent — not yet committed." .
+
+hub:Intention a owl:Class ;
+    rdfs:subClassOf ufo:Intention ;
+    skos:closeMatch vf:Intent ;
+    skos:relatedMatch prov:Plan ;
+    rdfs:label "Intention" ;
+    rdfs:comment "Internal commitment by an agent to pursue a goal or to a desired economic flow. NOT a plan — that is hub:FulfillmentPlan. The 'intent' surface in the catalyst hub UI is an Intention." .
+
+hub:Goal a owl:Class ;
+    rdfs:subClassOf ufo:Goal ;
+    rdfs:label "Goal" ;
+    rdfs:comment "Propositional content of an Intention — the desired state of affairs. May or may not be the same as the eventual hub:Outcome." .
+
+hub:EconomicIntent a owl:Class ;
+    rdfs:subClassOf hub:Intention , vf:Intent ;
+    rdfs:label "Economic Intent" ;
+    rdfs:comment "An Intention expressed as a desired economic flow — the marketplace-publishable subset of intentions. Specialised below into RecipientIntent (receive-shaped) and ProviderIntent (give-shaped). Generic intentions (private goals, internal commitments not yet expressed) live at hub:Intention without going through this layer." .
+
+# Preferred: role-neutral names (work for services / access rights /
+# capabilities / goods / data / money / labor / promises).
+hub:RecipientIntent a owl:Class ;
+    rdfs:subClassOf hub:EconomicIntent ;
+    rdfs:label "Recipient Intent" ;
+    rdfs:comment "An EconomicIntent from the perspective of an agent SEEKING to receive, access, use, acquire, or have something performed. Receive-shaped (vf:Intent with provider unbound)." .
+
+hub:ProviderIntent a owl:Class ;
+    rdfs:subClassOf hub:EconomicIntent ;
+    rdfs:label "Provider Intent" ;
+    rdfs:comment "An EconomicIntent from the perspective of an agent ABLE OR WILLING to provide, perform, transfer, grant access, or make something available. Give-shaped (vf:Intent with receiver unbound)." .
+
+# Back-compat aliases — earlier drafts of this T-Box used the
+# words 'Requirement' and 'Provision'. They mean the same thing; keep
+# these as owl:equivalentClass so SPARQL queries against either
+# vocabulary still resolve.
+hub:RequirementIntent a owl:Class ;
+    owl:equivalentClass hub:RecipientIntent ;
+    rdfs:label "Requirement Intent (alias of RecipientIntent)" ;
+    rdfs:comment "Deprecated alias kept for back-compat. Prefer hub:RecipientIntent in new triples — it's role-neutral and hasRecipient framing." .
+
+hub:ProvisionIntent a owl:Class ;
+    owl:equivalentClass hub:ProviderIntent ;
+    rdfs:label "Provision Intent (alias of ProviderIntent)" ;
+    rdfs:comment "Deprecated alias kept for back-compat. Prefer hub:ProviderIntent in new triples." .
+
+# ─── Marketplace layer (VF) ──────────────────────────────────────────
+
+hub:MarketplaceProposal a owl:Class ;
+    rdfs:subClassOf vf:Proposal ;
+    rdfs:label "Marketplace Proposal" ;
+    rdfs:comment "A public posting of one or more Intentions for marketplace matching. Carries primary intent and optional reciprocal terms." .
+
+hub:RequestProposal a owl:Class ;
+    rdfs:subClassOf hub:MarketplaceProposal ;
+    rdfs:label "Request Proposal" ;
+    rdfs:comment "Posting whose primary purpose is a RecipientIntent — 'I'm asking the marketplace for X.'" .
+
+hub:OfferProposal a owl:Class ;
+    rdfs:subClassOf hub:MarketplaceProposal ;
+    rdfs:label "Offer Proposal" ;
+    rdfs:comment "Posting whose primary purpose is a ProviderIntent — 'I'm telling the marketplace I can provide X.'" .
+
+hub:ExchangeOffer a owl:Class ;
+    rdfs:subClassOf hub:OfferProposal ;
+    rdfs:label "Exchange Offer" ;
+    rdfs:comment "An OfferProposal that already carries explicit reciprocal terms — what the offerer expects to receive in return. Closer to a contingent-commitment than a generic posting; acceptance can fast-path to ExchangeAgreement because the terms are already on the wire.  " .
+
+hub:IntentMatch a owl:Class ;
+    rdfs:label "Intent Match" ;
+    rdfs:comment "Non-binding compatibility relation between a RecipientIntent and a ProviderIntent. Acceptance promotes a Match into an ExchangeAgreement." .
+
+# ─── Contractual layer (UFO-C SocialRelator + VF Agreement) ─────────
+
+hub:ExchangeAgreement a owl:Class ;
+    rdfs:subClassOf vf:Agreement ;
+    skos:closeMatch ufo:SocialRelator ;
+    rdfs:label "Exchange Agreement" ;
+    rdfs:comment "Mutually understood reciprocal arrangement between two or more parties, created from a matched RecipientIntent + ProviderIntent pair. Stipulates FulfillmentCommitments and creates ClaimRights / UsagePermissions. Most catalyst engagements live here. The legally-enforceable subset is hub:ExchangeContract " .
+
+hub:ExchangeContract a owl:Class ;
+    rdfs:subClassOf hub:ExchangeAgreement ;
+    rdfs:label "Exchange Contract" ;
+    rdfs:comment "A legally-enforceable ExchangeAgreement under a government jurisdiction. Distinct because not every accepted catalyst arrangement should be treated as a legal contract — coaching commitments, prayer adoptions, peer introductions are agreements without being contracts. Reserved for funding disbursements, formal partnership agreements, attestable credentials, and other arrangements with legal teeth. " .
+
+hub:FulfillmentCommitment a owl:Class ;
+    rdfs:subClassOf vf:Commitment ;
+    skos:closeMatch ufo:SocialCommitment ;
+    rdfs:label "Fulfillment Commitment" ;
+    rdfs:comment "Promised/scheduled future flow stipulated by an ExchangeAgreement. Settled by EconomicEvents that fulfill it." .
+
+hub:ClaimRight a owl:Class ;
+    rdfs:subClassOf vf:Claim ;
+    skos:closeMatch ufo:SocialClaim ;
+    rdfs:label "Claim Right" ;
+    rdfs:comment "Normative right held by a party against another, created by an ExchangeAgreement. The corrected name for what the catalyst UI used to call 'Entitlement'." .
+
+hub:UsagePermission a owl:Class ;
+    rdfs:subClassOf odrl:Permission ;
+    rdfs:label "Usage Permission" ;
+    rdfs:comment "Permission to access, use, invoke, consume, or operate a resource or capability — the right represented as an ODRL policy. Distinct from a ClaimRight in that a permission is about WHAT the bearer IS ALLOWED TO DO with something, not WHAT they're entitled to RECEIVE. Rule of thumb: 'someone owes me X' → ClaimRight. 'I'm allowed to do X' → UsagePermission. Both may flow from the same ExchangeAgreement (e.g. a venue booking agreement creates a ClaimRight to the booking + a UsagePermission to access the venue)." .
+
+hub:UsageAuthorization a owl:Class ;
+    owl:equivalentClass hub:UsagePermission ;
+    rdfs:label "Usage Authorization (alias of UsagePermission)" ;
+    rdfs:comment "Deprecated alias kept for back-compat with earlier T-Box drafts. Prefer hub:UsagePermission." .
+
+# ─── Operational layer ──────────────────────────────────────────────
+
+hub:FulfillmentCase a owl:Class ;
+    rdfs:label "Fulfillment Case" ;
+    rdfs:comment "Operational container coordinating the work an Agreement requires until its outcome is achieved. Holds FulfillmentPlans, WorkItems, FulfillmentActivities, OutcomeEvidence, Outcome." .
+
+hub:FulfillmentPlan a owl:Class ;
+    rdfs:subClassOf prov:Plan , vf:Plan ;
+    rdfs:label "Fulfillment Plan" ;
+    rdfs:comment "Structured body of scheduled work / processes / deliverables used to realize an Agreement. The HOW-layer; chosen and revisable inside a FulfillmentCase." .
+
+hub:WorkItem a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "Work Item" ;
+    rdfs:comment "Queue / ticket / todo *record* used to coordinate fulfillment work. The work item is a tracking artifact — NOT the work itself. Resolving a work item produces (or references) a hub:FulfillmentTask." .
+
+hub:FulfillmentTask a owl:Class ;
+    rdfs:subClassOf prov:Activity ;
+    rdfs:label "Fulfillment Task" ;
+    rdfs:comment "The actual or scheduled work activity performed during fulfillment. May be proposed, planned, scheduled, underway, or completed. Distinct from WorkItem (the record) and from FulfillmentActivity (the broader prov:Activity superclass that includes both task-driven and ad-hoc work). " .
+
+hub:TaskPattern a owl:Class ;
+    rdfs:label "Task Pattern" ;
+    rdfs:comment "Reusable outline / template / pattern for a FulfillmentTask. Used when many engagements share the same task structure (e.g. 'first coaching session' template across all coaching agreements). " .
+
+# ─── Execution layer (PROV-O + VF EconomicEvent) ────────────────────
+
+hub:FulfillmentActivity a owl:Class ;
+    rdfs:subClassOf prov:Activity ;
+    rdfs:label "Fulfillment Activity" ;
+    rdfs:comment "An action actually performed during fulfillment. May or may not move an economic resource." .
+
+hub:EconomicEvent a owl:Class ;
+    rdfs:subClassOf hub:FulfillmentActivity , vf:EconomicEvent ;
+    rdfs:label "Economic Event" ;
+    rdfs:comment "Observed economic flow — transfer, production, consumption, use, work contribution. The subset of FulfillmentActivities that affects a resource. Satisfies an Intent, fulfills a Commitment, settles a ClaimRight." .
+
+hub:Outcome a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "Outcome" ;
+    rdfs:comment "Achieved state, delivered resource, completed service, or measured result the Intention aimed at. Conformance to an OutcomeSpecification is judged by an OutcomeDetermination, supported by OutcomeEvidence." .
+
+# ─── Specification + Determination + Evidence (conformance pattern) ─
+
+hub:OutcomeSpecification a owl:Class ;
+    rdfs:label "Outcome Specification" ;
+    rdfs:comment "A set of characteristics, constraints, or acceptance criteria precise enough to evaluate whether an Outcome conforms. Carried alongside the ExchangeAgreement; what 'success' looks like, in checkable terms. " .
+
+hub:DeliverableSpecification a owl:Class ;
+    rdfs:subClassOf hub:OutcomeSpecification ;
+    rdfs:label "Deliverable Specification" ;
+    rdfs:comment "Specification for a deliverable artifact — product, document, dataset, scripture translation chapter, signed credential. Sufficient to determine whether the delivered thing discharges the obligation. ." .
+
+hub:ServiceOutcomeSpecification a owl:Class ;
+    rdfs:subClassOf hub:OutcomeSpecification ;
+    rdfs:label "Service Outcome Specification" ;
+    rdfs:comment "Specification for a service-shaped outcome — coaching engagement reaches G2 plant, ESL cohort completes 6-week curriculum, prayer adoption reaches 90 days. Distinct from a deliverable in that the outcome is performance-shaped, not artifact-shaped. " .
+
+hub:OutcomeDetermination a owl:Class ;
+    rdfs:subClassOf prov:Activity ;
+    rdfs:label "Outcome Determination" ;
+    rdfs:comment "An evaluation, inspection, test, attestation, or measurement event whose purpose is to establish whether an Outcome conforms to its OutcomeSpecification. Examples: ECFA audit, peer review, baptism witness, credential verification. The 'judging conformance' act, distinct from the act being judged. " .
+
+hub:OutcomeAcceptance a owl:Class ;
+    rdfs:subClassOf hub:OutcomeDetermination ;
+    rdfs:label "Outcome Acceptance" ;
+    rdfs:comment "A specific OutcomeDetermination whose result is acceptance — the holder formally signs off that the Outcome satisfies the specification, allowing the engagement to close cleanly." .
+
+hub:OutcomeEvidence a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "Outcome Evidence" ;
+    rdfs:comment "Receipts, logs, attestations, artifacts, signed claims, photos, reports — anything that supports, measures, or attests an Outcome. The basis on which an OutcomeDetermination judges conformance." .
+
+# ─── Properties — relate the layers ─────────────────────────────────
+
+# Intention ↔ Proposal ↔ Match ↔ Agreement
+hub:publishedAs a owl:ObjectProperty ;
+    rdfs:domain hub:Intention ; rdfs:range hub:MarketplaceProposal .
+
+hub:matchesRequirement a owl:ObjectProperty ;
+    rdfs:domain hub:IntentMatch ; rdfs:range hub:RequirementIntent .
+
+hub:matchesProvision a owl:ObjectProperty ;
+    rdfs:domain hub:IntentMatch ; rdfs:range hub:ProvisionIntent .
+
+hub:acceptedAs a owl:ObjectProperty ;
+    rdfs:domain hub:IntentMatch ; rdfs:range hub:ExchangeAgreement .
+
+hub:originatesFromIntent a owl:ObjectProperty ;
+    rdfs:domain hub:ExchangeAgreement ; rdfs:range hub:Intention .
+
+# Agreement ↔ Commitment ↔ ClaimRight ↔ Case
+hub:stipulatesCommitment a owl:ObjectProperty ;
+    rdfs:subPropertyOf vf:stipulates ;
+    rdfs:domain hub:ExchangeAgreement ; rdfs:range hub:FulfillmentCommitment .
+
+hub:stipulatesReciprocalCommitment a owl:ObjectProperty ;
+    rdfs:subPropertyOf vf:stipulatesReciprocal ;
+    rdfs:domain hub:ExchangeAgreement ; rdfs:range hub:FulfillmentCommitment .
+
+hub:createsClaimRight a owl:ObjectProperty ;
+    rdfs:domain hub:ExchangeAgreement ; rdfs:range hub:ClaimRight .
+
+hub:governsCase a owl:ObjectProperty ;
+    rdfs:domain hub:ExchangeAgreement ; rdfs:range hub:FulfillmentCase .
+
+hub:authorizesActivity a owl:ObjectProperty ;
+    rdfs:domain hub:ClaimRight ; rdfs:range hub:FulfillmentActivity .
+
+# Case ↔ Plan ↔ WorkItem
+hub:hasPlan a owl:ObjectProperty ;
+    rdfs:domain hub:FulfillmentCase ; rdfs:range hub:FulfillmentPlan .
+
+hub:hasWorkItem a owl:ObjectProperty ;
+    rdfs:domain hub:FulfillmentCase ; rdfs:range hub:WorkItem .
+
+hub:performedActivity a owl:ObjectProperty ;
+    rdfs:domain hub:FulfillmentCase ; rdfs:range hub:FulfillmentActivity .
+
+# Activity ↔ Intent / Commitment / ClaimRight (the three VF verbs)
+hub:satisfiesIntent a owl:ObjectProperty ;
+    rdfs:subPropertyOf vf:satisfies ;
+    rdfs:domain hub:FulfillmentActivity ; rdfs:range hub:Intention ;
+    rdfs:comment "VF: an EconomicEvent satisfies an Intent. Today projected as activity_logs.fulfills_intent_id." .
+
+hub:fulfillsCommitment a owl:ObjectProperty ;
+    rdfs:subPropertyOf vf:fulfills ;
+    rdfs:domain hub:EconomicEvent ; rdfs:range hub:FulfillmentCommitment ;
+    rdfs:comment "VF: an EconomicEvent fulfills a Commitment. Today projected via the entitlement→match→commitment chain." .
+
+hub:settlesClaimRight a owl:ObjectProperty ;
+    rdfs:subPropertyOf vf:settles ;
+    rdfs:domain hub:EconomicEvent ; rdfs:range hub:ClaimRight ;
+    rdfs:comment "VF: an EconomicEvent settles a Claim. Today projected as the capacity-decrement on the entitlement row." .
+
+# Outcome / Evidence
+hub:producesOutcome a owl:ObjectProperty ;
+    rdfs:domain hub:FulfillmentActivity ; rdfs:range hub:Outcome .
+
+hub:evidencedBy a owl:ObjectProperty ;
+    rdfs:domain hub:Outcome ; rdfs:range hub:OutcomeEvidence .
+
+# ─── Role properties (giver / receiver / party) ─────────────────────
+
+hub:provider a owl:ObjectProperty ;
+    rdfs:label "provider" ;
+    rdfs:comment "The party who provides / gives / supplies / performs. Used on Intent, Proposal, Agreement, Commitment, Activity, EconomicEvent. " ;
+    rdfs:range sa:Agent .
+
+hub:recipient a owl:ObjectProperty ;
+    rdfs:label "recipient" ;
+    rdfs:comment "The party who receives / acquires / is served. Used on Intent, Proposal, Agreement, ClaimRight, Activity, EconomicEvent. " ;
+    rdfs:range sa:Agent .
+
+hub:agreementParty a owl:ObjectProperty ;
+    rdfs:label "agreement party" ;
+    rdfs:comment "A party to an Agreement, Commitment, or obligation. The general role property for any participant in a contractual artifact. " ;
+    rdfs:domain hub:ExchangeAgreement ;
+    rdfs:range sa:Agent .
+
+# ─── Cognitive / contingency / conformance properties ──────────────
+
+hub:hasGoal a owl:ObjectProperty ;
+    rdfs:label "has goal" ;
+    rdfs:domain hub:Intention ;
+    rdfs:range hub:Goal ;
+    rdfs:comment "An Intention's propositional content — the desired state of affairs the agent commits to pursuing. " .
+
+hub:triggeredBy a owl:ObjectProperty ;
+    rdfs:label "triggered by" ;
+    rdfs:comment "Used on contingent artifacts (commitments / claim-rights / work items / agreements) to record what event activates them — for example a quarterly tranche commitment triggered by the prior tranche's verified report, or a pause-resume rule triggered by a dispute filing. " ;
+    rdfs:range prov:Entity .
+
+hub:conformsToSpecification a owl:ObjectProperty ;
+    rdfs:label "conforms to specification" ;
+    rdfs:comment "The validation relation between an Outcome (or any artifact) and the OutcomeSpecification it is judged against. Established by an OutcomeDetermination event. " ;
+    rdfs:range hub:OutcomeSpecification .
+
+# ─── WorkItem ↔ Task ↔ Pattern ──────────────────────────────────────
+
+hub:workItemDescribesTask a owl:ObjectProperty ;
+    rdfs:label "work item describes task" ;
+    rdfs:domain hub:WorkItem ;
+    rdfs:range hub:FulfillmentTask ;
+    rdfs:comment "Links the tracking record (WorkItem) to the work activity (FulfillmentTask) it represents. The WorkItem is the queue entry; the FulfillmentTask is what gets done." .
+
+hub:taskUsesPattern a owl:ObjectProperty ;
+    rdfs:label "task uses pattern" ;
+    rdfs:domain hub:FulfillmentTask ;
+    rdfs:range hub:TaskPattern ;
+    rdfs:comment "Records which reusable TaskPattern a specific FulfillmentTask was derived from — useful for cross-engagement learning and 'this is the standard playbook' reporting." .
+
+# ─── Alignment annotations to the existing T-Box ────────────────────
+# Recorded so SPARQL queries against either vocabulary still work.
+
+saint:Intent skos:closeMatch hub:Intention .
+saint:Intent skos:closeMatch vf:Intent .
+
+saoffer:ResourceOffering skos:closeMatch hub:ProvisionIntent ;
+    skos:relatedMatch vf:Proposal .
+
+samatch:NeedResourceMatch skos:closeMatch hub:IntentMatch .
+
+saent:Entitlement
+    rdfs:subClassOf hub:ExchangeAgreement ;
+    skos:closeMatch hub:FulfillmentCase ;
+    rdfs:comment "v0 conflation: this single class projects an ExchangeAgreement, its primary ClaimRight, and its FulfillmentCase as one record. v1 splits into separate classes once a single Agreement legitimately needs >1 ClaimRight or >1 Case." .
+
+saent:FulfillmentWorkItem rdfs:subClassOf hub:WorkItem .
+saent:FulfillmentActivity rdfs:subClassOf hub:FulfillmentActivity .

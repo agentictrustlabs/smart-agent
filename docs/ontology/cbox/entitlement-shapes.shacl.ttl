@@ -1,0 +1,94 @@
+@prefix sa:        <https://smartagent.io/ontology/core#> .
+@prefix saent:     <https://smartagent.io/ontology/entitlement#> .
+@prefix sh:        <http://www.w3.org/ns/shacl#> .
+@prefix xsd:       <http://www.w3.org/2001/XMLSchema#> .
+
+# =============================================================================
+# SHACL Shapes — Entitlement / FulfillmentWorkItem
+# =============================================================================
+
+# ─── Entitlement ────────────────────────────────────────────────────
+
+[] a sh:NodeShape ;
+    sh:targetClass saent:Entitlement ;
+    sh:property [
+        sh:path saent:sourceMatch ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "Every Entitlement must reference exactly one source IntentMatch (the acceptance that granted it)." ;
+    ] ;
+    sh:property [
+        sh:path saent:holderAgent ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path saent:providerAgent ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path saent:capacityUnit ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:nodeKind sh:IRI ;
+        sh:message "Every Entitlement must carry a capacity unit (SKOS concept from cbox/capacity-units.ttl)." ;
+    ] ;
+    sh:property [
+        sh:path saent:capacityGranted ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:decimal ;
+        sh:minInclusive 0 ;
+    ] ;
+    sh:property [
+        sh:path saent:capacityRemaining ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:decimal ;
+        sh:minInclusive 0 ;
+        sh:message "capacityRemaining must be ≥ 0; capacity decrement clamps at zero." ;
+    ] ;
+    sh:property [
+        sh:path saent:cadence ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path saent:entitlementStatus ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+    ] .
+# Note: "capacityRemaining ≤ capacityGranted" is enforced at the action
+# layer (server-side validation in mintEntitlement / consumeCapacity)
+# rather than via SHACL, since cross-property comparisons in pure SHACL
+# are awkward and the action already runs the same check before write.
+
+# ─── FulfillmentWorkItem ───────────────────────────────────────────
+
+[] a sh:NodeShape ;
+    sh:targetClass saent:FulfillmentWorkItem ;
+    sh:property [
+        sh:path saent:hasWorkItem ;
+        sh:nodeKind sh:IRI ;
+        sh:inversePath true ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "Every FulfillmentWorkItem must belong to exactly one Entitlement (via saent:hasWorkItem)." ;
+    ] ;
+    sh:property [
+        sh:path saent:workItemAssignee ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "Every FulfillmentWorkItem names one PRIMARY assignee (the routing target). Either party can resolve the item; the assignee just decides whose dashboard counts it." ;
+    ] ;
+    sh:property [
+        sh:path saent:taskKind ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path saent:workItemStatus ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+    ] .

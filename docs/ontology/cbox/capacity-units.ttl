@@ -1,0 +1,111 @@
+@prefix saent:        <https://smartagent.io/ontology/entitlement#> .
+@prefix saoffer:      <https://smartagent.io/ontology/offering#> .
+@prefix capacityUnit: <https://smartagent.io/cbox/capacity-unit/> .
+@prefix cadence:      <https://smartagent.io/cbox/cadence/> .
+@prefix entitlementStatus: <https://smartagent.io/cbox/entitlement-status/> .
+@prefix workItemStatus:    <https://smartagent.io/cbox/work-item-status/> .
+@prefix taskKind:     <https://smartagent.io/cbox/task-kind/> .
+@prefix skos:         <http://www.w3.org/2004/02/skos/core#> .
+
+# =============================================================================
+# Entitlement-related controlled vocabularies
+# =============================================================================
+#
+# capacity-units, cadences, statuses, work-item kinds.
+#
+# A per-resource-type *default* mapping (which capacity unit a coaching
+# offering uses by default vs. a funding offering) lives in code
+# (`packages/sdk/src/capacity-defaults.ts`) so it can be imported
+# without parsing TTL — but the values it references all live here as
+# SKOS concepts so any UI / SHACL constraint can validate against the
+# enum.
+
+saent:CapacityUnitScheme a skos:ConceptScheme ;
+    skos:prefLabel "Smart Agent Capacity-Unit Vocabulary"@en .
+
+# ─── Capacity units ─────────────────────────────────────────────────
+
+capacityUnit:HoursPerWeek a skos:Concept ;
+    skos:prefLabel "Hours / week"@en ;
+    skos:definition "For coaching, mentorship, missional-worker availability — the granted capacity is N hours per week, decremented by activity duration."@en ;
+    skos:inScheme saent:CapacityUnitScheme .
+
+capacityUnit:Dollars a skos:Concept ;
+    skos:prefLabel "Dollars"@en ;
+    skos:definition "For funding entitlements — the granted amount in USD. Each disbursement activity decrements by its tranche amount."@en ;
+    skos:inScheme saent:CapacityUnitScheme .
+
+capacityUnit:Slots a skos:Concept ;
+    skos:prefLabel "Slots"@en ;
+    skos:definition "For prayer cadences, coaching slots, training cohorts — discrete slots; each fulfillment activity consumes one."@en ;
+    skos:inScheme saent:CapacityUnitScheme .
+
+capacityUnit:Sessions a skos:Concept ;
+    skos:prefLabel "Sessions"@en ;
+    skos:definition "Fixed-count sessions (e.g. 6-week ESL course) — each session activity consumes one."@en ;
+    skos:inScheme saent:CapacityUnitScheme .
+
+capacityUnit:Introductions a skos:Concept ;
+    skos:prefLabel "Introductions"@en ;
+    skos:definition "Connector-type entitlements — N introductions granted; each introduction activity consumes one."@en ;
+    skos:inScheme saent:CapacityUnitScheme .
+
+capacityUnit:Bookings a skos:Concept ;
+    skos:prefLabel "Bookings"@en ;
+    skos:definition "Venue-type entitlements — N bookings granted; each booking activity consumes one."@en ;
+    skos:inScheme saent:CapacityUnitScheme .
+
+capacityUnit:YesNo a skos:Concept ;
+    skos:prefLabel "Yes / no"@en ;
+    skos:definition "Information-transfer entitlements — single transaction. Capacity = 1 ⇒ unfulfilled; capacity = 0 ⇒ fulfilled. Used for Information intents."@en ;
+    skos:inScheme saent:CapacityUnitScheme .
+
+capacityUnit:Reports a skos:Concept ;
+    skos:prefLabel "Reports"@en ;
+    skos:definition "Funding entitlements that require N tranche reports (e.g. quarterly grant disbursements with usage reports). Each report activity consumes one."@en ;
+    skos:inScheme saent:CapacityUnitScheme .
+
+# ─── Cadences ──────────────────────────────────────────────────────
+
+cadence:OneShot   skos:prefLabel "One-shot"@en .
+cadence:Weekly    skos:prefLabel "Weekly"@en .
+cadence:Biweekly  skos:prefLabel "Biweekly"@en .
+cadence:Monthly   skos:prefLabel "Monthly"@en .
+cadence:Quarterly skos:prefLabel "Quarterly"@en .
+cadence:OnDemand  skos:prefLabel "On demand"@en .
+
+# ─── Entitlement statuses ──────────────────────────────────────────
+
+entitlementStatus:Granted   skos:prefLabel "Granted"@en ;
+    skos:definition "Just-minted from match acceptance; first activity hasn't been logged yet."@en .
+entitlementStatus:Active    skos:prefLabel "Active"@en ;
+    skos:definition "Work in progress; at least one fulfillment activity logged."@en .
+entitlementStatus:Paused    skos:prefLabel "Paused"@en ;
+    skos:definition "Provider explicitly paused; recurring work items don't generate."@en .
+entitlementStatus:Suspended skos:prefLabel "Suspended"@en ;
+    skos:definition "Dispute filed against the entitlement; same effect as paused, different reason."@en .
+entitlementStatus:Fulfilled skos:prefLabel "Fulfilled"@en ;
+    skos:definition "Outcome metric achieved. Cascades to match-fulfilled, intent-fulfilled (when ALL of the intent's entitlements are fulfilled)."@en .
+entitlementStatus:Revoked   skos:prefLabel "Revoked"@en ;
+    skos:definition "Either party explicitly terminated early."@en .
+entitlementStatus:Expired   skos:prefLabel "Expired"@en ;
+    skos:definition "validUntil reached without fulfillment."@en .
+
+# ─── Work-item statuses ─────────────────────────────────────────────
+
+workItemStatus:Open       skos:prefLabel "Open"@en .
+workItemStatus:InProgress skos:prefLabel "In progress"@en .
+workItemStatus:Done       skos:prefLabel "Done"@en .
+workItemStatus:Skipped    skos:prefLabel "Skipped"@en .
+
+# ─── Task kinds ────────────────────────────────────────────────────
+
+taskKind:ScheduleSession  skos:prefLabel "Schedule a session"@en .
+taskKind:LogProgress      skos:prefLabel "Log progress"@en .
+taskKind:ConfirmReceipt   skos:prefLabel "Confirm receipt"@en .
+taskKind:ProvideUpdate    skos:prefLabel "Provide an update"@en .
+taskKind:Review           skos:prefLabel "Review"@en .
+taskKind:SignOff          skos:prefLabel "Sign off"@en .
+taskKind:CheckIn          skos:prefLabel "Check-in"@en .
+taskKind:ShareGoals       skos:prefLabel "Share goals"@en .
+taskKind:ProvideReceipts  skos:prefLabel "Provide receipts"@en .

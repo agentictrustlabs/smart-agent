@@ -220,7 +220,7 @@ export async function getMatch(id: string, hydrate = true): Promise<MatchRow | n
 
 // ─── Accept / Reject ────────────────────────────────────────────────
 
-export async function acceptMatch(matchId: string): Promise<{ ok: true; roleAssignmentId?: string } | { error: string }> {
+export async function acceptMatch(matchId: string): Promise<{ ok: true; roleAssignmentId?: string; entitlementId?: string } | { error: string }> {
   const me = await getCurrentUser()
   if (!me) return { error: 'not-authenticated' }
   const match = await getMatch(matchId, true)
@@ -242,6 +242,55 @@ export async function acceptMatch(matchId: string): Promise<{ ok: true; roleAssi
       .run()
   }
 
+  // ── Mint an Entitlement (the workflow artifact) ──────────────────
+  // Look up the receive- and give-side intents (created by the
+  // backfill / express-intent flow) so the entitlement can carry both.
+  let entitlementId: string | undefined
+  let outcomeId: string | null = null
+  try {
+    const { mintEntitlement, seedInitialWorkItem } = await import('./entitlements.action')
+    const { getIntentForLegacyNeed, getIntentForLegacyOffering } = await import('./intents.action')
+    const [holderIntent, providerIntent] = await Promise.all([
+      getIntentForLegacyNeed(match.needId),
+      getIntentForLegacyOffering(match.offeringId),
+    ])
+    if (holderIntent && providerIntent && match.offering && match.need) {
+      // Pull the linked outcome for the holder intent (created by
+      // expressIntent when the user provided a success criterion).
+      const outcomeRow = db.select().from(schema.outcomes)
+        .where(eq(schema.outcomes.intentId, holderIntent.id)).get()
+      outcomeId = outcomeRow?.id ?? null
+
+      const reqs = match.need.requirements ?? {}
+      const mintRes = await mintEntitlement({
+        sourceMatchId: matchId,
+        holderIntentId: holderIntent.id,
+        providerIntentId: providerIntent.id,
+        holderAgent: match.need.neededByAgent,
+        providerAgent: match.matchedAgent,
+        hubId: match.need.hubId,
+        resourceType: match.offering.resourceType,
+        terms: {
+          object: match.offering.resourceType,
+          topic: holderIntent.topic ?? match.need.title,
+          role: reqs.role,
+          skill: reqs.skill,
+          geo: reqs.geo,
+          scope: holderIntent.intentTypeLabel,
+        },
+        linkedOutcomeId: outcomeId ?? undefined,
+      })
+      if ('id' in mintRes) {
+        entitlementId = mintRes.id
+        // Seed the first shared work item — provider gets primary
+        // assignment; either party can resolve.
+        await seedInitialWorkItem(entitlementId)
+      }
+    }
+  } catch (err) {
+    console.warn('[acceptMatch] entitlement mint failed (non-fatal):', (err as Error).message)
+  }
+
   // Mint a RoleAssignment when the match satisfies a role requirement.
   let roleAssignmentId: string | undefined
   const reqs = match.need?.requirements
@@ -254,6 +303,7 @@ export async function acceptMatch(matchId: string): Promise<{ ok: true; roleAssi
       contextEntity: match.need!.neededByAgent,
       targetAgent: null,
       sourceMatchId: matchId,
+      sourceEntitlementId: entitlementId ?? null,
       startsAt: now,
       endsAt: null,
       status: 'active',
@@ -269,13 +319,15 @@ export async function acceptMatch(matchId: string): Promise<{ ok: true; roleAssi
       userId: me.id, // notification author; the in-app message is for the matched agent — TODO: route by agent
       type: 'relationship_proposed',
       title: `Match accepted: ${match.need?.title ?? 'a need'}`,
-      body: `You've been matched to fulfill "${match.need?.title}" via your offering "${match.offering?.title}". Open the match for next steps.`,
-      link: `/h/catalyst/matches/${matchId}`,
+      body: entitlementId
+        ? `You've been matched to fulfill "${match.need?.title}" via your offering "${match.offering?.title}". An engagement workspace has been opened — see the work items for next steps.`
+        : `You've been matched to fulfill "${match.need?.title}" via your offering "${match.offering?.title}". Open the match for next steps.`,
+      link: entitlementId ? `/h/catalyst/entitlements/${entitlementId}` : `/h/catalyst/matches/${matchId}`,
       read: 0,
     }).run()
   }
 
-  return { ok: true, roleAssignmentId }
+  return { ok: true, roleAssignmentId, entitlementId }
 }
 
 export async function rejectMatch(matchId: string, reason?: string): Promise<{ ok: true } | { error: string }> {

@@ -101,23 +101,41 @@ export async function getHubOnboardingState(hubAddressInput: string): Promise<Hu
   }
 
   // 2. Agent registered on AgentAccountResolver?
+  //
+  // Demo + production users carry TWO distinct on-chain addresses:
+  //   • `smart_account_address` — the wallet's UserOp target (session/auth)
+  //   • `person_agent_address`  — the registered agent in the trust graph
+  //
+  // The seed and production agent-registration flow both write the
+  // *person agent* into the resolver, never the wallet smart account.
+  // Earlier this check used `smart_account_address` exclusively, which
+  // returned `false` for every user with a properly-registered person
+  // agent — leaving them stuck on "Setting up your agent / Preparing…"
+  // forever. Now we check person-agent first and fall back to smart
+  // account for legacy accounts that still register the wallet itself.
   const resolverAddr = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}` | undefined
+  const personAgent = user.personAgentAddress as `0x${string}` | null
   const smartAcct = user.smartAccountAddress as `0x${string}` | null
   let agentRegistered = false
   let onChainPrimaryName = ''
-  if (resolverAddr && smartAcct) {
+  if (resolverAddr && (personAgent || smartAcct)) {
+    const candidates = [personAgent, smartAcct].filter((a): a is `0x${string}` => !!a)
     try {
       const client = getPublicClient()
-      agentRegistered = await client.readContract({
-        address: resolverAddr, abi: agentAccountResolverAbi,
-        functionName: 'isRegistered', args: [getAddress(smartAcct)],
-      }) as boolean
-      if (agentRegistered) {
-        onChainPrimaryName = await client.readContract({
+      for (const addr of candidates) {
+        const reg = await client.readContract({
           address: resolverAddr, abi: agentAccountResolverAbi,
-          functionName: 'getStringProperty',
-          args: [getAddress(smartAcct), ATL_PRIMARY_NAME as `0x${string}`],
-        }) as string
+          functionName: 'isRegistered', args: [getAddress(addr)],
+        }) as boolean
+        if (reg) {
+          agentRegistered = true
+          onChainPrimaryName = await client.readContract({
+            address: resolverAddr, abi: agentAccountResolverAbi,
+            functionName: 'getStringProperty',
+            args: [getAddress(addr), ATL_PRIMARY_NAME as `0x${string}`],
+          }) as string
+          break
+        }
       }
     } catch { /* registry unavailable */ }
   }

@@ -3,6 +3,9 @@
 @prefix saoffer:   <https://smartagent.io/ontology/offering#> .
 @prefix saneed:    <https://smartagent.io/ontology/need#> .
 @prefix sarole:    <https://smartagent.io/ontology/role#> .
+@prefix hub:       <https://smartagent.io/ontology/hub-marketplace#> .
+@prefix vf:        <https://w3id.org/valueflows/ont/vf#> .
+@prefix ufo:       <http://www.ontologyofuniversals.com/ufo-c#> .
 @prefix skos:      <http://www.w3.org/2004/02/skos/core#> .
 @prefix dul:       <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#> .
 @prefix prov:      <http://www.w3.org/ns/prov#> .
@@ -36,9 +39,12 @@
 # ─── Top class ───────────────────────────────────────────────────────
 
 saint:Intent a owl:Class ;
-    rdfs:subClassOf dul:Plan , prov:Plan ;
+    rdfs:subClassOf ufo:Intention ;
+    skos:closeMatch hub:Intention ;
+    skos:closeMatch vf:Intent ;
+    skos:relatedMatch prov:Plan ;
     rdfs:label "Intent" ;
-    rdfs:comment "An addressed, committed desire with a direction (receive | give) and an object (the value flowing). All matching, scoring, and orchestration reads `direction` + `object`." .
+    rdfs:comment "An addressed, committed *intention* (UFO-C) — an agent's internal commitment to pursue a goal or to a desired economic flow (vf:Intent). NOT a plan; the plan that fulfills it is hub:FulfillmentPlan. Direction + object remain the structural axes the matcher reads. (Subclassing prov:Plan was an earlier mistake — corrected per the marketplace-lifecycle alignment.)" .
 
 # ─── Direction (closed enum, modelled as SKOS for SHACL friendliness) ──
 
@@ -46,6 +52,35 @@ saint:Direction a owl:Class ;
     rdfs:subClassOf skos:Concept ;
     rdfs:label "Direction" ;
     rdfs:comment "Two-valued: saint:Receive | saint:Give. Modelled as a class so SHACL can validate the enum and SPARQL queries can discriminate without string equality." .
+
+# Subclass aliases — direction-typed intents map to vf:Intent subclasses
+# in the marketplace-lifecycle spine. Kept as separate URIs so SPARQL
+# queries can target them directly rather than filtering on `direction`.
+#
+# Preferred names: RecipientIntent / ProviderIntent (role-neutral; work
+# for services / access rights / capabilities / goods / data / money /
+# labor / promises). The earlier RequirementIntent / ProvisionIntent
+# names are kept as owl:equivalentClass aliases for back-compat.
+
+saint:RecipientIntent a owl:Class ;
+    rdfs:subClassOf saint:Intent , vf:Intent , hub:RecipientIntent ;
+    rdfs:label "Recipient Intent" ;
+    rdfs:comment "saint:Intent with direction=Receive. The agent SEEKS to receive, access, use, acquire, or have something performed. Vocabulary alias for hub:RecipientIntent." .
+
+saint:ProviderIntent a owl:Class ;
+    rdfs:subClassOf saint:Intent , vf:Intent , hub:ProviderIntent ;
+    rdfs:label "Provider Intent" ;
+    rdfs:comment "saint:Intent with direction=Give. The agent CAN PROVIDE, perform, transfer, grant access, or make something available. Vocabulary alias for hub:ProviderIntent." .
+
+saint:RequirementIntent a owl:Class ;
+    owl:equivalentClass saint:RecipientIntent ;
+    rdfs:label "Requirement Intent (alias)" ;
+    rdfs:comment "Deprecated alias; kept for back-compat. Prefer saint:RecipientIntent." .
+
+saint:ProvisionIntent a owl:Class ;
+    owl:equivalentClass saint:ProviderIntent ;
+    rdfs:label "Provision Intent (alias)" ;
+    rdfs:comment "Deprecated alias; kept for back-compat. Prefer saint:ProviderIntent." .
 
 saint:Receive a saint:Direction ;
     skos:prefLabel "receive"@en ;
@@ -63,9 +98,16 @@ saint:Belief a owl:Class ;
     rdfs:comment "What the agent holds true. Light wrapper over AgentAssertion — most beliefs are already on chain. Beliefs can inform an intent." .
 
 saint:Desire a owl:Class ;
-    rdfs:subClassOf dul:Description ;
+    rdfs:subClassOf dul:Description , ufo:Desire ;
+    skos:closeMatch hub:Desire ;
     rdfs:label "Desire" ;
-    rdfs:comment "Latent goal. NOT addressed. NOT actionable. A desire matures into an intent when it gets addressed and committed." .
+    rdfs:comment "Latent motivational state of an agent. NOT addressed. NOT actionable. A desire matures into an Intention when it gets addressed and committed (UFO-C: Desire → Intention)." .
+
+saint:Goal a owl:Class ;
+    rdfs:subClassOf ufo:Goal ;
+    skos:closeMatch hub:Goal ;
+    rdfs:label "Goal" ;
+    rdfs:comment "Propositional content of an intention — the desired state of affairs. May or may not be the same as the eventual hub:Outcome." .
 
 # ─── Outcome ─────────────────────────────────────────────────────────
 

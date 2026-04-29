@@ -25,6 +25,17 @@ export async function logActivity(data: {
   peopleGroup?: string
   /** PROV chain — does this activity address an open need? */
   fulfillsNeedId?: string
+  /** PROV chain — closes the marketplace→fulfillment chain. When set,
+   *  the action backfills `fulfillsNeedId` and `fulfillsIntentId` from
+   *  the entitlement's links and drives capacity decrement + cascade. */
+  fulfillsEntitlementId?: string
+  /** Optional: how much capacity this activity consumes (default 1).
+   *  Used by funding entitlements to record tranche dollar amount, etc. */
+  capacityConsumed?: number
+  /** Optional: explicit "this achieves the outcome" flag — fast-path to
+   *  fulfilled even before capacity hits zero (e.g. a single
+   *  information-transfer answers a one-shot info intent). */
+  achievesOutcome?: boolean
   /** PROV chain — does this activity draw on a specific resource offering? */
   usesOfferingId?: string
 }) {
@@ -56,6 +67,22 @@ export async function logActivity(data: {
   activities.push(entry)
   await setActivityLog(data.orgAddress, activities)
 
+  // PROV-chain pre-resolve: if the activity carries an entitlement id,
+  // backfill the legacy fulfillsNeedId from the entitlement → match → need
+  // chain so existing surfaces (need detail, work-queue) still see it.
+  let resolvedFulfillsNeedId = data.fulfillsNeedId ?? null
+  if (data.fulfillsEntitlementId && !resolvedFulfillsNeedId) {
+    try {
+      const ent = db.select().from(schema.entitlements)
+        .where(eq(schema.entitlements.id, data.fulfillsEntitlementId)).get()
+      if (ent) {
+        const match = db.select().from(schema.needResourceMatches)
+          .where(eq(schema.needResourceMatches.id, ent.sourceMatchId)).get()
+        if (match) resolvedFulfillsNeedId = match.needId
+      }
+    } catch { /* non-fatal */ }
+  }
+
   // Also write to DB for dashboard queries
   try {
     await db.insert(schema.activityLogs).values({
@@ -71,7 +98,8 @@ export async function logActivity(data: {
       lng: data.lng || null,
       durationMinutes: data.durationMinutes || null,
       relatedEntity: data.relatedEntity || null,
-      fulfillsNeedId: data.fulfillsNeedId || null,
+      fulfillsNeedId: resolvedFulfillsNeedId,
+      fulfillsEntitlementId: data.fulfillsEntitlementId || null,
       usesOfferingId: data.usesOfferingId || null,
       activityDate: data.activityDate || new Date().toISOString().split('T')[0],
     }).run()
@@ -79,15 +107,28 @@ export async function logActivity(data: {
     /* DB write is best-effort — on-chain is the source of truth */
   }
 
-  // PROV-chain side-effect: when an activity is tagged with a need, count
-  // the fulfillment activities recorded so far. Crossing the threshold
-  // transitions the need's status. Threshold tuned per-need-type:
-  //   - prayer / venue / connector → 1 activity is enough
-  //   - coach / treasurer / trainer → 3 activities (pattern of fulfillment)
-  //   - default                    → 2 activities
-  if (data.fulfillsNeedId) {
+  // ── Entitlement cascade (preferred path) ────────────────────────
+  // When an entitlement id is supplied, drive everything via the
+  // entitlement action: capacity decrement → work-item resolve →
+  // outcome cascade → match-fulfilled → intent-fulfilled (when ALL
+  // accepted entitlements for that intent are fulfilled).
+  if (data.fulfillsEntitlementId) {
     try {
-      await maybeAdvanceNeedStatus(data.fulfillsNeedId)
+      const { consumeEntitlementCapacity } = await import('./entitlements.action')
+      await consumeEntitlementCapacity({
+        entitlementId: data.fulfillsEntitlementId,
+        activityId: id,
+        amount: data.capacityConsumed,
+        achievesOutcome: data.achievesOutcome,
+      })
+    } catch (_e) { /* non-fatal */ }
+  } else if (resolvedFulfillsNeedId) {
+    // Legacy path: when only a needId is set (no entitlement), use the
+    // per-need-type threshold cascade. This still works for activities
+    // logged before the entitlement layer existed and for sandbox
+    // entries that bypass acceptMatch.
+    try {
+      await maybeAdvanceNeedStatus(resolvedFulfillsNeedId)
     } catch (_e) { /* non-fatal */ }
   }
 
