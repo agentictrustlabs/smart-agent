@@ -20,6 +20,8 @@
  */
 
 import type { NeedRow, OfferingRow } from '@/lib/actions/needs.action'
+import { db, schema } from '@/db'
+import { and, eq } from 'drizzle-orm'
 
 export interface ScoredMatch {
   offering: OfferingRow
@@ -27,6 +29,8 @@ export interface ScoredMatch {
   reason: string         // SKOS concept URI from cbox/resource-types.ttl
   satisfies: string[]    // requirement keys hit
   misses: string[]       // requirement keys missed
+  /** R8 — bps lift contributed by prior trust residue (already folded into `score`). */
+  trustLiftBps?: number
 }
 
 interface ScoreInput {
@@ -43,6 +47,21 @@ const W_GEO           = 1500   // geo-fit (or geo not required)
 const W_AVAILABILITY  = 1000   // time-window fit
 const W_CAPACITY      = 500    // enough capacity
 const W_CREDENTIAL    = 500    // credential held
+
+// ─── R8: Trust residue lift ─────────────────────────────────────────
+//
+// Prior fulfilled engagements raise future match scores. Caps at
+// W_TRUST_LIFT_MAX bps so lift is visible but never dominant.
+//
+//   • +1 engagement  → +TRUST_LIFT_PER_ENGAGEMENT bps
+//   • witness-lifted → +TRUST_LIFT_PER_WITNESSED extra
+//   • matching-skill claim from prior closure → +TRUST_LIFT_PER_SKILL_MATCH
+//   • recency: lift decays by ~50% after 180 days
+const W_TRUST_LIFT_MAX             = 500
+const TRUST_LIFT_PER_ENGAGEMENT    = 40
+const TRUST_LIFT_PER_WITNESSED     = 60
+const TRUST_LIFT_PER_SKILL_MATCH   = 80
+const TRUST_RECENCY_HALFLIFE_DAYS  = 180
 
 // Map each need-type to the resource type(s) that could fulfill it.
 // Used as a hard filter — wrong type → score 0.
@@ -188,11 +207,24 @@ export async function scoreOfferingAgainstNeed(input: ScoreInput): Promise<Score
     score += W_CREDENTIAL
   }
 
+  // ── 8. Trust residue lift (R8) ──────────────────────────────────
+  // Prior fulfilled engagements lift the score, capped at W_TRUST_LIFT_MAX.
+  const trustLiftBps = await computeTrustLift({
+    offeredByAgent: offering.offeredByAgent,
+    requiresSkill,
+    requiresRole,
+  })
+  if (trustLiftBps > 0) {
+    score += trustLiftBps
+    satisfies.push('trustResidue')
+  }
+
   // ── Reason classification (just the dominant signal) ────────────
   let reason = 'matchReason:SkillRoleGeoFit'
   if (satisfies.includes('credential')) reason = 'matchReason:CredentialMatch'
   if (satisfies.includes('availability') && satisfies.length <= 2) reason = 'matchReason:AvailabilityMatch'
   if (satisfies.includes('role') && !satisfies.includes('skill')) reason = 'matchReason:RoleAssignmentDirect'
+  if (trustLiftBps >= TRUST_LIFT_PER_ENGAGEMENT * 3) reason = 'matchReason:TrustResidueLift'
 
   return {
     offering,
@@ -200,5 +232,53 @@ export async function scoreOfferingAgainstNeed(input: ScoreInput): Promise<Score
     reason,
     satisfies,
     misses,
+    trustLiftBps,
   }
+}
+
+/**
+ * Compute the trust-residue lift in bps for a given offering agent.
+ * Reads from `agent_validation_profiles` and `agent_skill_claims`.
+ *
+ * Lift = (per-engagement × engagements + per-witnessed × witnessed
+ *         + per-skill-match × matching-skill claims) × recency-decay,
+ * capped at W_TRUST_LIFT_MAX.
+ */
+async function computeTrustLift(args: {
+  offeredByAgent: string
+  requiresSkill?: string
+  requiresRole?: string
+}): Promise<number> {
+  const lower = args.offeredByAgent.toLowerCase()
+
+  const profile = db.select().from(schema.agentValidationProfiles)
+    .where(eq(schema.agentValidationProfiles.agent, lower)).get()
+  if (!profile || profile.engagementsCount === 0) return 0
+
+  const base = profile.engagementsCount * TRUST_LIFT_PER_ENGAGEMENT
+    + profile.witnessedCount * TRUST_LIFT_PER_WITNESSED
+
+  // Matching skill claims — provider-side claims that match the requested skill or role.
+  let skillMatchBonus = 0
+  const targetSlug = args.requiresSkill ?? args.requiresRole
+  if (targetSlug) {
+    const matches = db.select().from(schema.agentSkillClaims)
+      .where(and(
+        eq(schema.agentSkillClaims.subjectAgent, lower),
+        eq(schema.agentSkillClaims.skillSlug, targetSlug),
+        eq(schema.agentSkillClaims.side, 'provider'),
+      ))
+      .all()
+    skillMatchBonus = matches.length * TRUST_LIFT_PER_SKILL_MATCH
+  }
+
+  // Recency decay: 50% halflife at TRUST_RECENCY_HALFLIFE_DAYS.
+  let decay = 1
+  if (profile.lastEngagementAt) {
+    const days = (Date.now() - new Date(profile.lastEngagementAt).getTime()) / 86_400_000
+    decay = Math.pow(0.5, Math.max(0, days) / TRUST_RECENCY_HALFLIFE_DAYS)
+  }
+
+  const raw = (base + skillMatchBonus) * decay
+  return Math.min(W_TRUST_LIFT_MAX, Math.round(raw))
 }

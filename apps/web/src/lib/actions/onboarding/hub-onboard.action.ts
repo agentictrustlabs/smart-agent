@@ -177,7 +177,14 @@ export async function getHubOnboardingState(hubAddressInput: string): Promise<Hu
   }
 
   // 4. Membership in THIS hub?
-  const isMember = await isMemberOfHub(hubAddress, smartAcct as `0x${string}`)
+  // HAS_MEMBER edges in the seed point at the person agent (the on-chain
+  // identity registered in the resolver), not the wallet smart account. Check
+  // person agent first; fall back to smart account for legacy users where
+  // the wallet was registered directly.
+  let isMember = await isMemberOfHub(hubAddress, personAgent)
+  if (!isMember && smartAcct && smartAcct !== personAgent) {
+    isMember = await isMemberOfHub(hubAddress, smartAcct as `0x${string}`)
+  }
 
   if (!isMember) {
     return {

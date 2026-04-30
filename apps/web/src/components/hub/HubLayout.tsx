@@ -51,6 +51,9 @@ const SEGMENT_LABELS: Record<string, string> = {
   'settings': 'Settings',
   'coach': 'Coaching',
   'activities': 'Activities',
+  'entitlements': 'Engagements',
+  'intents': 'Intents',
+  'matches': 'Matches',
   'governance': 'Governance',
   'coaching': 'Coaching',
   'revenue': 'Revenue',
@@ -104,10 +107,28 @@ function deriveBreadcrumbs(
 
   const crumbs: Array<{ label: string; href: string }> = []
   let currentPath = ''
+  // Detect /h/<hubSlug>/... routes so the first crumb (the hub) links to the
+  // hub's home page instead of `/h/<slug>` (which is the onboarding wizard
+  // and redirects members away).
+  const isHubScoped = segments[0] === 'h' && segments.length >= 2
 
   for (let i = 0; i < segments.length; i++) {
     const seg = segments[i]
     currentPath += '/' + seg
+
+    // Skip the literal 'h' route prefix — it's not a navigable surface.
+    if (i === 0 && seg === 'h') continue
+
+    // First segment under /h/ is the hub slug — link it to /h/<slug>/home,
+    // not /h/<slug> (the onboarding gate). Likewise the bare /h/<slug>/home
+    // path collapses into a single 'Home' crumb.
+    if (isHubScoped && i === 1) {
+      const label = SEGMENT_LABELS[seg] || seg.charAt(0).toUpperCase() + seg.slice(1)
+      crumbs.push({ label, href: `/h/${seg}/home` })
+      continue
+    }
+    // Drop the redundant 'home' segment when it's the dashboard path.
+    if (isHubScoped && i === 2 && seg === 'home') continue
 
     // Check if this segment looks like an address or ID (hex or long string)
     if (seg.startsWith('0x') || (seg.length > 20 && /^[a-f0-9]+$/i.test(seg))) {

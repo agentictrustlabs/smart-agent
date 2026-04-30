@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core'
+import { sqliteTable, text, integer, real } from 'drizzle-orm/sqlite-core'
 
 // ─── Users ───────────────────────────────────────────────────────────
 
@@ -591,8 +591,28 @@ export const entitlements = sqliteTable('entitlements', {
   cadence: text('cadence', {
     enum: ['one-shot', 'weekly', 'biweekly', 'monthly', 'quarterly', 'on-demand'],
   }).notNull().default('weekly'),
-  /** Cached link to the outcome row this entitlement helps achieve. */
-  linkedOutcomeId: text('linked_outcome_id'),
+  /** Holder's outcome — what the receiving party expects out of the engagement. */
+  holderOutcomeId: text('holder_outcome_id'),
+  /** Provider's outcome — what the giving party expects out of the engagement
+   *  (e.g. coach-of-coaches certification, recognition, capacity-build). */
+  providerOutcomeId: text('provider_outcome_id'),
+  /** Mutual sign-off timestamps — both must be set for trust deposit to fire. */
+  holderConfirmedAt: text('holder_confirmed_at'),
+  providerConfirmedAt: text('provider_confirmed_at'),
+  /** Optional witness agent — third-party with reputational stake whose
+   *  signature lifts the weight of the resulting AgentReviewRecord. */
+  witnessAgent: text('witness_agent'),
+  witnessSignedAt: text('witness_signed_at'),
+  /** Trust deposit references — populated by R7 cascade when both confirm. */
+  reviewIds: text('review_ids'),                 // JSON array of AgentReviewRecord ids
+  assertionId: text('assertion_id'),             // AgentAssertion id
+  /** Provenance Capture (stage 6) — pinned evidence bundle. */
+  evidenceBundleHash: text('evidence_bundle_hash'),
+  evidencePinnedAt: text('evidence_pinned_at'),
+  /** 8-stop round trip phase. Driven by activity / pin / confirm timestamps. */
+  phase: text('phase', {
+    enum: ['granted', 'kickoff', 'in_cadence', 'evidence_pinned', 'witnessed', 'determined', 'deposited'],
+  }).notNull().default('granted'),
   status: text('status', {
     enum: ['granted', 'active', 'paused', 'suspended', 'fulfilled', 'revoked', 'expired'],
   }).notNull().default('granted'),
@@ -600,6 +620,45 @@ export const entitlements = sqliteTable('entitlements', {
   validUntil: text('valid_until'),
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
   updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
+})
+
+/**
+ * CommitmentThreadEntry — the typed persistent backbone of an engagement's
+ * round trip. Every stage emits entries: intent reference, contract terms,
+ * work items, activities, two-way messages, evidence pins, witness sigs,
+ * mutual confirmations, and the final trust deposit hashes. Reading the
+ * thread top-to-bottom is the audit story of the engagement.
+ *
+ * `kind` discriminates the body shape:
+ *   intent_ref      { intentId, side: 'holder'|'provider', title, outcome }
+ *   match_accept    { matchId, score, satisfies, misses }
+ *   contract_term   { cadence, validUntil, capacityGranted, capacityUnit, terms }
+ *   work_item       { workItemId, title, taskKind }
+ *   activity        { activityId, title, activityType, capacityConsumed? }
+ *   message         { text }
+ *   evidence_pin    { activityIds, attachments[], bundleHash }
+ *   witness_sig     { witnessAgent, signedAt, signature }
+ *   confirmation    { side: 'holder'|'provider' }
+ *   trust_deposit   { reviewIds[], skillClaimIds[], assertionId }
+ */
+export const commitmentThreadEntries = sqliteTable('commitment_thread_entries', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => entitlements.id),
+  kind: text('kind', {
+    enum: [
+      'intent_ref', 'match_accept', 'contract_term', 'work_item',
+      'activity', 'message', 'evidence_pin', 'witness_sig',
+      'confirmation', 'trust_deposit',
+    ],
+  }).notNull(),
+  /** Author. NULL for system entries. */
+  fromAgent: text('from_agent'),
+  /** Typed JSON payload — schema by kind (see comment above). */
+  body: text('body').notNull(),
+  attachmentUri: text('attachment_uri'),
+  /** Set on `evidence_pin` (bundle hash) and `trust_deposit` (tx hash). */
+  hashAnchor: text('hash_anchor'),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
 })
 
 /**
@@ -652,4 +711,80 @@ export const roleAssignments = sqliteTable('role_assignments', {
     enum: ['active', 'lapsed', 'ended'],
   }).notNull().default('active'),
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+})
+
+// ─── Trust Deposit Layer (R7) ────────────────────────────────────
+//
+// Round-trip closure on dual-confirm mints these artifacts. v0 stores them
+// in local SQLite as the off-chain mirror; on-chain analogues exist in
+// packages/contracts (AgentReviewRecord, AgentSkillRegistry, AgentAssertion,
+// AgentValidationProfile). The DB columns prefigure the on-chain shape.
+//
+// Spec: docs/specs/round-trip-trust-deposit-plan.md §4
+
+/**
+ * AgentReviewRecord — one party reviewing the other after dual confirmation.
+ * Two rows per closed engagement: holder→provider, provider→holder.
+ */
+export const agentReviewRecords = sqliteTable('agent_review_records', {
+  id: text('id').primaryKey(),
+  reviewerAgent: text('reviewer_agent').notNull(),
+  subjectAgent: text('subject_agent').notNull(),
+  engagementId: text('engagement_id').notNull(),
+  /** 0..100 score; weighted by witness presence + capacity density. */
+  score: integer('score').notNull(),
+  /** 0..1 confidence. */
+  confidence: real('confidence').notNull(),
+  narrative: text('narrative'),
+  /** 1 if a witness signed before close, else 0 — lifts downstream weight. */
+  witnessLifted: integer('witness_lifted').notNull().default(0),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+})
+
+/**
+ * AgentSkillClaim — attested skill demonstrated through an engagement.
+ * `side='provider'` claims are about *delivering* a skill; `side='holder'`
+ * claims capture growth on the receiving side ("received-coaching",
+ * "managed-grant"). Both sides grow.
+ */
+export const agentSkillClaims = sqliteTable('agent_skill_claims', {
+  id: text('id').primaryKey(),
+  subjectAgent: text('subject_agent').notNull(),
+  /** Skill slug — derived from terms.skill / terms.role / terms.object leaf. */
+  skillSlug: text('skill_slug').notNull(),
+  side: text('side', { enum: ['holder', 'provider'] }).notNull(),
+  attestorAgent: text('attestor_agent').notNull(),
+  engagementId: text('engagement_id').notNull(),
+  confidence: real('confidence').notNull(),
+  witnessLifted: integer('witness_lifted').notNull().default(0),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+})
+
+/**
+ * AgentAssertion — the engagement-as-claim, with both signatures and the
+ * pinned evidence bundle hash. Future: full on-chain mint of this hash.
+ */
+export const agentAssertions = sqliteTable('agent_assertions', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull(),
+  /** Canonical JSON of the engagement closure facts. */
+  payload: text('payload').notNull(),
+  /** sha256 of payload (0x-prefixed hex). */
+  payloadHash: text('payload_hash').notNull(),
+  witnessLifted: integer('witness_lifted').notNull().default(0),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+})
+
+/**
+ * AgentValidationProfile — running counts and recency of trust deposits per
+ * agent. The match-scoring read in R8 reads from here.
+ */
+export const agentValidationProfiles = sqliteTable('agent_validation_profiles', {
+  /** Lowercased agent address. */
+  agent: text('agent').primaryKey(),
+  engagementsCount: integer('engagements_count').notNull().default(0),
+  witnessedCount: integer('witnessed_count').notNull().default(0),
+  lastEngagementAt: text('last_engagement_at'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
 })

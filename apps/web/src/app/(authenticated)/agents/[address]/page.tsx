@@ -17,6 +17,8 @@ import { getAgentMetadata, buildAgentNameMap, getNameFromMap } from '@/lib/agent
 import { keccak256, toBytes } from 'viem'
 import { AgentSettingsClient } from './AgentSettingsClient'
 import { AgentSubNav } from '@/components/nav/AgentSubNav'
+import { TrustResidueCard } from '@/components/engagements/TrustResidueCard'
+import { getTrustResidue } from '@/lib/actions/engagements/trust-residue.action'
 
 const REC_NAMES: Record<string, string> = {
   [keccak256(toBytes('endorses'))]: 'endorses', [keccak256(toBytes('recommends'))]: 'recommends',
@@ -383,6 +385,10 @@ export default async function AgentSettingsPage({
           {/* Operated-by relationship is shown in the Relationships section below */}
         </dl>
       </div>
+
+      {/* ─── Trust residue from closed engagements ─────────────────── */}
+      <TrustResidueCard residue={await getTrustResidue(agentAddress)} />
+
 
       {/* ─── On-Chain Metadata (from Resolver) ──────────────────────── */}
       {resolverRegistered && (

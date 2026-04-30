@@ -6,7 +6,6 @@ import {
   pauseEntitlement,
   resumeEntitlement,
   revokeEntitlement,
-  markEntitlementFulfilled,
 } from '@/lib/actions/entitlements.action'
 
 const C = { card: '#ffffff', border: '#ece6db', text: '#5c4a3a', textMuted: '#9a8c7e', accent: '#8b5e3c' }
@@ -31,7 +30,6 @@ export function EntitlementStatusActions({ entitlementId, status }: {
   // Status → which buttons.
   const canPause      = status === 'granted' || status === 'active'
   const canResume     = status === 'paused' || status === 'suspended'
-  const canFulfill    = status === 'granted' || status === 'active'
   const canRevoke     = status === 'granted' || status === 'active' || status === 'paused' || status === 'suspended'
 
   // No actions for already-terminal states.
@@ -57,12 +55,6 @@ export function EntitlementStatusActions({ entitlementId, status }: {
             Resume
           </button>
         )}
-        {canFulfill && (
-          <button type="button" onClick={() => run('fulfill', () => markEntitlementFulfilled(entitlementId))} disabled={pending}
-            style={btn(C.accent, '#fff')}>
-            Mark fulfilled
-          </button>
-        )}
         {canRevoke && (
           <button type="button" onClick={() => run('revoke', () => revokeEntitlement(entitlementId))} disabled={pending}
             style={btn('#fff', '#991b1b', '#fee2e2')}>
@@ -74,7 +66,7 @@ export function EntitlementStatusActions({ entitlementId, status }: {
         <div style={{ marginTop: '0.5rem', fontSize: '0.78rem', color: '#991b1b' }}>{err}</div>
       )}
       <div style={{ marginTop: '0.5rem', fontSize: '0.7rem', color: C.textMuted }}>
-        Marking fulfilled cascades up the chain: outcome → achieved, source match → fulfilled, parent intent → fulfilled (only once ALL accepted engagements for that intent are fulfilled).
+        Closure happens through Stage 7 mutual sign-off (DeterminationPanel above), not from this strip.
       </div>
     </div>
   )

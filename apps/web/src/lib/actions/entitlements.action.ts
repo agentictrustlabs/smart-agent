@@ -27,6 +27,7 @@ import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { capacityDefaultFor } from '@/lib/discover/capacity-defaults'
 
 export type EntitlementStatus = 'granted' | 'active' | 'paused' | 'suspended' | 'fulfilled' | 'revoked' | 'expired'
+export type EngagementPhase = 'granted' | 'kickoff' | 'in_cadence' | 'evidence_pinned' | 'witnessed' | 'determined' | 'deposited'
 export type WorkItemStatus = 'open' | 'in-progress' | 'done' | 'skipped'
 export type WorkItemCadence = 'one-shot' | 'recurring'
 
@@ -53,7 +54,23 @@ export interface EntitlementRow {
   capacityGranted: number
   capacityRemaining: number
   cadence: 'one-shot' | 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'on-demand'
-  linkedOutcomeId: string | null
+  /** Bilateral outcomes — both parties have an outcome they're working toward. */
+  holderOutcomeId: string | null
+  providerOutcomeId: string | null
+  /** Mutual sign-off — both required for trust deposit. */
+  holderConfirmedAt: string | null
+  providerConfirmedAt: string | null
+  /** Optional witness with reputational stake. */
+  witnessAgent: string | null
+  witnessSignedAt: string | null
+  /** Trust deposit refs — populated on dual-confirm cascade. */
+  reviewIds: string[]
+  assertionId: string | null
+  /** Provenance Capture (stage 6). */
+  evidenceBundleHash: string | null
+  evidencePinnedAt: string | null
+  /** 8-stop round trip phase. */
+  phase: EngagementPhase
   status: EntitlementStatus
   validFrom: string
   validUntil: string | null
@@ -94,7 +111,17 @@ function rowToEnt(r: typeof schema.entitlements.$inferSelect): EntitlementRow {
     capacityGranted: r.capacityGranted,
     capacityRemaining: r.capacityRemaining,
     cadence: r.cadence,
-    linkedOutcomeId: r.linkedOutcomeId,
+    holderOutcomeId: r.holderOutcomeId,
+    providerOutcomeId: r.providerOutcomeId,
+    holderConfirmedAt: r.holderConfirmedAt,
+    providerConfirmedAt: r.providerConfirmedAt,
+    witnessAgent: r.witnessAgent,
+    witnessSignedAt: r.witnessSignedAt,
+    reviewIds: safeParse<string[]>(r.reviewIds) ?? [],
+    assertionId: r.assertionId,
+    evidenceBundleHash: r.evidenceBundleHash,
+    evidencePinnedAt: r.evidencePinnedAt,
+    phase: r.phase,
     status: r.status,
     validFrom: r.validFrom,
     validUntil: r.validUntil,
@@ -133,8 +160,9 @@ export interface MintEntitlementInput {
   capacityOverride?: { unit?: string; granted?: number }
   /** JSON terms — typically derived from match.satisfies + offering.payload. */
   terms: EntitlementTerms
-  /** Optional outcome row to link. */
-  linkedOutcomeId?: string
+  /** Bilateral outcome links — what each party expects out of the engagement. */
+  holderOutcomeId?: string
+  providerOutcomeId?: string
   /** Optional cadence override; otherwise from capacity-defaults. */
   cadenceOverride?: 'one-shot' | 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'on-demand'
   /** Optional explicit validity end. Default = validFrom + capacity-defaults.defaultValidityDays. */
@@ -174,7 +202,9 @@ export async function mintEntitlement(input: MintEntitlementInput): Promise<{ id
       capacityGranted: granted,
       capacityRemaining: granted,
       cadence,
-      linkedOutcomeId: input.linkedOutcomeId ?? null,
+      holderOutcomeId: input.holderOutcomeId ?? null,
+      providerOutcomeId: input.providerOutcomeId ?? null,
+      phase: 'granted',
       status: 'granted',
       validFrom: now,
       validUntil,
@@ -253,6 +283,19 @@ export async function seedInitialWorkItem(entitlementId: string): Promise<{ id: 
     status: 'open',
     createdAt: new Date().toISOString(),
   }).run()
+
+  // Emit work_item entry on the Commitment Thread.
+  try {
+    const { emitWorkItemEntry } = await import('./engagements/thread.action')
+    await emitWorkItemEntry({
+      engagementId: entitlementId,
+      workItemId: id,
+      title,
+      taskKind,
+      assigneeAgent: ent.providerAgent,
+    })
+  } catch { /* non-fatal */ }
+
   return { id }
 }
 
@@ -275,6 +318,93 @@ export async function markEntitlementFulfilled(id: string): Promise<{ ok: true }
   if ('error' in r) return r
   await cascadeFulfillment(id)
   return { ok: true }
+}
+
+// ─── R6: Mutual sign-off (DeterminationPanel) ─────────────────────────
+//
+// The trust deposit fires only when BOTH parties confirm the outcome.
+// Either side can confirm independently; the cascade runs when the second
+// party confirms.
+
+/**
+ * Confirm outcome from one side. Both holder and provider must confirm
+ * before cascadeFulfillment runs. If a witness is named, witness must
+ * have already signed before either confirmation is accepted.
+ */
+export async function confirmOutcome(
+  engagementId: string,
+): Promise<{ ok: true; bothConfirmed: boolean; cascade: 'none' | 'fulfilled' } | { error: string }> {
+  const me = await getCurrentUser()
+  if (!me) return { error: 'not-authenticated' }
+  const { getPersonAgentForUser } = await import('@/lib/agent-registry')
+  const myAgent = await getPersonAgentForUser(me.id)
+  if (!myAgent) return { error: 'no-person-agent' }
+  const lower = myAgent.toLowerCase()
+
+  const ent = db.select().from(schema.entitlements)
+    .where(eq(schema.entitlements.id, engagementId)).get()
+  if (!ent) return { error: 'engagement-not-found' }
+  if (ent.status === 'fulfilled' || ent.status === 'revoked' || ent.status === 'expired') {
+    return { error: `cannot-confirm-from-status-${ent.status}` }
+  }
+
+  // Witness gate: if a witness was named, they must have signed first.
+  if (ent.witnessAgent && !ent.witnessSignedAt) {
+    return { error: 'witness-signature-required' }
+  }
+
+  const isHolder = ent.holderAgent === lower
+  const isProvider = ent.providerAgent === lower
+  if (!isHolder && !isProvider) return { error: 'not-a-party' }
+
+  const now = new Date().toISOString()
+  if (isHolder && ent.holderConfirmedAt) return { error: 'already-confirmed' }
+  if (isProvider && ent.providerConfirmedAt) return { error: 'already-confirmed' }
+
+  // Set the confirmation timestamp.
+  const update: Partial<typeof schema.entitlements.$inferInsert> = { updatedAt: now }
+  if (isHolder) update.holderConfirmedAt = now
+  if (isProvider) update.providerConfirmedAt = now
+  db.update(schema.entitlements).set(update)
+    .where(eq(schema.entitlements.id, engagementId))
+    .run()
+
+  // Emit confirmation entry on the Commitment Thread.
+  try {
+    const { emitConfirmation } = await import('./engagements/thread.action')
+    await emitConfirmation({
+      engagementId,
+      side: isHolder ? 'holder' : 'provider',
+      fromAgent: lower,
+    })
+  } catch { /* non-fatal */ }
+
+  // Did this confirmation complete the pair?
+  const refreshed = db.select().from(schema.entitlements)
+    .where(eq(schema.entitlements.id, engagementId)).get()
+  const bothConfirmed = !!(refreshed?.holderConfirmedAt && refreshed?.providerConfirmedAt)
+
+  if (bothConfirmed) {
+    // Advance phase to determined, then run the cascade (status flip,
+    // outcomes achieved, parent intent close).
+    db.update(schema.entitlements)
+      .set({ phase: 'determined', status: 'fulfilled', updatedAt: now })
+      .where(eq(schema.entitlements.id, engagementId))
+      .run()
+    await cascadeFulfillment(engagementId)
+
+    // R7 will hook in here to mint the trust deposit. The cascade is the
+    // PROV-status side; the trust deposit is the validation side.
+    try {
+      const { mintTrustDeposit } = await import('./engagements/trust-deposit.action')
+      await mintTrustDeposit({ engagementId })
+    } catch (err) {
+      console.warn('[confirmOutcome] trust deposit mint failed (non-fatal):', (err as Error).message)
+    }
+
+    return { ok: true, bothConfirmed: true, cascade: 'fulfilled' }
+  }
+  return { ok: true, bothConfirmed: false, cascade: 'none' }
 }
 
 async function setEntStatus(id: string, next: EntitlementStatus, allowedFrom: EntitlementStatus[]): Promise<{ ok: true } | { error: string }> {
@@ -328,10 +458,30 @@ export async function consumeEntitlementCapacity(args: {
     args.achievesOutcome === true || remaining === 0 ? 'fulfilled'
     : ent.status === 'granted' ? 'active'
     : ent.status
+  // Phase advance: granted/kickoff → in_cadence on first activity.
+  const newPhase: typeof ent.phase = ent.phase === 'granted' || ent.phase === 'kickoff'
+    ? 'in_cadence' : ent.phase
   db.update(schema.entitlements)
-    .set({ capacityRemaining: remaining, status: newStatus, updatedAt: now })
+    .set({ capacityRemaining: remaining, status: newStatus, phase: newPhase, updatedAt: now })
     .where(eq(schema.entitlements.id, args.entitlementId))
     .run()
+
+  // Emit activity entry on the Commitment Thread — the persistent backbone.
+  try {
+    const activityRow = db.select().from(schema.activityLogs)
+      .where(eq(schema.activityLogs.id, args.activityId)).get()
+    if (activityRow) {
+      const { emitActivityEntry } = await import('./engagements/thread.action')
+      await emitActivityEntry({
+        engagementId: args.entitlementId,
+        activityId: args.activityId,
+        title: activityRow.title,
+        activityType: activityRow.activityType,
+        capacityConsumed: consumed,
+        fromAgent: ent.providerAgent,
+      })
+    }
+  } catch { /* non-fatal */ }
 
   // 3. Resolve oldest open work item.
   const openItem = db.select().from(schema.fulfillmentWorkItems)
@@ -391,11 +541,17 @@ async function cascadeFulfillment(entitlementId: string): Promise<void> {
   if (!ent) return
   const now = new Date().toISOString()
 
-  // Outcome.
-  if (ent.linkedOutcomeId) {
+  // Outcomes — both holder and provider close together.
+  if (ent.holderOutcomeId) {
     db.update(schema.outcomes)
       .set({ status: 'achieved', observedAt: now, observedBy: ent.holderAgent })
-      .where(eq(schema.outcomes.id, ent.linkedOutcomeId))
+      .where(eq(schema.outcomes.id, ent.holderOutcomeId))
+      .run()
+  }
+  if (ent.providerOutcomeId) {
+    db.update(schema.outcomes)
+      .set({ status: 'achieved', observedAt: now, observedBy: ent.providerAgent })
+      .where(eq(schema.outcomes.id, ent.providerOutcomeId))
       .run()
   }
 

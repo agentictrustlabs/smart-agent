@@ -136,6 +136,13 @@ export function triggerBootSeed(): Promise<void> {
         ensureCommunityUsers('gc-user-'),
         ensureCommunityUsers('cat-user-'),
         ensureCommunityUsers('cil-user-'),
+        // fr/pl/dm users (sister networks for catalyst). These don't depend on
+        // hub-seed completion, so we provision them up-front. This clears the
+        // 41/41 readiness gate before the slow hub-seed work runs, instead of
+        // making the user wait through ~10 minutes of catalyst+cil seeding.
+        ensureCommunityUsers('fr-user-'),
+        ensureCommunityUsers('pl-user-'),
+        ensureCommunityUsers('dm-user-'),
       ])
 
       // 2a. Geo features + .geo name tree first — hub seeds mint
@@ -211,6 +218,20 @@ export function triggerBootSeed(): Promise<void> {
         await seedCatalystNeedsAndOfferings()
       } catch (e) {
         console.warn('[boot-seed] catalyst needs/resources seed error (non-fatal):', (e as Error).message)
+      }
+
+      // 2e. Project legacy needs/offerings rows into Intents. acceptMatch
+      //     mints an Engagement only when both holder + provider Intents
+      //     exist; without this backfill, accepting a match silently fails
+      //     the mint step and the user lands on an "accepted" match with
+      //     no engagement workspace. Idempotent.
+      state.phase = 'discover seed: backfilling intents from legacy'
+      try {
+        const { backfillIntentsFromLegacy } = await import('@/lib/actions/intents.action')
+        const r = await backfillIntentsFromLegacy()
+        console.log(`[boot-seed] intents backfill: ${r.needsBackfilled} needs, ${r.offeringsBackfilled} offerings`)
+      } catch (e) {
+        console.warn('[boot-seed] intent backfill error (non-fatal):', (e as Error).message)
       }
 
       // 3. Push fresh on-chain state into the GraphDB KB so the /agents
