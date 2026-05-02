@@ -285,3 +285,327 @@
 <-- POST /tools/list_prayers
 [verify] ERC-1271 delegation signature verified successfully
 --> POST /tools/list_prayers [32m200[0m 6ms
+<-- GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3
+--> GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3
+--> GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3
+--> GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3 [32m200[0m 0ms
+<-- POST /tools/list_oikos_contacts
+<-- POST /tools/list_training_progress
+<-- POST /tools/list_prayers
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 18ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 12ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 18ms
+<-- GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3
+--> GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3 [32m200[0m 1ms
+<-- POST /tools/list_prayers
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 6ms
+<-- GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3
+--> GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3
+--> GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3
+--> GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3 [32m200[0m 0ms
+<-- POST /tools/list_oikos_contacts
+<-- POST /tools/list_training_progress
+<-- POST /tools/list_prayers
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 14ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 12ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 9ms
+<-- GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3
+--> GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3
+--> GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3
+--> GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3 [32m200[0m 0ms
+<-- POST /tools/list_oikos_contacts
+<-- POST /tools/list_prayers
+<-- POST /tools/list_training_progress
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 12ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 10ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 7ms
+<-- GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3
+--> GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3
+--> GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3
+--> GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3 [32m200[0m 0ms
+<-- POST /tools/list_oikos_contacts
+<-- POST /tools/list_prayers
+<-- POST /tools/list_training_progress
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 13ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 20ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 13ms
+<-- GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3
+--> GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3
+--> GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3
+--> GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3 [32m200[0m 0ms
+<-- POST /tools/list_oikos_contacts
+<-- POST /tools/list_prayers
+<-- POST /tools/list_training_progress
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 12ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 9ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 7ms
+<-- GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3
+--> GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3
+--> GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3
+--> GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3 [32m200[0m 0ms
+<-- POST /tools/list_oikos_contacts
+<-- POST /tools/list_prayers
+<-- POST /tools/list_training_progress
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 7ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 15ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 13ms
+<-- GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3
+--> GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3 [32m200[0m 0ms
+<-- POST /tools/list_prayers
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 7ms
+<-- GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3
+--> GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3
+--> GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3
+--> GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3 [32m200[0m 0ms
+<-- POST /tools/list_oikos_contacts
+<-- POST /tools/list_prayers
+<-- POST /tools/list_training_progress
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 13ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 11ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 8ms
+<-- GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3
+--> GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3
+--> GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3
+--> GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3 [32m200[0m 0ms
+<-- POST /tools/list_oikos_contacts
+<-- POST /tools/list_prayers
+<-- POST /tools/list_training_progress
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 13ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 11ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 8ms
+<-- GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3
+--> GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3
+--> GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3
+--> GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3 [32m200[0m 0ms
+<-- POST /tools/list_oikos_contacts
+<-- POST /tools/list_prayers
+<-- POST /tools/list_training_progress
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 13ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 10ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 8ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3
+--> GET /session-store/by-cookie/sa_33118a00acb042ac9af1df2d1404a1f3 [32m200[0m 1ms
+<-- POST /tools/list_oikos_contacts
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 6ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms

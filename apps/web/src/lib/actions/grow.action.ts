@@ -115,19 +115,45 @@ interface DiscipleActivity {
   activityDate: string
 }
 
-export async function getDiscipleDetails(_discipleId: string): Promise<{
+function daysSince(dateStr: string): number {
+  return Math.floor((Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24))
+}
+
+export async function getDiscipleDetails(discipleId: string): Promise<{
   recentActivities: DiscipleActivity[]
   prayerCount: number
   trainingPct: number
   lastActivityDate: string | null
   needsAttention: boolean
 }> {
+  // Activity logs still live in web SQL (Phase 5 work). Prayer + training
+  // counts moved to person-mcp and require a cross-delegation grant from the
+  // disciple — until that flow ships those stay zero.
+  const { db, schema } = await import('@/db')
+  const { eq, desc } = await import('drizzle-orm')
+
+  let activities: DiscipleActivity[] = []
+  try {
+    const rows = await db.select().from(schema.activityLogs)
+      .where(eq(schema.activityLogs.userId, discipleId))
+      .orderBy(desc(schema.activityLogs.activityDate))
+      .limit(5)
+    activities = rows.map(r => ({
+      id: r.id,
+      activityType: r.activityType,
+      title: r.title,
+      activityDate: r.activityDate,
+    }))
+  } catch { /* table may not exist */ }
+
+  const lastActivity = activities[0]?.activityDate ?? null
+
   return {
-    recentActivities: [],
+    recentActivities: activities,
     prayerCount: 0,
     trainingPct: 0,
-    lastActivityDate: null,
-    needsAttention: false,
+    lastActivityDate: lastActivity,
+    needsAttention: !lastActivity || daysSince(lastActivity) > 7,
   }
 }
 

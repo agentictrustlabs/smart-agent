@@ -241,12 +241,29 @@ async function manageOrphans(personAgent: `0x${string}`): Promise<WorkItem[]> {
 
 // ─── Source 5: planned-conversation (circles flagged) ─────────────
 
-async function plannedConversations(userId: string): Promise<WorkItem[]> {
-  // Oikos moved to person-mcp; the aggregator runs server-side without an A2A
-  // delegation token. Returns empty until rewired to call the MCP under the
-  // user's session.
-  void userId
-  return []
+async function plannedConversations(_userId: string): Promise<WorkItem[]> {
+  const { callMcp } = await import('@/lib/clients/mcp-client')
+  type C = { id: string; personName: string; proximity: string | null; spiritualResponseState: string | null; plannedConversation: number; notes: string | null; createdAt: string }
+  let contacts: C[] = []
+  try {
+    const res = await callMcp<{ contacts: C[] }>('person', 'list_oikos_contacts', {})
+    contacts = res.contacts ?? []
+  } catch { return [] }
+  return contacts
+    .filter(c => c.plannedConversation === 1)
+    .slice(0, PER_SOURCE_LIMIT)
+    .map(c => makeWorkItem({
+      id: `planned-conversation:${c.id}`,
+      kind: 'planned-conversation',
+      subject: null,
+      subjectLabel: c.personName,
+      title: `Follow up with ${c.personName}`,
+      detail: `Proximity ring ${c.proximity ?? '?'} · response: ${c.spiritualResponseState ?? '—'}${c.notes ? ' · ' + c.notes.slice(0, 60) : ''}`,
+      dueAt: null,
+      createdAt: c.createdAt,
+      actionUrl: `/oikos?focus=${c.id}`,
+      icon: '🗣️',
+    }))
 }
 
 // ─── Source 6: stale-mentee-checkin (derived from on-chain) ───────
@@ -287,10 +304,38 @@ async function staleMenteeCheckins(personAgent: `0x${string}`): Promise<WorkItem
 
 // ─── Source 7: prayer-due (DB prayers fired today) ────────────────
 
-async function prayersDue(userId: string): Promise<WorkItem[]> {
-  // Prayers moved to person-mcp; aggregator returns empty until rewired.
-  void userId
-  return []
+async function prayersDue(_userId: string): Promise<WorkItem[]> {
+  const { callMcp } = await import('@/lib/clients/mcp-client')
+  type P = { id: string; title: string; content: string | null; schedule: string | null; responseState: string | null; lastPrayedAt: string | null; createdAt: string }
+  let prayers: P[] = []
+  try {
+    const res = await callMcp<{ prayers: P[] }>('person', 'list_prayers', {})
+    prayers = res.prayers ?? []
+  } catch { return [] }
+  const today = new Date().toISOString().slice(0, 10)
+  const todayDow = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][new Date().getDay()]
+  const due = prayers
+    .filter(p => p.responseState !== 'answered')
+    .filter(p => {
+      const lastDay = (p.lastPrayedAt ?? '').slice(0, 10)
+      if (lastDay === today) return false
+      const sched = (p.schedule ?? 'daily').toLowerCase()
+      if (sched === 'daily') return true
+      return sched.split(',').map(s => s.trim()).includes(todayDow)
+    })
+    .slice(0, PER_SOURCE_LIMIT)
+  return due.map(p => makeWorkItem({
+    id: `prayer-due:${p.id}`,
+    kind: 'prayer-due',
+    subject: null,
+    subjectLabel: null,
+    title: `Pray: ${p.title}`,
+    detail: p.content ?? null,
+    dueAt: null,
+    createdAt: p.createdAt,
+    actionUrl: `/nurture/prayer?focus=${p.id}`,
+    icon: '🙏',
+  }))
 }
 
 // ─── Source 9: match-proposed (Discover layer) ───────────────────
@@ -333,15 +378,55 @@ async function matchesProposed(personAgent: `0x${string}`): Promise<WorkItem[]> 
 // ─── Source 8: walk-step-due (training cadence) ───────────────────
 
 async function walkStepDue(userId: string): Promise<WorkItem[]> {
-  // trainingProgress moved to person-mcp; surface a generic "start your walk"
-  // item for first-time users until the work-queue picks up MCP-backed data.
+  const { callMcp } = await import('@/lib/clients/mcp-client')
+  type T = { id: string; status: string; completedAt: string | null }
+  let progress: T[] = []
+  try {
+    const res = await callMcp<{ progress: T[] }>('person', 'list_training_progress', {})
+    progress = res.progress ?? []
+  } catch {
+    // No A2A session — surface a generic onboarding item.
+    return [makeWorkItem({
+      id: `walk-step-due:start:${userId}`,
+      kind: 'walk-step-due',
+      subject: null,
+      subjectLabel: null,
+      title: 'Start your discipleship walk',
+      detail: 'The 28-lesson 411 program is the first track. Pick it up at any time.',
+      dueAt: null,
+      createdAt: new Date().toISOString(),
+      actionUrl: '/grow',
+      icon: '🌱',
+    })]
+  }
+  const cutoff = daysAgoIso(WALK_CADENCE_DAYS)
+  if (progress.length === 0) {
+    return [makeWorkItem({
+      id: `walk-step-due:start:${userId}`,
+      kind: 'walk-step-due',
+      subject: null,
+      subjectLabel: null,
+      title: 'Start your discipleship walk',
+      detail: 'The 28-lesson 411 program is the first track. Pick it up at any time.',
+      dueAt: null,
+      createdAt: new Date().toISOString(),
+      actionUrl: '/grow',
+      icon: '🌱',
+    })]
+  }
+  const lastCompleted = progress
+    .filter(r => r.status === 'completed' && r.completedAt)
+    .map(r => r.completedAt!)
+    .sort()
+    .pop() ?? '1970-01-01'
+  if (lastCompleted >= cutoff) return []
   return [makeWorkItem({
-    id: `walk-step-due:start:${userId}`,
+    id: `walk-step-due:cadence:${userId}`,
     kind: 'walk-step-due',
     subject: null,
     subjectLabel: null,
-    title: 'Start your discipleship walk',
-    detail: 'The 28-lesson 411 program is the first track. Pick it up at any time.',
+    title: 'Continue your walk',
+    detail: `It has been ${WALK_CADENCE_DAYS}+ days since your last step.`,
     dueAt: null,
     createdAt: new Date().toISOString(),
     actionUrl: '/grow',
