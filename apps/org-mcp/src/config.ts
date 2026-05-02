@@ -26,4 +26,8 @@ export const config = {
   credentialRegistryAddress: requiredAddress as `0x${string}`,
   privateStorePath: process.env.ORG_PRIVATE_STORE_PATH ?? './org-private.db',
   issuerBaseUrl: process.env.ORG_ISSUER_BASE_URL ?? 'http://localhost:3400',
+  // Auth foundation (delegation tokens, ERC-1271, JTI tracking) — required for tool gating
+  delegationManagerAddress: (process.env.DELEGATION_MANAGER_ADDRESS ?? '0x0000000000000000000000000000000000000000') as `0x${string}`,
+  agentAccountResolverAddress: process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}` | undefined,
+  agentRelationshipAddress: process.env.AGENT_RELATIONSHIP_ADDRESS as `0x${string}` | undefined,
 }

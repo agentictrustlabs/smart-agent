@@ -338,10 +338,13 @@ async function CILDashboard({
   }
 
   const capitalDeployed = 12500
-  let totalRecovered = 0
-  let revenueReports: (typeof schema.revenueReports.$inferSelect)[] = []
+  const totalRecovered = 0
+  // Revenue reports moved to org-mcp; cross-org admin listing pending Phase 4.
+  const revenueReports: Array<{
+    orgAddress: string; period: string; status: string;
+    netRevenue: number; grossRevenue: number; sharePayment: number
+  }> = []
   let openProposalCount = 0
-  try { revenueReports = await db.select().from(schema.revenueReports); totalRecovered = revenueReports.filter(r => r.status === 'verified').reduce((sum, r) => sum + r.sharePayment, 0) } catch { /* */ }
   const recoveryRate = capitalDeployed > 0 ? Math.round((totalRecovered / capitalDeployed) * 100) : 0
 
   const businessAddresses = ['0x00000000000000000000000000000000000c0003', '0x00000000000000000000000000000000000c0004']
@@ -360,7 +363,8 @@ async function CILDashboard({
   }
   yellowCount += Math.max(0, totalCircles - businessAddresses.length)
 
-  try { const { eq: eqOp } = await import('drizzle-orm'); const openProps = await db.select().from(schema.proposals).where(eqOp(schema.proposals.status, 'open')); openProposalCount = openProps.length } catch { /* */ }
+  // Open-proposals count moved to org-mcp; admin cross-org tally is Phase 4.
+  void openProposalCount
 
   const cilAttentionItems: AttentionItem[] = []
   for (const addr of businessesWithoutReport) cilAttentionItems.push({ type: 'revenue-report', label: `Business ${addr.slice(-4)}`, detail: 'No revenue report', href: '/catalyst/activity' })
@@ -438,8 +442,9 @@ async function CatalystFieldDashboard({
   // PERF: dropped getAiAgentsForOrg from the critical path — the AI-agents
   // count was only used to render the inventory-row tile, which now shows
   // "—" linking to /agents where the full list is computed lazily.
-  const { eq } = await import('drizzle-orm')
   const { getTrainingProgress } = await import('@/lib/actions/grow.action')
+  const { getOikosContacts } = await import('@/lib/actions/oikos.action')
+  const { getPrayers } = await import('@/lib/actions/prayer.action')
   const [
     connectedOrgLists,
     oikosRows,
@@ -447,9 +452,9 @@ async function CatalystFieldDashboard({
     progress,
   ] = await Promise.all([
     Promise.all(userOrgs.map(o => getConnectedOrgs(o.address).catch(() => []))),
-    db.select().from(schema.circles).where(eq(schema.circles.userId, currentUser.id)).catch(() => []),
-    db.select().from(schema.prayers).where(eq(schema.prayers.userId, currentUser.id)).catch(() => []),
-    getTrainingProgress(currentUser.id),
+    getOikosContacts(currentUser.id).catch(() => []),
+    getPrayers(currentUser.id).catch(() => []),
+    getTrainingProgress(currentUser.id).catch(() => []),
   ])
 
   // Aggregate connected (sister) circles for "My Circles" count + field list.
@@ -467,8 +472,10 @@ async function CatalystFieldDashboard({
   const oikosCount = oikosRows.length
   const days = ['sun','mon','tue','wed','thu','fri','sat']
   const today = days[new Date().getDay()]
-  const prayerDueCount = allPrayers.filter(p => !p.answered && (p.schedule === 'daily' || p.schedule.includes(today))).length
-  const walkPct = Math.round((progress.filter(p => p.completed === 1).length / 28) * 100)
+  const prayerDueCount = allPrayers.filter(p =>
+    p.responseState !== 'answered' && (p.schedule === 'daily' || (p.schedule ?? '').includes(today)),
+  ).length
+  const walkPct = Math.round((progress.filter(p => p.status === 'completed').length / 28) * 100)
 
   // ─── Mode resolution (drives KPI branching + persona subhead) ──
   const role = pickRoleForUser(currentUser.did ?? null, userOrgs.flatMap(o => o.roles))

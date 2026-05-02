@@ -1,8 +1,7 @@
 'use server'
 
-import { db, schema } from '@/db'
-import { eq } from 'drizzle-orm'
 import { requireSession } from '@/lib/auth/session'
+import { callMcp } from '@/lib/clients/mcp-client'
 
 export interface AgentSuggestion {
   id: string
@@ -13,41 +12,49 @@ export interface AgentSuggestion {
   priority: number // 1 = highest
 }
 
-function daysSince(dateStr: string): number {
-  return Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000)
+interface PrayerRow {
+  id: string
+  title: string
+  schedule: string | null
+  responseState: string | null
+  lastPrayedAt: string | null
 }
 
-async function resolveUserId(): Promise<string | null> {
-  try {
-    const session = await requireSession()
-    const user = await db.select().from(schema.users)
-      .where(eq(schema.users.walletAddress, session.walletAddress ?? '')).limit(1)
-    return user[0]?.id ?? null
-  } catch {
-    return null
-  }
+interface OikosRow {
+  id: string
+  personName: string
+  plannedConversation: number
+}
+
+interface TrainingRow {
+  id: string
+  status: string
 }
 
 /** Fetch suggestions for the current session user */
 export async function getMyAgentSuggestions(): Promise<AgentSuggestion[]> {
-  const userId = await resolveUserId()
-  if (!userId) return []
-  return getAgentSuggestions(userId)
+  return getAgentSuggestions('me')
 }
 
 export async function getAgentSuggestions(userId: string): Promise<AgentSuggestion[]> {
+  try {
+    await requireSession()
+  } catch {
+    return []
+  }
   const suggestions: AgentSuggestion[] = []
   const now = new Date()
 
+  // 1. Overdue prayers — pulled from person-mcp.
   try {
-    // 1. Overdue prayers (scheduled for today, last prayed >2 days ago)
-    const prayers = await db.select().from(schema.prayers).where(eq(schema.prayers.userId, userId))
+    const { prayers = [] } = await callMcp<{ prayers: PrayerRow[] }>('person', 'list_prayers', {})
     const days = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
     const today = days[now.getDay()]
     for (const p of prayers) {
-      if (p.answered) continue
-      const isDue = p.schedule === 'daily' || p.schedule.includes(today)
-      const lastPrayed = p.lastPrayed ? new Date(p.lastPrayed) : null
+      if (p.responseState === 'answered') continue
+      const schedule = p.schedule ?? ''
+      const isDue = schedule === 'daily' || schedule.includes(today)
+      const lastPrayed = p.lastPrayedAt ? new Date(p.lastPrayedAt) : null
       const sinceDays = lastPrayed ? Math.floor((now.getTime() - lastPrayed.getTime()) / 86400000) : 999
       if (isDue && sinceDays > 2) {
         suggestions.push({
@@ -60,10 +67,12 @@ export async function getAgentSuggestions(userId: string): Promise<AgentSuggesti
         })
       }
     }
+  } catch { /* no A2A session yet */ }
 
-    // 2. Planned conversations (oikos people with planned flag)
-    const circles = await db.select().from(schema.circles).where(eq(schema.circles.userId, userId))
-    for (const c of circles) {
+  // 2. Planned conversations — oikos contacts in person-mcp.
+  try {
+    const { contacts = [] } = await callMcp<{ contacts: OikosRow[] }>('person', 'list_oikos_contacts', {})
+    for (const c of contacts) {
       if (c.plannedConversation) {
         suggestions.push({
           id: `oikos-${c.id}`,
@@ -75,10 +84,12 @@ export async function getAgentSuggestions(userId: string): Promise<AgentSuggesti
         })
       }
     }
+  } catch { /* no A2A session yet */ }
 
-    // 3. Low training completion
-    const progress = await db.select().from(schema.trainingProgress).where(eq(schema.trainingProgress.userId, userId))
-    const completed = progress.filter(p => p.completed === 1).length
+  // 3. Training completion — person-mcp.
+  try {
+    const { progress = [] } = await callMcp<{ progress: TrainingRow[] }>('person', 'list_training_progress', {})
+    const completed = progress.filter(p => p.status === 'completed').length
     const total = 28
     const pct = total > 0 ? Math.round((completed / total) * 100) : 0
     if (pct < 50) {
@@ -91,23 +102,23 @@ export async function getAgentSuggestions(userId: string): Promise<AgentSuggesti
         priority: 3,
       })
     }
+  } catch { /* no A2A session yet */ }
 
-    // 4. Coach: check disciples needing attention (on-chain edges)
-    try {
-      const { getDisciples } = await import('@/lib/actions/grow.action')
-      const disciples = await getDisciples(userId)
-      for (const d of disciples) {
-        suggestions.push({
-          id: `coach-${d.id}`,
-          type: 'coaching',
-          title: `Check in with ${d.discipleName}`,
-          description: 'Review disciple progress',
-          href: '/catalyst/coach',
-          priority: 1,
-        })
-      }
-    } catch { /* ignored */ }
-  } catch { /* tables may not exist */ }
+  // 4. Coach: check disciples needing attention (on-chain edges; unchanged).
+  try {
+    const { getDisciples } = await import('@/lib/actions/grow.action')
+    const disciples = await getDisciples(userId)
+    for (const d of disciples) {
+      suggestions.push({
+        id: `coach-${d.id}`,
+        type: 'coaching',
+        title: `Check in with ${d.discipleName}`,
+        description: 'Review disciple progress',
+        href: '/catalyst/coach',
+        priority: 1,
+      })
+    }
+  } catch { /* ignored */ }
 
   return suggestions.sort((a, b) => a.priority - b.priority).slice(0, 8)
 }

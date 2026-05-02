@@ -143,30 +143,9 @@ async function decisionEdges(personAgent: `0x${string}`): Promise<WorkItem[]> {
 // ─── Source 2: decision-proposal (DB proposals open) ──────────────
 
 async function decisionProposals(userId: string, personAgent: `0x${string}`): Promise<WorkItem[]> {
-  const myOrgs = await getOrgsForPersonAgent(personAgent)
-  if (myOrgs.length === 0) return []
-  const orgAddrs = myOrgs.map(o => o.address.toLowerCase())
-  const open = await db.select().from(schema.proposals)
-    .where(and(eq(schema.proposals.status, 'open'), inArray(schema.proposals.orgAddress, orgAddrs)))
-    .limit(PER_SOURCE_LIMIT)
-  // The proposer doesn't need to vote on their own proposal — surface
-  // it as a "monitor your proposal" item with a different verb.
-  return open.map(p => {
-    const isMine = p.proposer === userId
-    const meta = myOrgs.find(o => o.address.toLowerCase() === p.orgAddress.toLowerCase())
-    return makeWorkItem({
-      id: `decision-proposal:${p.id}`,
-      kind: 'decision-proposal',
-      subject: p.orgAddress as `0x${string}`,
-      subjectLabel: meta ? `${meta.address.slice(0, 6)}…${meta.address.slice(-4)}` : null,
-      title: isMine ? `Awaiting votes: ${p.title}` : `Vote: ${p.title}`,
-      detail: `${p.actionType} — ${p.votesFor}/${p.quorumRequired} votes`,
-      dueAt: null,
-      createdAt: p.createdAt,
-      actionUrl: `/steward?proposal=${p.id}`,
-      icon: '🗳️',
-    })
-  })
+  // Proposals moved to org-mcp; cross-org admin tally is Phase 4 work.
+  void userId; void personAgent
+  return []
 }
 
 // ─── Source 3: message-pending (DB messages, unread) ──────────────
@@ -263,21 +242,11 @@ async function manageOrphans(personAgent: `0x${string}`): Promise<WorkItem[]> {
 // ─── Source 5: planned-conversation (circles flagged) ─────────────
 
 async function plannedConversations(userId: string): Promise<WorkItem[]> {
-  const planned = await db.select().from(schema.circles)
-    .where(and(eq(schema.circles.userId, userId), eq(schema.circles.plannedConversation, 1)))
-    .limit(PER_SOURCE_LIMIT)
-  return planned.map(c => makeWorkItem({
-    id: `planned-conversation:${c.id}`,
-    kind: 'planned-conversation',
-    subject: null,
-    subjectLabel: c.personName,
-    title: `Follow up with ${c.personName}`,
-    detail: `Proximity ring ${c.proximity} · response: ${c.response}${c.notes ? ' · ' + c.notes.slice(0, 60) : ''}`,
-    dueAt: null,
-    createdAt: c.createdAt,
-    actionUrl: `/oikos?focus=${c.id}`,
-    icon: '🗣️',
-  }))
+  // Oikos moved to person-mcp; the aggregator runs server-side without an A2A
+  // delegation token. Returns empty until rewired to call the MCP under the
+  // user's session.
+  void userId
+  return []
 }
 
 // ─── Source 6: stale-mentee-checkin (derived from on-chain) ───────
@@ -319,30 +288,9 @@ async function staleMenteeCheckins(personAgent: `0x${string}`): Promise<WorkItem
 // ─── Source 7: prayer-due (DB prayers fired today) ────────────────
 
 async function prayersDue(userId: string): Promise<WorkItem[]> {
-  const all = await db.select().from(schema.prayers)
-    .where(and(eq(schema.prayers.userId, userId), eq(schema.prayers.answered, 0)))
-    .limit(PER_SOURCE_LIMIT * 2)
-  const today = new Date().toISOString().slice(0, 10)   // YYYY-MM-DD
-  const todayDow = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][new Date().getDay()]
-  const due = all.filter(p => {
-    const lastDay = (p.lastPrayed ?? '').slice(0, 10)
-    if (lastDay === today) return false
-    const sched = (p.schedule ?? 'daily').toLowerCase()
-    if (sched === 'daily') return true
-    return sched.split(',').map(s => s.trim()).includes(todayDow)
-  }).slice(0, PER_SOURCE_LIMIT)
-  return due.map(p => makeWorkItem({
-    id: `prayer-due:${p.id}`,
-    kind: 'prayer-due',
-    subject: null,
-    subjectLabel: null,
-    title: `Pray: ${p.title}`,
-    detail: p.notes ?? null,
-    dueAt: null,
-    createdAt: p.createdAt,
-    actionUrl: `/nurture/prayer?focus=${p.id}`,
-    icon: '🙏',
-  }))
+  // Prayers moved to person-mcp; aggregator returns empty until rewired.
+  void userId
+  return []
 }
 
 // ─── Source 9: match-proposed (Discover layer) ───────────────────
@@ -385,39 +333,15 @@ async function matchesProposed(personAgent: `0x${string}`): Promise<WorkItem[]> 
 // ─── Source 8: walk-step-due (training cadence) ───────────────────
 
 async function walkStepDue(userId: string): Promise<WorkItem[]> {
-  const cutoff = daysAgoIso(WALK_CADENCE_DAYS)
-  const recent = await db.select().from(schema.trainingProgress)
-    .where(eq(schema.trainingProgress.userId, userId))
-    .limit(50)
-  if (recent.length === 0) {
-    // First-time user — surface a "start your walk" item so the queue
-    // never appears empty for a brand-new account.
-    return [makeWorkItem({
-      id: `walk-step-due:start:${userId}`,
-      kind: 'walk-step-due',
-      subject: null,
-      subjectLabel: null,
-      title: 'Start your discipleship walk',
-      detail: 'The 28-lesson 411 program is the first track. Pick it up at any time.',
-      dueAt: null,
-      createdAt: new Date().toISOString(),
-      actionUrl: '/grow',
-      icon: '🌱',
-    })]
-  }
-  const lastCompleted = recent
-    .filter(r => r.completed === 1 && r.completedAt)
-    .map(r => r.completedAt!)
-    .sort()
-    .pop() ?? '1970-01-01'
-  if (lastCompleted >= cutoff) return []
+  // trainingProgress moved to person-mcp; surface a generic "start your walk"
+  // item for first-time users until the work-queue picks up MCP-backed data.
   return [makeWorkItem({
-    id: `walk-step-due:cadence:${userId}`,
+    id: `walk-step-due:start:${userId}`,
     kind: 'walk-step-due',
     subject: null,
     subjectLabel: null,
-    title: 'Continue your walk',
-    detail: `It has been ${WALK_CADENCE_DAYS}+ days since your last step.`,
+    title: 'Start your discipleship walk',
+    detail: 'The 28-lesson 411 program is the first track. Pick it up at any time.',
     dueAt: null,
     createdAt: new Date().toISOString(),
     actionUrl: '/grow',

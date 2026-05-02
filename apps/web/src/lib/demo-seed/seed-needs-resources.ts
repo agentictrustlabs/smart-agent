@@ -26,6 +26,11 @@ interface NeedSeed {
   needTypeLabel: string
   /** Lookup key — userId of the seeded user owning the need-bearing org. */
   ownerUserId: string
+  /** R17 — explicit beneficiary user. The person on whose behalf the need is
+   *  expressed. For org-expressed intents (Berthoud needs a coach for Hannah),
+   *  this is the actual person being served. For personal intents, it's the
+   *  same as ownerUserId. ALWAYS set; no fallback. */
+  beneficiaryUserId: string
   /** Resolved at seed-time from the user's first owned org (or person agent). */
   title: string
   detail: string
@@ -41,13 +46,15 @@ interface NeedSeed {
 }
 
 const CATALYST_NEEDS: NeedSeed[] = [
-  // Berthoud circle — needs a coach (the dispute resolution context).
+  // Berthoud circle — needs a coach for Hannah (the new G2 apprentice).
+  // The org expresses the intent; Hannah is the beneficiary who'll be coached.
   {
     needType: 'needType:CircleCoachNeeded',
     needTypeLabel: 'Circle needs a coach',
-    ownerUserId: 'cat-user-010',  // Sofia → Berthoud Circle
-    title: 'Berthoud Circle needs an assigned coach',
-    detail: 'The engagement-overlap dispute with Loveland flagged that Berthoud lacks a regional coach. The right coach can help mediate stewardOf scope and develop next-G leaders.',
+    ownerUserId: 'cat-user-010',          // Sofia → Berthoud Circle (org expresses)
+    beneficiaryUserId: 'cat-user-013',    // Hannah is the actual coachee
+    title: 'Berthoud Circle: coach for Hannah (G2 apprentice)',
+    detail: 'Hannah is our prepared G2 leader-apprentice. Looking for a regional coach to walk alongside her for 3-6 months while she takes on circle-leader responsibilities.',
     priority: 'high',
     requirements: {
       role: 'atl:CoachRole',
@@ -56,11 +63,12 @@ const CATALYST_NEEDS: NeedSeed[] = [
       timeWindow: { recurrence: 'bi-weekly' },
     },
   },
-  // Fort Collins Network — needs a treasurer.
+  // Fort Collins Network — needs a treasurer (Maria asks on behalf of the org).
   {
     needType: 'needType:Treasurer',
     needTypeLabel: 'Treasurer / financial steward',
-    ownerUserId: 'cat-user-001',  // Maria → Catalyst NoCo Network
+    ownerUserId: 'cat-user-001',
+    beneficiaryUserId: 'cat-user-001',    // Maria personally takes on the relationship with the treasurer.
     title: 'Catalyst NoCo Network needs a treasurer',
     detail: 'After ECFA review, the network needs a vetted treasurer who can sign disbursements and chair the monthly stewardship review. Bookkeeping skill required; ECFA familiarity a plus.',
     priority: 'high',
@@ -70,11 +78,12 @@ const CATALYST_NEEDS: NeedSeed[] = [
       credential: 'credential:ecfa-aware',
     },
   },
-  // Wellington — connector to a funder.
+  // Wellington — connector to a funder (Ana is the one who'd actually receive the intro).
   {
     needType: 'needType:ConnectorToFunder',
     needTypeLabel: 'Introduction to a funder',
-    ownerUserId: 'cat-user-006',  // Ana → Wellington
+    ownerUserId: 'cat-user-006',
+    beneficiaryUserId: 'cat-user-006',
     title: 'Wellington Circle needs a connector to a NoCo funder',
     detail: 'Wellington is multiplying faster than its Q4 budget can support. Looking for someone who can introduce the circle to NCF / NoCo-area donor-advised-fund holders.',
     priority: 'normal',
@@ -83,11 +92,12 @@ const CATALYST_NEEDS: NeedSeed[] = [
       geo: 'us/colorado/fortcollins',
     },
   },
-  // Loveland — heart-language scripture access.
+  // Loveland — heart-language scripture (Luis personally receives the materials).
   {
     needType: 'needType:HeartLanguageScripture',
     needTypeLabel: 'Heart-language scripture access',
-    ownerUserId: 'cat-user-009',  // Luis → Loveland
+    ownerUserId: 'cat-user-009',
+    beneficiaryUserId: 'cat-user-009',
     title: 'Loveland Circle: heart-language scripture for indigenous-Mexican families',
     detail: 'Three families in Loveland speak indigenous-Mexican languages where Spanish-language scripture is a second language. Looking for Wycliffe / Progress.Bible referral or oral-Bible curriculum.',
     priority: 'normal',
@@ -96,11 +106,12 @@ const CATALYST_NEEDS: NeedSeed[] = [
       geo: 'us/colorado/loveland',
     },
   },
-  // Catalyst NoCo Network — prayer partners adopted (low-priority, every circle benefits).
+  // Catalyst NoCo Network — prayer partners (Sarah personally coordinates).
   {
     needType: 'needType:PrayerPartner',
     needTypeLabel: 'Prayer partner / intercessor',
-    ownerUserId: 'cat-user-005',  // Sarah → Network
+    ownerUserId: 'cat-user-005',
+    beneficiaryUserId: 'cat-user-005',
     title: 'Adopted intercessors for the seven NoCo circles',
     detail: 'Pairing each circle with 2–3 weekly intercessors via the 24-7 Prayer adoption pattern. Open to anyone who can commit to a weekly prayer slot.',
     priority: 'low',
@@ -108,11 +119,12 @@ const CATALYST_NEEDS: NeedSeed[] = [
       timeWindow: { recurrence: 'weekly' },
     },
   },
-  // Timnath — trauma-informed care provider.
+  // Timnath — trauma-informed care (Elena receives the consult).
   {
     needType: 'needType:TraumaInformedCare',
     needTypeLabel: 'Trauma-informed care provider',
-    ownerUserId: 'cat-user-008',  // Elena → Timnath
+    ownerUserId: 'cat-user-008',
+    beneficiaryUserId: 'cat-user-008',
     title: 'Timnath Circle: trauma-informed care for grief and separation',
     detail: 'Three case-load referrals this month. Looking for a GMCN-trained provider available for a weekly 60-minute consult.',
     priority: 'high',
@@ -123,11 +135,12 @@ const CATALYST_NEEDS: NeedSeed[] = [
       credential: 'credential:gmcn-trauma-care',
     },
   },
-  // Fort Collins Hub — T4T trainer.
+  // Fort Collins Hub — T4T trainer (David personally hosts the intensive).
   {
     needType: 'needType:TrainerForT4T',
     needTypeLabel: 'T4T trainer',
-    ownerUserId: 'cat-user-002',  // David → Hub
+    ownerUserId: 'cat-user-002',
+    beneficiaryUserId: 'cat-user-002',
     title: 'Fort Collins Hub: T4T trainer for next intensive',
     detail: 'Two more circles ready for the IMB T4T 4 Fields intensive. Looking for someone certified to run the full two-day curriculum.',
     priority: 'normal',
@@ -137,11 +150,12 @@ const CATALYST_NEEDS: NeedSeed[] = [
       credential: 'credential:t4t-trainer',
     },
   },
-  // Red Feather — venue for gathering.
+  // Red Feather — venue for gathering (Isabel personally hosts).
   {
     needType: 'needType:VenueForGathering',
     needTypeLabel: 'Venue for gathering',
-    ownerUserId: 'cat-user-012',  // Isabel → Red Feather
+    ownerUserId: 'cat-user-012',
+    beneficiaryUserId: 'cat-user-012',
     title: 'Red Feather Lakes: rotating venue for monthly potluck',
     detail: 'The mountain community gathers monthly; current host can\'t accommodate growth. Need a rotating venue around the lakes.',
     priority: 'low',
@@ -150,11 +164,12 @@ const CATALYST_NEEDS: NeedSeed[] = [
       timeWindow: { recurrence: 'monthly' },
     },
   },
-  // Laporte — group-leader apprentice.
+  // Laporte — group-leader apprentice (Miguel personally mentors).
   {
     needType: 'needType:GroupLeaderApprentice',
     needTypeLabel: 'Group-leader apprentice',
-    ownerUserId: 'cat-user-007',  // Miguel → Laporte
+    ownerUserId: 'cat-user-007',
+    beneficiaryUserId: 'cat-user-007',
     title: 'Laporte Circle: G2 apprentice from harvest crew',
     detail: 'Foreman Ricardo is the prepared candidate but needs paired apprenticeship before formal handoff. Looking for a coach willing to walk alongside for 3 months.',
     priority: 'normal',
@@ -233,9 +248,18 @@ export async function seedCatalystNeedsAndOfferings(): Promise<void> {
   let needsSkipped = 0
   const insertedNeedIds: string[] = []
   const ownedAgentByUser = await resolveOwnedAgents(CATALYST_NEEDS.map(n => n.ownerUserId))
+  // Resolve every beneficiary's *person* agent (R17 — explicit, no fallback).
+  const beneficiaryPersonByUser = await resolvePersonAgents(
+    CATALYST_NEEDS.map(n => n.beneficiaryUserId),
+  )
   for (const seed of CATALYST_NEEDS) {
     const ownerAgent = ownedAgentByUser.get(seed.ownerUserId)
     if (!ownerAgent) { console.warn(`[needs-seed] no owned agent for ${seed.ownerUserId}; skip ${seed.title}`); continue }
+    const beneficiaryAgent = beneficiaryPersonByUser.get(seed.beneficiaryUserId)
+    if (!beneficiaryAgent) {
+      console.warn(`[needs-seed] no person agent resolved for beneficiary ${seed.beneficiaryUserId}; skip ${seed.title} — re-run boot once Hannah & friends provisioned`)
+      continue
+    }
     const dup = db.select().from(schema.needs)
       .where(and(eq(schema.needs.neededByAgent, ownerAgent), eq(schema.needs.title, seed.title)))
       .get()
@@ -246,6 +270,13 @@ export async function seedCatalystNeedsAndOfferings(): Promise<void> {
     }
     const id = randomUUID()
     const now = new Date().toISOString()
+    // R17 — embed the explicit beneficiaryAgent into the requirements JSON.
+    // The intent backfill (intents.action.ts → backfillIntentsFromLegacy)
+    // copies it verbatim into intent.payload.beneficiaryAgent.
+    const requirementsWithBeneficiary = {
+      ...seed.requirements,
+      beneficiaryAgent,
+    }
     db.insert(schema.needs).values({
       id,
       needType: seed.needType,
@@ -257,7 +288,7 @@ export async function seedCatalystNeedsAndOfferings(): Promise<void> {
       detail: seed.detail,
       priority: seed.priority,
       status: 'open',
-      requirements: JSON.stringify(seed.requirements),
+      requirements: JSON.stringify(requirementsWithBeneficiary),
       validUntil: null,
       createdBy: seed.ownerUserId,
       createdAt: now,

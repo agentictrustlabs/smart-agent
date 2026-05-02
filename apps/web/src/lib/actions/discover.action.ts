@@ -220,7 +220,12 @@ export async function getMatch(id: string, hydrate = true): Promise<MatchRow | n
 
 // ─── Accept / Reject ────────────────────────────────────────────────
 
-export async function acceptMatch(matchId: string): Promise<{ ok: true; roleAssignmentId?: string; entitlementId?: string } | { error: string }> {
+export async function acceptMatch(matchId: string): Promise<{
+  ok: true
+  roleAssignmentId?: string
+  matchingEngagementId?: string
+  deliveryEngagementId?: string
+} | { error: string }> {
   const me = await getCurrentUser()
   if (!me) return { error: 'not-authenticated' }
   const match = await getMatch(matchId, true)
@@ -242,13 +247,20 @@ export async function acceptMatch(matchId: string): Promise<{ ok: true; roleAssi
       .run()
   }
 
-  // ── Mint an Engagement (the bilateral workflow artifact) ─────────
-  // Look up the receive- and give-side intents (created by the
-  // backfill / express-intent flow) so the engagement can carry both,
-  // and pull each side's expected outcome — the engagement is bilateral.
-  let entitlementId: string | undefined
-  let holderOutcomeId: string | null = null
-  let providerOutcomeId: string | null = null
+  // ── R16: Two-engagement split. ──────────────────────────────────
+  // 1. Matching engagement: holder=requester (whoever expressed the intent),
+  //    provider=selected agent. Closes immediately — the match itself IS
+  //    the deliverable; trust deposit fires at creation.
+  // 2. Delivery engagement: holder=beneficiary (the person on whose behalf
+  //    the request was made; equals the requester for personal intents),
+  //    provider=same selected agent. References (1) via parentEngagementId.
+  //    Runs the normal Cadence/Tranche/OneShot/Governance round trip.
+  //
+  // The intent's `payload.beneficiaryAgent` field is REQUIRED — no fallback.
+  // If absent, the match cannot be accepted; the intent must be re-expressed
+  // with an explicit beneficiary first.
+  let matchingEngagementId: string | undefined
+  let deliveryEngagementId: string | undefined
   try {
     const { mintEntitlement, seedInitialWorkItem } = await import('./entitlements.action')
     const { getIntentForLegacyNeed, getIntentForLegacyOffering } = await import('./intents.action')
@@ -256,108 +268,187 @@ export async function acceptMatch(matchId: string): Promise<{ ok: true; roleAssi
       getIntentForLegacyNeed(match.needId),
       getIntentForLegacyOffering(match.offeringId),
     ])
-    if (holderIntent && providerIntent && match.offering && match.need) {
-      // Holder's expected outcome — what the receiving party works toward.
-      const holderOutcomeRow = db.select().from(schema.outcomes)
-        .where(eq(schema.outcomes.intentId, holderIntent.id)).get()
-      holderOutcomeId = holderOutcomeRow?.id ?? null
+    if (!holderIntent || !providerIntent || !match.offering || !match.need) {
+      throw new Error('intent or offering missing — cannot mint engagement')
+    }
 
-      // Provider's expected outcome — what the giving party gets out of it
-      // (recognition, capacity-build, certification progress, etc.).
-      // If the provider intent has no explicit outcome, project a sensible
-      // default from the offering shape so the bilateral artifact is honest
-      // about both sides from day one.
-      const providerOutcomeRow = db.select().from(schema.outcomes)
-        .where(eq(schema.outcomes.intentId, providerIntent.id)).get()
-      if (providerOutcomeRow) {
-        providerOutcomeId = providerOutcomeRow.id
-      } else {
-        providerOutcomeId = randomUUID()
-        const objectLeaf = match.offering.resourceType.split(':').pop() ?? match.offering.resourceType
-        const topic = holderIntent.topic ?? match.need.title
-        db.insert(schema.outcomes).values({
-          id: providerOutcomeId,
-          intentId: providerIntent.id,
-          description: `Successfully delivered ${objectLeaf} engagement around "${topic}".`,
-          metric: JSON.stringify({ kind: 'narrative', target: 'engagement-completed' }),
-          status: 'pending',
-          createdAt: now,
-        }).run()
+    // Beneficiary check. No fallbacks: explicit field on intent payload required.
+    const holderPayload = (holderIntent.payload ?? {}) as Record<string, unknown>
+    const beneficiaryAgent = typeof holderPayload.beneficiaryAgent === 'string'
+      ? (holderPayload.beneficiaryAgent as string).toLowerCase()
+      : null
+    if (!beneficiaryAgent) {
+      throw new Error('intent.payload.beneficiaryAgent is required (no fallback) — re-express the intent with an explicit beneficiary')
+    }
+
+    // Pull both outcomes; matching outcome belongs to the matching engagement,
+    // delivery outcome belongs to the delivery engagement.
+    const holderOutcomeRow = db.select().from(schema.outcomes)
+      .where(eq(schema.outcomes.intentId, holderIntent.id)).get()
+    const providerOutcomeRow = db.select().from(schema.outcomes)
+      .where(eq(schema.outcomes.intentId, providerIntent.id)).get()
+
+    // If provider intent has no explicit outcome, project one for the delivery
+    // engagement (Maria's "delivered the coaching cleanly").
+    let providerOutcomeId = providerOutcomeRow?.id ?? null
+    if (!providerOutcomeId) {
+      providerOutcomeId = randomUUID()
+      const objectLeaf = match.offering.resourceType.split(':').pop() ?? match.offering.resourceType
+      const topic = holderIntent.topic ?? match.need.title
+      db.insert(schema.outcomes).values({
+        id: providerOutcomeId,
+        intentId: providerIntent.id,
+        description: `Successfully delivered ${objectLeaf} engagement around "${topic}".`,
+        metric: JSON.stringify({ kind: 'narrative', target: 'engagement-completed' }),
+        status: 'pending',
+        createdAt: now,
+      }).run()
+    }
+
+    const reqs = match.need.requirements ?? {}
+    const baseTerms = {
+      object: match.offering.resourceType,
+      topic: holderIntent.topic ?? match.need.title,
+      role: reqs.role,
+      skill: reqs.skill,
+      geo: reqs.geo,
+      scope: holderIntent.intentTypeLabel,
+      quietMode: holderPayload.quietMode === true,
+    }
+
+    // ── (1) Matching engagement ──────────────────────────────────
+    const matchingMint = await mintEntitlement({
+      sourceMatchId: matchId,
+      holderIntentId: holderIntent.id,
+      providerIntentId: providerIntent.id,
+      holderAgent: match.need.neededByAgent,
+      providerAgent: match.matchedAgent,
+      hubId: match.need.hubId,
+      resourceType: match.offering.resourceType,
+      terms: { ...baseTerms, scope: 'matching' },
+      holderOutcomeId: holderOutcomeRow?.id ?? undefined,
+      providerOutcomeId: undefined,
+      cadenceOverride: 'one-shot',
+      engagementKind: 'matching',
+    })
+    if ('error' in matchingMint) throw new Error(`matching mint: ${matchingMint.error}`)
+    matchingEngagementId = matchingMint.id
+
+    if (matchingMint.created) {
+      // Auto-close the matching engagement: both parties confirmed at accept,
+      // capacity exhausted (the match is done), phase → deposited.
+      db.update(schema.entitlements)
+        .set({
+          holderConfirmedAt: now,
+          providerConfirmedAt: now,
+          status: 'fulfilled',
+          phase: 'deposited',
+          capacityRemaining: 0,
+          updatedAt: now,
+        })
+        .where(eq(schema.entitlements.id, matchingEngagementId!))
+        .run()
+
+      // Mark holder intent fulfilled — the matching IS the outcome.
+      db.update(schema.intents)
+        .set({ status: 'fulfilled', updatedAt: now })
+        .where(eq(schema.intents.id, holderIntent.id))
+        .run()
+      if (holderOutcomeRow) {
+        db.update(schema.outcomes)
+          .set({ status: 'achieved', observedAt: now, observedBy: match.need.neededByAgent })
+          .where(eq(schema.outcomes.id, holderOutcomeRow.id))
+          .run()
       }
 
-      const reqs = match.need.requirements ?? {}
-      const mintRes = await mintEntitlement({
-        sourceMatchId: matchId,
-        holderIntentId: holderIntent.id,
-        providerIntentId: providerIntent.id,
-        holderAgent: match.need.neededByAgent,
-        providerAgent: match.matchedAgent,
-        hubId: match.need.hubId,
-        resourceType: match.offering.resourceType,
-        terms: {
-          object: match.offering.resourceType,
-          topic: holderIntent.topic ?? match.need.title,
-          role: reqs.role,
-          skill: reqs.skill,
-          geo: reqs.geo,
-          scope: holderIntent.intentTypeLabel,
-        },
-        holderOutcomeId: holderOutcomeId ?? undefined,
-        providerOutcomeId: providerOutcomeId ?? undefined,
+      // Thread entries on the matching engagement: just record what happened.
+      const { emitMatchAccept, emitConfirmation, emitTrustDeposit } = await import('./engagements/thread.action')
+      await emitMatchAccept({
+        engagementId: matchingEngagementId!,
+        matchId,
+        score: match.score,
+        satisfies: match.satisfies,
+        misses: match.misses,
       })
-      if ('id' in mintRes) {
-        entitlementId = mintRes.id
-        // Seed the first shared work item — provider gets primary
-        // assignment; either party can resolve.
-        await seedInitialWorkItem(entitlementId)
+      await emitConfirmation({ engagementId: matchingEngagementId!, side: 'holder', fromAgent: match.need.neededByAgent })
+      await emitConfirmation({ engagementId: matchingEngagementId!, side: 'provider', fromAgent: match.matchedAgent })
 
-        // Seed the Commitment Thread — stages 1-3 of the round trip.
-        if (mintRes.created) {
-          const {
-            emitIntentRef, emitMatchAccept, emitContractTerm,
-          } = await import('./engagements/thread.action')
-          await emitIntentRef({
-            engagementId: entitlementId,
-            intentId: holderIntent.id,
-            side: 'holder',
-            title: holderIntent.title,
-            outcome: holderOutcomeRow?.description ?? null,
-          })
-          await emitIntentRef({
-            engagementId: entitlementId,
-            intentId: providerIntent.id,
-            side: 'provider',
-            title: providerIntent.title,
-            outcome: providerOutcomeRow?.description ?? null,
-          })
-          await emitMatchAccept({
-            engagementId: entitlementId,
-            matchId,
-            score: match.score,
-            satisfies: match.satisfies,
-            misses: match.misses,
-          })
-          // Contract terms snapshot (read back from the just-minted row).
-          const ent = db.select().from(schema.entitlements)
-            .where(eq(schema.entitlements.id, entitlementId)).get()
-          if (ent) {
-            await emitContractTerm({
-              engagementId: entitlementId,
-              cadence: ent.cadence,
-              validUntil: ent.validUntil,
-              capacityGranted: ent.capacityGranted,
-              capacityUnit: ent.capacityUnit,
-              terms: JSON.parse(ent.terms),
-            })
-          }
-        }
+      // Mint the matching trust deposit (thinner — the deposit is "made a good match").
+      try {
+        const { mintTrustDeposit } = await import('./engagements/trust-deposit.action')
+        await mintTrustDeposit({ engagementId: matchingEngagementId! })
+      } catch (err) {
+        console.warn('[acceptMatch] matching trust deposit failed (non-fatal):', (err as Error).message)
+      }
+      await emitTrustDeposit({
+        engagementId: matchingEngagementId!,
+        reviewIds: [],
+        skillClaimIds: [],
+        assertionId: 'matching',
+      })
+    }
+
+    // ── (2) Delivery engagement ──────────────────────────────────
+    const deliveryMint = await mintEntitlement({
+      sourceMatchId: matchId,
+      holderIntentId: holderIntent.id,
+      providerIntentId: providerIntent.id,
+      holderAgent: beneficiaryAgent,                         // person being served
+      providerAgent: match.matchedAgent,                     // selected agent
+      hubId: match.need.hubId,
+      resourceType: match.offering.resourceType,
+      terms: baseTerms,
+      holderOutcomeId: undefined,                            // delivery outcomes are intentionally distinct from matching outcome
+      providerOutcomeId: providerOutcomeId ?? undefined,
+      engagementKind: 'delivery',
+      parentEngagementId: matchingEngagementId,
+    })
+    if ('error' in deliveryMint) throw new Error(`delivery mint: ${deliveryMint.error}`)
+    deliveryEngagementId = deliveryMint.id
+
+    if (deliveryMint.created) {
+      await seedInitialWorkItem(deliveryEngagementId!)
+      const { emitIntentRef, emitMatchAccept, emitContractTerm } = await import('./engagements/thread.action')
+      await emitIntentRef({
+        engagementId: deliveryEngagementId!,
+        intentId: holderIntent.id,
+        side: 'holder',
+        title: holderIntent.title,
+        outcome: null,  // matching outcome belonged to the matching engagement
+      })
+      await emitIntentRef({
+        engagementId: deliveryEngagementId!,
+        intentId: providerIntent.id,
+        side: 'provider',
+        title: providerIntent.title,
+        outcome: providerOutcomeRow?.description ?? null,
+      })
+      await emitMatchAccept({
+        engagementId: deliveryEngagementId!,
+        matchId,
+        score: match.score,
+        satisfies: match.satisfies,
+        misses: match.misses,
+      })
+      const ent = db.select().from(schema.entitlements)
+        .where(eq(schema.entitlements.id, deliveryEngagementId!)).get()
+      if (ent) {
+        await emitContractTerm({
+          engagementId: deliveryEngagementId!,
+          cadence: ent.cadence,
+          validUntil: ent.validUntil,
+          capacityGranted: ent.capacityGranted,
+          capacityUnit: ent.capacityUnit,
+          terms: JSON.parse(ent.terms),
+        })
       }
     }
   } catch (err) {
-    console.warn('[acceptMatch] engagement mint failed (non-fatal):', (err as Error).message)
+    return { error: `engagement-mint-failed: ${(err as Error).message}` }
   }
 
   // Mint a RoleAssignment when the match satisfies a role requirement.
+  // Bound to the *delivery* engagement (the working relationship), not the matching one.
   let roleAssignmentId: string | undefined
   const reqs = match.need?.requirements
   if (reqs?.role && match.satisfies.includes('role') && match.offering) {
@@ -369,7 +460,7 @@ export async function acceptMatch(matchId: string): Promise<{ ok: true; roleAssi
       contextEntity: match.need!.neededByAgent,
       targetAgent: null,
       sourceMatchId: matchId,
-      sourceEntitlementId: entitlementId ?? null,
+      sourceEntitlementId: deliveryEngagementId ?? null,
       startsAt: now,
       endsAt: null,
       status: 'active',
@@ -377,23 +468,23 @@ export async function acceptMatch(matchId: string): Promise<{ ok: true; roleAssi
     }).run()
   }
 
-  // Notify the matched agent. Re-uses the existing actionable-message
-  // pipeline so the work-queue's message-pending source surfaces it.
+  // Notify the matched agent. Link goes to the *delivery* engagement —
+  // that's the working surface; the matching engagement is the closed receipt.
   if (me.id !== match.matchedAgent) {
     db.insert(schema.messages).values({
       id: randomUUID(),
-      userId: me.id, // notification author; the in-app message is for the matched agent — TODO: route by agent
+      userId: me.id,
       type: 'relationship_proposed',
       title: `Match accepted: ${match.need?.title ?? 'a need'}`,
-      body: entitlementId
-        ? `You've been matched to fulfill "${match.need?.title}" via your offering "${match.offering?.title}". An engagement workspace has been opened — see the work items for next steps.`
+      body: deliveryEngagementId
+        ? `You've been matched to fulfill "${match.need?.title}" via your offering "${match.offering?.title}". The working engagement has been opened — start with the first work item.`
         : `You've been matched to fulfill "${match.need?.title}" via your offering "${match.offering?.title}". Open the match for next steps.`,
-      link: entitlementId ? `/h/catalyst/entitlements/${entitlementId}` : `/h/catalyst/matches/${matchId}`,
+      link: deliveryEngagementId ? `/h/catalyst/entitlements/${deliveryEngagementId}` : `/h/catalyst/matches/${matchId}`,
       read: 0,
     }).run()
   }
 
-  return { ok: true, roleAssignmentId, entitlementId }
+  return { ok: true, roleAssignmentId, matchingEngagementId, deliveryEngagementId }
 }
 
 export async function rejectMatch(matchId: string, reason?: string): Promise<{ ok: true } | { error: string }> {

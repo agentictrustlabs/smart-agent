@@ -72,24 +72,25 @@ export async function CatalystAttentionStrip({ userId, userOrgs, hubSlug }: Prop
     }
   }
 
-  // 2. Stale prayers — daily-scheduled, unanswered, last prayed >7 days ago.
-  const allPrayers = await db.select().from(schema.prayers)
-    .where(eq(schema.prayers.userId, userId))
-    .all()
-  const sevenDaysAgo = Date.now() - 7 * 86_400_000
-  const overduePrayers = allPrayers.filter(p => {
-    if (p.answered) return false
-    if (!p.lastPrayed) return false
-    return new Date(p.lastPrayed).getTime() < sevenDaysAgo
-  })
-  if (overduePrayers.length > 0) {
-    attentionItems.push({
-      type: 'prayer',
-      label: `${overduePrayers.length} stale prayer${overduePrayers.length === 1 ? '' : 's'}`,
-      detail: 'Not prayed in over a week',
-      href: '/nurture/prayer',
+  // 2. Stale prayers — pulled from person-mcp via the rewired action.
+  try {
+    const { getPrayers } = await import('@/lib/actions/prayer.action')
+    const allPrayers = await getPrayers(userId).catch(() => [])
+    const sevenDaysAgo = Date.now() - 7 * 86_400_000
+    const overduePrayers = allPrayers.filter(p => {
+      if (p.responseState === 'answered') return false
+      if (!p.lastPrayedAt) return false
+      return new Date(p.lastPrayedAt).getTime() < sevenDaysAgo
     })
-  }
+    if (overduePrayers.length > 0) {
+      attentionItems.push({
+        type: 'prayer',
+        label: `${overduePrayers.length} stale prayer${overduePrayers.length === 1 ? '' : 's'}`,
+        detail: 'Not prayed in over a week',
+        href: '/nurture/prayer',
+      })
+    }
+  } catch { /* no A2A session yet */ }
 
   // 3. Pending on-chain relationship requests targeted at the user. This is
   // the slowest of the three (chain RPC) — the whole point of the Suspense

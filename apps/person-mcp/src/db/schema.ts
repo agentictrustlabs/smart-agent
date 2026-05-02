@@ -112,3 +112,250 @@ export const chatMessages = sqliteTable('chat_messages', {
   metadata: text('metadata'), // JSON string
   createdAt: text('created_at').notNull(),
 })
+
+// ---------------------------------------------------------------------------
+// userPreferences — language, home church, location, theme, notifications
+// ---------------------------------------------------------------------------
+export const userPreferences = sqliteTable('user_preferences', {
+  principal: text('principal').primaryKey(),
+  language: text('language'),
+  homeChurch: text('home_church'),
+  location: text('location'),
+  theme: text('theme'),
+  notifications: text('notifications'), // JSON string
+  extras: text('extras'),                // JSON string for forward-compat
+  updatedAt: text('updated_at').notNull(),
+})
+
+// ---------------------------------------------------------------------------
+// oikosContacts — personal relationship network (replaces web `circles`)
+// ---------------------------------------------------------------------------
+export const oikosContacts = sqliteTable('oikos_contacts', {
+  id: text('id').primaryKey(),
+  principal: text('principal').notNull(),
+  personName: text('person_name').notNull(),
+  proximity: text('proximity'),                       // ring1 | ring2 | ring3 | etc.
+  spiritualResponseState: text('spiritual_response_state'),
+  lastContactAt: text('last_contact_at'),
+  plannedConversation: integer('planned_conversation').notNull().default(0),
+  notes: text('notes'),
+  tags: text('tags'),                                 // JSON array string
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+})
+
+// ---------------------------------------------------------------------------
+// prayers — personal prayer entries
+// ---------------------------------------------------------------------------
+export const prayers = sqliteTable('prayers', {
+  id: text('id').primaryKey(),
+  principal: text('principal').notNull(),
+  title: text('title').notNull(),
+  content: text('content'),
+  schedule: text('schedule'),                         // daily | weekly | etc.
+  responseState: text('response_state'),              // open | answered | etc.
+  linkedOikosContactId: text('linked_oikos_contact_id'),
+  tags: text('tags'),                                 // JSON array string
+  lastPrayedAt: text('last_prayed_at'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+})
+
+// ---------------------------------------------------------------------------
+// trainingProgress — personal module/program progression
+// ---------------------------------------------------------------------------
+export const trainingProgress = sqliteTable('training_progress', {
+  id: text('id').primaryKey(),
+  principal: text('principal').notNull(),
+  moduleKey: text('module_key').notNull(),
+  programKey: text('program_key'),
+  track: text('track'),
+  status: text('status').notNull().default('not-started'),  // not-started | in-progress | completed
+  completedAt: text('completed_at'),
+  hoursLogged: integer('hours_logged').notNull().default(0),
+  updatedAt: text('updated_at').notNull(),
+})
+
+// ---------------------------------------------------------------------------
+// pinnedItems — quick-access bookmarks
+// ---------------------------------------------------------------------------
+export const pinnedItems = sqliteTable('pinned_items', {
+  id: text('id').primaryKey(),
+  principal: text('principal').notNull(),
+  itemType: text('item_type').notNull(),              // 'node' | 'org' | 'agent' | etc.
+  itemRef: text('item_ref').notNull(),                // address or other id
+  displayOrder: integer('display_order').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+})
+
+// ---------------------------------------------------------------------------
+// notifications — personal inbox (review received, match accepted, etc.)
+// ---------------------------------------------------------------------------
+export const notifications = sqliteTable('notifications', {
+  id: text('id').primaryKey(),
+  principal: text('principal').notNull(),
+  kind: text('kind').notNull(),                       // review-received | match-accepted | invite-received | ...
+  payload: text('payload'),                           // JSON string
+  readAt: text('read_at'),
+  createdAt: text('created_at').notNull(),
+})
+
+// ---------------------------------------------------------------------------
+// beliefs — off-chain working beliefs that may inform intents
+// ---------------------------------------------------------------------------
+export const beliefs = sqliteTable('beliefs', {
+  id: text('id').primaryKey(),
+  principal: text('principal').notNull(),
+  statement: text('statement').notNull(),
+  tags: text('tags'),                                 // JSON array string
+  informsIntentId: text('informs_intent_id'),         // soft FK to intents.id
+  visibility: text('visibility').notNull().default('private'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+})
+
+// ---------------------------------------------------------------------------
+// coachingNotes — coach owns the row; cross-delegation lets disciple read
+// ---------------------------------------------------------------------------
+export const coachingNotes = sqliteTable('coaching_notes', {
+  id: text('id').primaryKey(),
+  principal: text('principal').notNull(),             // coach principal
+  subjectAgent: text('subject_agent').notNull(),      // disciple address
+  content: text('content').notNull(),
+  sharedWithSubject: integer('shared_with_subject').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+})
+
+// ---------------------------------------------------------------------------
+// crossDelegationGrants — owner grants others scoped read access
+// ---------------------------------------------------------------------------
+export const crossDelegationGrants = sqliteTable('cross_delegation_grants', {
+  id: text('id').primaryKey(),
+  principal: text('principal').notNull(),             // grantor
+  granteeAgent: text('grantee_agent').notNull(),
+  scope: text('scope').notNull(),                     // JSON array of resources/fields
+  validFrom: text('valid_from'),
+  validUntil: text('valid_until'),
+  caveatTerms: text('caveat_terms'),                  // JSON
+  createdAt: text('created_at').notNull(),
+  revokedAt: text('revoked_at'),
+})
+
+// ---------------------------------------------------------------------------
+// intents — owner-routed (private | public | public-coarse | off-chain)
+//   When visibility is public/public-coarse, the MCP also signs an on-chain
+//   assertion via the owner's session signer. The on-chain assertion id is
+//   stored in `onChainAssertionId`. The MCP itself NEVER writes to GraphDB.
+// ---------------------------------------------------------------------------
+export const intents = sqliteTable('intents', {
+  id: text('id').primaryKey(),
+  principal: text('principal').notNull(),
+  direction: text('direction').notNull(),             // receive | give
+  visibility: text('visibility').notNull().default('private'),
+  kind: text('kind').notNull(),
+  addressedTo: text('addressed_to'),
+  summary: text('summary').notNull(),
+  context: text('context'),                            // JSON
+  status: text('status').notNull().default('expressed'),
+  priority: text('priority'),
+  expiresAt: text('expires_at'),
+  onChainAssertionId: text('on_chain_assertion_id'),  // set when minted public
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+})
+
+// ---------------------------------------------------------------------------
+// needs — projection of receive-direction intents
+// ---------------------------------------------------------------------------
+export const needs = sqliteTable('needs', {
+  id: text('id').primaryKey(),
+  principal: text('principal').notNull(),
+  intentId: text('intent_id').notNull(),
+  kind: text('kind').notNull(),
+  requirements: text('requirements'),                  // JSON
+  status: text('status').notNull().default('open'),
+  visibility: text('visibility').notNull().default('private'),
+  geo: text('geo'),
+  capacityNeeded: integer('capacity_needed'),
+  onChainAssertionId: text('on_chain_assertion_id'),
+  createdAt: text('created_at').notNull(),
+})
+
+// ---------------------------------------------------------------------------
+// offerings — projection of give-direction intents
+// ---------------------------------------------------------------------------
+export const offerings = sqliteTable('offerings', {
+  id: text('id').primaryKey(),
+  principal: text('principal').notNull(),
+  intentId: text('intent_id').notNull(),
+  kind: text('kind').notNull(),
+  capabilities: text('capabilities'),                  // JSON
+  capacity: integer('capacity'),
+  visibility: text('visibility').notNull().default('private'),
+  geo: text('geo'),
+  timeWindow: text('time_window'),                     // JSON
+  onChainAssertionId: text('on_chain_assertion_id'),
+  createdAt: text('created_at').notNull(),
+})
+
+// ---------------------------------------------------------------------------
+// outcomes — success criteria tied to intents
+// ---------------------------------------------------------------------------
+export const outcomes = sqliteTable('outcomes', {
+  id: text('id').primaryKey(),
+  principal: text('principal').notNull(),
+  intentId: text('intent_id').notNull(),
+  metric: text('metric').notNull(),
+  target: text('target'),
+  achieved: integer('achieved').notNull().default(0),
+  achievedAt: text('achieved_at'),
+  createdAt: text('created_at').notNull(),
+})
+
+// ---------------------------------------------------------------------------
+// activityLogEntries — personal activities (private by default)
+// ---------------------------------------------------------------------------
+export const activityLogEntries = sqliteTable('activity_log_entries', {
+  id: text('id').primaryKey(),
+  principal: text('principal').notNull(),
+  kind: text('kind').notNull(),                        // meeting | visit | training | prayer | service | ...
+  performedAt: text('performed_at').notNull(),
+  durationMin: integer('duration_min'),
+  geo: text('geo'),
+  witnesses: text('witnesses'),                        // JSON array
+  fulfillsEntitlementId: text('fulfills_entitlement_id'),  // on-chain reference
+  fulfillsNeedId: text('fulfills_need_id'),
+  fulfillsIntentId: text('fulfills_intent_id'),
+  payload: text('payload'),                            // JSON for extra fields
+  evidenceUri: text('evidence_uri'),
+  createdAt: text('created_at').notNull(),
+})
+
+// ---------------------------------------------------------------------------
+// workItems — assigned-to person; entitlement-attached
+// ---------------------------------------------------------------------------
+export const workItems = sqliteTable('work_items', {
+  id: text('id').primaryKey(),
+  principal: text('principal').notNull(),              // assignee
+  entitlementId: text('entitlement_id').notNull(),     // on-chain reference
+  title: text('title').notNull(),
+  description: text('description'),
+  dueAt: text('due_at'),
+  status: text('status').notNull().default('open'),    // open | in-progress | resolved | cancelled
+  resolvedAt: text('resolved_at'),
+  resolvedByActivityId: text('resolved_by_activity_id'),
+  createdAt: text('created_at').notNull(),
+})
+
+// ---------------------------------------------------------------------------
+// engagementHolderState — holder-side per-entitlement metadata
+// ---------------------------------------------------------------------------
+export const engagementHolderState = sqliteTable('engagement_holder_state', {
+  entitlementId: text('entitlement_id').primaryKey(),  // on-chain id
+  principal: text('principal').notNull(),              // holder
+  capacityConsumed: integer('capacity_consumed').notNull().default(0),
+  holderOutcomeNotes: text('holder_outcome_notes'),
+  lastActivityId: text('last_activity_id'),
+  updatedAt: text('updated_at').notNull(),
+})

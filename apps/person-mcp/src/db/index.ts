@@ -177,6 +177,229 @@ sqliteHandle.exec(`
     created_at TEXT NOT NULL
   );
   CREATE INDEX IF NOT EXISTS idx_ssi_audit_principal ON ssi_proof_audit(principal);
+
+  -- ─── Person-domain app data (NEW: data store consolidation initiative) ──
+  CREATE TABLE IF NOT EXISTS user_preferences (
+    principal TEXT PRIMARY KEY,
+    language TEXT,
+    home_church TEXT,
+    location TEXT,
+    theme TEXT,
+    notifications TEXT,
+    extras TEXT,
+    updated_at TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS oikos_contacts (
+    id TEXT PRIMARY KEY,
+    principal TEXT NOT NULL,
+    person_name TEXT NOT NULL,
+    proximity TEXT,
+    spiritual_response_state TEXT,
+    last_contact_at TEXT,
+    planned_conversation INTEGER NOT NULL DEFAULT 0,
+    notes TEXT,
+    tags TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_oikos_principal ON oikos_contacts(principal);
+
+  CREATE TABLE IF NOT EXISTS prayers (
+    id TEXT PRIMARY KEY,
+    principal TEXT NOT NULL,
+    title TEXT NOT NULL,
+    content TEXT,
+    schedule TEXT,
+    response_state TEXT,
+    linked_oikos_contact_id TEXT,
+    tags TEXT,
+    last_prayed_at TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_prayers_principal ON prayers(principal);
+
+  CREATE TABLE IF NOT EXISTS training_progress (
+    id TEXT PRIMARY KEY,
+    principal TEXT NOT NULL,
+    module_key TEXT NOT NULL,
+    program_key TEXT,
+    track TEXT,
+    status TEXT NOT NULL DEFAULT 'not-started',
+    completed_at TEXT,
+    hours_logged INTEGER NOT NULL DEFAULT 0,
+    updated_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_training_principal ON training_progress(principal);
+  CREATE UNIQUE INDEX IF NOT EXISTS uq_training_principal_module ON training_progress(principal, module_key);
+
+  CREATE TABLE IF NOT EXISTS pinned_items (
+    id TEXT PRIMARY KEY,
+    principal TEXT NOT NULL,
+    item_type TEXT NOT NULL,
+    item_ref TEXT NOT NULL,
+    display_order INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_pinned_principal ON pinned_items(principal);
+  CREATE UNIQUE INDEX IF NOT EXISTS uq_pinned_principal_ref ON pinned_items(principal, item_ref);
+
+  CREATE TABLE IF NOT EXISTS notifications (
+    id TEXT PRIMARY KEY,
+    principal TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    payload TEXT,
+    read_at TEXT,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_notif_principal ON notifications(principal);
+  CREATE INDEX IF NOT EXISTS idx_notif_unread ON notifications(principal, read_at);
+
+  CREATE TABLE IF NOT EXISTS beliefs (
+    id TEXT PRIMARY KEY,
+    principal TEXT NOT NULL,
+    statement TEXT NOT NULL,
+    tags TEXT,
+    informs_intent_id TEXT,
+    visibility TEXT NOT NULL DEFAULT 'private',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_beliefs_principal ON beliefs(principal);
+
+  CREATE TABLE IF NOT EXISTS coaching_notes (
+    id TEXT PRIMARY KEY,
+    principal TEXT NOT NULL,
+    subject_agent TEXT NOT NULL,
+    content TEXT NOT NULL,
+    shared_with_subject INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_coaching_principal ON coaching_notes(principal);
+  CREATE INDEX IF NOT EXISTS idx_coaching_subject ON coaching_notes(subject_agent);
+
+  CREATE TABLE IF NOT EXISTS cross_delegation_grants (
+    id TEXT PRIMARY KEY,
+    principal TEXT NOT NULL,
+    grantee_agent TEXT NOT NULL,
+    scope TEXT NOT NULL,
+    valid_from TEXT,
+    valid_until TEXT,
+    caveat_terms TEXT,
+    created_at TEXT NOT NULL,
+    revoked_at TEXT
+  );
+  CREATE INDEX IF NOT EXISTS idx_cdg_principal ON cross_delegation_grants(principal);
+  CREATE INDEX IF NOT EXISTS idx_cdg_grantee  ON cross_delegation_grants(grantee_agent);
+
+  CREATE TABLE IF NOT EXISTS intents (
+    id TEXT PRIMARY KEY,
+    principal TEXT NOT NULL,
+    direction TEXT NOT NULL,
+    visibility TEXT NOT NULL DEFAULT 'private',
+    kind TEXT NOT NULL,
+    addressed_to TEXT,
+    summary TEXT NOT NULL,
+    context TEXT,
+    status TEXT NOT NULL DEFAULT 'expressed',
+    priority TEXT,
+    expires_at TEXT,
+    on_chain_assertion_id TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_intents_principal ON intents(principal);
+  CREATE INDEX IF NOT EXISTS idx_intents_visibility ON intents(visibility);
+
+  CREATE TABLE IF NOT EXISTS needs (
+    id TEXT PRIMARY KEY,
+    principal TEXT NOT NULL,
+    intent_id TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    requirements TEXT,
+    status TEXT NOT NULL DEFAULT 'open',
+    visibility TEXT NOT NULL DEFAULT 'private',
+    geo TEXT,
+    capacity_needed INTEGER,
+    on_chain_assertion_id TEXT,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_needs_principal ON needs(principal);
+  CREATE INDEX IF NOT EXISTS idx_needs_intent ON needs(intent_id);
+
+  CREATE TABLE IF NOT EXISTS offerings (
+    id TEXT PRIMARY KEY,
+    principal TEXT NOT NULL,
+    intent_id TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    capabilities TEXT,
+    capacity INTEGER,
+    visibility TEXT NOT NULL DEFAULT 'private',
+    geo TEXT,
+    time_window TEXT,
+    on_chain_assertion_id TEXT,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_offerings_principal ON offerings(principal);
+  CREATE INDEX IF NOT EXISTS idx_offerings_intent ON offerings(intent_id);
+
+  CREATE TABLE IF NOT EXISTS outcomes (
+    id TEXT PRIMARY KEY,
+    principal TEXT NOT NULL,
+    intent_id TEXT NOT NULL,
+    metric TEXT NOT NULL,
+    target TEXT,
+    achieved INTEGER NOT NULL DEFAULT 0,
+    achieved_at TEXT,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_outcomes_principal ON outcomes(principal);
+  CREATE INDEX IF NOT EXISTS idx_outcomes_intent ON outcomes(intent_id);
+
+  CREATE TABLE IF NOT EXISTS activity_log_entries (
+    id TEXT PRIMARY KEY,
+    principal TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    performed_at TEXT NOT NULL,
+    duration_min INTEGER,
+    geo TEXT,
+    witnesses TEXT,
+    fulfills_entitlement_id TEXT,
+    fulfills_need_id TEXT,
+    fulfills_intent_id TEXT,
+    payload TEXT,
+    evidence_uri TEXT,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_activity_principal ON activity_log_entries(principal);
+  CREATE INDEX IF NOT EXISTS idx_activity_entitlement ON activity_log_entries(fulfills_entitlement_id);
+
+  CREATE TABLE IF NOT EXISTS work_items (
+    id TEXT PRIMARY KEY,
+    principal TEXT NOT NULL,
+    entitlement_id TEXT NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT,
+    due_at TEXT,
+    status TEXT NOT NULL DEFAULT 'open',
+    resolved_at TEXT,
+    resolved_by_activity_id TEXT,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_workitems_principal ON work_items(principal);
+  CREATE INDEX IF NOT EXISTS idx_workitems_entitlement ON work_items(entitlement_id);
+
+  CREATE TABLE IF NOT EXISTS engagement_holder_state (
+    entitlement_id TEXT PRIMARY KEY,
+    principal TEXT NOT NULL,
+    capacity_consumed INTEGER NOT NULL DEFAULT 0,
+    holder_outcome_notes TEXT,
+    last_activity_id TEXT,
+    updated_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_holder_state_principal ON engagement_holder_state(principal);
 `)
 
 /** Raw better-sqlite3 handle. Used by the absorbed ssi storage modules. */

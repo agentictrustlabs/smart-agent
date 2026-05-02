@@ -9,7 +9,14 @@ export default async function GrowPage() {
   const currentUser = await getCurrentUser()
   if (!currentUser) redirect('/')
 
-  const progress = await getTrainingProgress(currentUser.id)
+  const progressRaw = await getTrainingProgress(currentUser.id).catch(() => [])
+  const progress = progressRaw.map(p => ({
+    id: p.id,
+    moduleKey: p.moduleKey,
+    program: p.programKey ?? '',
+    track: p.track,
+    completed: p.status === 'completed' ? 1 : 0,
+  }))
 
   // Count churches from user's orgs
   const userOrgs = await getUserOrgs(currentUser.id)

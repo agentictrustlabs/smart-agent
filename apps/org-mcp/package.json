@@ -12,15 +12,19 @@
   "dependencies": {
     "@hono/node-server": "^1.11.0",
     "@hyperledger/anoncreds-nodejs": "^0.4.0",
+    "@modelcontextprotocol/sdk": "^1.12.1",
     "@smart-agent/credential-registry": "workspace:*",
     "@smart-agent/privacy-creds": "workspace:*",
+    "@smart-agent/sdk": "workspace:*",
     "better-sqlite3": "^11.0.0",
+    "drizzle-orm": "^0.38.0",
     "hono": "^4.4.0",
     "viem": "^2.21.0"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.0",
     "@types/node": "^22.0.0",
+    "drizzle-kit": "^0.30.0",
     "tsx": "^4.0.0",
     "typescript": "^5.5.0"
   }

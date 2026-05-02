@@ -1,22 +1,31 @@
 'use server'
 
-import { randomUUID } from 'crypto'
 import { requireSession } from '@/lib/auth/session'
-import { db, schema } from '@/db'
-import { eq } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
+import { callMcp } from '@/lib/clients/mcp-client'
 
-async function resolveUserId() {
-  const session = await requireSession()
-  const user = await db.select().from(schema.users)
-    .where(eq(schema.users.walletAddress, session.walletAddress ?? '')).limit(1)
-  if (!user[0]) throw new Error('User not found')
-  return user[0].id
+interface PrayerRow {
+  id: string
+  principal: string
+  title: string
+  content: string | null
+  schedule: string | null
+  responseState: string | null
+  linkedOikosContactId: string | null
+  tags: string | null
+  lastPrayedAt: string | null
+  createdAt: string
+  updatedAt: string
 }
 
-export async function getPrayers(userId: string) {
-  return db.select().from(schema.prayers)
-    .where(eq(schema.prayers.userId, userId))
+export async function getPrayers(_userId?: string): Promise<PrayerRow[]> {
+  await requireSession()
+  try {
+    const { prayers } = await callMcp<{ prayers: PrayerRow[] }>('person', 'list_prayers', {})
+    return prayers ?? []
+  } catch {
+    return []
+  }
 }
 
 export async function addPrayer(data: {
@@ -24,47 +33,35 @@ export async function addPrayer(data: {
   notes?: string
   schedule: string
   linkedOikosId?: string
-}) {
-  const userId = await resolveUserId()
-
-  const id = randomUUID()
-  await db.insert(schema.prayers).values({
-    id,
-    userId,
-    title: data.title,
-    notes: data.notes ?? null,
-    schedule: data.schedule || 'daily',
-    linkedOikosId: data.linkedOikosId ?? null,
-  })
-
+}): Promise<{ id: string }> {
+  await requireSession()
+  const result = await callMcp<{ prayer: PrayerRow }>(
+    'person', 'upsert_prayer',
+    {
+      title: data.title,
+      content: data.notes,
+      schedule: data.schedule || 'daily',
+      linkedOikosContactId: data.linkedOikosId,
+    },
+  )
   revalidatePath('/catalyst/prayer')
-  return { id }
+  return { id: result.prayer.id }
 }
 
-export async function markPrayed(id: string) {
-  await resolveUserId()
-
-  await db.update(schema.prayers)
-    .set({ lastPrayed: new Date().toISOString() })
-    .where(eq(schema.prayers.id, id))
-
+export async function markPrayed(id: string): Promise<void> {
+  await requireSession()
+  await callMcp('person', 'mark_prayer_response', { id, responseState: 'open' })
   revalidatePath('/catalyst/prayer')
 }
 
-export async function markAnswered(id: string) {
-  await resolveUserId()
-
-  await db.update(schema.prayers)
-    .set({ answered: 1, answeredAt: new Date().toISOString() })
-    .where(eq(schema.prayers.id, id))
-
+export async function markAnswered(id: string): Promise<void> {
+  await requireSession()
+  await callMcp('person', 'mark_prayer_response', { id, responseState: 'answered' })
   revalidatePath('/catalyst/prayer')
 }
 
-export async function deletePrayer(id: string) {
-  await resolveUserId()
-
-  await db.delete(schema.prayers).where(eq(schema.prayers.id, id))
-
+export async function deletePrayer(id: string): Promise<void> {
+  await requireSession()
+  await callMcp('person', 'delete_prayer', { id })
   revalidatePath('/catalyst/prayer')
 }

@@ -1,24 +1,31 @@
 'use server'
 
-import { db, schema } from '@/db'
-import { eq, and } from 'drizzle-orm'
-import { randomUUID } from 'crypto'
 import { requireSession } from '@/lib/auth/session'
+import { callMcp } from '@/lib/clients/mcp-client'
 
-async function getUserId(): Promise<string> {
-  const session = await requireSession()
-  const user = await db.select().from(schema.users)
-    .where(eq(schema.users.walletAddress, session.walletAddress ?? '')).limit(1)
-  if (!user[0]) throw new Error('User not found')
-  return user[0].id
+// All oikos data lives in person-mcp. The principal is derived from the
+// signed delegation token minted by a2a-agent — userId is no longer the key.
+
+interface OikosContact {
+  id: string
+  principal: string
+  personName: string
+  proximity: string | null
+  spiritualResponseState: string | null
+  lastContactAt: string | null
+  plannedConversation: number
+  notes: string | null
+  tags: string | null
+  createdAt: string
+  updatedAt: string
 }
 
-/**
- * Get all oikos contacts for a user.
- * Uses the 'circles' table (legacy name — will be renamed in schema migration).
- */
-export async function getOikosContacts(userId: string) {
-  return db.select().from(schema.circles).where(eq(schema.circles.userId, userId))
+export async function getOikosContacts(_userId?: string): Promise<OikosContact[]> {
+  await requireSession()
+  const { contacts } = await callMcp<{ contacts: OikosContact[] }>(
+    'person', 'list_oikos_contacts', {},
+  )
+  return contacts ?? []
 }
 
 /** @deprecated Use getOikosContacts */
@@ -26,25 +33,25 @@ export const getCircles = getOikosContacts
 
 export async function addOikosPerson(data: {
   name: string
-  proximity: number
-  response: 'not-interested' | 'curious' | 'interested' | 'seeking' | 'decided' | 'baptized'
+  proximity: number | string
+  response: string
   notes?: string
   plannedConversation?: boolean
   tags?: string
-}) {
-  const userId = await getUserId()
-  const id = randomUUID()
-  await db.insert(schema.circles).values({
-    id,
-    userId,
-    personName: data.name,
-    proximity: data.proximity,
-    response: data.response,
-    notes: data.notes ?? null,
-    plannedConversation: data.plannedConversation ? 1 : 0,
-    tags: data.tags ?? null,
-  })
-  return { id }
+}): Promise<{ id: string }> {
+  await requireSession()
+  const { contact } = await callMcp<{ contact: OikosContact }>(
+    'person', 'add_oikos_contact',
+    {
+      personName: data.name,
+      proximity: String(data.proximity),
+      spiritualResponseState: data.response,
+      notes: data.notes,
+      plannedConversation: data.plannedConversation,
+      tags: data.tags,
+    },
+  )
+  return { id: contact.id }
 }
 
 /** @deprecated Use addOikosPerson */
@@ -54,46 +61,37 @@ export async function updateOikosPerson(
   id: string,
   data: {
     name?: string
-    proximity?: number
-    response?: 'not-interested' | 'curious' | 'interested' | 'seeking' | 'decided' | 'baptized'
+    proximity?: number | string
+    response?: string
     notes?: string
     plannedConversation?: boolean
     tags?: string
   },
-) {
-  const userId = await getUserId()
-  const updates: Record<string, unknown> = {}
-  if (data.name !== undefined) updates.personName = data.name
-  if (data.proximity !== undefined) updates.proximity = data.proximity
-  if (data.response !== undefined) updates.response = data.response
-  if (data.notes !== undefined) updates.notes = data.notes
-  if (data.plannedConversation !== undefined) updates.plannedConversation = data.plannedConversation ? 1 : 0
-  if (data.tags !== undefined) updates.tags = data.tags
-
-  await db.update(schema.circles)
-    .set(updates)
-    .where(and(eq(schema.circles.id, id), eq(schema.circles.userId, userId)))
+): Promise<void> {
+  await requireSession()
+  await callMcp('person', 'update_oikos_contact', {
+    id,
+    personName: data.name,
+    proximity: data.proximity !== undefined ? String(data.proximity) : undefined,
+    spiritualResponseState: data.response,
+    notes: data.notes,
+    plannedConversation: data.plannedConversation,
+    tags: data.tags,
+  })
 }
 
 /** @deprecated Use updateOikosPerson */
 export const updateCirclePerson = updateOikosPerson
 
-export async function deleteOikosPerson(id: string) {
-  const userId = await getUserId()
-  await db.delete(schema.circles)
-    .where(and(eq(schema.circles.id, id), eq(schema.circles.userId, userId)))
+export async function deleteOikosPerson(id: string): Promise<void> {
+  await requireSession()
+  await callMcp('person', 'delete_oikos_contact', { id })
 }
 
 /** @deprecated Use deleteOikosPerson */
 export const deleteCirclePerson = deleteOikosPerson
 
-export async function togglePlannedConversation(id: string) {
-  const userId = await getUserId()
-  const rows = await db.select().from(schema.circles)
-    .where(and(eq(schema.circles.id, id), eq(schema.circles.userId, userId))).limit(1)
-  if (!rows[0]) throw new Error('Oikos contact not found')
-
-  await db.update(schema.circles)
-    .set({ plannedConversation: rows[0].plannedConversation ? 0 : 1 })
-    .where(eq(schema.circles.id, id))
+export async function togglePlannedConversation(id: string): Promise<void> {
+  await requireSession()
+  await callMcp('person', 'toggle_planned_conversation', { id })
 }

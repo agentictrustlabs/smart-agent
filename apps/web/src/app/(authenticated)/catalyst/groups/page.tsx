@@ -25,8 +25,22 @@ export default async function CatalystGroupsPage() {
     const role = getMCRole(currentUser.id)
     const allowedAddrs = getBusinessOrgAddressesForUser(currentUser.id)
 
-    // Get all revenue reports
-    const allReports = await db.select().from(schema.revenueReports)
+    // Revenue reports moved to org-mcp; cross-org listing pending Phase 4.
+    const allReports: Array<{
+      id: string
+      orgAddress: string
+      submittedBy: string
+      period: string
+      grossRevenue: number
+      expenses: number
+      netRevenue: number
+      sharePayment: number
+      currency: string
+      notes: string | null
+      status: string
+      submittedAt: string
+      createdAt: string
+    }> = []
 
     // Get all users for name lookup
     const allUsers = await db.select().from(schema.users)

@@ -6,6 +6,7 @@ import { getHubProfile } from '@/lib/hub-profiles'
 import { getPersonAgentForUser } from '@/lib/agent-registry'
 import { listMatches, type MatchRow } from '@/lib/actions/discover.action'
 import { MatchRowCard } from '@/components/discover/MatchRow'
+import { AiMatcherButton } from '@/components/engagements/AiMatcherButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -67,6 +68,9 @@ export default async function MatchesIndexPage({ params, searchParams }: {
           Intents the discovery engine paired your offerings with — accept, decline, or check on what you&apos;ve already committed to.
         </p>
       </div>
+
+      {/* AI matcher — let the agent run a round on your behalf */}
+      <AiMatcherButton hubId={internalHubId} />
 
       {/* Filter pills */}
       <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '1rem', flexWrap: 'wrap' }}>

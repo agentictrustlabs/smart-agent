@@ -1,8 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { getPrayers } from '@/lib/actions/prayer.action'
-import { db, schema } from '@/db'
-import { eq } from 'drizzle-orm'
+import { getOikosContacts } from '@/lib/actions/oikos.action'
 import { PrayerClient } from './PrayerClient'
 
 const DAY_NAMES = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const
@@ -11,26 +10,33 @@ export default async function CatalystPrayerPage() {
   const currentUser = await getCurrentUser()
   if (!currentUser) redirect('/')
 
-  let allPrayers: Awaited<ReturnType<typeof getPrayers>> = []
-  try {
-    allPrayers = await getPrayers(currentUser.id)
-  } catch { /* table may not exist */ }
+  // Prayer + oikos data lives in person-mcp now. Both calls fail gracefully
+  // until the user has bootstrapped an A2A session (delegation token).
+  const allPrayersRaw = await getPrayers(currentUser.id).catch(() => [])
+  const oikosRaw = await getOikosContacts(currentUser.id).catch(() => [])
+  const oikosPeople = oikosRaw.map(c => ({ id: c.id, personName: c.personName }))
 
-  // Fetch oikos circles
-  let oikosPeople: Array<{id: string, personName: string}> = []
-  try {
-    const oikosRows = await db.select().from(schema.circles).where(eq(schema.circles.userId, currentUser.id))
-    oikosPeople = oikosRows.map(r => ({ id: r.id, personName: r.personName }))
-  } catch { /* ignored */ }
+  // Map MCP shape to the legacy fields the client expects.
+  const allPrayers = allPrayersRaw.map(p => ({
+    id: p.id,
+    userId: currentUser.id,
+    title: p.title,
+    notes: p.content ?? null,
+    schedule: p.schedule ?? 'daily',
+    linkedOikosId: p.linkedOikosContactId ?? null,
+    answered: p.responseState === 'answered' ? 1 : 0,
+    lastPrayed: p.lastPrayedAt ?? null,
+    answeredAt: null as string | null,
+    createdAt: p.createdAt,
+  }))
 
-  // Compute "Pray for Oikos" list: oikos people with no linked prayer or lastPrayed > 3 days
   const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000
   const now = Date.now()
   const activePrayers = allPrayers.filter(p => p.answered === 0)
   const oikosNeedPrayer = oikosPeople.filter(person => {
     const linkedPrayer = activePrayers.find(p => p.linkedOikosId === person.id)
-    if (!linkedPrayer) return true // no linked prayer at all
-    if (!linkedPrayer.lastPrayed) return true // never prayed
+    if (!linkedPrayer) return true
+    if (!linkedPrayer.lastPrayed) return true
     return (now - new Date(linkedPrayer.lastPrayed).getTime()) > THREE_DAYS_MS
   })
 

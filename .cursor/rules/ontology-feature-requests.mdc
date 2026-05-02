@@ -1,0 +1,24 @@
+---
+description: Interpret "add feature" as an ontology feature backlog request
+alwaysApply: true
+---
+
+# Ontology Feature Requests
+
+When the user says "add feature" without another explicit target, interpret it
+as a request to add an ontology feature entry to:
+
+`docs/specs/ontology-features.md`
+
+Use the existing feature template in that document. Include:
+
+- intent;
+- ontology scope;
+- upper-ontology or external-vocabulary alignment;
+- candidate classes/properties/concepts;
+- integration points;
+- privacy/access notes;
+- open questions.
+
+Do not implement contracts, ontology TTL files, database schema, or UI unless
+the user explicitly asks for implementation.

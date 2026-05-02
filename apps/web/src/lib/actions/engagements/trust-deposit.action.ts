@@ -51,15 +51,19 @@ export async function mintTrustDeposit(input: {
     }
   }
 
-  const terms = safeParse<{ object: string; topic?: string; skill?: string; role?: string }>(ent.terms) ?? { object: '' }
+  const terms = safeParse<{ object: string; topic?: string; skill?: string; role?: string; quietMode?: boolean }>(ent.terms) ?? { object: '' }
   const skillSlug = terms.skill ?? terms.role ?? terms.object.split(':').pop() ?? 'engagement'
   const witnessLifted = ent.witnessAgent && ent.witnessSignedAt ? true : false
-  const baseScore = witnessLifted ? 90 : 75
+  const isQuiet = terms.quietMode === true
+  // Quiet engagements (Prayer, sensitive Worker) deposit a thinner artifact:
+  // base score 70 (vs 75/90), no narrative content carried, lower confidence.
+  const baseScore = isQuiet ? 70 : witnessLifted ? 90 : 75
   // Confidence weights: witness presence + capacity-density + duration.
   const capacityDensity = ent.capacityGranted > 0
     ? Math.min(1, (ent.capacityGranted - ent.capacityRemaining) / ent.capacityGranted)
     : 0.5
-  const confidence = Math.round((witnessLifted ? 0.5 : 0.3) + (capacityDensity * 0.5) * 100) / 100
+  const baseConfidence = isQuiet ? 0.2 : witnessLifted ? 0.5 : 0.3
+  const confidence = Math.round((baseConfidence + (capacityDensity * 0.4)) * 100) / 100
 
   const now = new Date().toISOString()
   const reviewIds: string[] = []
@@ -80,7 +84,11 @@ export async function mintTrustDeposit(input: {
         engagementId: ent.id,
         score: baseScore,
         confidence,
-        narrative: `Holder review — engagement around ${terms.topic ?? skillSlug}.`,
+        // Quiet engagements omit the topic from the narrative — only the
+        // resource leaf is recorded, never the case detail.
+        narrative: isQuiet
+          ? `Quiet engagement — ${skillSlug} (content not stored).`
+          : `Holder review — engagement around ${terms.topic ?? skillSlug}.`,
         witnessLifted: witnessLifted ? 1 : 0,
         createdAt: now,
       },
@@ -91,7 +99,9 @@ export async function mintTrustDeposit(input: {
         engagementId: ent.id,
         score: baseScore,
         confidence,
-        narrative: `Provider review — engagement around ${terms.topic ?? skillSlug}.`,
+        narrative: isQuiet
+          ? `Quiet engagement — ${skillSlug} (content not stored).`
+          : `Provider review — engagement around ${terms.topic ?? skillSlug}.`,
         witnessLifted: witnessLifted ? 1 : 0,
         createdAt: now,
       },

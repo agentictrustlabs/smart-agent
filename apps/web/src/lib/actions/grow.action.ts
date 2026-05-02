@@ -1,80 +1,50 @@
 'use server'
 
-import { randomUUID } from 'crypto'
 import { requireSession } from '@/lib/auth/session'
-import { db, schema } from '@/db'
-import { eq, and, desc } from 'drizzle-orm'
+import { callMcp } from '@/lib/clients/mcp-client'
 
-// ─── Training Progress ─────────────────────────────────────────────
+// ─── Training Progress (now in person-mcp) ─────────────────────────
 
-export async function getTrainingProgress(userId: string) {
-  return db.select().from(schema.trainingProgress).where(eq(schema.trainingProgress.userId, userId))
+interface TrainingRow {
+  id: string
+  principal: string
+  moduleKey: string
+  programKey: string | null
+  track: string | null
+  status: string
+  completedAt: string | null
+  hoursLogged: number
+  updatedAt: string
 }
 
-export async function toggleModule(moduleKey: string, program: string, track?: string) {
-  const session = await requireSession()
-  const user = await db
-    .select()
-    .from(schema.users)
-    .where(eq(schema.users.walletAddress, session.walletAddress ?? ''))
-    .limit(1)
-  if (!user[0]) throw new Error('User not found')
-
-  const userId = user[0].id
-
-  // Find existing record
-  const conditions = [
-    eq(schema.trainingProgress.userId, userId),
-    eq(schema.trainingProgress.moduleKey, moduleKey),
-    eq(schema.trainingProgress.program, program),
-  ]
-  if (track) {
-    conditions.push(eq(schema.trainingProgress.track, track))
-  }
-
-  const existing = await db
-    .select()
-    .from(schema.trainingProgress)
-    .where(and(...conditions))
-    .limit(1)
-
-  if (existing[0]) {
-    const nowCompleted = existing[0].completed === 0 ? 1 : 0
-    await db
-      .update(schema.trainingProgress)
-      .set({
-        completed: nowCompleted,
-        completedAt: nowCompleted ? new Date().toISOString() : null,
-      })
-      .where(eq(schema.trainingProgress.id, existing[0].id))
-    return { completed: nowCompleted === 1 }
-  }
-
-  // Create new record as completed
-  await db.insert(schema.trainingProgress).values({
-    id: randomUUID(),
-    userId,
-    moduleKey,
-    program,
-    track: track ?? null,
-    completed: 1,
-    completedAt: new Date().toISOString(),
-  })
-  return { completed: true }
+export async function getTrainingProgress(_userId?: string): Promise<TrainingRow[]> {
+  await requireSession()
+  const { progress } = await callMcp<{ progress: TrainingRow[] }>(
+    'person', 'list_training_progress', {},
+  )
+  return progress ?? []
 }
 
-// ─── Coach Relationships (on-chain edges) ──────────────────────────
+export async function toggleModule(moduleKey: string, program: string, track?: string): Promise<{ completed: boolean }> {
+  await requireSession()
+  const result = await callMcp<{ toggled: 'completed' | 'not-started' }>(
+    'person', 'toggle_training_module',
+    { moduleKey, programKey: program, track },
+  )
+  return { completed: result.toggled === 'completed' }
+}
+
+// ─── Coach Relationships (on-chain edges, unchanged) ───────────────
 
 export async function getCoachRelationship(userId: string) {
   const { getPersonAgentForUser } = await import('@/lib/agent-registry')
   const { getEdgesByObject, getEdge, getEdgeRoles } = await import('@/lib/contracts')
-  const { COACHING_MENTORSHIP, ROLE_COACH, roleName } = await import('@smart-agent/sdk')
+  const { COACHING_MENTORSHIP, roleName } = await import('@smart-agent/sdk')
   const { getAgentMetadata } = await import('@/lib/agent-metadata')
 
   const personAddr = await getPersonAgentForUser(userId)
   if (!personAddr) return null
 
-  // Find incoming coaching edges where this user is the disciple (object)
   try {
     const edgeIds = await getEdgesByObject(personAddr as `0x${string}`)
     for (const edgeId of edgeIds) {
@@ -102,7 +72,7 @@ export async function getCoachRelationship(userId: string) {
 export async function getDisciples(userId: string) {
   const { getPersonAgentForUser } = await import('@/lib/agent-registry')
   const { getEdgesBySubject, getEdge, getEdgeRoles } = await import('@/lib/contracts')
-  const { COACHING_MENTORSHIP, ROLE_COACH, roleName } = await import('@smart-agent/sdk')
+  const { COACHING_MENTORSHIP, roleName } = await import('@smart-agent/sdk')
   const { getAgentMetadata } = await import('@/lib/agent-metadata')
 
   const personAddr = await getPersonAgentForUser(userId)
@@ -133,82 +103,60 @@ export async function getDisciples(userId: string) {
   return disciples
 }
 
-// ─── Day-since helper ───────────────────────────────────────────────
+// ─── Disciple Details (Coach Dashboard) ─────────────────────────────
+// Cross-delegation flow: a coach calls person-mcp's get_delegated_training_progress
+// with the disciple's signed cross-delegation. For now the dashboard returns
+// only the on-chain coach-edge metadata until cross-delegation flows ship.
 
-function daysSince(dateStr: string): number {
-  const then = new Date(dateStr)
-  const now = new Date()
-  return Math.floor((now.getTime() - then.getTime()) / (1000 * 60 * 60 * 24))
+interface DiscipleActivity {
+  id: string
+  activityType: string
+  title: string
+  activityDate: string
 }
 
-// ─── Disciple Details (Coach Dashboard) ─────────────────────────────
-
-export async function getDiscipleDetails(discipleId: string) {
-  // Get recent activities (last 5)
-  const activities = await db.select().from(schema.activityLogs)
-    .where(eq(schema.activityLogs.userId, discipleId))
-    .orderBy(desc(schema.activityLogs.activityDate))
-    .limit(5)
-
-  // Get prayer count (unanswered)
-  const prayers = await db.select().from(schema.prayers)
-    .where(and(eq(schema.prayers.userId, discipleId), eq(schema.prayers.answered, 0)))
-
-  // Get training progress
-  const progress = await db.select().from(schema.trainingProgress)
-    .where(eq(schema.trainingProgress.userId, discipleId))
-  const completed = progress.filter(p => p.completed === 1).length
-  const total = 28 // 6 + 20 + 2
-
-  // Last activity date
-  const lastActivity = activities[0]?.activityDate ?? null
-
+export async function getDiscipleDetails(_discipleId: string): Promise<{
+  recentActivities: DiscipleActivity[]
+  prayerCount: number
+  trainingPct: number
+  lastActivityDate: string | null
+  needsAttention: boolean
+}> {
   return {
-    recentActivities: activities,
-    prayerCount: prayers.length,
-    trainingPct: total > 0 ? Math.round((completed / total) * 100) : 0,
-    lastActivityDate: lastActivity,
-    needsAttention: !lastActivity || daysSince(lastActivity) > 7,
+    recentActivities: [],
+    prayerCount: 0,
+    trainingPct: 0,
+    lastActivityDate: null,
+    needsAttention: false,
   }
 }
 
-// ─── User Preferences ───────────────────────────────────────────────
+// ─── User Preferences (now in person-mcp) ──────────────────────────
 
-export async function getUserPreferences(userId: string) {
-  const rows = await db
-    .select()
-    .from(schema.userPreferences)
-    .where(eq(schema.userPreferences.userId, userId))
-    .limit(1)
-  return rows[0] ?? null
+interface PreferencesRow {
+  principal: string
+  language: string | null
+  homeChurch: string | null
+  location: string | null
+  theme: string | null
+  notifications: string | null
+  extras: string | null
+  updatedAt: string
+}
+
+export async function getUserPreferences(_userId?: string): Promise<PreferencesRow | null> {
+  await requireSession()
+  const { preferences } = await callMcp<{ preferences: PreferencesRow | null }>(
+    'person', 'get_user_preferences', {},
+  )
+  return preferences
 }
 
 export async function updateUserPreferences(
-  userId: string,
+  _userId: string | undefined,
   data: { language?: string; homeChurch?: string; location?: string }
-) {
+): Promise<{ success: true }> {
   await requireSession()
-
-  const existing = await db
-    .select()
-    .from(schema.userPreferences)
-    .where(eq(schema.userPreferences.userId, userId))
-    .limit(1)
-
-  if (existing[0]) {
-    await db
-      .update(schema.userPreferences)
-      .set(data)
-      .where(eq(schema.userPreferences.id, existing[0].id))
-  } else {
-    await db.insert(schema.userPreferences).values({
-      id: randomUUID(),
-      userId,
-      language: data.language ?? 'en',
-      homeChurch: data.homeChurch ?? null,
-      location: data.location ?? null,
-    })
-  }
-
+  await callMcp('person', 'update_user_preferences', data)
   return { success: true }
 }

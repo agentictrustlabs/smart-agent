@@ -28,6 +28,7 @@ import { capacityDefaultFor } from '@/lib/discover/capacity-defaults'
 
 export type EntitlementStatus = 'granted' | 'active' | 'paused' | 'suspended' | 'fulfilled' | 'revoked' | 'expired'
 export type EngagementPhase = 'granted' | 'kickoff' | 'in_cadence' | 'evidence_pinned' | 'witnessed' | 'determined' | 'deposited'
+export type EngagementKind = 'matching' | 'delivery'
 export type WorkItemStatus = 'open' | 'in-progress' | 'done' | 'skipped'
 export type WorkItemCadence = 'one-shot' | 'recurring'
 
@@ -39,6 +40,10 @@ export interface EntitlementTerms {
   geo?: string
   scope?: string
   conditions?: string[]
+  /** R14 — opt into quiet mode (sensitive Worker, Prayer-style discretion). */
+  quietMode?: boolean
+  /** R12 — tranche schedule overrides for Money engagements. */
+  tranches?: { count?: number; reportRequired?: boolean }
 }
 
 export interface EntitlementRow {
@@ -71,6 +76,10 @@ export interface EntitlementRow {
   evidencePinnedAt: string | null
   /** 8-stop round trip phase. */
   phase: EngagementPhase
+  /** R16 — 'matching' (closes at accept) or 'delivery' (the working relationship). */
+  engagementKind: EngagementKind
+  /** R16 — when delivery, points back at the matching engagement. */
+  parentEngagementId: string | null
   status: EntitlementStatus
   validFrom: string
   validUntil: string | null
@@ -122,6 +131,8 @@ function rowToEnt(r: typeof schema.entitlements.$inferSelect): EntitlementRow {
     evidenceBundleHash: r.evidenceBundleHash,
     evidencePinnedAt: r.evidencePinnedAt,
     phase: r.phase,
+    engagementKind: r.engagementKind,
+    parentEngagementId: r.parentEngagementId,
     status: r.status,
     validFrom: r.validFrom,
     validUntil: r.validUntil,
@@ -167,15 +178,28 @@ export interface MintEntitlementInput {
   cadenceOverride?: 'one-shot' | 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'on-demand'
   /** Optional explicit validity end. Default = validFrom + capacity-defaults.defaultValidityDays. */
   validUntil?: string
+  /** R16 — 'matching' (closes at accept) or 'delivery' (default). */
+  engagementKind?: EngagementKind
+  /** R16 — for delivery engagements, the matching engagement that spawned it. */
+  parentEngagementId?: string
+  /** R16 — for matching engagements, idempotency key separate from sourceMatchId
+   *  so we can mint TWO records (matching + delivery) per accepted match without
+   *  the unique-on-sourceMatchId guard rejecting the second. Defaults to sourceMatchId. */
+  idempotencyKey?: string
 }
 
 /**
- * Idempotent: an entitlement already minted for `sourceMatchId` is
- * returned as-is rather than duplicated.
+ * Idempotent at the (sourceMatchId, engagementKind) level. Each accepted
+ * match mints both a 'matching' and a 'delivery' engagement; re-running
+ * mintEntitlement for either kind returns the existing row.
  */
 export async function mintEntitlement(input: MintEntitlementInput): Promise<{ id: string; created: boolean } | { error: string }> {
+  const kind: EngagementKind = input.engagementKind ?? 'delivery'
   const existing = db.select().from(schema.entitlements)
-    .where(eq(schema.entitlements.sourceMatchId, input.sourceMatchId))
+    .where(and(
+      eq(schema.entitlements.sourceMatchId, input.sourceMatchId),
+      eq(schema.entitlements.engagementKind, kind),
+    ))
     .get()
   if (existing) return { id: existing.id, created: false }
 
@@ -205,6 +229,8 @@ export async function mintEntitlement(input: MintEntitlementInput): Promise<{ id
       holderOutcomeId: input.holderOutcomeId ?? null,
       providerOutcomeId: input.providerOutcomeId ?? null,
       phase: 'granted',
+      engagementKind: kind,
+      parentEngagementId: input.parentEngagementId ?? null,
       status: 'granted',
       validFrom: now,
       validUntil,

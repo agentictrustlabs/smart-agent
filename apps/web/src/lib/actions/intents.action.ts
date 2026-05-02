@@ -121,6 +121,36 @@ export async function expressIntent(input: ExpressIntentInput): Promise<{ id: st
   const id = randomUUID()
   const now = new Date().toISOString()
 
+  // R16 — every intent must declare its beneficiary explicitly.
+  // For 'give' intents, beneficiary = self (the giver). For 'receive' intents,
+  // beneficiary defaults to the expressing user's person agent IF the caller
+  // didn't specify one; for org-as-expressed intents the caller MUST pass
+  // payload.beneficiaryAgent — no fallback.
+  const incomingPayload: Record<string, unknown> = input.payload
+    ? { ...(input.payload as Record<string, unknown>) }
+    : {}
+  if (incomingPayload.beneficiaryAgent === undefined || incomingPayload.beneficiaryAgent === null) {
+    if (input.direction === 'give') {
+      incomingPayload.beneficiaryAgent = input.expressedByAgent.toLowerCase()
+    } else {
+      // Receive-direction without explicit beneficiary: only valid when the
+      // expressing agent is the same as the beneficiary (personal intent).
+      // The caller must set beneficiaryAgent for org-expressed intents.
+      const myPerson = await resolvePersonAgentForUser(me.id)
+      if (!myPerson) {
+        return { error: 'beneficiary-required: caller has no person agent and no payload.beneficiaryAgent was provided' }
+      }
+      // Only auto-set when expressing agent matches the user's person agent
+      // (pure personal intent). Otherwise — org-expressed — require explicit.
+      if (input.expressedByAgent.toLowerCase() === myPerson) {
+        incomingPayload.beneficiaryAgent = myPerson
+      } else {
+        return { error: 'beneficiary-required: org-expressed intents must include payload.beneficiaryAgent (no fallback)' }
+      }
+    }
+  }
+  const payloadJson = JSON.stringify(incomingPayload)
+
   // Project to legacy table when shape fits.
   let projectionRef: string | null = null
   try {
@@ -182,7 +212,7 @@ export async function expressIntent(input: ExpressIntentInput): Promise<{ id: st
     hubId: input.hubId,
     title: input.title,
     detail: input.detail ?? null,
-    payload: input.payload ? JSON.stringify(input.payload) : null,
+    payload: payloadJson,
     status: 'expressed',
     priority: input.priority ?? 'normal',
     visibility: input.visibility ?? 'public',
@@ -336,6 +366,19 @@ export async function backfillIntentsFromLegacy(): Promise<{ needsBackfilled: nu
       : 'expressed'
     // Object inferred from the need-type → resource-type mapping table.
     const inferredObject = inferObjectFromNeedType(n.needType)
+
+    // R16/R17 — explicit beneficiary on every intent. We expect the
+    // beneficiary to already be embedded in `requirements.beneficiaryAgent`
+    // (set by the seed or by the express-intent flow). If absent, the
+    // intent will refuse to match — acceptMatch throws on missing beneficiary.
+    const requirementsParsed = n.requirements ? safeParseObject(n.requirements) : {}
+    const payloadWithBeneficiary = JSON.stringify({
+      ...requirementsParsed,
+      beneficiaryAgent: typeof requirementsParsed.beneficiaryAgent === 'string'
+        ? requirementsParsed.beneficiaryAgent
+        : null,
+    })
+
     db.insert(schema.intents).values({
       id: randomUUID(),
       direction: 'receive',
@@ -349,7 +392,7 @@ export async function backfillIntentsFromLegacy(): Promise<{ needsBackfilled: nu
       hubId: n.hubId,
       title: n.title,
       detail: n.detail,
-      payload: n.requirements,
+      payload: payloadWithBeneficiary,
       status: intentStatus,
       priority: n.priority,
       visibility: 'public',
@@ -401,6 +444,18 @@ export async function backfillIntentsFromLegacy(): Promise<{ needsBackfilled: nu
     offeringsBackfilled++
   }
   return { needsBackfilled, offeringsBackfilled }
+}
+
+// R16/R17 helpers ──────────────────────────────────────────────────────
+
+async function resolvePersonAgentForUser(userId: string): Promise<string | null> {
+  const { getPersonAgentForUser } = await import('@/lib/agent-registry')
+  const a = await getPersonAgentForUser(userId)
+  return a ? a.toLowerCase() : null
+}
+
+function safeParseObject(s: string): Record<string, unknown> {
+  try { return JSON.parse(s) as Record<string, unknown> } catch { return {} }
 }
 
 // Need-type → resource-type. Mirrors NEED_TYPE_TO_RESOURCE_TYPES in the

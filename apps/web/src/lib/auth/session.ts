@@ -86,6 +86,11 @@ export const DEMO_USER_META: Record<string, DemoUserMeta> = {
   'cat-user-010': { userId: 'did:demo:cat-010', email: 'sofia@berthoud-circle.org',  name: 'Sofia Ramirez',       org: 'Berthoud Circle',        role: 'Circle Leader',             hubId: 'catalyst' },
   'cat-user-011': { userId: 'did:demo:cat-011', email: 'diego@johnstown-circle.org', name: 'Diego Morales',       org: 'Johnstown Circle',       role: 'Circle Leader',             hubId: 'catalyst' },
   'cat-user-012': { userId: 'did:demo:cat-012', email: 'isabel@redfeather-circle.org', name: 'Isabel Cruz',       org: 'Red Feather Circle',     role: 'Circle Leader',             hubId: 'catalyst' },
+  // R17 — Hannah is the new G2 leader Berthoud Circle is asking for a coach FOR.
+  // She's the beneficiary of Sofia's "needs an assigned coach" intent. When the
+  // matcher (Maria, or the AI) accepts the match, the delivery engagement is
+  // between Hannah (coachee) and the selected coach.
+  'cat-user-013': { userId: 'did:demo:cat-013', email: 'hannah@berthoud-circle.org', name: 'Hannah Reyes',      org: 'Berthoud Circle',        role: 'G2 Apprentice',             hubId: 'catalyst' },
 
   // ─── Collective Impact Labs ──────────────────────────────────────
   'cil-user-001': { userId: 'did:demo:cil-001', email: 'cameron@ilad.org',          name: 'Cameron Henrion',     org: 'ILAD',                       role: 'Operations Lead',           hubId: 'cil' },

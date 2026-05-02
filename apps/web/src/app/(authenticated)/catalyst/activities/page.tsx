@@ -19,19 +19,27 @@ export default async function CatalystActivitiesPage() {
     const role = getMCRole(currentUser.id)
     const allowedAddrs = getBusinessOrgAddressesForUser(currentUser.id)
 
-    // Get all revenue reports
-    let allReports = await db.select().from(schema.revenueReports)
-
-    // Role-based filtering
-    if (role === 'business-owner' && allowedAddrs) {
-      // Business owners see only their own
-      const lowerAddrs = new Set(allowedAddrs.map(a => a.toLowerCase()))
-      allReports = allReports.filter(r => lowerAddrs.has(r.orgAddress.toLowerCase()))
-    } else if (role === 'funder') {
-      // Funders see only verified reports
-      allReports = allReports.filter(r => r.status === 'verified')
-    }
-    // ilad-ops, admin, reviewer, local-manager see all
+    // Revenue reports moved to org-mcp. Listing across all orgs requires
+    // per-org delegation tokens; until those flows ship the activities page
+    // shows an empty list. Role-based filtering becomes unnecessary.
+    const allReports: Array<{
+      id: string
+      orgAddress: string
+      submittedBy: string
+      period: string
+      grossRevenue: number
+      expenses: number
+      netRevenue: number
+      sharePayment: number
+      currency: string
+      notes: string | null
+      status: string
+      verifiedBy: string | null
+      verifiedAt: string | null
+      submittedAt: string
+    }> = []
+    void allowedAddrs
+    void role
 
     // User names
     const allUsers = await db.select().from(schema.users)

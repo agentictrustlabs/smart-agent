@@ -111,24 +111,32 @@ const agents = await discovery.listAgents({ agentType: 'org', search: 'church' }
 
 Orchestrator + Sub-agent model. See `docs/agents/` for role guides.
 
-| Role         | Guide                          |
-|--------------|--------------------------------|
-| Orchestrator | docs/agents/orchestrator.md    |
-| PM           | docs/agents/pm.md              |
-| Developer    | docs/agents/developer.md       |
-| Tester       | docs/agents/tester.md          |
-| Reviewer     | docs/agents/reviewer.md        |
-| QA           | docs/agents/qa.md              |
-| Infra        | docs/agents/infra.md           |
-| Test User    | docs/agents/user.md            |
-| Documentarian| docs/agents/documentarian.md   |
-| Ontologist   | docs/agents/ontologist.md      |
-| Security     | docs/agents/security.md        |
+| Role                     | Guide                                  |
+|--------------------------|----------------------------------------|
+| Orchestrator             | docs/agents/orchestrator.md            |
+| PM                       | docs/agents/pm.md                      |
+| Developer                | docs/agents/developer.md               |
+| Tester                   | docs/agents/tester.md                  |
+| Reviewer                 | docs/agents/reviewer.md                |
+| QA                       | docs/agents/qa.md                      |
+| Infra                    | docs/agents/infra.md                   |
+| Test User                | docs/agents/user.md                    |
+| Documentarian            | docs/agents/documentarian.md           |
+| Ontologist               | docs/agents/ontologist.md              |
+| Security                 | docs/agents/security.md                |
+| Information Architect    | docs/agents/information-architect.md   |
 
 ### Feature Pipeline
 ```
 PM → Developer → Tester → Reviewer → QA → Test User → merge
 ```
+
+### Information-Architecture Pipeline
+```
+Concept proposed → IA classifies (store + tier) → Ontologist (T-Box term) → Security (delegation scope) → Developer → standard pipeline
+```
+
+Active initiative: data-store consolidation per `docs/information-architecture/`. Web SQL is becoming thin; private user/org data moves to `person-mcp` and `org-mcp`. No backwards-compat — `fresh-start.sh` re-seeds.
 
 ### Ontology Pipeline
 ```

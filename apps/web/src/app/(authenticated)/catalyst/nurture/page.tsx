@@ -2,7 +2,6 @@ import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import Link from 'next/link'
 import { db, schema } from '@/db'
-import { eq } from 'drizzle-orm'
 import { getMCRole } from '@/lib/mc-roles'
 import TrainingPageClient from '@/components/mc/TrainingPageClient'
 import type { TrainingModule, UserProgress } from '@/components/mc/TrainingPageClient'
@@ -22,7 +21,7 @@ export default async function NurturePage() {
     let userProgress: UserProgress[] = []
 
     try {
-      // Get BDC training modules
+      // Training modules catalog stays in web SQL (reference data).
       const allModules = await db.select().from(schema.trainingModules)
       modules = allModules
         .filter((m) => m.program === 'bdc')
@@ -34,42 +33,21 @@ export default async function NurturePage() {
           sortOrder: m.sortOrder,
         }))
 
-      // Get all users for name lookup
-      const allUsers = await db.select().from(schema.users)
-      const nameMap = new Map(allUsers.map((u) => [u.id, u.name]))
-
-      // Get progress data
-      const allProgress = await db.select().from(schema.trainingProgress)
-      const bdcProgress = allProgress.filter((p) => p.program === 'bdc')
-
-      if (role === 'business-owner') {
-        // Single user progress
-        const myCompleted = bdcProgress
-          .filter((p) => p.userId === currentUser.id && p.completed === 1)
-          .map((p) => p.moduleKey)
-        const pct = modules.length > 0 ? Math.round((myCompleted.length / modules.length) * 100) : 0
-        userProgress = [{
-          userId: currentUser.id,
-          userName: nameMap.get(currentUser.id) ?? currentUser.name,
-          completedModules: myCompleted,
-          completionPct: pct,
-        }]
-      } else {
-        // All business owners
-        const businessOwnerIds = ['cil-user-003', 'cil-user-004']
-        userProgress = businessOwnerIds.map((uid) => {
-          const completed = bdcProgress
-            .filter((p) => p.userId === uid && p.completed === 1)
-            .map((p) => p.moduleKey)
-          const pct = modules.length > 0 ? Math.round((completed.length / modules.length) * 100) : 0
-          return {
-            userId: uid,
-            userName: nameMap.get(uid) ?? uid,
-            completedModules: completed,
-            completionPct: pct,
-          }
-        })
-      }
+      // Per-user progress now lives in person-mcp; cross-user views (role
+      // !== 'business-owner') need cross-delegation grants to read peers.
+      // Until that flow ships, only the current user's progress is shown.
+      const { getTrainingProgress } = await import('@/lib/actions/grow.action')
+      const myProgress = await getTrainingProgress().catch(() => [])
+      const myCompleted = myProgress
+        .filter(p => p.programKey === 'bdc' && p.status === 'completed')
+        .map(p => p.moduleKey)
+      const pct = modules.length > 0 ? Math.round((myCompleted.length / modules.length) * 100) : 0
+      userProgress = [{
+        userId: currentUser.id,
+        userName: currentUser.name,
+        completedModules: myCompleted,
+        completionPct: pct,
+      }]
     } catch { /* tables may not exist */ }
 
     return (
@@ -83,20 +61,21 @@ export default async function NurturePage() {
 
   // ── Catalyst Nurture View (unchanged) ──────────────────────────────
 
-  // Get prayer count
+  // Prayer + training data lives in person-mcp; both fail gracefully if the
+  // user hasn't bootstrapped an A2A session yet.
   let prayerCount = 0
   let trainingPct = 0
   try {
-    const prayers = await db.select().from(schema.prayers)
-      .where(eq(schema.prayers.userId, currentUser.id))
-    prayerCount = prayers.filter(p => !p.answered).length
+    const { getPrayers } = await import('@/lib/actions/prayer.action')
+    const { getTrainingProgress } = await import('@/lib/actions/grow.action')
+    const prayers = await getPrayers().catch(() => [])
+    prayerCount = prayers.filter(p => p.responseState !== 'answered').length
 
-    const progress = await db.select().from(schema.trainingProgress)
-      .where(eq(schema.trainingProgress.userId, currentUser.id))
+    const progress = await getTrainingProgress().catch(() => [])
     const total411 = 6
-    const completed411 = progress.filter(p => p.program === '411' && p.completed).length
+    const completed411 = progress.filter(p => p.programKey === '411' && p.status === 'completed').length
     trainingPct = Math.round((completed411 / total411) * 100)
-  } catch { /* tables may not exist */ }
+  } catch { /* mcp unreachable */ }
 
   return (
     <div>

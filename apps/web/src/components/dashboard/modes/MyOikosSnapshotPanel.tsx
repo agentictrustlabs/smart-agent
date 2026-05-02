@@ -32,9 +32,10 @@ export async function MyOikosSnapshotPanel() {
   const me = await getCurrentUser()
   if (!me) return null
 
-  const all = await getOikosContacts(me.id)
+  const all = await getOikosContacts(me.id).catch(() => [])
+  const proximityNum = (p: string | null | undefined) => Number(p ?? 99)
   const top = [...all]
-    .sort((a, b) => a.proximity - b.proximity || a.personName.localeCompare(b.personName))
+    .sort((a, b) => proximityNum(a.proximity) - proximityNum(b.proximity) || a.personName.localeCompare(b.personName))
     .slice(0, 5)
 
   if (top.length === 0) {
@@ -88,11 +89,11 @@ export async function MyOikosSnapshotPanel() {
               padding: '0.15rem 0.5rem', borderRadius: 999,
               background: '#fff', border: '1px solid #ece6db', color: '#5c4a3a',
             }}>
-              {PROXIMITY_LABEL[c.proximity] ?? `Ring ${c.proximity}`}
+              {PROXIMITY_LABEL[proximityNum(c.proximity)] ?? `Ring ${c.proximity ?? '?'}`}
             </span>
             <span style={{ fontWeight: 600, fontSize: 13, flex: 1, minWidth: 0 }}>{c.personName}</span>
             <span style={{ fontSize: 11, color: '#64748b' }}>
-              {RESPONSE_LABEL[c.response] ?? c.response}
+              {RESPONSE_LABEL[c.spiritualResponseState ?? ''] ?? (c.spiritualResponseState ?? '')}
             </span>
             {c.plannedConversation === 1 && (
               <span style={{

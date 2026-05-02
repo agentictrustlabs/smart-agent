@@ -17,6 +17,18 @@ import { profileTools } from './tools/profile.js'
 import { identityTools } from './tools/identities.js'
 import { chatTools } from './tools/chat.js'
 import { ssiWalletTools } from './tools/ssi-wallet.js'
+import { preferencesTools } from './tools/preferences.js'
+import { oikosTools } from './tools/oikos.js'
+import { prayersTools } from './tools/prayers.js'
+import { trainingTools } from './tools/training.js'
+import { pinnedTools } from './tools/pinned.js'
+import { notificationsTools } from './tools/notifications.js'
+import { beliefsTools } from './tools/beliefs.js'
+import { coachingTools } from './tools/coaching.js'
+import { intentsTools } from './tools/intents.js'
+import { activitiesTools } from './tools/activities.js'
+import { workItemsTools } from './tools/work-items.js'
+import { crossDelegationsTools } from './tools/cross-delegations.js'
 
 // ---------------------------------------------------------------------------
 // Collect all tool definitions and handlers
@@ -27,6 +39,18 @@ const allTools = {
   ...identityTools,
   ...chatTools,
   ...ssiWalletTools,
+  ...preferencesTools,
+  ...oikosTools,
+  ...prayersTools,
+  ...trainingTools,
+  ...pinnedTools,
+  ...notificationsTools,
+  ...beliefsTools,
+  ...coachingTools,
+  ...intentsTools,
+  ...activitiesTools,
+  ...workItemsTools,
+  ...crossDelegationsTools,
 } as const
 
 const toolDefinitions = Object.values(allTools).map(

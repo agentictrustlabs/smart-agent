@@ -106,27 +106,7 @@ export const invites = sqliteTable('invites', {
 
 // ─── Revenue Reports (general-purpose, used by portfolio businesses) ─
 
-export const revenueReports = sqliteTable('revenue_reports', {
-  id: text('id').primaryKey(),
-  /** Org agent address of the reporting business */
-  orgAddress: text('org_address').notNull(),
-  /** User who submitted the report */
-  submittedBy: text('submitted_by').notNull().references(() => users.id),
-  /** YYYY-MM format */
-  period: text('period').notNull(),
-  grossRevenue: integer('gross_revenue').notNull(),
-  expenses: integer('expenses').notNull(),
-  netRevenue: integer('net_revenue').notNull(),
-  /** Revenue-share payment amount (in local currency units) */
-  sharePayment: integer('share_payment').notNull().default(0),
-  currency: text('currency').notNull().default('XOF'),
-  notes: text('notes'),
-  /** verified-by user id (CIL operator, ILAD coordinator, etc.) */
-  verifiedBy: text('verified_by').references(() => users.id),
-  verifiedAt: text('verified_at'),
-  status: text('status', { enum: ['draft', 'submitted', 'verified', 'disputed'] }).notNull().default('draft'),
-  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
-})
+// revenueReports moved to org-mcp (apps/org-mcp/src/db/schema.ts).
 
 // ─── Training Modules ────────────────────────────────────────────────
 
@@ -142,29 +122,8 @@ export const trainingModules = sqliteTable('training_modules', {
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
 })
 
-// ─── Governance Proposals ────────────────────────────────────────────
-
-export const proposals = sqliteTable('proposals', {
-  id: text('id').primaryKey(),
-  /** Org agent address the proposal is for */
-  orgAddress: text('org_address').notNull(),
-  /** User who created the proposal */
-  proposer: text('proposer').notNull().references(() => users.id),
-  title: text('title').notNull(),
-  description: text('description').notNull(),
-  /** pause-capital | graduate-wave | escalate-review | general */
-  actionType: text('action_type', {
-    enum: ['pause-capital', 'graduate-wave', 'escalate-review', 'general'],
-  }).notNull().default('general'),
-  /** Target address for the action (e.g., business to pause) */
-  targetAddress: text('target_address'),
-  quorumRequired: integer('quorum_required').notNull().default(2),
-  votesFor: integer('votes_for').notNull().default(0),
-  votesAgainst: integer('votes_against').notNull().default(0),
-  status: text('status', { enum: ['open', 'passed', 'rejected', 'executed'] }).notNull().default('open'),
-  executedAt: text('executed_at'),
-  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
-})
+// proposals moved to org-mcp (apps/org-mcp/src/db/schema.ts).
+// On-chain governance state (AgentControl) remains canonical for vote tally.
 
 // ─── Activity Logs (general-purpose field activity tracking) ─────────
 
@@ -228,96 +187,11 @@ export const detachedMembers = sqliteTable('detached_members', {
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
 })
 
-// ─── Pinned Items (quick-access bookmarks) ──────────────────────────
-
-export const pinnedItems = sqliteTable('pinned_items', {
-  id: text('id').primaryKey(),
-  userId: text('user_id').notNull().references(() => users.id),
-  /** Type: 'node' (gen map node) or 'org' */
-  itemType: text('item_type', { enum: ['node', 'org'] }).notNull(),
-  itemId: text('item_id').notNull(),
-  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
-})
-
-// ─── Circles of Influence (Oikos) ───────────────────────────────────
-
-export const circles = sqliteTable('circles', {
-  id: text('id').primaryKey(),
-  userId: text('user_id').notNull().references(() => users.id),
-  personName: text('person_name').notNull(),
-  /** Proximity ring: 1 = closest, 2 = near, 3 = acquaintance, 4 = outer */
-  proximity: integer('proximity').notNull().default(3),
-  /** Spiritual response: not-interested, curious, interested, seeking, decided, baptized */
-  response: text('response', {
-    enum: ['not-interested', 'curious', 'interested', 'seeking', 'decided', 'baptized'],
-  }).notNull().default('curious'),
-  /** Planned conversation flag */
-  plannedConversation: integer('planned_conversation').notNull().default(0),
-  /** Comma-separated tags: "ESL Student,Farm Worker,Youth" */
-  tags: text('tags'),
-  notes: text('notes'),
-  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
-})
-
-// ─── Prayer Tracker ─────────────────────────────────────────────────
-
-export const prayers = sqliteTable('prayers', {
-  id: text('id').primaryKey(),
-  userId: text('user_id').notNull().references(() => users.id),
-  title: text('title').notNull(),
-  notes: text('notes'),
-  /** Comma-separated days: mon,wed,fri or 'daily' */
-  schedule: text('schedule').notNull().default('daily'),
-  lastPrayed: text('last_prayed'),
-  /** Link prayer to an oikos person */
-  linkedOikosId: text('linked_oikos_id'),
-  /** 0 = active, 1 = answered */
-  answered: integer('answered').notNull().default(0),
-  answeredAt: text('answered_at'),
-  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
-})
-
-// ─── Training Progress ──────────────────────────────────────────────
-
-export const trainingProgress = sqliteTable('training_progress', {
-  id: text('id').primaryKey(),
-  userId: text('user_id').notNull().references(() => users.id),
-  /** Module key: '411-1', '411-2', 'coc-love', 'coc-pray', '3thirds', etc. */
-  moduleKey: text('module_key').notNull(),
-  /** Program: '411', 'commands', '3thirds' */
-  program: text('program').notNull(),
-  /** Track: 'obeying' | 'teaching' | null */
-  track: text('track'),
-  /** 0 = not started, 1 = completed */
-  completed: integer('completed').notNull().default(0),
-  completedAt: text('completed_at'),
-  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
-})
-
-// ─── Coach Relationships ────────────────────────────────────────────
-
-export const coachRelationships = sqliteTable('coach_relationships', {
-  id: text('id').primaryKey(),
-  /** The disciple being coached */
-  discipleId: text('disciple_id').notNull().references(() => users.id),
-  /** The coach */
-  coachId: text('coach_id').notNull().references(() => users.id),
-  /** Sharing permissions: comma-separated categories */
-  sharePermissions: text('share_permissions').notNull().default(''),
-  status: text('status', { enum: ['active', 'paused', 'ended'] }).notNull().default('active'),
-  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
-})
-
-// ─── User Preferences (language, home church, etc.) ─────────────────
-
-export const userPreferences = sqliteTable('user_preferences', {
-  id: text('id').primaryKey(),
-  userId: text('user_id').notNull().references(() => users.id).unique(),
-  language: text('language').notNull().default('en'),
-  homeChurch: text('home_church'),
-  location: text('location'),
-  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
-})
+// pinnedItems, circles (oikos), prayers, trainingProgress, coachRelationships,
+// userPreferences all moved to person-mcp (apps/person-mcp/src/db/schema.ts).
+// Coach relationships are now anchored on-chain via the COACHING_MENTORSHIP
+// edge type; only the cross-delegation grant for shared categories lives in
+// person-mcp's cross_delegation_grants table.
 
 // ─── Messages / Notifications ────────────────────────────────────────
 
@@ -613,6 +487,18 @@ export const entitlements = sqliteTable('entitlements', {
   phase: text('phase', {
     enum: ['granted', 'kickoff', 'in_cadence', 'evidence_pinned', 'witnessed', 'determined', 'deposited'],
   }).notNull().default('granted'),
+  /** R16 — kind of engagement.
+   *  'matching' — the matchmaking artifact; closes at accept. Holder = whoever
+   *               expressed the intent. Provider = whoever was selected.
+   *  'delivery' — the actual working relationship; runs the round trip.
+   *               Holder = beneficiary (often a person inside the org).
+   *               Provider = the same selected agent. */
+  engagementKind: text('engagement_kind', {
+    enum: ['matching', 'delivery'],
+  }).notNull().default('delivery'),
+  /** R16 — when engagementKind='delivery', this points back at the matching
+   *  engagement that spawned it. NULL for matching engagements. */
+  parentEngagementId: text('parent_engagement_id'),
   status: text('status', {
     enum: ['granted', 'active', 'paused', 'suspended', 'fulfilled', 'revoked', 'expired'],
   }).notNull().default('granted'),
@@ -710,6 +596,86 @@ export const roleAssignments = sqliteTable('role_assignments', {
   status: text('status', {
     enum: ['active', 'lapsed', 'ended'],
   }).notNull().default('active'),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+})
+
+// ─── Engagement Shapes — Cadence (R10) ─────────────────────────────
+//
+// Sessions are the primary surface for Cadence-shape engagements (Worker,
+// Skill, Prayer, Curriculum, recurring Venue). A session can be:
+//   • Scheduled-only  — `scheduledFor` set, `occurredAt` null  → "upcoming"
+//   • Logged-only     — `occurredAt` set, no `scheduledFor`     → after-the-fact
+//   • Both            — full lifecycle
+//
+// Spec: docs/specs/engagement-shapes-plan.md §6 R10
+export const engagementSessions = sqliteTable('engagement_sessions', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => entitlements.id),
+  scheduledFor: text('scheduled_for'),
+  occurredAt: text('occurred_at'),
+  notes: text('notes'),
+  /** Lowercased person agent address. */
+  loggedBy: text('logged_by'),
+  /** Optional FK back to activity_logs.id when projected from an activity. */
+  sourceActivityId: text('source_activity_id'),
+  status: text('status', {
+    enum: ['scheduled', 'occurred', 'cancelled'],
+  }).notNull().default('scheduled'),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+})
+
+// ─── Engagement Shapes — Tranche (R12) ─────────────────────────────
+//
+// Tranches are the primary surface for Money engagements: scheduled
+// disbursements gated on report acceptance. State machine:
+//   scheduled → report-due → released → (next tranche scheduled)
+//
+// Spec: docs/specs/engagement-shapes-plan.md §6 R12
+export const engagementTranches = sqliteTable('engagement_tranches', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => entitlements.id),
+  /** Sequence 1..N. (engagementId, idx) is the natural key. */
+  idx: integer('idx').notNull(),
+  /** Dollar cents (avoid float). $6,250 = 625000. */
+  amountCents: integer('amount_cents').notNull(),
+  scheduledFor: text('scheduled_for'),
+  releasedAt: text('released_at'),
+  reportRequired: integer('report_required').notNull().default(1),
+  /** FK soft-link to commitmentThreadEntries.id when report attached. */
+  reportThreadEntryId: text('report_thread_entry_id'),
+  state: text('state', {
+    enum: ['scheduled', 'report-due', 'reported', 'released', 'held'],
+  }).notNull().default('scheduled'),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
+})
+
+// ─── Engagement Shapes — Governance (R13) ──────────────────────────
+//
+// Policy doc + roster of signers. Engagements of Credential / Organization /
+// Church type render the PolicyPanel as the primary surface.
+//
+// Spec: docs/specs/engagement-shapes-plan.md §6 R13
+export const engagementPolicies = sqliteTable('engagement_policies', {
+  id: text('id').primaryKey(),
+  engagementId: text('engagement_id').notNull().references(() => entitlements.id),
+  policyDocUri: text('policy_doc_uri'),
+  policySummary: text('policy_summary'),
+  currentState: text('current_state', {
+    enum: ['draft', 'pending', 'approved', 'rejected'],
+  }).notNull().default('draft'),
+  requiredSigners: integer('required_signers').notNull().default(1),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
+})
+
+export const policySigners = sqliteTable('policy_signers', {
+  id: text('id').primaryKey(),
+  policyId: text('policy_id').notNull().references(() => engagementPolicies.id),
+  /** Lowercased agent address. */
+  agent: text('agent').notNull(),
+  role: text('role').notNull(),
+  signedAt: text('signed_at'),
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
 })
 

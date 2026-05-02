@@ -158,15 +158,24 @@ importers:
       '@hyperledger/anoncreds-nodejs':
         specifier: ^0.4.0
         version: 0.4.0
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.12.1
+        version: 1.29.0(zod@3.25.76)
       '@smart-agent/credential-registry':
         specifier: workspace:*
         version: link:../../packages/credential-registry
       '@smart-agent/privacy-creds':
         specifier: workspace:*
         version: link:../../packages/privacy-creds
+      '@smart-agent/sdk':
+        specifier: workspace:*
+        version: link:../../packages/sdk
       better-sqlite3:
         specifier: ^11.0.0
         version: 11.10.0
+      drizzle-orm:
+        specifier: ^0.38.0
+        version: 0.38.4(@types/better-sqlite3@7.6.13)(@types/react@19.2.14)(better-sqlite3@11.10.0)(react@19.2.5)
       hono:
         specifier: ^4.4.0
         version: 4.12.14
@@ -180,6 +189,9 @@ importers:
       '@types/node':
         specifier: ^22.0.0
         version: 22.19.17
+      drizzle-kit:
+        specifier: ^0.30.0
+        version: 0.30.6
       tsx:
         specifier: ^4.0.0
         version: 4.21.0

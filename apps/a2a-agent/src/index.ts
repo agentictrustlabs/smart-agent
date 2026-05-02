@@ -6,6 +6,7 @@ import { auth } from './routes/auth'
 import { session } from './routes/session'
 import { delegation } from './routes/delegation'
 import { profile } from './routes/profile'
+import { mcpProxy } from './routes/mcp-proxy'
 import { a2a } from './routes/a2a'
 
 const app = new Hono()
@@ -21,6 +22,7 @@ app.route('/auth', auth)
 app.route('/session', session)
 app.route('/delegation', delegation)
 app.route('/profile', profile)
+app.route('/mcp', mcpProxy)
 
 // Mount a2a at root so /.well-known/agent.json works
 app.route('/', a2a)

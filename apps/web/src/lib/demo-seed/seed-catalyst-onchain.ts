@@ -221,6 +221,9 @@ async function doSeed() {
   const paSofia = userMap.get('cat-user-010')!.personAgentAddress as `0x${string}`
   const paDiego = userMap.get('cat-user-011')!.personAgentAddress as `0x${string}`
   const paIsabel = userMap.get('cat-user-012')!.personAgentAddress as `0x${string}`
+  // R17 — Hannah is the G2 apprentice in Berthoud. Beneficiary of Sofia's
+  // "needs a coach" intent; resolves through Berthoud → catalyst hub.
+  const paHannah = userMap.get('cat-user-013')!.personAgentAddress as `0x${string}`
 
   // ─── Deploy Org/AI Agent Smart Accounts ──────────────────────────
   console.log('[catalyst-seed] Deploying org smart accounts...')
@@ -414,6 +417,8 @@ async function doSeed() {
   await createEdge(paSofia,  hub,            ORGANIZATION_MEMBERSHIP, [ROLE_MEMBER])
   await createEdge(paDiego,  hub,            ORGANIZATION_MEMBERSHIP, [ROLE_MEMBER])
   await createEdge(paIsabel, hub,            ORGANIZATION_MEMBERSHIP, [ROLE_MEMBER])
+  // R17 — Hannah is a member of Berthoud Circle (G2 apprentice).
+  await createEdge(paHannah, grpBerthoud,    ORGANIZATION_MEMBERSHIP, [ROLE_MEMBER])
   // Cross-circle advisory by the regional staff.
   await createEdge(paDavid, grpWellington,  ORGANIZATION_MEMBERSHIP, [ROLE_ADVISOR])
   await createEdge(paRosa,  grpLaporte,     ORGANIZATION_MEMBERSHIP, [ROLE_ADVISOR])
@@ -454,7 +459,7 @@ async function doSeed() {
     grpWellington, grpLaporte, grpTimnath, grpLoveland, grpBerthoud, grpJohnstown, grpRedFeather,
     analytics,
     paMaria, paDavid, paRosa, paCarlos, paSarah, paAna, paMiguel,
-    paElena, paLuis, paSofia, paDiego, paIsabel,
+    paElena, paLuis, paSofia, paDiego, paIsabel, paHannah,
   ]
   for (const agent of allAgents) {
     await createEdge(hubCatalyst, agent, HAS_MEMBER as `0x${string}`, [ROLE_MEMBER])
@@ -550,7 +555,11 @@ async function doSeed() {
     if (lapNode) await registerName(lapNode, 'miguel', paMiguel)
     if (timNode) await registerName(timNode, 'elena', paElena)
     if (lovNode) await registerName(lovNode, 'luis', paLuis)
-    if (berNode) await registerName(berNode, 'sofia', paSofia)
+    if (berNode) {
+      await registerName(berNode, 'sofia', paSofia)
+      // R17 — Hannah lives under berthoud.catalyst.agent.
+      await registerName(berNode, 'hannah', paHannah)
+    }
     if (johNode) await registerName(johNode, 'diego', paDiego)
     if (redNode) await registerName(redNode, 'isabel', paIsabel)
 
@@ -579,6 +588,7 @@ async function doSeed() {
   await setNameProps(paElena,  'elena',  'elena.timnath.catalyst.agent')
   await setNameProps(paLuis,   'luis',   'luis.loveland.catalyst.agent')
   await setNameProps(paSofia,  'sofia',  'sofia.berthoud.catalyst.agent')
+  await setNameProps(paHannah, 'hannah', 'hannah.berthoud.catalyst.agent')
   await setNameProps(paDiego,  'diego',  'diego.johnstown.catalyst.agent')
   await setNameProps(paIsabel, 'isabel', 'isabel.redfeather.catalyst.agent')
 
@@ -610,6 +620,8 @@ async function doSeed() {
   await createEdge(grpTimnath,    paElena,  NS, NS_ROLES, nsEdgeMeta('elena'))
   await createEdge(grpLoveland,   paLuis,   NS, NS_ROLES, nsEdgeMeta('luis'))
   await createEdge(grpBerthoud,   paSofia,  NS, NS_ROLES, nsEdgeMeta('sofia'))
+  // R17 — Hannah lives under Berthoud Circle in the namespace tree.
+  await createEdge(grpBerthoud,   paHannah, NS, NS_ROLES, nsEdgeMeta('hannah'))
   await createEdge(grpJohnstown,  paDiego,  NS, NS_ROLES, nsEdgeMeta('diego'))
   await createEdge(grpRedFeather, paIsabel, NS, NS_ROLES, nsEdgeMeta('isabel'))
 

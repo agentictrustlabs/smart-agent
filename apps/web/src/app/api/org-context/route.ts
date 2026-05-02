@@ -60,10 +60,12 @@ export async function GET() {
       } catch { /* ignored */ }
       if (aiAgentsByOrg[org.address.toLowerCase()]?.length > 0) caps.push('treasury')
       try {
-        if (db.select().from(schema.revenueReports).limit(1).all().length > 0) caps.push('portfolio', 'revenue')
         if (db.select().from(schema.trainingModules).limit(1).all().length > 0) caps.push('training')
-        if (db.select().from(schema.proposals).limit(1).all().length > 0) caps.push('governance')
       } catch { /* ignored */ }
+      // Revenue / proposal capabilities now live in org-mcp; gating belongs
+      // there (per-org delegation scope), not on existence of any row in the
+      // web SQL. Until per-org capability check lands, surface conservatively.
+      caps.push('portfolio', 'revenue', 'governance')
       capsByOrg[org.address.toLowerCase()] = caps
     }
 

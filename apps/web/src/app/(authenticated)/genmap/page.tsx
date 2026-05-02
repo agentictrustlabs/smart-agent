@@ -164,13 +164,13 @@ export default async function GenMapPage() {
   })))
   const metrics = computeMovementMetrics(tree)
 
-  // Pinned items
+  // Pinned items now live in person-mcp.
   let pinnedNodeIds: string[] = []
   try {
-    const pins = await db.select().from(schema.pinnedItems)
-      .where(eq(schema.pinnedItems.userId, currentUser.id))
-    pinnedNodeIds = pins.filter(p => p.itemType === 'node').map(p => p.itemId)
-  } catch { /* ignored */ }
+    const { getPinnedItems } = await import('@/lib/actions/members.action')
+    const pins = await getPinnedItems(currentUser.id).catch(() => [])
+    pinnedNodeIds = pins.filter(p => p.itemType === 'node').map(p => p.itemRef)
+  } catch { /* no A2A session yet */ }
 
   // Geo data for map view
   const geoAgents = nodes
