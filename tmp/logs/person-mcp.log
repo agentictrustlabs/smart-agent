@@ -860,3 +860,342 @@
 --> GET /health [32m200[0m 0ms
 <-- GET /health
 --> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_6733b7c9c2634332b7b6d1ab27161a1c
+--> GET /session-store/by-cookie/sa_6733b7c9c2634332b7b6d1ab27161a1c [32m200[0m 0ms
+<-- POST /tools/get_user_preferences
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/get_user_preferences [32m200[0m 7ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_6733b7c9c2634332b7b6d1ab27161a1c
+--> GET /session-store/by-cookie/sa_6733b7c9c2634332b7b6d1ab27161a1c [32m200[0m 1ms
+<-- POST /tools/get_profile
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/get_profile [32m200[0m 5ms
+<-- GET /session-store/by-cookie/sa_6733b7c9c2634332b7b6d1ab27161a1c
+--> GET /session-store/by-cookie/sa_6733b7c9c2634332b7b6d1ab27161a1c [32m200[0m 0ms
+<-- POST /tools/get_profile
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/get_profile [32m200[0m 5ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms

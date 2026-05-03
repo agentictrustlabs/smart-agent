@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { getCoachRelationship, getDisciples, getDiscipleDetails } from '@/lib/actions/grow.action'
+import { getPrivateDisciples } from '@/lib/actions/private-coaching.action'
 import { getPersonAgentForUser } from '@/lib/agent-registry'
 import { CoachActions } from './CoachActions'
 
@@ -30,17 +31,36 @@ export default async function CoachPage() {
 
   const coachRel = await getCoachRelationship(currentUser.id)
   const disciples = await getDisciples(currentUser.id)
+  const privateDisciples = await getPrivateDisciples()
   const myPersonAgent = await getPersonAgentForUser(currentUser.id)
 
-  // Enrich each disciple with details
-  const enrichedDisciples = await Promise.all(
+  // Enrich each public disciple with details from on-chain activity logs.
+  const enrichedPublic = await Promise.all(
     disciples.map(async (d) => {
       const details = await getDiscipleDetails(d.discipleId)
-      return { ...d, ...details }
+      return { ...d, ...details, isPrivate: false as const, privateDelegationHash: null as string | null }
     })
   )
 
-  const isCoach = disciples.length > 0
+  // Private disciples: no on-chain activity log → empty stats. The View
+  // Profile button (delegation-gated profile read) is the demonstrable bit.
+  const enrichedPrivate = privateDisciples.map(d => ({
+    id: d.id,
+    discipleId: d.delegatorPrincipal,
+    discipleName: d.discipleName,
+    sharePermissions: '',
+    prayerCount: 0,
+    trainingPct: 0,
+    recentActivities: [] as Array<{ id: string; activityType: string | null; title: string; activityDate: string | null }>,
+    lastActivityDate: null as string | null,
+    needsAttention: false,
+    isPrivate: true as const,
+    privateDelegationHash: d.delegationHash,
+  }))
+
+  const enrichedDisciples = [...enrichedPublic, ...enrichedPrivate]
+
+  const isCoach = enrichedDisciples.length > 0
   const hasCoach = coachRel !== null
 
   return (
@@ -124,6 +144,13 @@ export default async function CoachPage() {
                           width: 8, height: 8, borderRadius: '50%',
                           background: status.dot, display: 'inline-block', flexShrink: 0,
                         }} />
+                        {d.isPrivate && (
+                          <span title="Off-chain coaching grant — held in your delegation wallet, no public edge" style={{
+                            fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.05em',
+                            padding: '0.1rem 0.4rem', borderRadius: 999,
+                            background: '#1f2937', color: '#fff', textTransform: 'uppercase',
+                          }}>Private</span>
+                        )}
                       </div>
                       <div style={{ fontSize: '0.78rem', color: '#9a8c7e' }}>
                         Last active: {status.label}
@@ -193,6 +220,8 @@ export default async function CoachPage() {
                       disciplePersonAgent={d.discipleId}
                       discipleName={d.discipleName}
                       perspective="coach"
+                      isPrivate={d.isPrivate}
+                      privateDelegationHash={d.privateDelegationHash ?? undefined}
                     />
                   )}
                 </div>

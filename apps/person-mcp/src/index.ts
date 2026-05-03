@@ -29,6 +29,7 @@ import { intentsTools } from './tools/intents.js'
 import { activitiesTools } from './tools/activities.js'
 import { workItemsTools } from './tools/work-items.js'
 import { crossDelegationsTools } from './tools/cross-delegations.js'
+import { receivedDelegationsTools } from './tools/received-delegations.js'
 
 // ---------------------------------------------------------------------------
 // Collect all tool definitions and handlers
@@ -51,6 +52,7 @@ const allTools = {
   ...activitiesTools,
   ...workItemsTools,
   ...crossDelegationsTools,
+  ...receivedDelegationsTools,
 } as const
 
 const toolDefinitions = Object.values(allTools).map(

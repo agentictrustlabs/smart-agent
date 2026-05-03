@@ -294,6 +294,24 @@ sqliteHandle.exec(`
   CREATE INDEX IF NOT EXISTS idx_cdg_principal ON cross_delegation_grants(principal);
   CREATE INDEX IF NOT EXISTS idx_cdg_grantee  ON cross_delegation_grants(grantee_agent);
 
+  -- Holder-side store for off-chain cross-delegations (private coaching, etc.)
+  CREATE TABLE IF NOT EXISTS received_delegations (
+    id TEXT PRIMARY KEY,
+    holder_principal TEXT NOT NULL,
+    delegator_principal TEXT NOT NULL,
+    audience TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    subject_label TEXT,
+    delegation_json TEXT NOT NULL,
+    delegation_hash TEXT NOT NULL,
+    expires_at TEXT,
+    created_at TEXT NOT NULL,
+    revoked_at TEXT,
+    UNIQUE (holder_principal, delegation_hash)
+  );
+  CREATE INDEX IF NOT EXISTS idx_recv_deleg_holder ON received_delegations(holder_principal);
+  CREATE INDEX IF NOT EXISTS idx_recv_deleg_kind ON received_delegations(holder_principal, kind);
+
   CREATE TABLE IF NOT EXISTS intents (
     id TEXT PRIMARY KEY,
     principal TEXT NOT NULL,

@@ -243,6 +243,28 @@ export const crossDelegationGrants = sqliteTable('cross_delegation_grants', {
 })
 
 // ---------------------------------------------------------------------------
+// received_delegations — holder-side store for off-chain cross-delegations.
+//   When another principal signs a delegation FOR this caller (e.g. a
+//   private coaching grant), they push the signed blob here via
+//   `register_received_delegation`. The verifier (`get_delegated_profile`
+//   etc.) reads it from this table when the caller invokes a tool.
+//   Nothing about the relationship lands on chain.
+// ---------------------------------------------------------------------------
+export const receivedDelegations = sqliteTable('received_delegations', {
+  id: text('id').primaryKey(),
+  holderPrincipal: text('holder_principal').notNull(),       // recipient's smart account
+  delegatorPrincipal: text('delegator_principal').notNull(), // data owner's smart account
+  audience: text('audience').notNull(),                      // e.g. urn:mcp:server:person
+  kind: text('kind').notNull(),                              // 'coaching' | 'data-share' | ...
+  subjectLabel: text('subject_label'),                       // optional display name
+  delegationJson: text('delegation_json').notNull(),         // full signed delegation
+  delegationHash: text('delegation_hash').notNull(),
+  expiresAt: text('expires_at'),
+  createdAt: text('created_at').notNull(),
+  revokedAt: text('revoked_at'),
+})
+
+// ---------------------------------------------------------------------------
 // intents — owner-routed (private | public | public-coarse | off-chain)
 //   When visibility is public/public-coarse, the MCP also signs an on-chain
 //   assertion via the owner's session signer. The on-chain assertion id is

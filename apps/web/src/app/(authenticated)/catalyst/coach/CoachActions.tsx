@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { revokeRelationshipWithCascade, loadDelegatedProfile } from '@/lib/actions/data-delegation.action'
+import { loadPrivateDelegatedProfile, revokePrivateCoaching } from '@/lib/actions/private-coaching.action'
 
 interface Props {
   edgeId: string
@@ -11,6 +12,10 @@ interface Props {
   discipleName: string
   /** 'coach' = current user is coach, 'disciple' = current user is disciple */
   perspective: 'coach' | 'disciple'
+  /** When true, route View Profile through the holder store (no on-chain edge). */
+  isPrivate?: boolean
+  /** EIP-712 hash of the off-chain delegation; required when isPrivate. */
+  privateDelegationHash?: string
 }
 
 const FIELD_LABELS: Record<string, string> = {
@@ -19,7 +24,7 @@ const FIELD_LABELS: Record<string, string> = {
   dateOfBirth: 'Date of Birth', gender: 'Gender',
 }
 
-export function CoachActions({ edgeId, coachPersonAgent, disciplePersonAgent, discipleName, perspective }: Props) {
+export function CoachActions({ edgeId, coachPersonAgent, disciplePersonAgent, discipleName, perspective, isPrivate, privateDelegationHash }: Props) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -31,6 +36,20 @@ export function CoachActions({ edgeId, coachPersonAgent, disciplePersonAgent, di
     setError(null)
     setLoading(true)
     try {
+      // Private path: holder store → server action → MCP. No on-chain read.
+      if (isPrivate && privateDelegationHash) {
+        const result = await loadPrivateDelegatedProfile(privateDelegationHash)
+        if (!result.success) {
+          setError(result.error ?? 'Failed to load profile')
+        } else if (result.profile) {
+          setProfileData(result.profile)
+          setProfileFields(result.allowedFields ?? Object.keys(result.profile))
+        } else {
+          setError('No profile data available')
+        }
+        return
+      }
+      // Public path: on-chain DATA_ACCESS_DELEGATION edge.
       const res = await fetch(`/api/a2a/delegated-profile?target=${encodeURIComponent(disciplePersonAgent)}&grantee=${encodeURIComponent(coachPersonAgent)}`)
       const result = await res.json()
       if (!result.success) {
@@ -54,7 +73,9 @@ export function CoachActions({ edgeId, coachPersonAgent, disciplePersonAgent, di
     setError(null)
     setLoading(true)
     try {
-      const result = await revokeRelationshipWithCascade(edgeId, coachPersonAgent, disciplePersonAgent)
+      const result = isPrivate && privateDelegationHash
+        ? await revokePrivateCoaching(privateDelegationHash)
+        : await revokeRelationshipWithCascade(edgeId, coachPersonAgent, disciplePersonAgent)
       if (!result.success) {
         setError(result.error ?? 'Revocation failed')
       } else {
