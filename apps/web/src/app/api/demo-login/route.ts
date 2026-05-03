@@ -119,6 +119,25 @@ export async function POST(request: Request) {
     console.warn('[demo-login] KB sync schedule threw:', err)
   }
 
+  // Bootstrap an A2A delegation session so MCP-backed surfaces work
+  // immediately. Demo users have their privateKey in web SQL — for real
+  // users the bootstrap happens client-side via passkey/SIWE.
+  let a2aSessionId: string | null = null
+  try {
+    const { bootstrapA2ASessionForUser } = await import('@/lib/actions/a2a-session.action')
+    const r = await bootstrapA2ASessionForUser({
+      smartAccountAddress: user.smartAccountAddress,
+      privateKey: user.privateKey,
+    })
+    if (r.success && r.sessionId) {
+      a2aSessionId = r.sessionId
+    } else {
+      console.warn('[demo-login] A2A bootstrap failed:', r.error)
+    }
+  } catch (err) {
+    console.warn('[demo-login] A2A bootstrap threw:', err)
+  }
+
   const response = NextResponse.json({
     success: true,
     user: {
@@ -142,6 +161,16 @@ export async function POST(request: Request) {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
   })
+  if (a2aSessionId) {
+    const { A2A_SESSION_COOKIE_NAME } = await import('@/lib/actions/a2a-session-constants')
+    response.cookies.set(A2A_SESSION_COOKIE_NAME, a2aSessionId, {
+      path: '/',
+      maxAge: 60 * 60 * 24,
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+    })
+  }
   void cookieStore
   return response
 }

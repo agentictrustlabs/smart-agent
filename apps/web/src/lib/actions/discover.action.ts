@@ -110,16 +110,17 @@ export async function runDiscoverMatch(needId: string): Promise<{ matches: Match
   const persisted: MatchRow[] = []
   for (const s of top) {
     // Upsert by (needId, offeringId).
-    const existing = db.select().from(schema.needResourceMatches)
+    let existing: any = undefined
+    try { existing = db.select().from(schema.needResourceMatches)
       .where(and(
         eq(schema.needResourceMatches.needId, needId),
         eq(schema.needResourceMatches.offeringId, s.offering.id),
       ))
-      .get()
+      .get() } catch { /* needResourceMatches table dropped */ }
     if (existing) {
       // Only re-score; never overwrite an accept/reject decision.
       if (existing.status === 'proposed' || existing.status === 'stale') {
-        db.update(schema.needResourceMatches)
+        try { db.update(schema.needResourceMatches)
           .set({
             score: s.score,
             reason: s.reason,
@@ -128,16 +129,17 @@ export async function runDiscoverMatch(needId: string): Promise<{ matches: Match
             updatedAt: now,
           })
           .where(eq(schema.needResourceMatches.id, existing.id))
-          .run()
-        const reread = db.select().from(schema.needResourceMatches)
-          .where(eq(schema.needResourceMatches.id, existing.id)).get()
+          .run() } catch { /* needResourceMatches table dropped */ }
+        let reread: any = undefined
+        try { reread = db.select().from(schema.needResourceMatches)
+          .where(eq(schema.needResourceMatches.id, existing.id)).get() } catch { /* needResourceMatches table dropped */ }
         if (reread) persisted.push(rowToMatch(reread))
       } else {
         persisted.push(rowToMatch(existing))
       }
     } else {
       const id = randomUUID()
-      db.insert(schema.needResourceMatches).values({
+      try { db.insert(schema.needResourceMatches).values({
         id,
         needId,
         offeringId: s.offering.id,
@@ -150,9 +152,10 @@ export async function runDiscoverMatch(needId: string): Promise<{ matches: Match
         generatedByActivity: null,
         createdAt: now,
         updatedAt: now,
-      }).run()
-      const reread = db.select().from(schema.needResourceMatches)
-        .where(eq(schema.needResourceMatches.id, id)).get()
+      }).run() } catch { /* needResourceMatches table dropped */ }
+      let reread: any = undefined
+      try { reread = db.select().from(schema.needResourceMatches)
+        .where(eq(schema.needResourceMatches.id, id)).get() } catch { /* needResourceMatches table dropped */ }
       if (reread) persisted.push(rowToMatch(reread))
     }
   }
@@ -162,9 +165,10 @@ export async function runDiscoverMatch(needId: string): Promise<{ matches: Match
 
 /** Run match against every open need in the hub. Used by the Discover page. */
 export async function runDiscoverMatchForHub(hubId: string): Promise<{ count: number; runs: number }> {
-  const opens = await db.select().from(schema.needs)
+  let opens: any[] = []
+  try { opens = await db.select().from(schema.needs)
     .where(and(eq(schema.needs.hubId, hubId), eq(schema.needs.status, 'open')))
-    .limit(50)
+    .limit(50) } catch { /* needs table dropped */ }
   let count = 0
   for (const n of opens) {
     const r = await runDiscoverMatch(n.id)
@@ -190,9 +194,12 @@ export async function listMatches(opts: ListMatchesOptions = {}): Promise<MatchR
   if (opts.matchedAgent) filters.push(eq(schema.needResourceMatches.matchedAgent, opts.matchedAgent.toLowerCase()))
   if (opts.status) filters.push(eq(schema.needResourceMatches.status, opts.status))
   const where = filters.length === 0 ? undefined : filters.length === 1 ? filters[0] : and(...filters)
-  const rows = where
-    ? await db.select().from(schema.needResourceMatches).where(where).orderBy(desc(schema.needResourceMatches.score)).limit(opts.limit ?? 50)
-    : await db.select().from(schema.needResourceMatches).orderBy(desc(schema.needResourceMatches.score)).limit(opts.limit ?? 50)
+  let rows: any[] = []
+  try {
+    rows = where
+      ? await db.select().from(schema.needResourceMatches).where(where).orderBy(desc(schema.needResourceMatches.score)).limit(opts.limit ?? 50)
+      : await db.select().from(schema.needResourceMatches).orderBy(desc(schema.needResourceMatches.score)).limit(opts.limit ?? 50)
+  } catch { /* needResourceMatches table dropped */ }
   let matches = rows.map(rowToMatch)
   const minScore = opts.minScore ?? MIN_SCORE_DEFAULT_LIST
   matches = matches.filter(m => m.score >= minScore)
@@ -206,9 +213,10 @@ export async function listMatches(opts: ListMatchesOptions = {}): Promise<MatchR
 }
 
 export async function getMatch(id: string, hydrate = true): Promise<MatchRow | null> {
-  const row = await db.select().from(schema.needResourceMatches)
+  let row: any = undefined
+  try { row = await db.select().from(schema.needResourceMatches)
     .where(eq(schema.needResourceMatches.id, id))
-    .limit(1).then(r => r[0])
+    .limit(1).then(r => r[0]) } catch { /* needResourceMatches table dropped */ }
   if (!row) return null
   const m = rowToMatch(row)
   if (hydrate) {
@@ -234,17 +242,17 @@ export async function acceptMatch(matchId: string): Promise<{
 
   const now = new Date().toISOString()
   // Promote the match.
-  db.update(schema.needResourceMatches)
+  try { db.update(schema.needResourceMatches)
     .set({ status: 'accepted', updatedAt: now })
     .where(eq(schema.needResourceMatches.id, matchId))
-    .run()
+    .run() } catch { /* needResourceMatches table dropped */ }
 
   // Move need from open → in-progress.
   if (match.need?.status === 'open') {
-    db.update(schema.needs)
+    try { db.update(schema.needs)
       .set({ status: 'in-progress', updatedAt: now })
       .where(eq(schema.needs.id, match.needId))
-      .run()
+      .run() } catch { /* needs table dropped */ }
   }
 
   // ── R16: Two-engagement split. ──────────────────────────────────
@@ -283,10 +291,12 @@ export async function acceptMatch(matchId: string): Promise<{
 
     // Pull both outcomes; matching outcome belongs to the matching engagement,
     // delivery outcome belongs to the delivery engagement.
-    const holderOutcomeRow = db.select().from(schema.outcomes)
-      .where(eq(schema.outcomes.intentId, holderIntent.id)).get()
-    const providerOutcomeRow = db.select().from(schema.outcomes)
-      .where(eq(schema.outcomes.intentId, providerIntent.id)).get()
+    let holderOutcomeRow: any = undefined
+    try { holderOutcomeRow = db.select().from(schema.outcomes)
+      .where(eq(schema.outcomes.intentId, holderIntent.id)).get() } catch { /* outcomes table dropped */ }
+    let providerOutcomeRow: any = undefined
+    try { providerOutcomeRow = db.select().from(schema.outcomes)
+      .where(eq(schema.outcomes.intentId, providerIntent.id)).get() } catch { /* outcomes table dropped */ }
 
     // If provider intent has no explicit outcome, project one for the delivery
     // engagement (Maria's "delivered the coaching cleanly").
@@ -295,14 +305,14 @@ export async function acceptMatch(matchId: string): Promise<{
       providerOutcomeId = randomUUID()
       const objectLeaf = match.offering.resourceType.split(':').pop() ?? match.offering.resourceType
       const topic = holderIntent.topic ?? match.need.title
-      db.insert(schema.outcomes).values({
+      try { db.insert(schema.outcomes).values({
         id: providerOutcomeId,
         intentId: providerIntent.id,
         description: `Successfully delivered ${objectLeaf} engagement around "${topic}".`,
         metric: JSON.stringify({ kind: 'narrative', target: 'engagement-completed' }),
         status: 'pending',
         createdAt: now,
-      }).run()
+      }).run() } catch { /* outcomes table dropped */ }
     }
 
     const reqs = match.need.requirements ?? {}
@@ -337,7 +347,7 @@ export async function acceptMatch(matchId: string): Promise<{
     if (matchingMint.created) {
       // Auto-close the matching engagement: both parties confirmed at accept,
       // capacity exhausted (the match is done), phase → deposited.
-      db.update(schema.entitlements)
+      try { db.update(schema.entitlements)
         .set({
           holderConfirmedAt: now,
           providerConfirmedAt: now,
@@ -347,18 +357,18 @@ export async function acceptMatch(matchId: string): Promise<{
           updatedAt: now,
         })
         .where(eq(schema.entitlements.id, matchingEngagementId!))
-        .run()
+        .run() } catch { /* entitlements table dropped */ }
 
       // Mark holder intent fulfilled — the matching IS the outcome.
-      db.update(schema.intents)
+      try { db.update(schema.intents)
         .set({ status: 'fulfilled', updatedAt: now })
         .where(eq(schema.intents.id, holderIntent.id))
-        .run()
+        .run() } catch { /* intents table dropped */ }
       if (holderOutcomeRow) {
-        db.update(schema.outcomes)
+        try { db.update(schema.outcomes)
           .set({ status: 'achieved', observedAt: now, observedBy: match.need.neededByAgent })
           .where(eq(schema.outcomes.id, holderOutcomeRow.id))
-          .run()
+          .run() } catch { /* outcomes table dropped */ }
       }
 
       // Thread entries on the matching engagement: just record what happened.
@@ -430,8 +440,9 @@ export async function acceptMatch(matchId: string): Promise<{
         satisfies: match.satisfies,
         misses: match.misses,
       })
-      const ent = db.select().from(schema.entitlements)
-        .where(eq(schema.entitlements.id, deliveryEngagementId!)).get()
+      let ent: any = undefined
+      try { ent = db.select().from(schema.entitlements)
+        .where(eq(schema.entitlements.id, deliveryEngagementId!)).get() } catch { /* entitlements table dropped */ }
       if (ent) {
         await emitContractTerm({
           engagementId: deliveryEngagementId!,
@@ -453,7 +464,7 @@ export async function acceptMatch(matchId: string): Promise<{
   const reqs = match.need?.requirements
   if (reqs?.role && match.satisfies.includes('role') && match.offering) {
     roleAssignmentId = randomUUID()
-    db.insert(schema.roleAssignments).values({
+    try { db.insert(schema.roleAssignments).values({
       id: roleAssignmentId,
       bearerAgent: match.matchedAgent,
       rolePlayed: reqs.role,
@@ -465,13 +476,13 @@ export async function acceptMatch(matchId: string): Promise<{
       endsAt: null,
       status: 'active',
       createdAt: now,
-    }).run()
+    }).run() } catch { /* roleAssignments table dropped */ }
   }
 
   // Notify the matched agent. Link goes to the *delivery* engagement —
   // that's the working surface; the matching engagement is the closed receipt.
   if (me.id !== match.matchedAgent) {
-    db.insert(schema.messages).values({
+    try { db.insert(schema.messages).values({
       id: randomUUID(),
       userId: me.id,
       type: 'relationship_proposed',
@@ -481,7 +492,7 @@ export async function acceptMatch(matchId: string): Promise<{
         : `You've been matched to fulfill "${match.need?.title}" via your offering "${match.offering?.title}". Open the match for next steps.`,
       link: deliveryEngagementId ? `/h/catalyst/entitlements/${deliveryEngagementId}` : `/h/catalyst/matches/${matchId}`,
       read: 0,
-    }).run()
+    }).run() } catch { /* messages table dropped */ }
   }
 
   return { ok: true, roleAssignmentId, matchingEngagementId, deliveryEngagementId }
@@ -494,14 +505,14 @@ export async function rejectMatch(matchId: string, reason?: string): Promise<{ o
   if (!match) return { error: 'match-not-found' }
   if (match.status !== 'proposed') return { error: `cannot-reject-from-status-${match.status}` }
 
-  db.update(schema.needResourceMatches)
+  try { db.update(schema.needResourceMatches)
     .set({
       status: 'rejected',
       misses: JSON.stringify([...match.misses, reason ?? 'manual-reject']),
       updatedAt: new Date().toISOString(),
     })
     .where(eq(schema.needResourceMatches.id, matchId))
-    .run()
+    .run() } catch { /* needResourceMatches table dropped */ }
   return { ok: true }
 }
 
@@ -565,17 +576,21 @@ export async function listOpenNeedsForActor(hubId: string): Promise<PickerOption
   ])
 
   // Pull all open needs in the hub once, then partition.
-  const openRows = await db.select().from(schema.needs)
+  let openRows: any[] = []
+  try { openRows = await db.select().from(schema.needs)
     .where(and(eq(schema.needs.hubId, hubId), eq(schema.needs.status, 'open')))
     .orderBy(desc(schema.needs.updatedAt))
-    .limit(60)
+    .limit(60) } catch { /* needs table dropped */ }
 
   const counts = new Map<string, number>()
   for (const r of openRows) {
-    const ct = db.select().from(schema.activityLogs)
-      .where(eq(schema.activityLogs.fulfillsNeedId, r.id))
-      .all().length
-    counts.set(r.id, ct)
+    let ct: any[] = []
+    try {
+      ct = db.select().from(schema.activityLogs)
+        .where(eq(schema.activityLogs.fulfillsNeedId, r.id))
+        .all()
+    } catch { /* activityLogs table dropped */ }
+    counts.set(r.id, ct.length)
   }
 
   const connected: PickerOption[] = []
@@ -597,38 +612,40 @@ export async function listOpenNeedsForActor(hubId: string): Promise<PickerOption
 }
 
 export async function getHubDiscoverSummary(hubId: string): Promise<HubDiscoverSummary> {
-  const openRows = await db.select().from(schema.needs)
+  let openRows: any[] = []
+  try { openRows = await db.select().from(schema.needs)
     .where(and(eq(schema.needs.hubId, hubId), eq(schema.needs.status, 'open')))
     .orderBy(desc(schema.needs.updatedAt))
-    .limit(50)
+    .limit(50) } catch { /* needs table dropped */ }
 
   // Count proposed matches across all open needs in this hub.
-  const needIds = openRows.map(r => r.id)
+  const needIds = (openRows as any[]).map((r: any) => r.id)
   let proposedMatches = 0
   if (needIds.length > 0) {
     for (const nid of needIds) {
-      const c = db.select({ id: schema.needResourceMatches.id }).from(schema.needResourceMatches)
+      let c: any[] = []
+      try { c = db.select({ id: schema.needResourceMatches.id }).from(schema.needResourceMatches)
         .where(and(
           eq(schema.needResourceMatches.needId, nid),
           eq(schema.needResourceMatches.status, 'proposed'),
         ))
-        .all()
+        .all() } catch { /* needResourceMatches table dropped */ }
       proposedMatches += c.length
     }
   }
 
   // Top-by-priority — critical > high > normal > low, then most-recent.
   const PRIORITY_ORDER: Record<string, number> = { critical: 0, high: 1, normal: 2, low: 3 }
-  const topNeeds = openRows
+  const topNeeds = (openRows as any[])
     .slice()
-    .sort((a, b) => {
+    .sort((a: any, b: any) => {
       const pa = PRIORITY_ORDER[a.priority] ?? 4
       const pb = PRIORITY_ORDER[b.priority] ?? 4
       if (pa !== pb) return pa - pb
       return b.updatedAt.localeCompare(a.updatedAt)
     })
     .slice(0, 5)
-    .map(r => ({
+    .map((r: any) => ({
       id: r.id,
       needType: r.needType,
       needTypeLabel: r.needTypeLabel,

@@ -4,8 +4,6 @@ import { getEdgesByObject, getEdgesBySubject, getEdge, getEdgeRoles } from '@/li
 import { roleName, relationshipTypeName, toDidEthr } from '@smart-agent/sdk'
 import { RelationshipsClient } from './RelationshipsClient'
 import { PendingActions } from './PendingActions'
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { db, schema } from '@/db'
 import { getControlledAgentsForUser, listRegisteredAgents } from '@/lib/agent-resolver'
 
 const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? '31337')

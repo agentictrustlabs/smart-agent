@@ -177,12 +177,31 @@ async function readDelegationFromEdge(
 
 const profile = new Hono()
 
+function unwrapMcp(data: unknown): { ok: true; parsed: Record<string, unknown> } | { ok: false; error: string } {
+  // person-mcp's HTTP shim already strips MCP's `content[0].text` envelope and
+  // returns the parsed payload directly. So `data` is usually `{ profile, ... }`
+  // or `{ error: '...' }`. We still tolerate the raw MCP shape for robustness.
+  const obj = (data ?? {}) as Record<string, unknown>
+  if (Array.isArray((obj as { content?: unknown }).content)) {
+    const mcp = obj as { content: Array<{ text?: string }>; isError?: boolean }
+    const text = mcp.content[0]?.text ?? '{}'
+    let parsed: Record<string, unknown> = {}
+    try { parsed = JSON.parse(text) } catch { /* leave empty */ }
+    if (mcp.isError) return { ok: false, error: (parsed.error as string) ?? 'MCP tool error' }
+    return { ok: true, parsed }
+  }
+  if (typeof obj.error === 'string') return { ok: false, error: obj.error }
+  return { ok: true, parsed: obj }
+}
+
 // ─── GET /profile ───────────────────────────────────────────────────
 profile.get('/', requireSession, async (c) => {
   const sess = c.get('session')
   const result = await callMcpTool(sess.accountAddress, 'get_profile', {})
   if (!result.ok) return c.json({ error: result.error }, 502)
-  return c.json(result.data)
+  const u = unwrapMcp(result.data)
+  if (!u.ok) return c.json({ error: u.error }, 502)
+  return c.json(u.parsed)
 })
 
 // ─── PUT /profile ───────────────────────────────────────────────────
@@ -191,7 +210,9 @@ profile.put('/', requireSession, async (c) => {
   const body = await c.req.json()
   const result = await callMcpTool(sess.accountAddress, 'update_profile', body)
   if (!result.ok) return c.json({ error: result.error }, 502)
-  return c.json(result.data)
+  const u = unwrapMcp(result.data)
+  if (!u.ok) return c.json({ error: u.error }, 502)
+  return c.json(u.parsed)
 })
 
 // ─── GET /profile/delegated?target=<addr>&grantee=<addr> ───────────
@@ -210,14 +231,23 @@ profile.get('/delegated', requireSession, async (c) => {
     return c.json({ error: edgeResult.error }, 404)
   }
 
+  // The edge is keyed by Person Agent addresses (graph identity), but the
+  // signed delegation INSIDE uses smart-account addresses (signing identity).
+  // person-mcp profiles are keyed by the session principal, which equals
+  // the data owner's smart account. So pass delegation.delegator as the
+  // targetPrincipal — that's the address person-mcp will WHERE-clause on.
+  const dataPrincipal = (edgeResult.delegation.delegator as string | undefined) ?? targetPrincipal
+
   // Call MCP with the cross-delegation from on-chain
   const result = await callMcpTool(sess.accountAddress, 'get_delegated_profile', {
-    targetPrincipal,
+    targetPrincipal: dataPrincipal,
     crossDelegation: edgeResult.delegation,
   })
 
   if (!result.ok) return c.json({ error: result.error }, 502)
-  return c.json(result.data)
+  const u = unwrapMcp(result.data)
+  if (!u.ok) return c.json({ error: u.error }, 502)
+  return c.json(u.parsed)
 })
 
 export { profile }

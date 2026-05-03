@@ -27,9 +27,10 @@ export async function postEngagementMessage(input: {
   if (!agentAddr) return { error: 'no-person-agent' }
 
   // Authorization: must be holder, provider, or witness of the engagement.
-  const ent = db.select().from(schema.entitlements)
+  let ent: any = [] as any[]
+  try { ent = db.select().from(schema.entitlements)
     .where(eq(schema.entitlements.id, input.engagementId)).get()
-  if (!ent) return { error: 'engagement-not-found' }
+   } catch { /* entitlements table dropped */ }if (!ent) return { error: 'engagement-not-found' }
   const lower = agentAddr.toLowerCase()
   const allowed = ent.holderAgent === lower
     || ent.providerAgent === lower

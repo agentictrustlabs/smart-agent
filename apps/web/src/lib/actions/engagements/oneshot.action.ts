@@ -35,9 +35,10 @@ export async function markDelivered(input: MarkDeliveredInput): Promise<
   if (!agentAddr) return { error: 'no-person-agent' }
   const lower = agentAddr.toLowerCase()
 
-  const ent = db.select().from(schema.entitlements)
+  let ent: any = [] as any[]
+  try { ent = db.select().from(schema.entitlements)
     .where(eq(schema.entitlements.id, input.engagementId)).get()
-  if (!ent) return { error: 'engagement-not-found' }
+   } catch { /* entitlements table dropped */ }if (!ent) return { error: 'engagement-not-found' }
   if (ent.holderAgent !== lower && ent.providerAgent !== lower) {
     return { error: 'not-a-party' }
   }

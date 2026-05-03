@@ -9,7 +9,7 @@ import {
   engagementPolicies,
   policySigners,
 } from '../db/schema.js'
-import { requireOrgPrincipal } from '../auth/principal-context.js'
+import { requireOrgPrincipalAny as requireOrgPrincipal } from '../auth/principal-context.js'
 
 const mcpText = <T>(v: T) => ({ content: [{ type: 'text' as const, text: JSON.stringify(v) }] })
 
@@ -27,7 +27,7 @@ export const orgWorkItemsTools = {
       required: ['token'],
     },
     handler: async (args: { token: string; status?: string; entitlementId?: string }) => {
-      const orgPrincipal = await requireOrgPrincipal(args.token, 'list_org_work_items')
+      const orgPrincipal = await requireOrgPrincipal(args.token, args, 'list_org_work_items')
       let rows = db.select().from(orgWorkItems).where(eq(orgWorkItems.orgPrincipal, orgPrincipal)).all()
       if (args.status) rows = rows.filter(r => r.status === args.status)
       if (args.entitlementId) rows = rows.filter(r => r.entitlementId === args.entitlementId)
@@ -50,7 +50,7 @@ export const orgWorkItemsTools = {
       required: ['token', 'entitlementId', 'title'],
     },
     handler: async (args: { token: string; entitlementId: string; title: string; description?: string; dueAt?: string }) => {
-      const orgPrincipal = await requireOrgPrincipal(args.token, 'create_org_work_item')
+      const orgPrincipal = await requireOrgPrincipal(args.token, args, 'create_org_work_item')
       const row = {
         id: randomUUID(),
         orgPrincipal,
@@ -81,7 +81,7 @@ export const orgWorkItemsTools = {
       required: ['token', 'id'],
     },
     handler: async (args: { token: string; id: string; resolvedByActivityId?: string }) => {
-      const orgPrincipal = await requireOrgPrincipal(args.token, 'resolve_org_work_item')
+      const orgPrincipal = await requireOrgPrincipal(args.token, args, 'resolve_org_work_item')
       const r = db.update(orgWorkItems)
         .set({
           status: 'resolved',
@@ -110,7 +110,7 @@ export const engagementTools = {
       required: ['token', 'entitlementId'],
     },
     handler: async (args: { token: string; entitlementId: string; capacityRemaining?: number; internalAssignee?: string }) => {
-      const orgPrincipal = await requireOrgPrincipal(args.token, 'init_engagement_provider_state')
+      const orgPrincipal = await requireOrgPrincipal(args.token, args, 'init_engagement_provider_state')
       const row = {
         entitlementId: args.entitlementId,
         orgPrincipal,
@@ -145,7 +145,7 @@ export const engagementTools = {
       required: ['token', 'entitlementId', 'scheduledAt'],
     },
     handler: async (args: { token: string; entitlementId: string; scheduledAt: string; notes?: string }) => {
-      const orgPrincipal = await requireOrgPrincipal(args.token, 'schedule_engagement_session')
+      const orgPrincipal = await requireOrgPrincipal(args.token, args, 'schedule_engagement_session')
       const row = {
         id: randomUUID(),
         entitlementId: args.entitlementId,
@@ -169,7 +169,7 @@ export const engagementTools = {
       required: ['token'],
     },
     handler: async (args: { token: string; entitlementId?: string }) => {
-      const orgPrincipal = await requireOrgPrincipal(args.token, 'list_engagement_sessions')
+      const orgPrincipal = await requireOrgPrincipal(args.token, args, 'list_engagement_sessions')
       let rows = db.select().from(engagementSessions).where(eq(engagementSessions.orgPrincipal, orgPrincipal)).all()
       if (args.entitlementId) rows = rows.filter(r => r.entitlementId === args.entitlementId)
       return mcpText({ sessions: rows })
@@ -199,7 +199,7 @@ export const engagementTools = {
       currency?: string
       gatedOnReportId?: string
     }) => {
-      const orgPrincipal = await requireOrgPrincipal(args.token, 'schedule_engagement_tranche')
+      const orgPrincipal = await requireOrgPrincipal(args.token, args, 'schedule_engagement_tranche')
       const row = {
         id: randomUUID(),
         entitlementId: args.entitlementId,
@@ -225,7 +225,7 @@ export const engagementTools = {
       required: ['token', 'id'],
     },
     handler: async (args: { token: string; id: string }) => {
-      const orgPrincipal = await requireOrgPrincipal(args.token, 'release_engagement_tranche')
+      const orgPrincipal = await requireOrgPrincipal(args.token, args, 'release_engagement_tranche')
       const r = db.update(engagementTranches)
         .set({ status: 'released', releasedAt: new Date().toISOString() })
         .where(and(eq(engagementTranches.id, args.id), eq(engagementTranches.orgPrincipal, orgPrincipal)))
@@ -257,7 +257,7 @@ export const engagementTools = {
       version?: string
       signaturesRequired?: number
     }) => {
-      const orgPrincipal = await requireOrgPrincipal(args.token, 'attach_engagement_policy')
+      const orgPrincipal = await requireOrgPrincipal(args.token, args, 'attach_engagement_policy')
       const row = {
         id: randomUUID(),
         entitlementId: args.entitlementId,
@@ -288,7 +288,7 @@ export const engagementTools = {
       required: ['token', 'policyId', 'signerAgent'],
     },
     handler: async (args: { token: string; policyId: string; signerAgent: string; role?: string; signedAt?: string }) => {
-      await requireOrgPrincipal(args.token, 'add_policy_signer')
+      await requireOrgPrincipal(args.token, args, 'add_policy_signer')
       const row = {
         id: randomUUID(),
         policyId: args.policyId,

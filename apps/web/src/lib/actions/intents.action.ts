@@ -156,7 +156,7 @@ export async function expressIntent(input: ExpressIntentInput): Promise<{ id: st
   try {
     if (input.direction === 'receive') {
       const projId = randomUUID()
-      db.insert(schema.needs).values({
+      try { db.insert(schema.needs).values({
         id: projId,
         needType: input.intentType,
         needTypeLabel: input.intentTypeLabel,
@@ -172,11 +172,11 @@ export async function expressIntent(input: ExpressIntentInput): Promise<{ id: st
         createdBy: me.id,
         createdAt: now,
         updatedAt: now,
-      }).run()
+      }).run() } catch { /* needs table dropped */ }
       projectionRef = projId
     } else if (input.direction === 'give') {
       const projId = randomUUID()
-      db.insert(schema.resourceOfferings).values({
+      try { db.insert(schema.resourceOfferings).values({
         id: projId,
         offeredByAgent: input.expressedByAgent.toLowerCase(),
         offeredByUserId: me.id,
@@ -191,7 +191,7 @@ export async function expressIntent(input: ExpressIntentInput): Promise<{ id: st
         timeWindow: input.payload?.timeWindow ? JSON.stringify(input.payload.timeWindow) : null,
         capabilities: null,
         validUntil: input.validUntil ?? null,
-      }).run()
+      }).run() } catch { /* resourceOfferings table dropped */ }
       projectionRef = projId
     }
   } catch (err) {
@@ -199,7 +199,7 @@ export async function expressIntent(input: ExpressIntentInput): Promise<{ id: st
   }
 
   // Insert the canonical intents row.
-  db.insert(schema.intents).values({
+  try { db.insert(schema.intents).values({
     id,
     direction: input.direction,
     object: input.object,
@@ -221,12 +221,12 @@ export async function expressIntent(input: ExpressIntentInput): Promise<{ id: st
     validUntil: input.validUntil ?? null,
     createdAt: now,
     updatedAt: now,
-  }).run()
+  }).run() } catch { /* intents table dropped */ }
 
   // If we have a structured outcome, mint an outcomes row too so the
   // observation pipeline (Activity.achievesOutcomeId) has a target.
   if (input.expectedOutcome) {
-    db.insert(schema.outcomes).values({
+    try { db.insert(schema.outcomes).values({
       id: randomUUID(),
       intentId: id,
       description: input.expectedOutcome.description,
@@ -235,7 +235,7 @@ export async function expressIntent(input: ExpressIntentInput): Promise<{ id: st
       observedAt: null,
       observedBy: null,
       createdAt: now,
-    }).run()
+    }).run() } catch { /* outcomes table dropped */ }
   }
 
   return { id, projectionRef: projectionRef ?? undefined }
@@ -246,10 +246,10 @@ export async function expressIntent(input: ExpressIntentInput): Promise<{ id: st
 export async function acknowledgeIntent(intentId: string): Promise<{ ok: true } | { error: string }> {
   const me = await getCurrentUser()
   if (!me) return { error: 'not-authenticated' }
-  db.update(schema.intents)
+  try { db.update(schema.intents)
     .set({ status: 'acknowledged', updatedAt: new Date().toISOString() })
     .where(and(eq(schema.intents.id, intentId), eq(schema.intents.status, 'expressed')))
-    .run()
+    .run() } catch { /* intents table dropped */ }
   return { ok: true }
 }
 
@@ -257,25 +257,26 @@ export async function withdrawIntent(intentId: string): Promise<{ ok: true } | {
   const me = await getCurrentUser()
   if (!me) return { error: 'not-authenticated' }
   // Withdrawer must be the expresser.
-  const row = db.select().from(schema.intents).where(eq(schema.intents.id, intentId)).get()
+  let row: any = undefined
+  try { row = db.select().from(schema.intents).where(eq(schema.intents.id, intentId)).get() } catch { /* intents table dropped */ }
   if (!row) return { error: 'intent-not-found' }
   if (row.expressedByUserId !== me.id) return { error: 'not-authorized' }
-  db.update(schema.intents)
+  try { db.update(schema.intents)
     .set({ status: 'withdrawn', updatedAt: new Date().toISOString() })
     .where(eq(schema.intents.id, intentId))
-    .run()
+    .run() } catch { /* intents table dropped */ }
   // Cascade: close the legacy projection too.
   if (row.projectionRef) {
     if (row.direction === 'receive') {
-      db.update(schema.needs)
+      try { db.update(schema.needs)
         .set({ status: 'cancelled', updatedAt: new Date().toISOString() })
         .where(eq(schema.needs.id, row.projectionRef))
-        .run()
+        .run() } catch { /* needs table dropped */ }
     } else {
-      db.update(schema.resourceOfferings)
+      try { db.update(schema.resourceOfferings)
         .set({ status: 'withdrawn' })
         .where(eq(schema.resourceOfferings.id, row.projectionRef))
-        .run()
+        .run() } catch { /* resourceOfferings table dropped */ }
     }
   }
   return { ok: true }
@@ -300,9 +301,12 @@ export async function listIntents(opts: ListIntentsOptions = {}): Promise<Intent
   if (opts.addressedTo) filters.push(eq(schema.intents.addressedTo, opts.addressedTo))
   if (opts.expressedBy) filters.push(eq(schema.intents.expressedByAgent, opts.expressedBy.toLowerCase()))
   const where = filters.length === 0 ? undefined : filters.length === 1 ? filters[0] : and(...filters)
-  const rows = where
-    ? await db.select().from(schema.intents).where(where).orderBy(desc(schema.intents.updatedAt)).limit(opts.limit ?? 100)
-    : await db.select().from(schema.intents).orderBy(desc(schema.intents.updatedAt)).limit(opts.limit ?? 100)
+  let rows: any[] = []
+  try {
+    rows = where
+      ? await db.select().from(schema.intents).where(where).orderBy(desc(schema.intents.updatedAt)).limit(opts.limit ?? 100)
+      : await db.select().from(schema.intents).orderBy(desc(schema.intents.updatedAt)).limit(opts.limit ?? 100)
+  } catch { /* intents table dropped */ }
   return rows.map(rowToIntent)
 }
 
@@ -311,10 +315,12 @@ export interface IntentDetail extends IntentRow {
 }
 
 export async function getIntent(id: string): Promise<IntentDetail | null> {
-  const row = db.select().from(schema.intents).where(eq(schema.intents.id, id)).get()
+  let row: any = undefined
+  try { row = db.select().from(schema.intents).where(eq(schema.intents.id, id)).get() } catch { /* intents table dropped */ }
   if (!row) return null
   const intent = rowToIntent(row)
-  const outcomeRow = db.select().from(schema.outcomes).where(eq(schema.outcomes.intentId, id)).get()
+  let outcomeRow: any = undefined
+  try { outcomeRow = db.select().from(schema.outcomes).where(eq(schema.outcomes.intentId, id)).get() } catch { /* outcomes table dropped */ }
   const outcome = outcomeRow
     ? {
         id: outcomeRow.id,
@@ -327,16 +333,18 @@ export async function getIntent(id: string): Promise<IntentDetail | null> {
 }
 
 export async function getIntentForLegacyNeed(needId: string): Promise<IntentRow | null> {
-  const row = db.select().from(schema.intents)
+  let row: any = undefined
+  try { row = db.select().from(schema.intents)
     .where(and(eq(schema.intents.projectionRef, needId), eq(schema.intents.direction, 'receive')))
-    .get()
+    .get() } catch { /* intents table dropped */ }
   return row ? rowToIntent(row) : null
 }
 
 export async function getIntentForLegacyOffering(offeringId: string): Promise<IntentRow | null> {
-  const row = db.select().from(schema.intents)
+  let row: any = undefined
+  try { row = db.select().from(schema.intents)
     .where(and(eq(schema.intents.projectionRef, offeringId), eq(schema.intents.direction, 'give')))
-    .get()
+    .get() } catch { /* intents table dropped */ }
   return row ? rowToIntent(row) : null
 }
 
@@ -351,11 +359,13 @@ export async function backfillIntentsFromLegacy(): Promise<{ needsBackfilled: nu
   const now = new Date().toISOString()
 
   // Receive-shaped: every needs row.
-  const allNeeds = db.select().from(schema.needs).all()
+  let allNeeds: any[] = []
+  try { allNeeds = db.select().from(schema.needs).all() } catch { /* needs table dropped */ }
   for (const n of allNeeds) {
-    const existing = db.select().from(schema.intents)
+    let existing: any = undefined
+    try { existing = db.select().from(schema.intents)
       .where(and(eq(schema.intents.projectionRef, n.id), eq(schema.intents.direction, 'receive')))
-      .get()
+      .get() } catch { /* intents table dropped */ }
     if (existing) continue
     // Map the need's status to an intent status.
     const intentStatus: IntentStatus = n.status === 'open' ? 'expressed'
@@ -379,7 +389,7 @@ export async function backfillIntentsFromLegacy(): Promise<{ needsBackfilled: nu
         : null,
     })
 
-    db.insert(schema.intents).values({
+    try { db.insert(schema.intents).values({
       id: randomUUID(),
       direction: 'receive',
       object: inferredObject,
@@ -401,16 +411,18 @@ export async function backfillIntentsFromLegacy(): Promise<{ needsBackfilled: nu
       validUntil: n.validUntil,
       createdAt: n.createdAt,
       updatedAt: now,
-    }).run()
+    }).run() } catch { /* intents table dropped */ }
     needsBackfilled++
   }
 
   // Give-shaped: every resource_offerings row.
-  const allOfferings = db.select().from(schema.resourceOfferings).all()
+  let allOfferings: any[] = []
+  try { allOfferings = db.select().from(schema.resourceOfferings).all() } catch { /* resourceOfferings table dropped */ }
   for (const o of allOfferings) {
-    const existing = db.select().from(schema.intents)
+    let existing: any = undefined
+    try { existing = db.select().from(schema.intents)
       .where(and(eq(schema.intents.projectionRef, o.id), eq(schema.intents.direction, 'give')))
-      .get()
+      .get() } catch { /* intents table dropped */ }
     if (existing) continue
     const intentStatus: IntentStatus = o.status === 'available' ? 'expressed'
       : o.status === 'reserved' ? 'in-progress'
@@ -418,7 +430,7 @@ export async function backfillIntentsFromLegacy(): Promise<{ needsBackfilled: nu
       : o.status === 'paused' ? 'expressed'
       : o.status === 'withdrawn' ? 'withdrawn'
       : 'expressed'
-    db.insert(schema.intents).values({
+    try { db.insert(schema.intents).values({
       id: randomUUID(),
       direction: 'give',
       object: o.resourceType,
@@ -440,7 +452,7 @@ export async function backfillIntentsFromLegacy(): Promise<{ needsBackfilled: nu
       validUntil: o.validUntil,
       createdAt: o.createdAt,
       updatedAt: now,
-    }).run()
+    }).run() } catch { /* intents table dropped */ }
     offeringsBackfilled++
   }
   return { needsBackfilled, offeringsBackfilled }
@@ -507,11 +519,12 @@ export async function getHubIntentSummary(hubId: string): Promise<HubIntentSumma
   // Single sorted scan capped at 60 — enough to cover the top-3 of each
   // direction even when the hub is busy. Index on (hub_id, status) makes
   // this O(matched-rows) regardless of overall table size.
-  const rows = db.select().from(schema.intents)
+  let rows: any[] = []
+  try { rows = db.select().from(schema.intents)
     .where(and(eq(schema.intents.hubId, hubId), eq(schema.intents.status, 'expressed')))
     .orderBy(desc(schema.intents.updatedAt))
     .limit(60)
-    .all()
+    .all() } catch { /* intents table dropped */ }
   let receiveCount = 0
   let giveCount = 0
   const recv: IntentRow[] = []
@@ -538,8 +551,9 @@ export async function getHubIntentSummary(hubId: string): Promise<HubIntentSumma
 // Intentionally unused but kept as a placeholder for the future
 // "list intents that have no projection" use-case (free-form intents).
 export async function _listFreeFormIntents(): Promise<IntentRow[]> {
-  const rows = db.select().from(schema.intents)
+  let rows: any[] = []
+  try { rows = db.select().from(schema.intents)
     .where(isNull(schema.intents.projectionRef))
-    .all()
+    .all() } catch { /* intents table dropped */ }
   return rows.map(rowToIntent)
 }

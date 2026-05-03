@@ -20,12 +20,8 @@ interface PrayerRow {
 
 export async function getPrayers(_userId?: string): Promise<PrayerRow[]> {
   await requireSession()
-  try {
-    const { prayers } = await callMcp<{ prayers: PrayerRow[] }>('person', 'list_prayers', {})
-    return prayers ?? []
-  } catch {
-    return []
-  }
+  const { prayers } = await callMcp<{ prayers: PrayerRow[] }>('person', 'list_prayers', {})
+  return prayers ?? []
 }
 
 export async function addPrayer(data: {

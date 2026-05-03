@@ -5,9 +5,10 @@ import { requireSession } from '@/lib/auth/session'
 import { hashDelegation, encodeTimestampTerms, buildCaveat, ROOT_AUTHORITY } from '@smart-agent/sdk'
 import { db, schema } from '@/db'
 import { eq } from 'drizzle-orm'
+import { A2A_SESSION_COOKIE_NAME } from './a2a-session-constants'
 
 const A2A_AGENT_URL = process.env.A2A_AGENT_URL ?? 'http://localhost:3100'
-const A2A_SESSION_COOKIE = 'a2a-session'
+const A2A_SESSION_COOKIE = A2A_SESSION_COOKIE_NAME
 
 /**
  * Bootstrap an A2A session by signing a delegation on behalf of the user's
@@ -32,25 +33,21 @@ const A2A_SESSION_COOKIE = 'a2a-session'
  * deployer is a co-owner only as a recovery / bootstrap relay; it must not
  * become a routine signer of user-scoped delegations.
  */
-export async function bootstrapA2ASession(): Promise<{
-  success: boolean
-  sessionToken?: string
-  error?: string
-}> {
-  const session = await requireSession()
-  if (!session.walletAddress) {
-    return { success: false, error: 'No wallet address' }
-  }
-
-  const users = await db.select().from(schema.users)
-    .where(eq(schema.users.walletAddress, session.walletAddress))
-    .limit(1)
-
-  const user = users[0]
-  if (!user?.smartAccountAddress) {
+/**
+ * Bootstrap an A2A session for a specific user record. Used by demo-login
+ * (where we have the user record before the session cookie has been set in
+ * the response) and by `bootstrapA2ASession` (which does the requireSession
+ * lookup first). Returns the sessionId to set as cookie — the caller is
+ * responsible for cookie storage.
+ */
+export async function bootstrapA2ASessionForUser(user: {
+  smartAccountAddress?: string | null
+  privateKey?: string | null
+}): Promise<{ success: boolean; sessionId?: string; error?: string }> {
+  if (!user.smartAccountAddress) {
     return { success: false, error: 'No smart account deployed' }
   }
-  if (!user?.privateKey) {
+  if (!user.privateKey) {
     return { success: false, error: 'Client-side signing required (use passkey or wallet bootstrap)' }
   }
 
@@ -59,7 +56,6 @@ export async function bootstrapA2ASession(): Promise<{
   const userAccount = privateKeyToAccount(user.privateKey as `0x${string}`)
 
   try {
-    // ─── Step 1: Session init (unauthenticated) ─────────────────
     const initRes = await fetch(`${A2A_AGENT_URL}/session/init`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -71,7 +67,6 @@ export async function bootstrapA2ASession(): Promise<{
     }
     const { sessionId, sessionKeyAddress } = await initRes.json()
 
-    // ─── Step 2: Build and sign delegation ───────────────────────
     const now = Math.floor(Date.now() / 1000)
     const expiresAt = now + 86400
     const timestampEnforcerAddr = process.env.TIMESTAMP_ENFORCER_ADDRESS as `0x${string}`
@@ -89,7 +84,6 @@ export async function bootstrapA2ASession(): Promise<{
     const delegationHash = hashDelegation(delegationData, chainId, delegationManagerAddr)
     const delegationSig = await userAccount.signMessage({ message: { raw: delegationHash } })
 
-    // ─── Step 3: Submit to A2A (self-authenticating via ERC-1271) ─
     const pkgRes = await fetch(`${A2A_AGENT_URL}/session/package`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -107,20 +101,44 @@ export async function bootstrapA2ASession(): Promise<{
       return { success: false, error: `Package: ${err.error ?? pkgRes.statusText}` }
     }
 
-    // ─── Step 4: Store session ID in httpOnly cookie ─────────────
-    const cookieStore = await cookies()
-    cookieStore.set(A2A_SESSION_COOKIE, sessionId, {
-      path: '/',
-      maxAge: 60 * 60 * 24,
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-    })
-
-    return { success: true, sessionToken: sessionId }
+    return { success: true, sessionId }
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : 'Bootstrap failed' }
   }
 }
+
+
+export async function bootstrapA2ASession(): Promise<{
+  success: boolean
+  sessionToken?: string
+  error?: string
+}> {
+  const session = await requireSession()
+  if (!session.walletAddress) {
+    return { success: false, error: 'No wallet address' }
+  }
+
+  const users = await db.select().from(schema.users)
+    .where(eq(schema.users.walletAddress, session.walletAddress))
+    .limit(1)
+
+  const user = users[0]
+  if (!user) return { success: false, error: 'User not found' }
+
+  const r = await bootstrapA2ASessionForUser(user)
+  if (!r.success || !r.sessionId) return { success: false, error: r.error }
+
+  const cookieStore = await cookies()
+  cookieStore.set(A2A_SESSION_COOKIE, r.sessionId, {
+    path: '/',
+    maxAge: 60 * 60 * 24,
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+  })
+
+  return { success: true, sessionToken: r.sessionId }
+}
+
 
 export async function getA2ASessionToken(): Promise<string | null> {
   const cookieStore = await cookies()

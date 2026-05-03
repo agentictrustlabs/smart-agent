@@ -62,12 +62,17 @@ export async function ActiveFulfillmentsStrip({ userId, hubSlug }: {
   // Per-entitlement: oldest open work item assigned to ME or to my
   // counterparty (we surface anything I should look at).
   const entIds = ents.map(e => e.id)
-  const openWorkItems = entIds.length > 0 ? db.select().from(schema.fulfillmentWorkItems)
-    .where(and(
-      inArray(schema.fulfillmentWorkItems.entitlementId, entIds),
-      eq(schema.fulfillmentWorkItems.status, 'open'),
-    ))
-    .all() : []
+  let openWorkItems: any[] = []
+  if (entIds.length > 0) {
+    try {
+      openWorkItems = db.select().from(schema.fulfillmentWorkItems)
+        .where(and(
+          inArray(schema.fulfillmentWorkItems.entitlementId, entIds),
+          eq(schema.fulfillmentWorkItems.status, 'open'),
+        ))
+        .all()
+    } catch { /* fulfillmentWorkItems table dropped */ }
+  }
   const nextItemFor = new Map<string, typeof openWorkItems[number]>()
   for (const w of openWorkItems) {
     const existing = nextItemFor.get(w.entitlementId)

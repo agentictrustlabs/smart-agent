@@ -234,6 +234,18 @@ export function triggerBootSeed(): Promise<void> {
         console.warn('[boot-seed] intent backfill error (non-fatal):', (e as Error).message)
       }
 
+      // 2f. Seed person-mcp + org-mcp domain tables (oikos, prayers, training,
+      //     preferences, notifications, revenue reports, proposals). Direct
+      //     SQLite write into each MCP — bypasses delegation flow because the
+      //     boot-seed runs without a user session. Idempotent.
+      state.phase = 'seeding mcp domain tables'
+      try {
+        const { seedMcpDemoData } = await import('@/lib/demo-seed/seed-mcp-data')
+        await seedMcpDemoData()
+      } catch (e) {
+        console.warn('[boot-seed] mcp seed error (non-fatal):', (e as Error).message)
+      }
+
       // 3. Push fresh on-chain state into the GraphDB KB so the /agents
       //    directory + KPI counters reflect today's deploy. Subsequent edge
       //    writes use scheduleKbSync() from the action layer.

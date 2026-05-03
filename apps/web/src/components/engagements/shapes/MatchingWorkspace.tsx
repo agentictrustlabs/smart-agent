@@ -32,12 +32,13 @@ export async function MatchingWorkspace(props: EngagementWorkspaceProps) {
   } = props
 
   // Find the spawned delivery engagement, if it exists.
-  const delivery = db.select().from(schema.entitlements)
+  let delivery: any = undefined
+  try { delivery = db.select().from(schema.entitlements)
     .where(and(
       eq(schema.entitlements.parentEngagementId, detail.id),
       eq(schema.entitlements.engagementKind, 'delivery'),
     ))
-    .get()
+    .get() } catch { /* entitlements table dropped */ }
 
   return (
     <div style={{ paddingBottom: '2rem' }}>

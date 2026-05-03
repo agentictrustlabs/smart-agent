@@ -45,11 +45,12 @@ export default async function ChurchDetailPage({ params }: Props) {
   const trackedMembers = await getTrackedMembers(address)
 
   // Load meetings (activity logs where relatedEntity = address and type = 'meeting')
-  const meetings = await db.select().from(schema.activityLogs)
+  let meetings: any[] = []
+  try { meetings = await db.select().from(schema.activityLogs)
     .where(and(
       eq(schema.activityLogs.relatedEntity, address),
       eq(schema.activityLogs.activityType, 'meeting'),
-    ))
+    )) } catch { /* activityLogs table dropped */ }
 
   // Determine org address: use the parent org or fallback to the address itself
   const orgAddress = (typeof healthData.orgAddress === 'string' ? healthData.orgAddress : address)

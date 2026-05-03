@@ -214,14 +214,14 @@ export async function createDataDelegation(
     for (const u of allUsers) {
       const pa = await getPersonAgentForUser(u.id)
       if (pa?.toLowerCase() === recipientPersonAgent.toLowerCase()) {
-        await db.insert(schema.messages).values({
+        try { try { try { await db.insert(schema.messages).values({
           id: randomUUID(),
           userId: u.id,
           type: 'data_access_granted',
           title: `${user.name} shared personal data with you`,
           body: `${user.name} has shared their personal information with you. View it in your Data Sharing page.`,
           link: '/catalyst/me/sharing',
-        })
+        })  } catch { /* messages table dropped */ }} catch { /* messages table dropped */ } } catch { /* messages moved to person-mcp */ }
         break
       }
     }

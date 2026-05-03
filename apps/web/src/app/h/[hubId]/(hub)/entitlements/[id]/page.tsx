@@ -62,16 +62,20 @@ export default async function EntitlementDetailPage({ params }: {
   // Look up both intent rows + both outcome rows for the bilateral card.
   const { db, schema } = await import('@/db')
   const { eq } = await import('drizzle-orm')
-  const holderIntentRow = db.select().from(schema.intents)
-    .where(eq(schema.intents.id, detail.holderIntentId)).get()
-  const providerIntentRow = db.select().from(schema.intents)
-    .where(eq(schema.intents.id, detail.providerIntentId)).get()
-  const holderOutcomeRow = detail.holderOutcomeId
-    ? db.select().from(schema.outcomes).where(eq(schema.outcomes.id, detail.holderOutcomeId)).get()
-    : null
-  const providerOutcomeRow = detail.providerOutcomeId
-    ? db.select().from(schema.outcomes).where(eq(schema.outcomes.id, detail.providerOutcomeId)).get()
-    : null
+  let holderIntentRow: any = undefined
+  try { holderIntentRow = db.select().from(schema.intents)
+    .where(eq(schema.intents.id, detail.holderIntentId)).get() } catch { /* intents table dropped */ }
+  let providerIntentRow: any = undefined
+  try { providerIntentRow = db.select().from(schema.intents)
+    .where(eq(schema.intents.id, detail.providerIntentId)).get() } catch { /* intents table dropped */ }
+  let holderOutcomeRow: any = null
+  if (detail.holderOutcomeId) {
+    try { holderOutcomeRow = db.select().from(schema.outcomes).where(eq(schema.outcomes.id, detail.holderOutcomeId)).get() } catch { /* outcomes table dropped */ }
+  }
+  let providerOutcomeRow: any = null
+  if (detail.providerOutcomeId) {
+    try { providerOutcomeRow = db.select().from(schema.outcomes).where(eq(schema.outcomes.id, detail.providerOutcomeId)).get() } catch { /* outcomes table dropped */ }
+  }
 
   const [holderMeta, providerMeta] = await Promise.all([
     getAgentMetadata(detail.holderAgent as `0x${string}`).catch(() => null),

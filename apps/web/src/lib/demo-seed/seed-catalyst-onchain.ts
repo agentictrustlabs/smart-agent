@@ -447,6 +447,48 @@ async function doSeed() {
   await createEdge(analytics, network, ORGANIZATIONAL_CONTROL, [ROLE_OPERATED_AGENT])
   } // end of edge creation else block
 
+  // ─── Org → User cross-delegations ────────────────────────────────
+  // For every ORG_GOVERNANCE owner edge, mint a signed Org→user-smart-account
+  // delegation and persist it on-chain so admin users can act for the org
+  // via their own session (no DEPLOYER_PRIVATE_KEY shortcut at runtime).
+  console.log('[catalyst-seed] Seeding Org→User cross-delegations...')
+  try {
+    const { seedOrgCrossDelegations } = await import('./seed-org-delegations')
+    const created = await seedOrgCrossDelegations([
+      { orgAddress: network,        ownerUserId: 'cat-user-001' }, // paMaria
+      { orgAddress: network,        ownerUserId: 'cat-user-005' }, // paSarah
+      { orgAddress: hub,            ownerUserId: 'cat-user-002' }, // paDavid
+      { orgAddress: hub,            ownerUserId: 'cat-user-003' }, // paRosa
+      { orgAddress: grpWellington,  ownerUserId: 'cat-user-006' }, // paAna
+      { orgAddress: grpLaporte,     ownerUserId: 'cat-user-007' }, // paMiguel
+      { orgAddress: grpTimnath,     ownerUserId: 'cat-user-008' }, // paElena
+      { orgAddress: grpLoveland,    ownerUserId: 'cat-user-009' }, // paLuis
+      { orgAddress: grpBerthoud,    ownerUserId: 'cat-user-010' }, // paSofia
+      { orgAddress: grpJohnstown,   ownerUserId: 'cat-user-011' }, // paDiego
+      { orgAddress: grpRedFeather,  ownerUserId: 'cat-user-012' }, // paIsabel
+      { orgAddress: analytics,      ownerUserId: 'cat-user-001' }, // paMaria
+    ])
+    console.log(`[catalyst-seed] Cross-delegations created: ${created}`)
+  } catch (err) {
+    console.warn('[catalyst-seed] Cross-delegation seed failed:', (err as Error).message)
+  }
+
+  // ─── Coaching → profile cross-delegations ────────────────────────
+  // For every COACHING_MENTORSHIP edge, mint a signed delegation that
+  // grants the coach read access to a slice of the disciple's profile.
+  // Disciple signs with their own EOA — explicit user consent.
+  console.log('[catalyst-seed] Seeding coaching profile cross-delegations...')
+  try {
+    const { seedCoachingCrossDelegations } = await import('./seed-coaching-delegations')
+    const created = await seedCoachingCrossDelegations([
+      { discipleUserId: 'cat-user-006', coachUserId: 'cat-user-001' }, // Maria coaches Ana
+      { discipleUserId: 'cat-user-004', coachUserId: 'cat-user-002' }, // David coaches Carlos
+    ])
+    console.log(`[catalyst-seed] Coaching cross-delegations created: ${created}`)
+  } catch (err) {
+    console.warn('[catalyst-seed] Coaching cross-delegation seed failed:', (err as Error).message)
+  }
+
   // ─── Hub Agent ──────────────────────────────────────────────────
   console.log('[catalyst-seed] Deploying hub agent...')
   const hubCatalyst = await deploy(290001)

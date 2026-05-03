@@ -3,9 +3,6 @@
 import { requireSession } from '@/lib/auth/session'
 import { callMcp } from '@/lib/clients/mcp-client'
 
-// All oikos data lives in person-mcp. The principal is derived from the
-// signed delegation token minted by a2a-agent — userId is no longer the key.
-
 interface OikosContact {
   id: string
   principal: string
@@ -66,6 +63,7 @@ export async function updateOikosPerson(
     notes?: string
     plannedConversation?: boolean
     tags?: string
+    lastContactAt?: string
   },
 ): Promise<void> {
   await requireSession()
@@ -77,6 +75,7 @@ export async function updateOikosPerson(
     notes: data.notes,
     plannedConversation: data.plannedConversation,
     tags: data.tags,
+    lastContactAt: data.lastContactAt,
   })
 }
 

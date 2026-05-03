@@ -14,11 +14,20 @@ export default async function CatalystCirclesPage() {
   const orgAddress = userOrgs[0]?.address ?? ''
 
   // Map MCP rows to the client's legacy CirclePerson shape.
+  // person-mcp stores proximity as 'ringN' (1..4); legacy client expects an int.
+  const proximityToInt = (raw: string | number | null | undefined): number => {
+    if (raw == null) return 3
+    if (typeof raw === 'number') return Number.isFinite(raw) ? raw : 3
+    const m = /^ring(\d)$/.exec(raw)
+    if (m) return Number(m[1])
+    const n = Number(raw)
+    return Number.isFinite(n) ? n : 3
+  }
   const circles = oikos.map(c => ({
     id: c.id,
     userId: currentUser.id,
     personName: c.personName,
-    proximity: Number(c.proximity ?? 3),
+    proximity: proximityToInt(c.proximity),
     response: (c.spiritualResponseState ?? 'curious') as 'not-interested' | 'curious' | 'interested' | 'seeking' | 'decided' | 'baptized',
     plannedConversation: c.plannedConversation,
     tags: c.tags,
@@ -29,7 +38,8 @@ export default async function CatalystCirclesPage() {
   // Last-contact map: activity logs still in web SQL (Phase 5 work).
   const lastContactMap: Record<string, string> = {}
   try {
-    const allActivities = await db.select().from(schema.activityLogs)
+    let allActivities: any[] = []
+    try { allActivities = await db.select().from(schema.activityLogs) } catch { /* activityLogs table dropped */ }
     for (const circle of circles) {
       const matching = allActivities
         .filter(a => a.title.toLowerCase().includes(circle.personName.toLowerCase()))

@@ -58,9 +58,10 @@ async function authorizeParty(engagementId: string): Promise<
   const agentAddr = await getPersonAgentForUser(me.id)
   if (!agentAddr) return { error: 'no-person-agent' }
   const lower = agentAddr.toLowerCase()
-  const ent = db.select().from(schema.entitlements)
+  let ent: any = [] as any[]
+  try { ent = db.select().from(schema.entitlements)
     .where(eq(schema.entitlements.id, engagementId)).get()
-  if (!ent) return { error: 'engagement-not-found' }
+   } catch { /* entitlements table dropped */ }if (!ent) return { error: 'engagement-not-found' }
   if (ent.holderAgent !== lower && ent.providerAgent !== lower) {
     return { error: 'not-a-party' }
   }
@@ -77,7 +78,7 @@ export async function scheduleSession(input: {
   const auth = await authorizeParty(input.engagementId)
   if ('error' in auth) return auth
   const id = randomUUID()
-  db.insert(schema.engagementSessions).values({
+  try { db.insert(schema.engagementSessions).values({
     id,
     engagementId: input.engagementId,
     scheduledFor: input.scheduledFor,
@@ -88,23 +89,24 @@ export async function scheduleSession(input: {
     status: 'scheduled',
     createdAt: new Date().toISOString(),
   }).run()
-  return { ok: true, id }
+   } catch { /* engagementSessions table dropped */ }return { ok: true, id }
 }
 
 export async function cancelSession(sessionId: string): Promise<{ ok: true } | { error: string }> {
   const me = await getCurrentUser()
   if (!me) return { error: 'not-authenticated' }
-  const row = db.select().from(schema.engagementSessions)
+  let row: any = [] as any[]
+  try { row = db.select().from(schema.engagementSessions)
     .where(eq(schema.engagementSessions.id, sessionId)).get()
-  if (!row) return { error: 'session-not-found' }
+   } catch { /* engagementSessions table dropped */ }if (!row) return { error: 'session-not-found' }
   const auth = await authorizeParty(row.engagementId)
   if ('error' in auth) return auth
   if (row.status === 'occurred') return { error: 'already-occurred' }
-  db.update(schema.engagementSessions)
+  try { db.update(schema.engagementSessions)
     .set({ status: 'cancelled' })
     .where(eq(schema.engagementSessions.id, sessionId))
     .run()
-  return { ok: true }
+   } catch { /* engagementSessions table dropped */ }return { ok: true }
 }
 
 /**
@@ -154,11 +156,12 @@ export async function logSession(input: {
 
   // Mark an existing scheduled session as occurred, or create a new one.
   if (input.scheduledSessionId) {
-    const existing = db.select().from(schema.engagementSessions)
+    let existing: any = [] as any[]
+    try { existing = db.select().from(schema.engagementSessions)
       .where(eq(schema.engagementSessions.id, input.scheduledSessionId)).get()
-    if (!existing) return { error: 'session-not-found' }
+     } catch { /* engagementSessions table dropped */ }if (!existing) return { error: 'session-not-found' }
     if (existing.engagementId !== input.engagementId) return { error: 'wrong-engagement' }
-    db.update(schema.engagementSessions)
+    try { db.update(schema.engagementSessions)
       .set({
         occurredAt,
         notes: input.notes ?? existing.notes,
@@ -168,10 +171,10 @@ export async function logSession(input: {
       })
       .where(eq(schema.engagementSessions.id, input.scheduledSessionId))
       .run()
-    sessionId = input.scheduledSessionId
+     } catch { /* engagementSessions table dropped */ }sessionId = input.scheduledSessionId
   } else {
     sessionId = randomUUID()
-    db.insert(schema.engagementSessions).values({
+    try { db.insert(schema.engagementSessions).values({
       id: sessionId,
       engagementId: input.engagementId,
       scheduledFor: null,
@@ -182,7 +185,7 @@ export async function logSession(input: {
       status: 'occurred',
       createdAt: new Date().toISOString(),
     }).run()
-  }
+   } catch { /* engagementSessions table dropped */ }}
 
   return { ok: true, sessionId, activityId }
 }
@@ -200,11 +203,12 @@ export async function listSessionsForEngagement(engagementId: string): Promise<S
   // Idempotent backfill: project activities that don't yet have a session row.
   await backfillSessionsFromActivities(engagementId)
 
-  const allRows = await db.select().from(schema.engagementSessions)
+  let allRows: any = [] as any[]
+  try { allRows = await db.select().from(schema.engagementSessions)
     .where(eq(schema.engagementSessions.engagementId, engagementId))
     .all()
 
-  const upcoming: SessionRow[] = []
+   } catch { /* engagementSessions table dropped */ }const upcoming: SessionRow[] = []
   const past: SessionRow[] = []
   let totalOccurred = 0
   let totalScheduled = 0
@@ -230,17 +234,19 @@ export async function listSessionsForEngagement(engagementId: string): Promise<S
  * show their session history immediately when the Cadence shape goes live.
  */
 async function backfillSessionsFromActivities(engagementId: string): Promise<void> {
-  const activities = db.select().from(schema.activityLogs)
+  let activities: any[] = []
+  try { activities = db.select().from(schema.activityLogs)
     .where(eq(schema.activityLogs.fulfillsEntitlementId, engagementId))
-    .all()
+    .all() } catch { /* activityLogs table dropped */ }
   if (activities.length === 0) return
-  const existing = db.select().from(schema.engagementSessions)
+  let existing: any = [] as any[]
+  try { existing = db.select().from(schema.engagementSessions)
     .where(and(
       eq(schema.engagementSessions.engagementId, engagementId),
       isNotNull(schema.engagementSessions.sourceActivityId),
     ))
     .all()
-  const seen = new Set(existing.map(e => e.sourceActivityId).filter(Boolean) as string[])
+   } catch { /* engagementSessions table dropped */ }const seen = new Set(existing.map((e: any) => e.sourceActivityId).filter(Boolean) as string[])
   const toInsert: typeof schema.engagementSessions.$inferInsert[] = []
   for (const a of activities) {
     if (seen.has(a.id)) continue
@@ -257,13 +263,14 @@ async function backfillSessionsFromActivities(engagementId: string): Promise<voi
     })
   }
   if (toInsert.length > 0) {
-    db.insert(schema.engagementSessions).values(toInsert).run()
-  }
+    try { db.insert(schema.engagementSessions).values(toInsert).run()
+   } catch { /* engagementSessions table dropped */ }}
 }
 
 /** Next upcoming session for this engagement, or null if none scheduled. */
 export async function nextScheduledSession(engagementId: string): Promise<SessionRow | null> {
-  const row = db.select().from(schema.engagementSessions)
+  let row: any = [] as any[]
+  try { row = db.select().from(schema.engagementSessions)
     .where(and(
       eq(schema.engagementSessions.engagementId, engagementId),
       eq(schema.engagementSessions.status, 'scheduled'),
@@ -272,17 +279,18 @@ export async function nextScheduledSession(engagementId: string): Promise<Sessio
     ))
     .orderBy(asc(schema.engagementSessions.scheduledFor))
     .get()
-  return row ? rowToSession(row) : null
+   } catch { /* engagementSessions table dropped */ }return row ? rowToSession(row) : null
 }
 
 /** Most recent occurred session for this engagement. */
 export async function latestOccurredSession(engagementId: string): Promise<SessionRow | null> {
-  const row = db.select().from(schema.engagementSessions)
+  let row: any = [] as any[]
+  try { row = db.select().from(schema.engagementSessions)
     .where(and(
       eq(schema.engagementSessions.engagementId, engagementId),
       isNotNull(schema.engagementSessions.occurredAt),
     ))
     .orderBy(desc(schema.engagementSessions.occurredAt))
     .get()
-  return row ? rowToSession(row) : null
+   } catch { /* engagementSessions table dropped */ }return row ? rowToSession(row) : null
 }

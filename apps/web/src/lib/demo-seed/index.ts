@@ -3,6 +3,7 @@ import { seedCatalystOnChain } from './seed-catalyst-onchain'
 import { seedCILOnChain } from './seed-cil-onchain'
 import { seedGlobalChurchOnChain } from './seed-globalchurch-onchain'
 import { seedMultiplyData } from './seed-multiply-data'
+import { seedMcpDemoData } from './seed-mcp-data'
 import { ensureCommunityUsers } from './lookup-users'
 
 /**
@@ -48,6 +49,15 @@ export async function ensureDemoCommunitySeeded(demoUserKey: string) {
     )
   }
 
-  // Seed personal app data (oikos, prayers, training) — DB-only, fast, idempotent
+  // Seed remaining web-SQL demo data (training catalog, etc.)
   seedMultiplyData()
+
+  // Seed person-mcp + org-mcp domain tables (oikos, prayers, training,
+  // preferences, notifications, revenue reports, proposals). Direct
+  // SQLite write — bypasses delegation flow for demo.
+  try {
+    await seedMcpDemoData()
+  } catch (err) {
+    console.warn('[demo-seed] MCP seed failed:', (err as Error).message)
+  }
 }

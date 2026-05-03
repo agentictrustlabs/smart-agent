@@ -71,7 +71,7 @@ export async function appendThreadEntry(input: {
   hashAnchor?: string | null
 }): Promise<{ id: string }> {
   const id = randomUUID()
-  db.insert(schema.commitmentThreadEntries).values({
+  try { db.insert(schema.commitmentThreadEntries).values({
     id,
     engagementId: input.engagementId,
     kind: input.kind,
@@ -80,7 +80,7 @@ export async function appendThreadEntry(input: {
     attachmentUri: input.attachmentUri ?? null,
     hashAnchor: input.hashAnchor ?? null,
     createdAt: new Date().toISOString(),
-  }).run()
+  }).run() } catch { /* commitmentThreadEntries table dropped */ }
   return { id }
 }
 
@@ -273,9 +273,10 @@ export async function emitTrustDeposit(args: {
 // ─── Read ───────────────────────────────────────────────────────────
 
 export async function listThreadEntries(engagementId: string): Promise<ThreadEntryRow[]> {
-  const rows = await db.select().from(schema.commitmentThreadEntries)
+  let rows: any[] = []
+  try { rows = await db.select().from(schema.commitmentThreadEntries)
     .where(eq(schema.commitmentThreadEntries.engagementId, engagementId))
-    .orderBy(asc(schema.commitmentThreadEntries.createdAt))
+    .orderBy(asc(schema.commitmentThreadEntries.createdAt)) } catch { /* commitmentThreadEntries table dropped */ }
   return rows.map(rowToEntry)
 }
 
@@ -286,21 +287,23 @@ export async function listThreadEntries(engagementId: string): Promise<ThreadEnt
 // entries before inserting. Used on first read after the R3 migration.
 
 export async function backfillThreadFromEngagement(engagementId: string): Promise<{ inserted: number }> {
-  const ent = db.select().from(schema.entitlements)
-    .where(eq(schema.entitlements.id, engagementId)).get()
+  let ent: any = undefined
+  try { ent = db.select().from(schema.entitlements)
+    .where(eq(schema.entitlements.id, engagementId)).get() } catch { /* entitlements table dropped */ }
   if (!ent) return { inserted: 0 }
 
-  const existing = db.select().from(schema.commitmentThreadEntries)
+  let existing: any[] = []
+  try { existing = db.select().from(schema.commitmentThreadEntries)
     .where(eq(schema.commitmentThreadEntries.engagementId, engagementId))
-    .all()
-  const existingKinds = new Set(existing.map(e => e.kind))
+    .all() } catch { /* commitmentThreadEntries table dropped */ }
+  const existingKinds = new Set((existing as any[]).map((e: any) => e.kind))
   const existingActivityIds = new Set(
-    existing.filter(e => e.kind === 'activity').map(e => {
+    (existing as any[]).filter((e: any) => e.kind === 'activity').map((e: any) => {
       try { return (JSON.parse(e.body) as { activityId?: string }).activityId } catch { return undefined }
     }).filter(Boolean) as string[],
   )
   const existingWorkItemIds = new Set(
-    existing.filter(e => e.kind === 'work_item').map(e => {
+    (existing as any[]).filter((e: any) => e.kind === 'work_item').map((e: any) => {
       try { return (JSON.parse(e.body) as { workItemId?: string }).workItemId } catch { return undefined }
     }).filter(Boolean) as string[],
   )
@@ -309,16 +312,20 @@ export async function backfillThreadFromEngagement(engagementId: string): Promis
 
   // intent_ref (×2) — only if not present.
   if (!existingKinds.has('intent_ref')) {
-    const holderIntent = db.select().from(schema.intents)
-      .where(eq(schema.intents.id, ent.holderIntentId)).get()
-    const providerIntent = db.select().from(schema.intents)
-      .where(eq(schema.intents.id, ent.providerIntentId)).get()
-    const holderOutcome = ent.holderOutcomeId
-      ? db.select().from(schema.outcomes).where(eq(schema.outcomes.id, ent.holderOutcomeId)).get()
-      : null
-    const providerOutcome = ent.providerOutcomeId
-      ? db.select().from(schema.outcomes).where(eq(schema.outcomes.id, ent.providerOutcomeId)).get()
-      : null
+    let holderIntent: any = undefined
+    try { holderIntent = db.select().from(schema.intents)
+      .where(eq(schema.intents.id, ent.holderIntentId)).get() } catch { /* intents table dropped */ }
+    let providerIntent: any = undefined
+    try { providerIntent = db.select().from(schema.intents)
+      .where(eq(schema.intents.id, ent.providerIntentId)).get() } catch { /* intents table dropped */ }
+    let holderOutcome: any = null
+    if (ent.holderOutcomeId) {
+      try { holderOutcome = db.select().from(schema.outcomes).where(eq(schema.outcomes.id, ent.holderOutcomeId)).get() } catch { /* outcomes table dropped */ }
+    }
+    let providerOutcome: any = null
+    if (ent.providerOutcomeId) {
+      try { providerOutcome = db.select().from(schema.outcomes).where(eq(schema.outcomes.id, ent.providerOutcomeId)).get() } catch { /* outcomes table dropped */ }
+    }
     if (holderIntent) {
       await emitIntentRef({
         engagementId,
@@ -343,8 +350,9 @@ export async function backfillThreadFromEngagement(engagementId: string): Promis
 
   // match_accept — re-derive score/satisfies/misses from the match row.
   if (!existingKinds.has('match_accept')) {
-    const match = db.select().from(schema.needResourceMatches)
-      .where(eq(schema.needResourceMatches.id, ent.sourceMatchId)).get()
+    let match: any = undefined
+    try { match = db.select().from(schema.needResourceMatches)
+      .where(eq(schema.needResourceMatches.id, ent.sourceMatchId)).get() } catch { /* needResourceMatches table dropped */ }
     if (match) {
       const satisfies = safeParse<string[]>(match.satisfies) ?? []
       const misses = safeParse<string[]>(match.misses) ?? []
@@ -373,9 +381,10 @@ export async function backfillThreadFromEngagement(engagementId: string): Promis
   }
 
   // work_item entries — one per existing item not already projected.
-  const workItems = db.select().from(schema.fulfillmentWorkItems)
+  let workItems: any[] = []
+  try { workItems = db.select().from(schema.fulfillmentWorkItems)
     .where(eq(schema.fulfillmentWorkItems.entitlementId, engagementId))
-    .all()
+    .all() } catch { /* fulfillmentWorkItems table dropped */ }
   for (const wi of workItems) {
     if (existingWorkItemIds.has(wi.id)) continue
     await emitWorkItemEntry({
@@ -389,10 +398,11 @@ export async function backfillThreadFromEngagement(engagementId: string): Promis
   }
 
   // activity entries — one per logged activity not already projected.
-  const activities = db.select().from(schema.activityLogs)
+  let activities: any[] = []
+  try { activities = db.select().from(schema.activityLogs)
     .where(eq(schema.activityLogs.fulfillsEntitlementId, engagementId))
     .orderBy(asc(schema.activityLogs.activityDate))
-    .all()
+    .all() } catch { /* activityLogs table dropped */ }
   for (const a of activities) {
     if (existingActivityIds.has(a.id)) continue
     await emitActivityEntry({

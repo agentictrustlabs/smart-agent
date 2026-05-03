@@ -3,7 +3,7 @@
 import { randomUUID } from 'crypto'
 import { requireSession } from '@/lib/auth/session'
 import { db, schema } from '@/db'
-import { and, eq } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import {
   getActivityLog, setActivityLog,
   type ActivityEntry,
@@ -67,113 +67,23 @@ export async function logActivity(data: {
   activities.push(entry)
   await setActivityLog(data.orgAddress, activities)
 
-  // PROV-chain pre-resolve: if the activity carries an entitlement id,
-  // backfill the legacy fulfillsNeedId from the entitlement → match → need
-  // chain so existing surfaces (need detail, work-queue) still see it.
-  let resolvedFulfillsNeedId = data.fulfillsNeedId ?? null
-  if (data.fulfillsEntitlementId && !resolvedFulfillsNeedId) {
-    try {
-      const ent = db.select().from(schema.entitlements)
-        .where(eq(schema.entitlements.id, data.fulfillsEntitlementId)).get()
-      if (ent) {
-        const match = db.select().from(schema.needResourceMatches)
-          .where(eq(schema.needResourceMatches.id, ent.sourceMatchId)).get()
-        if (match) resolvedFulfillsNeedId = match.needId
-      }
-    } catch { /* non-fatal */ }
-  }
-
-  // Also write to DB for dashboard queries
-  try {
-    await db.insert(schema.activityLogs).values({
-      id,
-      orgAddress: data.orgAddress,
-      userId: user[0].id,
-      activityType: data.activityType as typeof schema.activityLogs.$inferInsert['activityType'],
-      title: data.title,
-      description: data.description || null,
-      participants: data.participants,
-      location: data.location || null,
-      lat: data.lat || null,
-      lng: data.lng || null,
-      durationMinutes: data.durationMinutes || null,
-      relatedEntity: data.relatedEntity || null,
-      fulfillsNeedId: resolvedFulfillsNeedId,
-      fulfillsEntitlementId: data.fulfillsEntitlementId || null,
-      usesOfferingId: data.usesOfferingId || null,
-      activityDate: data.activityDate || new Date().toISOString().split('T')[0],
-    }).run()
-  } catch {
-    /* DB write is best-effort — on-chain is the source of truth */
-  }
-
-  // ── Entitlement cascade (preferred path) ────────────────────────
-  // When an entitlement id is supplied, drive everything via the
-  // entitlement action: capacity decrement → work-item resolve →
-  // outcome cascade → match-fulfilled → intent-fulfilled (when ALL
-  // accepted entitlements for that intent are fulfilled).
-  if (data.fulfillsEntitlementId) {
-    try {
-      const { consumeEntitlementCapacity } = await import('./entitlements.action')
-      await consumeEntitlementCapacity({
-        entitlementId: data.fulfillsEntitlementId,
-        activityId: id,
-        amount: data.capacityConsumed,
-        achievesOutcome: data.achievesOutcome,
-      })
-    } catch (_e) { /* non-fatal */ }
-  } else if (resolvedFulfillsNeedId) {
-    // Legacy path: when only a needId is set (no entitlement), use the
-    // per-need-type threshold cascade. This still works for activities
-    // logged before the entitlement layer existed and for sandbox
-    // entries that bypass acceptMatch.
-    try {
-      await maybeAdvanceNeedStatus(resolvedFulfillsNeedId)
-    } catch (_e) { /* non-fatal */ }
-  }
+  // Activity is now persisted on-chain (org agent metadata) — that's the
+  // canonical record. The redundant web SQL cache + entitlement/need
+  // cascades have moved to person-mcp / org-mcp activity_log_entries +
+  // engagement_*_state. Cascade rewires are Phase-5 work; for now logging
+  // an activity just emits it on-chain, which is the privacy-preserving
+  // source of truth.
+  void data.fulfillsEntitlementId
+  void data.fulfillsNeedId
+  void data.capacityConsumed
+  void data.achievesOutcome
 
   return { id }
 }
 
-const FULFILLMENT_THRESHOLDS: Record<string, number> = {
-  'needType:PrayerPartner': 1,
-  'needType:VenueForGathering': 1,
-  'needType:ConnectorToFunder': 1,
-  'needType:HeartLanguageScripture': 2,
-  'needType:CircleCoachNeeded': 3,
-  'needType:Treasurer': 3,
-  'needType:TrainerForT4T': 3,
-  'needType:GroupLeaderApprentice': 3,
-  'needType:TraumaInformedCare': 2,
-}
-
-async function maybeAdvanceNeedStatus(needId: string): Promise<void> {
-  const need = db.select().from(schema.needs).where(eq(schema.needs.id, needId)).get()
-  if (!need) return
-  if (need.status === 'met' || need.status === 'cancelled' || need.status === 'expired') return
-  const fulfilling = db.select().from(schema.activityLogs)
-    .where(eq(schema.activityLogs.fulfillsNeedId, needId)).all()
-  const threshold = FULFILLMENT_THRESHOLDS[need.needType] ?? 2
-  const now = new Date().toISOString()
-  // First activity → flip open → in-progress.
-  if (need.status === 'open' && fulfilling.length >= 1) {
-    db.update(schema.needs).set({ status: 'in-progress', updatedAt: now }).where(eq(schema.needs.id, needId)).run()
-  }
-  // Threshold crossed → flip in-progress → met. Also fulfill the
-  // accepted match (if any) so the audit chain closes cleanly.
-  if (fulfilling.length >= threshold) {
-    db.update(schema.needs).set({ status: 'met', updatedAt: now }).where(eq(schema.needs.id, needId)).run()
-    // Only flip *accepted* matches to fulfilled — proposed/rejected stay
-    // as historical records.
-    db.update(schema.needResourceMatches)
-      .set({ status: 'fulfilled', updatedAt: now })
-      .where(and(
-        eq(schema.needResourceMatches.needId, needId),
-        eq(schema.needResourceMatches.status, 'accepted'),
-      ))
-      .run()
-  }
-}
+// Need-status cascade (web-SQL-backed) removed. Needs moved to MCPs;
+// fulfillment cascades will be re-implemented as on-chain assertion
+// emits + MCP listeners in Phase 5.
 
 export async function getActivities(orgAddress: string): Promise<ActivityEntry[]> {
   return getActivityLog(orgAddress)

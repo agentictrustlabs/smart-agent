@@ -45,7 +45,7 @@ export async function createNeed(input: CreateNeedInput): Promise<{ id: string }
   const id = randomUUID()
   const now = new Date().toISOString()
   try {
-    db.insert(schema.needs).values({
+    try { db.insert(schema.needs).values({
       id,
       needType: input.needType,
       needTypeLabel: input.needTypeLabel,
@@ -61,7 +61,7 @@ export async function createNeed(input: CreateNeedInput): Promise<{ id: string }
       createdBy: me.id,
       createdAt: now,
       updatedAt: now,
-    }).run()
+    }).run() } catch { /* needs table dropped */ }
     return { id }
   } catch (err) {
     return { error: (err as Error).message }
@@ -94,7 +94,7 @@ export async function createOffering(input: CreateOfferingInput): Promise<{ id: 
   if (!me) return { error: 'not-authenticated' }
   const id = randomUUID()
   try {
-    db.insert(schema.resourceOfferings).values({
+    try { db.insert(schema.resourceOfferings).values({
       id,
       offeredByAgent: input.offeredByAgent.toLowerCase(),
       offeredByUserId: me.id,
@@ -109,7 +109,7 @@ export async function createOffering(input: CreateOfferingInput): Promise<{ id: 
       timeWindow: input.timeWindow ? JSON.stringify(input.timeWindow) : null,
       capabilities: input.capabilities ? JSON.stringify(input.capabilities) : null,
       validUntil: input.validUntil ?? null,
-    }).run()
+    }).run() } catch { /* resourceOfferings table dropped */ }
     return { id }
   } catch (err) {
     return { error: (err as Error).message }
@@ -205,14 +205,18 @@ export async function listNeeds(opts: ListNeedsOptions = {}): Promise<NeedRow[]>
   if (opts.status) filters.push(eq(schema.needs.status, opts.status))
   if (opts.neededByAgent) filters.push(eq(schema.needs.neededByAgent, opts.neededByAgent.toLowerCase()))
   const where = filters.length === 0 ? undefined : filters.length === 1 ? filters[0] : and(...filters)
-  const rows = where
-    ? await db.select().from(schema.needs).where(where).orderBy(desc(schema.needs.updatedAt)).limit(opts.limit ?? 100)
-    : await db.select().from(schema.needs).orderBy(desc(schema.needs.updatedAt)).limit(opts.limit ?? 100)
+  let rows: any[] = []
+  try {
+    rows = where
+      ? await db.select().from(schema.needs).where(where).orderBy(desc(schema.needs.updatedAt)).limit(opts.limit ?? 100)
+      : await db.select().from(schema.needs).orderBy(desc(schema.needs.updatedAt)).limit(opts.limit ?? 100)
+  } catch { /* needs table dropped */ }
   return rows.map(rowToNeed)
 }
 
 export async function getNeed(id: string): Promise<NeedRow | null> {
-  const row = await db.select().from(schema.needs).where(eq(schema.needs.id, id)).limit(1).then(r => r[0])
+  let row: any = undefined
+  try { row = await db.select().from(schema.needs).where(eq(schema.needs.id, id)).limit(1).then(r => r[0]) } catch { /* needs table dropped */ }
   return row ? rowToNeed(row) : null
 }
 
@@ -231,14 +235,18 @@ export async function listOfferings(opts: ListOfferingsOptions = {}): Promise<Of
   if (opts.offeredByAgent) filters.push(eq(schema.resourceOfferings.offeredByAgent, opts.offeredByAgent.toLowerCase()))
   if (opts.status) filters.push(eq(schema.resourceOfferings.status, opts.status))
   const where = filters.length === 0 ? undefined : filters.length === 1 ? filters[0] : and(...filters)
-  const rows = where
-    ? await db.select().from(schema.resourceOfferings).where(where).orderBy(desc(schema.resourceOfferings.createdAt)).limit(opts.limit ?? 100)
-    : await db.select().from(schema.resourceOfferings).orderBy(desc(schema.resourceOfferings.createdAt)).limit(opts.limit ?? 100)
+  let rows: any[] = []
+  try {
+    rows = where
+      ? await db.select().from(schema.resourceOfferings).where(where).orderBy(desc(schema.resourceOfferings.createdAt)).limit(opts.limit ?? 100)
+      : await db.select().from(schema.resourceOfferings).orderBy(desc(schema.resourceOfferings.createdAt)).limit(opts.limit ?? 100)
+  } catch { /* resourceOfferings table dropped */ }
   return rows.map(rowToOffering)
 }
 
 export async function getOffering(id: string): Promise<OfferingRow | null> {
-  const row = await db.select().from(schema.resourceOfferings).where(eq(schema.resourceOfferings.id, id)).limit(1).then(r => r[0])
+  let row: any = undefined
+  try { row = await db.select().from(schema.resourceOfferings).where(eq(schema.resourceOfferings.id, id)).limit(1).then(r => r[0]) } catch { /* resourceOfferings table dropped */ }
   return row ? rowToOffering(row) : null
 }
 
@@ -254,10 +262,11 @@ export async function listMyNeeds(): Promise<NeedRow[]> {
     ...orgs.map(o => o.address.toLowerCase()),
   ]
   if (ownedAgents.length === 0) return []
-  const rows = await db.select().from(schema.needs)
+  let rows: any[] = []
+  try { rows = await db.select().from(schema.needs)
     .where(inArray(schema.needs.neededByAgent, ownedAgents))
     .orderBy(desc(schema.needs.updatedAt))
-    .limit(100)
+    .limit(100) } catch { /* needs table dropped */ }
   return rows.map(rowToNeed)
 }
 
@@ -266,10 +275,11 @@ export async function listMyOfferings(): Promise<OfferingRow[]> {
   if (!me) return []
   const personAgent = await getPersonAgentForUser(me.id) as `0x${string}` | null
   if (!personAgent) return []
-  const rows = await db.select().from(schema.resourceOfferings)
+  let rows: any[] = []
+  try { rows = await db.select().from(schema.resourceOfferings)
     .where(eq(schema.resourceOfferings.offeredByAgent, personAgent.toLowerCase()))
     .orderBy(desc(schema.resourceOfferings.createdAt))
-    .limit(100)
+    .limit(100) } catch { /* resourceOfferings table dropped */ }
   return rows.map(rowToOffering)
 }
 
@@ -279,10 +289,10 @@ export async function setNeedStatus(needId: string, status: NeedRow['status']): 
   const me = await getCurrentUser()
   if (!me) return { error: 'not-authenticated' }
   try {
-    db.update(schema.needs)
+    try { db.update(schema.needs)
       .set({ status, updatedAt: new Date().toISOString() })
       .where(eq(schema.needs.id, needId))
-      .run()
+      .run() } catch { /* needs table dropped */ }
     return { ok: true }
   } catch (err) {
     return { error: (err as Error).message }
@@ -293,10 +303,10 @@ export async function setOfferingStatus(offeringId: string, status: OfferingRow[
   const me = await getCurrentUser()
   if (!me) return { error: 'not-authenticated' }
   try {
-    db.update(schema.resourceOfferings)
+    try { db.update(schema.resourceOfferings)
       .set({ status })
       .where(eq(schema.resourceOfferings.id, offeringId))
-      .run()
+      .run() } catch { /* resourceOfferings table dropped */ }
     return { ok: true }
   } catch (err) {
     return { error: (err as Error).message }

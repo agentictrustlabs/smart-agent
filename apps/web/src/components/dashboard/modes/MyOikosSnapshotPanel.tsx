@@ -33,7 +33,13 @@ export async function MyOikosSnapshotPanel() {
   if (!me) return null
 
   const all = await getOikosContacts(me.id).catch(() => [])
-  const proximityNum = (p: string | null | undefined) => Number(p ?? 99)
+  const proximityNum = (p: string | null | undefined) => {
+    if (p == null) return 99
+    const m = /^ring(\d)$/.exec(p)
+    if (m) return Number(m[1])
+    const n = Number(p)
+    return Number.isFinite(n) ? n : 99
+  }
   const top = [...all]
     .sort((a, b) => proximityNum(a.proximity) - proximityNum(b.proximity) || a.personName.localeCompare(b.personName))
     .slice(0, 5)

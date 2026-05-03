@@ -107,7 +107,9 @@ export default async function CatalystActivitiesPage() {
   const userOrgs = await getUserOrgs(currentUser.id)
   if (userOrgs.length === 0) return <p>No organizations found.</p>
 
-  // Collect activities across all user orgs + child orgs
+  // Collect activities across all user orgs + child orgs.
+  // Activity log moved on-chain — `getActivityLog(orgAddress)` reads from
+  // the agent-resolver JSON property which is the canonical source.
   const orgAddresses = new Set(userOrgs.map(o => o.address.toLowerCase()))
   const { getConnectedOrgs } = await import('@/lib/get-org-members')
   for (const org of userOrgs) {
@@ -117,13 +119,43 @@ export default async function CatalystActivitiesPage() {
     } catch { /* ignored */ }
   }
 
-  // Build set of user IDs in the same org network — query by org membership, not ID prefix
-  const orgUserIds = new Set<string>()
-  orgUserIds.add(currentUser.id)
-
-  const allActivities = await db.select().from(schema.activityLogs)
-  const activities = allActivities
-    .filter(a => orgAddresses.has(a.orgAddress.toLowerCase()) || orgUserIds.has(a.userId))
+  const { getActivityLog } = await import('@/lib/agent-resolver')
+  type FeedActivity = {
+    id: string
+    orgAddress: string
+    userId: string
+    activityType: string
+    title: string
+    description: string | null
+    location: string | null
+    participants: number
+    durationMinutes: number | null
+    activityDate: string
+    createdAt: string
+  }
+  const activitiesByAddr: Record<string, FeedActivity[]> = {}
+  await Promise.all(
+    [...orgAddresses].map(async (addr) => {
+      try {
+        const log = await getActivityLog(addr)
+        activitiesByAddr[addr] = log.map(a => ({
+          id: a.id,
+          orgAddress: addr,
+          userId: a.createdBy ?? '',
+          activityType: a.type,
+          title: a.title,
+          description: a.description ?? a.notes ?? null,
+          location: a.location ?? null,
+          participants: a.participants ?? 0,
+          durationMinutes: a.duration ?? null,
+          activityDate: a.date,
+          createdAt: a.createdAt ?? a.date,
+        }))
+      } catch { activitiesByAddr[addr] = [] }
+    }),
+  )
+  const activities: FeedActivity[] = Object.values(activitiesByAddr)
+    .flat()
     .sort((a, b) => b.activityDate.localeCompare(a.activityDate))
 
   const allUsers = await db.select().from(schema.users)

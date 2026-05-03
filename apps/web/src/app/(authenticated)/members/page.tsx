@@ -20,18 +20,19 @@ export default async function MembersPage() {
     )
   }
 
-  // Aggregate members across all orgs
-  const allMembers: Array<{ address: string; name: string; roles: string[]; status: string; isPerson: boolean }> = []
-  const seenMembers = new Set<string>()
-  const allDetached: Array<{ id: string; name: string; role: string | null; assignedNodeId: string | null; notes: string | null }> = []
+  // Members aggregated across all orgs the current user has access to.
+  // We keep one row per (member × org) so the table can show which org each
+  // role applies to — same person owning two orgs renders as two rows.
+  const allMembers: Array<{
+    address: string; name: string; roles: string[]; status: string; isPerson: boolean
+    orgAddress: string; orgName: string
+  }> = []
+  const allDetached: Array<{ id: string; name: string; role: string | null; assignedNodeId: string | null; notes: string | null; orgAddress: string; orgName: string }> = []
 
   for (const org of userOrgs) {
     const { members } = await getOrgMembers(org.address)
     for (const m of members) {
-      if (!seenMembers.has(m.address.toLowerCase())) {
-        seenMembers.add(m.address.toLowerCase())
-        allMembers.push(m)
-      }
+      allMembers.push({ ...m, orgAddress: org.address, orgName: org.name })
     }
 
     try {
@@ -42,6 +43,8 @@ export default async function MembersPage() {
         role: m.role ?? null,
         assignedNodeId: m.assignedNode ?? null,
         notes: m.notes ?? null,
+        orgAddress: org.address,
+        orgName: org.name,
       })))
     } catch { /* resolver may not be available */ }
   }

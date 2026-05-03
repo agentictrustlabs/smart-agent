@@ -301,7 +301,7 @@ export async function deleteGenMapNode(id: string) {
 
 export async function deleteActivity(id: string) {
   await requireSession()
-  await db.delete(schema.activityLogs).where(eq(schema.activityLogs.id, id))
+  try { await db.delete(schema.activityLogs).where(eq(schema.activityLogs.id, id)) } catch { /* activityLogs table dropped */ }
 }
 
 export async function updateActivity(data: {
@@ -317,6 +317,6 @@ export async function updateActivity(data: {
   if (data.durationMinutes !== undefined) updates.durationMinutes = data.durationMinutes
   if (data.activityType !== undefined) updates.activityType = data.activityType
   if (Object.keys(updates).length > 0) {
-    await db.update(schema.activityLogs).set(updates).where(eq(schema.activityLogs.id, data.id))
+    try { await db.update(schema.activityLogs).set(updates).where(eq(schema.activityLogs.id, data.id)) } catch { /* activityLogs table dropped */ }
   }
 }

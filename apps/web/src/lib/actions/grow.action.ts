@@ -134,11 +134,12 @@ export async function getDiscipleDetails(discipleId: string): Promise<{
 
   let activities: DiscipleActivity[] = []
   try {
-    const rows = await db.select().from(schema.activityLogs)
+    let rows: any[] = []
+    try { rows = await db.select().from(schema.activityLogs)
       .where(eq(schema.activityLogs.userId, discipleId))
       .orderBy(desc(schema.activityLogs.activityDate))
-      .limit(5)
-    activities = rows.map(r => ({
+      .limit(5) } catch { /* activityLogs table dropped */ }
+    activities = (rows as any[] | undefined ?? []).map((r: any) => ({
       id: r.id,
       activityType: r.activityType,
       title: r.title,

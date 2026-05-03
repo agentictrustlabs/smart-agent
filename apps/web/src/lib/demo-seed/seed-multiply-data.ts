@@ -1,8 +1,13 @@
+// Demo seed for the surfaces that still live in web SQL after the data-store
+// consolidation: activity_logs (recent activity feed) and messages (inbox /
+// work-queue notifications). Person-private domains (oikos, prayers, training,
+// preferences, pinned items, coaching notes) and org-private domains (revenue
+// reports, proposals) moved to person-mcp / org-mcp; their demo data will be
+// re-seeded by a delegation-aware MCP seeder that doesn't exist yet.
+
 import { db, schema } from '@/db'
 import { eq, and } from 'drizzle-orm'
 import { randomUUID } from 'crypto'
-
-// ─── Helpers ──────────────────────────────────────────────────────────
 
 function daysAgo(n: number): string {
   const d = new Date()
@@ -10,449 +15,17 @@ function daysAgo(n: number): string {
   return d.toISOString()
 }
 
-function today(): string {
-  return new Date().toISOString()
-}
-
-function userExists(userId: string): boolean {
-  const row = db.select().from(schema.users).where(eq(schema.users.id, userId)).get()
-  return !!row
-}
-
-// Pre-migration `shouldSeed` checked the (now-dropped) circles table to know
-// if a user had been seeded. After the data-store consolidation we can't tell
-// from web SQL alone whether person-mcp tables are populated for a user — so
-// we just check user existence and let the inserts to *still-existing* tables
-// (activityLogs, messages) be idempotent at the call site.
-function shouldSeed(userId: string): boolean {
-  return userExists(userId)
-}
-
-// ─── Oikos helper ─────────────────────────────────────────────────────
-
-interface OikosEntry {
-  personName: string
-  proximity: number
-  response: 'not-interested' | 'curious' | 'interested' | 'seeking' | 'decided' | 'baptized'
-  plannedConversation?: boolean
-  notes?: string
-}
-
-function insertOikosContacts(_userId: string, _entries: OikosEntry[]) {
-  // Oikos moved to person-mcp; demo seed for this domain is pending a
-  // delegation-token-aware seeder. No-op for now.
-}
-
-// ─── Prayer helper ────────────────────────────────────────────────────
-
-interface PrayerEntry {
-  title: string
-  schedule: string
-  lastPrayed?: string
-  answered?: boolean
-  notes?: string
-}
-
-function insertPrayers(_userId: string, _entries: PrayerEntry[]) {
-  // Prayers moved to person-mcp; demo seed pending delegated seeder.
-}
-
-function upsertPrayersByTitle(_userId: string, _entries: PrayerEntry[]) {
-  // Prayers moved to person-mcp.
-}
-
-function upsertOikosByName(_userId: string, _entries: OikosEntry[]) {
-  // Oikos moved to person-mcp.
-}
-
-// ─── Training helper ──────────────────────────────────────────────────
-
-const FOUR_ONE_ONE_KEYS = ['411-1', '411-2', '411-3', '411-4', '411-5', '411-6']
-const COC_KEYS = ['coc-love', 'coc-pray', 'coc-go', 'coc-baptize', 'coc-supper', 'coc-give', 'coc-anxiety', 'coc-judge', 'coc-abide', 'coc-unity']
-
-function insert411(_userId: string, _completedCount: number) {
-  // trainingProgress moved to person-mcp.
-}
-
-function insertCOC(_userId: string, _obeyingCount: number, _teachingCount?: number) {
-  // trainingProgress moved to person-mcp.
-}
-
-function insertCoachRelationship(_discipleId: string, _coachId: string) {
-  // coachRelationships dropped — coaching is now an on-chain edge with
-  // share permissions captured as a cross-delegation grant in person-mcp.
-}
-
-function insertPreferences(_userId: string, _language: string, _homeChurch: string, _location: string) {
-  // userPreferences moved to person-mcp.
-}
-
 // ═══════════════════════════════════════════════════════════════════════
 // Seed functions per environment
 // ═══════════════════════════════════════════════════════════════════════
 
-function seedGlobalChurch() {
-  // ─── gc-user-001: Pastor James (Coach) ────────────────────────────
-  const u1 = 'gc-user-001'
-  if (shouldSeed(u1)) {
-    insertOikosContacts(u1, [
-      { personName: 'Maria Chen', proximity: 1, response: 'decided' },
-      { personName: 'Tom & Lisa', proximity: 2, response: 'interested' },
-      { personName: 'Youth Group', proximity: 2, response: 'seeking' },
-      { personName: 'New Visitor - Ahmed', proximity: 3, response: 'curious' },
-      { personName: 'Neighborhood Watch', proximity: 4, response: 'not-interested' },
-    ])
-    insertPrayers(u1, [
-      { title: 'Church growth', schedule: 'daily', lastPrayed: daysAgo(1) },
-      { title: 'Youth ministry revival', schedule: 'mon,wed,fri' },
-      { title: "Ahmed's salvation", schedule: 'daily', lastPrayed: daysAgo(2) },
-      { title: 'Mission trip funding', schedule: 'sun', answered: true },
-    ])
-    insert411(u1, 6) // all complete
-    insertCOC(u1, 10, 7) // all obeying, 7/10 teaching
-    insertCoachRelationship('gc-user-002', u1)
-    insertPreferences(u1, 'en', 'Grace Community Church', 'Sun Valley, CA')
-  }
-
-  // ─── gc-user-002: Dr. Sarah Mitchell (Disciple + Coach) ──────────
-  const u2 = 'gc-user-002'
-  if (shouldSeed(u2)) {
-    insertOikosContacts(u2, [
-      { personName: 'Board members', proximity: 1, response: 'decided' },
-      { personName: 'Seminary students', proximity: 2, response: 'interested' },
-      { personName: 'Interfaith council', proximity: 3, response: 'curious' },
-    ])
-    insertPrayers(u2, [
-      { title: 'Convention unity', schedule: 'daily' },
-      { title: 'Seminary graduates', schedule: 'tue,thu' },
-    ])
-    insert411(u2, 4) // 4/6
-    insertCOC(u2, 5) // 5/10 obeying
-    insertPreferences(u2, 'en', 'SBC', 'Nashville, TN')
-  }
-}
-
 function seedCatalystNetwork() {
-  // ─── cat-user-001: Maria Gonzalez (Coach — NoCo Hispanic outreach) ─
-  const u1 = 'cat-user-001'
-  if (shouldSeed(u1)) {
-    insertOikosContacts(u1, [
-      { personName: 'Pastor David', proximity: 1, response: 'decided' },
-      { personName: 'Rosa Martinez', proximity: 1, response: 'decided' },
-      { personName: 'Familia Lopez (Wellington)', proximity: 2, response: 'seeking' },
-      { personName: 'County social services contact', proximity: 3, response: 'interested' },
-      { personName: 'Tienda La Favorita owners', proximity: 3, response: 'curious' },
-      { personName: 'Poudre School District liaison', proximity: 4, response: 'interested' },
-    ])
-    insertPrayers(u1, [
-      // No `lastPrayed` on most → all daily ones surface as Pray-now items.
-      { title: 'NoCo network growth and unity', schedule: 'daily', lastPrayed: daysAgo(1) },
-      { title: "Pastor David's bridge-building vision", schedule: 'mon,wed,fri' },
-      { title: 'Hispanic families facing housing insecurity', schedule: 'daily' },
-      { title: 'Wisdom for immigration support ministry', schedule: 'tue,thu' },
-      { title: 'Front Range pastors network', schedule: 'daily' },
-      { title: 'Children of detained parents', schedule: 'daily' },
-    ])
-    insert411(u1, 6)  // all complete
-    insertCOC(u1, 10) // all complete
-    insertCoachRelationship('cat-user-002', u1)
-    insertCoachRelationship('cat-user-003', u1)
-    insertPreferences(u1, 'es', 'Catalyst NoCo Network', 'Fort Collins, CO')
-  }
-
-  // ─── cat-user-002: Pastor David Chen (Hub Lead — Disciple) ────────
-  const u2 = 'cat-user-002'
-  if (shouldSeed(u2)) {
-    insertOikosContacts(u2, [
-      { personName: 'Ana Reyes (Wellington)', proximity: 1, response: 'decided', plannedConversation: true, notes: 'Quarterly check-in due' },
-      { personName: 'Miguel Santos (Laporte)', proximity: 1, response: 'decided', plannedConversation: true, notes: 'Coaching cadence' },
-      { personName: 'Rosa Martinez', proximity: 1, response: 'seeking' },
-      { personName: 'Local pastors coalition', proximity: 2, response: 'interested', plannedConversation: true },
-      { personName: 'CSU campus ministry contact', proximity: 3, response: 'curious' },
-    ])
-    insertPrayers(u2, [
-      { title: 'Fort Collins Network growth', schedule: 'daily', lastPrayed: daysAgo(2) },
-      { title: 'Wellington Circle — Ana and new families', schedule: 'mon,wed,fri,sat' },
-      { title: 'Bilingual worship team development', schedule: 'sun' },
-      { title: 'Carlos in his community-partner role', schedule: 'daily' },
-      { title: 'Healing for families fractured by deportation', schedule: 'daily' },
-    ])
-    insert411(u2, 5)      // 5/6
-    insertCOC(u2, 8, 4)   // 8/10 obeying, 4/10 teaching
-    insertPreferences(u2, 'en', 'Fort Collins Network', 'Fort Collins, CO')
-  }
-
-  // ─── cat-user-003: Rosa Martinez (Hispanic Outreach Coordinator) ──
-  const u3 = 'cat-user-003'
-  if (shouldSeed(u3)) {
-    insertOikosContacts(u3, [
-      { personName: 'Familia Herrera', proximity: 1, response: 'decided' },
-      { personName: 'ESL students (Tue/Thu class)', proximity: 2, response: 'seeking', plannedConversation: true },
-      { personName: 'Meat packing plant workers', proximity: 3, response: 'curious' },
-      { personName: 'Neighbor Gloria', proximity: 1, response: 'interested', plannedConversation: true },
-      { personName: 'Catholic parish contact', proximity: 3, response: 'interested' },
-    ])
-    insertPrayers(u3, [
-      { title: 'Courage for ESL gospel conversations', schedule: 'tue,thu' },
-      { title: 'Gloria and her children', schedule: 'daily', lastPrayed: daysAgo(2) },
-      { title: 'Protection for undocumented families', schedule: 'daily' },
-      { title: 'Wisdom for trauma-informed care', schedule: 'daily' },
-      { title: 'Farm-worker outreach in Berthoud', schedule: 'mon,wed,fri' },
-    ])
-    insert411(u3, 4) // 4/6
-    insertCOC(u3, 6, 2) // 6/10 obeying, 2/10 teaching
-    insertPreferences(u3, 'es', 'Fort Collins Network', 'Fort Collins, CO')
-  }
-
-  // ─── cat-user-006: Ana Reyes (Circle Leader — Wellington) ─────────
-  const u6 = 'cat-user-006'
-  if (shouldSeed(u6)) {
-    insertOikosContacts(u6, [
-      { personName: 'Familia Morales', proximity: 1, response: 'seeking', plannedConversation: true, notes: 'Husband is open to coffee meeting' },
-      { personName: 'Youth group teens (5)', proximity: 2, response: 'interested' },
-      { personName: 'Wellington Elementary parents', proximity: 3, response: 'curious' },
-      { personName: 'Señora Campos', proximity: 1, response: 'decided', plannedConversation: true },
-      { personName: 'Familia Vega', proximity: 2, response: 'interested', plannedConversation: true },
-    ])
-    insertPrayers(u6, [
-      { title: 'Wellington Circle health and growth', schedule: 'daily' },
-      { title: 'Youth caught between two cultures', schedule: 'mon,wed,fri' },
-      { title: 'Familia Morales — husband seeking work', schedule: 'daily', lastPrayed: daysAgo(2) },
-      { title: 'Wisdom on next-step training for new disciples', schedule: 'daily' },
-      { title: 'Señora Campos — discipleship next steps', schedule: 'tue,thu,sat' },
-    ])
-    insert411(u6, 3) // 3/6
-    insertCOC(u6, 4) // 4/10 obeying
-    insertPreferences(u6, 'es', 'Wellington Circle', 'Wellington, CO')
-  }
-
-  // ─── cat-user-007: Miguel Santos (Circle Leader — Laporte) ────────
-  const u7 = 'cat-user-007'
-  if (shouldSeed(u7)) {
-    insertOikosContacts(u7, [
-      { personName: 'Farm crew (8 men)', proximity: 1, response: 'interested' },
-      { personName: 'Foreman Ricardo', proximity: 1, response: 'seeking', plannedConversation: true },
-      { personName: 'Familia Santos extended', proximity: 2, response: 'decided' },
-      { personName: 'Iglesia La Cosecha pastor', proximity: 3, response: 'interested', plannedConversation: true },
-    ])
-    insertPrayers(u7, [
-      { title: 'Laporte farm workers — safety and hope', schedule: 'daily', lastPrayed: daysAgo(2) },
-      { title: 'Ricardo — open door for gospel', schedule: 'mon,wed,fri' },
-      { title: 'Housing for seasonal workers', schedule: 'tue,sat' },
-      { title: 'Wisdom for Sunday gathering', schedule: 'sat,sun' },
-      { title: 'Familia Santos — multi-generational unity', schedule: 'daily' },
-    ])
-    insert411(u7, 2) // 2/6
-    insertCOC(u7, 3) // 3/10 obeying
-    insertPreferences(u7, 'es', 'Laporte Circle', 'Laporte, CO')
-  }
-
-  // ─── cat-user-004: Carlos Herrera (Community Partner) ─────────────
-  const u4 = 'cat-user-004'
-  if (shouldSeed(u4)) {
-    insertOikosContacts(u4, [
-      { personName: 'Tienda La Favorita owners', proximity: 2, response: 'curious', plannedConversation: true },
-      { personName: 'Wellington bus-stop families', proximity: 3, response: 'interested' },
-      { personName: 'Vecina Lupe (next-door)', proximity: 1, response: 'seeking', plannedConversation: true },
-      { personName: 'School-bus driver Marco', proximity: 2, response: 'interested' },
-    ])
-    insertPrayers(u4, [
-      { title: 'Vecina Lupe — ongoing health concerns', schedule: 'daily', lastPrayed: daysAgo(3) },
-      { title: 'Tienda relationship — open door', schedule: 'mon,thu' },
-      { title: 'Community-partner role wisdom', schedule: 'daily' },
-      { title: 'Discipleship under David', schedule: 'sun,wed' },
-    ])
-    insert411(u4, 1) // 1/6
-    insertPreferences(u4, 'es', 'Fort Collins Network', 'Fort Collins, CO')
-  }
-
-  // ─── cat-user-005: Sarah Thompson (Regional Lead) ─────────────────
-  const u5 = 'cat-user-005'
-  if (shouldSeed(u5)) {
-    insertOikosContacts(u5, [
-      { personName: 'Front Range pastors network', proximity: 2, response: 'interested', plannedConversation: true },
-      { personName: 'Loveland mayor liaison', proximity: 3, response: 'curious' },
-      { personName: 'Regional church planters cohort', proximity: 2, response: 'decided' },
-      { personName: 'Compassion International contact', proximity: 4, response: 'interested', plannedConversation: true },
-    ])
-    insertPrayers(u5, [
-      { title: 'Loveland Circle launch', schedule: 'daily', lastPrayed: daysAgo(2) },
-      { title: 'Cross-network unity (Catalyst + sister hubs)', schedule: 'daily' },
-      { title: 'Pastors coalition — bilingual partnerships', schedule: 'mon,wed,fri' },
-      { title: 'Wise stewardship of regional resources', schedule: 'tue,thu' },
-    ])
-    insert411(u5, 6)
-    insertCOC(u5, 9, 5)
-    insertPreferences(u5, 'en', 'Catalyst NoCo Network', 'Loveland, CO')
-  }
-
-  // ─── cat-user-008: Elena (Timnath Circle Leader) ──────────────────
-  const u8 = 'cat-user-008'
-  if (shouldSeed(u8)) {
-    insertOikosContacts(u8, [
-      { personName: 'Timnath young families', proximity: 2, response: 'curious' },
-      { personName: 'Vecina Patricia', proximity: 1, response: 'seeking', plannedConversation: true },
-      { personName: 'School-counselor referral', proximity: 3, response: 'interested', plannedConversation: true },
-    ])
-    insertPrayers(u8, [
-      { title: 'Timnath gathering rhythm', schedule: 'daily' },
-      { title: 'Patricia — next conversation', schedule: 'daily', lastPrayed: daysAgo(2) },
-      { title: 'Trauma-care wisdom', schedule: 'mon,wed,fri' },
-      { title: 'Counselor — open door', schedule: 'tue,thu' },
-    ])
-    insert411(u8, 4)
-    insertPreferences(u8, 'es', 'Timnath Circle', 'Timnath, CO')
-  }
-
-  // ─── cat-user-009: Luis (Loveland Circle Leader) ──────────────────
-  const u9 = 'cat-user-009'
-  if (shouldSeed(u9)) {
-    insertOikosContacts(u9, [
-      { personName: 'Loveland new-arrival families', proximity: 2, response: 'interested' },
-      { personName: 'Hermano Joaquín', proximity: 1, response: 'decided', plannedConversation: true },
-      { personName: 'Grant-funded ESL students (12)', proximity: 3, response: 'curious' },
-    ])
-    insertPrayers(u9, [
-      { title: 'Loveland circle multiplication', schedule: 'daily', lastPrayed: daysAgo(1) },
-      { title: 'Joaquín — ready to lead', schedule: 'daily' },
-      { title: 'ESL grant impact', schedule: 'tue,thu' },
-      { title: 'Engagement-overlap with Berthoud — shalom', schedule: 'daily' },
-    ])
-    insert411(u9, 5)
-    insertCOC(u9, 7, 3)
-    insertPreferences(u9, 'es', 'Loveland Circle', 'Loveland, CO')
-  }
-
-  // ─── cat-user-010: Sofia (Berthoud Circle Leader) ─────────────────
-  const u10 = 'cat-user-010'
-  if (shouldSeed(u10)) {
-    insertOikosContacts(u10, [
-      { personName: 'Berthoud farm-worker families', proximity: 1, response: 'seeking' },
-      { personName: 'Iglesia Pentecostal pastor', proximity: 3, response: 'interested', plannedConversation: true },
-      { personName: 'Vecina Esperanza', proximity: 1, response: 'decided', plannedConversation: true },
-    ])
-    insertPrayers(u10, [
-      { title: 'Berthoud — first baptisms', schedule: 'daily' },
-      { title: 'Esperanza — multiplication', schedule: 'daily', lastPrayed: daysAgo(3) },
-      { title: 'Engagement clarity with Loveland', schedule: 'daily' },
-      { title: 'Farm-worker safety in harvest', schedule: 'mon,wed,fri' },
-    ])
-    insert411(u10, 3)
-    insertPreferences(u10, 'es', 'Berthoud Circle', 'Berthoud, CO')
-  }
-
-  // ─── cat-user-011: Diego (Johnstown Circle Leader) ────────────────
-  const u11 = 'cat-user-011'
-  if (shouldSeed(u11)) {
-    insertOikosContacts(u11, [
-      { personName: 'Johnstown high-school athletes', proximity: 2, response: 'curious' },
-      { personName: 'Coach Esteban', proximity: 1, response: 'seeking', plannedConversation: true },
-      { personName: 'Familia Vargas', proximity: 1, response: 'decided' },
-    ])
-    insertPrayers(u11, [
-      { title: 'Johnstown G3 sustainability', schedule: 'daily', lastPrayed: daysAgo(2) },
-      { title: 'Coach Esteban — clear gospel call', schedule: 'mon,wed,fri' },
-      { title: 'Athletes who follow Coach', schedule: 'daily' },
-    ])
-    insert411(u11, 4)
-    insertCOC(u11, 5)
-    insertPreferences(u11, 'es', 'Johnstown Circle', 'Johnstown, CO')
-  }
-
-  // ─── cat-user-012: Isabel (Red Feather Circle Leader) ─────────────
-  const u12 = 'cat-user-012'
-  if (shouldSeed(u12)) {
-    insertOikosContacts(u12, [
-      { personName: 'Mountain neighbors', proximity: 2, response: 'curious', plannedConversation: true },
-      { personName: 'Hermana Julia', proximity: 1, response: 'decided' },
-      { personName: 'Lake-area pastors', proximity: 3, response: 'interested' },
-    ])
-    insertPrayers(u12, [
-      { title: 'Rural mountain ministry', schedule: 'daily', lastPrayed: daysAgo(4) },
-      { title: 'Julia — discipleship rhythm', schedule: 'daily' },
-      { title: 'Winter-weather travel safety', schedule: 'mon,wed,fri' },
-    ])
-    insert411(u12, 2)
-    insertPreferences(u12, 'es', 'Red Feather Circle', 'Red Feather Lakes, CO')
-  }
-
-  // ─── Boost: extra prayer / oikos rows for existing catalyst users ───
-  // The shouldSeed() gate above only inserts on the very first seed pass.
-  // These upsert-by-title/name helpers add new rows on every run so users
-  // who already had their initial seed get the additional work-items
-  // without us nuking their state.
-  const boostUsers: Array<{ id: string; oikos: OikosEntry[]; prayers: PrayerEntry[] }> = [
-    {
-      id: 'cat-user-001',
-      oikos: [
-        { personName: 'Front Range pastors coalition', proximity: 2, response: 'interested', plannedConversation: true },
-        { personName: 'Sarah Thompson (regional)', proximity: 1, response: 'decided', plannedConversation: true },
-      ],
-      prayers: [
-        { title: 'Front Range pastors network', schedule: 'daily' },
-        { title: 'Children of detained parents', schedule: 'daily' },
-      ],
-    },
-    {
-      id: 'cat-user-002',
-      oikos: [
-        { personName: 'Pastors coalition co-host', proximity: 2, response: 'interested', plannedConversation: true },
-      ],
-      prayers: [
-        { title: 'Carlos in his community-partner role', schedule: 'daily' },
-        { title: 'Healing for families fractured by deportation', schedule: 'daily' },
-      ],
-    },
-    {
-      id: 'cat-user-003',
-      oikos: [
-        { personName: 'Berthoud farm-worker outreach', proximity: 3, response: 'curious', plannedConversation: true },
-      ],
-      prayers: [
-        { title: 'Wisdom for trauma-informed care', schedule: 'daily' },
-        { title: 'Farm-worker outreach in Berthoud', schedule: 'mon,wed,fri' },
-      ],
-    },
-    {
-      id: 'cat-user-006',
-      oikos: [
-        { personName: 'Familia Vega', proximity: 2, response: 'interested', plannedConversation: true },
-      ],
-      prayers: [
-        { title: 'Wisdom on next-step training for new disciples', schedule: 'daily' },
-        { title: 'Señora Campos — discipleship next steps', schedule: 'tue,thu,sat' },
-      ],
-    },
-    {
-      id: 'cat-user-007',
-      oikos: [
-        { personName: 'Iglesia La Cosecha pastor', proximity: 3, response: 'interested', plannedConversation: true },
-      ],
-      prayers: [
-        { title: 'Wisdom for Sunday gathering', schedule: 'sat,sun' },
-        { title: 'Familia Santos — multi-generational unity', schedule: 'daily' },
-      ],
-    },
-  ]
-  for (const b of boostUsers) {
-    if (!userExists(b.id)) continue
-    upsertOikosByName(b.id, b.oikos)
-    upsertPrayersByTitle(b.id, b.prayers)
-  }
-
-  // Bump stale-bucket: any prayer whose lastPrayed is "today" or null but
-  // schedule is daily reads as "due today" already. For prayers that show
-  // lastPrayed=today (which the OLD seed planted), shift them to 2 days ago
-  // so they surface as work items. Idempotent — only updates if the field
-  // matches the OLD seed's "today()" stamp from a recent run.
-  // We treat anything within the last 18 hours as "looks like today's stamp".
-  // Prayer back-dating moved to person-mcp's seeder (not yet built).
-
   // ─── Catalyst hub-lead inboxes (unread actionable messages) ──────
   // These surface as "message-pending" work items in MyWorkPanel.
   // Idempotent: keyed by (userId, type, title) so re-runs don't dupe.
-  const existingHubMsg = db.select().from(schema.messages)
-    .where(eq(schema.messages.type, 'review_received')).get()
+  let existingHubMsg: any = undefined
+  try { existingHubMsg = db.select().from(schema.messages)
+    .where(eq(schema.messages.type, 'review_received')).get() } catch { /* messages table dropped */ }
   if (!existingHubMsg) {
     const inbox: Array<{ userId: string; type: 'review_received' | 'invite_sent' | 'relationship_proposed' | 'proposal_created' | 'dispute_filed'; title: string; body: string; link: string }> = [
       { userId: 'cat-user-002', type: 'review_received', title: 'Review received: Wellington Circle health', body: 'A peer left a review on Wellington Circle. Open the review to read or respond.', link: '/reviews' },
@@ -463,10 +36,11 @@ function seedCatalystNetwork() {
       { userId: 'cat-user-005', type: 'invite_sent', title: 'Three invites awaiting response', body: 'Three regional pastors have not yet replied to your alliance invites.', link: '/people' },
     ]
     for (const m of inbox) {
-      const dup = db.select().from(schema.messages)
-        .where(and(eq(schema.messages.userId, m.userId), eq(schema.messages.type, m.type), eq(schema.messages.title, m.title))).get()
+      let dup: any = undefined
+      try { dup = db.select().from(schema.messages)
+        .where(and(eq(schema.messages.userId, m.userId), eq(schema.messages.type, m.type), eq(schema.messages.title, m.title))).get() } catch { /* messages table dropped */ }
       if (dup) continue
-      db.insert(schema.messages).values({
+      try { db.insert(schema.messages).values({
         id: randomUUID(),
         userId: m.userId,
         type: m.type,
@@ -474,47 +48,28 @@ function seedCatalystNetwork() {
         body: m.body,
         link: m.link,
         read: 0,
-      }).run()
+      }).run() } catch { /* messages table dropped */ }
     }
   }
 
   // ─── Data sharing notification for Maria ─────────────────────────
-  const existingMsg = db.select().from(schema.messages)
-    .where(eq(schema.messages.type, 'data_access_granted')).get()
+  let existingMsg: any = undefined
+  try { existingMsg = db.select().from(schema.messages)
+    .where(eq(schema.messages.type, 'data_access_granted')).get() } catch { /* messages table dropped */ }
   if (!existingMsg) {
-    db.insert(schema.messages).values({
+    try { db.insert(schema.messages).values({
       id: randomUUID(),
       userId: 'cat-user-001',
       type: 'data_access_granted',
       title: 'Ana Reyes shared personal data with you',
       body: 'Ana Reyes has shared her contact information (email, phone, location) with you. View it in your Data Sharing page.',
       link: '/catalyst/me/sharing',
-    }).run()
+    }).run() } catch { /* messages table dropped */ }
   }
 
-  // ─── Seed Ana's profile in person-mcp ────────────────────────────
-  try {
-    const Database = require('better-sqlite3')
-    const mcpDbPath = process.env.PERSON_MCP_DB_PATH ?? '../person-mcp/person-mcp.db'
-    const mcpDb = new Database(mcpDbPath)
-    const anaUser = db.select().from(schema.users).where(eq(schema.users.id, 'cat-user-006')).get()
-    if (anaUser?.personAgentAddress) {
-      const principal = anaUser.personAgentAddress.toLowerCase()
-      const existing = mcpDb.prepare('SELECT id FROM profiles WHERE principal = ?').get(principal)
-      if (!existing) {
-        const now = new Date().toISOString()
-        mcpDb.prepare(`INSERT INTO profiles (id, principal, display_name, email, phone, city, state_province, country, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
-          randomUUID(), principal, 'Ana Reyes', 'ana@wellington-circle.org', '+1-970-555-0198',
-          'Wellington', 'Colorado', 'US', now, now,
-        )
-        console.log('[multiply-seed] Seeded Ana\'s profile in person-mcp')
-      }
-    }
-    mcpDb.close()
-  } catch (err) {
-    console.warn('[multiply-seed] MCP profile seed failed:', err)
-  }
+  // Ana's profile is now seeded in seed-mcp-data.ts via her own A2A
+  // session (update_profile through delegation), keyed by her smart-
+  // account principal — not via direct SQLite writes.
 
   // ─── Catalyst activity feed — mission-org-anchored use-cases ─────
   // Each catalyst user gets 10–18 activities drawn from real-world
@@ -725,11 +280,12 @@ function seedCatalystActivities() {
       const activityDate = daysAgo(e.daysBack)
       // Idempotent: keyed on (userId, title, activityDate prefix). Re-runs
       // against the same dataset are no-ops; new entries land naturally.
-      const dup = db.select().from(schema.activityLogs)
+      let dup: any = undefined
+      try { dup = db.select().from(schema.activityLogs)
         .where(and(eq(schema.activityLogs.userId, userId), eq(schema.activityLogs.title, e.title)))
-        .get()
+        .get() } catch { /* activityLogs table dropped */ }
       if (dup) { skipped++; continue }
-      db.insert(schema.activityLogs).values({
+      try { db.insert(schema.activityLogs).values({
         id: randomUUID(),
         orgAddress: orgAddr,
         userId,
@@ -740,7 +296,7 @@ function seedCatalystActivities() {
         location: e.location ?? null,
         durationMinutes: e.durationMinutes ?? null,
         activityDate,
-      }).run()
+      }).run() } catch { /* activityLogs table dropped */ }
       inserted++
     }
   }
@@ -750,63 +306,9 @@ function seedCatalystActivities() {
 }
 
 function seedCIL() {
-  // ─── cil-user-001: Cameron Henrion (Coach) ────────────────────────
-  const u1 = 'cil-user-001'
-  if (shouldSeed(u1)) {
-    insertOikosContacts(u1, [
-      { personName: 'Afia', proximity: 1, response: 'decided' },
-      { personName: 'Kossi', proximity: 1, response: 'seeking' },
-      { personName: 'Local government', proximity: 3, response: 'interested' },
-      { personName: 'Togo NGO network', proximity: 4, response: 'curious' },
-    ])
-    insertPrayers(u1, [
-      { title: 'Business success for cohort', schedule: 'daily', lastPrayed: today() },
-      { title: "Afia's market growth", schedule: 'mon,wed,fri' },
-      { title: 'Togo stability', schedule: 'sun' },
-    ])
-    insert411(u1, 6)  // all complete
-    insertCOC(u1, 6)  // 6/10 obeying
-    insertCoachRelationship('cil-user-003', u1)
-    insertCoachRelationship('cil-user-004', u1)
-    insertPreferences(u1, 'en', 'ILAD', 'Lom\u00e9, Togo')
-  }
-
-  // ─── cil-user-003: Afia Mensah (Disciple) ────────────────────────
-  const u3 = 'cil-user-003'
-  if (shouldSeed(u3)) {
-    insertOikosContacts(u3, [
-      { personName: 'Market neighbors', proximity: 1, response: 'interested' },
-      { personName: 'Supplier Kokou', proximity: 2, response: 'curious' },
-      { personName: 'Church friends', proximity: 2, response: 'decided' },
-    ])
-    insertPrayers(u3, [
-      { title: 'Business growth', schedule: 'daily', lastPrayed: daysAgo(1) },
-      { title: "Children's education", schedule: 'daily' },
-      { title: 'Market peace', schedule: 'fri', answered: true },
-    ])
-    insert411(u3, 2) // 2/6
-    insertCOC(u3, 3) // 3/10 obeying
-    insertPreferences(u3, 'en', "Afia's Market", 'Lom\u00e9, Togo')
-  }
-
-  // ─── cil-user-004: Kossi Agbeko (Disciple) ───────────────────────
-  const u4 = 'cil-user-004'
-  if (shouldSeed(u4)) {
-    insertOikosContacts(u4, [
-      { personName: 'Customers', proximity: 2, response: 'curious' },
-      { personName: 'Apprentice Yao', proximity: 1, response: 'seeking' },
-      { personName: 'Family', proximity: 1, response: 'decided' },
-    ])
-    insertPrayers(u4, [
-      { title: 'Repair skills', schedule: 'daily' },
-      { title: 'Apprentice growth', schedule: 'mon,wed,fri' },
-    ])
-    insert411(u4, 1) // 1/6
-    insertCOC(u4, 2) // 2/10 obeying
-    insertPreferences(u4, 'en', 'Kossi Mobile Repairs', 'Lom\u00e9, Togo')
-  }
-
-  // ─── Mission Collective data (revenue, BDC training, proposals) ────
+  // Person-private CIL data (oikos/prayers/training/preferences) moved to
+  // person-mcp; only the MC data seeding (training-modules catalog) remains
+  // in web SQL.
   seedMCData()
 }
 
@@ -846,9 +348,9 @@ function seedMCData() {
 // ═══════════════════════════════════════════════════════════════════════
 
 /**
- * Seed personal Multiply-style data (circles, prayers, training, coach
- * relationships, preferences) for all three demo environments.
- * Idempotent — checks if circles already exist for each user before inserting.
+ * Seed demo data into web SQL: messages (inbox), activity logs (recent
+ * activity feed), and the BDC training-modules reference catalog. The
+ * person-private and org-private domains live in MCPs and seed separately.
  */
 export function seedMultiplyData() {
   console.log('[multiply-seed] Seeding personal Multiply data...')
@@ -857,7 +359,6 @@ export function seedMultiplyData() {
       console.warn(`[multiply-seed] ${label} failed:`, err)
     }
   }
-  runSafe('Global.Church', seedGlobalChurch)
   runSafe('Catalyst',      seedCatalystNetwork)
   runSafe('CIL',           seedCIL)
   console.log('[multiply-seed] Multiply data seeding done')

@@ -79,8 +79,9 @@ async function authorizeRole(engagementId: string): Promise<
   const agentAddr = await getPersonAgentForUser(me.id)
   if (!agentAddr) return { error: 'no-person-agent' }
   const lower = agentAddr.toLowerCase()
-  const ent = db.select().from(schema.entitlements)
-    .where(eq(schema.entitlements.id, engagementId)).get()
+  let ent: any = undefined
+  try { ent = db.select().from(schema.entitlements)
+    .where(eq(schema.entitlements.id, engagementId)).get() } catch { /* entitlements table dropped */ }
   if (!ent) return { error: 'engagement-not-found' }
   const role: 'holder' | 'provider' | null =
     ent.holderAgent === lower ? 'holder'
@@ -93,18 +94,20 @@ async function authorizeRole(engagementId: string): Promise<
 // ─── Auto-seed ─────────────────────────────────────────────────────
 
 export async function ensurePolicy(engagementId: string): Promise<void> {
-  const existing = db.select().from(schema.engagementPolicies)
-    .where(eq(schema.engagementPolicies.engagementId, engagementId)).get()
+  let existing: any = undefined
+  try { existing = db.select().from(schema.engagementPolicies)
+    .where(eq(schema.engagementPolicies.engagementId, engagementId)).get() } catch { /* engagementPolicies table dropped */ }
   if (existing) return
-  const ent = db.select().from(schema.entitlements)
-    .where(eq(schema.entitlements.id, engagementId)).get()
+  let ent: any = undefined
+  try { ent = db.select().from(schema.entitlements)
+    .where(eq(schema.entitlements.id, engagementId)).get() } catch { /* entitlements table dropped */ }
   if (!ent) return
 
   const summary = ent.terms ? deriveSummary(ent.terms) : 'Approval required'
 
   const policyId = randomUUID()
   const now = new Date().toISOString()
-  db.insert(schema.engagementPolicies).values({
+  try { db.insert(schema.engagementPolicies).values({
     id: policyId,
     engagementId,
     policyDocUri: null,
@@ -113,17 +116,17 @@ export async function ensurePolicy(engagementId: string): Promise<void> {
     requiredSigners: 1,
     createdAt: now,
     updatedAt: now,
-  }).run()
+  }).run() } catch { /* engagementPolicies table dropped */ }
 
   // Default signer: the provider (issuing party). Holder may add more.
-  db.insert(schema.policySigners).values({
+  try { db.insert(schema.policySigners).values({
     id: randomUUID(),
     policyId,
     agent: ent.providerAgent,
     role: 'Issuing party',
     signedAt: null,
     createdAt: now,
-  }).run()
+  }).run() } catch { /* policySigners table dropped */ }
 }
 
 function deriveSummary(termsJson: string): string {
@@ -139,17 +142,19 @@ function deriveSummary(termsJson: string): string {
 
 export async function getPolicy(engagementId: string): Promise<PolicyView | null> {
   await ensurePolicy(engagementId)
-  const policyRow = db.select().from(schema.engagementPolicies)
-    .where(eq(schema.engagementPolicies.engagementId, engagementId)).get()
+  let policyRow: any = undefined
+  try { policyRow = db.select().from(schema.engagementPolicies)
+    .where(eq(schema.engagementPolicies.engagementId, engagementId)).get() } catch { /* engagementPolicies table dropped */ }
   if (!policyRow) return null
-  const signers = await db.select().from(schema.policySigners)
+  let signers: any[] = []
+  try { signers = await db.select().from(schema.policySigners)
     .where(eq(schema.policySigners.policyId, policyRow.id))
-    .orderBy(asc(schema.policySigners.createdAt))
+    .orderBy(asc(schema.policySigners.createdAt)) } catch { /* policySigners table dropped */ }
   const signerViews = signers.map(rowToSigner)
   return {
     ...rowToPolicy(policyRow),
     signers: signerViews,
-    signedCount: signerViews.filter(s => s.signedAt !== null).length,
+    signedCount: signerViews.filter((s: any) => s.signedAt !== null).length,
   }
 }
 
@@ -165,16 +170,17 @@ export async function setPolicy(input: {
   if ('error' in auth) return auth
   if (auth.role !== 'provider') return { error: 'only-provider-may-set-policy' }
   await ensurePolicy(input.engagementId)
-  const policy = db.select().from(schema.engagementPolicies)
-    .where(eq(schema.engagementPolicies.engagementId, input.engagementId)).get()
+  let policy: any = undefined
+  try { policy = db.select().from(schema.engagementPolicies)
+    .where(eq(schema.engagementPolicies.engagementId, input.engagementId)).get() } catch { /* engagementPolicies table dropped */ }
   if (!policy) return { error: 'policy-not-found' }
   const update: Partial<typeof schema.engagementPolicies.$inferInsert> = { updatedAt: new Date().toISOString() }
   if (input.policyDocUri !== undefined) update.policyDocUri = input.policyDocUri || null
   if (input.policySummary !== undefined) update.policySummary = input.policySummary || null
   if (input.requiredSigners !== undefined && input.requiredSigners >= 1) update.requiredSigners = input.requiredSigners
-  db.update(schema.engagementPolicies).set(update)
+  try { db.update(schema.engagementPolicies).set(update)
     .where(eq(schema.engagementPolicies.id, policy.id))
-    .run()
+    .run() } catch { /* engagementPolicies table dropped */ }
   return { ok: true }
 }
 
@@ -187,35 +193,40 @@ export async function addSigner(input: {
   if ('error' in auth) return auth
   if (auth.role !== 'provider' && auth.role !== 'holder') return { error: 'not-a-party' }
   await ensurePolicy(input.engagementId)
-  const policy = db.select().from(schema.engagementPolicies)
-    .where(eq(schema.engagementPolicies.engagementId, input.engagementId)).get()
+  let policy: any = undefined
+  try { policy = db.select().from(schema.engagementPolicies)
+    .where(eq(schema.engagementPolicies.engagementId, input.engagementId)).get() } catch { /* engagementPolicies table dropped */ }
   if (!policy) return { error: 'policy-not-found' }
   const lower = input.agentAddress.toLowerCase()
-  const existing = db.select().from(schema.policySigners)
+  let existing: any = undefined
+  try { existing = db.select().from(schema.policySigners)
     .where(and(
       eq(schema.policySigners.policyId, policy.id),
       eq(schema.policySigners.agent, lower),
-    )).get()
+    )).get() } catch { /* policySigners table dropped */ }
   if (existing) return { error: 'signer-already-on-roster' }
 
-  db.insert(schema.policySigners).values({
+  try { db.insert(schema.policySigners).values({
     id: randomUUID(),
     policyId: policy.id,
     agent: lower,
     role: input.role,
     signedAt: null,
     createdAt: new Date().toISOString(),
-  }).run()
+  }).run() } catch { /* policySigners table dropped */ }
 
   // Bump requiredSigners minimum to roster size if it was set lower.
-  const total = db.select().from(schema.policySigners)
-    .where(eq(schema.policySigners.policyId, policy.id))
-    .all().length
+  let total = 0
+  try {
+    total = db.select().from(schema.policySigners)
+      .where(eq(schema.policySigners.policyId, policy.id))
+      .all().length
+  } catch { /* policySigners table dropped */ }
   if (policy.requiredSigners < total) {
-    db.update(schema.engagementPolicies)
+    try { db.update(schema.engagementPolicies)
       .set({ requiredSigners: total, updatedAt: new Date().toISOString() })
       .where(eq(schema.engagementPolicies.id, policy.id))
-      .run()
+      .run() } catch { /* engagementPolicies table dropped */ }
   }
   return { ok: true }
 }
@@ -229,37 +240,40 @@ export async function signPolicy(input: {
   if (!agentAddr) return { error: 'no-person-agent' }
   const lower = agentAddr.toLowerCase()
   await ensurePolicy(input.engagementId)
-  const policy = db.select().from(schema.engagementPolicies)
-    .where(eq(schema.engagementPolicies.engagementId, input.engagementId)).get()
+  let policy: any = undefined
+  try { policy = db.select().from(schema.engagementPolicies)
+    .where(eq(schema.engagementPolicies.engagementId, input.engagementId)).get() } catch { /* engagementPolicies table dropped */ }
   if (!policy) return { error: 'policy-not-found' }
 
-  const signer = db.select().from(schema.policySigners)
+  let signer: any = undefined
+  try { signer = db.select().from(schema.policySigners)
     .where(and(
       eq(schema.policySigners.policyId, policy.id),
       eq(schema.policySigners.agent, lower),
-    )).get()
+    )).get() } catch { /* policySigners table dropped */ }
   if (!signer) return { error: 'not-on-signer-roster' }
   if (signer.signedAt) return { error: 'already-signed' }
 
   const now = new Date().toISOString()
-  db.update(schema.policySigners)
+  try { db.update(schema.policySigners)
     .set({ signedAt: now })
     .where(eq(schema.policySigners.id, signer.id))
-    .run()
+    .run() } catch { /* policySigners table dropped */ }
 
   // Move policy state forward.
-  const allSigners = db.select().from(schema.policySigners)
+  let allSigners: any[] = []
+  try { allSigners = db.select().from(schema.policySigners)
     .where(eq(schema.policySigners.policyId, policy.id))
-    .all()
-  const signedCount = allSigners.filter(s => s.signedAt !== null).length
+    .all() } catch { /* policySigners table dropped */ }
+  const signedCount = (allSigners as any[]).filter((s: any) => s.signedAt !== null).length
   const reachedThreshold = signedCount >= policy.requiredSigners
-  db.update(schema.engagementPolicies)
+  try { db.update(schema.engagementPolicies)
     .set({
       currentState: reachedThreshold ? 'approved' : 'pending',
       updatedAt: now,
     })
     .where(eq(schema.engagementPolicies.id, policy.id))
-    .run()
+    .run() } catch { /* engagementPolicies table dropped */ }
 
   // Emit thread entry so the audit trail captures the signature.
   try {

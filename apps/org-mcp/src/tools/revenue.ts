@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { and, eq } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { revenueReports } from '../db/schema.js'
-import { requireOrgPrincipal } from '../auth/principal-context.js'
+import { requireOrgPrincipalAny as requireOrgPrincipal } from '../auth/principal-context.js'
 
 const mcpText = <T>(v: T) => ({ content: [{ type: 'text' as const, text: JSON.stringify(v) }] })
 
@@ -16,7 +16,7 @@ export const revenueTools = {
       required: ['token'],
     },
     handler: async (args: { token: string; status?: string }) => {
-      const orgPrincipal = await requireOrgPrincipal(args.token, 'list_revenue_reports')
+      const orgPrincipal = await requireOrgPrincipal(args.token, args, 'list_revenue_reports')
       let rows = db.select().from(revenueReports).where(eq(revenueReports.orgPrincipal, orgPrincipal)).all()
       if (args.status) rows = rows.filter(r => r.status === args.status)
       return mcpText({ reports: rows })
@@ -54,7 +54,7 @@ export const revenueTools = {
       evidenceUri?: string
       submittedBy?: string
     }) => {
-      const orgPrincipal = await requireOrgPrincipal(args.token, 'submit_revenue_report')
+      const orgPrincipal = await requireOrgPrincipal(args.token, args, 'submit_revenue_report')
       const gross = args.grossRevenue ?? 0
       const exp = args.expenses ?? 0
       const net = args.netRevenue ?? Math.max(0, gross - exp)
@@ -94,7 +94,7 @@ export const revenueTools = {
       required: ['token', 'id'],
     },
     handler: async (args: { token: string; id: string; verifiedBy?: string }) => {
-      const orgPrincipal = await requireOrgPrincipal(args.token, 'approve_revenue_report')
+      const orgPrincipal = await requireOrgPrincipal(args.token, args, 'approve_revenue_report')
       const r = db.update(revenueReports)
         .set({
           status: 'verified',
@@ -116,7 +116,7 @@ export const revenueTools = {
       required: ['token', 'id'],
     },
     handler: async (args: { token: string; id: string }) => {
-      const orgPrincipal = await requireOrgPrincipal(args.token, 'reject_revenue_report')
+      const orgPrincipal = await requireOrgPrincipal(args.token, args, 'reject_revenue_report')
       const r = db.update(revenueReports)
         .set({ status: 'disputed' })
         .where(and(eq(revenueReports.id, args.id), eq(revenueReports.orgPrincipal, orgPrincipal)))

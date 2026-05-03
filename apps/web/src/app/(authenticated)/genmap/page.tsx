@@ -1,7 +1,6 @@
 import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { getUserOrgs } from '@/lib/get-user-orgs'
-import { db, schema } from '@/db'
 import { eq } from 'drizzle-orm'
 import { getEdgesBySubject, getEdge } from '@/lib/contracts'
 import { getAgentMetadata } from '@/lib/agent-metadata'

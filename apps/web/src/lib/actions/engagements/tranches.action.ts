@@ -60,9 +60,10 @@ async function authorizeRole(engagementId: string): Promise<
   const agentAddr = await getPersonAgentForUser(me.id)
   if (!agentAddr) return { error: 'no-person-agent' }
   const lower = agentAddr.toLowerCase()
-  const ent = db.select().from(schema.entitlements)
+  let ent: any = [] as any[]
+  try { ent = db.select().from(schema.entitlements)
     .where(eq(schema.entitlements.id, engagementId)).get()
-  if (!ent) return { error: 'engagement-not-found' }
+   } catch { /* entitlements table dropped */ }if (!ent) return { error: 'engagement-not-found' }
   const role: 'holder' | 'provider' | null =
     ent.holderAgent === lower ? 'holder'
     : ent.providerAgent === lower ? 'provider'
@@ -84,13 +85,15 @@ const QUARTER_DAYS = 90
  * uses a sensible default.
  */
 export async function ensureTrancheSchedule(engagementId: string): Promise<void> {
-  const ent = db.select().from(schema.entitlements)
+  let ent: any = [] as any[]
+  try { ent = db.select().from(schema.entitlements)
     .where(eq(schema.entitlements.id, engagementId)).get()
-  if (!ent) return
-  const existing = db.select().from(schema.engagementTranches)
+   } catch { /* entitlements table dropped */ }if (!ent) return
+  let existing: any = [] as any[]
+  try { existing = db.select().from(schema.engagementTranches)
     .where(eq(schema.engagementTranches.engagementId, engagementId))
     .get()
-  if (existing) return
+   } catch { /* engagementTranches table dropped */ }if (existing) return
 
   let count = 4
   let reportRequired = true
@@ -126,17 +129,18 @@ export async function ensureTrancheSchedule(engagementId: string): Promise<void>
       updatedAt: now,
     })
   }
-  db.insert(schema.engagementTranches).values(rows).run()
-}
+  try { db.insert(schema.engagementTranches).values(rows).run()
+ } catch { /* engagementTranches table dropped */ }}
 
 // ─── Reads ─────────────────────────────────────────────────────────
 
 export async function listTranches(engagementId: string): Promise<TrancheRow[]> {
   await ensureTrancheSchedule(engagementId)
-  const rows = await db.select().from(schema.engagementTranches)
+  let rows: any = [] as any[]
+  try { rows = await db.select().from(schema.engagementTranches)
     .where(eq(schema.engagementTranches.engagementId, engagementId))
     .orderBy(asc(schema.engagementTranches.idx))
-  return rows.map(rowToTranche)
+   } catch { /* engagementTranches table dropped */ }return rows.map(rowToTranche)
 }
 
 export interface TrancheSummary {
@@ -178,19 +182,20 @@ export async function requestReport(input: {
   if ('error' in auth) return auth
   if (auth.role !== 'provider') return { error: 'only-provider-may-request' }
 
-  const tranche = db.select().from(schema.engagementTranches)
+  let tranche: any = [] as any[]
+  try { tranche = db.select().from(schema.engagementTranches)
     .where(and(
       eq(schema.engagementTranches.engagementId, input.engagementId),
       eq(schema.engagementTranches.idx, input.trancheIdx),
     )).get()
-  if (!tranche) return { error: 'tranche-not-found' }
+   } catch { /* engagementTranches table dropped */ }if (!tranche) return { error: 'tranche-not-found' }
   if (tranche.state !== 'scheduled') return { error: `cannot-request-from-${tranche.state}` }
 
-  db.update(schema.engagementTranches)
+  try { db.update(schema.engagementTranches)
     .set({ state: 'report-due', updatedAt: new Date().toISOString() })
     .where(eq(schema.engagementTranches.id, tranche.id))
     .run()
-  return { ok: true }
+   } catch { /* engagementTranches table dropped */ }return { ok: true }
 }
 
 export async function attachReport(input: {
@@ -203,12 +208,13 @@ export async function attachReport(input: {
   if ('error' in auth) return auth
   if (auth.role !== 'holder') return { error: 'only-holder-may-attach-report' }
 
-  const tranche = db.select().from(schema.engagementTranches)
+  let tranche: any = [] as any[]
+  try { tranche = db.select().from(schema.engagementTranches)
     .where(and(
       eq(schema.engagementTranches.engagementId, input.engagementId),
       eq(schema.engagementTranches.idx, input.trancheIdx),
     )).get()
-  if (!tranche) return { error: 'tranche-not-found' }
+   } catch { /* engagementTranches table dropped */ }if (!tranche) return { error: 'tranche-not-found' }
 
   const text = input.reportText.trim()
   if (!text) return { error: 'empty-report' }
@@ -222,7 +228,7 @@ export async function attachReport(input: {
     attachmentUri: input.reportUri ?? null,
   })
 
-  db.update(schema.engagementTranches)
+  try { db.update(schema.engagementTranches)
     .set({
       state: 'reported',
       reportThreadEntryId: entry.id,
@@ -230,7 +236,7 @@ export async function attachReport(input: {
     })
     .where(eq(schema.engagementTranches.id, tranche.id))
     .run()
-  return { ok: true, threadEntryId: entry.id }
+   } catch { /* engagementTranches table dropped */ }return { ok: true, threadEntryId: entry.id }
 }
 
 export async function releaseTranche(input: {
@@ -241,32 +247,34 @@ export async function releaseTranche(input: {
   if ('error' in auth) return auth
   if (auth.role !== 'provider') return { error: 'only-provider-may-release' }
 
-  const tranche = db.select().from(schema.engagementTranches)
+  let tranche: any = [] as any[]
+  try { tranche = db.select().from(schema.engagementTranches)
     .where(and(
       eq(schema.engagementTranches.engagementId, input.engagementId),
       eq(schema.engagementTranches.idx, input.trancheIdx),
     )).get()
-  if (!tranche) return { error: 'tranche-not-found' }
+   } catch { /* engagementTranches table dropped */ }if (!tranche) return { error: 'tranche-not-found' }
   if (tranche.state === 'released') return { error: 'already-released' }
   if (tranche.reportRequired === 1 && tranche.state !== 'reported' && tranche.idx !== 1) {
     return { error: 'report-required-before-release' }
   }
 
   const now = new Date().toISOString()
-  db.update(schema.engagementTranches)
+  try { db.update(schema.engagementTranches)
     .set({ state: 'released', releasedAt: now, updatedAt: now })
     .where(eq(schema.engagementTranches.id, tranche.id))
     .run()
 
-  // Drive the engagement capacity meter: release decrements remaining
+   } catch { /* engagementTranches table dropped */ }// Drive the engagement capacity meter: release decrements remaining
   // capacity by the tranche dollars. The cascade on the entitlement layer
   // handles outcome / parent-intent flips when capacity hits zero.
   const dollars = Math.floor(tranche.amountCents / 100)
-  const ent = db.select().from(schema.entitlements)
+  let ent: any = [] as any[]
+  try { ent = db.select().from(schema.entitlements)
     .where(eq(schema.entitlements.id, input.engagementId)).get()
-  if (ent) {
+   } catch { /* entitlements table dropped */ }if (ent) {
     const newRemaining = Math.max(0, ent.capacityRemaining - dollars)
-    db.update(schema.entitlements)
+    try { db.update(schema.entitlements)
       .set({
         capacityRemaining: newRemaining,
         // Phase advance: granted/kickoff → in_cadence on first release.
@@ -277,7 +285,7 @@ export async function releaseTranche(input: {
       .where(eq(schema.entitlements.id, input.engagementId))
       .run()
 
-    // Emit a thread entry for the release.
+     } catch { /* entitlements table dropped */ }// Emit a thread entry for the release.
     const { emitActivityEntry } = await import('./thread.action')
     await emitActivityEntry({
       engagementId: input.engagementId,

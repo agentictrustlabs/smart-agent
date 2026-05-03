@@ -6,10 +6,12 @@ import { createDetachedMember, deleteDetachedMember } from '@/lib/actions/member
 
 interface Member {
   address: string; name: string; roles: string[]; status: string; isPerson: boolean
+  orgAddress: string; orgName: string
 }
 
 interface DetachedMember {
   id: string; name: string; role: string | null; assignedNodeId: string | null; notes: string | null
+  orgAddress: string; orgName: string
 }
 
 interface GenNode {
@@ -69,12 +71,13 @@ export function MembersClient({ members, detachedMembers, genNodes, orgAddress, 
         ) : (
           <table data-component="graph-table">
             <thead>
-              <tr><th>Name</th><th>Roles</th><th>Permission Level</th><th>Status</th></tr>
+              <tr><th>Name</th><th>Organization</th><th>Roles</th><th>Permission Level</th><th>Status</th></tr>
             </thead>
             <tbody>
               {members.map(m => (
-                <tr key={m.address}>
+                <tr key={`${m.address}|${m.orgAddress}`}>
                   <td><Link href={`/agents/${m.address}`} style={{ color: '#1565c0', fontWeight: 600 }}>{m.name}</Link></td>
+                  <td><Link href={`/agents/${m.orgAddress}`} style={{ color: '#1565c0' }}>{m.orgName}</Link></td>
                   <td>{m.roles.map(r => <span key={r} data-component="role-badge" style={{ marginRight: 4 }}>{r}</span>)}</td>
                   <td>
                     <span data-component="role-badge" data-status="active" style={{ fontSize: '0.65rem' }}>

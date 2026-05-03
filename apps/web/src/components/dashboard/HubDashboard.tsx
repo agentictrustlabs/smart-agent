@@ -371,7 +371,8 @@ async function CILDashboard({
   if (openProposalCount > 0) cilAttentionItems.push({ type: 'governance', label: `${openProposalCount} open proposal${openProposalCount !== 1 ? 's' : ''}`, detail: 'Awaiting votes', href: '/catalyst/steward' })
   for (const addr of decliningBusinesses) cilAttentionItems.push({ type: 'escalation', label: `Business ${addr.slice(-4)}`, detail: 'Declining revenue', href: '/catalyst/groups' })
 
-  const allActivities = await db.select().from(schema.activityLogs)
+  let allActivities: any[] = []
+  try { allActivities = await db.select().from(schema.activityLogs) } catch { /* activityLogs table dropped */ }
   const activities = allActivities.filter(a => orgAddresses.has(a.orgAddress.toLowerCase()) || orgUserIds.has(a.userId))
   const thisMonth = new Date(); thisMonth.setDate(1); thisMonth.setHours(0,0,0,0)
   const monthActivities = activities.filter(a => new Date(a.activityDate) >= thisMonth)
@@ -431,10 +432,11 @@ async function CatalystFieldDashboard({
   const orgFilter = userOrgs.length > 0 ? inArray(schema.activityLogs.orgAddress, userOrgs.map(o => o.address.toLowerCase())) : undefined
   const userFilter = inArray(schema.activityLogs.userId, [...orgUserIds])
   const where = orgFilter ? or(orgFilter, userFilter) : userFilter
-  const activities = await db.select().from(schema.activityLogs)
+  let activities: any[] = []
+  try { activities = await db.select().from(schema.activityLogs)
     .where(where)
     .orderBy(desc(schema.activityLogs.activityDate))
-    .limit(120)
+    .limit(120) } catch { /* activityLogs table dropped */ }
   const thisWeekIso = new Date(Date.now() - 7 * 86_400_000).toISOString().slice(0, 10)
   const weekCount = activities.filter(a => a.activityDate >= thisWeekIso).length
 

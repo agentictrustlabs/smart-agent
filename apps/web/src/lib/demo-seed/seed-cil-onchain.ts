@@ -353,10 +353,37 @@ async function doSeed() {
   await createEdge(wave1, kossiRepair, GENERATIONAL_LINEAGE, [ROLE_UPSTREAM, ROLE_DOWNSTREAM])
   } // end of edge creation else block
 
+  // ─── Org → User cross-delegations ────────────────────────────────
+  // For every ORG_GOVERNANCE owner edge, mint a signed Org→user-smart-account
+  // delegation and persist it on-chain so admin users can act for the org
+  // via their own session (no DEPLOYER_PRIVATE_KEY shortcut at runtime).
+  console.log('[cil-seed] Seeding Org→User cross-delegations...')
+  try {
+    const { seedOrgCrossDelegations } = await import('./seed-org-delegations')
+    const created = await seedOrgCrossDelegations([
+      { orgAddress: cil,         ownerUserId: 'cil-user-006' }, // paJohn
+      { orgAddress: cil,         ownerUserId: 'cil-user-007' }, // paPaul
+      { orgAddress: ilad,        ownerUserId: 'cil-user-001' }, // paCameron
+      { orgAddress: ilad,        ownerUserId: 'cil-user-002' }, // paNick
+      { orgAddress: lomeCluster, ownerUserId: 'cil-user-005' }, // paYaw
+      { orgAddress: afiaMarket,  ownerUserId: 'cil-user-003' }, // paAfia
+      { orgAddress: kossiRepair, ownerUserId: 'cil-user-004' }, // paKossi
+      { orgAddress: wave1,       ownerUserId: 'cil-user-008' }, // paAkosua
+      { orgAddress: wave2,       ownerUserId: 'cil-user-009' }, // paKwame
+      { orgAddress: ravah,       ownerUserId: 'cil-user-007' }, // paPaul
+    ])
+    console.log(`[cil-seed] Cross-delegations created: ${created}`)
+  } catch (err) {
+    console.warn('[cil-seed] Cross-delegation seed failed:', (err as Error).message)
+  }
+
   // ─── Hub Agent ─────────────────────────────────────────────���────
   console.log('[cil-seed] Deploying hub agent...')
   const hubMission = await deploy(490001)
   await register(hubMission, 'Mission Collective Hub', 'Mission Collective — revenue-sharing capital deployment, ILAD operations, business health monitoring', TYPE_HUB)
+
+  // Hub governance — paCameron (cil-user-001) is the operating admin.
+  await createEdge(paCameron, hubMission, ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
 
   // HAS_MEMBER edges — connect all agents to the hub
   console.log('[cil-seed] Creating HAS_MEMBER edges...')
@@ -366,6 +393,16 @@ async function doSeed() {
   ]
   for (const agent of allCilAgents) {
     await createEdge(hubMission, agent, HAS_MEMBER as `0x${string}`, [ROLE_MEMBER])
+  }
+
+  // Hub cross-delegation (so seedProposals can act as the hub via cil-user-001).
+  try {
+    const { seedOrgCrossDelegations } = await import('./seed-org-delegations')
+    await seedOrgCrossDelegations([
+      { orgAddress: hubMission, ownerUserId: 'cil-user-001' },
+    ])
+  } catch (err) {
+    console.warn('[cil-seed] Hub cross-delegation seed failed:', (err as Error).message)
   }
 
   // ─── Agent Naming (.agent namespace) ─────────────────────────────

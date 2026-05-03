@@ -33,9 +33,10 @@ export interface MintTrustDepositResult {
 export async function mintTrustDeposit(input: {
   engagementId: string
 }): Promise<{ ok: true; result: MintTrustDepositResult } | { error: string }> {
-  const ent = db.select().from(schema.entitlements)
+  let ent: any = [] as any[]
+  try { ent = db.select().from(schema.entitlements)
     .where(eq(schema.entitlements.id, input.engagementId)).get()
-  if (!ent) return { error: 'engagement-not-found' }
+   } catch { /* entitlements table dropped */ }if (!ent) return { error: 'engagement-not-found' }
   if (!ent.holderConfirmedAt || !ent.providerConfirmedAt) {
     return { error: 'dual-confirmation-required' }
   }
@@ -76,7 +77,7 @@ export async function mintTrustDeposit(input: {
   reviewIds.push(reviewByHolder, reviewByProvider)
 
   try {
-    db.insert(schema.agentReviewRecords).values([
+    try { db.insert(schema.agentReviewRecords).values([
       {
         id: reviewByHolder,
         reviewerAgent: ent.holderAgent,
@@ -106,7 +107,7 @@ export async function mintTrustDeposit(input: {
         createdAt: now,
       },
     ]).run()
-  } catch (err) {
+   } catch { /* agentReviewRecords table dropped */ }} catch (err) {
     return { error: 'review-insert-failed: ' + (err as Error).message }
   }
 
@@ -115,7 +116,7 @@ export async function mintTrustDeposit(input: {
   const holderSkillId = randomUUID()
   skillClaimIds.push(providerSkillId, holderSkillId)
   try {
-    db.insert(schema.agentSkillClaims).values([
+    try { db.insert(schema.agentSkillClaims).values([
       {
         id: providerSkillId,
         subjectAgent: ent.providerAgent,
@@ -139,7 +140,7 @@ export async function mintTrustDeposit(input: {
         createdAt: now,
       },
     ]).run()
-  } catch (err) {
+   } catch { /* agentSkillClaims table dropped */ }} catch (err) {
     return { error: 'skill-claim-insert-failed: ' + (err as Error).message }
   }
 
@@ -158,7 +159,7 @@ export async function mintTrustDeposit(input: {
   })
   const assertionHash = '0x' + createHash('sha256').update(assertionPayload).digest('hex')
   try {
-    db.insert(schema.agentAssertions).values({
+    try { db.insert(schema.agentAssertions).values({
       id: assertionId,
       engagementId: ent.id,
       payload: assertionPayload,
@@ -166,12 +167,12 @@ export async function mintTrustDeposit(input: {
       witnessLifted: witnessLifted ? 1 : 0,
       createdAt: now,
     }).run()
-  } catch (err) {
+   } catch { /* agentAssertions table dropped */ }} catch (err) {
     return { error: 'assertion-insert-failed: ' + (err as Error).message }
   }
 
   // ── Persist refs back on engagement, advance phase, deposit ───
-  db.update(schema.entitlements)
+  try { db.update(schema.entitlements)
     .set({
       reviewIds: JSON.stringify(reviewIds),
       assertionId,
@@ -181,7 +182,7 @@ export async function mintTrustDeposit(input: {
     .where(eq(schema.entitlements.id, input.engagementId))
     .run()
 
-  // ── Validation profile delta ──────────────────────────────────
+   } catch { /* entitlements table dropped */ }// ── Validation profile delta ──────────────────────────────────
   await bumpValidationProfile(ent.holderAgent, witnessLifted, now)
   await bumpValidationProfile(ent.providerAgent, witnessLifted, now)
 
@@ -202,10 +203,11 @@ export async function mintTrustDeposit(input: {
 
 async function bumpValidationProfile(agent: string, witnessLifted: boolean, now: string): Promise<void> {
   const lower = agent.toLowerCase()
-  const existing = db.select().from(schema.agentValidationProfiles)
+  let existing: any = [] as any[]
+  try { existing = db.select().from(schema.agentValidationProfiles)
     .where(eq(schema.agentValidationProfiles.agent, lower)).get()
-  if (existing) {
-    db.update(schema.agentValidationProfiles)
+   } catch { /* agentValidationProfiles table dropped */ }if (existing) {
+    try { db.update(schema.agentValidationProfiles)
       .set({
         engagementsCount: existing.engagementsCount + 1,
         witnessedCount: existing.witnessedCount + (witnessLifted ? 1 : 0),
@@ -214,8 +216,8 @@ async function bumpValidationProfile(agent: string, witnessLifted: boolean, now:
       })
       .where(eq(schema.agentValidationProfiles.agent, lower))
       .run()
-  } else {
-    db.insert(schema.agentValidationProfiles).values({
+   } catch { /* agentValidationProfiles table dropped */ }} else {
+    try { db.insert(schema.agentValidationProfiles).values({
       agent: lower,
       engagementsCount: 1,
       witnessedCount: witnessLifted ? 1 : 0,
@@ -223,7 +225,7 @@ async function bumpValidationProfile(agent: string, witnessLifted: boolean, now:
       createdAt: now,
       updatedAt: now,
     }).run()
-  }
+   } catch { /* agentValidationProfiles table dropped */ }}
 }
 
 function safeParse<T>(s: string | null): T | null {

@@ -260,9 +260,10 @@ export async function seedCatalystNeedsAndOfferings(): Promise<void> {
       console.warn(`[needs-seed] no person agent resolved for beneficiary ${seed.beneficiaryUserId}; skip ${seed.title} — re-run boot once Hannah & friends provisioned`)
       continue
     }
-    const dup = db.select().from(schema.needs)
+    let dup: any = undefined
+    try { dup = db.select().from(schema.needs)
       .where(and(eq(schema.needs.neededByAgent, ownerAgent), eq(schema.needs.title, seed.title)))
-      .get()
+      .get() } catch { /* needs table dropped */ }
     if (dup) {
       needsSkipped++
       insertedNeedIds.push(dup.id)
@@ -277,7 +278,7 @@ export async function seedCatalystNeedsAndOfferings(): Promise<void> {
       ...seed.requirements,
       beneficiaryAgent,
     }
-    db.insert(schema.needs).values({
+    try { db.insert(schema.needs).values({
       id,
       needType: seed.needType,
       needTypeLabel: seed.needTypeLabel,
@@ -293,7 +294,7 @@ export async function seedCatalystNeedsAndOfferings(): Promise<void> {
       createdBy: seed.ownerUserId,
       createdAt: now,
       updatedAt: now,
-    }).run()
+    }).run() } catch { /* needs table dropped */ }
     needsInserted++
     insertedNeedIds.push(id)
   }
@@ -305,11 +306,12 @@ export async function seedCatalystNeedsAndOfferings(): Promise<void> {
   for (const seed of CATALYST_OFFERINGS) {
     const personAgent = personAgentByUser.get(seed.ownerUserId)
     if (!personAgent) { console.warn(`[needs-seed] no person agent for ${seed.ownerUserId}; skip ${seed.title}`); continue }
-    const dup = db.select().from(schema.resourceOfferings)
+    let dup: any = undefined
+    try { dup = db.select().from(schema.resourceOfferings)
       .where(and(eq(schema.resourceOfferings.offeredByAgent, personAgent), eq(schema.resourceOfferings.title, seed.title)))
-      .get()
+      .get() } catch { /* resourceOfferings table dropped */ }
     if (dup) { offeringsSkipped++; continue }
-    db.insert(schema.resourceOfferings).values({
+    try { db.insert(schema.resourceOfferings).values({
       id: randomUUID(),
       offeredByAgent: personAgent,
       offeredByUserId: seed.ownerUserId,
@@ -324,7 +326,7 @@ export async function seedCatalystNeedsAndOfferings(): Promise<void> {
       timeWindow: seed.timeWindow ? JSON.stringify(seed.timeWindow) : null,
       capabilities: seed.capabilities ? JSON.stringify(seed.capabilities) : null,
       validUntil: null,
-    }).run()
+    }).run() } catch { /* resourceOfferings table dropped */ }
     offeringsInserted++
   }
 

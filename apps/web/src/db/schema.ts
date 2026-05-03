@@ -1,5 +1,23 @@
 import { sqliteTable, text, integer, real } from 'drizzle-orm/sqlite-core'
 
+// ═══════════════════════════════════════════════════════════════════════
+// STUB SCHEMA — Data Store Consolidation
+// ═══════════════════════════════════════════════════════════════════════
+//
+// Most tables below are DROPPED at runtime by `DROPPED_TABLES` in
+// apps/web/src/db/index.ts. They remain here as TYPE STUBS only — the
+// rows that should populate them now live in person-mcp / org-mcp / on-chain.
+//
+// What still exists at runtime in web SQL:
+//   users, recoveryDelegations, recoveryIntents, invites, trainingModules, activityLogs
+//
+// Everything else: any code path that queries the corresponding stub table
+// will fail at runtime with a "no such table" error. Those are Phase 4/5
+// paths (intents/needs/offerings, entitlements, engagement state, trust
+// deposit caches) that should be rewired to MCPs / on-chain reads before
+// they can run again. See docs/information-architecture/ for the plan.
+// ═══════════════════════════════════════════════════════════════════════
+
 // ─── Users ───────────────────────────────────────────────────────────
 
 export const users = sqliteTable('users', {

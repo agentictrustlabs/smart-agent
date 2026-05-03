@@ -45,22 +45,25 @@ export async function getTrustResidue(agent: string): Promise<TrustResidue> {
   const lower = agent.toLowerCase()
 
   // Profile (may not exist for agents who haven't closed an engagement yet).
-  const profile = db.select().from(schema.agentValidationProfiles)
+  let profile: any = [] as any[]
+  try { profile = db.select().from(schema.agentValidationProfiles)
     .where(eq(schema.agentValidationProfiles.agent, lower))
     .get()
 
-  // Most recent reviews where this agent is the subject.
-  const reviews = await db.select().from(schema.agentReviewRecords)
+   } catch { /* agentValidationProfiles table dropped */ }// Most recent reviews where this agent is the subject.
+  let reviews: any = [] as any[]
+  try { reviews = await db.select().from(schema.agentReviewRecords)
     .where(eq(schema.agentReviewRecords.subjectAgent, lower))
     .orderBy(desc(schema.agentReviewRecords.createdAt))
     .limit(10)
 
-  // Skill claims grouped by slug + side.
-  const claimRows = await db.select().from(schema.agentSkillClaims)
+   } catch { /* agentReviewRecords table dropped */ }// Skill claims grouped by slug + side.
+  let claimRows: any = [] as any[]
+  try { claimRows = await db.select().from(schema.agentSkillClaims)
     .where(eq(schema.agentSkillClaims.subjectAgent, lower))
     .orderBy(desc(schema.agentSkillClaims.createdAt))
 
-  const grouped = new Map<string, {
+   } catch { /* agentSkillClaims table dropped */ }const grouped = new Map<string, {
     skillSlug: string
     side: 'holder' | 'provider'
     count: number
@@ -101,7 +104,7 @@ export async function getTrustResidue(agent: string): Promise<TrustResidue> {
     engagementsCount: profile?.engagementsCount ?? 0,
     witnessedCount: profile?.witnessedCount ?? 0,
     lastEngagementAt: profile?.lastEngagementAt ?? null,
-    recentReviews: reviews.map(r => ({
+    recentReviews: reviews.map((r: any) => ({
       id: r.id,
       reviewerAgent: r.reviewerAgent,
       score: r.score,

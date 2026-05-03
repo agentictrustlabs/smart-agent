@@ -64,16 +64,18 @@ export async function runAiMatchRound(input: {
 
   // Pull proposed matches in this hub. We group by holder intent so the AI
   // picks ONE coach per ask, even if multiple offerings score well.
-  const proposedRows = await db.select().from(schema.needResourceMatches)
+  let proposedRows: any = [] as any[]
+  try { proposedRows = await db.select().from(schema.needResourceMatches)
     .where(eq(schema.needResourceMatches.status, 'proposed'))
     .all()
 
-  // Filter to this hub via the joined need.
+   } catch { /* needResourceMatches table dropped */ }// Filter to this hub via the joined need.
   const filtered: typeof proposedRows = []
   for (const m of proposedRows) {
-    const need = db.select().from(schema.needs)
+    let need: any = [] as any[]
+    try { need = db.select().from(schema.needs)
       .where(eq(schema.needs.id, m.needId)).get()
-    if (need?.hubId === input.hubId) filtered.push(m)
+     } catch { /* needs table dropped */ }if (need?.hubId === input.hubId) filtered.push(m)
   }
 
   // Group by needId.
@@ -90,8 +92,9 @@ export async function runAiMatchRound(input: {
   let skipped = 0
 
   for (const [needId, matches] of byNeed) {
-    const need = db.select().from(schema.needs).where(eq(schema.needs.id, needId)).get()
-    if (!need) continue
+    let need: any = [] as any[]
+    try { need = db.select().from(schema.needs).where(eq(schema.needs.id, needId)).get()
+     } catch { /* needs table dropped */ }if (!need) continue
 
     // Sort by score desc; pick the top.
     const ranked = [...matches].sort((a, b) => b.score - a.score)

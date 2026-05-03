@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { and, eq } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { proposals } from '../db/schema.js'
-import { requireOrgPrincipal } from '../auth/principal-context.js'
+import { requireOrgPrincipalAny as requireOrgPrincipal } from '../auth/principal-context.js'
 
 const mcpText = <T>(v: T) => ({ content: [{ type: 'text' as const, text: JSON.stringify(v) }] })
 
@@ -16,7 +16,7 @@ export const proposalsTools = {
       required: ['token'],
     },
     handler: async (args: { token: string; status?: string }) => {
-      const orgPrincipal = await requireOrgPrincipal(args.token, 'list_proposals')
+      const orgPrincipal = await requireOrgPrincipal(args.token, args, 'list_proposals')
       let rows = db.select().from(proposals).where(eq(proposals.orgPrincipal, orgPrincipal)).all()
       if (args.status) rows = rows.filter(r => r.status === args.status)
       return mcpText({ proposals: rows })
@@ -48,7 +48,7 @@ export const proposalsTools = {
       targetAddress?: string
       quorumRequired?: number
     }) => {
-      const orgPrincipal = await requireOrgPrincipal(args.token, 'create_proposal')
+      const orgPrincipal = await requireOrgPrincipal(args.token, args, 'create_proposal')
       const row = {
         id: randomUUID(),
         orgPrincipal,
@@ -95,7 +95,7 @@ export const proposalsTools = {
       onChainProposalId?: string
       executedAt?: string
     }) => {
-      const orgPrincipal = await requireOrgPrincipal(args.token, 'set_proposal_status')
+      const orgPrincipal = await requireOrgPrincipal(args.token, args, 'set_proposal_status')
       const updates: Record<string, string | number | null> = { status: args.status }
       if (args.votesFor !== undefined) updates.votesFor = args.votesFor
       if (args.votesAgainst !== undefined) updates.votesAgainst = args.votesAgainst

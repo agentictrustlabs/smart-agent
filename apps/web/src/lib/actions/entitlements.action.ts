@@ -195,12 +195,13 @@ export interface MintEntitlementInput {
  */
 export async function mintEntitlement(input: MintEntitlementInput): Promise<{ id: string; created: boolean } | { error: string }> {
   const kind: EngagementKind = input.engagementKind ?? 'delivery'
-  const existing = db.select().from(schema.entitlements)
+  let existing: any = undefined
+  try { existing = db.select().from(schema.entitlements)
     .where(and(
       eq(schema.entitlements.sourceMatchId, input.sourceMatchId),
       eq(schema.entitlements.engagementKind, kind),
     ))
-    .get()
+    .get() } catch { /* entitlements table dropped */ }
   if (existing) return { id: existing.id, created: false }
 
   const defaults = capacityDefaultFor(input.resourceType)
@@ -213,7 +214,7 @@ export async function mintEntitlement(input: MintEntitlementInput): Promise<{ id
 
   const id = randomUUID()
   try {
-    db.insert(schema.entitlements).values({
+    try { db.insert(schema.entitlements).values({
       id,
       sourceMatchId: input.sourceMatchId,
       holderIntentId: input.holderIntentId,
@@ -236,7 +237,7 @@ export async function mintEntitlement(input: MintEntitlementInput): Promise<{ id
       validUntil,
       createdAt: now,
       updatedAt: now,
-    }).run()
+    }).run() } catch { /* entitlements table dropped */ }
     return { id, created: true }
   } catch (err) {
     return { error: (err as Error).message }
@@ -256,13 +257,15 @@ export async function mintEntitlement(input: MintEntitlementInput): Promise<{ id
  * resources get an "ongoing" item that respawns when resolved.
  */
 export async function seedInitialWorkItem(entitlementId: string): Promise<{ id: string } | { error: string }> {
-  const ent = db.select().from(schema.entitlements)
-    .where(eq(schema.entitlements.id, entitlementId)).get()
+  let ent: any = undefined
+  try { ent = db.select().from(schema.entitlements)
+    .where(eq(schema.entitlements.id, entitlementId)).get() } catch { /* entitlements table dropped */ }
   if (!ent) return { error: 'entitlement-not-found' }
 
   // Idempotent: don't seed if any work item already exists.
-  const existing = db.select().from(schema.fulfillmentWorkItems)
-    .where(eq(schema.fulfillmentWorkItems.entitlementId, entitlementId)).get()
+  let existing: any = undefined
+  try { existing = db.select().from(schema.fulfillmentWorkItems)
+    .where(eq(schema.fulfillmentWorkItems.entitlementId, entitlementId)).get() } catch { /* fulfillmentWorkItems table dropped */ }
   if (existing) return { id: existing.id }
 
   const terms = safeParse<EntitlementTerms>(ent.terms) ?? { object: '' }
@@ -296,7 +299,7 @@ export async function seedInitialWorkItem(entitlementId: string): Promise<{ id: 
 
   const dueAt = new Date(Date.now() + 7 * 86_400_000).toISOString()
   const id = randomUUID()
-  db.insert(schema.fulfillmentWorkItems).values({
+  try { db.insert(schema.fulfillmentWorkItems).values({
     id,
     entitlementId,
     assigneeAgent: ent.providerAgent,   // primary actor; either party may resolve
@@ -308,7 +311,7 @@ export async function seedInitialWorkItem(entitlementId: string): Promise<{ id: 
     resolvedByActivityId: null,
     status: 'open',
     createdAt: new Date().toISOString(),
-  }).run()
+  }).run() } catch { /* fulfillmentWorkItems table dropped */ }
 
   // Emit work_item entry on the Commitment Thread.
   try {
@@ -367,8 +370,9 @@ export async function confirmOutcome(
   if (!myAgent) return { error: 'no-person-agent' }
   const lower = myAgent.toLowerCase()
 
-  const ent = db.select().from(schema.entitlements)
-    .where(eq(schema.entitlements.id, engagementId)).get()
+  let ent: any = undefined
+  try { ent = db.select().from(schema.entitlements)
+    .where(eq(schema.entitlements.id, engagementId)).get() } catch { /* entitlements table dropped */ }
   if (!ent) return { error: 'engagement-not-found' }
   if (ent.status === 'fulfilled' || ent.status === 'revoked' || ent.status === 'expired') {
     return { error: `cannot-confirm-from-status-${ent.status}` }
@@ -391,9 +395,9 @@ export async function confirmOutcome(
   const update: Partial<typeof schema.entitlements.$inferInsert> = { updatedAt: now }
   if (isHolder) update.holderConfirmedAt = now
   if (isProvider) update.providerConfirmedAt = now
-  db.update(schema.entitlements).set(update)
+  try { db.update(schema.entitlements).set(update)
     .where(eq(schema.entitlements.id, engagementId))
-    .run()
+    .run() } catch { /* entitlements table dropped */ }
 
   // Emit confirmation entry on the Commitment Thread.
   try {
@@ -406,17 +410,18 @@ export async function confirmOutcome(
   } catch { /* non-fatal */ }
 
   // Did this confirmation complete the pair?
-  const refreshed = db.select().from(schema.entitlements)
-    .where(eq(schema.entitlements.id, engagementId)).get()
+  let refreshed: any = undefined
+  try { refreshed = db.select().from(schema.entitlements)
+    .where(eq(schema.entitlements.id, engagementId)).get() } catch { /* entitlements table dropped */ }
   const bothConfirmed = !!(refreshed?.holderConfirmedAt && refreshed?.providerConfirmedAt)
 
   if (bothConfirmed) {
     // Advance phase to determined, then run the cascade (status flip,
     // outcomes achieved, parent intent close).
-    db.update(schema.entitlements)
+    try { db.update(schema.entitlements)
       .set({ phase: 'determined', status: 'fulfilled', updatedAt: now })
       .where(eq(schema.entitlements.id, engagementId))
-      .run()
+      .run() } catch { /* entitlements table dropped */ }
     await cascadeFulfillment(engagementId)
 
     // R7 will hook in here to mint the trust deposit. The cascade is the
@@ -436,13 +441,14 @@ export async function confirmOutcome(
 async function setEntStatus(id: string, next: EntitlementStatus, allowedFrom: EntitlementStatus[]): Promise<{ ok: true } | { error: string }> {
   const me = await getCurrentUser()
   if (!me) return { error: 'not-authenticated' }
-  const row = db.select().from(schema.entitlements).where(eq(schema.entitlements.id, id)).get()
+  let row: any = undefined
+  try { row = db.select().from(schema.entitlements).where(eq(schema.entitlements.id, id)).get() } catch { /* entitlements table dropped */ }
   if (!row) return { error: 'entitlement-not-found' }
   if (!allowedFrom.includes(row.status)) return { error: `cannot-transition-from-${row.status}` }
-  db.update(schema.entitlements)
+  try { db.update(schema.entitlements)
     .set({ status: next, updatedAt: new Date().toISOString() })
     .where(eq(schema.entitlements.id, id))
-    .run()
+    .run() } catch { /* entitlements table dropped */ }
   return { ok: true }
 }
 
@@ -468,8 +474,9 @@ export async function consumeEntitlementCapacity(args: {
   /** Optional: explicit "this achieves the outcome" flag. */
   achievesOutcome?: boolean
 }): Promise<{ ok: true; cascade: 'none' | 'fulfilled' } | { error: string }> {
-  const ent = db.select().from(schema.entitlements)
-    .where(eq(schema.entitlements.id, args.entitlementId)).get()
+  let ent: any = undefined
+  try { ent = db.select().from(schema.entitlements)
+    .where(eq(schema.entitlements.id, args.entitlementId)).get() } catch { /* entitlements table dropped */ }
   if (!ent) return { error: 'entitlement-not-found' }
   if (ent.status === 'fulfilled' || ent.status === 'revoked' || ent.status === 'expired') {
     return { ok: true, cascade: 'none' }
@@ -487,15 +494,16 @@ export async function consumeEntitlementCapacity(args: {
   // Phase advance: granted/kickoff → in_cadence on first activity.
   const newPhase: typeof ent.phase = ent.phase === 'granted' || ent.phase === 'kickoff'
     ? 'in_cadence' : ent.phase
-  db.update(schema.entitlements)
+  try { db.update(schema.entitlements)
     .set({ capacityRemaining: remaining, status: newStatus, phase: newPhase, updatedAt: now })
     .where(eq(schema.entitlements.id, args.entitlementId))
-    .run()
+    .run() } catch { /* entitlements table dropped */ }
 
   // Emit activity entry on the Commitment Thread — the persistent backbone.
   try {
-    const activityRow = db.select().from(schema.activityLogs)
-      .where(eq(schema.activityLogs.id, args.activityId)).get()
+    let activityRow: any = undefined
+    try { activityRow = db.select().from(schema.activityLogs)
+      .where(eq(schema.activityLogs.id, args.activityId)).get() } catch { /* activityLogs table dropped */ }
     if (activityRow) {
       const { emitActivityEntry } = await import('./engagements/thread.action')
       await emitActivityEntry({
@@ -510,18 +518,19 @@ export async function consumeEntitlementCapacity(args: {
   } catch { /* non-fatal */ }
 
   // 3. Resolve oldest open work item.
-  const openItem = db.select().from(schema.fulfillmentWorkItems)
+  let openItem: any = undefined
+  try { openItem = db.select().from(schema.fulfillmentWorkItems)
     .where(and(
       eq(schema.fulfillmentWorkItems.entitlementId, args.entitlementId),
       eq(schema.fulfillmentWorkItems.status, 'open'),
     ))
     .orderBy(schema.fulfillmentWorkItems.createdAt)
-    .get()
+    .get() } catch { /* fulfillmentWorkItems table dropped */ }
   if (openItem) {
-    db.update(schema.fulfillmentWorkItems)
+    try { db.update(schema.fulfillmentWorkItems)
       .set({ status: 'done', resolvedByActivityId: args.activityId })
       .where(eq(schema.fulfillmentWorkItems.id, openItem.id))
-      .run()
+      .run() } catch { /* fulfillmentWorkItems table dropped */ }
 
     // 4. Recurring → spawn next instance.
     if (openItem.cadence === 'recurring' && newStatus !== 'fulfilled') {
@@ -529,7 +538,7 @@ export async function consumeEntitlementCapacity(args: {
         weekly: 7, biweekly: 14, monthly: 30, quarterly: 90, 'on-demand': 30, 'one-shot': 0,
       }
       const days = cadenceMs[ent.cadence] ?? 14
-      db.insert(schema.fulfillmentWorkItems).values({
+      try { db.insert(schema.fulfillmentWorkItems).values({
         id: randomUUID(),
         entitlementId: args.entitlementId,
         assigneeAgent: openItem.assigneeAgent,
@@ -541,7 +550,7 @@ export async function consumeEntitlementCapacity(args: {
         resolvedByActivityId: null,
         status: 'open',
         createdAt: now,
-      }).run()
+      }).run() } catch { /* fulfillmentWorkItems table dropped */ }
     }
   }
 
@@ -562,49 +571,52 @@ export async function consumeEntitlementCapacity(args: {
  *   • Linked Outcome: status flips to `achieved`.
  */
 async function cascadeFulfillment(entitlementId: string): Promise<void> {
-  const ent = db.select().from(schema.entitlements)
-    .where(eq(schema.entitlements.id, entitlementId)).get()
+  let ent: any = undefined
+  try { ent = db.select().from(schema.entitlements)
+    .where(eq(schema.entitlements.id, entitlementId)).get() } catch { /* entitlements table dropped */ }
   if (!ent) return
   const now = new Date().toISOString()
 
   // Outcomes — both holder and provider close together.
   if (ent.holderOutcomeId) {
-    db.update(schema.outcomes)
+    try { db.update(schema.outcomes)
       .set({ status: 'achieved', observedAt: now, observedBy: ent.holderAgent })
       .where(eq(schema.outcomes.id, ent.holderOutcomeId))
-      .run()
+      .run() } catch { /* outcomes table dropped */ }
   }
   if (ent.providerOutcomeId) {
-    db.update(schema.outcomes)
+    try { db.update(schema.outcomes)
       .set({ status: 'achieved', observedAt: now, observedBy: ent.providerAgent })
       .where(eq(schema.outcomes.id, ent.providerOutcomeId))
-      .run()
+      .run() } catch { /* outcomes table dropped */ }
   }
 
   // Source match.
-  db.update(schema.needResourceMatches)
+  try { db.update(schema.needResourceMatches)
     .set({ status: 'fulfilled', updatedAt: now })
     .where(eq(schema.needResourceMatches.id, ent.sourceMatchId))
-    .run()
+    .run() } catch { /* needResourceMatches table dropped */ }
 
   // Holder intent — close on ALL accepted entitlements.
-  const allEnts = db.select().from(schema.entitlements)
+  let allEnts: any[] = []
+  try { allEnts = db.select().from(schema.entitlements)
     .where(eq(schema.entitlements.holderIntentId, ent.holderIntentId))
-    .all()
-  const everyFulfilled = allEnts.length > 0 && allEnts.every(e => e.status === 'fulfilled')
+    .all() } catch { /* entitlements table dropped */ }
+  const everyFulfilled = (allEnts as any[]).length > 0 && (allEnts as any[]).every((e: any) => e.status === 'fulfilled')
   if (everyFulfilled) {
-    db.update(schema.intents)
+    try { db.update(schema.intents)
       .set({ status: 'fulfilled', updatedAt: now })
       .where(eq(schema.intents.id, ent.holderIntentId))
-      .run()
+      .run() } catch { /* intents table dropped */ }
     // Also close the legacy `needs` projection if present.
-    const intent = db.select().from(schema.intents)
-      .where(eq(schema.intents.id, ent.holderIntentId)).get()
+    let intent: any = undefined
+    try { intent = db.select().from(schema.intents)
+      .where(eq(schema.intents.id, ent.holderIntentId)).get() } catch { /* intents table dropped */ }
     if (intent?.projectionRef) {
-      db.update(schema.needs)
+      try { db.update(schema.needs)
         .set({ status: 'met', updatedAt: now })
         .where(eq(schema.needs.id, intent.projectionRef))
-        .run()
+        .run() } catch { /* needs table dropped */ }
     }
   }
 }
@@ -626,9 +638,12 @@ export async function listEntitlements(opts: ListEntitlementsOptions = {}): Prom
   if (opts.providerAgent) filters.push(eq(schema.entitlements.providerAgent, opts.providerAgent.toLowerCase()))
   if (opts.status) filters.push(eq(schema.entitlements.status, opts.status))
   const where = filters.length === 0 ? undefined : filters.length === 1 ? filters[0] : and(...filters)
-  const rows = where
-    ? await db.select().from(schema.entitlements).where(where).orderBy(desc(schema.entitlements.updatedAt)).limit(opts.limit ?? 50)
-    : await db.select().from(schema.entitlements).orderBy(desc(schema.entitlements.updatedAt)).limit(opts.limit ?? 50)
+  let rows: any[] = []
+  try {
+    rows = where
+      ? await db.select().from(schema.entitlements).where(where).orderBy(desc(schema.entitlements.updatedAt)).limit(opts.limit ?? 50)
+      : await db.select().from(schema.entitlements).orderBy(desc(schema.entitlements.updatedAt)).limit(opts.limit ?? 50)
+  } catch { /* entitlements table dropped */ }
   return rows.map(rowToEnt)
 }
 
@@ -654,10 +669,11 @@ export async function listMyEntitlements(opts: { hubId?: string; status?: Entitl
     filters.push(inArray(schema.entitlements.status, statusFilter))
   }
   const where = filters.length === 1 ? filters[0] : and(...filters)
-  const rows = await db.select().from(schema.entitlements)
+  let rows: any[] = []
+  try { rows = await db.select().from(schema.entitlements)
     .where(where)
     .orderBy(desc(schema.entitlements.updatedAt))
-    .limit(opts.limit ?? 25)
+    .limit(opts.limit ?? 25) } catch { /* entitlements table dropped */ }
   return rows.map(rowToEnt)
 }
 
@@ -673,16 +689,19 @@ export interface EntitlementDetail extends EntitlementRow {
 }
 
 export async function getEntitlement(id: string): Promise<EntitlementDetail | null> {
-  const row = db.select().from(schema.entitlements)
-    .where(eq(schema.entitlements.id, id)).get()
+  let row: any = undefined
+  try { row = db.select().from(schema.entitlements)
+    .where(eq(schema.entitlements.id, id)).get() } catch { /* entitlements table dropped */ }
   if (!row) return null
   const ent = rowToEnt(row)
-  const workItems = db.select().from(schema.fulfillmentWorkItems)
+  let workItems: any[] = []
+  try { workItems = db.select().from(schema.fulfillmentWorkItems)
     .where(eq(schema.fulfillmentWorkItems.entitlementId, id))
     .orderBy(schema.fulfillmentWorkItems.createdAt)
     .all()
-    .map(rowToWorkItem)
-  const recent = db.select().from(schema.activityLogs)
+    .map(rowToWorkItem) } catch { /* fulfillmentWorkItems table dropped */ }
+  let recent: any[] = []
+  try { recent = db.select().from(schema.activityLogs)
     .where(eq(schema.activityLogs.fulfillsEntitlementId, id))
     .orderBy(desc(schema.activityLogs.activityDate))
     .limit(20)
@@ -693,7 +712,7 @@ export async function getEntitlement(id: string): Promise<EntitlementDetail | nu
       activityType: a.activityType,
       activityDate: a.activityDate,
       userId: a.userId,
-    }))
+    })) } catch { /* activityLogs table dropped */ }
   return { ...ent, workItems, recentActivities: recent }
 }
 
@@ -703,12 +722,13 @@ export async function listMyFulfillmentWorkItems(): Promise<FulfillmentWorkItemR
   const { getPersonAgentForUser } = await import('@/lib/agent-registry')
   const myAgent = await getPersonAgentForUser(me.id) as `0x${string}` | null
   if (!myAgent) return []
-  const rows = await db.select().from(schema.fulfillmentWorkItems)
+  let rows: any[] = []
+  try { rows = await db.select().from(schema.fulfillmentWorkItems)
     .where(and(
       eq(schema.fulfillmentWorkItems.assigneeAgent, myAgent.toLowerCase()),
       inArray(schema.fulfillmentWorkItems.status, ['open', 'in-progress']),
     ))
     .orderBy(schema.fulfillmentWorkItems.dueAt)
-    .limit(20)
+    .limit(20) } catch { /* fulfillmentWorkItems table dropped */ }
   return rows.map(rowToWorkItem)
 }

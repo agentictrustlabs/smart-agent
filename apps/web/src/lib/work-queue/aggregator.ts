@@ -150,30 +150,35 @@ async function decisionProposals(userId: string, personAgent: `0x${string}`): Pr
 
 // ─── Source 3: message-pending (DB messages, unread) ──────────────
 
-async function messagePending(userId: string): Promise<WorkItem[]> {
-  const unread = await db.select().from(schema.messages)
-    .where(and(eq(schema.messages.userId, userId), eq(schema.messages.read, 0)))
-    .limit(PER_SOURCE_LIMIT)
-  // Some message types are pure read-receipts (relationship_confirmed,
-  // data_access_granted) and shouldn't act as work items — keep only
-  // the action-required types.
+async function messagePending(_userId: string): Promise<WorkItem[]> {
+  type N = { id: string; kind: string; payload: string | null; readAt: string | null; createdAt: string }
+  const { callMcp } = await import('@/lib/clients/mcp-client')
+  const res = await callMcp<{ notifications: N[] }>('person', 'list_notifications', {})
+  const notifications = res.notifications ?? []
   const ACTIONABLE = new Set([
     'relationship_proposed', 'ownership_offered',
     'review_received', 'dispute_filed',
     'proposal_created', 'invite_sent',
   ])
-  return unread.filter(m => ACTIONABLE.has(m.type)).map(m => makeWorkItem({
-    id: `message-pending:${m.id}`,
-    kind: 'message-pending',
-    subject: null,
-    subjectLabel: null,
-    title: m.title,
-    detail: m.body,
-    dueAt: null,
-    createdAt: m.createdAt,
-    actionUrl: m.link ?? '/activity',
-    icon: messageIcon(m.type),
-  }))
+  return notifications
+    .filter(n => !n.readAt && ACTIONABLE.has(n.kind))
+    .slice(0, PER_SOURCE_LIMIT)
+    .map(n => {
+      let parsed: { title?: string; body?: string; link?: string } = {}
+      try { parsed = n.payload ? JSON.parse(n.payload) : {} } catch { /* ignore */ }
+      return makeWorkItem({
+        id: `message-pending:${n.id}`,
+        kind: 'message-pending',
+        subject: null,
+        subjectLabel: null,
+        title: parsed.title ?? n.kind,
+        detail: parsed.body ?? null,
+        dueAt: null,
+        createdAt: n.createdAt,
+        actionUrl: parsed.link ?? '/activity',
+        icon: messageIcon(n.kind),
+      })
+    })
 }
 
 function messageIcon(type: string): string {
@@ -242,13 +247,10 @@ async function manageOrphans(personAgent: `0x${string}`): Promise<WorkItem[]> {
 // ─── Source 5: planned-conversation (circles flagged) ─────────────
 
 async function plannedConversations(_userId: string): Promise<WorkItem[]> {
-  const { callMcp } = await import('@/lib/clients/mcp-client')
   type C = { id: string; personName: string; proximity: string | null; spiritualResponseState: string | null; plannedConversation: number; notes: string | null; createdAt: string }
-  let contacts: C[] = []
-  try {
-    const res = await callMcp<{ contacts: C[] }>('person', 'list_oikos_contacts', {})
-    contacts = res.contacts ?? []
-  } catch { return [] }
+  const { callMcp } = await import('@/lib/clients/mcp-client')
+  const res = await callMcp<{ contacts: C[] }>('person', 'list_oikos_contacts', {})
+  const contacts = res.contacts ?? []
   return contacts
     .filter(c => c.plannedConversation === 1)
     .slice(0, PER_SOURCE_LIMIT)
@@ -305,13 +307,10 @@ async function staleMenteeCheckins(personAgent: `0x${string}`): Promise<WorkItem
 // ─── Source 7: prayer-due (DB prayers fired today) ────────────────
 
 async function prayersDue(_userId: string): Promise<WorkItem[]> {
-  const { callMcp } = await import('@/lib/clients/mcp-client')
   type P = { id: string; title: string; content: string | null; schedule: string | null; responseState: string | null; lastPrayedAt: string | null; createdAt: string }
-  let prayers: P[] = []
-  try {
-    const res = await callMcp<{ prayers: P[] }>('person', 'list_prayers', {})
-    prayers = res.prayers ?? []
-  } catch { return [] }
+  const { callMcp } = await import('@/lib/clients/mcp-client')
+  const res = await callMcp<{ prayers: P[] }>('person', 'list_prayers', {})
+  const prayers = res.prayers ?? []
   const today = new Date().toISOString().slice(0, 10)
   const todayDow = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][new Date().getDay()]
   const due = prayers
@@ -344,47 +343,22 @@ async function prayersDue(_userId: string): Promise<WorkItem[]> {
 // proposed. Surfaces as a `discover` mode work item; mode picker
 // in MyWorkPanel must include `discover` for these to render.
 
-async function matchesProposed(personAgent: `0x${string}`): Promise<WorkItem[]> {
-  const rows = await db.select().from(schema.needResourceMatches)
-    .where(and(
-      eq(schema.needResourceMatches.matchedAgent, personAgent.toLowerCase()),
-      eq(schema.needResourceMatches.status, 'proposed'),
-    ))
-    .limit(PER_SOURCE_LIMIT)
-  if (rows.length === 0) return []
-  const out: WorkItem[] = []
-  for (const r of rows) {
-    // Hydrate the need title for the work-item label.
-    const need = await db.select().from(schema.needs)
-      .where(eq(schema.needs.id, r.needId)).limit(1).then(rs => rs[0])
-    if (!need) continue
-    const scorePct = Math.round(r.score / 100)
-    out.push(makeWorkItem({
-      id: `match-proposed:${r.id}`,
-      kind: 'match-proposed',
-      subject: need.neededByAgent as `0x${string}`,
-      subjectLabel: null,
-      title: `Possible match: ${need.title}`,
-      detail: `${scorePct}% fit — ${need.needTypeLabel}`,
-      dueAt: null,
-      createdAt: r.createdAt,
-      actionUrl: `/h/catalyst/matches/${r.id}`,
-      icon: '🎯',
-    }))
-  }
-  return out
+async function matchesProposed(_personAgent: `0x${string}`): Promise<WorkItem[]> {
+  // Cross-user match discovery reads public intents anchored on-chain
+  // (mirrored to GraphDB). Until the on-chain assertion emit is wired
+  // (Phase 4 follow-up), this returns empty. There is no direct-read
+  // fallback — public intents must be discoverable by anchoring on-chain.
+  return []
 }
 
 // ─── Source 8: walk-step-due (training cadence) ───────────────────
 
 async function walkStepDue(userId: string): Promise<WorkItem[]> {
-  const { callMcp } = await import('@/lib/clients/mcp-client')
   type T = { id: string; status: string; completedAt: string | null }
-  let progress: T[] = []
-  try {
-    const res = await callMcp<{ progress: T[] }>('person', 'list_training_progress', {})
-    progress = res.progress ?? []
-  } catch {
+  const { callMcp } = await import('@/lib/clients/mcp-client')
+  const res = await callMcp<{ progress: T[] }>('person', 'list_training_progress', {})
+  const progress = res.progress ?? []
+  if (progress.length === 0) {
     // No A2A session — surface a generic onboarding item.
     return [makeWorkItem({
       id: `walk-step-due:start:${userId}`,

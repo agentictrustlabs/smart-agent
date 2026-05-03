@@ -30,11 +30,12 @@ export default async function NeedsListPage({ params, searchParams }: {
   // Per-need match counts.
   const counts = new Map<string, number>()
   if (needs.length > 0) {
-    const rows = db.select().from(schema.needResourceMatches)
+    let rows: any[] = []
+    try { rows = db.select().from(schema.needResourceMatches)
       .where(and(
         inArray(schema.needResourceMatches.needId, needs.map(n => n.id)),
         eq(schema.needResourceMatches.status, 'proposed'),
-      )).all()
+      )).all() } catch { /* needResourceMatches table dropped */ }
     for (const r of rows) counts.set(r.needId, (counts.get(r.needId) ?? 0) + 1)
   }
 

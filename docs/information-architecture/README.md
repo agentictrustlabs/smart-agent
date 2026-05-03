@@ -65,7 +65,7 @@ Each row of data lives in **exactly one** place. The only duplication permitted 
                   Discover / search reads here only
 ```
 
-## Status
+## Status (2026-05-02)
 
 | Area | State |
 |---|---|
@@ -73,7 +73,37 @@ Each row of data lives in **exactly one** place. The only duplication permitted 
 | Target schemas drafted | ✅ |
 | Build plan drafted | ✅ |
 | Team assignments drafted | ✅ |
-| Implementation | 🚧 not started |
+| **Phase 0** scaffolding | ✅ |
+| **Phase 1** person-mcp domain expansion | ✅ |
+| **Phase 2** org-mcp foundation | ✅ |
+| **Phase 3** org business data (tools landed) | ✅ |
+| **Phase 4** owner-routed intents — schema + tools | ✅ |
+| Phase 4 — on-chain assertion emit | 🚧 stubbed (Phase 4 follow-up) |
+| **Phase 5** engagement decomposition — schema | ✅ |
+| Phase 5 — entitlement state-machine implementation | 🚧 stubbed (web actions wrapped in try/catch) |
+| **Phase 6** trust deposit cleanup | ✅ tables dropped, GraphDB aggregates pending |
+| **Web SQL clean cut** | ✅ — only 5 tables left, none private |
+
+### Web SQL after the cut (final state)
+
+| Table | Rows | Why it's still here |
+|---|---|---|
+| `users` | 42 | DID → wallet → smart-account auth mapping. No PII. |
+| `recovery_delegations` | 0 | Passkey-recovery bootstrap. Auth concern. |
+| `recovery_intents` | 0 | Pending recovery proposals. Auth concern. |
+| `invites` | 0 | One-shot org-membership invite codes. |
+| `training_modules` | 12 | Reference catalog (411 + BDC). Not user-instance. |
+
+**33 tables physically dropped** by `DROPPED_TABLES` in `apps/web/src/db/index.ts`. Schema.ts retains type stubs for them so existing code typechecks; runtime queries against those types throw "no such table" — that's the safety net that prevents private data from landing in web SQL even if a forgotten code path tries.
+
+### What's not user-visible yet (work that follows the privacy cuts)
+
+- On-chain assertion emit for public intents (`emitOnChainAssertion()` returns null in person-mcp + org-mcp `intents.ts`). Until wired, public intents stay in their owner's MCP without a Discover surface.
+- Demo seeder for person-mcp / org-mcp domain tables (oikos / prayers / training / preferences / revenue / proposals). Today fresh-start re-seeds activity_logs and messages directly to MCPs; the rest of the domain comes up empty. A delegation-aware seeder is the next-build target.
+- Cross-MCP listeners for engagement events (Phase 5 decomposition). Match-accept / capacity-consume / engagement-close need to route into person-mcp `engagement_holder_state` and org-mcp `engagement_provider_state`.
+- GraphDB aggregates over trust-deposit on-chain mints (Phase 6 read model).
+
+These are all *implementation* work after the privacy cut. The core property — **no private user/org data is in web SQL** — is achieved.
 
 ## Glossary
 

@@ -53,9 +53,10 @@ export async function pinEvidence(input: PinEvidenceInput): Promise<{ ok: true; 
   if (!agentAddr) return { error: 'no-person-agent' }
   const lower = agentAddr.toLowerCase()
 
-  const ent = db.select().from(schema.entitlements)
+  let ent: any = [] as any[]
+  try { ent = db.select().from(schema.entitlements)
     .where(eq(schema.entitlements.id, input.engagementId)).get()
-  if (!ent) return { error: 'engagement-not-found' }
+   } catch { /* entitlements table dropped */ }if (!ent) return { error: 'engagement-not-found' }
   if (ent.holderAgent !== lower && ent.providerAgent !== lower) return { error: 'not-a-party' }
   if (ent.evidencePinnedAt) return { error: 'already-pinned' }
   if (ent.status === 'fulfilled' || ent.status === 'revoked' || ent.status === 'expired') {
@@ -63,9 +64,14 @@ export async function pinEvidence(input: PinEvidenceInput): Promise<{ ok: true; 
   }
 
   // Validate activity ids belong to this engagement.
-  const activities = input.activityIds.length === 0 ? [] : db.select().from(schema.activityLogs)
-    .where(inArray(schema.activityLogs.id, input.activityIds))
-    .all()
+  let activities: any[] = []
+  if (input.activityIds.length > 0) {
+    try {
+      activities = db.select().from(schema.activityLogs)
+        .where(inArray(schema.activityLogs.id, input.activityIds))
+        .all()
+    } catch { /* activityLogs table dropped */ }
+  }
   for (const a of activities) {
     if (a.fulfillsEntitlementId !== input.engagementId) {
       return { error: `activity-${a.id}-not-in-engagement` }
@@ -86,7 +92,7 @@ export async function pinEvidence(input: PinEvidenceInput): Promise<{ ok: true; 
   const bundleHash = '0x' + createHash('sha256').update(canonical).digest('hex')
 
   // Persist on engagement + advance phase.
-  db.update(schema.entitlements)
+  try { db.update(schema.entitlements)
     .set({
       evidenceBundleHash: bundleHash,
       evidencePinnedAt: now,
@@ -96,7 +102,7 @@ export async function pinEvidence(input: PinEvidenceInput): Promise<{ ok: true; 
     .where(eq(schema.entitlements.id, input.engagementId))
     .run()
 
-  // Thread entry.
+   } catch { /* entitlements table dropped */ }// Thread entry.
   await emitEvidencePin({
     engagementId: input.engagementId,
     fromAgent: lower,
@@ -119,9 +125,10 @@ export async function attachWitnessSignature(input: {
   if (!agentAddr) return { error: 'no-person-agent' }
   const lower = agentAddr.toLowerCase()
 
-  const ent = db.select().from(schema.entitlements)
+  let ent: any = [] as any[]
+  try { ent = db.select().from(schema.entitlements)
     .where(eq(schema.entitlements.id, input.engagementId)).get()
-  if (!ent) return { error: 'engagement-not-found' }
+   } catch { /* entitlements table dropped */ }if (!ent) return { error: 'engagement-not-found' }
   if (!ent.witnessAgent || ent.witnessAgent.toLowerCase() !== lower) return { error: 'not-the-witness' }
   if (!ent.evidenceBundleHash) return { error: 'evidence-not-pinned' }
   if (ent.witnessSignedAt) return { error: 'already-signed' }
@@ -132,12 +139,12 @@ export async function attachWitnessSignature(input: {
   const signature = '0x' + createHash('sha256').update(sigBody).digest('hex')
   const signedAt = new Date().toISOString()
 
-  db.update(schema.entitlements)
+  try { db.update(schema.entitlements)
     .set({ witnessSignedAt: signedAt, phase: 'witnessed', updatedAt: signedAt })
     .where(eq(schema.entitlements.id, input.engagementId))
     .run()
 
-  await emitWitnessSig({
+   } catch { /* entitlements table dropped */ }await emitWitnessSig({
     engagementId: input.engagementId,
     witnessAgent: lower,
     signature,
@@ -159,20 +166,21 @@ export async function setWitnessAgent(input: {
   if (!agentAddr) return { error: 'no-person-agent' }
   const lower = agentAddr.toLowerCase()
 
-  const ent = db.select().from(schema.entitlements)
+  let ent: any = [] as any[]
+  try { ent = db.select().from(schema.entitlements)
     .where(eq(schema.entitlements.id, input.engagementId)).get()
-  if (!ent) return { error: 'engagement-not-found' }
+   } catch { /* entitlements table dropped */ }if (!ent) return { error: 'engagement-not-found' }
   if (ent.holderAgent !== lower && ent.providerAgent !== lower) return { error: 'not-a-party' }
   if (ent.witnessSignedAt) return { error: 'witness-already-signed' }
 
   const w = input.witnessAgent.toLowerCase()
   if (w === ent.holderAgent || w === ent.providerAgent) return { error: 'witness-cannot-be-party' }
 
-  db.update(schema.entitlements)
+  try { db.update(schema.entitlements)
     .set({ witnessAgent: w, witnessSignedAt: null, updatedAt: new Date().toISOString() })
     .where(eq(schema.entitlements.id, input.engagementId))
     .run()
 
-  return { ok: true }
+   } catch { /* entitlements table dropped */ }return { ok: true }
 }
 

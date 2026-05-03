@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { and, eq } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { orgIntents, orgNeeds, orgOfferings, orgOutcomes } from '../db/schema.js'
-import { requireOrgPrincipal } from '../auth/principal-context.js'
+import { requireOrgPrincipalAny as requireOrgPrincipal } from '../auth/principal-context.js'
 
 const mcpText = <T>(v: T) => ({ content: [{ type: 'text' as const, text: JSON.stringify(v) }] })
 
@@ -30,7 +30,7 @@ export const orgIntentsTools = {
       required: ['token'],
     },
     handler: async (args: { token: string; direction?: string }) => {
-      const orgPrincipal = await requireOrgPrincipal(args.token, 'list_org_intents')
+      const orgPrincipal = await requireOrgPrincipal(args.token, args, 'list_org_intents')
       let rows = db.select().from(orgIntents).where(eq(orgIntents.orgPrincipal, orgPrincipal)).all()
       if (args.direction) rows = rows.filter(r => r.direction === args.direction)
       return mcpText({ intents: rows })
@@ -76,7 +76,7 @@ export const orgIntentsTools = {
       geo?: string
       timeWindow?: string
     }) => {
-      const orgPrincipal = await requireOrgPrincipal(args.token, 'express_org_intent')
+      const orgPrincipal = await requireOrgPrincipal(args.token, args, 'express_org_intent')
       const visibility = args.visibility ?? 'private'
       if (!VISIBILITIES.includes(visibility)) {
         throw new Error(`invalid visibility: ${visibility}`)
@@ -159,7 +159,7 @@ export const orgIntentsTools = {
       required: ['token', 'id'],
     },
     handler: async (args: { token: string; id: string }) => {
-      const orgPrincipal = await requireOrgPrincipal(args.token, 'withdraw_org_intent')
+      const orgPrincipal = await requireOrgPrincipal(args.token, args, 'withdraw_org_intent')
       const r = db.update(orgIntents)
         .set({ status: 'withdrawn', updatedAt: new Date().toISOString() })
         .where(and(eq(orgIntents.id, args.id), eq(orgIntents.orgPrincipal, orgPrincipal)))
@@ -177,7 +177,7 @@ export const orgIntentsTools = {
       required: ['token'],
     },
     handler: async (args: { token: string; intentId?: string }) => {
-      const orgPrincipal = await requireOrgPrincipal(args.token, 'list_org_outcomes')
+      const orgPrincipal = await requireOrgPrincipal(args.token, args, 'list_org_outcomes')
       let rows = db.select().from(orgOutcomes).where(eq(orgOutcomes.orgPrincipal, orgPrincipal)).all()
       if (args.intentId) rows = rows.filter(r => r.intentId === args.intentId)
       return mcpText({ outcomes: rows })

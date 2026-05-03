@@ -29,25 +29,35 @@ export async function PendingTriagePanel() {
   const me = await getCurrentUser()
   if (!me) return null
 
-  const [unread, openInvites] = await Promise.all([
-    db.select().from(schema.messages)
-      .where(and(
-        eq(schema.messages.userId, me.id),
-        eq(schema.messages.read, 0),
-      ))
-      .orderBy(desc(schema.messages.createdAt))
-      .limit(20),
-    db.select().from(schema.invites)
-      .where(and(
-        eq(schema.invites.createdBy, me.id),
-        eq(schema.invites.status, 'pending'),
-      ))
-      .orderBy(desc(schema.invites.createdAt))
-      .limit(10),
-  ])
+  // Messages moved to person-mcp; pull notifications via the user's
+  // delegation token. If no A2A session yet, show empty.
+  let unread: Array<{ id: string; kind: string; payload: string | null; type?: string; title?: string; body?: string; link?: string | null; createdAt: string }> = []
+  try {
+    const { callMcp } = await import('@/lib/clients/mcp-client')
+    const res = await callMcp<{ notifications: Array<{ id: string; kind: string; payload: string | null; readAt: string | null; createdAt: string }> }>(
+      'person', 'list_notifications', {},
+    )
+    unread = (res.notifications ?? []).filter(n => !n.readAt).map(n => {
+      let parsed: { title?: string; body?: string; link?: string } = {}
+      try { parsed = n.payload ? JSON.parse(n.payload) : {} } catch { /* ignore */ }
+      return {
+        id: n.id, kind: n.kind, payload: n.payload,
+        type: n.kind, title: parsed.title, body: parsed.body, link: parsed.link ?? null,
+        createdAt: n.createdAt,
+      }
+    })
+  } catch { /* no A2A session yet */ }
+
+  const openInvites = await db.select().from(schema.invites)
+    .where(and(
+      eq(schema.invites.createdBy, me.id),
+      eq(schema.invites.status, 'pending'),
+    ))
+    .orderBy(desc(schema.invites.createdAt))
+    .limit(10)
 
   const actionable = unread.filter(m =>
-    (ACTIONABLE_TYPES as readonly string[]).includes(m.type),
+    (ACTIONABLE_TYPES as readonly string[]).includes(m.kind),
   )
 
   if (actionable.length === 0 && openInvites.length === 0) {
@@ -100,7 +110,7 @@ export async function PendingTriagePanel() {
                   }}
                 >
                   <span style={{ fontWeight: 600, fontSize: 13, flex: 1, minWidth: 0 }}>{m.title}</span>
-                  <span style={{ fontSize: 11, color: '#8b5e3c' }}>{m.type.replace(/_/g, ' ')}</span>
+                  <span style={{ fontSize: 11, color: '#8b5e3c' }}>{(m.type ?? m.kind ?? '').replace(/_/g, ' ')}</span>
                 </Link>
               </li>
             ))}

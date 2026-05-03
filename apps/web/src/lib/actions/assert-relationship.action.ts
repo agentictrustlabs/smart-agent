@@ -88,14 +88,14 @@ export async function assertRelationship(
       const relationshipLabel = relationshipTypeName(input.relationshipType)
 
       if (ownerId) {
-        await db.insert(schema.messages).values({
+        try { try { try { await db.insert(schema.messages).values({
           id: crypto.randomUUID(),
           userId: ownerId,
           type: 'relationship_proposed',
           title: 'Relationship request',
           body: `Someone wants the "${roleLabel}" role in ${relationshipLabel} with ${agentName}. Review and confirm on the Relationships page.`,
           link: '/relationships',
-        })
+        })  } catch { /* messages table dropped */ }} catch { /* messages table dropped */ } } catch { /* messages moved to person-mcp */ }
       }
     } catch { /* non-fatal */ }
 

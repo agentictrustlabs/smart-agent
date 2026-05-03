@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { and, eq } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { orgMembers, detachedMembers } from '../db/schema.js'
-import { requireOrgPrincipal } from '../auth/principal-context.js'
+import { requireOrgPrincipalAny as requireOrgPrincipal } from '../auth/principal-context.js'
 
 const mcpText = <T>(v: T) => ({ content: [{ type: 'text' as const, text: JSON.stringify(v) }] })
 
@@ -16,7 +16,7 @@ export const membersTools = {
       required: ['token'],
     },
     handler: async (args: { token: string }) => {
-      const orgPrincipal = await requireOrgPrincipal(args.token, 'list_members')
+      const orgPrincipal = await requireOrgPrincipal(args.token, args, 'list_members')
       const rows = db.select().from(orgMembers).where(eq(orgMembers.orgPrincipal, orgPrincipal)).all()
       return mcpText({ members: rows })
     },
@@ -47,7 +47,7 @@ export const membersTools = {
       edgeId?: string
       internalNotes?: string
     }) => {
-      const orgPrincipal = await requireOrgPrincipal(args.token, 'upsert_member')
+      const orgPrincipal = await requireOrgPrincipal(args.token, args, 'upsert_member')
       const memberAgent = args.memberAgent.toLowerCase()
       const existing = db.select().from(orgMembers)
         .where(and(eq(orgMembers.orgPrincipal, orgPrincipal), eq(orgMembers.memberAgent, memberAgent)))
@@ -88,7 +88,7 @@ export const membersTools = {
       required: ['token'],
     },
     handler: async (args: { token: string }) => {
-      const orgPrincipal = await requireOrgPrincipal(args.token, 'list_detached_members')
+      const orgPrincipal = await requireOrgPrincipal(args.token, args, 'list_detached_members')
       const rows = db.select().from(detachedMembers).where(eq(detachedMembers.orgPrincipal, orgPrincipal)).all()
       return mcpText({ detached: rows })
     },
@@ -117,7 +117,7 @@ export const membersTools = {
       role?: string
       notes?: string
     }) => {
-      const orgPrincipal = await requireOrgPrincipal(args.token, 'add_detached_member')
+      const orgPrincipal = await requireOrgPrincipal(args.token, args, 'add_detached_member')
       const now = new Date().toISOString()
       const row = {
         id: randomUUID(),
@@ -145,7 +145,7 @@ export const membersTools = {
       required: ['token', 'id'],
     },
     handler: async (args: { token: string; id: string }) => {
-      const orgPrincipal = await requireOrgPrincipal(args.token, 'delete_detached_member')
+      const orgPrincipal = await requireOrgPrincipal(args.token, args, 'delete_detached_member')
       const r = db.delete(detachedMembers)
         .where(and(eq(detachedMembers.id, args.id), eq(detachedMembers.orgPrincipal, orgPrincipal)))
         .run()

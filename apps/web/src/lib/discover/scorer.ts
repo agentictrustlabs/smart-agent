@@ -251,9 +251,10 @@ async function computeTrustLift(args: {
 }): Promise<number> {
   const lower = args.offeredByAgent.toLowerCase()
 
-  const profile = db.select().from(schema.agentValidationProfiles)
+  let profile: any = [] as any[]
+  try { profile = db.select().from(schema.agentValidationProfiles)
     .where(eq(schema.agentValidationProfiles.agent, lower)).get()
-  if (!profile || profile.engagementsCount === 0) return 0
+   } catch { /* agentValidationProfiles table dropped */ }if (!profile || profile.engagementsCount === 0) return 0
 
   const base = profile.engagementsCount * TRUST_LIFT_PER_ENGAGEMENT
     + profile.witnessedCount * TRUST_LIFT_PER_WITNESSED
@@ -262,14 +263,15 @@ async function computeTrustLift(args: {
   let skillMatchBonus = 0
   const targetSlug = args.requiresSkill ?? args.requiresRole
   if (targetSlug) {
-    const matches = db.select().from(schema.agentSkillClaims)
+    let matches: any = [] as any[]
+    try { matches = db.select().from(schema.agentSkillClaims)
       .where(and(
         eq(schema.agentSkillClaims.subjectAgent, lower),
         eq(schema.agentSkillClaims.skillSlug, targetSlug),
         eq(schema.agentSkillClaims.side, 'provider'),
       ))
       .all()
-    skillMatchBonus = matches.length * TRUST_LIFT_PER_SKILL_MATCH
+     } catch { /* agentSkillClaims table dropped */ }skillMatchBonus = matches.length * TRUST_LIFT_PER_SKILL_MATCH
   }
 
   // Recency decay: 50% halflife at TRUST_RECENCY_HALFLIFE_DAYS.

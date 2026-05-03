@@ -147,14 +147,14 @@ export async function recordTeeValidation(
       const ownerIds = await findAgentOwnerUserIds(input.agentAddress)
       if (ownerIds.length > 0) {
         const agent = await getAgentMetadata(input.agentAddress)
-        await db.insert(schema.messages).values({
+        try { try { try { await db.insert(schema.messages).values({
           id: crypto.randomUUID(),
           userId: ownerIds[0],
           type: 'proposal_created',
           title: 'TEE validation recorded',
           body: `Agent ${agent.displayName} received a ${input.teeArch} TEE validation (method: ${input.validationMethod})`,
           link: '/tee',
-        })
+        })  } catch { /* messages table dropped */ }} catch { /* messages table dropped */ } } catch { /* messages moved to person-mcp */ }
       }
     } catch { /* non-fatal */ }
 

@@ -116,24 +116,24 @@ export async function POST(request: Request, { params }: { params: Promise<{ cod
     }).where(eq(schema.invites.id, invite.id))
 
     // 4. Notify inviter
-    await db.insert(schema.messages).values({
+    try { await db.insert(schema.messages).values({
       id: crypto.randomUUID(),
       userId: invite.createdBy,
       type: 'invite_accepted',
       title: 'Invitation accepted',
       body: `${user.name} joined ${invite.agentName} as ${roleKey}`,
       link: `/team`,
-    })
+    }) } catch { /* messages moved to person-mcp */ }
 
     // 5. Notify acceptor
-    await db.insert(schema.messages).values({
+    try { await db.insert(schema.messages).values({
       id: crypto.randomUUID(),
       userId: user.id,
       type: 'ownership_accepted',
       title: `Welcome to ${invite.agentName}`,
       body: `You are now ${roleKey} of ${invite.agentName}.`,
       link: `/dashboard`,
-    })
+    }) } catch { /* messages moved to person-mcp */ }
 
     return NextResponse.json({ success: true })
   } catch (error) {

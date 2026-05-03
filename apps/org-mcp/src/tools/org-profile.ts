@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { orgProfilesPrivate } from '../db/schema.js'
-import { requireOrgPrincipal } from '../auth/principal-context.js'
+import { requireOrgPrincipalAny as requireOrgPrincipal } from '../auth/principal-context.js'
 
 const mcpText = <T>(v: T) => ({ content: [{ type: 'text' as const, text: JSON.stringify(v) }] })
 
@@ -15,7 +15,7 @@ export const orgProfileTools = {
       required: ['token'],
     },
     handler: async (args: { token: string }) => {
-      const orgPrincipal = await requireOrgPrincipal(args.token, 'get_org_profile_private')
+      const orgPrincipal = await requireOrgPrincipal(args.token, args, 'get_org_profile_private')
       const rows = db.select().from(orgProfilesPrivate).where(eq(orgProfilesPrivate.orgPrincipal, orgPrincipal)).all()
       return mcpText({ profile: rows[0] ?? null })
     },
@@ -42,7 +42,7 @@ export const orgProfileTools = {
       financialContacts?: string
       internalNotes?: string
     }) => {
-      const orgPrincipal = await requireOrgPrincipal(args.token, 'update_org_profile_private')
+      const orgPrincipal = await requireOrgPrincipal(args.token, args, 'update_org_profile_private')
       const now = new Date().toISOString()
       const existing = db.select().from(orgProfilesPrivate).where(eq(orgProfilesPrivate.orgPrincipal, orgPrincipal)).all()
       if (existing.length === 0) {

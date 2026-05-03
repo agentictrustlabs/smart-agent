@@ -132,14 +132,14 @@ export async function submitReview(input: SubmitReviewInput): Promise<SubmitRevi
       const ownerIds = await findAgentOwnerUserIds(input.subjectAddress)
       if (ownerIds.length > 0) {
         const subjectMeta = await getAgentMetadata(input.subjectAddress)
-        await db.insert(schema.messages).values({
+        try { try { try { await db.insert(schema.messages).values({
           id: crypto.randomUUID(),
           userId: ownerIds[0],
           type: 'review_received',
           title: 'New review received',
           body: `Your agent ${subjectMeta.displayName} received a ${input.recommendation} review (score: ${input.overallScore}/100)`,
           link: '/reviews',
-        })
+        })  } catch { /* messages table dropped */ }} catch { /* messages table dropped */ } } catch { /* messages moved to person-mcp */ }
       }
     } catch { /* non-fatal */ }
 

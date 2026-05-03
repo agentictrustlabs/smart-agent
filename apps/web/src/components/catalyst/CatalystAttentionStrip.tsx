@@ -25,31 +25,36 @@ export async function CatalystAttentionStrip({ userId, userOrgs, hubSlug }: Prop
   const fourteenDaysAgo = new Date(Date.now() - 14 * 86_400_000).toISOString().slice(0, 10)
   const orgAddrs = userOrgs.map(o => o.address.toLowerCase())
   if (orgAddrs.length > 0) {
-    const recentRows = await db.select({
+    let recentRows: any[] = []
+    try { recentRows = await db.select({
       org: schema.activityLogs.orgAddress,
       d: schema.activityLogs.activityDate,
     }).from(schema.activityLogs)
       .where(inArray(schema.activityLogs.orgAddress, orgAddrs))
-      .all()
+      .all() } catch { /* activityLogs table dropped */ }
     const orgsWithRecent = new Set<string>()
     for (const r of recentRows) {
       if (r.d >= fourteenDaysAgo) orgsWithRecent.add(r.org.toLowerCase())
     }
 
-    // De-dupe with Open Needs: when a stale circle has an open need,
-    // link to the need page with a clearer detail line.
-    const openNeedsOnMyOrgs = db.select().from(schema.needs)
-      .where(and(
-        inArray(schema.needs.neededByAgent, orgAddrs),
-        eq(schema.needs.status, 'open'),
-      ))
-      .all()
+    // De-dupe with Open Needs: needs moved to person-mcp / org-mcp; the
+    // stale-circle detail line is best-effort for now and falls back to
+    // the generic "no activity" message when the lookup is unavailable.
     const orgOpenNeed = new Map<string, { id: string; title: string }>()
-    for (const n of openNeedsOnMyOrgs) {
-      if (!orgOpenNeed.has(n.neededByAgent)) {
-        orgOpenNeed.set(n.neededByAgent, { id: n.id, title: n.title })
+    try {
+      let openNeedsOnMyOrgs: any[] = []
+      try { openNeedsOnMyOrgs = db.select().from(schema.needs)
+        .where(and(
+          inArray(schema.needs.neededByAgent, orgAddrs),
+          eq(schema.needs.status, 'open'),
+        ))
+        .all() } catch { /* needs table dropped */ }
+      for (const n of openNeedsOnMyOrgs) {
+        if (!orgOpenNeed.has(n.neededByAgent)) {
+          orgOpenNeed.set(n.neededByAgent, { id: n.id, title: n.title })
+        }
       }
-    }
+    } catch { /* needs table dropped */ }
 
     for (const org of userOrgs) {
       if (orgsWithRecent.has(org.address.toLowerCase())) continue
