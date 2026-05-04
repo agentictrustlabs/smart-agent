@@ -369,6 +369,14 @@ export function buildMcpToolScopeCaveat(allowedTools: string[]): Caveat {
  */
 export const DATA_SCOPE_ENFORCER = keccak256(toBytes('urn:smart-agent:data-scope')).slice(0, 42) as `0x${string}`
 
+// ─── MCP server audience constants ────────────────────────────────────
+// Centralized so spelling drift across services is impossible. Per
+// SEC-17 / SEC-2, every MCP must check the session token's audience
+// claim against its own constant on the first line of verify-delegation.
+export const PERSON_MCP_AUDIENCE = 'urn:mcp:server:person' as const
+export const ORG_MCP_AUDIENCE = 'urn:mcp:server:org' as const
+export const PEOPLE_GROUPS_MCP_AUDIENCE = 'urn:mcp:server:people-groups' as const
+
 export interface DataScopeGrant {
   /** MCP server audience URN (e.g., 'urn:mcp:server:person') */
   server: string

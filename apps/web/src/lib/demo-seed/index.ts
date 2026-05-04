@@ -60,4 +60,24 @@ export async function ensureDemoCommunitySeeded(demoUserKey: string) {
   } catch (err) {
     console.warn('[demo-seed] MCP seed failed:', (err as Error).message)
   }
+
+  // People-group MCP seed (catalyst only for v1 — Wolof concept + Senegal/Dakar
+  // segments + multi-source estimates + reachedness + community + geometry).
+  // Runs after the catalyst on-chain seed has had a chance to deploy
+  // Senegal Wolof Outreach + cross-delegations.
+  if (meta.hubId === 'catalyst') {
+    try {
+      const { seedPeopleGroupsDemoData } = await import('./seed-people-groups-data')
+      const { listRegisteredAgents } = await import('@/lib/agent-resolver')
+      const agents = await listRegisteredAgents()
+      const swo = agents.find(a => a.name === 'Senegal Wolof Outreach')
+      if (swo) {
+        await seedPeopleGroupsDemoData({ orgAddress: swo.address })
+      } else {
+        console.log('[demo-seed] Senegal Wolof Outreach not yet on-chain; PG seed deferred to next demo-login')
+      }
+    } catch (err) {
+      console.warn('[demo-seed] People-group seed failed:', (err as Error).message)
+    }
+  }
 }

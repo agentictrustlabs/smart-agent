@@ -123,6 +123,18 @@ Discover reads exclusively from GraphDB. GraphDB only mirrors on-chain. **No web
 | Geo claims (operatesIn / residentOf) | on-chain (public) + geo-mcp (private detail) | agent address | public / private (per-claim) | graphdb (via on-chain sync) | `sa:GeoClaim` | Public claims are anchored on-chain; private locations stay in geo-mcp only |
 | Skill claims (issuance side) | skill-mcp | issuer | private | none | `sa:SkillClaimDraft` | Issuance state; mints to on-chain CredentialRegistry — that's where they become public |
 | Verifier nonces / sessions | verifier-mcp | verifier | private | none | — | Already exists |
+| People-group classification scheme | people-group-mcp | scheme atl_iri | public | graphdb (T0 A-Box export, NOT MCP→GraphDB pipe) | `sapg:PeopleGroupClassificationScheme` | Reference catalog; curator-managed |
+| People-group concept | people-group-mcp | concept atl_iri | public | graphdb (T0 A-Box export) | `sapg:PeopleGroup` | Reference catalog; Joshua Project / IMB / WCD source |
+| People-group scope type | people-group-mcp | scope_type atl_iri | public | C-Box file (already in ontology) | `sapg:PeopleGroupScopeType` | Pre-seeded controlled vocabulary (18 individuals) |
+| People-group worldwide collective | people-group-mcp | collective atl_iri | public | graphdb (T0 A-Box export) | `sapg:PeopleGroupCollective` | Identity-level only, no field data |
+| People-group classification record | people-group-mcp | (T0: atl_iri / T2: principal + atl_iri) | public OR sponsor-private | graphdb only when T0 | `sapg:PeopleGroupClassification` | Tier auto-derived from classified-entity tier; T2 when target is a private community/sub-segment |
+| People-group population segment (registration) | people-group-mcp | sponsoring_org_principal + atl_iri | sponsor-public (T1) OR sponsor-private (T2) | graphdb only via on-chain `sapg:StewardsPeopleGroupInPlace` assertion (T1) | `sapg:PeopleGroupPopulationSegment` | Visibility column NOT NULL with no DB default — writer must choose |
+| People-group population estimate | people-group-mcp | sponsoring_org_principal + atl_iri | sponsor-private | none | `sapg:PeopleGroupPopulationEstimate` | Multiple rows per segment supported (multi-source disagreement); each carries `prov:wasDerivedFrom` + `prov:wasGeneratedBy` |
+| People-group reachedness assessment | people-group-mcp | sponsoring_org_principal + atl_iri | sponsor-private | none | `sapg:ReachednessAssessment` | Status values reference SKOS C-Box (`sapg:StatusUnreached` etc.); not free text |
+| People-group community | people-group-mcp | sponsoring_org_principal + atl_iri | sponsor-private | none | `sapg:PeopleGroupCommunity` | Same-principal constraint with parent segment; cross-org overlap deferred to Phase 2 (`community_segment_membership` table reserved) |
+| People-group geometry | people-group-mcp | sponsoring_org_principal + atl_iri | sponsor-private (default) | none | `sapg:Geometry` (with `geo:hasGeometry`) | Default T2; sponsor opts in to publicize. Sub-segment polygons + reachedness can identify at-risk populations. |
+| People-group audit log | people-group-mcp | data-owner principal | sponsor-private | none | — | One row per cross-delegation read; sponsor-readable, never mirrors |
+| People-group revocation epochs | people-group-mcp | delegator principal | sponsor-private | none | — | JTI tracking; mirrors person-mcp pattern |
 
 ## H. Reference Catalogs (web-sql, never private)
 

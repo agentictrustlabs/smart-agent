@@ -10,6 +10,7 @@ import { requireSession } from '../middleware/require-session'
 
 const PERSON_MCP_URL = process.env.PERSON_MCP_URL ?? 'http://localhost:3200'
 const ORG_MCP_URL = process.env.ORG_MCP_URL ?? 'http://localhost:3400'
+const PEOPLE_GROUP_MCP_URL = process.env.PEOPLE_GROUP_MCP_URL ?? 'http://localhost:3300'
 
 interface StoredSessionPackage {
   sessionPrivateKey: string
@@ -27,8 +28,9 @@ interface StoredSessionPackage {
 }
 
 const SERVERS = {
-  person: { url: PERSON_MCP_URL, audience: 'urn:mcp:server:person' as const },
-  org:    { url: ORG_MCP_URL,    audience: 'urn:mcp:server:org'    as const },
+  person:        { url: PERSON_MCP_URL,       audience: 'urn:mcp:server:person'        as const },
+  org:           { url: ORG_MCP_URL,          audience: 'urn:mcp:server:org'           as const },
+  'people-group': { url: PEOPLE_GROUP_MCP_URL, audience: 'urn:mcp:server:people-groups' as const },
 } as const
 
 type ServerKey = keyof typeof SERVERS
@@ -130,7 +132,7 @@ mcpProxy.post('/:server/:tool', requireSession, async (c) => {
   const toolName = c.req.param('tool')
 
   if (!(serverKey in SERVERS)) {
-    return c.json({ error: `Unknown MCP server: ${serverKey}. Use 'person' or 'org'.` }, 400)
+    return c.json({ error: `Unknown MCP server: ${serverKey}. Use 'person', 'org', or 'people-group'.` }, 400)
   }
 
   const args = await c.req.json().catch(() => ({}))

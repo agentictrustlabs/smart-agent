@@ -1,0 +1,351 @@
+@prefix sapg: <https://smartagent.io/ontology/people-groups#> .
+@prefix sageo: <https://smartagent.io/ontology/geo#> .
+@prefix sa:   <https://smartagent.io/ontology/core#> .
+@prefix sh:   <http://www.w3.org/ns/shacl#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+# =============================================================================
+# SHACL shapes for Smart Agent People-Groups ontology
+# =============================================================================
+#
+# These shapes are validated:
+#   1. At MCP write time as application-layer conditional checks (the MCP does
+#      NOT run a SHACL engine in the write path).
+#   2. Out-of-band against the GraphDB-mirrored T0/T1 graph post-sync. Output
+#      is curator-only (ADR-PG-7) — never sponsor-readable.
+#
+# Per-scope-type required-predicate matrix is the central correctness rule.
+
+# ─── Population segment ────────────────────────────────────────────────
+
+sapg:PeopleGroupPopulationSegmentShape a sh:NodeShape ;
+    sh:targetClass sapg:PeopleGroupPopulationSegment ;
+    sh:property [
+        sh:path sapg:ofPeopleGroup ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:nodeKind sh:IRI ;
+        sh:message "PopulationSegment must reference exactly one PeopleGroup concept."@en ;
+    ] ;
+    sh:property [
+        sh:path sapg:hasScopeType ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:class sapg:PeopleGroupScopeType ;
+        sh:message "PopulationSegment must have exactly one scope type."@en ;
+    ] ;
+    sh:property [
+        sh:path sapg:visibility ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:in ("public" "sponsor-private") ;
+        sh:message "Visibility must be 'public' or 'sponsor-private' (no default)."@en ;
+    ] ;
+    sh:property [
+        sh:path sapg:sponsoringOrgPrincipal ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:nodeKind sh:IRI ;
+        sh:class sa:OrganizationAgent ;
+    ] .
+
+# ─── Per-scope-type required-predicate matrix ─────────────────────────
+# Each shape below targets segments carrying a specific scope type and
+# enforces the predicate that scope type semantically requires.
+
+sapg:InCityRequiresLocatedIn a sh:NodeShape ;
+    sh:targetSubjectsOf sapg:hasScopeType ;
+    sh:sparql [
+        sh:message "Segments with hasScopeType=PeopleGroupInCity must declare locatedIn."@en ;
+        sh:select """
+            PREFIX sapg: <https://smartagent.io/ontology/people-groups#>
+            SELECT $this WHERE {
+              $this sapg:hasScopeType sapg:PeopleGroupInCity .
+              FILTER NOT EXISTS { $this sapg:locatedIn ?p }
+            }
+        """ ;
+    ] .
+
+sapg:InCountryRequiresLocatedIn a sh:NodeShape ;
+    sh:targetSubjectsOf sapg:hasScopeType ;
+    sh:sparql [
+        sh:message "Segments with hasScopeType=PeopleGroupInCountry must declare locatedIn."@en ;
+        sh:select """
+            PREFIX sapg: <https://smartagent.io/ontology/people-groups#>
+            SELECT $this WHERE {
+              $this sapg:hasScopeType sapg:PeopleGroupInCountry .
+              FILTER NOT EXISTS { $this sapg:locatedIn ?p }
+            }
+        """ ;
+    ] .
+
+sapg:InAdminAreaRequiresLocatedIn a sh:NodeShape ;
+    sh:targetSubjectsOf sapg:hasScopeType ;
+    sh:sparql [
+        sh:message "Segments with hasScopeType=PeopleGroupInAdminArea must declare locatedIn."@en ;
+        sh:select """
+            PREFIX sapg: <https://smartagent.io/ontology/people-groups#>
+            SELECT $this WHERE {
+              $this sapg:hasScopeType sapg:PeopleGroupInAdminArea .
+              FILTER NOT EXISTS { $this sapg:locatedIn ?p }
+            }
+        """ ;
+    ] .
+
+sapg:InRegionRequiresLocatedIn a sh:NodeShape ;
+    sh:targetSubjectsOf sapg:hasScopeType ;
+    sh:sparql [
+        sh:message "Segments with hasScopeType=PeopleGroupInRegion must declare locatedIn."@en ;
+        sh:select """
+            PREFIX sapg: <https://smartagent.io/ontology/people-groups#>
+            SELECT $this WHERE {
+              $this sapg:hasScopeType sapg:PeopleGroupInRegion .
+              FILTER NOT EXISTS { $this sapg:locatedIn ?p }
+            }
+        """ ;
+    ] .
+
+sapg:InPlaceRequiresLocatedIn a sh:NodeShape ;
+    sh:targetSubjectsOf sapg:hasScopeType ;
+    sh:sparql [
+        sh:message "Segments with hasScopeType=PeopleGroupInPlace must declare locatedIn."@en ;
+        sh:select """
+            PREFIX sapg: <https://smartagent.io/ontology/people-groups#>
+            SELECT $this WHERE {
+              $this sapg:hasScopeType sapg:PeopleGroupInPlace .
+              FILTER NOT EXISTS { $this sapg:locatedIn ?p }
+            }
+        """ ;
+    ] .
+
+sapg:InPolygonRequiresGeometry a sh:NodeShape ;
+    sh:targetSubjectsOf sapg:hasScopeType ;
+    sh:sparql [
+        sh:message "Segments with hasScopeType=PeopleGroupInPolygon must declare hasGeometry."@en ;
+        sh:select """
+            PREFIX sapg: <https://smartagent.io/ontology/people-groups#>
+            SELECT $this WHERE {
+              $this sapg:hasScopeType sapg:PeopleGroupInPolygon .
+              FILTER NOT EXISTS { $this sapg:hasGeometry ?g }
+            }
+        """ ;
+    ] .
+
+sapg:InDiasporaRequiresHomelandAndHost a sh:NodeShape ;
+    sh:targetSubjectsOf sapg:hasScopeType ;
+    sh:sparql [
+        sh:message "Segments with hasScopeType=PeopleGroupInDiaspora must set isDiasporaPopulation=true and declare homelandPlace + hostPlace."@en ;
+        sh:select """
+            PREFIX sapg: <https://smartagent.io/ontology/people-groups#>
+            SELECT $this WHERE {
+              $this sapg:hasScopeType sapg:PeopleGroupInDiaspora .
+              FILTER NOT EXISTS {
+                $this sapg:isDiasporaPopulation true ;
+                      sapg:homelandPlace ?h ;
+                      sapg:hostPlace ?p .
+              }
+            }
+        """ ;
+    ] .
+
+sapg:InLanguageRequiresPrimaryLanguage a sh:NodeShape ;
+    sh:targetSubjectsOf sapg:hasScopeType ;
+    sh:sparql [
+        sh:message "Segments with hasScopeType=PeopleGroupInLanguage must declare primaryLanguage."@en ;
+        sh:select """
+            PREFIX sapg: <https://smartagent.io/ontology/people-groups#>
+            SELECT $this WHERE {
+              $this sapg:hasScopeType sapg:PeopleGroupInLanguage .
+              FILTER NOT EXISTS { $this sapg:primaryLanguage ?l }
+            }
+        """ ;
+    ] .
+
+sapg:InReligionRequiresReligiousIdentity a sh:NodeShape ;
+    sh:targetSubjectsOf sapg:hasScopeType ;
+    sh:sparql [
+        sh:message "Segments with hasScopeType=PeopleGroupInReligion must declare religiousIdentity."@en ;
+        sh:select """
+            PREFIX sapg: <https://smartagent.io/ontology/people-groups#>
+            SELECT $this WHERE {
+              $this sapg:hasScopeType sapg:PeopleGroupInReligion .
+              FILTER NOT EXISTS { $this sapg:religiousIdentity ?r }
+            }
+        """ ;
+    ] .
+
+sapg:InCasteClanTribeRequiresIdentity a sh:NodeShape ;
+    sh:targetSubjectsOf sapg:hasScopeType ;
+    sh:sparql [
+        sh:message "Segments with hasScopeType=PeopleGroupInCasteClanTribe must declare casteClanTribeIdentity."@en ;
+        sh:select """
+            PREFIX sapg: <https://smartagent.io/ontology/people-groups#>
+            SELECT $this WHERE {
+              $this sapg:hasScopeType sapg:PeopleGroupInCasteClanTribe .
+              FILTER NOT EXISTS { $this sapg:casteClanTribeIdentity ?i }
+            }
+        """ ;
+    ] .
+
+sapg:InChurchRequiresWithinChurch a sh:NodeShape ;
+    sh:targetSubjectsOf sapg:hasScopeType ;
+    sh:sparql [
+        sh:message "Segments with hasScopeType=PeopleGroupInChurch must declare withinChurch."@en ;
+        sh:select """
+            PREFIX sapg: <https://smartagent.io/ontology/people-groups#>
+            SELECT $this WHERE {
+              $this sapg:hasScopeType sapg:PeopleGroupInChurch .
+              FILTER NOT EXISTS { $this sapg:withinChurch ?c }
+            }
+        """ ;
+    ] .
+
+sapg:InNetworkRequiresWithinNetwork a sh:NodeShape ;
+    sh:targetSubjectsOf sapg:hasScopeType ;
+    sh:sparql [
+        sh:message "Segments with hasScopeType=PeopleGroupInNetwork must declare withinNetwork."@en ;
+        sh:select """
+            PREFIX sapg: <https://smartagent.io/ontology/people-groups#>
+            SELECT $this WHERE {
+              $this sapg:hasScopeType sapg:PeopleGroupInNetwork .
+              FILTER NOT EXISTS { $this sapg:withinNetwork ?n }
+            }
+        """ ;
+    ] .
+
+sapg:InDenominationRequiresWithinDenomination a sh:NodeShape ;
+    sh:targetSubjectsOf sapg:hasScopeType ;
+    sh:sparql [
+        sh:message "Segments with hasScopeType=PeopleGroupInDenomination must declare withinDenomination."@en ;
+        sh:select """
+            PREFIX sapg: <https://smartagent.io/ontology/people-groups#>
+            SELECT $this WHERE {
+              $this sapg:hasScopeType sapg:PeopleGroupInDenomination .
+              FILTER NOT EXISTS { $this sapg:withinDenomination ?d }
+            }
+        """ ;
+    ] .
+
+sapg:InMinistryEngagementRequiresWithin a sh:NodeShape ;
+    sh:targetSubjectsOf sapg:hasScopeType ;
+    sh:sparql [
+        sh:message "Segments with hasScopeType=PeopleGroupInMinistryEngagement must declare withinMinistryEngagement."@en ;
+        sh:select """
+            PREFIX sapg: <https://smartagent.io/ontology/people-groups#>
+            SELECT $this WHERE {
+              $this sapg:hasScopeType sapg:PeopleGroupInMinistryEngagement .
+              FILTER NOT EXISTS { $this sapg:withinMinistryEngagement ?e }
+            }
+        """ ;
+    ] .
+
+# ─── PROV-O integrity for assessment data ──────────────────────────────
+
+sapg:AssessmentDatumProvenanceShape a sh:NodeShape ;
+    sh:targetClass sapg:AssessmentDatum ;
+    sh:property [
+        sh:path prov:wasDerivedFrom ;
+        sh:minCount 1 ;
+        sh:nodeKind sh:IRI ;
+        sh:message "Every AssessmentDatum (estimate / assessment / classification) must declare at least one prov:wasDerivedFrom source."@en ;
+    ] ;
+    sh:property [
+        sh:path prov:wasGeneratedBy ;
+        sh:maxCount 1 ;
+        sh:nodeKind sh:IRI ;
+    ] ;
+    sh:property [
+        sh:path sapg:confidenceScore ;
+        sh:datatype xsd:decimal ;
+        sh:minInclusive "0.0"^^xsd:decimal ;
+        sh:maxInclusive "1.0"^^xsd:decimal ;
+        sh:message "confidenceScore must be in [0.0, 1.0]."@en ;
+    ] .
+
+sapg:PopulationEstimateShape a sh:NodeShape ;
+    sh:targetClass sapg:PeopleGroupPopulationEstimate ;
+    sh:property [
+        sh:path sapg:estimateForPopulationSegment ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:class sapg:PeopleGroupPopulationSegment ;
+    ] ;
+    sh:property [
+        sh:path sapg:populationCount ;
+        sh:datatype xsd:nonNegativeInteger ;
+    ] ;
+    sh:property [
+        sh:path sapg:percentChristian ;
+        sh:datatype xsd:decimal ;
+        sh:minInclusive "0.0"^^xsd:decimal ;
+        sh:maxInclusive "1.0"^^xsd:decimal ;
+    ] ;
+    sh:property [
+        sh:path sapg:percentEvangelical ;
+        sh:datatype xsd:decimal ;
+        sh:minInclusive "0.0"^^xsd:decimal ;
+        sh:maxInclusive "1.0"^^xsd:decimal ;
+    ] .
+
+sapg:ReachednessAssessmentShape a sh:NodeShape ;
+    sh:targetClass sapg:ReachednessAssessment ;
+    sh:property [
+        sh:path sapg:assessmentOfPopulationSegment ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:class sapg:PeopleGroupPopulationSegment ;
+    ] ;
+    sh:property [
+        sh:path sapg:reachednessStatus ;
+        sh:nodeKind sh:IRI ;
+        sh:maxCount 1 ;
+        sh:message "reachednessStatus must reference the sapg:ReachednessStatusScheme C-Box."@en ;
+    ] ;
+    sh:property [
+        sh:path sapg:engagementStatus ;
+        sh:nodeKind sh:IRI ;
+        sh:maxCount 1 ;
+    ] .
+
+# ─── Community ↔ segment compatibility ─────────────────────────────────
+
+sapg:CommunitySegmentConceptCompatibility a sh:NodeShape ;
+    sh:targetClass sapg:PeopleGroupCommunity ;
+    sh:sparql [
+        sh:message "All segments referenced by a community via communityWithinPopulationSegment must share the same ofPeopleGroup concept (single-concept community)."@en ;
+        sh:select """
+            PREFIX sapg: <https://smartagent.io/ontology/people-groups#>
+            SELECT $this WHERE {
+              $this sapg:communityWithinPopulationSegment ?s1 ;
+                    sapg:communityWithinPopulationSegment ?s2 .
+              ?s1 sapg:ofPeopleGroup ?c1 .
+              ?s2 sapg:ofPeopleGroup ?c2 .
+              FILTER (?c1 != ?c2)
+            }
+        """ ;
+    ] .
+
+# ─── Diaspora boolean conditional ──────────────────────────────────────
+
+sapg:DiasporaBooleanRequirements a sh:NodeShape ;
+    sh:targetClass sapg:PeopleGroupPopulationSegment ;
+    sh:sparql [
+        sh:message "When isDiasporaPopulation=true, both homelandPlace and hostPlace must be declared."@en ;
+        sh:select """
+            PREFIX sapg: <https://smartagent.io/ontology/people-groups#>
+            SELECT $this WHERE {
+              $this sapg:isDiasporaPopulation true .
+              FILTER NOT EXISTS { $this sapg:homelandPlace ?h }
+              FILTER NOT EXISTS { $this sapg:hostPlace ?p }
+            }
+        """ ;
+    ] .
+
+# ─── Reachedness as assessment, never as subclass ──────────────────────
+# Documented constraint, not enforced via SHACL: there must NOT be a class
+# named sapg:UnreachedPeopleGroup or sapg:FrontierPeopleGroup. Reachedness
+# lives on sapg:ReachednessAssessment as an assessment of a segment.

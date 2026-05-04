@@ -91,6 +91,10 @@ export const DEMO_USER_META: Record<string, DemoUserMeta> = {
   // matcher (Maria, or the AI) accepts the match, the delivery engagement is
   // between Hannah (coachee) and the selected coach.
   'cat-user-013': { userId: 'did:demo:cat-013', email: 'hannah@berthoud-circle.org', name: 'Hannah Reyes',      org: 'Berthoud Circle',        role: 'G2 Apprentice',             hubId: 'catalyst' },
+  // Sione owns Senegal Wolof Outreach — a private research-org sub-tenant
+  // under the catalyst hub. He sponsors people-group segment research; Maria
+  // gets cross-delegated read access to view the org's segment data.
+  'cat-user-014': { userId: 'did:demo:cat-014', email: 'sione@senegal-wolof-outreach.org', name: 'Sione Diop',  org: 'Senegal Wolof Outreach', role: 'Research Director',         hubId: 'catalyst' },
 
   // ─── Collective Impact Labs ──────────────────────────────────────
   'cil-user-001': { userId: 'did:demo:cil-001', email: 'cameron@ilad.org',          name: 'Cameron Henrion',     org: 'ILAD',                       role: 'Operations Lead',           hubId: 'cil' },

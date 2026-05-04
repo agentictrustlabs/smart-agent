@@ -1,0 +1,167 @@
+
+> @smart-agent/people-group-mcp@0.0.1 dev /home/barb/smart-agent/apps/people-group-mcp
+> tsx src/index.ts
+
+[people-group-mcp] scope-types: 18 inserted (18 total)
+[people-group-mcp] wolof catalog: schemes=2 records=5 concepts=1 collectives=1
+[people-group-mcp] tools: 25
+[people-group-mcp] curator allowlist: EMPTY
+[people-group-mcp] listening on http://localhost:3300
+<-- POST /tools/list_pg_concepts
+--> POST /tools/list_pg_concepts [32m200[0m 5ms
+<-- POST /tools/upsert_segment
+--> POST /tools/upsert_segment [32m200[0m 45ms
+<-- POST /tools/upsert_segment
+--> POST /tools/upsert_segment [32m200[0m 9ms
+<-- POST /tools/upsert_segment
+--> POST /tools/upsert_segment [32m200[0m 9ms
+<-- POST /tools/upsert_segment
+--> POST /tools/upsert_segment [32m200[0m 8ms
+<-- POST /tools/upsert_segment
+--> POST /tools/upsert_segment [32m200[0m 8ms
+<-- POST /tools/upsert_community
+--> POST /tools/upsert_community [32m200[0m 8ms
+<-- POST /tools/add_estimate
+--> POST /tools/add_estimate [32m200[0m 7ms
+<-- POST /tools/add_estimate
+--> POST /tools/add_estimate [32m200[0m 7ms
+<-- POST /tools/add_estimate
+--> POST /tools/add_estimate [32m200[0m 7ms
+<-- POST /tools/add_estimate
+--> POST /tools/add_estimate [32m200[0m 8ms
+<-- POST /tools/add_estimate
+--> POST /tools/add_estimate [32m200[0m 8ms
+<-- POST /tools/add_estimate
+--> POST /tools/add_estimate [32m200[0m 8ms
+<-- POST /tools/add_reachedness_assessment
+--> POST /tools/add_reachedness_assessment [32m200[0m 8ms
+<-- POST /tools/add_geometry
+--> POST /tools/add_geometry [32m200[0m 10ms
+<-- POST /tools/list_segments
+--> POST /tools/list_segments [32m200[0m 1ms
+<-- POST /tools/list_segments
+--> POST /tools/list_segments [32m200[0m 10ms
+<-- POST /tools/list_estimates_for_segment
+--> POST /tools/list_estimates_for_segment [32m200[0m 12ms
+<-- POST /tools/list_reachedness_for_segment
+--> POST /tools/list_reachedness_for_segment [32m200[0m 8ms
+<-- POST /tools/list_communities
+--> POST /tools/list_communities [32m200[0m 14ms
+<-- POST /tools/list_estimates_for_segment
+--> POST /tools/list_estimates_for_segment [32m200[0m 7ms
+<-- POST /tools/list_reachedness_for_segment
+--> POST /tools/list_reachedness_for_segment [32m200[0m 8ms
+<-- POST /tools/list_communities
+--> POST /tools/list_communities [32m200[0m 14ms
+<-- POST /tools/list_estimates_for_segment
+--> POST /tools/list_estimates_for_segment [32m200[0m 7ms
+<-- POST /tools/list_reachedness_for_segment
+--> POST /tools/list_reachedness_for_segment [32m200[0m 7ms
+<-- POST /tools/list_communities
+--> POST /tools/list_communities [32m200[0m 13ms
+<-- POST /tools/list_estimates_for_segment
+--> POST /tools/list_estimates_for_segment [32m200[0m 7ms
+<-- POST /tools/list_reachedness_for_segment
+--> POST /tools/list_reachedness_for_segment [32m200[0m 8ms
+<-- POST /tools/list_communities
+--> POST /tools/list_communities [32m200[0m 14ms
+<-- POST /tools/list_estimates_for_segment
+--> POST /tools/list_estimates_for_segment [32m200[0m 6ms
+<-- POST /tools/list_reachedness_for_segment
+--> POST /tools/list_reachedness_for_segment [32m200[0m 7ms
+<-- POST /tools/list_communities
+--> POST /tools/list_communities [32m200[0m 12ms
+<-- POST /tools/list_pg_concepts
+--> POST /tools/list_pg_concepts [32m200[0m 0ms
+<-- POST /tools/upsert_segment
+--> POST /tools/upsert_segment [32m200[0m 10ms
+<-- POST /tools/upsert_segment
+--> POST /tools/upsert_segment [32m200[0m 8ms
+<-- POST /tools/upsert_segment
+--> POST /tools/upsert_segment [32m200[0m 7ms
+<-- POST /tools/upsert_segment
+--> POST /tools/upsert_segment [32m200[0m 7ms
+<-- POST /tools/upsert_segment
+--> POST /tools/upsert_segment [32m200[0m 7ms
+<-- POST /tools/upsert_community
+--> POST /tools/upsert_community [32m200[0m 7ms
+<-- POST /tools/add_estimate
+--> POST /tools/add_estimate [32m200[0m 7ms
+<-- POST /tools/add_estimate
+--> POST /tools/add_estimate [32m200[0m 8ms
+<-- POST /tools/add_estimate
+--> POST /tools/add_estimate [32m200[0m 7ms
+<-- POST /tools/add_estimate
+--> POST /tools/add_estimate [32m200[0m 7ms
+<-- POST /tools/add_estimate
+--> POST /tools/add_estimate [32m200[0m 7ms
+<-- POST /tools/add_estimate
+--> POST /tools/add_estimate [32m200[0m 7ms
+<-- POST /tools/add_reachedness_assessment
+--> POST /tools/add_reachedness_assessment [32m200[0m 6ms
+<-- POST /tools/add_geometry
+--> POST /tools/add_geometry [32m200[0m 7ms
+<-- POST /tools/list_segments
+--> POST /tools/list_segments [32m200[0m 8ms
+<-- POST /tools/list_estimates_for_segment
+--> POST /tools/list_estimates_for_segment [32m200[0m 8ms
+<-- POST /tools/list_reachedness_for_segment
+--> POST /tools/list_reachedness_for_segment [32m200[0m 7ms
+<-- POST /tools/list_communities
+--> POST /tools/list_communities [32m200[0m 13ms
+<-- POST /tools/list_estimates_for_segment
+--> POST /tools/list_estimates_for_segment [32m200[0m 6ms
+<-- POST /tools/list_reachedness_for_segment
+--> POST /tools/list_reachedness_for_segment [32m200[0m 6ms
+<-- POST /tools/list_communities
+--> POST /tools/list_communities [32m200[0m 11ms
+<-- POST /tools/list_estimates_for_segment
+--> POST /tools/list_estimates_for_segment [32m200[0m 6ms
+<-- POST /tools/list_reachedness_for_segment
+--> POST /tools/list_reachedness_for_segment [32m200[0m 7ms
+<-- POST /tools/list_communities
+--> POST /tools/list_communities [32m200[0m 16ms
+<-- POST /tools/list_estimates_for_segment
+--> POST /tools/list_estimates_for_segment [32m200[0m 6ms
+<-- POST /tools/list_reachedness_for_segment
+--> POST /tools/list_reachedness_for_segment [32m200[0m 6ms
+<-- POST /tools/list_communities
+--> POST /tools/list_communities [32m200[0m 12ms
+<-- POST /tools/list_estimates_for_segment
+--> POST /tools/list_estimates_for_segment [32m200[0m 5ms
+<-- POST /tools/list_reachedness_for_segment
+--> POST /tools/list_reachedness_for_segment [32m200[0m 7ms
+<-- POST /tools/list_communities
+--> POST /tools/list_communities [32m200[0m 12ms
+<-- POST /tools/list_segments
+--> POST /tools/list_segments [32m200[0m 8ms
+<-- POST /tools/list_estimates_for_segment
+--> POST /tools/list_estimates_for_segment [32m200[0m 6ms
+<-- POST /tools/list_reachedness_for_segment
+--> POST /tools/list_reachedness_for_segment [32m200[0m 7ms
+<-- POST /tools/list_communities
+--> POST /tools/list_communities [32m200[0m 12ms
+<-- POST /tools/list_estimates_for_segment
+--> POST /tools/list_estimates_for_segment [32m200[0m 6ms
+<-- POST /tools/list_reachedness_for_segment
+--> POST /tools/list_reachedness_for_segment [32m200[0m 7ms
+<-- POST /tools/list_communities
+--> POST /tools/list_communities [32m200[0m 12ms
+<-- POST /tools/list_estimates_for_segment
+--> POST /tools/list_estimates_for_segment [32m200[0m 6ms
+<-- POST /tools/list_reachedness_for_segment
+--> POST /tools/list_reachedness_for_segment [32m200[0m 6ms
+<-- POST /tools/list_communities
+--> POST /tools/list_communities [32m200[0m 11ms
+<-- POST /tools/list_estimates_for_segment
+--> POST /tools/list_estimates_for_segment [32m200[0m 17ms
+<-- POST /tools/list_reachedness_for_segment
+--> POST /tools/list_reachedness_for_segment [32m200[0m 8ms
+<-- POST /tools/list_communities
+--> POST /tools/list_communities [32m200[0m 13ms
+<-- POST /tools/list_estimates_for_segment
+--> POST /tools/list_estimates_for_segment [32m200[0m 6ms
+<-- POST /tools/list_reachedness_for_segment
+--> POST /tools/list_reachedness_for_segment [32m200[0m 5ms
+<-- POST /tools/list_communities
+--> POST /tools/list_communities [32m200[0m 13ms

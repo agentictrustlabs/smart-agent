@@ -222,15 +222,23 @@ update_env_var() {
   fi
 }
 
-for svc in org-mcp family-mcp person-mcp geo-mcp verifier-mcp; do
+for svc in org-mcp family-mcp person-mcp geo-mcp verifier-mcp people-group-mcp; do
   ENV_FILE="$ROOT_DIR/apps/$svc/.env"
-  if [ -f "$ENV_FILE" ]; then
-    update_env_var "$ENV_FILE" RPC_URL "$ANVIL_RPC"
-    update_env_var "$ENV_FILE" CREDENTIAL_REGISTRY_CONTRACT_ADDRESS "$CRED_REGISTRY_CONTRACT"
-    # Clear the obsolete off-chain-registry path. Harmless if absent.
-    sed -i '/^CREDENTIAL_REGISTRY_PATH=/d' "$ENV_FILE"
-    echo "Updated $ENV_FILE"
+  # Bootstrap missing env files so update_env_var has somewhere to write.
+  if [ ! -f "$ENV_FILE" ]; then
+    : > "$ENV_FILE"
   fi
+  update_env_var "$ENV_FILE" RPC_URL "$ANVIL_RPC"
+  update_env_var "$ENV_FILE" CHAIN_ID "31337"
+  update_env_var "$ENV_FILE" CREDENTIAL_REGISTRY_CONTRACT_ADDRESS "$CRED_REGISTRY_CONTRACT"
+  # Auth-relevant chain addresses needed by the MCPs' verify-delegation paths.
+  update_env_var "$ENV_FILE" DELEGATION_MANAGER_ADDRESS "$DELEGATION"
+  update_env_var "$ENV_FILE" AGENT_RELATIONSHIP_ADDRESS "$RELATIONSHIP"
+  update_env_var "$ENV_FILE" AGENT_ACCOUNT_RESOLVER_ADDRESS "$AGENT_ACCT_RESOLVER"
+  update_env_var "$ENV_FILE" TIMESTAMP_ENFORCER_ADDRESS "$TIMESTAMP"
+  # Clear the obsolete off-chain-registry path. Harmless if absent.
+  sed -i '/^CREDENTIAL_REGISTRY_PATH=/d' "$ENV_FILE"
+  echo "Updated $ENV_FILE"
 done
 
 # ─── Fund issuer EOAs so they can publish on-chain ─────────────────────────

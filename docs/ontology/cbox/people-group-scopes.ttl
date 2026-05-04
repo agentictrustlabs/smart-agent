@@ -1,0 +1,120 @@
+@prefix sapg: <https://smartagent.io/ontology/people-groups#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+# =============================================================================
+# Smart Agent People-Group Scope Types  (C-Box, controlled vocabulary)
+# =============================================================================
+#
+# Per Ontologist review: finite enumerations belong in C-Box, not A-Box. These
+# 18 scope-type individuals are the controlled vocabulary for sapg:hasScopeType.
+# A segment is differentiated by the scope type it carries — there is no
+# subclass-explosion of sapg:PeopleGroupPopulationSegment.
+#
+# Source: Global.Church people-group ontology note §2 + §3 (recommended scope set,
+# organized into Identity / Geographic / Sociocultural / Ministry-and-ekklesia
+# buckets).
+
+sapg:PeopleGroupScopeTypeScheme a skos:ConceptScheme ;
+    rdfs:label "People Group Scope Type Scheme"@en ;
+    skos:prefLabel "People Group Scope Type Scheme"@en .
+
+# ─── Identity scopes ──────────────────────────────────────────────────
+
+sapg:PeopleGroupAcrossCountries a sapg:PeopleGroupScopeType , skos:Concept ;
+    skos:inScheme sapg:PeopleGroupScopeTypeScheme ;
+    skos:notation "PGAC" ;
+    skos:prefLabel "People group across countries"@en ;
+    rdfs:comment "A people group counted once globally, regardless of country. Joshua Project / Harvest Information Standards." .
+
+sapg:PeopleGroupInCountry a sapg:PeopleGroupScopeType , skos:Concept ;
+    skos:inScheme sapg:PeopleGroupScopeTypeScheme ;
+    skos:notation "PGIC" ;
+    skos:prefLabel "People group in country"@en ;
+    rdfs:comment "Classic country-situated people group view. Joshua Project / IMB / WCD / Finishing the Task." .
+
+# ─── Geographic scopes ────────────────────────────────────────────────
+
+sapg:PeopleGroupInRegion a sapg:PeopleGroupScopeType , skos:Concept ;
+    skos:inScheme sapg:PeopleGroupScopeTypeScheme ;
+    skos:prefLabel "People group in region"@en ;
+    rdfs:comment "Supra-national, continental, strategic, or regional place (e.g. West Africa, 10/40 Window)." .
+
+sapg:PeopleGroupInAdminArea a sapg:PeopleGroupScopeType , skos:Concept ;
+    skos:inScheme sapg:PeopleGroupScopeTypeScheme ;
+    skos:prefLabel "People group in admin area"@en ;
+    rdfs:comment "Province, state, district, county, or other administrative subdivision." .
+
+sapg:PeopleGroupInCity a sapg:PeopleGroupScopeType , skos:Concept ;
+    skos:inScheme sapg:PeopleGroupScopeTypeScheme ;
+    skos:prefLabel "People group in city or metro area"@en ;
+    rdfs:comment "City or metropolitan area. Most actionable level for diaspora and urban ministry. UPG North America-style prioritization." .
+
+sapg:PeopleGroupInPlace a sapg:PeopleGroupScopeType , skos:Concept ;
+    skos:inScheme sapg:PeopleGroupScopeTypeScheme ;
+    skos:prefLabel "People group in place"@en ;
+    rdfs:comment "Generic place superclass: neighborhood, village, refugee camp, campus, marketplace, digital gathering, custom ministry area. IMB / PeopleGroups.org PPLR pattern." .
+
+sapg:PeopleGroupInPolygon a sapg:PeopleGroupScopeType , skos:Concept ;
+    skos:inScheme sapg:PeopleGroupScopeTypeScheme ;
+    skos:prefLabel "People group in polygon"@en ;
+    rdfs:comment "Geospatial-evidence scope. Polygon is an estimated representation of presence, not the people group itself." .
+
+sapg:PeopleGroupInDiaspora a sapg:PeopleGroupScopeType , skos:Concept ;
+    skos:inScheme sapg:PeopleGroupScopeTypeScheme ;
+    skos:prefLabel "People group in diaspora"@en ;
+    rdfs:comment "People group living outside its homeland. Use with sapg:isDiasporaPopulation, sapg:homelandPlace, sapg:hostPlace, sapg:migrationReason, sapg:generationStatus." .
+
+# ─── Sociocultural scopes ─────────────────────────────────────────────
+
+sapg:PeopleGroupInLanguage a sapg:PeopleGroupScopeType , skos:Concept ;
+    skos:inScheme sapg:PeopleGroupScopeTypeScheme ;
+    skos:prefLabel "People group in language"@en ;
+    rdfs:comment "Segment associated with primary language, dialect, or language variety. SIL / Ethnologue + Bible-translation context." .
+
+sapg:PeopleGroupInReligion a sapg:PeopleGroupScopeType , skos:Concept ;
+    skos:inScheme sapg:PeopleGroupScopeTypeScheme ;
+    skos:prefLabel "People group in religion"@en ;
+    rdfs:comment "Segment by primary religious identity. Religion may function as a social boundary, not only a belief category." .
+
+sapg:PeopleGroupInCasteClanTribe a sapg:PeopleGroupScopeType , skos:Concept ;
+    skos:inScheme sapg:PeopleGroupScopeTypeScheme ;
+    skos:prefLabel "People group in caste / clan / tribe"@en ;
+    rdfs:comment "Segment by caste, clan, tribe, lineage, or socially recognized boundary. Especially relevant where language is too broad." .
+
+sapg:PeopleGroupInAffinityGroup a sapg:PeopleGroupScopeType , skos:Concept ;
+    skos:inScheme sapg:PeopleGroupScopeTypeScheme ;
+    skos:prefLabel "People group in affinity group"@en ;
+    rdfs:comment "Membership in a strategic-cultural family of peoples. Often modeled directly on the PeopleGroup concept via sapg:belongsToAffinityGroup." .
+
+sapg:PeopleGroupInCluster a sapg:PeopleGroupScopeType , skos:Concept ;
+    skos:inScheme sapg:PeopleGroupScopeTypeScheme ;
+    skos:prefLabel "People group in cluster"@en ;
+    rdfs:comment "Membership in a smaller ethno-cultural cluster. Often modeled directly on the concept via sapg:belongsToPeopleCluster." .
+
+# ─── Ministry / ekklesia scopes ───────────────────────────────────────
+
+sapg:PeopleGroupInChurch a sapg:PeopleGroupScopeType , skos:Concept ;
+    skos:inScheme sapg:PeopleGroupScopeTypeScheme ;
+    skos:prefLabel "People group in church"@en ;
+    rdfs:comment "Presence inside, served by, or reachable through a specific church. Requires sapg:withinChurch (range sa:OrganizationAgent)." .
+
+sapg:PeopleGroupInNetwork a sapg:PeopleGroupScopeType , skos:Concept ;
+    skos:inScheme sapg:PeopleGroupScopeTypeScheme ;
+    skos:prefLabel "People group in network"@en ;
+    rdfs:comment "Focus of a coalition, advocacy network, partnership, or resource network." .
+
+sapg:PeopleGroupInDenomination a sapg:PeopleGroupScopeType , skos:Concept ;
+    skos:inScheme sapg:PeopleGroupScopeTypeScheme ;
+    skos:prefLabel "People group in denomination"@en ;
+    rdfs:comment "Represented within a denomination, communion, association, or Christian tradition." .
+
+sapg:PeopleGroupInMinistryEngagement a sapg:PeopleGroupScopeType , skos:Concept ;
+    skos:inScheme sapg:PeopleGroupScopeTypeScheme ;
+    skos:prefLabel "People group in ministry engagement"@en ;
+    rdfs:comment "Target, focus, or beneficiary of a ministry activity, project, commitment, or engagement strategy. Requires sapg:withinMinistryEngagement." .
+
+sapg:PeopleGroupReachednessAssessmentScope a sapg:PeopleGroupScopeType , skos:Concept ;
+    skos:inScheme sapg:PeopleGroupScopeTypeScheme ;
+    skos:prefLabel "People group reachedness assessment scope"@en ;
+    rdfs:comment "Reachedness-as-segment. Reachedness is modeled as a sapg:ReachednessAssessment of a segment, never as a permanent subclass like UnreachedPeopleGroup." .

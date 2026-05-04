@@ -34,15 +34,41 @@ import {
   createRelationship, confirmRelationship,
 } from '@/lib/contracts'
 import { getPersonAgentForUser } from '@/lib/agent-registry'
+import { agentRelationshipAbi as relAbi } from '@smart-agent/sdk'
 
 const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? '31337')
 const ORG_AUDIENCE = 'urn:mcp:server:org'
+const PEOPLE_GROUPS_AUDIENCE = 'urn:mcp:server:people-groups'
+
+const DEFAULT_ORG_GRANTS = [{
+  server: ORG_AUDIENCE,
+  resources: ['revenue', 'proposals', 'intents', 'members', 'engagements', 'entitlements'],
+  fields: ['*'],
+}]
+
+const DEFAULT_PEOPLE_GROUPS_GRANTS = [{
+  server: PEOPLE_GROUPS_AUDIENCE,
+  resources: ['segments', 'estimates', 'reachedness', 'communities', 'community-locations', 'geometries', 'classifications'],
+  fields: ['*'],
+}]
+
+interface DataScopeGrant {
+  server: string
+  resources: string[]
+  fields: string[]
+}
 
 export interface OrgGovernancePair {
   /** Org's smart-account address (= delegator) */
   orgAddress: `0x${string}`
   /** Owning user's id (used to look up smart account + person agent) */
   ownerUserId: string
+  /** Audience for the delegation. Defaults to urn:mcp:server:org. */
+  audience?: string
+  /** Optional grants override. Defaults to all-resources for the audience. */
+  grants?: DataScopeGrant[]
+  /** Salt seed string; lets us mint multiple audiences against the same pair. */
+  saltLabel?: string
 }
 
 /**
@@ -65,7 +91,12 @@ export async function seedOrgCrossDelegations(pairs: OrgGovernancePair[]): Promi
   const publicClient = getPublicClient()
 
   let created = 0
-  for (const { orgAddress, ownerUserId } of pairs) {
+  for (const pair of pairs) {
+    const { orgAddress, ownerUserId } = pair
+    const audience = pair.audience ?? ORG_AUDIENCE
+    const grants = pair.grants ?? (audience === PEOPLE_GROUPS_AUDIENCE ? DEFAULT_PEOPLE_GROUPS_GRANTS : DEFAULT_ORG_GRANTS)
+    const saltLabel = pair.saltLabel ?? `${audience}:v1`
+
     const u = db.select().from(schema.users).where(eq(schema.users.id, ownerUserId)).get()
     if (!u?.smartAccountAddress) {
       console.warn(`[seed-org-deleg] owner ${ownerUserId} has no smart account`)
@@ -81,41 +112,10 @@ export async function seedOrgCrossDelegations(pairs: OrgGovernancePair[]): Promi
     const orgLower = orgAddress.toLowerCase() as `0x${string}`
     const personLower = personAgent.toLowerCase() as `0x${string}`
 
-    // Idempotency: skip if a delegation edge already exists between this
-    // (org, person-agent) pair.
-    try {
-      const edgeId = await publicClient.readContract({
-        address: relAddr, abi: agentRelationshipAbi,
-        functionName: 'computeEdgeId',
-        args: [orgLower, personLower, DATA_ACCESS_DELEGATION as `0x${string}`],
-      }) as `0x${string}`
-      const exists = await publicClient.readContract({
-        address: relAddr, abi: agentRelationshipAbi,
-        functionName: 'edgeExists', args: [edgeId],
-      }) as boolean
-      if (exists) {
-        const edge = await publicClient.readContract({
-          address: relAddr, abi: agentRelationshipAbi,
-          functionName: 'getEdge', args: [edgeId],
-        }) as { status: number; metadataURI: string }
-        if (edge.status >= 2 && edge.status < 5 && edge.metadataURI) {
-          // Already seeded.
-          continue
-        }
-      }
-    } catch { /* fall through to create */ }
-
     // Build delegation: deployer signs as ERC-1271 owner of org's smart account.
     const now = Math.floor(Date.now() / 1000)
     const expiresAt = now + 365 * 24 * 60 * 60 // 1 year
-    const salt = BigInt(keccak256(encodePacked(['address', 'address', 'string'], [orgLower, userSmartAccount, 'org-mcp:v1'])))
-
-    // Broad org-mcp grant — covers all current org-mcp resource families.
-    const grants = [{
-      server: ORG_AUDIENCE,
-      resources: ['revenue', 'proposals', 'intents', 'members', 'engagements', 'entitlements'],
-      fields: ['*'],
-    }]
+    const salt = BigInt(keccak256(encodePacked(['address', 'address', 'string'], [orgLower, userSmartAccount, saltLabel])))
 
     const caveats = [
       buildCaveat(timestampEnforcerAddr, encodeTimestampTerms(now, expiresAt)),
@@ -143,15 +143,79 @@ export async function seedOrgCrossDelegations(pairs: OrgGovernancePair[]): Promi
       caveats: caveats.map(c => ({ enforcer: c.enforcer, terms: c.terms })),
     }
 
-    const metadataURI = JSON.stringify({
+    const newAudienceEntry = {
+      audience,
       delegation: signedDelegation,
       delegationHash: delHash,
       grants,
       expiresAt: new Date(expiresAt * 1000).toISOString(),
-      audience: ORG_AUDIENCE,
-    })
+    }
+
+    // Read existing edge (if any) and merge by audience.
+    let existingMetaArray: Array<typeof newAudienceEntry> = []
+    let existingEdgeId: `0x${string}` | null = null
+    try {
+      const computed = await publicClient.readContract({
+        address: relAddr, abi: agentRelationshipAbi,
+        functionName: 'computeEdgeId',
+        args: [orgLower, personLower, DATA_ACCESS_DELEGATION as `0x${string}`],
+      }) as `0x${string}`
+      const exists = await publicClient.readContract({
+        address: relAddr, abi: agentRelationshipAbi,
+        functionName: 'edgeExists', args: [computed],
+      }) as boolean
+      if (exists) {
+        existingEdgeId = computed
+        const edge = await publicClient.readContract({
+          address: relAddr, abi: agentRelationshipAbi,
+          functionName: 'getEdge', args: [computed],
+        }) as { status: number; metadataURI: string }
+        if (edge.status >= 2 && edge.status < 5 && edge.metadataURI) {
+          try {
+            const parsed = JSON.parse(edge.metadataURI)
+            if (Array.isArray(parsed.delegations)) {
+              existingMetaArray = parsed.delegations
+            } else if (parsed.delegation) {
+              // Legacy single-audience form — wrap into array.
+              existingMetaArray = [{
+                audience: parsed.audience ?? ORG_AUDIENCE,
+                delegation: parsed.delegation,
+                delegationHash: parsed.delegationHash,
+                grants: parsed.grants ?? [],
+                expiresAt: parsed.expiresAt,
+              }]
+            }
+          } catch { /* unparseable; replace */ }
+
+          // Idempotency by (audience, delegationHash).
+          const already = existingMetaArray.find(
+            d => d.audience === audience && d.delegationHash?.toLowerCase() === delHash.toLowerCase(),
+          )
+          if (already) continue
+        }
+      }
+    } catch { /* fall through to create */ }
+
+    // Merge: replace any existing entry for this audience, else append.
+    const merged = [
+      ...existingMetaArray.filter(d => d.audience !== audience),
+      newAudienceEntry,
+    ]
+    const metadataURI = JSON.stringify({ delegations: merged })
 
     try {
+      if (existingEdgeId) {
+        // Update existing edge via setMetadataURI.
+        const wc = getWalletClient()
+        const hash = await wc.writeContract({
+          address: relAddr, abi: relAbi,
+          functionName: 'setMetadataURI',
+          args: [existingEdgeId, metadataURI],
+        })
+        await publicClient.waitForTransactionReceipt({ hash })
+        created++
+        continue
+      }
       const edgeId = await createRelationship({
         subject: orgLower,
         object: personLower,
@@ -179,6 +243,7 @@ export async function seedOrgCrossDelegations(pairs: OrgGovernancePair[]): Promi
 export async function getOrgCrossDelegation(
   orgAddress: string,
   ownerUserId: string,
+  audience: string = ORG_AUDIENCE,
 ): Promise<{
   delegation: {
     delegator: `0x${string}`
@@ -215,11 +280,18 @@ export async function getOrgCrossDelegation(
     }) as { status: number; metadataURI: string }
     if (edge.status >= 5 || !edge.metadataURI) return null
     const meta = JSON.parse(edge.metadataURI)
-    if (!meta.delegation) return null
-    return {
-      delegation: meta.delegation,
-      delegationHash: meta.delegationHash,
+
+    // New multi-audience form.
+    if (Array.isArray(meta.delegations)) {
+      const match = meta.delegations.find((d: { audience?: string }) => d.audience === audience)
+      if (!match) return null
+      return { delegation: match.delegation, delegationHash: match.delegationHash }
     }
+    // Legacy single-audience form. Match audience if present, else fall through.
+    if (meta.delegation && (meta.audience ?? ORG_AUDIENCE) === audience) {
+      return { delegation: meta.delegation, delegationHash: meta.delegationHash }
+    }
+    return null
   } catch {
     return null
   }

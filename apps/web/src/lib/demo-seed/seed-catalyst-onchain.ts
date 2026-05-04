@@ -224,6 +224,8 @@ async function doSeed() {
   // R17 — Hannah is the G2 apprentice in Berthoud. Beneficiary of Sofia's
   // "needs a coach" intent; resolves through Berthoud → catalyst hub.
   const paHannah = userMap.get('cat-user-013')!.personAgentAddress as `0x${string}`
+  // Sione — owner of Senegal Wolof Outreach (people-group research sub-org).
+  const paSione = userMap.get('cat-user-014')?.personAgentAddress as `0x${string}` | undefined
 
   // ─── Deploy Org/AI Agent Smart Accounts ──────────────────────────
   console.log('[catalyst-seed] Deploying org smart accounts...')
@@ -236,6 +238,7 @@ async function doSeed() {
   const grpBerthoud = await deploy(200007)    // Berthoud Circle
   const grpJohnstown = await deploy(200008)   // Johnstown Circle
   const grpRedFeather = await deploy(200009)  // Red Feather Lakes Circle
+  const senegalWolofOutreach = await deploy(200014)  // Sione's people-group research sub-org
   const analytics = await deploy(210001)
 
   console.log('[catalyst-seed] Smart accounts deployed. Network:', network, 'Fort Collins Network:', hub)
@@ -251,6 +254,7 @@ async function doSeed() {
   await register(grpBerthoud, 'Berthoud Circle', 'Circle — Berthoud agricultural workers (G2)', TYPE_ORGANIZATION)
   await register(grpJohnstown, 'Johnstown Circle', 'Circle — Johnstown and Milliken families (G3)', TYPE_ORGANIZATION)
   await register(grpRedFeather, 'Red Feather Circle', 'Circle — rural mountain community near Red Feather Lakes (G2)', TYPE_ORGANIZATION)
+  await register(senegalWolofOutreach, 'Senegal Wolof Outreach', 'Catalyst sub-tenant — diaspora research and people-group segmentation for the Wolof people in Senegal/Dakar', TYPE_ORGANIZATION)
   await register(analytics, 'NoCo Growth Analytics', 'Movement health tracking for Northern Colorado circles', TYPE_AI)
   // Person agents already registered by generateDemoWallet — skip re-registration
 
@@ -405,6 +409,10 @@ async function doSeed() {
   await createEdge(paDiego,  grpJohnstown,   ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
   await createEdge(paIsabel, grpRedFeather,  ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
   await createEdge(paMaria,  analytics,      ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
+  // Sione owns Senegal Wolof Outreach; only seeded if user-014 is provisioned.
+  if (paSione) {
+    await createEdge(paSione, senegalWolofOutreach, ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
+  }
 
   // Membership / advisory edges layered on top of the governance graph.
   // Circle leaders are also members of the regional Fort Collins Network.
@@ -473,6 +481,37 @@ async function doSeed() {
     console.warn('[catalyst-seed] Cross-delegation seed failed:', (err as Error).message)
   }
 
+  // ─── People-Group cross-delegations (audience: people-groups) ────
+  // Sione gets a delegation to act as Senegal Wolof Outreach against
+  // people-group-mcp; Maria gets a separate delegation as a delegated
+  // reader so the org-viewer "People-Group Focus" section renders for her.
+  if (paSione) {
+    console.log('[catalyst-seed] Seeding people-group cross-delegations...')
+    try {
+      const { seedOrgCrossDelegations } = await import('./seed-org-delegations')
+      const PG_AUDIENCE = 'urn:mcp:server:people-groups'
+      const PG_GRANTS = [{
+        server: PG_AUDIENCE,
+        resources: ['segments', 'estimates', 'reachedness', 'communities', 'community-locations', 'geometries', 'classifications'],
+        fields: ['*'],
+      }]
+      // Sione also needs the standard org-mcp delegation for his own org.
+      await seedOrgCrossDelegations([
+        { orgAddress: senegalWolofOutreach, ownerUserId: 'cat-user-014' }, // org-mcp
+      ])
+      // PG-mcp delegations: Sione (full owner-style) + Maria (delegated reader).
+      const created = await seedOrgCrossDelegations([
+        { orgAddress: senegalWolofOutreach, ownerUserId: 'cat-user-014',
+          audience: PG_AUDIENCE, grants: PG_GRANTS, saltLabel: 'people-groups:owner:v1' },
+        { orgAddress: senegalWolofOutreach, ownerUserId: 'cat-user-001',
+          audience: PG_AUDIENCE, grants: PG_GRANTS, saltLabel: 'people-groups:reader:v1' },
+      ])
+      console.log(`[catalyst-seed] People-group cross-delegations created: ${created}`)
+    } catch (err) {
+      console.warn('[catalyst-seed] People-group cross-delegation seed failed:', (err as Error).message)
+    }
+  }
+
   // ─── Coaching → profile cross-delegations ────────────────────────
   // For every COACHING_MENTORSHIP edge, mint a signed delegation that
   // grants the coach read access to a slice of the disciple's profile.
@@ -499,9 +538,11 @@ async function doSeed() {
   const allAgents = [
     network, hub,
     grpWellington, grpLaporte, grpTimnath, grpLoveland, grpBerthoud, grpJohnstown, grpRedFeather,
+    senegalWolofOutreach,
     analytics,
     paMaria, paDavid, paRosa, paCarlos, paSarah, paAna, paMiguel,
     paElena, paLuis, paSofia, paDiego, paIsabel, paHannah,
+    ...(paSione ? [paSione] : []),
   ]
   for (const agent of allAgents) {
     await createEdge(hubCatalyst, agent, HAS_MEMBER as `0x${string}`, [ROLE_MEMBER])

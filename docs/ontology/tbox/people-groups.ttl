@@ -1,0 +1,458 @@
+@prefix sapg: <https://smartagent.io/ontology/people-groups#> .
+@prefix gc:   <https://global.church/ontology/people-groups#> .
+@prefix sa:   <https://smartagent.io/ontology/core#> .
+@prefix sageo: <https://smartagent.io/ontology/geo#> .
+@prefix sar:  <https://smartagent.io/ontology/relationships#> .
+@prefix dul:  <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix geo:  <http://www.opengis.net/ont/geosparql#> .
+@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+# =============================================================================
+# Smart Agent People-Groups Ontology  (T-Box, Global.Church-aligned, PROV-O-bearing)
+# =============================================================================
+#
+# Source: Global.Church people-group ontology note ("PROV-O-friendly pattern
+# for modeling people groups across geography, language, religion, ministry
+# engagement, churches, and networks") + the A-box use-case library.
+#
+# Alignment strategy:
+#   sapg:* classes/properties are owl:equivalentClass / owl:equivalentProperty
+#   to their gc:* counterparts. Equivalence rather than subClassOf because gc:
+#   is a vocabulary note rather than a published OWL ontology, so equivalence
+#   keeps reasoners happy without coupling to upstream churn.
+#
+#   Compare with tbox/geo.ttl which uses subClassOf geo:Feature because
+#   GeoSPARQL is a published standard.
+#
+# Storage: All instance data of these classes lives in apps/people-group-mcp.
+# Public registry rows (T0) export to GraphDB as a one-shot A-Box turtle.
+# Sponsor-private rows (T2) NEVER reach GraphDB. Sponsor-public segment
+# registrations (T1) reach GraphDB only via on-chain sa:Assertion of kind
+# sapg:StewardsPeopleGroupInPlace; the MCP row stays put.
+
+# ─── Concepts (SKOS-anchored) ──────────────────────────────────────────
+
+sapg:PeopleGroup a owl:Class ;
+    rdfs:subClassOf skos:Concept ;
+    owl:equivalentClass gc:PeopleGroup ;
+    rdfs:label "People Group"@en ;
+    rdfs:comment "A classification concept for a people group (e.g., Wolof, Somali). Not the actual people; not an agent. Identity-level taxonomy term, public-tier T0." .
+
+sapg:PeopleGroupClassificationScheme a owl:Class ;
+    rdfs:subClassOf skos:ConceptScheme , dul:Description ;
+    owl:equivalentClass gc:PeopleGroupClassificationScheme ;
+    rdfs:label "People Group Classification Scheme"@en ;
+    rdfs:comment "Source-governed scheme that defines people-group concepts (e.g. Joshua Project 2026, IMB / PeopleGroups.org PPLR, World Christian Database extract)." .
+
+sapg:PeopleGroupAffinityGroup a owl:Class ;
+    rdfs:subClassOf skos:Concept ;
+    rdfs:label "People Group Affinity Group"@en ;
+    rdfs:comment "A strategic-cultural family of peoples (e.g. Sub-Saharan African peoples)." .
+
+sapg:PeopleCluster a owl:Class ;
+    rdfs:subClassOf skos:Concept ;
+    rdfs:label "People Cluster"@en ;
+    rdfs:comment "A smaller ethno-cultural cluster of related people groups (e.g. Senegambian peoples)." .
+
+sapg:Language a owl:Class ;
+    rdfs:subClassOf skos:Concept ;
+    rdfs:label "Language"@en .
+
+sapg:Religion a owl:Class ;
+    rdfs:subClassOf skos:Concept ;
+    rdfs:label "Religion"@en .
+
+sapg:CasteClanTribeIdentity a owl:Class ;
+    rdfs:subClassOf skos:Concept ;
+    rdfs:label "Caste / Clan / Tribe Identity"@en ;
+    rdfs:comment "Sensitive: handle with care. Source-attributable identities only." .
+
+# ─── Collectives (DUL-anchored) ────────────────────────────────────────
+
+sapg:PeopleGroupCollective a owl:Class ;
+    rdfs:subClassOf dul:Collective ;
+    rdfs:label "People Group Collective"@en ;
+    rdfs:comment "Actual collective of persons classified under a PeopleGroup concept (e.g. Wolof people worldwide, 2026)." .
+
+sapg:PeopleGroupPopulationSegment a owl:Class ;
+    rdfs:subClassOf sapg:PeopleGroupCollective , prov:Entity ;
+    owl:equivalentClass gc:PeopleGroupPopulationSegment ;
+    rdfs:label "People Group Population Segment"@en ;
+    rdfs:comment "Scoped collective: persons classified by a PeopleGroup concept within place, time, language, religion, church, network, or ministry scope. Differentiated by sapg:hasScopeType, NOT by subclass. The durable A-Box modeling anchor." .
+
+sapg:PeopleGroupCommunity a owl:Class ;
+    rdfs:subClassOf sapg:PeopleGroupCollective ;
+    owl:equivalentClass gc:PeopleGroupCommunity ;
+    rdfs:label "People Group Community"@en ;
+    rdfs:comment "Local social manifestation of a PeopleGroup. May overlap a population segment but is not identical to every segment. Tier-2-Sensitive — see ADR-PG-1." .
+
+sapg:AgentivePeopleGroupCommunity a owl:Class ;
+    rdfs:subClassOf sapg:PeopleGroupCommunity , dul:CollectiveAgent ;
+    rdfs:label "Agentive People Group Community"@en ;
+    rdfs:comment "Special case where the community acts as a collective agent (recognized congregation, association, movement). dul:CollectiveAgent is a prov:Agent — provenance for free." .
+
+# ─── Assessment data (PROV-O entities) ────────────────────────────────
+
+sapg:AssessmentDatum a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "Assessment Datum"@en ;
+    rdfs:comment "Abstract parent of estimate / assessment / classification records. Every datum is a prov:Entity carrying wasDerivedFrom + wasGeneratedBy." .
+
+sapg:PeopleGroupPopulationEstimate a owl:Class ;
+    rdfs:subClassOf sapg:AssessmentDatum ;
+    rdfs:label "People Group Population Estimate"@en ;
+    rdfs:comment "Source-attributed population datum for a segment (count, %evangelical, household count, etc.). Multiple estimates per segment supported (multi-source disagreement)." .
+
+sapg:ReachednessAssessment a owl:Class ;
+    rdfs:subClassOf sapg:AssessmentDatum ;
+    rdfs:label "Reachedness Assessment"@en ;
+    rdfs:comment "Source-specific assessment of gospel access, evangelical presence, church presence, engagement. NEVER modeled as a permanent subclass (no UnreachedPeopleGroup class). Status values reference the reachedness/engagement SKOS schemes in cbox/." .
+
+sapg:PeopleGroupClassification a owl:Class ;
+    rdfs:subClassOf sapg:AssessmentDatum , dul:Classification ;
+    owl:equivalentClass gc:PeopleGroupClassification ;
+    rdfs:label "People Group Classification (record)"@en ;
+    rdfs:comment "Time-indexed source-governed classification record. The DURABLE record entity. Distinct from sapg:PeopleGroupClassificationActivity (the act). Tier follows classified entity: T0 for public entities, T2 when target is a sponsor-private community/sub-segment (ADR-PG-1 carry-over)." .
+
+# ─── Activities (PROV-O Activity targets of wasGeneratedBy) ────────────
+
+sapg:PeopleGroupClassificationActivity a owl:Class ;
+    rdfs:subClassOf prov:Activity ;
+    rdfs:label "People Group Classification Activity"@en ;
+    rdfs:comment "The act of classifying. Distinct from the classification record (sapg:PeopleGroupClassification, a prov:Entity)." .
+
+sapg:PopulationEstimationActivity a owl:Class ;
+    rdfs:subClassOf prov:Activity ;
+    rdfs:label "Population Estimation Activity"@en .
+
+sapg:ReachednessAssessmentActivity a owl:Class ;
+    rdfs:subClassOf prov:Activity ;
+    rdfs:label "Reachedness Assessment Activity"@en .
+
+sapg:MappingActivity a owl:Class ;
+    rdfs:subClassOf prov:Activity ;
+    rdfs:label "Mapping Activity"@en ;
+    rdfs:comment "Activity that produces a sapg:Geometry from source map layers." .
+
+sapg:PopulationReconciliationActivity a owl:Class ;
+    rdfs:subClassOf prov:Activity ;
+    rdfs:label "Population Reconciliation Activity"@en ;
+    rdfs:comment "Phase-2 placeholder. Reconciles multiple source-attributed estimates into a derived consensus estimate." .
+
+# ─── External records (typed prov:Entity subclasses) ───────────────────
+
+sapg:ExternalRecord a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "External People-Group Record"@en ;
+    rdfs:comment "Abstract parent of dataset / report / interview-set / map-layer pointers. Used as target of prov:wasDerivedFrom." .
+
+sapg:Dataset      rdfs:subClassOf sapg:ExternalRecord ;
+    rdfs:label "Dataset"@en .
+sapg:Report       rdfs:subClassOf sapg:ExternalRecord ;
+    rdfs:label "Report"@en .
+sapg:InterviewSet rdfs:subClassOf sapg:ExternalRecord , prov:Collection ;
+    rdfs:label "Interview Set"@en .
+sapg:MapLayer     rdfs:subClassOf sapg:Dataset ;
+    rdfs:label "Map Layer"@en .
+
+# ─── Scope type (class only — individuals in cbox/people-group-scopes.ttl) ─
+
+sapg:PeopleGroupScopeType a owl:Class ;
+    rdfs:subClassOf skos:Concept ;
+    owl:equivalentClass gc:PeopleGroupScopeType ;
+    rdfs:label "People Group Scope Type"@en ;
+    rdfs:comment "Controlled vocabulary for the kind of segment scope (PGAC, PGIC, InCity, InChurch, ...). Individuals live in cbox/people-group-scopes.ttl. Replaces subclass-explosion of PeopleGroupPopulationSegment." .
+
+# ─── Place ranges defer to sageo: ──────────────────────────────────────
+# Per Ontologist review: sapg:Place dropped entirely. Range of sapg:locatedIn,
+# sapg:homelandPlace, sapg:hostPlace is sageo:GeoFeature only. Geo-mcp owns
+# the place registry; cross-MCP reference by IRI (no DB FK).
+
+# ─── Phase-2 placeholders ──────────────────────────────────────────────
+
+sapg:MinistryEngagement a owl:Class ;
+    rdfs:subClassOf prov:Activity ;
+    rdfs:label "Ministry Engagement"@en ;
+    rdfs:comment "Phase-2 placeholder. Range of sapg:withinMinistryEngagement. v1 ships the predicate but no backing storage table." .
+
+sapg:Denomination a owl:Class ;
+    rdfs:subClassOf skos:Concept ;
+    rdfs:label "Denomination / Communion"@en ;
+    rdfs:comment "A denomination, communion, association, or Christian tradition. Range of sapg:withinDenomination. Modeled as a SKOS concept rather than an organization because denomination is a category." .
+
+# =============================================================================
+# Object properties
+# =============================================================================
+
+# ─── Concept linkage ───────────────────────────────────────────────────
+
+sapg:ofPeopleGroup a owl:ObjectProperty ;
+    rdfs:domain sapg:PeopleGroupPopulationSegment ;
+    rdfs:range  sapg:PeopleGroup ;
+    owl:equivalentProperty gc:ofPeopleGroup ;
+    rdfs:label "of people group"@en .
+
+sapg:isPeopleGroupOf a owl:ObjectProperty ;
+    owl:inverseOf sapg:ofPeopleGroup ;
+    rdfs:label "is people group of"@en .
+
+sapg:classifiedByPeopleGroup a owl:ObjectProperty ;
+    rdfs:subPropertyOf sapg:ofPeopleGroup ;
+    rdfs:domain sapg:PeopleGroupCollective ;
+    rdfs:range  sapg:PeopleGroup ;
+    rdfs:label "classified by people group"@en ;
+    rdfs:comment "Generic concept link from a Collective or Community to its PeopleGroup concept. ofPeopleGroup is reserved for PopulationSegment." .
+
+sapg:segmentOfCollective a owl:ObjectProperty ;
+    rdfs:domain sapg:PeopleGroupPopulationSegment ;
+    rdfs:range  sapg:PeopleGroupCollective ;
+    rdfs:label "segment of collective"@en .
+
+# ─── Scope, location, geometry ─────────────────────────────────────────
+
+sapg:hasScopeType a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain sapg:PeopleGroupPopulationSegment ;
+    rdfs:range  sapg:PeopleGroupScopeType ;
+    rdfs:label "has scope type"@en ;
+    rdfs:comment "Exactly one scope type per segment (enforced functional + SHACL minCount=1, maxCount=1)." .
+
+sapg:locatedIn a owl:ObjectProperty ;
+    rdfs:domain sapg:PeopleGroupPopulationSegment ;
+    rdfs:range  sageo:GeoFeature ;
+    rdfs:label "located in"@en ;
+    rdfs:comment "Range is sageo:GeoFeature only — geo-mcp's feature registry is the single source for place IRIs." .
+
+sapg:hasGeometry a owl:ObjectProperty ;
+    rdfs:subPropertyOf geo:hasGeometry ;
+    rdfs:domain sapg:PeopleGroupPopulationSegment ;
+    rdfs:range  geo:Geometry ;
+    rdfs:label "has geometry"@en ;
+    rdfs:comment "Evidence-bearing polygon for the segment. Subproperty of geo:hasGeometry for GeoSPARQL reasoner compat. The geometry is a representation of distribution, NOT the people group itself. Default tier T2 (sponsor-private)." .
+
+# ─── Community ↔ segment ──────────────────────────────────────────────
+
+sapg:hasPeopleGroupCommunity a owl:ObjectProperty ;
+    rdfs:domain sapg:PeopleGroupPopulationSegment ;
+    rdfs:range  sapg:PeopleGroupCommunity ;
+    owl:inverseOf sapg:communityWithinPopulationSegment ;
+    rdfs:label "has people group community"@en .
+
+sapg:communityWithinPopulationSegment a owl:ObjectProperty ;
+    rdfs:domain sapg:PeopleGroupCommunity ;
+    rdfs:range  sapg:PeopleGroupPopulationSegment ;
+    rdfs:label "community within population segment"@en ;
+    rdfs:comment "Relates a local community to a segment within which it is socially manifested. Does not imply the whole segment functions as one community." .
+
+# ─── Estimate / assessment links ──────────────────────────────────────
+
+sapg:hasPopulationEstimate a owl:ObjectProperty ;
+    rdfs:domain sapg:PeopleGroupPopulationSegment ;
+    rdfs:range  sapg:PeopleGroupPopulationEstimate ;
+    owl:inverseOf sapg:estimateForPopulationSegment ;
+    rdfs:label "has population estimate"@en .
+
+sapg:estimateForPopulationSegment a owl:ObjectProperty ;
+    rdfs:domain sapg:PeopleGroupPopulationEstimate ;
+    rdfs:range  sapg:PeopleGroupPopulationSegment .
+
+sapg:hasReachednessAssessment a owl:ObjectProperty ;
+    rdfs:domain sapg:PeopleGroupPopulationSegment ;
+    rdfs:range  sapg:ReachednessAssessment ;
+    owl:inverseOf sapg:assessmentOfPopulationSegment ;
+    rdfs:label "has reachedness assessment"@en .
+
+sapg:assessmentOfPopulationSegment a owl:ObjectProperty ;
+    rdfs:domain sapg:ReachednessAssessment ;
+    rdfs:range  sapg:PeopleGroupPopulationSegment .
+
+# ─── Containment / overlap / lineage ──────────────────────────────────
+
+sapg:overlapsPopulationSegment a owl:ObjectProperty , owl:SymmetricProperty ;
+    rdfs:domain sapg:PeopleGroupPopulationSegment ;
+    rdfs:range  sapg:PeopleGroupPopulationSegment ;
+    rdfs:label "overlaps population segment"@en ;
+    rdfs:comment "Non-clean overlap (e.g. church-segment overlapping city-segment). Symmetric." .
+
+sapg:hasSubPopulationSegment a owl:ObjectProperty ;
+    rdfs:domain sapg:PeopleGroupPopulationSegment ;
+    rdfs:range  sapg:PeopleGroupPopulationSegment ;
+    owl:inverseOf sapg:subPopulationSegmentOf ;
+    rdfs:label "has sub population segment"@en .
+
+sapg:subPopulationSegmentOf a owl:ObjectProperty , owl:TransitiveProperty ;
+    rdfs:domain sapg:PeopleGroupPopulationSegment ;
+    rdfs:range  sapg:PeopleGroupPopulationSegment ;
+    rdfs:label "sub population segment of"@en ;
+    rdfs:comment "Clean part-whole (e.g. city-segment subPopulationSegmentOf country-segment). Transitive." .
+
+# ─── Sociocultural axes ───────────────────────────────────────────────
+
+sapg:primaryLanguage a owl:ObjectProperty ;
+    rdfs:domain sapg:PeopleGroupPopulationSegment ;
+    rdfs:range  sapg:Language ;
+    rdfs:label "primary language"@en .
+
+sapg:religiousIdentity a owl:ObjectProperty ;
+    rdfs:domain sapg:PeopleGroupPopulationSegment ;
+    rdfs:range  sapg:Religion ;
+    rdfs:label "religious identity"@en .
+
+sapg:casteClanTribeIdentity a owl:ObjectProperty ;
+    rdfs:domain sapg:PeopleGroupPopulationSegment ;
+    rdfs:range  sapg:CasteClanTribeIdentity ;
+    rdfs:label "caste / clan / tribe identity"@en .
+
+sapg:belongsToAffinityGroup a owl:ObjectProperty ;
+    rdfs:domain sapg:PeopleGroup ;
+    rdfs:range  sapg:PeopleGroupAffinityGroup ;
+    rdfs:label "belongs to affinity group"@en ;
+    rdfs:comment "Attached to the PeopleGroup concept itself, not a segment." .
+
+sapg:belongsToPeopleCluster a owl:ObjectProperty ;
+    rdfs:domain sapg:PeopleGroup ;
+    rdfs:range  sapg:PeopleCluster ;
+    rdfs:label "belongs to people cluster"@en .
+
+# ─── Diaspora extras ───────────────────────────────────────────────────
+
+sapg:isDiasporaPopulation a owl:DatatypeProperty ;
+    rdfs:domain sapg:PeopleGroupPopulationSegment ;
+    rdfs:range  xsd:boolean ;
+    rdfs:label "is diaspora population"@en .
+
+sapg:homelandPlace a owl:ObjectProperty ;
+    rdfs:domain sapg:PeopleGroupPopulationSegment ;
+    rdfs:range  sageo:GeoFeature ;
+    rdfs:label "homeland place"@en .
+
+sapg:hostPlace a owl:ObjectProperty ;
+    rdfs:domain sapg:PeopleGroupPopulationSegment ;
+    rdfs:range  sageo:GeoFeature ;
+    rdfs:label "host place"@en .
+
+sapg:migrationReason a owl:ObjectProperty ;
+    rdfs:domain sapg:PeopleGroupPopulationSegment ;
+    rdfs:range  skos:Concept ;
+    rdfs:label "migration reason"@en .
+
+sapg:generationStatus a owl:ObjectProperty ;
+    rdfs:domain sapg:PeopleGroupPopulationSegment ;
+    rdfs:range  skos:Concept ;
+    rdfs:label "generation status"@en .
+
+# ─── Within-organization scopes ───────────────────────────────────────
+
+sapg:withinChurch a owl:ObjectProperty ;
+    rdfs:domain sapg:PeopleGroupPopulationSegment ;
+    rdfs:range  sa:OrganizationAgent ;
+    rdfs:label "within church"@en ;
+    rdfs:comment "Required when sapg:hasScopeType = sapg:PeopleGroupInChurch." .
+
+sapg:withinNetwork a owl:ObjectProperty ;
+    rdfs:domain sapg:PeopleGroupPopulationSegment ;
+    rdfs:range  sa:OrganizationAgent ;
+    rdfs:label "within network"@en .
+
+sapg:withinDenomination a owl:ObjectProperty ;
+    rdfs:domain sapg:PeopleGroupPopulationSegment ;
+    rdfs:range  sapg:Denomination ;
+    rdfs:label "within denomination"@en ;
+    rdfs:comment "Range is sapg:Denomination (skos:Concept), not sa:OrganizationAgent — denomination is a category, not a single org." .
+
+sapg:withinMinistryEngagement a owl:ObjectProperty ;
+    rdfs:domain sapg:PeopleGroupPopulationSegment ;
+    rdfs:range  sapg:MinistryEngagement ;
+    rdfs:label "within ministry engagement"@en ;
+    rdfs:comment "Phase-2 placeholder; v1 segments may carry the predicate without a backing engagement." .
+
+# ─── Datatype properties on assessment data ───────────────────────────
+
+sapg:populationCount a owl:DatatypeProperty ;
+    rdfs:domain sapg:PeopleGroupPopulationEstimate ;
+    rdfs:range  xsd:nonNegativeInteger ;
+    rdfs:label "population count"@en .
+
+sapg:percentChristian a owl:DatatypeProperty ;
+    rdfs:domain sapg:PeopleGroupPopulationEstimate ;
+    rdfs:range  xsd:decimal ;
+    rdfs:label "percent Christian"@en .
+
+sapg:percentEvangelical a owl:DatatypeProperty ;
+    rdfs:domain sapg:AssessmentDatum ;
+    rdfs:range  xsd:decimal ;
+    rdfs:label "percent evangelical"@en .
+
+sapg:householdCount a owl:DatatypeProperty ;
+    rdfs:domain sapg:PeopleGroupPopulationEstimate ;
+    rdfs:range  xsd:nonNegativeInteger ;
+    rdfs:label "household count"@en .
+
+sapg:leadersIdentified a owl:DatatypeProperty ;
+    rdfs:domain sapg:PeopleGroupPopulationEstimate ;
+    rdfs:range  xsd:nonNegativeInteger ;
+    rdfs:label "leaders identified"@en .
+
+sapg:confidenceScore a owl:DatatypeProperty ;
+    rdfs:domain sapg:AssessmentDatum ;
+    rdfs:range  xsd:decimal ;
+    rdfs:label "confidence score"@en ;
+    rdfs:comment "Range constrained 0.0..1.0 by SHACL." .
+
+sapg:estimateMethod a owl:DatatypeProperty ;
+    rdfs:domain sapg:PeopleGroupPopulationEstimate ;
+    rdfs:range  xsd:string ;
+    rdfs:label "estimate method"@en .
+
+sapg:reachednessStatus a owl:ObjectProperty ;
+    rdfs:domain sapg:ReachednessAssessment ;
+    rdfs:range  skos:Concept ;
+    rdfs:label "reachedness status"@en ;
+    rdfs:comment "Range is the sapg:ReachednessStatusScheme C-Box (cbox/reachedness-vocabulary.ttl), not a free-text literal." .
+
+sapg:engagementStatus a owl:ObjectProperty ;
+    rdfs:domain sapg:ReachednessAssessment ;
+    rdfs:range  skos:Concept ;
+    rdfs:label "engagement status"@en ;
+    rdfs:comment "Range is the sapg:EngagementStatusScheme C-Box." .
+
+sapg:assessmentCriteria a owl:ObjectProperty ;
+    rdfs:domain sapg:ReachednessAssessment ;
+    rdfs:range  prov:Entity ;
+    rdfs:label "assessment criteria"@en ;
+    rdfs:comment "Points at a criteria description (typically a sapg:Report)." .
+
+# ─── Smart-Agent on-chain anchor properties ────────────────────────────
+
+sapg:atlIri a owl:DatatypeProperty ;
+    rdfs:range xsd:anyURI ;
+    rdfs:label "ATL IRI"@en ;
+    rdfs:comment "Canonical IRI handle assigned at insert time. Used by GraphDB sync and on-chain assertion mint." .
+
+sapg:sponsoringOrgPrincipal a owl:ObjectProperty ;
+    rdfs:domain sapg:PeopleGroupPopulationSegment ;
+    rdfs:range  sa:OrganizationAgent ;
+    rdfs:label "sponsoring org principal"@en ;
+    rdfs:comment "The organization whose smart account is the data owner. Maps to the principal column in MCP storage." .
+
+sapg:visibility a owl:DatatypeProperty ;
+    rdfs:domain sapg:PeopleGroupPopulationSegment ;
+    rdfs:range  xsd:string ;
+    rdfs:label "visibility"@en ;
+    rdfs:comment "'public' (T1; mints on-chain assertion) | 'sponsor-private' (T2). NOT NULL with no DB default." .
+
+# ─── Materialized aggregates (sync-side only; not authoritative) ───────
+
+sapg:hasAssessmentSummary a owl:ObjectProperty ;
+    rdfs:domain sapg:PeopleGroupPopulationSegment ;
+    rdfs:range  sapg:AssessmentSummary ;
+    rdfs:label "has assessment summary"@en .
+
+sapg:AssessmentSummary a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "Assessment Summary"@en ;
+    rdfs:comment "Materialized aggregate per segment: latest population count, latest reachedness status, source count, last-updated. Maintained by MCP-internal trigger; not authoritative — derived from the underlying assessment rows." .

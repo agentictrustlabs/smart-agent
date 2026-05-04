@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { getPublicClient, getEdgesBySubject, getEdgesByObject, getEdge, getEdgeRoles } from '@/lib/contracts'
 import { AgentSkillsPanel } from '@/components/agent/AgentSkillsPanel'
+import { PeopleGroupFocusSection } from '@/components/agent/PeopleGroupFocusSection'
 import {
   agentControlAbi, agentAccountAbi, agentReviewRecordAbi,
   agentValidationProfileAbi, agentTrustProfileAbi, agentDisputeRecordAbi,
@@ -644,6 +645,11 @@ export default async function AgentSettingsPage({
               is safe. */}
           <AgentSkillsPanel agentAddress={agentAddress} />
         </section>
+      )}
+
+      {/* ─── People-Group Focus (orgs that sponsor PG research) ────── */}
+      {agentType === 'org' && (
+        <PeopleGroupFocusSection orgAddress={agentAddress} />
       )}
 
       {/* ─── Reviews ───────────────────────────────────────────────── */}

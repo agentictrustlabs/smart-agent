@@ -65,8 +65,18 @@ export {
   encodeDataScopeTerms,
   decodeDataScopeTerms,
   buildDataScopeCaveat,
+  // MCP audience constants (SEC-17)
+  PERSON_MCP_AUDIENCE,
+  ORG_MCP_AUDIENCE,
+  PEOPLE_GROUPS_MCP_AUDIENCE,
 } from './delegation'
 export type { DataScopeGrant } from './delegation'
+
+// ─── Data scope field registry (SEC-18 / ADR-PG-4 forward compat) ───
+export {
+  DATA_SCOPE_FIELDS_V1,
+  resolveDataScopeFields,
+} from './data-scope-fields'
 export type { DelegationClientConfig } from './delegation'
 
 // ─── Sessions ────────────────────────────────────────────────────────

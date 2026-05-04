@@ -1,0 +1,74 @@
+@prefix sapg: <https://smartagent.io/ontology/people-groups#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+# =============================================================================
+# Smart Agent Reachedness + Engagement Vocabulary  (C-Box, controlled vocabulary)
+# =============================================================================
+#
+# Per Ontologist review: reachedness_status and engagement_status columns must
+# reference these IRIs, not store free-text. Reachedness is an assessment of a
+# segment under a source's criteria; the status is time-indexed and method-bound.
+#
+# Multiple sources may disagree on the same segment. A sapg:ReachednessAssessment
+# row carries both status IRIs from this scheme PLUS a sapg:assessmentCriteria
+# pointer to the source's criteria description.
+
+# ─── Reachedness status ───────────────────────────────────────────────
+
+sapg:ReachednessStatusScheme a skos:ConceptScheme ;
+    rdfs:label "Reachedness Status Scheme"@en ;
+    skos:prefLabel "Reachedness Status Scheme"@en .
+
+sapg:StatusUnreached a skos:Concept ;
+    skos:inScheme sapg:ReachednessStatusScheme ;
+    skos:prefLabel "Unreached"@en ;
+    rdfs:comment "Source-criteria-defined; commonly < 2% evangelical and < 5% Christian." .
+
+sapg:StatusReached a skos:Concept ;
+    skos:inScheme sapg:ReachednessStatusScheme ;
+    skos:prefLabel "Reached"@en .
+
+sapg:StatusFrontier a skos:Concept ;
+    skos:inScheme sapg:ReachednessStatusScheme ;
+    skos:prefLabel "Frontier People Group"@en ;
+    rdfs:comment "Joshua Project FPG: < 0.1% Christian." .
+
+sapg:StatusPioneer a skos:Concept ;
+    skos:inScheme sapg:ReachednessStatusScheme ;
+    skos:prefLabel "Pioneer People Group"@en .
+
+sapg:StatusUnknownReachedness a skos:Concept ;
+    skos:inScheme sapg:ReachednessStatusScheme ;
+    skos:prefLabel "Unknown reachedness"@en ;
+    rdfs:comment "Insufficient source evidence to classify." .
+
+# ─── Engagement status ────────────────────────────────────────────────
+
+sapg:EngagementStatusScheme a skos:ConceptScheme ;
+    rdfs:label "Engagement Status Scheme"@en ;
+    skos:prefLabel "Engagement Status Scheme"@en .
+
+sapg:StatusEngaged a skos:Concept ;
+    skos:inScheme sapg:EngagementStatusScheme ;
+    skos:prefLabel "Engaged"@en ;
+    rdfs:comment "At least one ministry engagement is active for this segment under the source's criteria." .
+
+sapg:StatusUnengaged a skos:Concept ;
+    skos:inScheme sapg:EngagementStatusScheme ;
+    skos:prefLabel "Unengaged"@en ;
+    rdfs:comment "Joshua Project / Finishing the Task: no known active engagement." .
+
+sapg:StatusUnengagedUnreached a skos:Concept ;
+    skos:inScheme sapg:EngagementStatusScheme ;
+    skos:prefLabel "Unengaged & Unreached (UUPG)"@en ;
+    rdfs:comment "Composite source category combining reachedness + engagement." .
+
+sapg:StatusEmerging a skos:Concept ;
+    skos:inScheme sapg:EngagementStatusScheme ;
+    skos:prefLabel "Emerging engagement"@en ;
+    rdfs:comment "Recently initiated engagement; not yet established." .
+
+sapg:StatusUnknownEngagement a skos:Concept ;
+    skos:inScheme sapg:EngagementStatusScheme ;
+    skos:prefLabel "Unknown engagement"@en .

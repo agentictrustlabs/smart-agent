@@ -51,6 +51,7 @@ SERVICES=(
   "geo-mcp:3600:@smart-agent/geo-mcp"
   "verifier-mcp:3700:@smart-agent/verifier-mcp"
   "skill-mcp:3800:@smart-agent/skill-mcp"
+  "people-group-mcp:3300:@smart-agent/people-group-mcp"
 )
 WEB_PORT=3000
 WEB_FILTER="@smart-agent/web"
@@ -88,6 +89,9 @@ WIPE_PATHS=(
   "apps/*/verifier-nonces.db"
   "apps/*/verifier-nonces.db-shm"
   "apps/*/verifier-nonces.db-wal"
+  "apps/*/people-group-mcp.db"
+  "apps/*/people-group-mcp.db-shm"
+  "apps/*/people-group-mcp.db-wal"
   "apps/*/askar-stores"
   "apps/web/.next/cache"
 )
