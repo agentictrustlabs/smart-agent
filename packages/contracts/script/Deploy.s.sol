@@ -15,6 +15,7 @@ import "../src/validators/PasskeyValidator.sol";
 import "../src/UniversalSignatureValidator.sol";
 import "../src/AgentRelationship.sol";
 import "../src/AgentAssertion.sol";
+import "../src/ClassAssertion.sol";
 import "../src/AgentRelationshipResolver.sol";
 import "../src/RelationshipTypeRegistry.sol";
 import "../src/AgentRelationshipQuery.sol";
@@ -110,6 +111,10 @@ contract Deploy is Script {
 
         AgentAssertion agentAssertion = new AgentAssertion(address(agentRelationship));
         console.log("AgentAssertion:", address(agentAssertion));
+
+        // ClassAssertion — generic class-tagged assertion log (intent-marketplace +)
+        ClassAssertion classAssertion = new ClassAssertion();
+        console.log("ClassAssertion:", address(classAssertion));
 
         AgentRelationshipResolver agentResolver = new AgentRelationshipResolver(
             address(agentRelationship), address(agentAssertion)
@@ -278,6 +283,7 @@ contract Deploy is Script {
         _logEnv("DELEGATION_MANAGER_ADDRESS", address(delegationManager));
         _logEnv("AGENT_RELATIONSHIP_ADDRESS", address(agentRelationship));
         _logEnv("AGENT_ASSERTION_ADDRESS", address(agentAssertion));
+        _logEnv("CLASS_ASSERTION_ADDRESS", address(classAssertion));
         _logEnv("AGENT_RESOLVER_ADDRESS", address(agentResolver));
         _logEnv("TIMESTAMP_ENFORCER_ADDRESS", address(timestampEnforcer));
         _logEnv("VALUE_ENFORCER_ADDRESS", address(valueEnforcer));

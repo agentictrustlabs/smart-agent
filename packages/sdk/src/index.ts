@@ -5,6 +5,7 @@ export {
   delegationManagerAbi,
   agentRelationshipAbi,
   agentAssertionAbi,
+  classAssertionAbi,
   agentResolverAbi,
   agentTemplateAbi,
   agentIssuerProfileAbi,

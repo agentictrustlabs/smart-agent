@@ -131,6 +131,22 @@ export const agentAssertionAbi = [
   { type: 'event', name: 'AssertionRevoked', inputs: [{ name: 'assertionId', type: 'uint256', indexed: true }, { name: 'revoker', type: 'address', indexed: true }] },
 ] as const
 
+// ─── ClassAssertion ABI (Generic Class-Tagged Assertion Log) ─────────
+
+export const classAssertionAbi = [
+  { type: 'function', name: 'assertClass', inputs: [{ name: 'classId', type: 'bytes32' }, { name: 'subjectId', type: 'bytes32' }, { name: 'validFrom', type: 'uint256' }, { name: 'validUntil', type: 'uint256' }, { name: 'payloadURI', type: 'string' }], outputs: [{ name: 'assertionId', type: 'uint256' }], stateMutability: 'nonpayable' },
+  { type: 'function', name: 'revokeAssertion', inputs: [{ name: 'assertionId', type: 'uint256' }], outputs: [], stateMutability: 'nonpayable' },
+  { type: 'function', name: 'getAssertion', inputs: [{ name: 'assertionId', type: 'uint256' }], outputs: [{ name: '', type: 'tuple', components: [{ name: 'assertionId', type: 'uint256' }, { name: 'classId', type: 'bytes32' }, { name: 'subjectId', type: 'bytes32' }, { name: 'asserter', type: 'address' }, { name: 'validFrom', type: 'uint256' }, { name: 'validUntil', type: 'uint256' }, { name: 'revoked', type: 'bool' }, { name: 'payloadURI', type: 'string' }] }], stateMutability: 'view' },
+  { type: 'function', name: 'getAssertionsByClass', inputs: [{ name: 'classId', type: 'bytes32' }], outputs: [{ name: '', type: 'uint256[]' }], stateMutability: 'view' },
+  { type: 'function', name: 'getAssertionsBySubject', inputs: [{ name: 'subjectId', type: 'bytes32' }], outputs: [{ name: '', type: 'uint256[]' }], stateMutability: 'view' },
+  { type: 'function', name: 'getAssertionsByAsserter', inputs: [{ name: 'asserter', type: 'address' }], outputs: [{ name: '', type: 'uint256[]' }], stateMutability: 'view' },
+  { type: 'function', name: 'assertionCount', inputs: [], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view' },
+  { type: 'function', name: 'isAssertionCurrentlyValid', inputs: [{ name: 'assertionId', type: 'uint256' }], outputs: [{ name: '', type: 'bool' }], stateMutability: 'view' },
+  // Events
+  { type: 'event', name: 'ClassAssertionMade', inputs: [{ name: 'assertionId', type: 'uint256', indexed: true }, { name: 'classId', type: 'bytes32', indexed: true }, { name: 'subjectId', type: 'bytes32', indexed: true }, { name: 'asserter', type: 'address', indexed: false }, { name: 'validFrom', type: 'uint256', indexed: false }, { name: 'validUntil', type: 'uint256', indexed: false }, { name: 'payloadURI', type: 'string', indexed: false }] },
+  { type: 'event', name: 'ClassAssertionRevoked', inputs: [{ name: 'assertionId', type: 'uint256', indexed: true }, { name: 'revoker', type: 'address', indexed: true }] },
+] as const
+
 // ─── AgentRelationshipResolver ABI (Policy Layer) ────────────────────
 
 export const agentResolverAbi = [
