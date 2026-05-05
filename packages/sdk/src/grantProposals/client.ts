@@ -88,22 +88,54 @@ export class GrantProposalClient implements IGrantProposalClient {
     return result
   }
 
-  /** US5 — pre-deadline edit. Stub for now. */
-  async edit(_req: EditGrantProposalRequest): Promise<GrantProposal> {
-    // TODO US5
-    throw new Error('GrantProposalClient.edit: not implemented (US5)')
+  /**
+   * US5 (T053/T057) — pre-deadline edit. Routes through the proposer's MCP
+   * `grant_proposal:edit_pre_deadline` tool. The MCP returns
+   * `{ ok: true, proposal }` on success or
+   * `{ ok: false, error: { kind: 'post-deadline', ... } }` past the deadline;
+   * we surface the proposal on success and throw on the post-deadline error
+   * (per the contract `edit(req): Promise<GrantProposal>` — throws otherwise).
+   */
+  async edit(req: EditGrantProposalRequest): Promise<GrantProposal> {
+    const result = await this.mcp.call<
+      | { ok: true; proposal: GrantProposal }
+      | { ok: false; error: { kind: string; message?: string } }
+    >('self', 'grant_proposal:edit_pre_deadline', {
+      proposalId: req.proposalId,
+      patch: req.patch,
+    })
+    if (!result.ok) {
+      const msg = result.error.message ?? `edit refused: ${result.error.kind}`
+      throw new Error(msg)
+    }
+    return result.proposal
   }
 
-  /** US5 — withdraw. Stub for now. */
-  async withdraw(_proposalId: string): Promise<WithdrawGrantProposalResult> {
-    // TODO US5
-    throw new Error('GrantProposalClient.withdraw: not implemented (US5)')
+  /**
+   * US5 (T054/T057) — withdraw. Routes through the proposer's MCP
+   * `grant_proposal:withdraw` tool. Returns `{ proposal, intentRevertedToExpressed }`
+   * (FR-023) — the intent revert flag drives the proposer-side message after
+   * withdrawal.
+   */
+  async withdraw(proposalId: string): Promise<WithdrawGrantProposalResult> {
+    return this.mcp.call<WithdrawGrantProposalResult>(
+      'self',
+      'grant_proposal:withdraw',
+      { proposalId },
+    )
   }
 
-  /** US5 — clone. Stub for now. */
-  async clone(_sourceProposalId: string): Promise<GrantProposal> {
-    // TODO US5
-    throw new Error('GrantProposalClient.clone: not implemented (US5)')
+  /**
+   * US5 (T055/T057) — clone. Routes through the proposer's MCP
+   * `grant_proposal:clone` tool. Returns the new draft row.
+   */
+  async clone(sourceProposalId: string): Promise<GrantProposal> {
+    const result = await this.mcp.call<{ proposal: GrantProposal }>(
+      'self',
+      'grant_proposal:clone',
+      { sourceProposalId },
+    )
+    return result.proposal
   }
 
   /** US5 — getById; v1 routes through the proposer's MCP read_self. */
@@ -116,19 +148,33 @@ export class GrantProposalClient implements IGrantProposalClient {
     return result.proposals?.find((p) => p.id === id) ?? null
   }
 
-  /** US5 — listForMember. */
-  async listForMember(_agentId: string): Promise<GrantProposal[]> {
+  /**
+   * US5 (T056/T057) — listForMember. Routes through the proposer's MCP
+   * `grant_proposal:list_for_member` tool. Returns proposals across all
+   * statuses sorted by lastEditedAt desc.
+   */
+  async listForMember(agentId: string): Promise<GrantProposal[]> {
     const result = await this.mcp.call<{ proposals: GrantProposal[] }>(
       'self',
-      'grant_proposal:read_self',
-      {},
+      'grant_proposal:list_for_member',
+      { agentId },
     )
     return result.proposals ?? []
   }
 
-  /** US4 — steward-side federation. Stub for now. */
-  async listForRound(_roundId: string, _stewardAgentId: string): Promise<GrantProposal[]> {
-    // TODO US4
-    throw new Error('GrantProposalClient.listForRound: not implemented (US4)')
+  /**
+   * US4 (T052) — steward-side federation. Calls the (org-mcp) tool
+   * `grant_proposal:list_for_round` (v1 same-DB shortcut). The federation
+   * across proposer MCPs lives in the action layer; this typed entry point
+   * mirrors the contract's interface. // TODO(cross-mcp): replace same-DB
+   * read with a federated proposer-MCP fan-out using `proposal:read_for_review`.
+   */
+  async listForRound(roundId: string, _stewardAgentId: string): Promise<GrantProposal[]> {
+    const result = await this.mcp.call<{ proposals: GrantProposal[] }>(
+      'fund',
+      'grant_proposal:list_for_round',
+      { roundId },
+    )
+    return result.proposals ?? []
   }
 }
