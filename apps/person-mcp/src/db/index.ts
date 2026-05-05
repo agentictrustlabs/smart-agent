@@ -325,6 +325,7 @@ sqliteHandle.exec(`
     priority TEXT,
     expires_at TEXT,
     on_chain_assertion_id TEXT,
+    live_acknowledgement_count INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
   );

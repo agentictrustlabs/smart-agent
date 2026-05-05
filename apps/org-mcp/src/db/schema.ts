@@ -123,6 +123,12 @@ export const orgIntents = sqliteTable('org_intents', {
   priority: text('priority'),
   expiresAt: text('expires_at'),
   onChainAssertionId: text('on_chain_assertion_id'),
+  // liveAcknowledgementCount — incremented when a downstream artifact (e.g.,
+  // sa:MatchInitiation per spec 001, sa:GrantProposal per spec 003) creates
+  // a 'pending' acknowledgement against this intent; decremented on withdraw.
+  // Drives the FR-023 invariant: intent reverts to 'expressed' iff this hits 0.
+  // See docs/information-architecture/10-intent-marketplace-classification.md § 3.10.
+  liveAcknowledgementCount: integer('live_acknowledgement_count').notNull().default(0),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 })
