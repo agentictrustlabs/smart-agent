@@ -152,7 +152,7 @@ export function ProposalComposer(props: ProposalComposerProps) {
     startTransition(async () => {
       try {
         const res = await fetch(
-          `/h/${props.hubSlug}/rounds/${props.roundId}/apply`,
+          `/h/${props.hubSlug}/rounds/${props.roundId}/apply/submit`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
