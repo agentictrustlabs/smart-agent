@@ -3,6 +3,8 @@ import { and, eq } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { intents, needs, offerings } from '../db/schema.js'
 import { requirePrincipal } from '../auth/principal-context.js'
+import { emitClassAssertion } from '@smart-agent/sdk'
+import type { Address, Hex } from 'viem'
 
 const mcpText = <T>(v: T) => ({ content: [{ type: 'text' as const, text: JSON.stringify(v) }] })
 
@@ -13,20 +15,54 @@ const mcpText = <T>(v: T) => ({ content: [{ type: 'text' as const, text: JSON.st
 //   off-chain     → MCP only; explicitly never publishable
 const VISIBILITIES = ['private', 'public', 'public-coarse', 'off-chain'] as const
 
-// Stub for the on-chain emit. A future Phase-4 implementation will:
-//   1) build an IntentAssertion payload (subset of fields per visibility)
-//   2) sign with the owner's session signer (looked up from sessions table)
-//   3) submit via DelegationManager.makeAssertion (or equivalent)
-//   4) return the on-chain assertion id
-// Until that ships, this is a no-op that returns null so the row is recorded
-// in MCP without a discoverable side effect.
+// Class IRI for intent assertions. The on-chain → GraphDB sync uses this
+// to know how to render the public mirror.
+const INTENT_ASSERTION_CLASS = 'sa:IntentAssertion'
+
+/**
+ * Emit a class assertion on chain via the ClassAssertion contract. Returns
+ * the on-chain assertionId or null when visibility forbids anchoring.
+ *
+ * Relayer model (v1): we use DEPLOYER_PRIVATE_KEY as the operator key. The
+ * principal is recorded in the payload, not as msg.sender. See
+ * packages/sdk/src/class-assertion-emit.ts for the design rationale.
+ */
 async function emitOnChainAssertion(
-  _principal: string,
-  _kind: string,
-  _payload: Record<string, unknown>,
-  _visibility: string,
+  principal: string,
+  intentKind: string,
+  payload: Record<string, unknown>,
+  visibility: string,
+  intentId: string,
 ): Promise<string | null> {
-  return null
+  if (visibility !== 'public' && visibility !== 'public-coarse') return null
+
+  const rpcUrl = process.env.RPC_URL
+  const contractAddress = process.env.CLASS_ASSERTION_ADDRESS as Address | undefined
+  const operatorKey = process.env.DEPLOYER_PRIVATE_KEY as Hex | undefined
+  if (!rpcUrl || !contractAddress || !operatorKey) {
+    console.warn('[person-mcp/intents] on-chain emit skipped — missing RPC_URL, CLASS_ASSERTION_ADDRESS, or DEPLOYER_PRIVATE_KEY')
+    return null
+  }
+
+  // For public-coarse, redact identifying detail (summary, exact geo).
+  const onChainPayload = visibility === 'public'
+    ? { principal, intentKind, ...payload, visibility }
+    : { principal, intentKind, kind: payload.kind, geoBucket: typeof payload.geo === 'string' ? payload.geo.split('/').slice(0, 2).join('/') : undefined, visibility }
+
+  try {
+    const result = await emitClassAssertion(
+      { rpcUrl, contractAddress, operatorPrivateKey: operatorKey },
+      {
+        classIri: INTENT_ASSERTION_CLASS,
+        subjectIri: `urn:smart-agent:intent:${intentId}`,
+        payload: onChainPayload,
+      },
+    )
+    return result.assertionId
+  } catch (err) {
+    console.error('[person-mcp/intents] on-chain emit failed:', err instanceof Error ? err.message : err)
+    return null
+  }
 }
 
 export const intentsTools = {
@@ -123,7 +159,7 @@ export const intentsTools = {
             summary: args.summary,
             geo: args.geo,
             kind: args.kind,
-          }, visibility)
+          }, visibility, intentId)
         : null
 
       const intentRow = {

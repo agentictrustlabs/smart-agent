@@ -3,21 +3,57 @@ import { and, eq } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { orgIntents, orgNeeds, orgOfferings, orgOutcomes } from '../db/schema.js'
 import { requireOrgPrincipalAny as requireOrgPrincipal } from '../auth/principal-context.js'
+import { emitClassAssertion } from '@smart-agent/sdk'
+import type { Address, Hex } from 'viem'
 
 const mcpText = <T>(v: T) => ({ content: [{ type: 'text' as const, text: JSON.stringify(v) }] })
 
 const VISIBILITIES = ['private', 'public', 'public-coarse', 'off-chain'] as const
 
-// Stub for the on-chain emit. See person-mcp/src/tools/intents.ts for the
-// matching stub. Phase 4 will implement: build IntentAssertion → sign with org
-// session signer → submit via DelegationManager.makeAssertion.
+const INTENT_ASSERTION_CLASS = 'sa:IntentAssertion'
+
+/**
+ * Emit a class assertion on chain via the ClassAssertion contract. Returns
+ * the on-chain assertionId or null when visibility forbids anchoring.
+ *
+ * Mirrors apps/person-mcp/src/tools/intents.ts. Relayer model (v1) uses
+ * DEPLOYER_PRIVATE_KEY; the org's principal is in the payload, not msg.sender.
+ */
 async function emitOnChainAssertion(
-  _orgPrincipal: string,
-  _kind: string,
-  _payload: Record<string, unknown>,
-  _visibility: string,
+  orgPrincipal: string,
+  intentKind: string,
+  payload: Record<string, unknown>,
+  visibility: string,
+  intentId: string,
 ): Promise<string | null> {
-  return null
+  if (visibility !== 'public' && visibility !== 'public-coarse') return null
+
+  const rpcUrl = process.env.RPC_URL
+  const contractAddress = process.env.CLASS_ASSERTION_ADDRESS as Address | undefined
+  const operatorKey = process.env.DEPLOYER_PRIVATE_KEY as Hex | undefined
+  if (!rpcUrl || !contractAddress || !operatorKey) {
+    console.warn('[org-mcp/intents] on-chain emit skipped — missing RPC_URL, CLASS_ASSERTION_ADDRESS, or DEPLOYER_PRIVATE_KEY')
+    return null
+  }
+
+  const onChainPayload = visibility === 'public'
+    ? { orgPrincipal, intentKind, ...payload, visibility }
+    : { orgPrincipal, intentKind, kind: payload.kind, geoBucket: typeof payload.geo === 'string' ? payload.geo.split('/').slice(0, 2).join('/') : undefined, visibility }
+
+  try {
+    const result = await emitClassAssertion(
+      { rpcUrl, contractAddress, operatorPrivateKey: operatorKey },
+      {
+        classIri: INTENT_ASSERTION_CLASS,
+        subjectIri: `urn:smart-agent:org-intent:${intentId}`,
+        payload: onChainPayload,
+      },
+    )
+    return result.assertionId
+  } catch (err) {
+    console.error('[org-mcp/intents] on-chain emit failed:', err instanceof Error ? err.message : err)
+    return null
+  }
 }
 
 export const orgIntentsTools = {
@@ -90,7 +126,7 @@ export const orgIntentsTools = {
             summary: args.summary,
             geo: args.geo,
             kind: args.kind,
-          }, visibility)
+          }, visibility, intentId)
         : null
 
       const intentRow = {

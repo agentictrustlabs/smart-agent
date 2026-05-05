@@ -320,6 +320,18 @@ export type {
   Ranked,
 } from './matchmaker'
 
+// ─── Class-assertion emit (relayed on-chain anchoring) ──────────────
+export {
+  emitClassAssertion,
+  iriToBytes32,
+  defaultPayloadURI,
+} from './class-assertion-emit'
+export type {
+  ClassAssertionEmitConfig,
+  ClassAssertionEmitInput,
+  ClassAssertionEmitResult,
+} from './class-assertion-emit'
+
 // ─── Marketplace delegation scopes ───────────────────────────────────
 export {
   MARKETPLACE_SCOPES,
