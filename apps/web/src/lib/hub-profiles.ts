@@ -255,6 +255,10 @@ export const HUB_PROFILES: HubProfile[] = [
       // circles, house churches, and metro hubs across sister networks).
       { href: '/groups', label: 'Groups', section: 'primary', activePrefixes: ['/groups', '/catalyst/groups', '/catalyst/map'] },
       { href: '/steward', label: 'Steward', section: 'primary', requiresCapability: 'governance', activePrefixes: ['/steward', '/treasury', '/reviews', '/network', '/trust'] },
+      // Spec 003 — Intent Marketplace (Proposal lane). Funding tab surfaces
+      // grant rounds + the proposer's own proposals. Discover page also
+      // links here.
+      { href: '/h/catalyst/rounds', label: 'Funding', section: 'primary', activePrefixes: ['/rounds', '/proposals', '/h/catalyst/rounds', '/h/catalyst/proposals'] },
       { href: '/activity', label: 'Activity', section: 'primary', activePrefixes: ['/activity', '/catalyst/activities', '/activities'] },
       { href: '/agents', label: 'Agents', section: 'admin', requiresCapability: 'agents' },
       { href: '/settings', label: 'Settings', section: 'admin', requiresCapability: 'settings' },

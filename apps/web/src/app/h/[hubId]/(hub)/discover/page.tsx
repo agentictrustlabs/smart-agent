@@ -5,6 +5,8 @@ import { HUB_SLUG_MAP } from '@/lib/hub-routes'
 import { getHubProfile } from '@/lib/hub-profiles'
 import { listNeeds } from '@/lib/actions/needs.action'
 import { listMatches, getHubDiscoverSummary } from '@/lib/actions/discover.action'
+import { listRoundsForViewer } from '@/lib/actions/rounds.action'
+import { listMemberProposals } from '@/lib/actions/grantProposals.action'
 import { NeedCard } from '@/components/discover/NeedCard'
 import { MatchRowCard } from '@/components/discover/MatchRow'
 
@@ -47,6 +49,21 @@ export default async function DiscoverPage({ params }: { params: Promise<{ hubId
   const myMatches = myAgent
     ? await listMatches({ matchedAgent: myAgent, status: 'proposed', hydrate: true, limit: 10 })
     : []
+
+  // Spec 003 — Open grant rounds (mandate-matched against the viewer's intents)
+  // and the viewer's own GrantProposals (drafts + submitted). Best-effort —
+  // when discovery / MCP is unavailable, the section renders an empty state.
+  const openRounds = myAgent
+    ? await listRoundsForViewer({
+        hubId: internalHubId,
+        viewerAgentId: myAgent,
+        deadlineHorizon: 'all',
+        includeClosed: false,
+      }).catch(() => [])
+    : []
+
+  const myProposalsResult = await listMemberProposals().catch(() => ({ proposals: [] }))
+  const myProposals = myProposalsResult.proposals.slice(0, 5)
 
   return (
     <div style={{ paddingBottom: '2rem' }}>
@@ -115,10 +132,86 @@ export default async function DiscoverPage({ params }: { params: Promise<{ hubId
         )}
       </section>
 
+      {/* Open grant rounds (spec 003) */}
+      <section style={{ marginBottom: '1.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+          <h2 style={{ fontSize: '0.7rem', fontWeight: 700, color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0 }}>
+            Open grant rounds
+          </h2>
+          <Link href={`/h/${slug}/rounds`} style={{ fontSize: '0.7rem', color: C.accent, textDecoration: 'none', fontWeight: 600 }}>
+            Browse all →
+          </Link>
+        </div>
+        {openRounds.length === 0 ? (
+          <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, padding: '1rem', fontSize: '0.85rem', color: C.textMuted, textAlign: 'center' }}>
+            No open rounds in this hub.
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            {openRounds.slice(0, 3).map(r => {
+              const matches = (r.matchedIntentIds?.length ?? 0) > 0
+              const deadline = new Date(r.deadline)
+              const daysLeft = Math.max(0, Math.round((deadline.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+              return (
+                <Link key={r.id} href={`/h/${slug}/rounds/${r.id.replace(/^urn:smart-agent:round:/, '')}`} style={{ display: 'block', background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, padding: '0.7rem 0.85rem', textDecoration: 'none' }}>
+                  <div style={{ fontSize: '0.85rem', fontWeight: 600, color: C.text, marginBottom: '0.2rem' }}>
+                    {(r.mandate?.acceptedKinds ?? []).slice(0, 3).join(', ') || 'Open round'}
+                  </div>
+                  <div style={{ fontSize: '0.72rem', color: C.textMuted, display: 'flex', gap: '0.65rem', flexWrap: 'wrap' }}>
+                    <span>ceiling ${r.mandate?.budgetCeiling?.toLocaleString() ?? '—'}</span>
+                    <span>· {r.mandate?.expectedAwards ?? '—'} expected awards</span>
+                    <span>· deadline in {daysLeft}d</span>
+                    {matches && <span style={{ color: C.accent, fontWeight: 600 }}>✓ matches your intent</span>}
+                  </div>
+                </Link>
+              )
+            })}
+          </div>
+        )}
+      </section>
+
+      {/* My grant proposals (spec 003) */}
+      {myProposals.length > 0 && (
+        <section style={{ marginBottom: '1.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+            <h2 style={{ fontSize: '0.7rem', fontWeight: 700, color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0 }}>
+              My grant proposals
+            </h2>
+            <Link href={`/h/${slug}/proposals`} style={{ fontSize: '0.7rem', color: C.accent, textDecoration: 'none', fontWeight: 600 }}>
+              Manage all →
+            </Link>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            {myProposals.map(p => {
+              const idShort = p.id.replace(/^urn:smart-agent:grant-proposal:/, '')
+              return (
+                <Link key={p.id} href={`/h/${slug}/proposals/${idShort}`} style={{ display: 'block', background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, padding: '0.7rem 0.85rem', textDecoration: 'none' }}>
+                  <div style={{ fontSize: '0.85rem', fontWeight: 600, color: C.text, marginBottom: '0.2rem' }}>
+                    {(p.budget?.lineItems?.[0]?.name) ?? idShort}
+                    <span style={{ marginLeft: '0.5rem', fontSize: '0.65rem', fontWeight: 600, padding: '0.08rem 0.45rem', borderRadius: 4, background: p.status === 'submitted' ? C.accent : C.accentLight, color: p.status === 'submitted' ? '#fff' : C.accent, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      {p.status}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '0.72rem', color: C.textMuted }}>
+                    Budget ${p.budget?.total?.toLocaleString() ?? '—'} · {p.milestones?.length ?? 0} milestones
+                  </div>
+                </Link>
+              )
+            })}
+          </div>
+        </section>
+      )}
+
       {/* Footer CTAs */}
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
         <Link href={`/h/${slug}/needs`} style={{ display: 'inline-block', padding: '0.55rem 1rem', background: C.accent, color: '#fff', borderRadius: 8, fontWeight: 600, fontSize: '0.85rem', textDecoration: 'none' }}>
           All open needs ({allOpenNeeds.length})
+        </Link>
+        <Link href={`/h/${slug}/rounds`} style={{ display: 'inline-block', padding: '0.55rem 1rem', background: '#fff', color: C.accent, border: `1px solid ${C.accent}`, borderRadius: 8, fontWeight: 600, fontSize: '0.85rem', textDecoration: 'none' }}>
+          Grant rounds
+        </Link>
+        <Link href={`/h/${slug}/proposals`} style={{ display: 'inline-block', padding: '0.55rem 1rem', background: '#fff', color: C.accent, border: `1px solid ${C.accent}`, borderRadius: 8, fontWeight: 600, fontSize: '0.85rem', textDecoration: 'none' }}>
+          My proposals
         </Link>
         <Link href={`/h/${slug}/offerings`} style={{ display: 'inline-block', padding: '0.55rem 1rem', background: '#fff', color: C.accent, border: `1px solid ${C.accent}`, borderRadius: 8, fontWeight: 600, fontSize: '0.85rem', textDecoration: 'none' }}>
           My offerings
