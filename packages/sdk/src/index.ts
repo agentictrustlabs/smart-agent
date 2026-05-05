@@ -349,3 +349,18 @@ export type {
   MarketplaceScopeKey,
   MarketplaceScopeString,
 } from './marketplace-scopes'
+
+// ─── Rounds (spec 003 — Intent Marketplace, Proposal Lane) ──────────
+export { RoundClient } from './rounds'
+export type {
+  IRoundClient,
+  RoundDiscoveryReader,
+  Round,
+  RoundListItem,
+  RoundListFilters,
+  RoundMandate,
+  RoundMilestoneTemplate,
+  RoundValidatorRequirements,
+  RoundPriorStats,
+  ReportingCadence,
+} from './rounds'

@@ -36,64 +36,85 @@ function escapeLit(value: string): string {
  *   {
  *     round, id, fundAgentId, mandate, milestoneTemplate,
  *     validatorRequirements, reportingCadence, deadline, decisionDate,
- *     requiredCredentials, visibility, proposalsReceived,
- *     onChainAssertionId
+ *     requiredCredentials, visibility, addressedApplicants,
+ *     proposalsReceived, onChainAssertionId
  *   }
  *
  * The mandate-match join + JSON unpacking happens in the discovery
- * service result parser, not here — SPARQL only narrows the candidate
- * set.
+ * service result parser / action layer, not here — SPARQL only narrows
+ * the candidate set on what it can match cheaply (deadline window,
+ * search substring, visibility-or-addressed). Budget range and the
+ * full mandate-overlap test (kind / geo containment) are applied
+ * post-parse in the action layer (T032) because the mandate is a JSON
+ * string literal — we can do `CONTAINS` substring filtering but not
+ * structured numeric / array filtering.
+ *
+ * FR-001 / FR-002 / FR-003 implementation:
+ *   - FR-001 (mandate-match badging): the `viewerIntents` arg is
+ *     accepted here for future use; the actual overlap is computed
+ *     post-parse in the action layer (cheaper + cleaner than building
+ *     N SPARQL filter clauses).
+ *   - FR-002 (filtering): domain (substring), deadline horizon,
+ *     budget range, free-text search, includeClosed toggle.
+ *     - domain / search / deadline: filtered server-side here.
+ *     - budgetMin/Max: post-parse (mandate is JSON literal).
+ *     - includeClosed: drives the `RoundClosedAssertion EXISTS`
+ *       FILTER below.
+ *   - FR-003 (private-round visibility gate): the SPARQL emits
+ *     `addressedApplicants` as a JSON literal; the action layer
+ *     drops private rounds whose addressed-applicants list does not
+ *     include the viewer. (For v1, federated reads via
+ *     `round:read_addressed_list` are deferred — public mirror is
+ *     authoritative for the visible-or-addressed test.)
  */
 export function listRoundsQuery(
   filters: RoundListFilters,
-  /** Pre-fetched viewer-intent JSON literals to feed into the mandate-match filter. */
+  /** Pre-fetched viewer-intent JSON literals — accepted for future use; current
+   *  implementation computes the mandate-match badge in the action layer. */
   viewerIntents: ReadonlyArray<{ id: string; kind?: string; geo?: string }> = [],
 ): string {
   const conds: string[] = []
 
   if (filters.search) {
     const s = escapeLit(filters.search.toLowerCase())
+    // Free-text across mandate / fund name / description fields. We use
+    // CONTAINS over the JSON-literal string form, which is loose but
+    // cheap. False positives are filtered out by the renderer when the
+    // user clicks through.
     conds.push(`FILTER(
-      CONTAINS(LCASE(STR(?mandate)), "${s}") ||
+      CONTAINS(LCASE(STR(COALESCE(?mandate, ""))), "${s}") ||
       CONTAINS(LCASE(STR(COALESCE(?fundName, ""))), "${s}")
     )`)
   }
 
-  if (filters.budgetMin !== undefined || filters.budgetMax !== undefined) {
-    // Mandate is stored as a JSON literal; we can't filter by an inner
-    // numeric here. Caller does the budget range check after JSON
-    // parsing in the discovery service.
-  }
+  // Budget range — applied post-parse in the action layer because the
+  // mandate is stored as a JSON literal (`budgetCeiling` lives inside
+  // the JSON string, not as a separate triple). The bounds reach the
+  // result parser via the filters object directly.
 
   if (filters.deadlineHorizon && filters.deadlineHorizon !== 'all') {
     // Server-side deadline filter — the deadline is xsd:dateTime so we
     // can compare directly. The exact horizon math (e.g., this-week)
-    // happens in the SPARQL by computing NOW + offset days.
+    // computes NOW + offset days using xsd:duration.
     const days =
       filters.deadlineHorizon === 'this-week' ? 7 :
       filters.deadlineHorizon === 'this-month' ? 30 : 90
     conds.push(
-      `FILTER(?deadlineDt <= (NOW() + "P${days}D"^^xsd:duration))`,
+      `FILTER(xsd:dateTime(?deadline) <= (NOW() + "P${days}D"^^xsd:duration))`,
     )
-    conds.push(`FILTER(?deadlineDt >= NOW())`)
+    conds.push(`FILTER(xsd:dateTime(?deadline) >= NOW())`)
   } else if (!filters.includeClosed) {
-    conds.push(`FILTER(?deadlineDt >= NOW())`)
+    conds.push(`FILTER(xsd:dateTime(?deadline) >= NOW())`)
   }
 
-  // Visibility gate: include 'public' always; 'private' is filtered to
-  // those whose addressedApplicants includes the viewer (resolved in the
-  // action layer — SPARQL only sees the coarse anchor for private rounds).
-  // For the SPARQL we include both visibilities and let the parser drop
-  // any private rounds the viewer is not addressed to.
-
-  // Optional viewer-intent filter — used for mandate-match badging. We
-  // don't restrict the result set (FR-001 says "rounds eligible for your
-  // intent" but the UI is browse-with-badge; non-matching rounds remain
-  // visible per spec.md). The intent list is parameterized so the
-  // discovery service can post-process matches in TS.
+  // viewerIntents accepted for future use (the mandate-match overlap is
+  // computed post-parse in the action layer because the mandate is a
+  // JSON literal — see FR-001 / Research R2).
   void viewerIntents
 
-  // Domain filter — narrows by mandate.acceptedKinds JSON-literal substring.
+  // Domain filter — narrows by mandate JSON-literal substring. The
+  // mandate JSON contains `acceptedKinds: ["..."]` so a CONTAINS over
+  // the serialized form is sufficient for the index narrow.
   if (filters.domain) {
     const d = escapeLit(filters.domain)
     conds.push(`FILTER(CONTAINS(STR(?mandate), "${d}"))`)
@@ -107,7 +128,6 @@ SELECT ?round ?roundId ?fundAgentId ?fundName
        ?reportingCadence ?deadline ?decisionDate
        ?requiredCredentials ?visibility ?addressedApplicants
        ?proposalsReceived ?onChainAssertionId
-       (?deadline AS ?deadlineDt)
 WHERE {
   ${g()} {
     ?asn a sa:RoundOpenedAssertion ;

@@ -341,24 +341,52 @@ export class DiscoveryService {
   /**
    * Build a `RoundListItem[]` for the rounds index page.
    *
-   * The mandate-match `matchedIntentIds` array is populated by the caller
-   * (the action layer that knows the viewer's intent kinds + geo); this
-   * method narrows the SPARQL candidate set and parses bodies but does
-   * NOT compute the overlap. The full overlap test lives in the action
-   * layer per US1 / T032.
+   * Pipeline:
+   *   1. SPARQL narrows the candidate set on what it can match server-side
+   *      (deadline horizon, free-text, domain substring, includeClosed).
+   *   2. Result rows are parsed into `Round` shape (JSON literals decoded).
+   *   3. Budget range (FR-002) is applied here in TS — the mandate is a
+   *      JSON string literal so we can't filter `budgetCeiling` server-side.
+   *   4. Visibility gate (FR-003) drops private rounds whose
+   *      `addressedApplicants` does not include `viewerAgentId`.
+   *
+   * The mandate-match `matchedIntentIds` array stays empty here; the
+   * action layer computes the overlap because it has the viewer's
+   * intent kinds + geo to compare against. See US1 / T032.
    */
   async listRounds(filters: RoundListFilters): Promise<RoundListItem[]> {
     const sparql = listRoundsQuery(filters, [])
     const results = await this.client.query(sparql)
-    return results.results.bindings.map((row) => {
+    const viewer = filters.viewerAgentId.toLowerCase()
+    const items: RoundListItem[] = []
+    for (const row of results.results.bindings) {
       const r = row as unknown as Record<string, { value: string }>
       const round = parseRoundRow(r)
-      return {
+
+      // FR-003: private-round visibility gate. The viewer must be in
+      // the addressedApplicants list for the round to be visible.
+      if (round.visibility === 'private') {
+        const list = (round.addressedApplicants ?? []).map(a => a.toLowerCase())
+        if (!list.includes(viewer)) continue
+      }
+
+      // FR-002: budget range filter applied post-parse.
+      if (
+        filters.budgetMin !== undefined &&
+        round.mandate.budgetCeiling < filters.budgetMin
+      ) continue
+      if (
+        filters.budgetMax !== undefined &&
+        round.mandate.budgetCeiling > filters.budgetMax
+      ) continue
+
+      items.push({
         ...round,
         matchedIntentIds: [],
         warnings: [],
-      } as RoundListItem
-    })
+      })
+    }
+    return items
   }
 
   /**
@@ -366,18 +394,25 @@ export class DiscoveryService {
    * appear in the public mirror (or has been closed and `RoundClosedAssertion`
    * was emitted but the close has not yet been re-mirrored).
    *
-   * Private-round addressee gating happens in the action layer
-   * (`apps/web/src/app/h/[hubId]/(hub)/rounds/[roundId]/page.tsx` per US2).
-   *
-   * The viewerAgentId arg is reserved for future visibility gating; v1
-   * does not branch on it server-side.
+   * FR-006: private-round addressee gate. When the round's visibility
+   * is `'private'`, the method returns null unless `viewerAgentId`
+   * appears in the round's `addressedApplicants` list. The action
+   * layer renders a friendly "you are not addressed for this round"
+   * 403-style page when this returns null + the roundId clearly
+   * exists.
    */
-  async getRoundDetail(roundId: string, _viewerAgentId: string): Promise<Round | null> {
+  async getRoundDetail(roundId: string, viewerAgentId: string): Promise<Round | null> {
     const sparql = roundDetailQuery(roundId)
     const results = await this.client.query(sparql)
     const row = results.results.bindings[0]
     if (!row) return null
-    return parseRoundRow(row as unknown as Record<string, { value: string }>)
+    const round = parseRoundRow(row as unknown as Record<string, { value: string }>)
+    if (round.visibility === 'private') {
+      const viewer = viewerAgentId.toLowerCase()
+      const list = (round.addressedApplicants ?? []).map(a => a.toLowerCase())
+      if (!list.includes(viewer)) return null
+    }
+    return round
   }
 
   // ─── Raw Query Escape Hatch ───────────────────────────────────────

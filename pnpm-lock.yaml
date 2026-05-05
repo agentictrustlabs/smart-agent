@@ -587,6 +587,9 @@ importers:
 
   packages/sdk:
     dependencies:
+      '@smart-agent/discovery':
+        specifier: workspace:*
+        version: link:../discovery
       '@smart-agent/types':
         specifier: workspace:*
         version: link:../types

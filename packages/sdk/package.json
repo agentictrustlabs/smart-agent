@@ -11,6 +11,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
+    "@smart-agent/discovery": "workspace:*",
     "@smart-agent/types": "workspace:*",
     "viem": "^2.21.0"
   },
