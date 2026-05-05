@@ -25,6 +25,8 @@
 import { getPublicClient, getEdgesBySubject, getEdge, getEdgeRoles } from '@/lib/contracts'
 import {
   agentAccountResolverAbi,
+  classAssertionAbi,
+  iriToBytes32,
   ATL_CONTROLLER, ATL_CAPABILITY, ATL_SUPPORTED_TRUST,
   ATL_A2A_ENDPOINT, ATL_MCP_SERVER,
   ATL_PRIMARY_NAME, ATL_NAME_LABEL,
@@ -358,12 +360,24 @@ export async function syncOnChainToGraphDB(): Promise<{ success: boolean; messag
       const tboxDir = path.resolve(process.cwd(), '../../docs/ontology/tbox')
       const cboxDir = path.resolve(process.cwd(), '../../docs/ontology/cbox')
 
-      // Collect T-Box files
-      if (fs.existsSync(tboxDir)) {
-        const tboxFiles = fs.readdirSync(tboxDir).filter((f: string) => f.endsWith('.ttl'))
+      // Recursively collect *.ttl from a dir (handles tbox/shacl/)
+      const findTurtleFiles = (dir: string): string[] => {
+        if (!fs.existsSync(dir)) return []
+        const out: string[] = []
+        for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+          const full = path.join(dir, entry.name)
+          if (entry.isDirectory()) out.push(...findTurtleFiles(full))
+          else if (entry.isFile() && entry.name.endsWith('.ttl')) out.push(full)
+        }
+        return out
+      }
+
+      // Collect T-Box files (recursive — picks up tbox/shacl/)
+      const tboxFiles = findTurtleFiles(tboxDir)
+      if (tboxFiles.length > 0) {
         let tboxTurtle = ''
         for (const file of tboxFiles) {
-          tboxTurtle += fs.readFileSync(path.join(tboxDir, file), 'utf-8') + '\n'
+          tboxTurtle += fs.readFileSync(file, 'utf-8') + '\n'
         }
         if (tboxTurtle) {
           await client.uploadTurtle(tboxTurtle, TBOX_GRAPH)
@@ -371,12 +385,12 @@ export async function syncOnChainToGraphDB(): Promise<{ success: boolean; messag
         }
       }
 
-      // Collect C-Box files
-      if (fs.existsSync(cboxDir)) {
-        const cboxFiles = fs.readdirSync(cboxDir).filter((f: string) => f.endsWith('.ttl'))
+      // Collect C-Box files (recursive)
+      const cboxFiles = findTurtleFiles(cboxDir)
+      if (cboxFiles.length > 0) {
         let cboxTurtle = ''
         for (const file of cboxFiles) {
-          cboxTurtle += fs.readFileSync(path.join(cboxDir, file), 'utf-8') + '\n'
+          cboxTurtle += fs.readFileSync(file, 'utf-8') + '\n'
         }
         if (cboxTurtle) {
           await client.uploadTurtle(cboxTurtle, CBOX_GRAPH)
@@ -388,10 +402,131 @@ export async function syncOnChainToGraphDB(): Promise<{ success: boolean; messag
     }
 
     console.log(`[ontology-sync] Sync complete: ${agentCount} agents + schema uploaded.`)
+
+    // Mirror ClassAssertion events (intent-marketplace + sa:IntentAssertion)
+    try {
+      const assertionTurtle = await emitClassAssertionsTurtle()
+      if (assertionTurtle) {
+        await client.uploadTurtle(assertionTurtle, DATA_GRAPH)
+        const ct = (assertionTurtle.match(/ a sa:(IntentAssertion|MatchInitiationAssertion|PledgeAssertion|PoolPledgedTotalAssertion|RoundOpenedAssertion|RoundClosedAssertion)\b/g) ?? []).length
+        console.log(`[ontology-sync] Class assertions mirrored: ${ct}`)
+      }
+    } catch (caErr) {
+      console.warn('[ontology-sync] Class-assertion mirror failed (non-fatal):', caErr instanceof Error ? caErr.message : caErr)
+    }
+
     return { success: true, message: `Uploaded ${agentCount} agents + ontology schema to GraphDB`, agentCount }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'GraphDB upload failed'
     console.error(`[ontology-sync] Upload failed: ${message}`)
     return { success: false, message, agentCount }
   }
+}
+
+// ---------------------------------------------------------------------------
+// Class Assertion Mirror (intent-marketplace + sa:IntentAssertion)
+// ---------------------------------------------------------------------------
+
+/** Class IRIs we know how to mirror; classId on chain is keccak256(IRI). */
+const KNOWN_ASSERTION_CLASSES: ReadonlyArray<{ iri: string; localName: string }> = [
+  { iri: 'sa:IntentAssertion', localName: 'IntentAssertion' },
+  { iri: 'sa:MatchInitiationAssertion', localName: 'MatchInitiationAssertion' },
+  { iri: 'sa:PledgeAssertion', localName: 'PledgeAssertion' },
+  { iri: 'sa:PoolPledgedTotalAssertion', localName: 'PoolPledgedTotalAssertion' },
+  { iri: 'sa:RoundOpenedAssertion', localName: 'RoundOpenedAssertion' },
+  { iri: 'sa:RoundClosedAssertion', localName: 'RoundClosedAssertion' },
+]
+
+function assertionIRI(id: bigint): string {
+  return iri(`${SA}assertion/${id.toString()}`)
+}
+
+/**
+ * Reads ClassAssertionMade events from the deployed ClassAssertion contract
+ * and renders each as a Turtle node in the public mirror graph.
+ *
+ * Per-class structured fields (e.g., MatchInitiation's viewedIntent /
+ * candidateIntent) come from parsing the on-chain payloadURI — left to
+ * each spec's user-story implementation. This Phase-0 mirror only ships
+ * the basic node skeleton (type, asserter, validity window, payloadURI).
+ */
+export async function emitClassAssertionsTurtle(): Promise<string> {
+  const contractAddr = process.env.CLASS_ASSERTION_ADDRESS as `0x${string}` | undefined
+  if (!contractAddr) return ''
+
+  const client = getPublicClient()
+  const lines: string[] = []
+
+  lines.push(`@prefix sa:   <${SA}> .`)
+  lines.push(`@prefix eth:  <${ETH}> .`)
+  lines.push(`@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .`)
+  lines.push(`@prefix prov: <http://www.w3.org/ns/prov#> .`)
+  lines.push(`@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .`)
+  lines.push('')
+
+  const classMap = new Map<string, string>()
+  for (const c of KNOWN_ASSERTION_CLASSES) {
+    classMap.set(iriToBytes32(c.iri).toLowerCase(), c.localName)
+  }
+
+  // Read total assertion count, iterate, materialise each one.
+  let count = 0n
+  try {
+    count = (await client.readContract({
+      address: contractAddr,
+      abi: classAssertionAbi,
+      functionName: 'assertionCount',
+      args: [],
+    })) as bigint
+  } catch (err) {
+    console.warn('[ontology-sync] ClassAssertion contract unreachable:', err instanceof Error ? err.message : err)
+    return ''
+  }
+
+  if (count === 0n) return ''
+
+  for (let i = 0n; i < count; i += 1n) {
+    let rec: {
+      assertionId: bigint
+      classId: `0x${string}`
+      subjectId: `0x${string}`
+      asserter: `0x${string}`
+      validFrom: bigint
+      validUntil: bigint
+      revoked: boolean
+      payloadURI: string
+    }
+    try {
+      rec = (await client.readContract({
+        address: contractAddr,
+        abi: classAssertionAbi,
+        functionName: 'getAssertion',
+        args: [i],
+      })) as typeof rec
+    } catch {
+      continue
+    }
+    if (rec.revoked) continue
+
+    const localName = classMap.get(rec.classId.toLowerCase())
+    if (!localName) continue // skip unknown classes
+
+    lines.push(`${assertionIRI(rec.assertionId)} a sa:${localName} ;`)
+    lines.push(`  sa:onChainAssertionId "${rec.assertionId.toString()}" ;`)
+    lines.push(`  sa:classId "${rec.classId}" ;`)
+    lines.push(`  sa:subjectId "${rec.subjectId}" ;`)
+    lines.push(`  prov:wasAssociatedWith ${accountIRI(rec.asserter)} ;`)
+    if (rec.validFrom > 0n) {
+      const iso = new Date(Number(rec.validFrom) * 1000).toISOString()
+      lines.push(`  prov:generatedAtTime ${litTyped(iso, 'http://www.w3.org/2001/XMLSchema#dateTime')} ;`)
+    }
+    if (rec.validUntil > 0n) {
+      const iso = new Date(Number(rec.validUntil) * 1000).toISOString()
+      lines.push(`  sa:validUntil ${litTyped(iso, 'http://www.w3.org/2001/XMLSchema#dateTime')} ;`)
+    }
+    lines.push(`  sa:payloadURI ${lit(rec.payloadURI)} .`)
+    lines.push('')
+  }
+
+  return lines.join('\n')
 }
