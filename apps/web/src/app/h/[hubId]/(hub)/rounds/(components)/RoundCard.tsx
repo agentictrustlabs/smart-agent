@@ -171,7 +171,7 @@ export function RoundCard({
         {round.mandate.acceptedGeo?.length > 0 && <> · {round.mandate.acceptedGeo.slice(0, 2).join(', ')}</>}
       </div>
 
-      {round.basis && <RankCueRow basis={round.basis as RankBasis} domainMatch={round.domainMatch ?? false} /> }
+      {round.basis ? <RankCueRow basis={round.basis as RankBasis} domainMatch={round.domainMatch ?? false} /> : null}
 
       <div style={{ display: 'flex', gap: '0.85rem', flexWrap: 'wrap', fontSize: '0.78rem' }}>
         <span style={{ color: C.text }}>
