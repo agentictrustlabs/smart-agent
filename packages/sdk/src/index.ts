@@ -318,3 +318,21 @@ export type {
   Rankable,
   Ranked,
 } from './matchmaker'
+
+// ─── Marketplace delegation scopes ───────────────────────────────────
+export {
+  MARKETPLACE_SCOPES,
+  SPEC_001_SCOPES,
+  SPEC_002_SCOPES,
+  SPEC_003_SCOPES,
+  findScope,
+  isMarketplaceScope,
+  scopesOfKind,
+  scopesForSpec,
+} from './marketplace-scopes'
+export type {
+  ScopeKind,
+  ScopeDescriptor,
+  MarketplaceScopeKey,
+  MarketplaceScopeString,
+} from './marketplace-scopes'
