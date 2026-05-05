@@ -182,7 +182,7 @@ export async function proposerSideSignals(
 }
 
 // ───────────────────────────────────────────────────────────────────────
-// Steward-side signals (Q2) — TODO US4
+// Steward-side signals (Q2)
 // ───────────────────────────────────────────────────────────────────────
 
 export interface StewardSideInput {
@@ -197,20 +197,78 @@ export interface StewardSideSignals {
 }
 
 /**
- * Steward-side signals. Stub for US4 (T047). Returns a placeholder basis so
- * the type surface is stable; US4 wires `discovery.getHopDistance` and the
- * `proposerPriorOutcomesQuery` in `priorStats.ts`.
+ * Build a proposer-prior-outcomes SPARQL query inline. Mirrors
+ * `packages/discovery/src/queries/priorStats.ts` `proposerPriorOutcomesQuery`,
+ * repeated here so the side-signals module doesn't take a runtime dep on
+ * `@smart-agent/discovery`.
+ *
+ * In v1 there are no `sa:AwardAssertion` triples in GraphDB so this query
+ * always returns (0, 0); the shape is stable. The basis falls into the
+ * Laplace-smoothed cold-start (outcomeScore = 0.5).
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function buildProposerOutcomesSparql(proposerAgentId: string): string {
+  const a = proposerAgentId.toLowerCase()
+  return `
+PREFIX sa: <https://smart-agent.io/ontology#>
+SELECT (COUNT(DISTINCT ?fulfilledAward) AS ?fulfilled)
+       (COUNT(DISTINCT ?abandonedAward) AS ?abandoned)
+WHERE {
+  OPTIONAL {
+    ?fulfilledAward a sa:AwardAssertion ;
+                    sa:awardedTo ?proposer ;
+                    sa:awardOutcome "fulfilled" .
+    ?proposer sa:onChainAddress ?pa .
+    FILTER(LCASE(?pa) = "${a}")
+  }
+  OPTIONAL {
+    ?abandonedAward a sa:AwardAssertion ;
+                    sa:awardedTo ?proposer2 ;
+                    sa:awardOutcome "abandoned" .
+    ?proposer2 sa:onChainAddress ?pa2 .
+    FILTER(LCASE(?pa2) = "${a}")
+  }
+}`
+}
+
+/**
+ * Compute steward-side signals (Q2). Used when stewards triage incoming
+ * proposals on a round:
+ *   proximityHops = hops(fundAgent → proposerAgent)
+ *   priorOutcomes = proposer's own (fulfilled, abandoned) ratio.
+ *
+ * Returns a `RankBasis` ready to feed `rank()`.
+ */
 export async function stewardSideSignals(
   input: StewardSideInput,
-  _discovery: SideSignalsDiscovery,
+  discovery: SideSignalsDiscovery,
 ): Promise<StewardSideSignals> {
-  // TODO US4 (T047) — wire hops + proposerPriorOutcomesQuery.
+  // 1. proximityHops — fund → proposer.
+  let proximityHops: number
+  if (!input.fundAgentId || !input.proposerAgentId) {
+    proximityHops = 6
+  } else {
+    const hops = await discovery.getHopDistance(input.fundAgentId, input.proposerAgentId)
+    proximityHops = hops ?? 6
+  }
+
+  // 2. priorOutcomes — proposer's own historical fulfilled/abandoned counts.
+  let priorOutcomes = { fulfilled: 0, abandoned: 0 }
+  if (input.proposerAgentId) {
+    try {
+      const res = await discovery.rawQuery(
+        buildProposerOutcomesSparql(input.proposerAgentId),
+      )
+      priorOutcomes = parseOutcomes(res.results.bindings)
+    } catch {
+      // Discovery unavailable → leave at 0/0 → cold-start fallback.
+    }
+  }
+
   const basis = computeBasis({
-    proximityHops: 6,
-    priorOutcomes: { fulfilled: 0, abandoned: 0 },
+    proximityHops,
+    priorOutcomes,
   })
+
   return {
     fundAgentId: input.fundAgentId,
     proposerAgentId: input.proposerAgentId,

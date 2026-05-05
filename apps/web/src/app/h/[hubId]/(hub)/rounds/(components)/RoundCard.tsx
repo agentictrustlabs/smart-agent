@@ -19,7 +19,8 @@
  */
 
 import Link from 'next/link'
-import type { RoundListItem } from '@smart-agent/sdk'
+import type { RoundListItem, RankBasis } from '@smart-agent/sdk'
+import { rankCue } from '@smart-agent/sdk'
 
 const C = {
   text: '#5c4a3a',
@@ -170,6 +171,8 @@ export function RoundCard({
         {round.mandate.acceptedGeo?.length > 0 && <> · {round.mandate.acceptedGeo.slice(0, 2).join(', ')}</>}
       </div>
 
+      {round.basis && <RankCueRow basis={round.basis as RankBasis} domainMatch={round.domainMatch ?? false} /> }
+
       <div style={{ display: 'flex', gap: '0.85rem', flexWrap: 'wrap', fontSize: '0.78rem' }}>
         <span style={{ color: C.text }}>
           <strong style={{ color: C.accent, fontWeight: 700 }}>Deadline:</strong> {dl.rel}
@@ -189,5 +192,52 @@ export function RoundCard({
         )}
       </div>
     </Link>
+  )
+}
+
+/**
+ * One-line rank cue with an expand affordance — FR-018. The `<details>` is
+ * a native HTML element so it works without a `'use client'` boundary
+ * (server-rendered, opens with native browser interactivity).
+ */
+function RankCueRow({ basis, domainMatch }: { basis: RankBasis; domainMatch: boolean }) {
+  const cueText = rankCue(basis)
+  return (
+    <details style={{ marginBottom: '0.4rem' }}>
+      <summary style={{
+        listStyle: 'none',
+        cursor: 'pointer',
+        fontSize: '0.7rem',
+        color: C.textMuted,
+        display: 'inline-flex',
+        gap: '0.35rem',
+        alignItems: 'center',
+      }}>
+        <span style={{ color: C.accent, fontWeight: 600 }}>Why rank:</span>
+        <span>{cueText}</span>
+        {!domainMatch && !basis.isColdStart && (
+          <span style={{ fontSize: '0.62rem', color: C.textMuted, fontStyle: 'italic' }}>
+            (fund-wide)
+          </span>
+        )}
+      </summary>
+      <div style={{ marginTop: '0.3rem', fontSize: '0.7rem', color: C.text, paddingLeft: '0.5rem' }}>
+        <div>
+          <strong style={{ color: C.accent }}>Proximity:</strong> {basis.proximityHops} hop{basis.proximityHops === 1 ? '' : 's'}
+          <span style={{ color: C.textMuted }}> · score {basis.proximityScore.toFixed(2)}</span>
+        </div>
+        <div>
+          <strong style={{ color: C.accent }}>Outcomes:</strong>{' '}
+          {basis.isColdStart
+            ? 'no prior history yet'
+            : `${basis.priorOutcomes.fulfilled} fulfilled / ${basis.priorOutcomes.abandoned} abandoned`}
+          <span style={{ color: C.textMuted }}> · score {basis.outcomeScore.toFixed(2)}</span>
+        </div>
+        <div>
+          <strong style={{ color: C.accent }}>Composite:</strong> {basis.composite.toFixed(3)}
+          <span style={{ color: C.textMuted }}> · 0.6 × proximity + 0.4 × outcome</span>
+        </div>
+      </div>
+    </details>
   )
 }

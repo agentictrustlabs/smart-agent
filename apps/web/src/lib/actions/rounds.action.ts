@@ -14,7 +14,13 @@
  */
 
 import { DiscoveryService } from '@smart-agent/discovery'
-import { RoundClient } from '@smart-agent/sdk'
+import {
+  RoundClient,
+  proposerSideSignals,
+  rank,
+  type RankBasis,
+  type SideSignalsDiscovery,
+} from '@smart-agent/sdk'
 import type {
   Round,
   RoundListFilters,
@@ -199,7 +205,8 @@ export async function listRoundsForViewer(
     expressedBy: input.viewerAgentId,
   })
 
-  return rounds.map((r) => {
+  // ─── Mandate-match overlap + soft warnings ────────────────────────────
+  const withMatch: RoundListItem[] = rounds.map((r) => {
     const overlap = computeMatch(r, viewerIntents)
     return {
       ...r,
@@ -207,6 +214,67 @@ export async function listRoundsForViewer(
       warnings: overlap.warnings,
     }
   })
+
+  // ─── US4 (T049) — proposer-side ranking ──────────────────────────────
+  // Hydrate each round with `proposerSideSignals` (hops to fund agent +
+  // fund's prior outcomes filtered by the proposer's intent domains;
+  // falls back to fund-wide when no domain match exists). Tie-break on
+  // `round.deadline` desc per FR-019 / Research R10. Best-effort — when
+  // discovery is unavailable, we surface the unranked list so the page
+  // still renders.
+  const proposerIntentDomains = Array.from(
+    new Set(
+      viewerIntents
+        .map((it) => it.kind?.toLowerCase())
+        .filter((k): k is string => typeof k === 'string' && k.length > 0),
+    ),
+  )
+
+  let ranked: RoundListItem[] = withMatch
+  try {
+    const sideDiscovery = discovery as unknown as SideSignalsDiscovery
+    const enriched = await Promise.all(
+      withMatch.map(async (r) => {
+        try {
+          const signals = await proposerSideSignals(
+            {
+              proposerAgentId: input.viewerAgentId,
+              roundId: r.id,
+              proposerIntentDomains,
+            },
+            sideDiscovery,
+          )
+          return { round: r, basis: signals.basis, domainMatch: signals.domainMatch }
+        } catch {
+          return { round: r, basis: undefined, domainMatch: false }
+        }
+      }),
+    )
+    const rankInput = enriched.map(({ round, basis, domainMatch }) => ({
+      item: { round, basis, domainMatch },
+      signals: basis
+        ? {
+            proximityHops: basis.proximityHops,
+            priorOutcomes: basis.priorOutcomes,
+            recencyKey: round.deadline,
+          }
+        : {
+            proximityHops: 6,
+            priorOutcomes: { fulfilled: 0, abandoned: 0 },
+            recencyKey: round.deadline,
+          },
+    }))
+    const result = rank(rankInput)
+    ranked = result.map((r) => ({
+      ...r.item.round,
+      basis: (r.item.basis ?? r.basis) as RankBasis,
+      domainMatch: r.item.domainMatch ?? false,
+    }))
+  } catch {
+    /* discovery unavailable — keep unranked. */
+  }
+
+  return ranked
 }
 
 // ---------------------------------------------------------------------------

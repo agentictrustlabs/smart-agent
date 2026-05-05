@@ -168,6 +168,18 @@ export type RoundListItem = Round & {
   matchedIntentIds: string[]
   /** Soft signals; see FR-001 + Research R2. */
   warnings: Array<'budget-below-intent' | 'deadline-imminent'>
+  /**
+   * US4 (T049) — proposer-side basis snapshot driving the rank cue. Optional
+   * because round listings can be assembled without rank data (e.g., when the
+   * action layer skips ranking on cold-start).
+   *
+   * The shape matches `RankBasis` from `@smart-agent/sdk/matchmaker`; we use
+   * `unknown` here to keep `@smart-agent/discovery` free of a runtime
+   * dependency on the sdk. Consumers cast to `RankBasis` at use sites.
+   */
+  basis?: unknown
+  /** True when outcomes were filtered by the proposer's intent domains. */
+  domainMatch?: boolean
 }
 
 // ---------------------------------------------------------------------------
