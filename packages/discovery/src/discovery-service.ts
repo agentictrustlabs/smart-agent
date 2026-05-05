@@ -22,6 +22,8 @@ import {
   incomingEdgesQuery,
   countAgentsByTypeQuery,
   countEdgesQuery,
+  hopDistanceQuery,
+  hopsFromAgentQuery,
 } from './sparql'
 
 // ---------------------------------------------------------------------------
@@ -210,6 +212,47 @@ export class DiscoveryService {
     const row = results.results.bindings[0]
     if (!row) return 0
     return num(row as unknown as Record<string, { value: string }>, 'count')
+  }
+
+  // ─── Hop-Distance Queries ─────────────────────────────────────────
+  //
+  // Trust-proximity component for the intent-marketplace ranking formula
+  // (specs 001/002/003): proximityScore = 1 / (1 + hops).
+  // Treats edges as undirected; depth cap = 6 (per spec 001 research R2).
+
+  /**
+   * Minimum hop distance between two agents in the AgentRelationship graph.
+   * Returns null if the agents are unreachable within the depth cap (6).
+   */
+  async getHopDistance(addressA: string, addressB: string): Promise<number | null> {
+    if (addressA.toLowerCase() === addressB.toLowerCase()) return 0
+    const results = await this.client.query(hopDistanceQuery(addressA, addressB))
+    const row = results.results.bindings[0]
+    if (!row) return null
+    const value = (row as unknown as Record<string, { value: string }>).minDistance?.value
+    if (!value) return null
+    const n = parseInt(value, 10)
+    return Number.isFinite(n) && n > 0 ? n : null
+  }
+
+  /**
+   * For a given source agent, return all agents reachable within `maxHops`,
+   * each with the minimum hop distance. Sorted by distance ascending.
+   * Useful for batch-ranking candidates.
+   */
+  async getHopsFromAgent(
+    sourceAddress: string,
+    maxHops = 6,
+  ): Promise<Array<{ address: string; name?: string; hops: number }>> {
+    const results = await this.client.query(hopsFromAgentQuery(sourceAddress, maxHops))
+    return results.results.bindings.map((b) => {
+      const row = b as unknown as Record<string, { value: string }>
+      return {
+        address: row.targetAddress?.value ?? '',
+        name: row.targetName?.value || undefined,
+        hops: parseInt(row.minDistance?.value ?? '0', 10) || 0,
+      }
+    })
   }
 
   // ─── Raw Query Escape Hatch ───────────────────────────────────────

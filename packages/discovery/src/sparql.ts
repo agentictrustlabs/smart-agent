@@ -267,3 +267,120 @@ WHERE {
 }
 `
 }
+
+// ---------------------------------------------------------------------------
+// Hop-Distance Queries
+// ---------------------------------------------------------------------------
+//
+// The trust-proximity signal in the intent-marketplace ranking formula
+// (specs 001/002/003 — `score = 0.6 * 1/(1+hops) + 0.4 * outcomeScore`)
+// requires the *minimum* hop distance between two agents in the
+// AgentRelationship graph.
+//
+// The edge model is bipartite — agents do NOT have a direct sar:relatesTo
+// predicate; every relationship goes through a RelationshipEdge node:
+//
+//     ?a ←sar:subject— ?edge —sar:object→ ?b
+//
+// SPARQL 1.1 property paths cannot be depth-capped, so we UNION over each
+// path length 1..maxHops and take MIN(?length). We treat edges as
+// **undirected** for proximity (subject↔object are interchangeable) — trust
+// flows both ways and the matchmaker doesn't care who initiated.
+//
+// Depth cap = 6 is per spec 001's research.md R2: at 6 hops the proximity
+// score is 1/(1+6) ≈ 0.143, indistinguishable from longer paths in practice.
+
+const HOP_DEPTH_CAP = 6
+
+/** One "hop" between two variables — either direction of an edge. */
+function hopPattern(from: string, to: string, edgeVar: string): string {
+  return `{ ?${edgeVar} sar:subject ?${from} ; sar:object ?${to} }
+        UNION
+        { ?${edgeVar} sar:subject ?${to} ; sar:object ?${from} }`
+}
+
+/** Build a chain of N hops: a -hop- v1 -hop- v2 ... -hop- b. */
+function hopChain(from: string, to: string, length: number): string {
+  if (length === 1) return hopPattern(from, to, 'e0')
+  const lines: string[] = []
+  let prev = from
+  for (let i = 0; i < length; i += 1) {
+    const next = i === length - 1 ? to : `vh${i}`
+    lines.push(hopPattern(prev, next, `e${i}`))
+    prev = next
+  }
+  return lines.join('\n        ')
+}
+
+/**
+ * Minimum hop distance between two agents (by on-chain address), undirected,
+ * capped at 6. Returns ?distance bound to the smallest path length found,
+ * or no rows if the agents are unreachable within the cap.
+ *
+ * Result row: { distance: integer in 1..6 } (no row → unreachable / > cap).
+ *
+ * Use case: trust-proximity component of the matchmaker ranking
+ * (`proximityScore = 1 / (1 + hops)`).
+ */
+export function hopDistanceQuery(addressA: string, addressB: string): string {
+  const a = addressA.toLowerCase()
+  const b = addressB.toLowerCase()
+
+  const branches: string[] = []
+  for (let len = 1; len <= HOP_DEPTH_CAP; len += 1) {
+    branches.push(`{
+      ${hopChain('agentA', 'agentB', len)}
+      BIND(${len} AS ?distance)
+    }`)
+  }
+
+  return `${PREFIXES}
+SELECT (MIN(?distance) AS ?minDistance)
+WHERE {
+  ${g()} {
+    ?agentA sa:onChainAddress ?addrA .
+    FILTER(LCASE(?addrA) = "${a}")
+    ?agentB sa:onChainAddress ?addrB .
+    FILTER(LCASE(?addrB) = "${b}")
+    ${branches.join('\n    UNION\n    ')}
+  }
+}
+`
+}
+
+/**
+ * For a given source agent, find every other agent reachable within
+ * `maxHops` (default 6), with the minimum hop distance to each.
+ * Useful for batch-ranking candidates (one query per source instead of
+ * one per candidate).
+ *
+ * Result rows: { targetAddress, targetName?, distance } sorted by distance asc.
+ */
+export function hopsFromAgentQuery(sourceAddress: string, maxHops = HOP_DEPTH_CAP): string {
+  const src = sourceAddress.toLowerCase()
+  const cap = Math.min(Math.max(1, maxHops), HOP_DEPTH_CAP)
+
+  const branches: string[] = []
+  for (let len = 1; len <= cap; len += 1) {
+    branches.push(`{
+      ${hopChain('source', 'target', len)}
+      BIND(${len} AS ?distance)
+    }`)
+  }
+
+  return `${PREFIXES}
+SELECT ?targetAddress ?targetName (MIN(?distance) AS ?minDistance)
+WHERE {
+  ${g()} {
+    ?source sa:onChainAddress ?srcAddr .
+    FILTER(LCASE(?srcAddr) = "${src}")
+    ${branches.join('\n    UNION\n    ')}
+    ?target sa:onChainAddress ?targetAddress .
+    OPTIONAL { ?target sa:displayName ?targetName }
+    FILTER(?target != ?source)
+  }
+}
+GROUP BY ?targetAddress ?targetName
+ORDER BY ?minDistance
+`
+}
