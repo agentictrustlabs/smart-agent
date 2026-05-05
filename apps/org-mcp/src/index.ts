@@ -20,6 +20,8 @@ import { activityTools } from './tools/activity.js'
 import { orgIntentsTools } from './tools/intents.js'
 import { orgNotificationsTools, orgBeliefsTools } from './tools/notifications-beliefs.js'
 import { orgWorkItemsTools, engagementTools } from './tools/work-items-engagement.js'
+import { grantProposalsTools } from './tools/grantProposals.js'
+import { roundsTools } from './tools/rounds.js'
 
 const allTools = {
   ...orgProfileTools,
@@ -32,6 +34,8 @@ const allTools = {
   ...orgBeliefsTools,
   ...orgWorkItemsTools,
   ...engagementTools,
+  ...grantProposalsTools,
+  ...roundsTools,
 } as const
 
 const toolDefinitions = Object.values(allTools).map(
