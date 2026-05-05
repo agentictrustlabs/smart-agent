@@ -312,12 +312,19 @@ export {
   rankCue,
   DEFAULT_RANK_WEIGHTS,
   RANK_TIE_TOLERANCE,
+  proposerSideSignals,
+  stewardSideSignals,
 } from './matchmaker'
 export type {
   RankBasis,
   RankableSignals,
   Rankable,
   Ranked,
+  ProposerSideInput,
+  ProposerSideSignals,
+  StewardSideInput,
+  StewardSideSignals,
+  SideSignalsDiscovery,
 } from './matchmaker'
 
 // ─── Class-assertion emit (relayed on-chain anchoring) ──────────────
@@ -364,3 +371,24 @@ export type {
   RoundPriorStats,
   ReportingCadence,
 } from './rounds'
+
+// ─── Grant Proposals (spec 003 — Intent Marketplace, Proposal Lane) ──
+export { GrantProposalClient } from './grantProposals'
+export type {
+  IGrantProposalClient,
+  McpInvoker,
+  McpTarget,
+  GrantProposal,
+  GrantProposalStatus,
+  Budget,
+  BudgetLineItem,
+  Milestone,
+  DesiredOutcome,
+  ReportingObligations,
+  OrganisationalBackground,
+  SubmitGrantProposalRequest,
+  EditGrantProposalRequest,
+  SubmitGrantProposalError,
+  SubmitGrantProposalResult,
+  WithdrawGrantProposalResult,
+} from './grantProposals'

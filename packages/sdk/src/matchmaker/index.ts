@@ -22,3 +22,16 @@ export {
 } from './ranking'
 
 export type { RankBasis, RankableSignals, Rankable, Ranked } from './ranking'
+
+// ─── Side-signals (spec 003 — T044 / T047) ─────────────────────────
+export {
+  proposerSideSignals,
+  stewardSideSignals,
+} from './side-signals'
+export type {
+  ProposerSideInput,
+  ProposerSideSignals,
+  StewardSideInput,
+  StewardSideSignals,
+  SideSignalsDiscovery,
+} from './side-signals'
