@@ -337,21 +337,60 @@ const CBOX_GRAPH = 'https://smartagent.io/graph/schema/cbox'
 export async function syncOnChainToGraphDB(): Promise<{ success: boolean; message: string; agentCount?: number }> {
   console.log('[ontology-sync] Starting on-chain → GraphDB sync...')
 
-  const turtle = await emitAgentsTurtle()
-  if (!turtle) {
+  const agentTurtle = await emitAgentsTurtle()
+  if (!agentTurtle) {
     return { success: false, message: 'No agents found or resolver not configured.' }
   }
 
-  const agentCount = (turtle.match(/a sa:(PersonAgent|OrganizationAgent|AIAgentAccount|HubAgent)/g) ?? []).length
-  console.log(`[ontology-sync] Emitted ${agentCount} agents. Uploading to GraphDB...`)
+  const agentCount = (agentTurtle.match(/a sa:(PersonAgent|OrganizationAgent|AIAgentAccount|HubAgent)/g) ?? []).length
+  console.log(`[ontology-sync] Emitted ${agentCount} agents. Building combined data-graph turtle...`)
 
   const discovery = DiscoveryService.fromEnv()
   const client = discovery.getClient()
 
   try {
-    // Upload agent data
-    await client.uploadTurtle(turtle, DATA_GRAPH)
-    console.log(`[ontology-sync] Agent data uploaded: ${agentCount} agents`)
+    // Combine ALL data-graph contributions into one turtle and PUT once.
+    // The GraphDB Graph Store HTTP protocol's PUT is destructive (replaces
+    // the named graph). Multiple sequential PUTs to the same graph each
+    // wipe what came before, so we must concatenate first.
+    let dataTurtle = agentTurtle
+
+    // Class-assertion mirror (intent-marketplace + sa:IntentAssertion)
+    let assertionCount = 0
+    try {
+      const assertionTurtle = await emitClassAssertionsTurtle()
+      if (assertionTurtle) {
+        // emitClassAssertionsTurtle already emits its own @prefix block;
+        // we strip duplicate prefixes and concatenate the body so the
+        // combined turtle parses cleanly as a single document.
+        const body = stripPrefixBlock(assertionTurtle)
+        dataTurtle += '\n# ─── Class assertions ──────────────────────────────\n' + body
+        assertionCount = (assertionTurtle.match(/ a sa:(IntentAssertion|MatchInitiationAssertion|PledgeAssertion|PoolPledgedTotalAssertion|RoundOpenedAssertion|RoundClosedAssertion)\b/g) ?? []).length
+      }
+    } catch (caErr) {
+      console.warn('[ontology-sync] Class-assertion mirror failed (non-fatal):', caErr instanceof Error ? caErr.message : caErr)
+    }
+
+    // Round mirror — reads the org-mcp `rounds` table directly. The IA
+    // principle (P4) says GraphDB only mirrors authoritative state; for
+    // rounds, the authoritative body lives in the fund's org-mcp tenant.
+    // Until cross-MCP federation is wired, the sync reads the local
+    // org-mcp.db file directly (single-process dev setup).
+    let roundCount = 0
+    try {
+      const roundTurtle = await emitRoundsTurtle()
+      if (roundTurtle) {
+        const body = stripPrefixBlock(roundTurtle)
+        dataTurtle += '\n# ─── Rounds (from org-mcp) ─────────────────────────\n' + body
+        roundCount = (roundTurtle.match(/ a sa:Round\b/g) ?? []).length
+      }
+    } catch (rErr) {
+      console.warn('[ontology-sync] Round mirror failed (non-fatal):', rErr instanceof Error ? rErr.message : rErr)
+    }
+
+    // SINGLE PUT — replaces DATA_GRAPH with our combined turtle.
+    await client.uploadTurtle(dataTurtle, DATA_GRAPH)
+    console.log(`[ontology-sync] Data graph uploaded: ${agentCount} agents + ${assertionCount} class assertions + ${roundCount} rounds`)
 
     // Upload T-Box (ontology schema) from docs/ontology/tbox/*.ttl
     try {
@@ -402,18 +441,6 @@ export async function syncOnChainToGraphDB(): Promise<{ success: boolean; messag
     }
 
     console.log(`[ontology-sync] Sync complete: ${agentCount} agents + schema uploaded.`)
-
-    // Mirror ClassAssertion events (intent-marketplace + sa:IntentAssertion)
-    try {
-      const assertionTurtle = await emitClassAssertionsTurtle()
-      if (assertionTurtle) {
-        await client.uploadTurtle(assertionTurtle, DATA_GRAPH)
-        const ct = (assertionTurtle.match(/ a sa:(IntentAssertion|MatchInitiationAssertion|PledgeAssertion|PoolPledgedTotalAssertion|RoundOpenedAssertion|RoundClosedAssertion)\b/g) ?? []).length
-        console.log(`[ontology-sync] Class assertions mirrored: ${ct}`)
-      }
-    } catch (caErr) {
-      console.warn('[ontology-sync] Class-assertion mirror failed (non-fatal):', caErr instanceof Error ? caErr.message : caErr)
-    }
 
     return { success: true, message: `Uploaded ${agentCount} agents + ontology schema to GraphDB`, agentCount }
   } catch (error) {
@@ -529,4 +556,150 @@ export async function emitClassAssertionsTurtle(): Promise<string> {
   }
 
   return lines.join('\n')
+}
+
+// ---------------------------------------------------------------------------
+// Round Mirror — reads org-mcp's `rounds` table directly
+// ---------------------------------------------------------------------------
+//
+// The IA (P4) says GraphDB only mirrors authoritative state; round bodies
+// live authoritatively in the fund's org-mcp tenant. Until cross-MCP
+// federation is wired, the sync reads org-mcp's local SQLite file directly
+// — acceptable for the single-process dev / demo setup. In production this
+// would be a federated read via a system-delegation tool exposed by org-mcp.
+//
+// Each round is rendered as both:
+//   1. A `sa:Round` subject with all body fields (mandate, milestone-template,
+//      etc.) so the listRounds / getRoundDetail SPARQL builders find it.
+//   2. A synthetic `sa:RoundOpenedAssertion` mirror node so the
+//      listRoundsQuery's anchor-based join binds the round IRI from
+//      `subjectId`. (When real on-chain anchoring ships for rounds, this
+//      synthetic mirror is replaced by the on-chain → assertion mirror.)
+
+interface OrgMcpRoundRow {
+  id: string
+  org_principal: string
+  mandate: string
+  milestone_template: string
+  validator_requirements: string
+  reporting_cadence: string
+  deadline: string
+  decision_date: string
+  required_credentials: string
+  visibility: string
+  addressed_applicants: string | null
+  proposals_received: number
+  on_chain_assertion_id: string | null
+  created_at: string
+  updated_at: string
+}
+
+function escapeTurtleString(value: string): string {
+  return value
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"')
+    .replace(/\n/g, '\\n')
+    .replace(/\r/g, '')
+}
+
+export async function emitRoundsTurtle(): Promise<string> {
+  // Resolve apps/org-mcp/org-mcp.db relative to the repo root. The web app's
+  // cwd is apps/web, so two-up gets us to the monorepo root.
+  const path = await import('path')
+  const fs = await import('fs')
+  const cwd = process.cwd()
+  // Try common locations: cwd/apps/org-mcp, cwd/../org-mcp, cwd/../../apps/org-mcp.
+  const candidates = [
+    path.resolve(cwd, '../org-mcp/org-mcp.db'),                 // when cwd = apps/web
+    path.resolve(cwd, 'apps/org-mcp/org-mcp.db'),               // when cwd = repo root
+    path.resolve(cwd, '../../apps/org-mcp/org-mcp.db'),         // pathological
+  ]
+  const dbPath = candidates.find((p) => fs.existsSync(p))
+  if (!dbPath) return ''
+
+  // Lazy import — better-sqlite3 is heavy; avoid loading on every request.
+  let Database: new (filename: string, options?: { readonly?: boolean; fileMustExist?: boolean }) => {
+    prepare: (sql: string) => { all: () => unknown[] }
+    close: () => void
+  }
+  try {
+    const mod = await import('better-sqlite3')
+    Database = mod.default as unknown as typeof Database
+  } catch {
+    // better-sqlite3 not installed in this surface — skip (acceptable in test envs).
+    return ''
+  }
+
+  const db = new Database(dbPath, { readonly: true, fileMustExist: true })
+  let rows: OrgMcpRoundRow[]
+  try {
+    rows = db.prepare(`
+      SELECT id, org_principal, mandate, milestone_template, validator_requirements,
+             reporting_cadence, deadline, decision_date, required_credentials,
+             visibility, addressed_applicants, proposals_received,
+             on_chain_assertion_id, created_at, updated_at
+      FROM rounds
+    `).all() as OrgMcpRoundRow[]
+  } catch {
+    db.close()
+    return ''
+  }
+  db.close()
+
+  if (rows.length === 0) return ''
+
+  const lines: string[] = []
+  lines.push(`@prefix sa:   <${SA}> .`)
+  lines.push(`@prefix prov: <http://www.w3.org/ns/prov#> .`)
+  lines.push(`@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .`)
+  lines.push('')
+
+  for (const row of rows) {
+    // Round id — stored as the full IRI (urn:smart-agent:round:<sub>).
+    // Strip the prefix to get the subjectId for the assertion mirror.
+    const roundIri = row.id
+    const subjectId = roundIri.replace(/^urn:smart-agent:round:/, '')
+    const fundIri = `${SA}agent/${row.org_principal.toLowerCase()}`
+
+    // Round subject + body fields.
+    lines.push(`<${roundIri}> a sa:Round ;`)
+    lines.push(`  sa:operatedByFund <${fundIri}> ;`)
+    lines.push(`  sa:roundMandate "${escapeTurtleString(row.mandate)}" ;`)
+    lines.push(`  sa:milestoneTemplate "${escapeTurtleString(row.milestone_template)}" ;`)
+    lines.push(`  sa:validatorRequirements "${escapeTurtleString(row.validator_requirements)}" ;`)
+    lines.push(`  sa:reportingCadence "${escapeTurtleString(row.reporting_cadence)}" ;`)
+    lines.push(`  sa:deadline "${row.deadline}"^^xsd:dateTime ;`)
+    lines.push(`  sa:decisionDate "${row.decision_date}"^^xsd:dateTime ;`)
+    lines.push(`  sa:requiredCredentials "${escapeTurtleString(row.required_credentials)}" ;`)
+    lines.push(`  sa:visibility "${escapeTurtleString(row.visibility)}" ;`)
+    if (row.addressed_applicants) {
+      lines.push(`  sa:addressedApplicants "${escapeTurtleString(row.addressed_applicants)}" ;`)
+    }
+    lines.push(`  sa:proposalsReceived ${row.proposals_received | 0} .`)
+    lines.push('')
+
+    // Synthetic RoundOpenedAssertion mirror — required by listRoundsQuery's
+    // anchor-based subject binding (BIND(IRI(CONCAT("urn:smart-agent:round:",
+    // STR(?subjectId))) AS ?round)).
+    const asnIri = row.on_chain_assertion_id ?? `urn:smart-agent:assertion:${subjectId}-opened`
+    lines.push(`<${asnIri}> a sa:RoundOpenedAssertion ;`)
+    lines.push(`  sa:onChainAssertionId "${escapeTurtleString(asnIri)}" ;`)
+    lines.push(`  sa:subjectId "${escapeTurtleString(subjectId)}" ;`)
+    lines.push(`  prov:generatedAtTime "${row.created_at}"^^xsd:dateTime .`)
+    lines.push('')
+  }
+
+  return lines.join('\n')
+}
+
+// ---------------------------------------------------------------------------
+// Helper — strip @prefix block so multiple turtle fragments concatenate cleanly
+// ---------------------------------------------------------------------------
+
+function stripPrefixBlock(turtle: string): string {
+  // Remove leading `@prefix ... .` lines and any blank lines that follow.
+  // The combined output has its own prefix declarations from emitAgentsTurtle.
+  return turtle
+    .replace(/^(?:@prefix\s+\S+:\s+<[^>]+>\s*\.\s*\n?)+/gm, '')
+    .replace(/^\s*\n+/, '')
 }
