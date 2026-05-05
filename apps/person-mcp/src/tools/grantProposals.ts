@@ -453,8 +453,249 @@ const readSelfTool = {
   },
 }
 
+// ───────────────────────────────────────────────────────────────────────
+// Tool: grant_proposal:list_for_member (T056)
+// ───────────────────────────────────────────────────────────────────────
+
+const listForMemberTool = {
+  name: 'grant_proposal:list_for_member',
+  description:
+    "List all the caller's GrantProposals across statuses, sorted by lastEditedAt desc.",
+  inputSchema: {
+    type: 'object' as const,
+    properties: {
+      token: { type: 'string' },
+      agentId: { type: 'string' },
+    },
+    required: ['token'],
+  },
+  handler: async (args: { token: string; agentId?: string }) => {
+    const principal = await requirePrincipal(args.token, 'grant_proposal:list_for_member')
+    const rows = db.select().from(proposalSubmissions)
+      .where(eq(proposalSubmissions.principal, principal))
+      .all()
+    const sorted = [...rows].sort((a, b) => {
+      const ta = Date.parse(a.lastEditedAt ?? '') || 0
+      const tb = Date.parse(b.lastEditedAt ?? '') || 0
+      return tb - ta
+    })
+    return mcpText({ proposals: sorted })
+  },
+}
+
+// ───────────────────────────────────────────────────────────────────────
+// Tool: grant_proposal:edit_pre_deadline (T053)
+// ───────────────────────────────────────────────────────────────────────
+//
+// person-mcp twin. Pre-deadline check is BEST-EFFORT here: the round body
+// lives in the fund's org-mcp, which is a different MCP. Without a federated
+// round-read RPC, we accept the edit and trust the action layer to perform
+// the deadline check before invoking this tool. // TODO(cross-mcp).
+
+interface EditableFields {
+  budget?: Budget
+  plan?: PlanShape
+  milestones?: Milestone[]
+  desiredOutcomes?: DesiredOutcome[]
+  reportingObligations?: ReportingObligations
+  organisationalBackground?: OrganisationalBackground
+}
+
+const editPreDeadlineTool = {
+  name: 'grant_proposal:edit_pre_deadline',
+  description:
+    "Patch an editable field on a submitted GrantProposal pre-deadline (person-mcp). Bumps version. Caller is responsible for the deadline check (cross-MCP simplification).",
+  inputSchema: {
+    type: 'object' as const,
+    properties: {
+      token: { type: 'string' },
+      proposalId: { type: 'string' },
+      patch: { type: 'object' },
+    },
+    required: ['token', 'proposalId', 'patch'],
+  },
+  handler: async (args: {
+    token: string
+    proposalId: string
+    patch: EditableFields
+  }) => {
+    const principal = await requirePrincipal(args.token, 'grant_proposal:edit_pre_deadline')
+    const existing = db.select().from(proposalSubmissions)
+      .where(and(
+        eq(proposalSubmissions.id, args.proposalId),
+        eq(proposalSubmissions.principal, principal),
+      ))
+      .all()[0]
+    if (!existing) {
+      throw new Error(`proposal ${args.proposalId} not found for principal`)
+    }
+    if (existing.status !== 'submitted') {
+      throw new Error(`proposal ${args.proposalId} is not in 'submitted' state (status=${existing.status})`)
+    }
+    // // TODO(cross-mcp): perform pre-deadline check via federated round-read.
+    console.warn(
+      `[person-mcp/grantProposals] pre-deadline check skipped — caller is responsible. // TODO(cross-mcp)`,
+    )
+    const now = nowIso()
+    const nextVersion = (existing.version ?? 0) + 1
+    const patchSet: Record<string, unknown> = { lastEditedAt: now, version: nextVersion }
+    if (args.patch.budget !== undefined) patchSet.budget = JSON.stringify(args.patch.budget)
+    if (args.patch.plan !== undefined) patchSet.plan = JSON.stringify(args.patch.plan)
+    if (args.patch.milestones !== undefined) patchSet.milestones = JSON.stringify(args.patch.milestones)
+    if (args.patch.desiredOutcomes !== undefined) patchSet.desiredOutcomes = JSON.stringify(args.patch.desiredOutcomes)
+    if (args.patch.reportingObligations !== undefined) patchSet.reportingObligations = JSON.stringify(args.patch.reportingObligations)
+    if (args.patch.organisationalBackground !== undefined) patchSet.organisationalBackground = JSON.stringify(args.patch.organisationalBackground)
+    db.update(proposalSubmissions).set(patchSet)
+      .where(and(
+        eq(proposalSubmissions.id, args.proposalId),
+        eq(proposalSubmissions.principal, principal),
+      ))
+      .run()
+    const updated = db.select().from(proposalSubmissions)
+      .where(eq(proposalSubmissions.id, args.proposalId))
+      .all()[0]
+    return mcpText({ ok: true as const, proposal: updated })
+  },
+}
+
+// ───────────────────────────────────────────────────────────────────────
+// Tool: grant_proposal:withdraw (T054)
+// ───────────────────────────────────────────────────────────────────────
+
+const withdrawTool = {
+  name: 'grant_proposal:withdraw',
+  description:
+    "Withdraw a draft or submitted GrantProposal (person-mcp). Cascades counter -1 + ack-count -1. Returns intentRevertedToExpressed flag (FR-023).",
+  inputSchema: {
+    type: 'object' as const,
+    properties: {
+      token: { type: 'string' },
+      proposalId: { type: 'string' },
+    },
+    required: ['token', 'proposalId'],
+  },
+  handler: async (args: { token: string; proposalId: string }) => {
+    const principal = await requirePrincipal(args.token, 'grant_proposal:withdraw')
+    const existing = db.select().from(proposalSubmissions)
+      .where(and(
+        eq(proposalSubmissions.id, args.proposalId),
+        eq(proposalSubmissions.principal, principal),
+      ))
+      .all()[0]
+    if (!existing) {
+      throw new Error(`proposal ${args.proposalId} not found for principal`)
+    }
+    if (existing.status !== 'draft' && existing.status !== 'submitted') {
+      throw new Error(`proposal ${args.proposalId} cannot be withdrawn (status=${existing.status})`)
+    }
+    const wasSubmitted = existing.status === 'submitted'
+    const now = nowIso()
+    db.update(proposalSubmissions)
+      .set({ status: 'withdrawn', withdrawnAt: now, lastEditedAt: now })
+      .where(and(
+        eq(proposalSubmissions.id, args.proposalId),
+        eq(proposalSubmissions.principal, principal),
+      ))
+      .run()
+
+    let intentRevertedToExpressed = false
+    if (wasSubmitted) {
+      // Round counter -1 — // TODO(cross-mcp): bump fund's org-mcp counter.
+      if (existing.roundId) {
+        console.warn(
+          `[person-mcp/grantProposals] round counter -1 for ${existing.roundId} skipped — cross-MCP RPC not implemented. // TODO(cross-mcp)`,
+        )
+      }
+      // Ack-count -1 — local intent (person proposers' own intent).
+      const before = db.select().from(intents)
+        .where(and(eq(intents.id, existing.basedOnIntentId), eq(intents.principal, principal)))
+        .all()[0]
+      bumpAckCount(existing.basedOnIntentId, -1, principal)
+      const after = db.select().from(intents)
+        .where(and(eq(intents.id, existing.basedOnIntentId), eq(intents.principal, principal)))
+        .all()[0]
+      if (
+        before &&
+        after &&
+        before.status === 'acknowledged' &&
+        after.status === 'expressed'
+      ) {
+        intentRevertedToExpressed = true
+      }
+    }
+
+    const updated = db.select().from(proposalSubmissions)
+      .where(eq(proposalSubmissions.id, args.proposalId))
+      .all()[0]
+    return mcpText({
+      proposal: updated,
+      intentRevertedToExpressed,
+    })
+  },
+}
+
+// ───────────────────────────────────────────────────────────────────────
+// Tool: grant_proposal:clone (T055)
+// ───────────────────────────────────────────────────────────────────────
+
+const cloneTool = {
+  name: 'grant_proposal:clone',
+  description:
+    "Clone a GrantProposal as a fresh draft (person-mcp). roundId/fundMandateId cleared, content fields copied, outcomes/awards NOT carried.",
+  inputSchema: {
+    type: 'object' as const,
+    properties: {
+      token: { type: 'string' },
+      sourceProposalId: { type: 'string' },
+    },
+    required: ['token', 'sourceProposalId'],
+  },
+  handler: async (args: { token: string; sourceProposalId: string }) => {
+    const principal = await requirePrincipal(args.token, 'grant_proposal:clone')
+    const source = db.select().from(proposalSubmissions)
+      .where(and(
+        eq(proposalSubmissions.id, args.sourceProposalId),
+        eq(proposalSubmissions.principal, principal),
+      ))
+      .all()[0]
+    if (!source) {
+      throw new Error(`source proposal ${args.sourceProposalId} not found for principal`)
+    }
+    const now = nowIso()
+    const newId = randomUUID()
+    const row = {
+      id: newId,
+      principal,
+      roundId: null,
+      fundMandateId: null,
+      basedOnIntentId: source.basedOnIntentId,
+      budget: source.budget,
+      plan: source.plan,
+      milestones: source.milestones,
+      desiredOutcomes: source.desiredOutcomes,
+      reportingObligations: source.reportingObligations,
+      organisationalBackground: source.organisationalBackground,
+      submittedAt: null,
+      version: 0,
+      lastEditedAt: now,
+      status: 'draft' as const,
+      withdrawnAt: null,
+      clonedFromProposalId: source.id,
+      basis: null,
+      visibility: 'private' as const,
+      createdAt: now,
+    }
+    db.insert(proposalSubmissions).values(row).run()
+    return mcpText({ proposal: row })
+  },
+}
+
 export const grantProposalsTools = {
   'grant_proposal:submit': submitTool,
   'grant_proposal:draft': draftTool,
   'grant_proposal:read_self': readSelfTool,
+  'grant_proposal:list_for_member': listForMemberTool,
+  'grant_proposal:edit_pre_deadline': editPreDeadlineTool,
+  'grant_proposal:withdraw': withdrawTool,
+  'grant_proposal:clone': cloneTool,
 }

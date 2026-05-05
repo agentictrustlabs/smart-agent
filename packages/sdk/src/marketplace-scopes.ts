@@ -182,6 +182,18 @@ export const SPEC_003_SCOPES = {
     kind: 'user',
     spec: '003',
   },
+  grant_proposal_list_for_member: {
+    scope: 'grant_proposal:list_for_member',
+    description: "List the caller's own GrantProposals across statuses (drafts/submitted/withdrawn/decided), sorted by lastEditedAt desc.",
+    kind: 'user',
+    spec: '003',
+  },
+  grant_proposal_list_for_round: {
+    scope: 'grant_proposal:list_for_round',
+    description: "Steward-side: list all submitted GrantProposals on a round (v1 same-DB shortcut; production federates via proposal:read_for_review).",
+    kind: 'user',
+    spec: '003',
+  },
   /**
    * Cross-delegation: stewards of the round / fund can read the proposal body
    * for review. Issued by proposer's MCP at submit-time, scoped to one round
