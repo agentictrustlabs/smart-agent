@@ -303,3 +303,18 @@ export {
 export type { PasskeyAssertion } from './passkey'
 export { parseAttestationObject, parseAuthData } from './cose-parse'
 export type { ParsedAttestation } from './cose-parse'
+
+// ─── Matchmaker (intent-marketplace ranking) ─────────────────────────
+export {
+  computeBasis,
+  rank,
+  rankCue,
+  DEFAULT_RANK_WEIGHTS,
+  RANK_TIE_TOLERANCE,
+} from './matchmaker'
+export type {
+  RankBasis,
+  RankableSignals,
+  Rankable,
+  Ranked,
+} from './matchmaker'
