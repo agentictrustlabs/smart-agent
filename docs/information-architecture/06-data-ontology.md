@@ -76,6 +76,9 @@ No `sa:Intent`, `sa:Need`, `sa:Offering`, `sa:Outcome`, `sa:Engagement`, `sa:Wor
 | `sa:WorkItem` | `work_items` | NEW; assignee=this principal |
 | `sad:CrossDelegation` | `cross_delegation_grants` | NEW; grants others scoped read access |
 | `sa:EngagementHolderState` | `engagement_holder_state` | NEW; holder-side per-entitlement metadata |
+| `sa:MatchInitiation` | `match_initiations` | NEW (spec 001); owned by initiator; visibility inherits stricter of two source intents — see [10§2.1](10-intent-marketplace-classification.md#21-matchinitiation-spec-001) |
+| `sa:PoolPledge` | `pool_pledges` | NEW (spec 002); owned by donor; `anonymous` storyPermissions never anchor on-chain — see [10§2.2](10-intent-marketplace-classification.md#22-poolpledge-spec-002) |
+| `sa:ProposalSubmission` (rename candidate `sa:GrantProposal`, see [10§5](10-intent-marketplace-classification.md#5-recommended-renames--consistency-edits) / O1) | `proposal_submissions` | NEW (spec 003); owned by proposer; always private; stewards read via `proposal:read_for_review` cross-delegation |
 | `sa:AuditEntry` | `audit_log` | Existing |
 
 ### org-mcp — what classes live here
@@ -100,13 +103,19 @@ No `sa:Intent`, `sa:Need`, `sa:Offering`, `sa:Outcome`, `sa:Engagement`, `sa:Wor
 | `sa:EngagementTranche` | `engagement_tranches` | Money shape |
 | `sa:EngagementPolicy` | `engagement_policies` | Governance shape |
 | `sa:PolicySigner` | `policy_signers` | |
+| `sa:MatchInitiation` | `match_initiations` | NEW (spec 001); owned by initiator when initiator is an org agent (e.g., a hub agent acting as connector) |
+| `sa:PoolPledge` | `pool_pledges` | NEW (spec 002); owned by donor when donor is an org (org-to-pool pledge) |
+| `sa:ProposalSubmission` | `proposal_submissions` | NEW (spec 003); typical home — proposers are usually orgs applying for grants |
+| `sa:Round` | `rounds` | NEW (spec 003); fund's RFP; tenant key = fund's org_principal; on-chain anchored via `sa:RoundOpenedAssertion` |
+| `sa:Pool` (with `sa:acceptsUnit`, `sa:ceilingPolicy`, `sa:capacityCeiling`, `sa:acceptsOpenCalls`) | extends existing pool-agent profile | EXTENDED (spec 002 + 003); public agent-metadata fields anchored on-chain with the existing pool sync |
+| Pool aggregate `pledgedTotal` (per-pool counter) | `pool_aggregates` (NEW) | NEW (spec 002); fund-mcp aggregate updated by donors via `pool:contribute_to_total` system-delegation; published on-chain as `sa:PoolPledgedTotalAssertion` for public pools |
 | `sa:CredentialIssuance` (OID4VCI) | `pre_auth` | Existing |
 
 ### GraphDB — what classes live here
 
 GraphDB holds **only** instances that came from on-chain. No MCP-sourced data. Two kinds:
 
-1. **On-chain mirrors** (existing + expanded): `sa:Agent`, `sar:RelationshipEdge`, `atl:AttestedAssertion`, `sa:Engagement`, `sa:CommitmentThreadEntry`. Adding: `sa:Intent`, `sa:Need`, `sa:Offering`, `sa:GeoClaim` — but **only the instances that have an on-chain assertion**. Private intents, private offerings, private geo claims do not appear in GraphDB.
+1. **On-chain mirrors** (existing + expanded): `sa:Agent`, `sar:RelationshipEdge`, `atl:AttestedAssertion`, `sa:Engagement`, `sa:CommitmentThreadEntry`. Adding: `sa:Intent`, `sa:Need`, `sa:Offering`, `sa:GeoClaim` — but **only the instances that have an on-chain assertion**. Private intents, private offerings, private geo claims do not appear in GraphDB. From specs 001/002/003: `sa:MatchInitiation` (only public-tier), `sa:PoolPledge` (only public-tier; `anonymous` never appears), `sa:Round` (public rounds; private rounds appear as coarse mirrors without addressed-applicant lists), pool aggregates published as `sa:PoolPledgedTotalAssertion`. **Never** `sa:ProposalSubmission` in v1 — proposal bodies stay confidential.
 2. **Materialized aggregates** computed from the on-chain mirror: `atl:ValidationAssertionSummary`, `atl:FeedbackAssertionSummary`, `sa:AgentTrustIndex`. Inputs are on-chain assertions only.
 
 Write paths (all flow from on-chain):
@@ -151,6 +160,30 @@ sa:Proposal                   — already on-chain; ontology class subClassOf pr
 sa:OrchestrationPlan          — subClassOf p-plan:Plan
 sa:HubVocabulary              — subClassOf skos:ConceptScheme
 sa:OntologyTerm               — subClassOf prov:Entity
+
+# Intent marketplace (specs 001 / 002 / 003) — see 10-intent-marketplace-classification.md
+sa:MatchInitiation            — subClassOf prov:Entity
+sa:PoolPledge                 — subClassOf prov:Entity
+sa:PledgeAmendment            — subClassOf prov:Entity (embedded inside PoolPledge.history)
+sa:ProposalSubmission         — subClassOf prov:Plan (rename candidate: sa:GrantProposal — O1)
+sa:Round                      — subClassOf prov:Plan
+sa:Fund                       — subClassOf sa:Pool (or property-as-discriminator — O3)
+sa:MatchInitiationAssertion   — subClassOf atl:AttestedAssertion (on-chain anchor for public initiations)
+sa:PledgeAssertion            — subClassOf atl:AttestedAssertion (on-chain anchor for public pledges)
+sa:PoolPledgedTotalAssertion  — subClassOf atl:AttestedAssertion (on-chain anchor for pool's aggregate; no donor IRI)
+sa:RoundOpenedAssertion       — subClassOf atl:AttestedAssertion
+sa:RoundClosedAssertion       — subClassOf atl:AttestedAssertion
+
+# C-Box vocabulary additions for intent marketplace
+MatchInitiationKind             = { Self, Connector }
+MatchInitiationStatus           = { Pending, Superseded, Consumed }
+PledgeCadence                   = { OneTime, Monthly, Annual }
+PledgeStatus                    = { Active, Waitlisted, Stopped, AutoStopped, Fulfilled }
+StoryPermissions                = { Public, ShareWithSupportTeam, Anonymous }
+CeilingPolicy                   = { Block, Waitlist, Accept }
+ProposalStatus                  = { Draft, Submitted, Withdrawn, Awarded, Declined }
+ReportingCadence                = { Quarterly, Milestone, Annual, None }
+PledgeAmendmentKind             = { Amount, Cadence, Duration }
 ```
 
 C-Box vocabulary additions (enums) needed:
@@ -176,6 +209,18 @@ sa:linkedOikosContact      Prayer → OikosContact             (within person-mc
 sa:assignee                WorkItem → Agent                  (assignee's MCP holds the row)
 sa:projectsTo              Intent → Need | Offering          (within owner's MCP)
 sa:onChainEdgeId           OrgMember → RelationshipEdge      (id reference)
+
+# Intent marketplace bridge predicates (specs 001 / 002 / 003)
+sa:initiator               MatchInitiation → Agent                  (id reference; row in initiator's MCP)
+sa:viewedIntent            MatchInitiation → Intent                 (id; intent in expresser's MCP)
+sa:candidateIntent         MatchInitiation → Intent                 (id; intent in expresser's MCP)
+sa:pledger                 PoolPledge → Agent                       (id; row in donor's MCP)
+sa:targetPool              PoolPledge → Pool                        (id; pool aggregate in fund's org-mcp)
+sa:proposer                ProposalSubmission → Agent               (id; row in proposer's MCP)
+sa:operatedByFund          Round → Pool (Fund)                      (id; round body in fund's org-mcp)
+sa:basedOnIntent           ProposalSubmission → Intent              (id; intent in proposer's MCP)
+sa:clonedFromProposal      ProposalSubmission → ProposalSubmission  (id reference within proposer's MCP)
+sa:liveAcknowledgementCount Intent → integer                         (derived counter in intent-owner's MCP; see 10§O5)
 ```
 
 ## Domain Separation enforcement

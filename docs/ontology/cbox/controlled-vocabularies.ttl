@@ -234,3 +234,78 @@ sag:StatusOpen      a sag:ProposalStatus, skos:Concept ; skos:inScheme sag:Propo
 sag:StatusApproved  a sag:ProposalStatus, skos:Concept ; skos:inScheme sag:ProposalStatusScheme ; rdfs:label "Approved" .
 sag:StatusRejected  a sag:ProposalStatus, skos:Concept ; skos:inScheme sag:ProposalStatusScheme ; rdfs:label "Rejected" .
 sag:StatusExecuted  a sag:ProposalStatus, skos:Concept ; skos:inScheme sag:ProposalStatusScheme ; rdfs:label "Executed" .
+
+
+# =============================================================================
+# Intent Marketplace Vocabularies (specs 001 / 002 / 003)
+# =============================================================================
+#
+# Concept individuals for the value-set classes declared in
+# tbox/matches.ttl, tbox/pool-pledge.ttl, and tbox/proposal.ttl.
+# Resolves O6 by codifying every status/cadence/permission as a SKOS
+# concept rather than a string enum.
+
+# ─── MatchInitiation kind / status (spec 001) ───────────────────────
+# Class sa:MatchInitiationKind / sa:MatchInitiationStatus in tbox/matches.ttl
+
+sa:MatchInitiationKindScheme   a skos:ConceptScheme ; rdfs:label "Match Initiation Kind Scheme" .
+sa:MatchInitiationKindSelf       a sa:MatchInitiationKind, skos:Concept ; skos:inScheme sa:MatchInitiationKindScheme ; skos:notation "self"      ; rdfs:label "Self"      ; rdfs:comment "Initiator is one of the two intents' expressers." .
+sa:MatchInitiationKindConnector  a sa:MatchInitiationKind, skos:Concept ; skos:inScheme sa:MatchInitiationKindScheme ; skos:notation "connector" ; rdfs:label "Connector" ; rdfs:comment "Initiator is a third party who proposed the pairing." .
+
+sa:MatchInitiationStatusScheme a skos:ConceptScheme ; rdfs:label "Match Initiation Status Scheme" .
+sa:MatchInitiationStatusPending     a sa:MatchInitiationStatus, skos:Concept ; skos:inScheme sa:MatchInitiationStatusScheme ; skos:notation "pending"    ; rdfs:label "Pending"    ; rdfs:comment "Live; spec 001 only ever writes this." .
+sa:MatchInitiationStatusSuperseded  a sa:MatchInitiationStatus, skos:Concept ; skos:inScheme sa:MatchInitiationStatusScheme ; skos:notation "superseded" ; rdfs:label "Superseded" ; rdfs:comment "Replaced by a later initiation on the same pair, OR an underlying intent withdrew." .
+sa:MatchInitiationStatusConsumed    a sa:MatchInitiationStatus, skos:Concept ; skos:inScheme sa:MatchInitiationStatusScheme ; skos:notation "consumed"   ; rdfs:label "Consumed"   ; rdfs:comment "Downstream commitment spec acted on this initiation." .
+
+# ─── Pool ceiling policy (spec 002) ─────────────────────────────────
+# Class sa:CeilingPolicy in tbox/pool-pledge.ttl
+
+sa:CeilingPolicyScheme a skos:ConceptScheme ; rdfs:label "Ceiling Policy Scheme" .
+sa:CeilingPolicyBlock     a sa:CeilingPolicy, skos:Concept ; skos:inScheme sa:CeilingPolicyScheme ; skos:notation "block"    ; rdfs:label "Block"    ; rdfs:comment "Reject pledges that would push pledgedTotal above capacityCeiling." .
+sa:CeilingPolicyWaitlist  a sa:CeilingPolicy, skos:Concept ; skos:inScheme sa:CeilingPolicyScheme ; skos:notation "waitlist" ; rdfs:label "Waitlist" ; rdfs:comment "Set new pledges' status to 'waitlisted' when over the cap." .
+sa:CeilingPolicyAccept    a sa:CeilingPolicy, skos:Concept ; skos:inScheme sa:CeilingPolicyScheme ; skos:notation "accept"   ; rdfs:label "Accept"   ; rdfs:comment "No enforcement; pool may exceed its declared ceiling. Default when undeclared." .
+
+# ─── Pledge cadence (spec 002) ──────────────────────────────────────
+# Class sa:PledgeCadence in tbox/pool-pledge.ttl
+
+sa:PledgeCadenceScheme a skos:ConceptScheme ; rdfs:label "Pledge Cadence Scheme" .
+sa:PledgeCadenceOneTime  a sa:PledgeCadence, skos:Concept ; skos:inScheme sa:PledgeCadenceScheme ; skos:notation "one-time" ; rdfs:label "One-time" .
+sa:PledgeCadenceMonthly  a sa:PledgeCadence, skos:Concept ; skos:inScheme sa:PledgeCadenceScheme ; skos:notation "monthly"  ; rdfs:label "Monthly" .
+sa:PledgeCadenceAnnual   a sa:PledgeCadence, skos:Concept ; skos:inScheme sa:PledgeCadenceScheme ; skos:notation "annual"   ; rdfs:label "Annual" .
+
+# ─── Pool pledge status (spec 002) ──────────────────────────────────
+# Class sa:PledgePoolStatus in tbox/pool-pledge.ttl
+
+sa:PledgePoolStatusScheme a skos:ConceptScheme ; rdfs:label "Pool Pledge Status Scheme" .
+sa:PledgePoolStatusActive       a sa:PledgePoolStatus, skos:Concept ; skos:inScheme sa:PledgePoolStatusScheme ; skos:notation "active"       ; rdfs:label "Active" .
+sa:PledgePoolStatusWaitlisted   a sa:PledgePoolStatus, skos:Concept ; skos:inScheme sa:PledgePoolStatusScheme ; skos:notation "waitlisted"   ; rdfs:label "Waitlisted" .
+sa:PledgePoolStatusStopped      a sa:PledgePoolStatus, skos:Concept ; skos:inScheme sa:PledgePoolStatusScheme ; skos:notation "stopped"      ; rdfs:label "Stopped"      ; rdfs:comment "Member ended the pledge." .
+sa:PledgePoolStatusAutoStopped  a sa:PledgePoolStatus, skos:Concept ; skos:inScheme sa:PledgePoolStatusScheme ; skos:notation "auto-stopped" ; rdfs:label "Auto-stopped" ; rdfs:comment "Pool closed or was withdrawn (FR-021)." .
+sa:PledgePoolStatusFulfilled    a sa:PledgePoolStatus, skos:Concept ; skos:inScheme sa:PledgePoolStatusScheme ; skos:notation "fulfilled"    ; rdfs:label "Fulfilled"    ; rdfs:comment "Set by downstream allocation/disbursement spec for one-time pledges fully disbursed." .
+
+# ─── Story permissions (spec 002) ───────────────────────────────────
+# Class sa:StoryPermission in tbox/pool-pledge.ttl
+
+sa:StoryPermissionScheme a skos:ConceptScheme ; rdfs:label "Story Permission Scheme" .
+sa:StoryPermissionPublic                 a sa:StoryPermission, skos:Concept ; skos:inScheme sa:StoryPermissionScheme ; skos:notation "public"               ; rdfs:label "Public"               ; rdfs:comment "Donor IRI may be revealed in on-chain assertion + GraphDB mirror." .
+sa:StoryPermissionShareWithSupportTeam   a sa:StoryPermission, skos:Concept ; skos:inScheme sa:StoryPermissionScheme ; skos:notation "shareWithSupportTeam" ; rdfs:label "Share with support team" ; rdfs:comment "Anchored as coarse assertion (no donor IRI in public chain); donor IRI revealed only to pool's stewards via cross-delegation." .
+sa:StoryPermissionAnonymous              a sa:StoryPermission, skos:Concept ; skos:inScheme sa:StoryPermissionScheme ; skos:notation "anonymous"            ; rdfs:label "Anonymous"            ; rdfs:comment "Never anchored on-chain; pool's pledgedTotal is updated via aggregate-counter only." .
+
+# ─── Grant proposal status (spec 003) ───────────────────────────────
+# Class sa:GrantProposalStatus in tbox/proposal.ttl
+
+sa:GrantProposalStatusScheme a skos:ConceptScheme ; rdfs:label "Grant Proposal Status Scheme" .
+sa:GrantProposalStatusDraft     a sa:GrantProposalStatus, skos:Concept ; skos:inScheme sa:GrantProposalStatusScheme ; skos:notation "draft"     ; rdfs:label "Draft"     .
+sa:GrantProposalStatusSubmitted a sa:GrantProposalStatus, skos:Concept ; skos:inScheme sa:GrantProposalStatusScheme ; skos:notation "submitted" ; rdfs:label "Submitted" .
+sa:GrantProposalStatusWithdrawn a sa:GrantProposalStatus, skos:Concept ; skos:inScheme sa:GrantProposalStatusScheme ; skos:notation "withdrawn" ; rdfs:label "Withdrawn" .
+sa:GrantProposalStatusAwarded   a sa:GrantProposalStatus, skos:Concept ; skos:inScheme sa:GrantProposalStatusScheme ; skos:notation "awarded"   ; rdfs:label "Awarded"   ; rdfs:comment "Set by downstream review/award spec." .
+sa:GrantProposalStatusDeclined  a sa:GrantProposalStatus, skos:Concept ; skos:inScheme sa:GrantProposalStatusScheme ; skos:notation "declined"  ; rdfs:label "Declined"  ; rdfs:comment "Set by downstream review/award spec." .
+
+# ─── Reporting cadence (spec 003) ───────────────────────────────────
+# Class sa:ReportingCadence in tbox/proposal.ttl
+
+sa:ReportingCadenceScheme a skos:ConceptScheme ; rdfs:label "Reporting Cadence Scheme" .
+sa:ReportingCadenceQuarterly a sa:ReportingCadence, skos:Concept ; skos:inScheme sa:ReportingCadenceScheme ; skos:notation "quarterly" ; rdfs:label "Quarterly" .
+sa:ReportingCadenceMilestone a sa:ReportingCadence, skos:Concept ; skos:inScheme sa:ReportingCadenceScheme ; skos:notation "milestone" ; rdfs:label "Milestone" .
+sa:ReportingCadenceAnnual    a sa:ReportingCadence, skos:Concept ; skos:inScheme sa:ReportingCadenceScheme ; skos:notation "annual"    ; rdfs:label "Annual" .
+sa:ReportingCadenceNone      a sa:ReportingCadence, skos:Concept ; skos:inScheme sa:ReportingCadenceScheme ; skos:notation "none"      ; rdfs:label "None" .

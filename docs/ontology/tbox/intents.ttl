@@ -170,6 +170,11 @@ saint:intentStatus a owl:ObjectProperty ;
     rdfs:range skos:Concept ;
     rdfs:comment "Drafted | Expressed | Acknowledged | InProgress | Fulfilled | Withdrawn | Abandoned" .
 
+saint:visibility a owl:ObjectProperty ;
+    rdfs:domain saint:Intent ;
+    rdfs:range  <https://smartagent.io/ontology/geo#Visibility> ;
+    rdfs:comment "Privacy tier of the intent. Reuses sageo:Visibility (Public / PublicCoarse / PrivateCommitment / PrivateZk / OffchainOnly). Source of the visibility cascade for derived artifacts (sa:MatchInitiation inherits the strictest of the two source intents). See tbox/shacl/visibility.ttl." .
+
 # ─── Outcome properties ──────────────────────────────────────────────
 
 saint:intentExpects a owl:ObjectProperty ;

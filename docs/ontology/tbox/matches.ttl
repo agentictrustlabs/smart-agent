@@ -1,8 +1,11 @@
 @prefix sa:        <https://smartagent.io/ontology/core#> .
+@prefix saint:     <https://smartagent.io/ontology/intent#> .
 @prefix samatch:   <https://smartagent.io/ontology/match#> .
 @prefix saneed:    <https://smartagent.io/ontology/need#> .
 @prefix saoffer:   <https://smartagent.io/ontology/offering#> .
 @prefix sawq:      <https://smartagent.io/ontology/work-queue#> .
+@prefix sageo:     <https://smartagent.io/ontology/geo#> .
+@prefix hub:       <https://smartagent.io/ontology/hub-marketplace#> .
 @prefix skos:      <http://www.w3.org/2004/02/skos/core#> .
 @prefix dul:       <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#> .
 @prefix prov:      <http://www.w3.org/ns/prov#> .
@@ -145,3 +148,123 @@ samatch:roleTarget a owl:ObjectProperty ;
 samatch:roleStatus a owl:ObjectProperty ;
     rdfs:domain samatch:RoleAssignment ;
     rdfs:range  skos:Concept .   # Active | Lapsed | Ended
+
+# =============================================================================
+# MatchInitiation  (spec 001 — direct-lane intent marketplace)
+# =============================================================================
+#
+# IA classification: docs/information-architecture/10-intent-marketplace-classification.md § 2.1
+#
+# Resolutions of Ontologist open questions, codified here:
+#   • O2 — ONE class with sa:visibility predicate (mirrors saint:Intent
+#          tier handling); no PublicMatchInitiation / PrivateMatchInitiation
+#          subclasses.
+#   • O4 — basis is JSON literal (xsd:string) for v1; promote to typed
+#          predicates only when SPARQL needs to filter on rank components.
+#   • O6 — status values codified as skos:Concept individuals in
+#          cbox/controlled-vocabularies.ttl (MatchInitiationStatus*).
+#          Same pattern for initiationKind.
+#   • O7 — single sa:MatchInitiationAssertion class on chain; the
+#          sa:initiationKind discriminator (self|connector) is enough.
+#          No separate ConnectorMatchInitiation event class.
+#   • O10 — initiator owns the artifact; intent expressers receive
+#          notifications, not replicas. No-duplication (P4) preserved.
+
+sa:MatchInitiation
+    a owl:Class ;
+    rdfs:subClassOf prov:Entity , dul:Situation ;
+    skos:relatedMatch saint:IntentMatch ;
+    rdfs:label "Match Initiation" ;
+    rdfs:comment "An act of putting two opposite-direction intents on the table together as a candidate pairing. Owned by the initiator (the agent that proposed the pairing); references the two source intents. The terminal artifact of spec 001's direct lane and the trigger that flips both source intents from 'expressed' to 'acknowledged'. Distinct from saint:IntentMatch, which is the durable matched pair; a MatchInitiation is the *proposal* that may become a Match." .
+
+sa:MatchInitiationAssertion
+    a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "Match Initiation Assertion" ;
+    rdfs:comment "On-chain anchor for a MatchInitiation. Minted ONLY when both source intents are public-tier (i.e. each already has its own on-chain assertion). Carries initiator + viewedIntent IRI + candidateIntent IRI + initiationKind + proposedAt. For coarse-tier the basis is omitted. NEVER minted when either source intent is private — a private intent's IRI must not appear in any public triple." .
+
+# ─── Properties ─────────────────────────────────────────────────────
+
+sa:initiator
+    a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:subPropertyOf prov:wasAssociatedWith ;
+    rdfs:domain sa:MatchInitiation ;
+    rdfs:range sa:Agent ;
+    rdfs:label "initiator" ;
+    rdfs:comment "The agent who proposed the pairing. When initiationKind is 'self', this equals the expresser of one of the two intents; when 'connector', it is a third party. The initiator's MCP owns the body (per IA owner-routing)." .
+
+sa:viewedIntent
+    a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain sa:MatchInitiation ;
+    rdfs:range saint:Intent ;
+    rdfs:label "viewed intent" ;
+    rdfs:comment "The intent the initiator was looking at when proposing the pairing. Functional — exactly one." .
+
+sa:candidateIntent
+    a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain sa:MatchInitiation ;
+    rdfs:range saint:Intent ;
+    rdfs:label "candidate intent" ;
+    rdfs:comment "The chosen counter-intent. Direction must be opposite of viewedIntent.direction; object must match (or broaden, per FR-010). Functional — exactly one." .
+
+sa:initiationKind
+    a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain sa:MatchInitiation ;
+    rdfs:range sa:MatchInitiationKind ;
+    rdfs:label "initiation kind" ;
+    rdfs:comment "'self' if initiator is one of the two intents' expressers; 'connector' otherwise. Discriminator for connector-mode (third-party-proposed) initiations." .
+
+sa:proposedAt
+    a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:subPropertyOf prov:generatedAtTime ;
+    rdfs:domain sa:MatchInitiation ;
+    rdfs:range xsd:dateTime ;
+    rdfs:label "proposed at" ;
+    rdfs:comment "ISO timestamp when the initiation was created." .
+
+sa:basis
+    a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain sa:MatchInitiation ;
+    rdfs:range xsd:string ;
+    rdfs:label "rank basis snapshot" ;
+    rdfs:comment "JSON literal — opaque to SPARQL by design (O4). Snapshot of RankBasis at proposal time: { proximityHops, proximityScore, priorOutcomes, outcomeScore, composite, isColdStart }. Promote individual fields to predicates only when SPARQL needs to filter on them." .
+
+sa:status
+    a owl:ObjectProperty ;
+    rdfs:domain sa:MatchInitiation ;
+    rdfs:range skos:Concept ;
+    rdfs:label "status" ;
+    rdfs:comment "Lifecycle status. Range is shared across MatchInitiation, PoolPledge, GrantProposal — the actual concept individuals (sa:MatchInitiationStatusPending etc.) carry the artifact-specific scheme membership in C-Box." .
+
+sa:visibility
+    a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain sa:MatchInitiation ;
+    rdfs:range sageo:Visibility ;
+    rdfs:label "visibility tier" ;
+    rdfs:comment "Reuses sageo:Visibility (Public / PublicCoarse / PrivateCommitment / PrivateZk / OffchainOnly). Cascade rule (SHACL in tbox/shacl/visibility.ttl): a MatchInitiation's tier equals the STRICTEST of its two source intents' tiers. Anchors on-chain only when Public or PublicCoarse." .
+
+sa:onChainAssertionId
+    a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain prov:Entity ;
+    rdfs:range xsd:string ;
+    rdfs:label "on-chain assertion id" ;
+    rdfs:comment "IRI / id of the on-chain assertion anchoring this artifact. Null when the artifact never anchors (private tier). Shared across MatchInitiation / PoolPledge / GrantProposal / Round." .
+
+# ─── Status / Kind classes (concept individuals in C-Box) ───────────
+
+sa:MatchInitiationKind
+    a owl:Class ;
+    rdfs:subClassOf skos:Concept ;
+    rdfs:label "Match Initiation Kind" ;
+    rdfs:comment "Closed enumeration: self | connector. Concept individuals in cbox/controlled-vocabularies.ttl." .
+
+sa:MatchInitiationStatus
+    a owl:Class ;
+    rdfs:subClassOf skos:Concept ;
+    rdfs:label "Match Initiation Status" ;
+    rdfs:comment "Closed enumeration: pending | superseded | consumed. This spec writes 'pending' only; downstream commitment / supersede paths advance status. Concept individuals in cbox/controlled-vocabularies.ttl." .
+
+# ─── Cross-ontology alignment ───────────────────────────────────────
+
+sa:MatchInitiation skos:relatedMatch hub:IntentMatch ;
+    skos:relatedMatch samatch:NeedResourceMatch .

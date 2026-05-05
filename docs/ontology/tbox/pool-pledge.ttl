@@ -1,0 +1,284 @@
+@prefix sa:        <https://smartagent.io/ontology/core#> .
+@prefix saint:     <https://smartagent.io/ontology/intent#> .
+@prefix sageo:     <https://smartagent.io/ontology/geo#> .
+@prefix hub:       <https://smartagent.io/ontology/hub-marketplace#> .
+@prefix vf:        <https://w3id.org/valueflows/ont/vf#> .
+@prefix skos:      <http://www.w3.org/2004/02/skos/core#> .
+@prefix dul:       <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#> .
+@prefix prov:      <http://www.w3.org/ns/prov#> .
+@prefix rdfs:      <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl:       <http://www.w3.org/2002/07/owl#> .
+@prefix xsd:       <http://www.w3.org/2001/XMLSchema#> .
+
+# =============================================================================
+# Smart Agent Pool / Pledge Ontology  (T-Box, spec 002 — pool lane)
+# =============================================================================
+#
+# Pool is a first-class agent (sa:OrgAgent with a governanceModel). A
+# PoolPledge is a donor's committed contribution to a pool — owned by the
+# donor's MCP, with a tier-gated on-chain anchor and a tier-gated GraphDB
+# mirror. A Fund is a Pool with governanceModel=fund; specs 002 and 003
+# both refer to "Fund" as a class for ergonomics.
+#
+# IA classification: docs/information-architecture/10-intent-marketplace-classification.md § 2.2 + § 2.5
+#
+# Resolutions of Ontologist open questions, codified here:
+#   • O3 — sa:Fund is a SUBCLASS of sa:Pool. The sa:governanceModel
+#          property is preserved as the operational discriminator
+#          (instances always carry sa:governanceModel "fund" when they
+#          are a sa:Fund). Class subsumption + property co-presence are
+#          NOT conflicting; SHACL in tbox/shacl/visibility.ttl asserts
+#          their consistency. Rationale: specs 002/003 talk about Fund
+#          as a class; SDK keeps property-as-discriminator for the row;
+#          ontology supports both.
+#   • O5 — sa:liveAcknowledgementCount on sa:Intent is INTENTIONALLY
+#          NOT codified at T-Box. It is a derived integer maintained by
+#          the intent owner's MCP via system-delegation increments. The
+#          ontology already expresses "intent has acknowledgement A" via
+#          inverse predicates (sa:viewedIntent / sa:candidateIntent /
+#          sa:basedOnIntent). Codifying the counter would freeze an
+#          implementation detail. Revisit if an external query needs it.
+#   • O6 — PoolPledge status / cadence / storyPermissions / ceilingPolicy
+#          are all C-Box vocabularies (concept individuals in
+#          cbox/controlled-vocabularies.ttl).
+#   • O8 — visibility cascade is SHACL in tbox/shacl/visibility.ttl.
+#
+# Class declarations for concept-individual ranges (e.g. sa:Cadence) live
+# here; the individuals themselves live in C-Box.
+
+<https://smartagent.io/ontology/pool> a owl:Ontology ;
+    rdfs:label "Smart Agent Pool / Pledge Ontology" ;
+    rdfs:comment "T-Box: Pool extensions (acceptedUnits, ceilingPolicy, capacityCeiling, acceptsOpenCalls), PoolPledge body and lifecycle, PledgeAmendment embedded history, and aggregate-assertion class for the pledged-total mirror." ;
+    owl:versionInfo "v0" ;
+    owl:imports <https://smartagent.io/ontology/core> ,
+                <https://smartagent.io/ontology/intent> ,
+                <http://www.w3.org/ns/prov-o> .
+
+# ─── Pool (and Fund subclass) ───────────────────────────────────────
+
+sa:Pool
+    a owl:Class ;
+    rdfs:subClassOf sa:OrganizationAgent ;
+    rdfs:label "Pool" ;
+    rdfs:comment "An organisation agent operating as a contribution pool — accepts pledges, accumulates them under stewardship, and disburses them under a governance model. Pool IS an agent (its IRI is its on-chain address); pool metadata extends the existing OrganizationAgent profile. A Fund is a Pool whose governanceModel is 'fund'." .
+
+sa:Fund
+    a owl:Class ;
+    rdfs:subClassOf sa:Pool ;
+    rdfs:label "Fund" ;
+    rdfs:comment "A Pool with governanceModel = 'fund' — operates RFP-style grant rounds (sa:Round) and may accept open-call proposals (sa:acceptsOpenCalls). Subclass kept for ergonomics; instances also carry sa:governanceModel 'fund' for operational consistency with the SDK row shape." .
+
+# ─── Pool properties (extensions per spec 002 + 003) ────────────────
+
+sa:governanceModel
+    a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain sa:Pool ;
+    rdfs:range xsd:string ;
+    rdfs:label "governance model" ;
+    rdfs:comment "DAF | giving-circle | mission-cooperative | mutual-aid | faith-promise | fund. Operational discriminator paired with subclassing for sa:Fund." .
+
+sa:acceptsUnit
+    a owl:DatatypeProperty ;
+    rdfs:domain sa:Pool ;
+    rdfs:range xsd:string ;
+    rdfs:label "accepts unit" ;
+    rdfs:comment "A unit string the pool accepts pledges in (e.g. 'usd', 'hours-per-week', 'sessions'). Multi-valued: a pool may accept several. Renamed from spec field acceptedUnits to a multi-valued predicate per IA § 5." .
+
+sa:ceilingPolicy
+    a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain sa:Pool ;
+    rdfs:range sa:CeilingPolicy ;
+    rdfs:label "ceiling policy" ;
+    rdfs:comment "What happens when a new pledge would push pledgedTotal above capacityCeiling: 'block' (reject), 'waitlist' (status=waitlisted), or 'accept' (no enforcement). Default 'accept' if undeclared." .
+
+sa:capacityCeiling
+    a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain sa:Pool ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "capacity ceiling" ;
+    rdfs:comment "Optional cap on pledgedTotal. When unset the pool has no ceiling." .
+
+sa:acceptsOpenCalls
+    a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain sa:Pool ;
+    rdfs:range xsd:boolean ;
+    rdfs:label "accepts open calls" ;
+    rdfs:comment "Used by sa:Fund (spec 003) to indicate proposals can be submitted against the fund's mandate even when no sa:Round is open. False on Pools that are not Funds." .
+
+sa:pledgedTotal
+    a owl:DatatypeProperty ;
+    rdfs:domain sa:Pool ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "pledged total" ;
+    rdfs:comment "Derived aggregate: sum of cadenceAwareTotal over active pledges. For public pools, mirrored to GraphDB via on-chain pledge assertions; for pools with private/anonymous pledges, mirrored from the pool's own aggregate-assertion (sa:PoolPledgedTotalAssertion)." .
+
+sa:availableTotal
+    a owl:DatatypeProperty ;
+    rdfs:domain sa:Pool ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "available total" ;
+    rdfs:comment "Derived: pledgedTotal - allocatedTotal. Updated by the pool's stewards as allocations are disbursed (downstream spec)." .
+
+sa:addressedMembers
+    a owl:ObjectProperty ;
+    rdfs:domain sa:Pool ;
+    rdfs:range sa:Agent ;
+    rdfs:label "addressed members" ;
+    rdfs:comment "For private pools only — the agents allowed to pledge into the pool. Lives in fund's org-mcp; never in a public triple. Multi-valued." .
+
+sa:steward
+    a owl:ObjectProperty ;
+    rdfs:domain sa:Pool ;
+    rdfs:range sa:Agent ;
+    rdfs:label "steward" ;
+    rdfs:comment "An individual steward agent of the pool. Stewards read pledge bodies via the cross-delegation pool:read_pledge issued by donors at submit time (when storyPermissions != anonymous). Multi-valued." .
+
+sa:stewardshipAgent
+    a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain sa:Pool ;
+    rdfs:range sa:Agent ;
+    rdfs:label "stewardship agent" ;
+    rdfs:comment "The pool itself when pool-as-agent, or a designated delegate. The org-mcp tenant key for pool-side reads of donor pledges." .
+
+# ─── PoolPledge ─────────────────────────────────────────────────────
+
+sa:PoolPledge
+    a owl:Class ;
+    rdfs:subClassOf prov:Entity , dul:Description ;
+    skos:relatedMatch hub:FulfillmentCommitment ;
+    skos:relatedMatch vf:Commitment ;
+    rdfs:label "Pool Pledge" ;
+    rdfs:comment "A donor's committed contribution to a Pool. Body lives in the donor's MCP; on-chain anchor is conditional (only when pool is public AND donor's storyPermissions = 'public' or 'shareWithSupportTeam'). Anonymous pledges NEVER anchor on-chain; the pool aggregates them in its org-mcp counter and optionally signs sa:PoolPledgedTotalAssertion." .
+
+sa:PledgeAssertion
+    a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "Pledge Assertion" ;
+    rdfs:comment "On-chain anchor for a public-tier PoolPledge. Carries pool IRI, amount, unit, cadence; carries donor IRI ONLY when storyPermissions = 'public'. For storyPermissions = 'shareWithSupportTeam' the assertion is coarse (donor IRI omitted). Never minted for storyPermissions = 'anonymous' or for private pools." .
+
+sa:PoolPledgedTotalAssertion
+    a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "Pool Pledged Total Assertion" ;
+    rdfs:comment "Aggregate on-chain assertion published by the pool's session signer when the pool wants its pledgedTotal mirrored to GraphDB despite anonymous / private contributions. Carries pool IRI + scalar total (no donor information)." .
+
+# ─── PoolPledge properties ──────────────────────────────────────────
+
+sa:pledger
+    a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:subPropertyOf prov:wasAssociatedWith ;
+    rdfs:domain sa:PoolPledge ;
+    rdfs:range sa:Agent ;
+    rdfs:label "pledger" ;
+    rdfs:comment "The donor agent. v1 forbids connector mode — pledger MUST equal the submitter (FR-023)." .
+
+sa:targetPool
+    a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain sa:PoolPledge ;
+    rdfs:range sa:Pool ;
+    rdfs:label "target pool" ;
+    rdfs:comment "The Pool (or Fund) the pledge is committed to." .
+
+sa:pledgeCadence
+    a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain sa:PoolPledge ;
+    rdfs:range sa:PledgeCadence ;
+    rdfs:label "pledge cadence" ;
+    rdfs:comment "one-time | monthly | annual. Distinct from sa:reportingCadence (used by sa:GrantProposal). Concept individuals in cbox/controlled-vocabularies.ttl." .
+
+sa:pledgeUnit
+    a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain sa:PoolPledge ;
+    rdfs:range xsd:string ;
+    rdfs:label "pledge unit" ;
+    rdfs:comment "MUST be in the pool's sa:acceptsUnit set." .
+
+sa:pledgeAmount
+    a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain sa:PoolPledge ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "pledge amount" ;
+    rdfs:comment "Amount per cadence period (e.g. $100/month for monthly cadence)." .
+
+sa:pledgeDuration
+    a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain sa:PoolPledge ;
+    rdfs:range xsd:integer ;
+    rdfs:label "pledge duration" ;
+    rdfs:comment "Months for monthly cadence; years for annual; null/absent for one-time." .
+
+sa:pledgeRestrictions
+    a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain sa:PoolPledge ;
+    rdfs:range xsd:string ;
+    rdfs:label "pledge restrictions" ;
+    rdfs:comment "JSON literal: subset of pool.acceptedRestrictions. Donor-imposed conditions (e.g. specific kinds, geo). Opaque to SPARQL by design — promote fields to predicates only when query patterns require." .
+
+sa:storyPermissions
+    a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain sa:PoolPledge ;
+    rdfs:range sa:StoryPermission ;
+    rdfs:label "story permissions" ;
+    rdfs:comment "How the donor's identity may be shared in connection with this pledge: 'public' (anchorable, donor IRI revealed), 'shareWithSupportTeam' (anchorable coarse, donor IRI revealed only to stewards), 'anonymous' (NEVER anchored; aggregate-only)." .
+
+sa:pledgedAt
+    a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:subPropertyOf prov:generatedAtTime ;
+    rdfs:domain sa:PoolPledge ;
+    rdfs:range xsd:dateTime ;
+    rdfs:label "pledged at" .
+
+sa:stoppedAt
+    a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain sa:PoolPledge ;
+    rdfs:range xsd:dateTime ;
+    rdfs:label "stopped at" ;
+    rdfs:comment "Set when status moves to 'stopped' (member action) or 'auto-stopped' (pool closure / withdrawal)." .
+
+sa:pledgeStatus
+    a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain sa:PoolPledge ;
+    rdfs:range sa:PledgePoolStatus ;
+    rdfs:label "pledge status" ;
+    rdfs:comment "active | waitlisted | stopped | auto-stopped | fulfilled. Discovery never sets 'fulfilled'; downstream allocation / disbursement spec sets it for one-time pledges that have been fully disbursed." .
+
+sa:pledgeHistory
+    a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain sa:PoolPledge ;
+    rdfs:range xsd:string ;
+    rdfs:label "pledge history" ;
+    rdfs:comment "JSON array of sa:PledgeAmendment entries; embedded versioned history (Q4 in spec 002). Shape: [{ kind: 'amount'|'cadence'|'duration', prevValue, newValue, amendedAt: dateTime, windowResetAt?: dateTime }]. The windowResetAt field is set on cadence and duration amendments per Q4. Opaque to SPARQL by design — query the top-level amount/cadence/duration for current values; use this only when the audit trail is needed." .
+
+# ─── PledgeAmendment (documented as JSON shape, not a class) ────────
+
+sa:PledgeAmendment
+    a owl:Class ;
+    rdfs:subClassOf prov:Activity ;
+    rdfs:label "Pledge Amendment" ;
+    rdfs:comment "DOCUMENTATION-ONLY class. Amendments are embedded as a JSON array in sa:pledgeHistory; they are NOT reified as separate triples. Codified here so the JSON shape is part of the ontology contract. Each amendment has: { kind: 'amount'|'cadence'|'duration' (the field changed), prevValue (the value before), newValue (the value after), amendedAt: xsd:dateTime, windowResetAt?: xsd:dateTime (set on cadence/duration changes per Q4 in spec 002) }." .
+
+# ─── Status / Cadence / Permission classes (concept individuals in C-Box) ──
+
+sa:CeilingPolicy
+    a owl:Class ;
+    rdfs:subClassOf skos:Concept ;
+    rdfs:label "Ceiling Policy" ;
+    rdfs:comment "Closed enumeration: block | waitlist | accept. Concept individuals in cbox/controlled-vocabularies.ttl." .
+
+sa:PledgeCadence
+    a owl:Class ;
+    rdfs:subClassOf skos:Concept ;
+    rdfs:label "Pledge Cadence" ;
+    rdfs:comment "Closed enumeration: one-time | monthly | annual. Disambiguated from sa:ReportingCadence on grant proposals (which uses quarterly | milestone | annual | none). Concept individuals in cbox/controlled-vocabularies.ttl." .
+
+sa:PledgePoolStatus
+    a owl:Class ;
+    rdfs:subClassOf skos:Concept ;
+    rdfs:label "Pool Pledge Status" ;
+    rdfs:comment "Closed enumeration: active | waitlisted | stopped | auto-stopped | fulfilled. Concept individuals in cbox/controlled-vocabularies.ttl." .
+
+sa:StoryPermission
+    a owl:Class ;
+    rdfs:subClassOf skos:Concept ;
+    rdfs:label "Story Permission" ;
+    rdfs:comment "Closed enumeration: public | shareWithSupportTeam | anonymous. Drives the visibility-cascade SHACL rule (tbox/shacl/visibility.ttl): anonymous => no on-chain anchor, regardless of pool tier. Concept individuals in cbox/controlled-vocabularies.ttl." .

@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(.specify/extensions/git/scripts/bash/create-new-feature.sh *)",
+      "Bash(mkdir -p specs/001-intent-marketplace-discovery)",
+      "Bash(cp .specify/templates/spec-template.md specs/001-intent-marketplace-discovery/spec.md)"
+    ]
+  }
+}

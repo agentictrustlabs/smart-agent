@@ -1,0 +1,160 @@
+@prefix sa:        <https://smartagent.io/ontology/core#> .
+@prefix saint:     <https://smartagent.io/ontology/intent#> .
+@prefix sageo:     <https://smartagent.io/ontology/geo#> .
+@prefix sh:        <http://www.w3.org/ns/shacl#> .
+@prefix rdfs:      <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:       <http://www.w3.org/2001/XMLSchema#> .
+
+# =============================================================================
+# Visibility Cascade SHACL Shapes  (T-Box / SHACL — spec 001 + 002 + 003)
+# =============================================================================
+#
+# Captures the privacy-cascade rule from
+# docs/information-architecture/10-intent-marketplace-classification.md § 3.1:
+#
+#   "An artifact derived from N source intents/pools/rounds inherits
+#    the strictest visibility across them. The artifact's body lives
+#    in the initiator/donor/proposer's MCP regardless of tier; only
+#    the anchor + GraphDB mirror are tier-gated."
+#
+# Resolutions of Ontologist open questions, codified here:
+#   • O8 — visibility cascade is SHACL, not enforcement-code-only.
+#          Captures: storyPermissions=anonymous => no anchor;
+#          private intent's MatchInitiation => private;
+#          public Pool's pledge => public attribution unless
+#          storyPermissions=anonymous overrides.
+#
+# Pure SHACL cannot express cross-property comparison ("the strictest
+# of two intents") cleanly. We express what SHACL can — the
+# *necessary* (not sufficient) consequences of the cascade — and
+# leave the cross-property check to the action layer (same approach
+# as cbox/intent-shapes.shacl.ttl § "directions are opposite").
+#
+# Three shapes are defined here:
+#   1. AnonymousPledgeNoAnchorShape — anonymous pledges MUST NOT carry
+#      an on-chain anchor.
+#   2. GrantProposalAlwaysPrivateShape — GrantProposal MUST NOT carry
+#      an on-chain anchor in v1 (per IA § 2.3).
+#   3. FundGovernanceModelConsistencyShape — sa:Fund instances MUST
+#      carry sa:governanceModel "fund" (O3).
+
+# ─── 1. Anonymous PoolPledge — never anchored on-chain ──────────────
+
+sa:AnonymousPledgeNoAnchorShape
+    a sh:NodeShape ;
+    rdfs:label "Anonymous Pledge No-Anchor Shape" ;
+    rdfs:comment "An anonymous PoolPledge MUST NOT carry an on-chain assertion id. The donor's identity must never appear in any public store, including on-chain (transactions reveal signer addresses, which are publicly linked to agent IRIs)." ;
+    sh:targetClass sa:PoolPledge ;
+    sh:sparql [
+        sh:message "Anonymous pledges must not carry sa:onChainAssertionId — anonymity is enforced by NOT anchoring." ;
+        sh:select """
+            SELECT $this WHERE {
+                $this <https://smartagent.io/ontology/core#storyPermissions> <https://smartagent.io/ontology/core#StoryPermissionAnonymous> .
+                $this <https://smartagent.io/ontology/core#onChainAssertionId> ?id .
+                FILTER(BOUND(?id))
+            }
+        """ ;
+    ] .
+
+# ─── 2. Private Pool's pledge — never anchored on-chain ─────────────
+
+sa:PrivatePoolPledgeNoAnchorShape
+    a sh:NodeShape ;
+    rdfs:label "Private-Pool Pledge No-Anchor Shape" ;
+    rdfs:comment "A pledge whose target Pool is private-tier MUST NOT carry an on-chain assertion id. The pool's pledge bodies stay in the donor's MCP; the pool's pledgedTotal is mirrored via sa:PoolPledgedTotalAssertion only when the pool's stewards choose to publish it." ;
+    sh:targetClass sa:PoolPledge ;
+    sh:sparql [
+        sh:message "Pledges to private pools must not carry sa:onChainAssertionId." ;
+        sh:select """
+            PREFIX sa:    <https://smartagent.io/ontology/core#>
+            PREFIX sageo: <https://smartagent.io/ontology/geo#>
+            SELECT $this WHERE {
+                $this sa:targetPool ?pool .
+                ?pool sa:visibility ?vis .
+                FILTER(?vis NOT IN (sageo:VisPublic, sageo:VisPublicCoarse))
+                $this sa:onChainAssertionId ?id .
+                FILTER(BOUND(?id))
+            }
+        """ ;
+    ] .
+
+# ─── 3. GrantProposal — never anchored on-chain at submission (v1) ──
+
+sa:GrantProposalAlwaysPrivateShape
+    a sh:NodeShape ;
+    rdfs:label "Grant Proposal Always-Private Shape (v1)" ;
+    rdfs:comment "A GrantProposal MUST NOT carry an on-chain assertion id in v1 — proposal contents (budget, organisational backing, validators) are confidential under steward review. The downstream review/award spec MAY add an awarded-outcome anchor; that's a future spec's class, not this one." ;
+    sh:targetClass sa:GrantProposal ;
+    sh:property [
+        sh:path sa:onChainAssertionId ;
+        sh:maxCount 0 ;
+        sh:message "GrantProposal must not carry an on-chain assertion id in v1 (always private at submission)." ;
+    ] .
+
+# ─── 4. Private intent's MatchInitiation — never anchored ──────────
+
+sa:PrivateIntentInitiationNoAnchorShape
+    a sh:NodeShape ;
+    rdfs:label "Private-Intent MatchInitiation No-Anchor Shape" ;
+    rdfs:comment "A MatchInitiation whose viewedIntent OR candidateIntent is non-public-tier MUST NOT carry an on-chain assertion id. A private intent's IRI must never appear in a public triple (the MatchInitiation assertion would reference it)." ;
+    sh:targetClass sa:MatchInitiation ;
+    sh:sparql [
+        sh:message "MatchInitiations referencing any non-public intent must not anchor on-chain." ;
+        sh:select """
+            PREFIX sa:    <https://smartagent.io/ontology/core#>
+            PREFIX saint: <https://smartagent.io/ontology/intent#>
+            PREFIX sageo: <https://smartagent.io/ontology/geo#>
+            SELECT $this WHERE {
+                {
+                    $this sa:viewedIntent ?intent .
+                } UNION {
+                    $this sa:candidateIntent ?intent .
+                }
+                ?intent saint:visibility ?vis .
+                FILTER(?vis NOT IN (sageo:VisPublic, sageo:VisPublicCoarse))
+                $this sa:onChainAssertionId ?id .
+                FILTER(BOUND(?id))
+            }
+        """ ;
+    ] .
+
+# ─── 5. Fund subclass / governanceModel consistency ────────────────
+
+sa:FundGovernanceModelConsistencyShape
+    a sh:NodeShape ;
+    rdfs:label "Fund Governance-Model Consistency Shape (O3)" ;
+    rdfs:comment "Resolves O3 — preserves the SDK's property-as-discriminator pattern alongside the class-subsumption choice. An sa:Fund instance MUST carry sa:governanceModel = 'fund'. Vice versa: any Pool with governanceModel='fund' SHOULD also be typed sa:Fund (open-world; not enforced as a CONSTRAINT, only flagged at sync-time by the emitter)." ;
+    sh:targetClass sa:Fund ;
+    sh:property [
+        sh:path sa:governanceModel ;
+        sh:hasValue "fund" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "sa:Fund instances must carry sa:governanceModel \"fund\"." ;
+    ] .
+
+# ─── 6. MatchInitiation references — opposite directions ────────────
+
+# This is the spec-001 invariant (data-model.md): viewedIntent.direction
+# != candidateIntent.direction. Cross-property comparison; SHACL-SPARQL
+# expresses it directly.
+
+sa:MatchInitiationOppositeDirectionsShape
+    a sh:NodeShape ;
+    rdfs:label "MatchInitiation Opposite-Directions Shape" ;
+    rdfs:comment "The two intents in a MatchInitiation MUST have opposite directions (one Receive + one Give). Same-direction pairs are not matches — they are competing intents." ;
+    sh:targetClass sa:MatchInitiation ;
+    sh:sparql [
+        sh:message "MatchInitiation viewedIntent and candidateIntent must have opposite directions." ;
+        sh:select """
+            PREFIX sa:    <https://smartagent.io/ontology/core#>
+            PREFIX saint: <https://smartagent.io/ontology/intent#>
+            SELECT $this WHERE {
+                $this sa:viewedIntent ?v ;
+                      sa:candidateIntent ?c .
+                ?v saint:direction ?dv .
+                ?c saint:direction ?dc .
+                FILTER(?dv = ?dc)
+            }
+        """ ;
+    ] .

@@ -1,0 +1,290 @@
+@prefix sa:        <https://smartagent.io/ontology/core#> .
+@prefix saint:     <https://smartagent.io/ontology/intent#> .
+@prefix sag:       <https://smartagent.io/ontology/governance#> .
+@prefix sageo:     <https://smartagent.io/ontology/geo#> .
+@prefix hub:       <https://smartagent.io/ontology/hub-marketplace#> .
+@prefix vf:        <https://w3id.org/valueflows/ont/vf#> .
+@prefix p-plan:    <http://purl.org/net/p-plan#> .
+@prefix skos:      <http://www.w3.org/2004/02/skos/core#> .
+@prefix dul:       <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#> .
+@prefix prov:      <http://www.w3.org/ns/prov#> .
+@prefix rdfs:      <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl:       <http://www.w3.org/2002/07/owl#> .
+@prefix xsd:       <http://www.w3.org/2001/XMLSchema#> .
+
+# =============================================================================
+# Smart Agent Grant Proposal / Round Ontology  (T-Box, spec 003 — proposal lane)
+# =============================================================================
+#
+# A grant-cycle proposal — what an organisation submits when applying
+# for a grant from a Fund (Pool with governanceModel=fund), either to a
+# specific sa:Round (RFP) or as an open-call against the fund's mandate.
+#
+# Naming note (O1 RESOLUTION — RENAME APPLIED):
+#   Spec 003 calls this 'ProposalSubmission'. The on-chain class
+#   sag:Proposal already refers to GOVERNANCE-VOTE proposals (a
+#   different concept; org-mcp's `proposals` table). To prevent term
+#   collision and to make the class name self-describing, the T-Box
+#   class is sa:GrantProposal. The "Submission" suffix in the spec name
+#   is redundant with the lifecycle field sa:proposalSubmittedAt;
+#   submission is an event, not a class.
+#
+# IA classification: docs/information-architecture/10-intent-marketplace-classification.md § 2.3 + § 2.4
+#
+# Resolutions of Ontologist open questions, codified here:
+#   • O1 — sa:GrantProposal (NOT sa:ProposalSubmission). Subclass of
+#          prov:Plan (it is the proposed plan for the grant) + dul:Plan.
+#   • O4 — basis remains a JSON literal (xsd:string).
+#   • O6 — proposal status as C-Box concept vocabulary
+#          (sa:GrantProposalStatus*). Reporting cadence likewise.
+#   • O8 — visibility cascade SHACL rule (tbox/shacl/visibility.ttl).
+#          GrantProposal body is ALWAYS private (no anchor in v1).
+#
+# v1 contract: GrantProposal NEVER anchors on-chain at submission. The
+# downstream review/award spec MAY anchor an *awarded* outcome
+# (out of scope here). sa:Round, by contrast, is intrinsically public
+# (it's an RFP) and DOES anchor.
+
+<https://smartagent.io/ontology/proposal> a owl:Ontology ;
+    rdfs:label "Smart Agent Grant Proposal / Round Ontology" ;
+    rdfs:comment "T-Box: sa:GrantProposal (grant-cycle proposal — distinct from governance-vote sag:Proposal) and sa:Round (the RFP a fund publishes). Resolves O1 by renaming spec-side ProposalSubmission to sa:GrantProposal." ;
+    owl:versionInfo "v0" ;
+    owl:imports <https://smartagent.io/ontology/core> ,
+                <https://smartagent.io/ontology/intent> ,
+                <https://smartagent.io/ontology/pool> ,
+                <http://www.w3.org/ns/prov-o> ,
+                <http://purl.org/net/p-plan#> .
+
+# ─── Round (RFP) ────────────────────────────────────────────────────
+
+sa:Round
+    a owl:Class ;
+    rdfs:subClassOf prov:Plan , p-plan:Plan ;
+    skos:relatedMatch hub:MarketplaceProposal ;
+    rdfs:label "Round" ;
+    rdfs:comment "An RFP issued by a Fund — defines mandate, milestone template, validator requirements, reporting cadence, deadline, decision date. Anchored on-chain by the fund at creation (sa:RoundOpenedAssertion); body lives in fund's org-mcp. Private rounds anchor a coarse assertion (no addressedApplicants list) and keep the addressee list private in fund's org-mcp." .
+
+sa:RoundOpenedAssertion
+    a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "Round Opened Assertion" ;
+    rdfs:comment "On-chain anchor minted when a fund opens a Round. Public-tier carries full mandate summary, deadline, decision date, budget ceiling, expected awards, acceptsOpenCalls. Private-tier omits the addressed-applicants list." .
+
+sa:RoundClosedAssertion
+    a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "Round Closed Assertion" ;
+    rdfs:comment "On-chain anchor minted when a Round closes (deadline pass or decision)." .
+
+# ─── Round properties ──────────────────────────────────────────────
+
+sa:operatedByFund
+    a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain sa:Round ;
+    rdfs:range sa:Fund ;
+    rdfs:label "operated by fund" ;
+    rdfs:comment "The Fund that operates this Round. Renamed from spec field fundAgentId to disambiguate from steward agent and emphasise the relation (IA § 5)." .
+
+sa:roundMandate
+    a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain sa:Round ;
+    rdfs:range xsd:string ;
+    rdfs:label "round mandate" ;
+    rdfs:comment "JSON literal: { acceptedKinds, acceptedGeo, budgetCeiling, expectedAwards }. Opaque to SPARQL." .
+
+sa:milestoneTemplate
+    a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain sa:Round ;
+    rdfs:range xsd:string ;
+    rdfs:label "milestone template" ;
+    rdfs:comment "JSON literal — structure of expected milestones (count bounds, tranche-percentage hints)." .
+
+sa:validatorRequirements
+    a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain sa:Round ;
+    rdfs:range xsd:string ;
+    rdfs:label "validator requirements" ;
+    rdfs:comment "JSON literal — who can validate outcomes (kind/credential filters)." .
+
+sa:reportingCadence
+    a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain sa:Round ;
+    rdfs:range sa:ReportingCadence ;
+    rdfs:label "reporting cadence" ;
+    rdfs:comment "quarterly | milestone | annual | none. Disambiguated from sa:pledgeCadence (PoolPledge). Concept individuals in cbox/controlled-vocabularies.ttl." .
+
+sa:deadline
+    a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain sa:Round ;
+    rdfs:range xsd:dateTime ;
+    rdfs:label "deadline" ;
+    rdfs:comment "Submission cut-off. Pre-deadline edits to GrantProposals are allowed." .
+
+sa:decisionDate
+    a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain sa:Round ;
+    rdfs:range xsd:dateTime ;
+    rdfs:label "decision date" ;
+    rdfs:comment "When the fund's stewards expect to decide on submitted proposals." .
+
+sa:requiredCredentials
+    a owl:DatatypeProperty ;
+    rdfs:domain sa:Round ;
+    rdfs:range xsd:string ;
+    rdfs:label "required credentials" ;
+    rdfs:comment "AnonCreds credential kinds required for submission. Multi-valued. Aligned with the credential-registry pattern (project_credential_registry)." .
+
+sa:addressedApplicants
+    a owl:ObjectProperty ;
+    rdfs:domain sa:Round ;
+    rdfs:range sa:Agent ;
+    rdfs:label "addressed applicants" ;
+    rdfs:comment "For private rounds only — agents allowed to submit. Lives in fund's org-mcp; never in a public triple. Multi-valued." .
+
+sa:proposalsReceived
+    a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain sa:Round ;
+    rdfs:range xsd:integer ;
+    rdfs:label "proposals received" ;
+    rdfs:comment "Derived counter; incremented on submit, decremented on withdraw." .
+
+# ─── GrantProposal ──────────────────────────────────────────────────
+
+sa:GrantProposal
+    a owl:Class ;
+    rdfs:subClassOf prov:Plan , p-plan:Plan , dul:Plan ;
+    skos:relatedMatch hub:RequestProposal ;
+    skos:relatedMatch vf:Proposal ;
+    rdfs:label "Grant Proposal" ;
+    rdfs:comment "A grant-cycle proposal submitted by an organisation (or, rarely, a person) to a Round or fund's open-call. Body ALWAYS lives in the proposer's MCP and is ALWAYS private at submission — no on-chain anchor in v1. Stewards read via the cross-delegation proposal:read_for_review issued at submit time. Distinct from sag:Proposal (the governance-vote proposal class in tbox/governance.ttl) — a rename applied at the T-Box level only (spec / SDK keep ProposalSubmission)." .
+
+# ─── GrantProposal properties ───────────────────────────────────────
+
+sa:proposer
+    a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:subPropertyOf prov:wasAssociatedWith ;
+    rdfs:domain sa:GrantProposal ;
+    rdfs:range sa:Agent ;
+    rdfs:label "proposer" ;
+    rdfs:comment "The submitting agent — almost always an OrganisationAgent (org-mcp tenant). v1 forbids connector mode (FR-027); proposer MUST equal the submitter." .
+
+sa:targetRound
+    a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain sa:GrantProposal ;
+    rdfs:range sa:Round ;
+    rdfs:label "target round" ;
+    rdfs:comment "The Round the proposal targets. Mutually exclusive with sa:fundMandate (open-call)." .
+
+sa:fundMandate
+    a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain sa:GrantProposal ;
+    rdfs:range sa:Fund ;
+    rdfs:label "fund mandate" ;
+    rdfs:comment "The Fund whose mandate the proposal targets when sa:targetRound is unset (open-call). Renamed from spec field fundMandateId — Mandate is not its own entity; the Fund IS the mandate-bearer (IA § 5). The Fund must have sa:acceptsOpenCalls = true." .
+
+sa:basedOnIntent
+    a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain sa:GrantProposal ;
+    rdfs:range saint:Intent ;
+    rdfs:label "based on intent" ;
+    rdfs:comment "The underlying NeedIntent the proposal addresses. The intent's status transitions expressed→acknowledged on submit (and back on withdraw, if no other live acknowledgements remain — FR-023)." .
+
+sa:budget
+    a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain sa:GrantProposal ;
+    rdfs:range xsd:string ;
+    rdfs:label "budget" ;
+    rdfs:comment "JSON literal — { lineItems: [{name, amount, unit, justification}], total }." .
+
+sa:plan
+    a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain sa:GrantProposal ;
+    rdfs:range xsd:string ;
+    rdfs:label "plan" ;
+    rdfs:comment "JSON literal — { narrative, planArtifactRef? }." .
+
+sa:milestones
+    a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain sa:GrantProposal ;
+    rdfs:range xsd:string ;
+    rdfs:label "milestones" ;
+    rdfs:comment "JSON array — [{ name, dueDate, evidenceRequired, trancheAmount }]." .
+
+sa:desiredOutcomes
+    a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain sa:GrantProposal ;
+    rdfs:range xsd:string ;
+    rdfs:label "desired outcomes" ;
+    rdfs:comment "JSON array — [{ statement, measurable, validators: IRI[] }]." .
+
+sa:reportingObligations
+    a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain sa:GrantProposal ;
+    rdfs:range xsd:string ;
+    rdfs:label "reporting obligations" ;
+    rdfs:comment "JSON literal — { cadence, format }. Note: the cadence value here references the same sa:ReportingCadence vocabulary; codified as a JSON field for v1 (promote to sa:reportingCadence predicate later if SPARQL needs it)." .
+
+sa:organisationalBackground
+    a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain sa:GrantProposal ;
+    rdfs:range xsd:string ;
+    rdfs:label "organisational background" ;
+    rdfs:comment "JSON literal — narrative + optional priorTrackRecord refs." .
+
+sa:proposalSubmittedAt
+    a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:subPropertyOf prov:generatedAtTime ;
+    rdfs:domain sa:GrantProposal ;
+    rdfs:range xsd:dateTime ;
+    rdfs:label "submitted at" ;
+    rdfs:comment "Disambiguated from prov:generatedAtTime usage on other artifacts." .
+
+sa:version
+    a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain sa:GrantProposal ;
+    rdfs:range xsd:integer ;
+    rdfs:label "version" ;
+    rdfs:comment "Starts at 0; increments on each pre-deadline edit." .
+
+sa:lastEditedAt
+    a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain sa:GrantProposal ;
+    rdfs:range xsd:dateTime ;
+    rdfs:label "last edited at" .
+
+sa:proposalStatus
+    a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain sa:GrantProposal ;
+    rdfs:range sa:GrantProposalStatus ;
+    rdfs:label "proposal status" ;
+    rdfs:comment "draft | submitted | withdrawn | awarded | declined. Distinct from sa:status on MatchInitiation/PoolPledge (different scheme). Concept individuals in cbox/controlled-vocabularies.ttl." .
+
+sa:withdrawnAt
+    a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain sa:GrantProposal ;
+    rdfs:range xsd:dateTime ;
+    rdfs:label "withdrawn at" .
+
+sa:clonedFromProposal
+    a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain sa:GrantProposal ;
+    rdfs:range sa:GrantProposal ;
+    rdfs:label "cloned from proposal" ;
+    rdfs:comment "Set when this proposal was cloned from an earlier one (Q3 in spec 003)." .
+
+# Note: sa:basis is shared with sa:MatchInitiation — declared in matches.ttl
+# Note: sa:onChainAssertionId is shared — declared in matches.ttl
+
+# ─── Status / Cadence classes (concept individuals in C-Box) ────────
+
+sa:GrantProposalStatus
+    a owl:Class ;
+    rdfs:subClassOf skos:Concept ;
+    rdfs:label "Grant Proposal Status" ;
+    rdfs:comment "Closed enumeration: draft | submitted | withdrawn | awarded | declined. Concept individuals in cbox/controlled-vocabularies.ttl." .
+
+sa:ReportingCadence
+    a owl:Class ;
+    rdfs:subClassOf skos:Concept ;
+    rdfs:label "Reporting Cadence" ;
+    rdfs:comment "Closed enumeration: quarterly | milestone | annual | none. Disambiguated from sa:PledgeCadence on PoolPledges (which uses one-time | monthly | annual). Concept individuals in cbox/controlled-vocabularies.ttl." .

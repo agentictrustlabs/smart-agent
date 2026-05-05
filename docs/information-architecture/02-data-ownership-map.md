@@ -136,6 +136,32 @@ Discover reads exclusively from GraphDB. GraphDB only mirrors on-chain. **No web
 | People-group audit log | people-group-mcp | data-owner principal | sponsor-private | none | — | One row per cross-delegation read; sponsor-readable, never mirrors |
 | People-group revocation epochs | people-group-mcp | delegator principal | sponsor-private | none | — | JTI tracking; mirrors person-mcp pattern |
 
+## K. Intent Marketplace Artifacts (specs 001 / 002 / 003)
+
+Per [10-intent-marketplace-classification.md](10-intent-marketplace-classification.md). Every artifact body is owner-routed to the contributor's MCP; on-chain anchors are conditional on visibility tier; GraphDB is fed only via on-chain → GraphDB sync.
+
+| Concept | Store | Owner key | Tier | Mirrored | T-Box | Notes |
+|---|---|---|---|---|---|---|
+| MatchInitiation (spec 001) | initiator's MCP (person-mcp or org-mcp) | principal=initiatorAgent | inherits stricter of two source intents' tiers | on-chain assertion (when public/public-coarse) | `sa:MatchInitiation` | NEW; row contains IDs + basis snapshot only — never embeds copies of the two intents |
+| PoolPledge (spec 002) | donor's MCP (person-mcp or org-mcp) | principal=pledgerAgent | derived: `public` if pool public AND `storyPermissions=public`; `public-coarse` if pool public AND `shareWithSupportTeam`; otherwise `private`. `anonymous` → `private` AND no on-chain anchor | on-chain assertion (when public/public-coarse) | `sa:PoolPledge` | NEW; donor identity must NEVER appear on-chain when `storyPermissions=anonymous` |
+| Pool aggregate (`pledgedTotal`) — public pools | fund's org-mcp aggregate counter | org_principal=fundAgent | public | on-chain `PoolPledgedTotalAssertion` (no donor IRI) → graphdb | `sa:PoolPledgedTotalAssertion` | NEW; written via system-delegation `pool:contribute_to_total` from donor's MCP at submit |
+| Pool aggregate — private pools | fund's org-mcp aggregate counter | org_principal=fundAgent | private | none | (counter only, no class) | NEW; visible to addressed members via existing private-pool gate |
+| PledgeAmendment (embedded) | inside PoolPledge.history JSON | — | inherits from pledge | none | `sa:PledgeAmendment` (embedded) | NEW; not a separate row |
+| ProposalSubmission (spec 003) | proposer's MCP (org-mcp typical; person-mcp for solo) | principal=proposerAgent | always private (v1) | none | `sa:ProposalSubmission` (proposed rename: `sa:GrantProposal` — see 10§5 / O1) | NEW; stewards read via `proposal:read_for_review` cross-delegation issued at submit |
+| Round (spec 003) | fund's org-mcp | org_principal=fundAgent | public (private rounds: addressee-list private) | on-chain `RoundOpenedAssertion` / `RoundClosedAssertion` → graphdb | `sa:Round` | NEW; authoring deferred to a separate fund-admin spec; 003 reads pre-seeded rounds |
+| Round addressed-applicants (private rounds) | fund's org-mcp | org_principal=fundAgent | private | none | (property of `sa:Round`) | NEW; addressed members read via `round:read_addressed_list` cross-delegation |
+| Pool extension: `acceptedUnits` | fund's org-mcp + on-chain agent metadata | fund_principal | public | graphdb (via existing pool-agent sync) | `sa:acceptsUnit` (predicate; multi-valued) | NEW |
+| Pool extension: `ceilingPolicy` | fund's org-mcp + on-chain agent metadata | fund_principal | public | graphdb | `sa:ceilingPolicy` (C-Box vocab) | NEW |
+| Pool extension: `capacityCeiling` | fund's org-mcp + on-chain agent metadata | fund_principal | public | graphdb | `sa:capacityCeiling` | NEW |
+| Fund extension: `acceptsOpenCalls` | fund's org-mcp + on-chain agent metadata | fund_principal | public | graphdb | `sa:acceptsOpenCalls` | NEW |
+| Intent extension: `liveAcknowledgementCount` | intent owner's MCP (person-mcp or org-mcp) | inherits intent owner | derived (not exposed beyond owner) | none | (implementation-only; see 10§O5) | NEW; bumped via system-delegation `intent:bump_ack_count` on MatchInitiation/Proposal create; decremented on withdraw |
+
+**Key invariants applied:**
+- The artifact body is owned by exactly one agent (initiator / donor / proposer / fund). It lives in that agent's MCP. No cross-owner table. (P1.)
+- The connector-initiated MatchInitiation row is in the connector's MCP; the two intent expressers are notified via standard `notifications:create`, never granted read access to the connector's MCP. (P2.)
+- A `ProposalSubmission` body never reaches GraphDB. Stewards read via cross-delegation. (P4.)
+- An `anonymous` `PoolPledge` never anchors on-chain. The donor's identity is unrecoverable from any public store by construction. (P4 + P5.)
+
 ## H. Reference Catalogs (web-sql, never private)
 
 | Concept | Store | Tier | T-Box | Notes |

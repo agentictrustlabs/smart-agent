@@ -142,3 +142,15 @@ Active initiative: data-store consolidation per `docs/information-architecture/`
 ```
 SDK taxonomy change → Ontologist updates T-Box .ttl → Sync to GraphDB → SPARQL validation
 ```
+
+<!-- SPECKIT START -->
+Active feature plan: `specs/003-intent-marketplace-proposal/plan.md` (Proposal Lane).
+Sibling plans for the three-lane intent marketplace:
+- `specs/001-intent-marketplace-discovery/plan.md` — Direct (Relationship) Lane
+- `specs/002-intent-marketplace-pool/plan.md` — Pool Lane
+- `specs/003-intent-marketplace-proposal/plan.md` — Proposal Lane
+
+All three reuse the composite ranking formula `0.6 * 1/(1+hops) + 0.4 * (fulfilled+1)/(fulfilled+abandoned+2)` (Laplace-smoothed). The pure function lives in `@smart-agent/sdk/matchmaker/ranking.ts` (introduced by spec 001 and reused by 002/003 with side-specific signal computation). Each lane's terminal artifact (MatchInitiation / PoolPledge / GrantProposal) is the explicit contract handed to its downstream spec; field shapes are fixed in the respective plans' contracts/ directories.
+
+All three lanes follow the established Smart Agent persistence pattern: **body in owner's MCP + conditional on-chain assertion + GraphDB mirror via the on-chain → GraphDB sync**. The MCP→GraphDB pipe is forbidden (IA P4); GraphDB only ever holds an instance of a public assertion class if a public on-chain assertion published it first. See `docs/information-architecture/10-intent-marketplace-classification.md` for the canonical persistence rules per artifact, and `docs/ontology/INTENT_MARKETPLACE_AUDIT.md` for the T-Box codification (including the `ProposalSubmission` → `GrantProposal` rename per § 2 O1, the formal `sa:Pool subClassOf sa:OrganizationAgent` and `sa:Fund subClassOf sa:Pool` typing per § 4 F2, and the SHACL visibility-cascade shapes in `docs/ontology/tbox/shacl/visibility.ttl`). The cross-spec `liveAcknowledgementCount` primitive (IA § 3.10) coordinates intent state across MCPs via system-delegation increments; intentionally NOT codified in T-Box (Audit § 2 O5).
+<!-- SPECKIT END -->
