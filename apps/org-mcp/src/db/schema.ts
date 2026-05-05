@@ -226,6 +226,61 @@ export const orgCrossDelegationGrants = sqliteTable('org_cross_delegation_grants
   revokedAt: text('revoked_at'),
 })
 
+// ─── Spec 003: Intent Marketplace — Proposal Lane ─────────────────────────
+// Body of `sa:GrantProposal` (per IA § 2.3) — always private, never anchored
+// on chain in v1, never mirrored to GraphDB. SHACL
+// `sa:GrantProposalAlwaysPrivateShape` enforces the no-anchor invariant.
+// Steward read access flows through a `proposal:read_for_review`
+// cross-delegation issued at submit time (see packages/sdk/src/marketplace-scopes.ts).
+export const proposalSubmissions = sqliteTable('proposal_submissions', {
+  id: text('id').primaryKey(),
+  // = proposerAgentId (org-mcp tenancy column; per IA § 2.3 "principal").
+  // Org proposers are the common case; tenancy column kept as `principal`
+  // (NOT `org_principal`) per the IA classification doc's column naming.
+  principal: text('principal').notNull(),
+  roundId: text('round_id'),                                    // null for open-call (Q5)
+  fundMandateId: text('fund_mandate_id'),                       // required when roundId is null
+  basedOnIntentId: text('based_on_intent_id').notNull(),
+  budget: text('budget').notNull(),                             // JSON: { lineItems[], total }
+  plan: text('plan').notNull(),                                 // JSON: { narrative, planArtifactRef? }
+  milestones: text('milestones').notNull(),                     // JSON array
+  desiredOutcomes: text('desired_outcomes').notNull(),          // JSON array
+  reportingObligations: text('reporting_obligations').notNull(),// JSON: { cadence, format }
+  organisationalBackground: text('organisational_background').notNull(), // JSON
+  submittedAt: text('submitted_at'),                            // ISO-8601; null while draft
+  version: integer('version').notNull().default(0),
+  lastEditedAt: text('last_edited_at').notNull(),
+  status: text('status').notNull().default('draft'),            // draft|submitted|withdrawn|awarded|declined
+  withdrawnAt: text('withdrawn_at'),
+  clonedFromProposalId: text('cloned_from_proposal_id'),
+  basis: text('basis'),                                         // JSON: RankBasis snapshot at submit time
+  visibility: text('visibility').notNull().default('private'),  // ALWAYS 'private' (SHACL backstop)
+  createdAt: text('created_at').notNull(),
+})
+
+// Round body lives in the FUND'S org-mcp tenant (per IA § 2.4). Rounds are
+// pre-seeded for spec 003 (round authoring is out of scope); this is the
+// canonical home for the row. The fund's stewards mint
+// sa:RoundOpenedAssertion / sa:RoundClosedAssertion on chain; the public
+// mirror lives in GraphDB via the on-chain → GraphDB sync.
+export const rounds = sqliteTable('rounds', {
+  id: text('id').primaryKey(),
+  orgPrincipal: text('org_principal').notNull(),                // = fundAgentId
+  mandate: text('mandate').notNull(),                           // JSON: RoundMandate
+  milestoneTemplate: text('milestone_template').notNull(),      // JSON: RoundMilestoneTemplate
+  validatorRequirements: text('validator_requirements').notNull(), // JSON: RoundValidatorRequirements
+  reportingCadence: text('reporting_cadence').notNull(),        // quarterly|milestone|annual|none
+  deadline: text('deadline').notNull(),                         // ISO-8601
+  decisionDate: text('decision_date').notNull(),                // ISO-8601
+  requiredCredentials: text('required_credentials').notNull(),  // JSON array of strings
+  visibility: text('visibility').notNull().default('public'),   // public|private
+  addressedApplicants: text('addressed_applicants'),            // JSON array; null for public rounds
+  proposalsReceived: integer('proposals_received').notNull().default(0),
+  onChainAssertionId: text('on_chain_assertion_id'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+})
+
 // ─── Engagement provider-side state ────────────────────────────────────────
 
 export const engagementProviderState = sqliteTable('engagement_provider_state', {

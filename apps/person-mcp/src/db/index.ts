@@ -410,6 +410,34 @@ sqliteHandle.exec(`
   CREATE INDEX IF NOT EXISTS idx_workitems_principal ON work_items(principal);
   CREATE INDEX IF NOT EXISTS idx_workitems_entitlement ON work_items(entitlement_id);
 
+  -- ─── Spec 003: Intent Marketplace — Proposal Lane (solo human applicant) ──
+  -- GrantProposal body. Always private; never on chain; never in GraphDB.
+  CREATE TABLE IF NOT EXISTS proposal_submissions (
+    id TEXT PRIMARY KEY,
+    principal TEXT NOT NULL,
+    round_id TEXT,
+    fund_mandate_id TEXT,
+    based_on_intent_id TEXT NOT NULL,
+    budget TEXT NOT NULL,
+    plan TEXT NOT NULL,
+    milestones TEXT NOT NULL,
+    desired_outcomes TEXT NOT NULL,
+    reporting_obligations TEXT NOT NULL,
+    organisational_background TEXT NOT NULL,
+    submitted_at TEXT,
+    version INTEGER NOT NULL DEFAULT 0,
+    last_edited_at TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'draft',
+    withdrawn_at TEXT,
+    cloned_from_proposal_id TEXT,
+    basis TEXT,
+    visibility TEXT NOT NULL DEFAULT 'private',
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_proposal_submissions_principal ON proposal_submissions(principal);
+  CREATE INDEX IF NOT EXISTS idx_proposal_submissions_round ON proposal_submissions(round_id);
+  CREATE INDEX IF NOT EXISTS idx_proposal_submissions_status ON proposal_submissions(status);
+
   CREATE TABLE IF NOT EXISTS engagement_holder_state (
     entitlement_id TEXT PRIMARY KEY,
     principal TEXT NOT NULL,

@@ -377,6 +377,38 @@ export const workItems = sqliteTable('work_items', {
 })
 
 // ---------------------------------------------------------------------------
+// Spec 003 — Intent Marketplace (Proposal Lane).
+// proposalSubmissions — body of `sa:GrantProposal` for solo human applicants
+// (org-mcp twin holds the same table for org proposers; org proposers are the
+// common case). Always private; never anchored on chain in v1; never mirrored
+// to GraphDB. SHACL `sa:GrantProposalAlwaysPrivateShape` enforces. Steward
+// read access flows through a `proposal:read_for_review` cross-delegation
+// issued at submit time. See packages/sdk/src/marketplace-scopes.ts.
+// ---------------------------------------------------------------------------
+export const proposalSubmissions = sqliteTable('proposal_submissions', {
+  id: text('id').primaryKey(),
+  principal: text('principal').notNull(),                       // = proposerAgentId
+  roundId: text('round_id'),                                    // null for open-call (Q5)
+  fundMandateId: text('fund_mandate_id'),                       // required when roundId is null
+  basedOnIntentId: text('based_on_intent_id').notNull(),
+  budget: text('budget').notNull(),                             // JSON
+  plan: text('plan').notNull(),                                 // JSON
+  milestones: text('milestones').notNull(),                     // JSON array
+  desiredOutcomes: text('desired_outcomes').notNull(),          // JSON array
+  reportingObligations: text('reporting_obligations').notNull(),// JSON
+  organisationalBackground: text('organisational_background').notNull(), // JSON
+  submittedAt: text('submitted_at'),                            // ISO-8601; null while draft
+  version: integer('version').notNull().default(0),
+  lastEditedAt: text('last_edited_at').notNull(),
+  status: text('status').notNull().default('draft'),
+  withdrawnAt: text('withdrawn_at'),
+  clonedFromProposalId: text('cloned_from_proposal_id'),
+  basis: text('basis'),                                         // JSON: RankBasis snapshot
+  visibility: text('visibility').notNull().default('private'),  // ALWAYS 'private'
+  createdAt: text('created_at').notNull(),
+})
+
+// ---------------------------------------------------------------------------
 // engagementHolderState — holder-side per-entitlement metadata
 // ---------------------------------------------------------------------------
 export const engagementHolderState = sqliteTable('engagement_holder_state', {

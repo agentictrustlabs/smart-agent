@@ -242,6 +242,57 @@ sqliteHandle.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_org_cdg_org ON org_cross_delegation_grants(org_principal);
 
+  -- ─── Spec 003: Intent Marketplace — Proposal Lane ──────────────────
+  -- GrantProposal body (sa:GrantProposal). Always private; never anchored
+  -- on chain in v1. SHACL sa:GrantProposalAlwaysPrivateShape enforces.
+  CREATE TABLE IF NOT EXISTS proposal_submissions (
+    id TEXT PRIMARY KEY,
+    principal TEXT NOT NULL,
+    round_id TEXT,
+    fund_mandate_id TEXT,
+    based_on_intent_id TEXT NOT NULL,
+    budget TEXT NOT NULL,
+    plan TEXT NOT NULL,
+    milestones TEXT NOT NULL,
+    desired_outcomes TEXT NOT NULL,
+    reporting_obligations TEXT NOT NULL,
+    organisational_background TEXT NOT NULL,
+    submitted_at TEXT,
+    version INTEGER NOT NULL DEFAULT 0,
+    last_edited_at TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'draft',
+    withdrawn_at TEXT,
+    cloned_from_proposal_id TEXT,
+    basis TEXT,
+    visibility TEXT NOT NULL DEFAULT 'private',
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_proposal_submissions_principal ON proposal_submissions(principal);
+  CREATE INDEX IF NOT EXISTS idx_proposal_submissions_round ON proposal_submissions(round_id);
+  CREATE INDEX IF NOT EXISTS idx_proposal_submissions_status ON proposal_submissions(status);
+
+  -- Round body in the fund's org-mcp tenant (org_principal = fundAgentId).
+  -- Mandate / template / counters / addressed-applicants list per IA § 2.4.
+  CREATE TABLE IF NOT EXISTS rounds (
+    id TEXT PRIMARY KEY,
+    org_principal TEXT NOT NULL,
+    mandate TEXT NOT NULL,
+    milestone_template TEXT NOT NULL,
+    validator_requirements TEXT NOT NULL,
+    reporting_cadence TEXT NOT NULL,
+    deadline TEXT NOT NULL,
+    decision_date TEXT NOT NULL,
+    required_credentials TEXT NOT NULL,
+    visibility TEXT NOT NULL DEFAULT 'public',
+    addressed_applicants TEXT,
+    proposals_received INTEGER NOT NULL DEFAULT 0,
+    on_chain_assertion_id TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_rounds_org ON rounds(org_principal);
+  CREATE INDEX IF NOT EXISTS idx_rounds_visibility ON rounds(visibility);
+
   -- ─── Engagement provider-side state ─────────────────────────────────
   CREATE TABLE IF NOT EXISTS engagement_provider_state (
     entitlement_id TEXT PRIMARY KEY,
