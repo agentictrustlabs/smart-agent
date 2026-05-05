@@ -238,4 +238,47 @@ export const intentsTools = {
       return mcpText({ updated: r.changes > 0 })
     },
   },
+
+  // ─── intent:bump_ack_count — system-delegation primitive (specs 001 & 003) ──
+  // Increments / decrements the live_acknowledgement_count column on a
+  // person-tenanted intent. Issued by the artifact-creator's MCP at submit /
+  // withdraw time (spec 001 MatchInitiation, spec 003 GrantProposal). Tool
+  // name IS the scope string (see packages/sdk/src/marketplace-scopes.ts).
+  'intent:bump_ack_count': {
+    name: 'intent:bump_ack_count',
+    description: "Apply a signed delta (+1 / -1) to an intent's live_acknowledgement_count and (de)transition its status across the 0↔1 boundary. System-delegation scope.",
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        token: { type: 'string' },
+        intentId: { type: 'string' },
+        delta: { type: 'integer', enum: [1, -1] },
+      },
+      required: ['token', 'intentId', 'delta'],
+    },
+    handler: async (args: { token: string; intentId: string; delta: 1 | -1 }) => {
+      const principal = await requirePrincipal(args.token, 'intent:bump_ack_count')
+      if (args.delta !== 1 && args.delta !== -1) {
+        throw new Error('delta must be +1 or -1')
+      }
+      const rows = db.select().from(intents)
+        .where(and(eq(intents.id, args.intentId), eq(intents.principal, principal)))
+        .all()
+      if (rows.length === 0) {
+        throw new Error(`intent ${args.intentId} not found for principal`)
+      }
+      const cur = rows[0].liveAcknowledgementCount ?? 0
+      const next = Math.max(0, cur + args.delta)
+      const now = new Date().toISOString()
+      // Status transitions on the 0↔1 boundary per IA § 3.10.
+      let nextStatus = rows[0].status
+      if (cur === 0 && next === 1 && nextStatus === 'expressed') nextStatus = 'acknowledged'
+      else if (cur === 1 && next === 0 && nextStatus === 'acknowledged') nextStatus = 'expressed'
+      db.update(intents)
+        .set({ liveAcknowledgementCount: next, status: nextStatus, updatedAt: now })
+        .where(and(eq(intents.id, args.intentId), eq(intents.principal, principal)))
+        .run()
+      return mcpText({ intentId: args.intentId, liveAcknowledgementCount: next, status: nextStatus })
+    },
+  },
 }

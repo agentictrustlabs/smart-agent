@@ -219,4 +219,50 @@ export const orgIntentsTools = {
       return mcpText({ outcomes: rows })
     },
   },
+
+  // ─── intent:bump_ack_count — system-delegation primitive (specs 001 & 003) ──
+  // Increments / decrements the live_acknowledgement_count column on an
+  // org-tenanted intent. Issued by the artifact-creator's MCP (e.g., a
+  // proposer's MCP at GrantProposal.submit / withdraw). Owner-routing is
+  // preserved: the caller authenticates as the intent owner via a
+  // bridged session + cross-delegation. The tool name IS the scope string
+  // (see packages/sdk/src/marketplace-scopes.ts) — the MCP_TOOL_SCOPE
+  // enforcer gates on the scope name verbatim.
+  'intent:bump_ack_count': {
+    name: 'intent:bump_ack_count',
+    description: "Apply a signed delta (+1 / -1) to an intent's live_acknowledgement_count and (de)transition its status across the 0↔1 boundary. System-delegation scope.",
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        token: { type: 'string' },
+        intentId: { type: 'string' },
+        delta: { type: 'integer', enum: [1, -1] },
+      },
+      required: ['token', 'intentId', 'delta'],
+    },
+    handler: async (args: { token: string; intentId: string; delta: 1 | -1 }) => {
+      const orgPrincipal = await requireOrgPrincipal(args.token, args, 'intent:bump_ack_count')
+      if (args.delta !== 1 && args.delta !== -1) {
+        throw new Error('delta must be +1 or -1')
+      }
+      const rows = db.select().from(orgIntents)
+        .where(and(eq(orgIntents.id, args.intentId), eq(orgIntents.orgPrincipal, orgPrincipal)))
+        .all()
+      if (rows.length === 0) {
+        throw new Error(`intent ${args.intentId} not found for principal`)
+      }
+      const cur = rows[0].liveAcknowledgementCount ?? 0
+      const next = Math.max(0, cur + args.delta)
+      const now = new Date().toISOString()
+      // Status transitions on the 0↔1 boundary per IA § 3.10.
+      let nextStatus = rows[0].status
+      if (cur === 0 && next === 1 && nextStatus === 'expressed') nextStatus = 'acknowledged'
+      else if (cur === 1 && next === 0 && nextStatus === 'acknowledged') nextStatus = 'expressed'
+      db.update(orgIntents)
+        .set({ liveAcknowledgementCount: next, status: nextStatus, updatedAt: now })
+        .where(and(eq(orgIntents.id, args.intentId), eq(orgIntents.orgPrincipal, orgPrincipal)))
+        .run()
+      return mcpText({ intentId: args.intentId, liveAcknowledgementCount: next, status: nextStatus })
+    },
+  },
 }

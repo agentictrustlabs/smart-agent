@@ -146,6 +146,18 @@ export const SPEC_002_SCOPES = {
  * Spec 003 — Proposal lane.
  */
 export const SPEC_003_SCOPES = {
+  grant_proposal_draft: {
+    scope: 'grant_proposal:draft',
+    description: 'Create or mutate an in-progress GrantProposal draft (proposer only).',
+    kind: 'user',
+    spec: '003',
+  },
+  grant_proposal_read_self: {
+    scope: 'grant_proposal:read_self',
+    description: "Read the caller's own GrantProposal rows (proposer only).",
+    kind: 'user',
+    spec: '003',
+  },
   grant_proposal_submit: {
     scope: 'grant_proposal:submit',
     description: "Create a GrantProposal in the proposer's MCP.",
