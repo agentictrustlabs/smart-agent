@@ -14,6 +14,14 @@ import type {
   KBRelationshipEdge,
   AgentQueryOptions,
   SparqlResults,
+  Round,
+  RoundListItem,
+  RoundListFilters,
+  RoundMandate,
+  RoundMilestoneTemplate,
+  RoundValidatorRequirements,
+  RoundPriorStats,
+  ReportingCadence,
 } from './types'
 import {
   listAgentsQuery,
@@ -25,6 +33,7 @@ import {
   hopDistanceQuery,
   hopsFromAgentQuery,
 } from './sparql'
+import { listRoundsQuery, roundDetailQuery } from './queries/rounds'
 
 // ---------------------------------------------------------------------------
 // Result Parsing Helpers
@@ -81,6 +90,70 @@ function parseAgentRow(row: Record<string, { value: string }>): KBAgent {
     longitude: str(row, 'longitude'),
     outRelationshipCount: num(row, 'outRels'),
     inRelationshipCount: num(row, 'inRels'),
+  }
+}
+
+function parseJsonField<T>(raw: string | undefined, fallback: T): T {
+  if (!raw) return fallback
+  try {
+    return JSON.parse(raw) as T
+  } catch {
+    return fallback
+  }
+}
+
+function parseRoundRow(row: Record<string, { value: string }>): Round {
+  const mandateRaw = row.mandate?.value
+  const milestoneRaw = row.milestoneTemplate?.value
+  const validatorRaw = row.validatorRequirements?.value
+  const requiredCredsRaw = row.requiredCredentials?.value
+  const addressedRaw = row.addressedApplicants?.value
+
+  const mandate: RoundMandate = parseJsonField<RoundMandate>(mandateRaw, {
+    acceptedKinds: [], acceptedGeo: [], budgetCeiling: 0, expectedAwards: 0,
+  })
+  const milestoneTemplate: RoundMilestoneTemplate = parseJsonField<RoundMilestoneTemplate>(
+    milestoneRaw, {},
+  )
+  const validatorRequirements: RoundValidatorRequirements = parseJsonField<RoundValidatorRequirements>(
+    validatorRaw, {},
+  )
+  const requiredCredentials: string[] = parseJsonField<string[]>(requiredCredsRaw, [])
+  const addressedApplicants: string[] | undefined = addressedRaw
+    ? parseJsonField<string[]>(addressedRaw, [])
+    : undefined
+
+  const reportingRaw = row.reportingCadence?.value as ReportingCadence | undefined
+  const reportingCadence: ReportingCadence = reportingRaw && (
+    reportingRaw === 'quarterly' || reportingRaw === 'milestone' ||
+    reportingRaw === 'annual' || reportingRaw === 'none'
+  ) ? reportingRaw : 'none'
+
+  const visibilityRaw = row.visibility?.value
+  const visibility: 'public' | 'private' = visibilityRaw === 'private' ? 'private' : 'public'
+
+  const proposalsReceived = parseInt(row.proposalsReceived?.value ?? '0', 10) || 0
+  // priorStats is empty in v1 (T023): the downstream award spec populates it.
+  const priorStats: RoundPriorStats = {
+    proposalsReceived,
+    awarded: 0,
+    isFirstCycle: true,
+  }
+
+  return {
+    id: row.roundId?.value ?? row.round?.value ?? '',
+    fundAgentId: row.fundAgentId?.value ?? '',
+    mandate,
+    milestoneTemplate,
+    validatorRequirements,
+    reportingCadence,
+    deadline: row.deadline?.value ?? '',
+    decisionDate: row.decisionDate?.value ?? '',
+    requiredCredentials,
+    visibility,
+    addressedApplicants,
+    proposalsReceived,
+    priorStats,
   }
 }
 
@@ -253,6 +326,58 @@ export class DiscoveryService {
         hops: parseInt(row.minDistance?.value ?? '0', 10) || 0,
       }
     })
+  }
+
+  // ─── Spec 003: Rounds (Intent Marketplace — Proposal Lane) ────────
+  //
+  // Reads the public mirror of `sa:RoundOpenedAssertion` triples populated
+  // by the on-chain → GraphDB sync. Mandate-match badging joins viewer's
+  // intents to round mandates per FR-001 / Research R2. Visibility gate:
+  // private rounds appear in the mirror as coarse anchors (no
+  // addressed-applicants list); the action layer resolves the addressed
+  // list via the fund's org-mcp before rendering them to a non-addressed
+  // viewer (IA § 2.4 / FR-003).
+
+  /**
+   * Build a `RoundListItem[]` for the rounds index page.
+   *
+   * The mandate-match `matchedIntentIds` array is populated by the caller
+   * (the action layer that knows the viewer's intent kinds + geo); this
+   * method narrows the SPARQL candidate set and parses bodies but does
+   * NOT compute the overlap. The full overlap test lives in the action
+   * layer per US1 / T032.
+   */
+  async listRounds(filters: RoundListFilters): Promise<RoundListItem[]> {
+    const sparql = listRoundsQuery(filters, [])
+    const results = await this.client.query(sparql)
+    return results.results.bindings.map((row) => {
+      const r = row as unknown as Record<string, { value: string }>
+      const round = parseRoundRow(r)
+      return {
+        ...round,
+        matchedIntentIds: [],
+        warnings: [],
+      } as RoundListItem
+    })
+  }
+
+  /**
+   * Fetch a single round by id. Returns null when the round does not
+   * appear in the public mirror (or has been closed and `RoundClosedAssertion`
+   * was emitted but the close has not yet been re-mirrored).
+   *
+   * Private-round addressee gating happens in the action layer
+   * (`apps/web/src/app/h/[hubId]/(hub)/rounds/[roundId]/page.tsx` per US2).
+   *
+   * The viewerAgentId arg is reserved for future visibility gating; v1
+   * does not branch on it server-side.
+   */
+  async getRoundDetail(roundId: string, _viewerAgentId: string): Promise<Round | null> {
+    const sparql = roundDetailQuery(roundId)
+    const results = await this.client.query(sparql)
+    const row = results.results.bindings[0]
+    if (!row) return null
+    return parseRoundRow(row as unknown as Record<string, { value: string }>)
   }
 
   // ─── Raw Query Escape Hatch ───────────────────────────────────────

@@ -92,6 +92,85 @@ export interface GraphDBConfig {
 }
 
 // ---------------------------------------------------------------------------
+// Spec 003 — Intent Marketplace (Proposal Lane). Round types.
+// Mirrors specs/003-intent-marketplace-proposal/contracts/round.ts; copied
+// here because spec contracts are not a published package (T020).
+//
+// Discovery surfaces RoundListItem (mandate-match badging) for the public
+// mirror reads — proposers consume RoundClient.list. We do NOT add any
+// `GrantProposal` types here: proposals live in proposer MCPs and never
+// reach GraphDB (IA P5 / IA § 2.3 / SHACL sa:GrantProposalAlwaysPrivateShape).
+// ---------------------------------------------------------------------------
+
+export interface RoundMandate {
+  acceptedKinds: string[]
+  acceptedGeo: string[]
+  budgetCeiling: number
+  expectedAwards: number
+}
+
+export interface RoundMilestoneTemplate {
+  minMilestones?: number
+  maxMilestones?: number
+  trancheHints?: { atKickoff?: number; midpoint?: number; completion?: number }
+}
+
+export interface RoundValidatorRequirements {
+  minValidators?: number
+  acceptedValidatorKinds?: string[]
+}
+
+/** C-Box `sa:ReportingCadence` values. */
+export type ReportingCadence = 'quarterly' | 'milestone' | 'annual' | 'none'
+
+export interface RoundPriorStats {
+  proposalsReceived: number
+  awarded: number
+  medianAward?: number
+  isFirstCycle: boolean
+}
+
+export interface Round {
+  id: string
+  /** → sa:operatedByFund (range sa:Fund — Pool with governanceModel='fund'). */
+  fundAgentId: string
+  mandate: RoundMandate
+  milestoneTemplate: RoundMilestoneTemplate
+  validatorRequirements: RoundValidatorRequirements
+  reportingCadence: ReportingCadence
+  /** ISO-8601. */
+  deadline: string
+  /** ISO-8601. */
+  decisionDate: string
+  requiredCredentials: string[]
+  visibility: 'public' | 'private'
+  /** Private rounds only; never appears in the public anchor / mirror. */
+  addressedApplicants?: string[]
+  proposalsReceived: number
+  priorStats: RoundPriorStats
+}
+
+export interface RoundListFilters {
+  hubId: string
+  domain?: string
+  deadlineHorizon?: 'this-week' | 'this-month' | 'this-quarter' | 'all'
+  budgetMin?: number
+  budgetMax?: number
+  search?: string
+  includeClosed?: boolean
+  viewerAgentId: string
+  /** For mandate-match badging — joined to round.mandate.acceptedKinds/Geo. */
+  viewerIntentIds?: string[]
+}
+
+export type RoundListItem = Round & {
+  /** Empty array when nothing in the viewer's intent set overlaps the round mandate. */
+  matchedIntentIds: string[]
+  /** Soft signals; see FR-001 + Research R2. */
+  warnings: Array<'budget-below-intent' | 'deadline-imminent'>
+}
+
+// ---------------------------------------------------------------------------
 // SPARQL Result Types
 // ---------------------------------------------------------------------------
 

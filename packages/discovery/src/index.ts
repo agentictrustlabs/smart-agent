@@ -27,4 +27,21 @@ export type {
   AgentQueryOptions,
   SparqlResults,
   SparqlBinding,
+  // Spec 003 — Intent Marketplace (Proposal Lane)
+  Round,
+  RoundListItem,
+  RoundListFilters,
+  RoundMandate,
+  RoundMilestoneTemplate,
+  RoundValidatorRequirements,
+  ReportingCadence,
+  RoundPriorStats,
 } from './types'
+
+// Spec 003 query builders (rounds / fund mandate / prior stats)
+export { listRoundsQuery, roundDetailQuery } from './queries/rounds'
+export { fundMandateQuery } from './queries/fundMandate'
+export {
+  fundPriorOutcomesByDomainQuery,
+  proposerPriorOutcomesQuery,
+} from './queries/priorStats'
