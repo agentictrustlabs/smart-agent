@@ -388,9 +388,25 @@ export async function syncOnChainToGraphDB(): Promise<{ success: boolean; messag
       console.warn('[ontology-sync] Round mirror failed (non-fatal):', rErr instanceof Error ? rErr.message : rErr)
     }
 
+    // Pool mirror (spec 002) — reads the org-mcp `pools` table directly.
+    // Same authoritative-body rationale as rounds. Pool aggregates
+    // (`sa:PoolPledgedTotalAssertion`) flow via the class-assertion mirror
+    // when anchored on chain — no separate emit needed here.
+    let poolCount = 0
+    try {
+      const poolTurtle = await emitPoolsTurtle()
+      if (poolTurtle) {
+        const body = stripPrefixBlock(poolTurtle)
+        dataTurtle += '\n# ─── Pools (from org-mcp) ──────────────────────────\n' + body
+        poolCount = (poolTurtle.match(/ a sa:Pool\b/g) ?? []).length
+      }
+    } catch (pErr) {
+      console.warn('[ontology-sync] Pool mirror failed (non-fatal):', pErr instanceof Error ? pErr.message : pErr)
+    }
+
     // SINGLE PUT — replaces DATA_GRAPH with our combined turtle.
     await client.uploadTurtle(dataTurtle, DATA_GRAPH)
-    console.log(`[ontology-sync] Data graph uploaded: ${agentCount} agents + ${assertionCount} class assertions + ${roundCount} rounds`)
+    console.log(`[ontology-sync] Data graph uploaded: ${agentCount} agents + ${assertionCount} class assertions + ${roundCount} rounds + ${poolCount} pools`)
 
     // Upload T-Box (ontology schema) from docs/ontology/tbox/*.ttl
     try {
@@ -690,6 +706,176 @@ export async function emitRoundsTurtle(): Promise<string> {
   }
 
   return lines.join('\n')
+}
+
+// ---------------------------------------------------------------------------
+// Pool Mirror — reads org-mcp's `pools` table directly
+// ---------------------------------------------------------------------------
+//
+// IA principle (P4): GraphDB only mirrors authoritative state; pool bodies
+// live authoritatively in the pool's org-mcp tenant. v1 reads the local
+// org-mcp.db file directly (single-process dev setup).
+//
+// Each pool is rendered as a `sa:Pool` subject with all body fields
+// (mandate, accepted units/restrictions, capacity, ceiling policy, etc.)
+// so the listPoolsQuery / poolDetailQuery SPARQL builders find it.
+//
+// PoolPledgedTotal aggregate emission:
+// `sa:PoolPledgedTotalAssertion` rows live on chain (donor-less aggregate
+// per IA § 2.2 / § 3.3). The class-assertion mirror at
+// `emitClassAssertionsTurtle` already mirrors them when present; this
+// helper just emits the body. Best-effort on snapshot freshness.
+
+interface OrgMcpPoolRow {
+  id: string
+  org_principal: string
+  name: string
+  domain: string
+  mandate: string
+  governance_model: string
+  accepted_restrictions: string
+  accepted_units: string
+  capacity_ceiling: number | null
+  ceiling_policy: string
+  addressed_to: string
+  addressed_members: string | null
+  visibility: string
+  stewardship_agent: string
+  stewards: string
+  accepts_open_calls: number
+  pledged_total: number
+  allocated_total: number
+  available_total: number
+  on_chain_assertion_id: string | null
+  created_at: string
+  updated_at: string
+}
+
+export async function emitPoolsTurtle(): Promise<string> {
+  const path = await import('path')
+  const fs = await import('fs')
+  const cwd = process.cwd()
+  const candidates = [
+    path.resolve(cwd, '../org-mcp/org-mcp.db'),
+    path.resolve(cwd, 'apps/org-mcp/org-mcp.db'),
+    path.resolve(cwd, '../../apps/org-mcp/org-mcp.db'),
+  ]
+  const dbPath = candidates.find(p => fs.existsSync(p))
+  if (!dbPath) return ''
+
+  let Database: new (filename: string, options?: { readonly?: boolean; fileMustExist?: boolean }) => {
+    prepare: (sql: string) => { all: () => unknown[] }
+    close: () => void
+  }
+  try {
+    const mod = await import('better-sqlite3')
+    Database = mod.default as unknown as typeof Database
+  } catch {
+    return ''
+  }
+
+  const db = new Database(dbPath, { readonly: true, fileMustExist: true })
+  let rows: OrgMcpPoolRow[]
+  try {
+    rows = db.prepare(`
+      SELECT id, org_principal, name, domain, mandate, governance_model,
+             accepted_restrictions, accepted_units, capacity_ceiling, ceiling_policy,
+             addressed_to, addressed_members, visibility, stewardship_agent, stewards,
+             accepts_open_calls, pledged_total, allocated_total, available_total,
+             on_chain_assertion_id, created_at, updated_at
+        FROM pools
+    `).all() as OrgMcpPoolRow[]
+  } catch {
+    db.close()
+    return ''
+  }
+  db.close()
+
+  if (rows.length === 0) return ''
+
+  const lines: string[] = []
+  lines.push(`@prefix sa:   <${SA}> .`)
+  lines.push(`@prefix prov: <http://www.w3.org/ns/prov#> .`)
+  lines.push(`@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .`)
+  lines.push('')
+
+  for (const row of rows) {
+    // Pool id is the full IRI (the pool is itself an agent — `sa:Pool
+    // subClassOf sa:OrganizationAgent`). For seeded pools this is typically
+    // already a urn or agent IRI; we accept either.
+    const poolIri = row.id
+    const stewardshipAgent = row.stewardship_agent
+
+    lines.push(`<${poolIri}> a sa:Pool ;`)
+    lines.push(`  sa:displayName "${escapeTurtleString(row.name)}" ;`)
+    lines.push(`  sa:domain "${escapeTurtleString(row.domain)}" ;`)
+    lines.push(`  sa:poolMandate "${escapeTurtleString(row.mandate)}" ;`)
+    lines.push(`  sa:governanceModel "${escapeTurtleString(row.governance_model)}" ;`)
+    lines.push(`  sa:acceptedRestrictions "${escapeTurtleString(row.accepted_restrictions)}" ;`)
+    // acceptedUnits is multi-valued; emit one triple per unit.
+    try {
+      const units = JSON.parse(row.accepted_units) as string[]
+      if (Array.isArray(units)) {
+        for (const u of units) {
+          lines.push(`  sa:acceptsUnit "${escapeTurtleString(u)}" ;`)
+        }
+      }
+    } catch { /* noop */ }
+    if (row.capacity_ceiling != null) {
+      lines.push(`  sa:capacityCeiling ${row.capacity_ceiling | 0} ;`)
+    }
+    lines.push(`  sa:ceilingPolicy "${escapeTurtleString(row.ceiling_policy)}" ;`)
+    lines.push(`  sa:addressedTo "${escapeTurtleString(row.addressed_to)}" ;`)
+    if (row.addressed_members) {
+      // Per IA § 2.5, the addressedMembers list lives in the pool's org-mcp
+      // ONLY (no on-chain anchor). We DELIBERATELY do NOT emit it to GraphDB
+      // for private pools — the action layer resolves it via the pool's
+      // org-mcp at read time.
+      if (row.visibility !== 'private') {
+        lines.push(`  sa:addressedMembers "${escapeTurtleString(row.addressed_members)}" ;`)
+      }
+    }
+    lines.push(`  sa:visibility "${escapeTurtleString(row.visibility)}" ;`)
+    if (stewardshipAgent) {
+      // Emit as IRI when it looks like one; literal otherwise.
+      if (/^https?:|^urn:/.test(stewardshipAgent)) {
+        lines.push(`  sa:stewardshipAgent <${stewardshipAgent}> ;`)
+      } else {
+        lines.push(`  sa:stewardshipAgent "${escapeTurtleString(stewardshipAgent)}" ;`)
+      }
+    }
+    try {
+      const stewards = JSON.parse(row.stewards) as string[]
+      if (Array.isArray(stewards)) {
+        for (const s of stewards) {
+          if (/^https?:|^urn:/.test(s)) {
+            lines.push(`  sa:steward <${s}> ;`)
+          } else {
+            lines.push(`  sa:steward "${escapeTurtleString(s)}" ;`)
+          }
+        }
+      }
+    } catch { /* noop */ }
+    lines.push(`  sa:acceptsOpenCalls ${row.accepts_open_calls ? 'true' : 'false'} ;`)
+    lines.push(`  sa:pledgedTotal ${row.pledged_total | 0} ;`)
+    lines.push(`  sa:allocatedTotal ${row.allocated_total | 0} ;`)
+    lines.push(`  sa:availableTotal ${row.available_total | 0} .`)
+    lines.push('')
+  }
+
+  return lines.join('\n')
+}
+
+/**
+ * Emit `sa:PoolPledgedTotalAssertion` rows from on-chain (best-effort).
+ * v1 stub — the class-assertion mirror at `emitClassAssertionsTurtle`
+ * already pulls these from the on-chain class-assertion contract when
+ * pools have anchored snapshots. Returning empty here is fine; left as
+ * a named export so future on-chain pool aggregates can grow into it
+ * without touching the orchestrator above.
+ */
+export async function emitPoolPledgedTotalsTurtle(): Promise<string> {
+  return ''
 }
 
 // ---------------------------------------------------------------------------
