@@ -4,15 +4,34 @@
  * Low-level HTTP client for SPARQL query and update operations
  * against a GraphDB repository. All discovery SDK queries route
  * through this class.
+ *
+ * Timeouts: each request uses an AbortController so a slow GraphDB
+ * (Cloudflare 524, slow upload, network hang) fails fast instead of
+ * the dev server piling up sync attempts. Defaults can be overridden
+ * via constructor config.
  */
 
 import type { GraphDBConfig, SparqlResults } from './types'
 
+const DEFAULT_QUERY_TIMEOUT_MS = 15_000
+const DEFAULT_UPLOAD_TIMEOUT_MS = 15_000
+
 export class GraphDBClient {
   private config: GraphDBConfig
+  private queryTimeoutMs: number
+  private uploadTimeoutMs: number
 
-  constructor(config: GraphDBConfig) {
+  constructor(config: GraphDBConfig & { queryTimeoutMs?: number; uploadTimeoutMs?: number }) {
     this.config = config
+    this.queryTimeoutMs = config.queryTimeoutMs ?? DEFAULT_QUERY_TIMEOUT_MS
+    this.uploadTimeoutMs = config.uploadTimeoutMs ?? DEFAULT_UPLOAD_TIMEOUT_MS
+  }
+
+  /** Build an AbortSignal that fires after `ms`. */
+  private timeoutSignal(ms: number): AbortSignal {
+    const controller = new AbortController()
+    setTimeout(() => controller.abort(new Error(`GraphDB request timed out after ${ms}ms`)), ms).unref?.()
+    return controller.signal
   }
 
   /** Build Basic auth header value */
@@ -43,6 +62,7 @@ export class GraphDBClient {
         'Authorization': this.authHeader(),
       },
       body: sparql,
+      signal: this.timeoutSignal(this.queryTimeoutMs),
     })
 
     if (!response.ok) {
@@ -64,6 +84,7 @@ export class GraphDBClient {
         'Authorization': this.authHeader(),
       },
       body: sparql,
+      signal: this.timeoutSignal(this.queryTimeoutMs),
     })
 
     if (!response.ok) {
@@ -75,6 +96,9 @@ export class GraphDBClient {
   /**
    * Upload Turtle data to a named graph via Graph Store HTTP protocol.
    * Uses PUT to replace all data in the graph.
+   *
+   * Aborts at `uploadTimeoutMs` (default 15s) so a slow GraphDB / Cloudflare
+   * 524 doesn't pile up debounced kb-sync attempts on the dev server.
    */
   async uploadTurtle(turtle: string, namedGraph: string): Promise<void> {
     const url = `${this.repoUrl()}/rdf-graphs/service?graph=${encodeURIComponent(namedGraph)}`
@@ -86,6 +110,7 @@ export class GraphDBClient {
         'Authorization': this.authHeader(),
       },
       body: turtle,
+      signal: this.timeoutSignal(this.uploadTimeoutMs),
     })
 
     if (!response.ok) {

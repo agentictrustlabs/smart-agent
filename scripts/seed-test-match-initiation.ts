@@ -200,7 +200,22 @@ async function seedIntents(): Promise<void> {
       updated_at: NOW,
     })
 
-    console.log('[seed-test-match-initiation] inserted (or skipped) Maria-need + Coach-offer intents in web-app.db')
+    // Verify the inserts actually landed (the table may not exist if the
+    // web app hasn't auto-run drizzle migrations yet — fail loudly instead
+    // of silently moving on to the match-initiation insert).
+    type CountRow = { n: number }
+    const seededRow = (db.prepare(`SELECT COUNT(*) AS n FROM intents WHERE id IN (?, ?)`) as {
+      get: (a: string, b: string) => CountRow | undefined
+    }).get(MARIA_INTENT_ID, COACH_INTENT_ID)
+    const seeded = seededRow?.n ?? 0
+    if (seeded < 2) {
+      throw new Error(
+        `[seed-test-match-initiation] expected 2 seed intents, found ${seeded} — ` +
+        `the web app's intents table may not exist (auto-migration hasn't run). ` +
+        `Visit http://localhost:3000/ once to trigger migration, then re-run this script.`,
+      )
+    }
+    console.log(`[seed-test-match-initiation] verified ${seeded} intents in local.db`)
   } finally {
     db.close()
   }
