@@ -7,6 +7,12 @@ import { getIntent } from '@/lib/actions/intents.action'
 import { listMatches, runDiscoverMatch } from '@/lib/actions/discover.action'
 import { MatchRowCard } from '@/components/discover/MatchRow'
 import { getAgentMetadata } from '@/lib/agent-metadata'
+import { getPersonAgentForUser } from '@/lib/agent-registry'
+import {
+  listCandidatesForIntent,
+  listPublicActiveInitiationsForIntent,
+} from '@/lib/actions/matchInitiations.action'
+import { CandidatesSection } from '../(components)/CandidatesSection'
 
 export const dynamic = 'force-dynamic'
 
@@ -29,10 +35,10 @@ const STATUS_COLORS: Record<string, { bg: string; fg: string }> = {
 
 export default async function IntentDetailPage({ params, searchParams }: {
   params: Promise<{ hubId: string; id: string }>
-  searchParams: Promise<{ run?: string }>
+  searchParams: Promise<{ run?: string; matched?: string; err?: string }>
 }) {
   const { hubId: slug, id } = await params
-  const { run } = await searchParams
+  const { run, matched, err } = await searchParams
   const internalHubId = HUB_SLUG_MAP[slug]
   if (!internalHubId) notFound()
   const user = await getCurrentUser()
@@ -41,6 +47,24 @@ export default async function IntentDetailPage({ params, searchParams }: {
   const intent = await getIntent(id)
   if (!intent) notFound()
   const profile = getHubProfile(internalHubId)
+  const myAgent = await getPersonAgentForUser(user.id)
+
+  // Spec 001 (US2 + US3 + US4) — counter-intent surface.
+  // Only render for intents in `expressed` or `acknowledged` (FR-007 / Story 2 AC#2).
+  const showCandidates =
+    intent.status === 'expressed' || intent.status === 'acknowledged'
+  const candidates = showCandidates
+    ? await listCandidatesForIntent({
+        viewedIntentId: id,
+        viewerAgentAddress: myAgent ?? undefined,
+      })
+    : []
+  // FR-019 cross-pair check: any public-mirror pending initiation referencing
+  // this intent disables the propose-match action across all candidates.
+  const publicActive = showCandidates
+    ? await listPublicActiveInitiationsForIntent(id)
+    : []
+  const hasAnyActiveInitiation = publicActive.length > 0
 
   // For receive-shaped intents we have a legacy needs row — match against it.
   if (run === '1' && intent.direction === 'receive' && intent.projectionRef) {
@@ -109,6 +133,20 @@ export default async function IntentDetailPage({ params, searchParams }: {
           {intent.validUntil && <Field label="Valid until" value={new Date(intent.validUntil).toLocaleDateString()} />}
         </div>
       </div>
+
+      {/* Spec 001 — Compatible counter-intents (US2 / US3 / US4) */}
+      {showCandidates && (
+        <CandidatesSection
+          hubSlug={slug}
+          viewedIntentId={id}
+          candidates={candidates}
+          hasAnyActiveInitiation={hasAnyActiveInitiation}
+          flash={{
+            matched: matched === '1',
+            error: typeof err === 'string' && err.length > 0 ? err : undefined,
+          }}
+        />
+      )}
 
       {/* Outcome */}
       {intent.outcome && (
