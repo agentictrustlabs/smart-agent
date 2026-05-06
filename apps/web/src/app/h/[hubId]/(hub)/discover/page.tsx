@@ -7,6 +7,8 @@ import { listNeeds } from '@/lib/actions/needs.action'
 import { listMatches, getHubDiscoverSummary } from '@/lib/actions/discover.action'
 import { listRoundsForViewer } from '@/lib/actions/rounds.action'
 import { listMemberProposals } from '@/lib/actions/grantProposals.action'
+import { listIntents } from '@/lib/actions/intents.action'
+import { listTopCandidatesForViewer } from '@/lib/actions/matchInitiations.action'
 import { NeedCard } from '@/components/discover/NeedCard'
 import { MatchRowCard } from '@/components/discover/MatchRow'
 
@@ -49,6 +51,29 @@ export default async function DiscoverPage({ params }: { params: Promise<{ hubId
   const myMatches = myAgent
     ? await listMatches({ matchedAgent: myAgent, status: 'proposed', hydrate: true, limit: 10 })
     : []
+
+  // Spec 001 — Match candidates for the viewer's expressed intents.
+  // For each of Maria's expressed intents, surface up to 2 ranked candidates
+  // as a compact preview; each row links to the intent detail for the full
+  // candidate list.
+  const myExpressedIntents = myAgent
+    ? await listIntents({
+        hubId: internalHubId,
+        expressedBy: myAgent,
+        status: 'expressed',
+        limit: 8,
+      }).catch(() => [])
+    : []
+  const topCandidatesByIntent = myAgent && myExpressedIntents.length > 0
+    ? await listTopCandidatesForViewer({
+        viewerAgentAddress: myAgent,
+        intentIds: myExpressedIntents.map(i => i.id),
+        topPerIntent: 2,
+      }).catch(() => [])
+    : []
+  const matchCandidatePreviews = topCandidatesByIntent
+    .filter(group => group.candidates.length > 0)
+    .slice(0, 4)
 
   // Spec 003 — Open grant rounds (mandate-matched against the viewer's intents)
   // and the viewer's own GrantProposals (drafts + submitted). Best-effort —
@@ -131,6 +156,50 @@ export default async function DiscoverPage({ params }: { params: Promise<{ hubId
           </div>
         )}
       </section>
+
+      {/* Match candidates for your intents (spec 001) */}
+      {matchCandidatePreviews.length > 0 && (
+        <section style={{ marginBottom: '1.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+            <h2 style={{ fontSize: '0.7rem', fontWeight: 700, color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0 }}>
+              Match candidates for your intents
+            </h2>
+            <Link href={`/h/${slug}/intents`} style={{ fontSize: '0.7rem', color: C.accent, textDecoration: 'none', fontWeight: 600 }}>
+              All my intents →
+            </Link>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+            {matchCandidatePreviews.map((group) => {
+              const viewedIntent = myExpressedIntents.find(i => i.id === group.viewedIntentId)
+              if (!viewedIntent) return null
+              return (
+                <Link
+                  key={group.viewedIntentId}
+                  href={`/h/${slug}/intents/${group.viewedIntentId}`}
+                  style={{ display: 'block', background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, padding: '0.7rem 0.85rem', textDecoration: 'none' }}
+                >
+                  <div style={{ fontSize: '0.85rem', fontWeight: 700, color: C.text, marginBottom: '0.2rem' }}>
+                    {viewedIntent.title}
+                  </div>
+                  <div style={{ fontSize: '0.7rem', color: C.textMuted, marginBottom: '0.35rem' }}>
+                    {group.candidates.length} compatible counter-intent{group.candidates.length === 1 ? '' : 's'} ready to match
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                    {group.candidates.map((c) => (
+                      <div key={c.intent.id} style={{ fontSize: '0.74rem', color: C.text, display: 'flex', gap: '0.45rem', flexWrap: 'wrap', alignItems: 'baseline' }}>
+                        <span style={{ fontSize: '0.62rem', fontWeight: 700, color: C.accent, padding: '0.06rem 0.4rem', borderRadius: 999, background: 'rgba(139,94,60,0.08)', border: `1px solid rgba(139,94,60,0.20)` }}>
+                          {c.cue}
+                        </span>
+                        <span style={{ fontWeight: 600 }}>{c.intent.title}</span>
+                      </div>
+                    ))}
+                  </div>
+                </Link>
+              )
+            })}
+          </div>
+        </section>
+      )}
 
       {/* Open grant rounds (spec 003) */}
       <section style={{ marginBottom: '1.5rem' }}>
