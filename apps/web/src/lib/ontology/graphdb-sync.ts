@@ -405,60 +405,22 @@ export async function syncOnChainToGraphDB(): Promise<{ success: boolean; messag
     }
 
     // SINGLE PUT — replaces DATA_GRAPH with our combined turtle.
+    //
+    // Schema (T-Box, SHACL, C-Box) is INTENTIONALLY NOT uploaded here. The
+    // runtime sync fires on every on-chain edge mutation (debounced); the
+    // T-Box/C-Box rarely change, so re-uploading them constantly was the
+    // single biggest load on the GraphDB instance (~MBs per call ×
+    // hundreds of calls/min during catalyst-seed = Cloudflare 524s).
+    //
+    // Schema is now an admin-time concern — push via:
+    //   pnpm exec tsx scripts/sync-ontology.ts
+    // ...whenever docs/ontology/{tbox,cbox}/ changes. The runtime sync
+    // ONLY mirrors authoritative-state data (agents, class assertions,
+    // round/pool bodies).
     await client.uploadTurtle(dataTurtle, DATA_GRAPH)
     console.log(`[ontology-sync] Data graph uploaded: ${agentCount} agents + ${assertionCount} class assertions + ${roundCount} rounds + ${poolCount} pools`)
 
-    // Upload T-Box (ontology schema) from docs/ontology/tbox/*.ttl
-    try {
-      const fs = await import('fs')
-      const path = await import('path')
-      const tboxDir = path.resolve(process.cwd(), '../../docs/ontology/tbox')
-      const cboxDir = path.resolve(process.cwd(), '../../docs/ontology/cbox')
-
-      // Recursively collect *.ttl from a dir (handles tbox/shacl/)
-      const findTurtleFiles = (dir: string): string[] => {
-        if (!fs.existsSync(dir)) return []
-        const out: string[] = []
-        for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-          const full = path.join(dir, entry.name)
-          if (entry.isDirectory()) out.push(...findTurtleFiles(full))
-          else if (entry.isFile() && entry.name.endsWith('.ttl')) out.push(full)
-        }
-        return out
-      }
-
-      // Collect T-Box files (recursive — picks up tbox/shacl/)
-      const tboxFiles = findTurtleFiles(tboxDir)
-      if (tboxFiles.length > 0) {
-        let tboxTurtle = ''
-        for (const file of tboxFiles) {
-          tboxTurtle += fs.readFileSync(file, 'utf-8') + '\n'
-        }
-        if (tboxTurtle) {
-          await client.uploadTurtle(tboxTurtle, TBOX_GRAPH)
-          console.log(`[ontology-sync] T-Box uploaded: ${tboxFiles.length} files to ${TBOX_GRAPH}`)
-        }
-      }
-
-      // Collect C-Box files (recursive)
-      const cboxFiles = findTurtleFiles(cboxDir)
-      if (cboxFiles.length > 0) {
-        let cboxTurtle = ''
-        for (const file of cboxFiles) {
-          cboxTurtle += fs.readFileSync(file, 'utf-8') + '\n'
-        }
-        if (cboxTurtle) {
-          await client.uploadTurtle(cboxTurtle, CBOX_GRAPH)
-          console.log(`[ontology-sync] C-Box uploaded: ${cboxFiles.length} files to ${CBOX_GRAPH}`)
-        }
-      }
-    } catch (schemaErr) {
-      console.warn('[ontology-sync] Schema upload failed (non-fatal):', schemaErr instanceof Error ? schemaErr.message : schemaErr)
-    }
-
-    console.log(`[ontology-sync] Sync complete: ${agentCount} agents + schema uploaded.`)
-
-    return { success: true, message: `Uploaded ${agentCount} agents + ontology schema to GraphDB`, agentCount }
+    return { success: true, message: `Uploaded ${agentCount} agents + ${assertionCount} assertions + ${roundCount} rounds + ${poolCount} pools to GraphDB data graph`, agentCount }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'GraphDB upload failed'
     console.error(`[ontology-sync] Upload failed: ${message}`)
