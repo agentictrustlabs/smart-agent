@@ -70,8 +70,13 @@ const CONNECTOR_AGENT_ADDRESS = '0x2B669E6851A15FD0E5904EB197c369C2ab578D9b'.toL
 const HUB_ID = 'catalyst'
 
 // Intent IDs (URNs).
-const MARIA_INTENT_ID = 'urn:smart-agent:intent:maria-need-trauma-coaching'
-const COACH_INTENT_ID = 'urn:smart-agent:intent:coach-offer-trauma-coaching'
+// Slug-style ids (no colons) — Next.js dynamic-route segments handle these
+// cleanly without URL encoding, while URN-style ids ('urn:smart-agent:...')
+// hit a router quirk that always returns the 404 page even when the row
+// exists. Slug ids preserve the URN semantics in `payload.iri` for callers
+// that need the canonical IRI.
+const MARIA_INTENT_ID = 'demo-maria-need-trauma-coaching'
+const COACH_INTENT_ID = 'demo-coach-offer-trauma-coaching'
 const NOW = new Date().toISOString()
 
 // MatchInitiation IDs (deterministic so re-running is idempotent).

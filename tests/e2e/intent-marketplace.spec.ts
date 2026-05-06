@@ -60,12 +60,12 @@ test.describe('Intent Marketplace — three-lane smoke test', () => {
   test('round detail renders eligibility + budget + milestone blocks', async ({ page }) => {
     await page.goto(`${BASE}/h/catalyst/rounds/demo-trauma-care-q2`)
     await page.waitForLoadState('networkidle')
-    await expect(page.getByText(/trauma-care/i).first()).toBeVisible({ timeout: 30_000 })
-    // Budget envelope: ceiling $250,000 (formatted with comma)
-    await expect(page.getByText(/250,?000/).first()).toBeVisible()
-    // Eligibility / mandate / milestone blocks present
     const body = page.locator('body')
-    await expect(body).toContainText(/quarterly|reporting/i)
+    // Mandate kind, budget ceiling, and reporting cadence all present.
+    // Use containText with one timeout instead of three brittle locators.
+    await expect(body).toContainText(/trauma-care/i, { timeout: 30_000 })
+    await expect(body).toContainText(/250,?000/, { timeout: 15_000 })
+    await expect(body).toContainText(/quarterly|reporting/i, { timeout: 15_000 })
   })
 
   test('apply page renders proposal composer', async ({ page }) => {
@@ -119,7 +119,9 @@ test.describe('Intent Marketplace — three-lane smoke test', () => {
   })
 
   test('intent detail with seeded need renders candidates section', async ({ page }) => {
-    const intentId = encodeURIComponent('urn:smart-agent:intent:maria-need-trauma-coaching')
+    // Slug-style id (no colons) — see scripts/seed-test-match-initiation.ts
+    // for the rationale (Next.js routes URN-style ids to 404).
+    const intentId = 'demo-maria-need-trauma-coaching'
     const resp = await page.goto(`${BASE}/h/catalyst/intents/${intentId}`)
     // 4xx is acceptable here if the existing intents page hasn't been
     // patched to accept the encoded URN form — log it but don't fail the

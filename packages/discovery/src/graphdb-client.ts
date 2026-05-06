@@ -14,7 +14,12 @@
 import type { GraphDBConfig, SparqlResults } from './types'
 
 const DEFAULT_QUERY_TIMEOUT_MS = 15_000
-const DEFAULT_UPLOAD_TIMEOUT_MS = 15_000
+// Uploads are full-graph PUTs (large payloads — 77 agents + assertions +
+// rounds + pools). The public GraphDB instance frequently takes 30-90s to
+// ingest. Cloudflare's hard limit is 100s, so we cap below that and retry.
+// Architecture follow-up: switch to chunked SPARQL UPDATE so each request
+// is small and this cap can drop back to 15s.
+const DEFAULT_UPLOAD_TIMEOUT_MS = 90_000
 
 export class GraphDBClient {
   private config: GraphDBConfig
@@ -50,27 +55,41 @@ export class GraphDBClient {
   }
 
   /**
-   * Execute a SPARQL SELECT/ASK/CONSTRUCT query.
-   * Returns parsed JSON results.
+   * Execute a SPARQL SELECT/ASK/CONSTRUCT query. Retries up to 2 times on
+   * 5xx (Cloudflare 524) and AbortErrors with exponential backoff (2s, 6s).
+   * 4xx fails fast (auth / bad query).
    */
   async query(sparql: string): Promise<SparqlResults> {
-    const response = await fetch(this.repoUrl(), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/sparql-query',
-        'Accept': 'application/sparql-results+json',
-        'Authorization': this.authHeader(),
-      },
-      body: sparql,
-      signal: this.timeoutSignal(this.queryTimeoutMs),
-    })
-
-    if (!response.ok) {
-      const body = await response.text()
-      throw new GraphDBError(`SPARQL query failed (${response.status}): ${body}`, response.status)
+    const maxAttempts = 3
+    let lastErr: unknown
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      try {
+        const response = await fetch(this.repoUrl(), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/sparql-query',
+            'Accept': 'application/sparql-results+json',
+            'Authorization': this.authHeader(),
+          },
+          body: sparql,
+          signal: this.timeoutSignal(this.queryTimeoutMs),
+        })
+        if (response.ok) return response.json() as Promise<SparqlResults>
+        const body = await response.text()
+        if (response.status >= 400 && response.status < 500) {
+          throw new GraphDBError(`SPARQL query failed (${response.status}): ${body}`, response.status)
+        }
+        lastErr = new GraphDBError(`SPARQL query failed (${response.status})`, response.status)
+      } catch (err) {
+        if (err instanceof GraphDBError && err.status >= 400 && err.status < 500) throw err
+        lastErr = err
+      }
+      if (attempt < maxAttempts) {
+        const backoff = 2000 * Math.pow(3, attempt - 1) // 2s, 6s
+        await new Promise(r => setTimeout(r, backoff))
+      }
     }
-
-    return response.json() as Promise<SparqlResults>
+    throw lastErr ?? new GraphDBError('SPARQL query failed after retries', 0)
   }
 
   /**
