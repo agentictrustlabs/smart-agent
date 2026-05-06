@@ -68,7 +68,12 @@ const DROPPED_TABLES = [
   // Phase-4/5 cleanup — moved to MCPs / on-chain canonical:
   'detached_members',         // → org-mcp.detached_members (already in agent-resolver too)
   'messages',                 // → person-mcp.notifications / org-mcp.org_notifications
-  'intents',                  // → person-mcp.intents / org-mcp.org_intents (owner-routed)
+  // 'intents' INTENTIONALLY KEPT — the web app's intent surfaces
+  // (apps/web/src/lib/actions/intents.action.ts, spec-001 candidates flow,
+  // /h/<hub>/intents pages) still query schema.intents. Migrating them to
+  // federated MCP reads is a follow-up; for now the local table is the
+  // authoritative source for the demo. (Owner-routing in MCPs is also done
+  // — both sources coexist until the federation lands.)
   'needs',                    // → person-mcp.needs / org-mcp.org_needs
   'resource_offerings',       // → person-mcp.offerings / org-mcp.org_offerings
   'outcomes',                 // → person-mcp.outcomes / org-mcp.org_outcomes
@@ -119,6 +124,40 @@ try {
     status INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL
   )`).run()
+} catch { /* already exists */ }
+
+// Explicit backstop for the BDI `intents` table. The drizzle migration
+// 0012_intents_bdi.sql starts with an ALTER on `activity_logs` (which is
+// dropped by DROPPED_TABLES below) and the loader's silent error-swallow
+// can mask a follow-on failure that leaves the `intents` CREATE never
+// firing. This guarantees the table exists on every startup. Schema
+// matches docs/ontology/tbox/intents.ttl + apps/web/src/db/schema.ts.
+try {
+  sqlite.prepare(`CREATE TABLE IF NOT EXISTS intents (
+    id TEXT PRIMARY KEY NOT NULL,
+    direction TEXT NOT NULL,
+    object TEXT NOT NULL,
+    topic TEXT,
+    intent_type TEXT NOT NULL,
+    intent_type_label TEXT NOT NULL,
+    expressed_by_agent TEXT NOT NULL,
+    expressed_by_user_id TEXT,
+    addressed_to TEXT NOT NULL,
+    hub_id TEXT NOT NULL,
+    title TEXT NOT NULL,
+    detail TEXT,
+    payload TEXT,
+    status TEXT DEFAULT 'expressed' NOT NULL,
+    priority TEXT DEFAULT 'normal' NOT NULL,
+    visibility TEXT DEFAULT 'public' NOT NULL,
+    expected_outcome TEXT,
+    projection_ref TEXT,
+    valid_until TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  )`).run()
+  sqlite.prepare(`CREATE INDEX IF NOT EXISTS intents_hub_status_idx ON intents (hub_id, status)`).run()
+  sqlite.prepare(`CREATE INDEX IF NOT EXISTS intents_direction_object_idx ON intents (direction, object)`).run()
 } catch { /* already exists */ }
 
 export const db = drizzle(sqlite, { schema })

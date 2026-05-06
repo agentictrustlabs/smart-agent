@@ -97,26 +97,45 @@ export class GraphDBClient {
    * Upload Turtle data to a named graph via Graph Store HTTP protocol.
    * Uses PUT to replace all data in the graph.
    *
-   * Aborts at `uploadTimeoutMs` (default 15s) so a slow GraphDB / Cloudflare
-   * 524 doesn't pile up debounced kb-sync attempts on the dev server.
+   * Resilience:
+   *   - Aborts each attempt at `uploadTimeoutMs` (default 15s).
+   *   - Retries up to 2 times on 5xx (incl. Cloudflare 524) and on AbortErrors,
+   *     with exponential backoff (3s, 9s). 4xx errors (auth / payload) fail fast.
    */
   async uploadTurtle(turtle: string, namedGraph: string): Promise<void> {
     const url = `${this.repoUrl()}/rdf-graphs/service?graph=${encodeURIComponent(namedGraph)}`
+    const maxAttempts = 3
+    let lastErr: unknown
 
-    const response = await fetch(url, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'text/turtle',
-        'Authorization': this.authHeader(),
-      },
-      body: turtle,
-      signal: this.timeoutSignal(this.uploadTimeoutMs),
-    })
-
-    if (!response.ok) {
-      const body = await response.text()
-      throw new GraphDBError(`Turtle upload failed (${response.status}): ${body}`, response.status)
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      try {
+        const response = await fetch(url, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'text/turtle',
+            'Authorization': this.authHeader(),
+          },
+          body: turtle,
+          signal: this.timeoutSignal(this.uploadTimeoutMs),
+        })
+        if (response.ok) return
+        const body = await response.text()
+        // 4xx → fail fast; 5xx → retry.
+        if (response.status >= 400 && response.status < 500) {
+          throw new GraphDBError(`Turtle upload failed (${response.status}): ${body}`, response.status)
+        }
+        lastErr = new GraphDBError(`Turtle upload failed (${response.status})`, response.status)
+      } catch (err) {
+        // GraphDBError propagates already; AbortError/network-error → retry.
+        if (err instanceof GraphDBError && err.status >= 400 && err.status < 500) throw err
+        lastErr = err
+      }
+      if (attempt < maxAttempts) {
+        const backoff = 3000 * Math.pow(3, attempt - 1) // 3s, 9s
+        await new Promise(r => setTimeout(r, backoff))
+      }
     }
+    throw lastErr ?? new GraphDBError('Turtle upload failed after retries', 0)
   }
 
   /**
