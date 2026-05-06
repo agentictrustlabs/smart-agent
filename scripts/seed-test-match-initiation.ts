@@ -6,7 +6,7 @@
  *
  * What it does:
  *
- *   1. Ensures TWO complementary intents exist in apps/web/web-app.db:
+ *   1. Ensures TWO complementary intents exist in apps/web/local.db:
  *      - A receive-shaped intent expressed by Maria (for trauma-care).
  *      - A give-shaped counter-intent on the same object expressed by another
  *        seeded agent (so Maria can see + propose a match).
@@ -60,7 +60,8 @@ if (fs.existsSync(envFile)) {
 const MARIA_PRINCIPAL = 'person_cat-user-001'
 // Approximate Maria agent address used in seeded data — keep aligned with
 // the rest of the demo seed scripts.
-const MARIA_AGENT_ADDRESS = '0x6F669E6851A15FD0E5904EB197c369C2ab578D9b'.toLowerCase()
+const MARIA_AGENT_PLACEHOLDER = '0x6F669E6851A15FD0E5904EB197c369C2ab578D9b'.toLowerCase()
+let MARIA_AGENT_ADDRESS = MARIA_AGENT_PLACEHOLDER
 // Counter-party (a coach who can offer trauma-care training).
 const COACH_AGENT_ADDRESS = '0x1A669E6851A15FD0E5904EB197c369C2ab578D9b'.toLowerCase()
 // Connector (agent who expressed neither intent — for connector-mode demo).
@@ -113,17 +114,28 @@ async function openSqlite(dbPath: string): Promise<{
 }
 
 // ────────────────────────────────────────────────────────────────────────
-// 1. Seed two complementary intents in apps/web/web-app.db
+// 1. Seed two complementary intents in apps/web/local.db
 // ────────────────────────────────────────────────────────────────────────
 
 async function seedIntents(): Promise<void> {
-  const dbPath = path.join(repoRoot, 'apps/web/web-app.db')
+  const dbPath = path.join(repoRoot, 'apps/web/local.db')
   if (!fs.existsSync(dbPath)) {
     console.warn(`[seed-test-match-initiation] web db not found at ${dbPath} — skipping intent seed`)
     return
   }
   const db = await openSqlite(dbPath)
   try {
+    // Look up Maria's real on-chain agent (set by demo-login). Falls back to
+    // the placeholder if she hasn't signed in yet — re-run after first sign-in.
+    try {
+      const row = (db.prepare(`SELECT lower(person_agent_address) AS addr FROM users WHERE id = 'cat-user-001'`) as { get: () => { addr?: string } | undefined }).get()
+      if (row?.addr) MARIA_AGENT_ADDRESS = row.addr
+    } catch { /* users table may not exist yet — keep placeholder */ }
+    if (MARIA_AGENT_ADDRESS !== MARIA_AGENT_PLACEHOLDER) {
+      console.log(`[seed-test-match-initiation] resolved Maria agent → ${MARIA_AGENT_ADDRESS}`)
+    }
+    // Local alias to keep the literal usages below stable.
+    const resolvedMariaAgent = MARIA_AGENT_ADDRESS
     const stmt = db.prepare(`
       INSERT OR IGNORE INTO intents (
         id, direction, object, topic, intent_type, intent_type_label,
@@ -146,13 +158,13 @@ async function seedIntents(): Promise<void> {
       topic: 'Trauma-care training in Northern Colorado',
       intent_type: 'intentType:NeedCoaching',
       intent_type_label: 'Need: Coaching',
-      expressed_by_agent: MARIA_AGENT_ADDRESS,
+      expressed_by_agent: resolvedMariaAgent,
       expressed_by_user_id: 'cat-user-001',
       addressed_to: `hub:${HUB_ID}`,
       hub_id: HUB_ID,
       title: 'Need: Trauma-care coaching for NoCo cohort',
       detail: 'Looking for an experienced coach to support our NoCo trauma-care leadership cohort over 6 months.',
-      payload: JSON.stringify({ geo: 'us/colorado', beneficiaryAgent: MARIA_AGENT_ADDRESS }),
+      payload: JSON.stringify({ geo: 'us/colorado', beneficiaryAgent: resolvedMariaAgent }),
       status: 'expressed',
       priority: 'high',
       visibility: 'public',
@@ -224,7 +236,7 @@ async function seedInitiation(opts: { connector: boolean }): Promise<void> {
       principal: MARIA_PRINCIPAL,
       viewed_intent_id: MARIA_INTENT_ID,
       candidate_intent_id: COACH_INTENT_ID,
-      initiator_agent_id: MARIA_PRINCIPAL,
+      initiator_agent_id: MARIA_AGENT_ADDRESS,
       initiation_kind: 'self',
       proposed_at: NOW,
       basis: BASIS_SELF,

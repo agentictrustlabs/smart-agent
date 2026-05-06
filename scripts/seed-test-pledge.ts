@@ -22,19 +22,17 @@ const repoRoot = path.resolve(__dirname, '..')
 // ────────────────────────────────────────────────────────────────────────
 
 const PLEDGE_ID = 'demo-maria-trauma-care-pledge'
-// Maria's address — match what seed-catalyst.sh / fresh-start sets.
-// The demo can be re-run after fresh-start to (re-)seed the pledge.
-const MARIA_ADDRESS = (process.env.MARIA_AGENT_ADDRESS ?? '').toLowerCase()
+// Maria's person-mcp principal. Default matches the convention used by
+// proposal_submissions seed (`person_<demo-user-id>`); override via env
+// if seeding into a different tenant.
+const MARIA_ADDRESS = (process.env.MARIA_AGENT_ADDRESS ?? 'person_cat-user-001').toLowerCase()
 const POOL_IRI = 'urn:smart-agent:pool:demo-trauma-care-pool'
 const NOW = new Date().toISOString()
 
 const RESTRICTIONS_JSON = JSON.stringify({ kinds: ['trauma-care'] })
 
 async function seedSql(): Promise<void> {
-  if (!MARIA_ADDRESS) {
-    console.warn('[seed-test-pledge] MARIA_AGENT_ADDRESS not set — set it to the seeded Catalyst hub Maria agent address (lowercased) and re-run.')
-    return
-  }
+  // MARIA_ADDRESS now has a sensible default; nothing to gate.
   const dbPath = path.join(repoRoot, 'apps/person-mcp/person-mcp.db')
   if (!fs.existsSync(dbPath)) {
     console.warn(`[seed-test-pledge] ${dbPath} does not exist — skipping`)
