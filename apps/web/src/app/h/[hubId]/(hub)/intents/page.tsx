@@ -5,6 +5,7 @@ import { HUB_SLUG_MAP } from '@/lib/hub-routes'
 import { getHubProfile } from '@/lib/hub-profiles'
 import { getPersonAgentForUser } from '@/lib/agent-registry'
 import { listIntents, type IntentRow, type IntentDirection } from '@/lib/actions/intents.action'
+import { IntentFilters } from './(components)/IntentFilters'
 
 export const dynamic = 'force-dynamic'
 
@@ -46,7 +47,15 @@ const PRIORITY_FG: Record<string, string> = {
  */
 export default async function IntentsIndexPage({ params, searchParams }: {
   params: Promise<{ hubId: string }>
-  searchParams: Promise<{ direction?: string; scope?: string }>
+  searchParams: Promise<{
+    direction?: string
+    scope?: string
+    intentType?: string
+    priority?: string
+    geo?: string
+    q?: string
+    section?: string
+  }>
 }) {
   const { hubId: slug } = await params
   const sp = await searchParams
@@ -59,17 +68,53 @@ export default async function IntentsIndexPage({ params, searchParams }: {
   const myAgent = await getPersonAgentForUser(user.id)
   const direction: IntentDirection | undefined =
     sp.direction === 'receive' || sp.direction === 'give' ? sp.direction : undefined
-  const scope = sp.scope ?? 'all'   // all | inbox | outbox | hub
+  // Spec 001 US5: 'hub' (default) | 'network'. Section filter retained as a
+  // separate query param `section` for the inbox / outbox / hub split.
+  const scopeFilter: 'hub' | 'network' = sp.scope === 'network' ? 'network' : 'hub'
+  const sectionFilter = sp.section ?? 'all'
+  const intentType = sp.intentType ?? undefined
+  const priority: 'critical' | 'high' | 'normal' | 'low' | undefined =
+    sp.priority === 'critical' || sp.priority === 'high' || sp.priority === 'normal' || sp.priority === 'low'
+      ? sp.priority
+      : undefined
+  const geo = sp.geo ?? undefined
+  const search = sp.q ?? undefined
+
+  const filterArgs = {
+    intentType,
+    priority,
+    geo,
+    search,
+    scope: scopeFilter,
+  }
 
   // Three queries in parallel.
   const [inbox, outbox, hubOpen] = await Promise.all([
     myAgent
-      ? listIntents({ hubId: internalHubId, addressedTo: `agent:${myAgent.toLowerCase()}`, direction, limit: 50 })
+      ? listIntents({
+          hubId: internalHubId,
+          addressedTo: `agent:${myAgent.toLowerCase()}`,
+          direction,
+          limit: 50,
+          ...filterArgs,
+        })
       : Promise.resolve([]),
     myAgent
-      ? listIntents({ hubId: internalHubId, expressedBy: myAgent, direction, limit: 50 })
+      ? listIntents({
+          hubId: internalHubId,
+          expressedBy: myAgent,
+          direction,
+          limit: 50,
+          ...filterArgs,
+        })
       : Promise.resolve([]),
-    listIntents({ hubId: internalHubId, status: 'expressed', direction, limit: 50 }),
+    listIntents({
+      hubId: internalHubId,
+      status: 'expressed',
+      direction,
+      limit: 50,
+      ...filterArgs,
+    }),
   ])
 
   // De-dupe hub-wide list against the inbox/outbox so a user's own intent
@@ -78,7 +123,7 @@ export default async function IntentsIndexPage({ params, searchParams }: {
   const hubFiltered = hubOpen.filter(i => !myIds.has(i.id))
 
   const sections: Array<{ key: string; title: string; items: IntentRow[]; emptyHint?: string }> = []
-  if (scope === 'all' || scope === 'inbox') {
+  if (sectionFilter === 'all' || sectionFilter === 'inbox') {
     sections.push({
       key: 'inbox',
       title: 'Addressed to you',
@@ -86,18 +131,18 @@ export default async function IntentsIndexPage({ params, searchParams }: {
       emptyHint: 'Nothing addressed to you specifically right now. Hub-wide intents below.',
     })
   }
-  if (scope === 'all' || scope === 'outbox') {
+  if (sectionFilter === 'all' || sectionFilter === 'outbox') {
     sections.push({
       key: 'outbox',
       title: 'You expressed',
       items: outbox,
-      emptyHint: scope === 'outbox' ? 'You haven\'t expressed any intents yet.' : undefined,
+      emptyHint: sectionFilter === 'outbox' ? 'You haven\'t expressed any intents yet.' : undefined,
     })
   }
-  if (scope === 'all' || scope === 'hub') {
+  if (sectionFilter === 'all' || sectionFilter === 'hub') {
     sections.push({
       key: 'hub',
-      title: 'Open in the hub',
+      title: scopeFilter === 'network' ? 'Open in the hub + network' : 'Open in the hub',
       items: hubFiltered,
     })
   }
@@ -123,17 +168,19 @@ export default async function IntentsIndexPage({ params, searchParams }: {
         </p>
       </div>
 
-      {/* Filter pills */}
-      <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
-        <FilterPill href={`/h/${slug}/intents${qs({ direction: undefined, scope })}`} active={!direction}>All directions</FilterPill>
-        <FilterPill href={`/h/${slug}/intents${qs({ direction: 'receive', scope })}`} active={direction === 'receive'}>📥 Receive</FilterPill>
-        <FilterPill href={`/h/${slug}/intents${qs({ direction: 'give', scope })}`} active={direction === 'give'}>📤 Give</FilterPill>
-      </div>
+      {/* Spec 001 (US1 / US5) — direction, scope, type / priority / search filters */}
+      <IntentFilters
+        hubSlug={slug}
+        receiveCount={hubOpen.filter(i => i.direction === 'receive').length}
+        giveCount={hubOpen.filter(i => i.direction === 'give').length}
+      />
+
+      {/* Section filter row (inbox / outbox / hub-wide) */}
       <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-        <FilterPill href={`/h/${slug}/intents${qs({ direction, scope: undefined })}`} active={scope === 'all'}>Everything</FilterPill>
-        <FilterPill href={`/h/${slug}/intents${qs({ direction, scope: 'inbox' })}`}  active={scope === 'inbox'}  count={inbox.length}>Addressed to me</FilterPill>
-        <FilterPill href={`/h/${slug}/intents${qs({ direction, scope: 'outbox' })}`} active={scope === 'outbox'} count={outbox.length}>I expressed</FilterPill>
-        <FilterPill href={`/h/${slug}/intents${qs({ direction, scope: 'hub' })}`}    active={scope === 'hub'}    count={hubFiltered.length}>Hub-wide</FilterPill>
+        <FilterPill href={`/h/${slug}/intents${sectionQs(sp, undefined)}`} active={sectionFilter === 'all'}>Everything</FilterPill>
+        <FilterPill href={`/h/${slug}/intents${sectionQs(sp, 'inbox')}`}  active={sectionFilter === 'inbox'}  count={inbox.length}>Addressed to me</FilterPill>
+        <FilterPill href={`/h/${slug}/intents${sectionQs(sp, 'outbox')}`} active={sectionFilter === 'outbox'} count={outbox.length}>I expressed</FilterPill>
+        <FilterPill href={`/h/${slug}/intents${sectionQs(sp, 'hub')}`}    active={sectionFilter === 'hub'}    count={hubFiltered.length}>Hub-wide</FilterPill>
       </div>
 
       {/* Sections */}
@@ -169,10 +216,25 @@ export default async function IntentsIndexPage({ params, searchParams }: {
   )
 }
 
-function qs(obj: { direction?: string; scope?: string }): string {
+function sectionQs(
+  sp: {
+    direction?: string
+    scope?: string
+    intentType?: string
+    priority?: string
+    geo?: string
+    q?: string
+  },
+  nextSection: string | undefined,
+): string {
   const parts: string[] = []
-  if (obj.direction) parts.push(`direction=${obj.direction}`)
-  if (obj.scope && obj.scope !== 'all') parts.push(`scope=${obj.scope}`)
+  if (sp.direction) parts.push(`direction=${encodeURIComponent(sp.direction)}`)
+  if (sp.scope && sp.scope !== 'hub') parts.push(`scope=${encodeURIComponent(sp.scope)}`)
+  if (sp.intentType) parts.push(`intentType=${encodeURIComponent(sp.intentType)}`)
+  if (sp.priority) parts.push(`priority=${encodeURIComponent(sp.priority)}`)
+  if (sp.geo) parts.push(`geo=${encodeURIComponent(sp.geo)}`)
+  if (sp.q) parts.push(`q=${encodeURIComponent(sp.q)}`)
+  if (nextSection && nextSection !== 'all') parts.push(`section=${encodeURIComponent(nextSection)}`)
   return parts.length === 0 ? '' : `?${parts.join('&')}`
 }
 

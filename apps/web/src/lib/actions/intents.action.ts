@@ -291,6 +291,21 @@ export interface ListIntentsOptions {
   addressedTo?: string
   expressedBy?: string
   limit?: number
+  // ─── Spec 001 (US1 / US5) ─────────────────────────────────────────
+  /** Filter by intentType IRI (e.g. "intentType:NeedCoaching"). FR-002. */
+  intentType?: string
+  /** Filter by priority. FR-002. */
+  priority?: 'critical' | 'high' | 'normal' | 'low'
+  /** Substring filter applied across title, topic, detail. FR-003. */
+  search?: string
+  /** Filter by `payload.geo` substring. FR-002. */
+  geo?: string
+  /**
+   * Spec 001 US5 (FR-022 / FR-023). 'hub' = only `hub:<hubId>`-addressed
+   * intents; 'network' = also include `network:<hubId>`. Defaults to 'hub'.
+   * Visibility never crosses the issuing hub boundary in v1.
+   */
+  scope?: 'hub' | 'network'
 }
 
 export async function listIntents(opts: ListIntentsOptions = {}): Promise<IntentRow[]> {
@@ -300,6 +315,8 @@ export async function listIntents(opts: ListIntentsOptions = {}): Promise<Intent
   if (opts.status) filters.push(eq(schema.intents.status, opts.status))
   if (opts.addressedTo) filters.push(eq(schema.intents.addressedTo, opts.addressedTo))
   if (opts.expressedBy) filters.push(eq(schema.intents.expressedByAgent, opts.expressedBy.toLowerCase()))
+  if (opts.intentType) filters.push(eq(schema.intents.intentType, opts.intentType))
+  if (opts.priority) filters.push(eq(schema.intents.priority, opts.priority))
   const where = filters.length === 0 ? undefined : filters.length === 1 ? filters[0] : and(...filters)
   let rows: any[] = []
   try {
@@ -307,7 +324,44 @@ export async function listIntents(opts: ListIntentsOptions = {}): Promise<Intent
       ? await db.select().from(schema.intents).where(where).orderBy(desc(schema.intents.updatedAt)).limit(opts.limit ?? 100)
       : await db.select().from(schema.intents).orderBy(desc(schema.intents.updatedAt)).limit(opts.limit ?? 100)
   } catch { /* intents table dropped */ }
-  return rows.map(rowToIntent)
+  let intents = rows.map(rowToIntent)
+
+  // Post-filter: scope toggle (FR-022/FR-023). When 'hub', drop network-only
+  // intents; when 'network', allow both.
+  if (opts.hubId && opts.scope === 'hub' && !opts.addressedTo) {
+    intents = intents.filter((i) =>
+      i.addressedTo === `hub:${opts.hubId}` || i.addressedTo.startsWith('agent:') || i.addressedTo === 'self',
+    )
+  }
+  if (opts.hubId && opts.scope === 'network' && !opts.addressedTo) {
+    intents = intents.filter((i) =>
+      i.addressedTo === `hub:${opts.hubId}` ||
+      i.addressedTo === `network:${opts.hubId}` ||
+      i.addressedTo.startsWith('agent:') ||
+      i.addressedTo === 'self',
+    )
+  }
+
+  // Post-filter: free-text search (FR-003) across title/topic/detail.
+  if (opts.search) {
+    const q = opts.search.toLowerCase()
+    intents = intents.filter((i) =>
+      (i.title ?? '').toLowerCase().includes(q) ||
+      (i.topic ?? '').toLowerCase().includes(q) ||
+      (i.detail ?? '').toLowerCase().includes(q),
+    )
+  }
+
+  // Post-filter: geo (FR-002) — applied against payload.geo if present.
+  if (opts.geo) {
+    const g = opts.geo.toLowerCase()
+    intents = intents.filter((i) => {
+      const pg = typeof i.payload?.geo === 'string' ? i.payload.geo.toLowerCase() : ''
+      return pg.includes(g)
+    })
+  }
+
+  return intents
 }
 
 export interface IntentDetail extends IntentRow {
