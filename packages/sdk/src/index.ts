@@ -372,6 +372,19 @@ export type {
   ReportingCadence,
 } from './rounds'
 
+// ─── Match Initiations (spec 001 — Intent Marketplace, Direct Lane) ──
+export { MatchInitiationClient } from './matchInitiations'
+export type {
+  IMatchInitiationClient,
+  MatchInitiation,
+  MatchInitiationKind,
+  MatchInitiationStatus,
+  MatchInitiationVisibility,
+  ProposeMatchRequest,
+  ProposeMatchError,
+  ProposeMatchResult,
+} from './matchInitiations'
+
 // ─── Grant Proposals (spec 003 — Intent Marketplace, Proposal Lane) ──
 export { GrantProposalClient } from './grantProposals'
 export type {

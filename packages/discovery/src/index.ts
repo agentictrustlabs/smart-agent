@@ -36,6 +36,9 @@ export type {
   RoundValidatorRequirements,
   ReportingCadence,
   RoundPriorStats,
+  // Spec 001 — Intent Marketplace (Direct Lane)
+  KBCandidateIntent,
+  KBMatchInitiationMirror,
 } from './types'
 
 // Spec 003 query builders (rounds / fund mandate / prior stats)
@@ -45,3 +48,7 @@ export {
   fundPriorOutcomesByDomainQuery,
   proposerPriorOutcomesQuery,
 } from './queries/priorStats'
+
+// Spec 001 query builders (candidates / match initiations)
+export { listCandidatesForIntentQuery } from './queries/candidates'
+export { listActiveInitiationsForIntentQuery } from './queries/matchInitiations'

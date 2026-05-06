@@ -22,6 +22,8 @@ import type {
   RoundValidatorRequirements,
   RoundPriorStats,
   ReportingCadence,
+  KBCandidateIntent,
+  KBMatchInitiationMirror,
 } from './types'
 import {
   listAgentsQuery,
@@ -34,6 +36,8 @@ import {
   hopsFromAgentQuery,
 } from './sparql'
 import { listRoundsQuery, roundDetailQuery } from './queries/rounds'
+import { listCandidatesForIntentQuery } from './queries/candidates'
+import { listActiveInitiationsForIntentQuery } from './queries/matchInitiations'
 
 // ---------------------------------------------------------------------------
 // Result Parsing Helpers
@@ -413,6 +417,98 @@ export class DiscoveryService {
       if (!list.includes(viewer)) return null
     }
     return round
+  }
+
+  // ─── Spec 001: Intent Marketplace (Direct Lane) ──────────────────
+  //
+  // Reads the public mirror of `sa:IntentAssertion` + `sa:MatchInitiationAssertion`
+  // triples populated by the on-chain → GraphDB sync. Private-tier intents
+  // and initiations live in MCPs only and never appear in these results.
+
+  /**
+   * List counter-intent candidates for the viewed intent. Returns intents in
+   * the *opposite direction* on the *same kind* (object), excluding
+   * self-matches (FR-008) and withdrawn/abandoned/fulfilled candidates
+   * (FR-009). The visibility gate (FR-011) lives in the action layer.
+   *
+   * The result is intentionally narrow — proximity hops + prior outcomes
+   * are hydrated by the caller before feeding the candidate to the matchmaker.
+   */
+  async listCandidatesForIntent(opts: {
+    viewedIntentId: string
+    viewedDirection: 'receive' | 'give'
+    viewedKind: string
+    viewedExpresser: string
+    limit?: number
+  }): Promise<KBCandidateIntent[]> {
+    try {
+      const sparql = listCandidatesForIntentQuery(opts)
+      const results = await this.client.query(sparql)
+      const out: KBCandidateIntent[] = []
+      for (const row of results.results.bindings) {
+        const r = row as unknown as Record<string, { value: string }>
+        const id = r.intentId?.value
+        const direction = r.direction?.value
+        if (!id || (direction !== 'receive' && direction !== 'give')) continue
+        out.push({
+          id,
+          iri: r.candidate?.value ?? `urn:smart-agent:intent:${id}`,
+          direction,
+          kind: r.kind?.value ?? '',
+          expresserAddress: (r.expresserAddress?.value ?? '').toLowerCase(),
+          summary: r.summary?.value || undefined,
+          geoBucket: r.geoBucket?.value || undefined,
+          visibility: (r.visibility?.value as KBCandidateIntent['visibility']) || undefined,
+          onChainAssertionId: r.onChainAssertionId?.value || undefined,
+        })
+      }
+      return out
+    } catch {
+      // Discovery unavailable — degrade gracefully with empty list. The
+      // action layer falls back to local web SQLite for v1 demo data.
+      return []
+    }
+  }
+
+  /**
+   * List active (status='pending') MatchInitiations referencing the given
+   * intent on either side. Used by FR-019 ("view existing match" affordance):
+   * if a public-tier pending initiation exists for the pair, the UI shows
+   * "view existing match" instead of "propose match".
+   *
+   * Private-tier initiations are not visible here — they live in the
+   * initiator's MCP and are surfaced via `MatchInitiationClient.listForIntent`.
+   */
+  async listActiveInitiationsForIntent(intentId: string): Promise<KBMatchInitiationMirror[]> {
+    try {
+      const sparql = listActiveInitiationsForIntentQuery(intentId)
+      const results = await this.client.query(sparql)
+      const out: KBMatchInitiationMirror[] = []
+      for (const row of results.results.bindings) {
+        const r = row as unknown as Record<string, { value: string }>
+        const iri = r.initiation?.value
+        if (!iri) continue
+        const id = iri.replace(/^urn:smart-agent:match-initiation:/, '')
+        const initiationKind = r.initiationKind?.value === 'connector' ? 'connector' : 'self'
+        const status = (r.status?.value as KBMatchInitiationMirror['status']) || 'pending'
+        const visibility = (r.visibility?.value === 'public-coarse' ? 'public-coarse' : 'public') as 'public' | 'public-coarse'
+        out.push({
+          id,
+          iri,
+          viewedIntentId: r.viewedIntentId?.value ?? '',
+          candidateIntentId: r.candidateIntentId?.value ?? '',
+          initiatorAgentId: (r.initiatorAgentId?.value ?? '').toLowerCase(),
+          initiationKind,
+          proposedAt: r.proposedAt?.value ?? '',
+          status,
+          visibility,
+          onChainAssertionId: r.onChainAssertionId?.value || undefined,
+        })
+      }
+      return out
+    } catch {
+      return []
+    }
   }
 
   // ─── Raw Query Escape Hatch ───────────────────────────────────────

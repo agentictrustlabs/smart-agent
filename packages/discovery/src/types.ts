@@ -183,6 +183,47 @@ export type RoundListItem = Round & {
 }
 
 // ---------------------------------------------------------------------------
+// Spec 001 — Intent Marketplace (Direct Lane). Candidate / MatchInitiation
+// mirror types. Discovery surfaces these for the candidates section on
+// intent-detail and the FR-019 "view existing match" affordance.
+// ---------------------------------------------------------------------------
+
+/**
+ * A candidate counter-intent surfaced from the public mirror. The shape is
+ * intentionally narrow — the action layer hydrates additional context (hop
+ * distance, prior outcomes) before feeding the candidate to the matchmaker.
+ */
+export interface KBCandidateIntent {
+  id: string
+  /** IRI form, when known. */
+  iri: string
+  direction: 'receive' | 'give'
+  kind: string
+  expresserAddress: string
+  summary?: string
+  geoBucket?: string
+  visibility?: 'public' | 'public-coarse' | 'private' | 'off-chain'
+  onChainAssertionId?: string
+}
+
+/**
+ * A `pending` MatchInitiation surfaced from the public mirror (private-tier
+ * initiations never reach GraphDB).
+ */
+export interface KBMatchInitiationMirror {
+  id: string
+  iri: string
+  viewedIntentId: string
+  candidateIntentId: string
+  initiatorAgentId: string
+  initiationKind: 'self' | 'connector'
+  proposedAt: string
+  status: 'pending' | 'superseded' | 'consumed'
+  visibility: 'public' | 'public-coarse'
+  onChainAssertionId?: string
+}
+
+// ---------------------------------------------------------------------------
 // SPARQL Result Types
 // ---------------------------------------------------------------------------
 
