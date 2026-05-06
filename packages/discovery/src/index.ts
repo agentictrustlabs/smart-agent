@@ -36,6 +36,15 @@ export type {
   RoundValidatorRequirements,
   ReportingCadence,
   RoundPriorStats,
+  // Spec 002 — Intent Marketplace (Pool Lane)
+  Pool,
+  PoolListItem,
+  PoolListFilters,
+  PoolDomain,
+  PoolGovernanceModel,
+  AcceptedRestrictions,
+  CeilingPolicy,
+  PoolAllocationSummary,
   // Spec 001 — Intent Marketplace (Direct Lane)
   KBCandidateIntent,
   KBMatchInitiationMirror,
@@ -48,6 +57,10 @@ export {
   fundPriorOutcomesByDomainQuery,
   proposerPriorOutcomesQuery,
 } from './queries/priorStats'
+
+// Spec 002 query builders (pools / pool allocations)
+export { listPoolsQuery, poolDetailQuery } from './queries/pools'
+export { listRecentAllocationsQuery } from './queries/poolAllocations'
 
 // Spec 001 query builders (candidates / match initiations)
 export { listCandidatesForIntentQuery } from './queries/candidates'

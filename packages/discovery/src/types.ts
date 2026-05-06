@@ -163,6 +163,86 @@ export interface RoundListFilters {
   viewerIntentIds?: string[]
 }
 
+// ---------------------------------------------------------------------------
+// Spec 002 — Intent Marketplace (Pool Lane). Pool types.
+// Mirrors specs/002-intent-marketplace-pool/contracts/pool.ts; copied here
+// because spec contracts are not a published package (same convention as
+// the spec 003 Round mirror above).
+//
+// Discovery surfaces PoolListItem (capacity warnings) for the public mirror
+// reads — donors consume PoolClient.list. PoolPledge bodies live in donor
+// MCPs and never reach GraphDB unless public + non-anonymous (anchored as
+// sa:PledgeAssertion).
+// ---------------------------------------------------------------------------
+
+export type PoolDomain =
+  | 'funding'
+  | 'coaching'
+  | 'prayer'
+  | 'skills'
+  | 'hospitality'
+  | string
+
+export type PoolGovernanceModel =
+  | 'DAF'
+  | 'giving-circle'
+  | 'mission-cooperative'
+  | 'mutual-aid'
+  | 'faith-promise'
+  | 'fund'
+
+export interface AcceptedRestrictions {
+  kinds?: string[]
+  geoRoots?: string[]
+  notForAdmin?: boolean
+  notForDiscretionary?: boolean
+}
+
+export type CeilingPolicy = 'block' | 'waitlist' | 'accept'
+
+export interface Pool {
+  id: string
+  name: string
+  domain: PoolDomain
+  mandate: string
+  governanceModel: PoolGovernanceModel
+  acceptedRestrictions: AcceptedRestrictions
+  acceptedUnits: string[]
+  capacityCeiling?: number
+  ceilingPolicy: CeilingPolicy
+  addressedTo: string
+  addressedMembers?: string[]
+  visibility: 'public' | 'private'
+  stewardshipAgent: string
+  stewards: string[]
+  acceptsOpenCalls: boolean
+  pledgedTotal: number
+  allocatedTotal: number
+  availableTotal: number
+}
+
+export interface PoolListFilters {
+  hubId: string
+  domain?: PoolDomain
+  governanceModel?: PoolGovernanceModel
+  geo?: string
+  search?: string
+  viewerAgentId: string
+}
+
+export type PoolListItem = Pool & {
+  basis?: unknown
+  warnings: Array<'capacity-near-ceiling' | 'capacity-reached'>
+}
+
+export interface PoolAllocationSummary {
+  amount: number
+  unit: string
+  awardedTo: string | 'anonymized' | { kind: 'aggregated'; count: number }
+  awardedAt: string
+  outcomeStatus?: 'fulfilled' | 'abandoned' | 'in-progress'
+}
+
 export type RoundListItem = Round & {
   /** Empty array when nothing in the viewer's intent set overlaps the round mandate. */
   matchedIntentIds: string[]

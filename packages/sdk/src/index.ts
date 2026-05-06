@@ -405,3 +405,37 @@ export type {
   SubmitGrantProposalResult,
   WithdrawGrantProposalResult,
 } from './grantProposals'
+
+// ─── Pools (spec 002 — Intent Marketplace, Pool Lane) ────────────────
+export { PoolClient } from './pools'
+export type {
+  IPoolClient,
+  PoolDiscoveryReader,
+  Pool,
+  Fund,
+  PoolListItem,
+  PoolListFilters,
+  PoolDomain,
+  PoolGovernanceModel,
+  AcceptedRestrictions,
+  CeilingPolicy,
+  PoolAllocationSummary,
+} from './pools'
+
+// ─── Pool Pledges (spec 002 — Intent Marketplace, Pool Lane) ─────────
+export { PoolPledgeClient, cadenceAwareTotal } from './poolPledges'
+export type {
+  IPoolPledgeClient,
+  PoolPledge,
+  PledgeCadence,
+  PledgeStoryPermission,
+  PledgeStatus,
+  PledgeRestrictions,
+  PledgeAmendment,
+  PledgeAmendmentKind,
+  PledgeVisibility,
+  SubmitPledgeRequest,
+  SubmitPledgeResult,
+  SubmitPledgeError,
+  AmendPledgeRequest,
+} from './poolPledges'

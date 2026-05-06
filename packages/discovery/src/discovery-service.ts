@@ -24,6 +24,12 @@ import type {
   ReportingCadence,
   KBCandidateIntent,
   KBMatchInitiationMirror,
+  Pool,
+  PoolListItem,
+  PoolListFilters,
+  PoolAllocationSummary,
+  AcceptedRestrictions,
+  CeilingPolicy,
 } from './types'
 import {
   listAgentsQuery,
@@ -38,6 +44,8 @@ import {
 import { listRoundsQuery, roundDetailQuery } from './queries/rounds'
 import { listCandidatesForIntentQuery } from './queries/candidates'
 import { listActiveInitiationsForIntentQuery } from './queries/matchInitiations'
+import { listPoolsQuery, poolDetailQuery } from './queries/pools'
+import { listRecentAllocationsQuery } from './queries/poolAllocations'
 
 // ---------------------------------------------------------------------------
 // Result Parsing Helpers
@@ -158,6 +166,78 @@ function parseRoundRow(row: Record<string, { value: string }>): Round {
     addressedApplicants,
     proposalsReceived,
     priorStats,
+  }
+}
+
+function parsePoolRow(row: Record<string, { value: string }>): Pool {
+  const id = row.poolId?.value ?? row.pool?.value ?? ''
+  const name = row.name?.value ?? ''
+  const domain = row.domain?.value ?? ''
+  const mandateRaw = row.mandate?.value ?? ''
+  const governanceModel = (row.governanceModel?.value ?? 'fund') as Pool['governanceModel']
+
+  // acceptedRestrictions stored as JSON literal in turtle; tolerate either
+  // a JSON literal or a plain comma-separated value.
+  const acceptedRestrictions: AcceptedRestrictions = parseJsonField<AcceptedRestrictions>(
+    row.acceptedRestrictions?.value, {},
+  )
+  // acceptedUnits — emitted as multi-value; SPARQL may collapse to one
+  // binding per row, so we accept either a JSON-array string or a single
+  // value. Callers that need the full list rely on the parsed JSON form.
+  const acceptedUnitsRaw = row.acceptedUnits?.value ?? ''
+  let acceptedUnits: string[] = []
+  if (acceptedUnitsRaw.startsWith('[')) {
+    acceptedUnits = parseJsonField<string[]>(acceptedUnitsRaw, [])
+  } else if (acceptedUnitsRaw) {
+    acceptedUnits = [acceptedUnitsRaw]
+  }
+
+  const capacityCeilingRaw = row.capacityCeiling?.value
+  const capacityCeiling = capacityCeilingRaw ? Number(capacityCeilingRaw) : undefined
+  const ceilingPolicy = ((['block', 'waitlist', 'accept'] as const).find(
+    p => p === row.ceilingPolicy?.value,
+  ) ?? 'accept') as CeilingPolicy
+
+  const addressedTo = row.addressedTo?.value ?? ''
+  const addressedMembersRaw = row.addressedMembers?.value
+  const addressedMembers = addressedMembersRaw
+    ? parseJsonField<string[]>(addressedMembersRaw, [])
+    : undefined
+
+  const visibility: 'public' | 'private' = row.visibility?.value === 'private' ? 'private' : 'public'
+  const stewardshipAgent = row.stewardshipAgent?.value ?? ''
+  const stewardsRaw = row.stewards?.value ?? ''
+  let stewards: string[] = []
+  if (stewardsRaw.startsWith('[')) {
+    stewards = parseJsonField<string[]>(stewardsRaw, [])
+  } else if (stewardsRaw) {
+    stewards = [stewardsRaw]
+  }
+  const acceptsOpenCalls = row.acceptsOpenCalls?.value === 'true' || row.acceptsOpenCalls?.value === '1'
+
+  const pledgedTotal = parseInt(row.pledgedTotal?.value ?? '0', 10) || 0
+  const allocatedTotal = parseInt(row.allocatedTotal?.value ?? '0', 10) || 0
+  const availableTotal = parseInt(row.availableTotal?.value ?? '0', 10) || Math.max(0, pledgedTotal - allocatedTotal)
+
+  return {
+    id,
+    name,
+    domain,
+    mandate: mandateRaw,
+    governanceModel,
+    acceptedRestrictions,
+    acceptedUnits,
+    capacityCeiling,
+    ceilingPolicy,
+    addressedTo,
+    addressedMembers,
+    visibility,
+    stewardshipAgent,
+    stewards,
+    acceptsOpenCalls,
+    pledgedTotal,
+    allocatedTotal,
+    availableTotal,
   }
 }
 
@@ -503,6 +583,177 @@ export class DiscoveryService {
           status,
           visibility,
           onChainAssertionId: r.onChainAssertionId?.value || undefined,
+        })
+      }
+      return out
+    } catch {
+      return []
+    }
+  }
+
+  // ─── Spec 002: Intent Marketplace (Pool Lane) ────────────────────
+  //
+  // Reads the public mirror of `sa:Pool` triples (and the synthetic
+  // `sa:PoolOpenedAssertion` mirror node when the on-chain anchor exists).
+  // Private pools surface in the public mirror as coarse anchors WITHOUT
+  // the `addressedMembers` list — the discovery layer drops private pools
+  // the viewer isn't addressed to, post-parse.
+
+  /**
+   * Build a `PoolListItem[]` for the pools index page.
+   *
+   * Pipeline:
+   *   1. SPARQL narrows on what it can match server-side (domain,
+   *      governanceModel, free-text, geo).
+   *   2. Result rows parsed into `Pool` shape.
+   *   3. Visibility gate (FR-003) drops private pools whose
+   *      `addressedMembers` does not include `viewerAgentId`.
+   *   4. Capacity warnings (`capacity-near-ceiling` / `capacity-reached`)
+   *      computed from pledgedTotal vs capacityCeiling.
+   *
+   * The discovery layer leaves `basis` undefined; the action layer
+   * computes proposer-side rank signals before rendering.
+   */
+  async listPools(filters: PoolListFilters): Promise<PoolListItem[]> {
+    const sparql = listPoolsQuery(filters)
+    let results: SparqlResults
+    try {
+      results = await this.client.query(sparql)
+    } catch {
+      return []
+    }
+    const viewer = filters.viewerAgentId.toLowerCase()
+    const items: PoolListItem[] = []
+    // SPARQL with multi-valued sa:acceptsUnit / sa:steward can return one
+    // row per value — collapse by pool IRI before emitting.
+    const byPool = new Map<string, Pool>()
+    const unitsByPool = new Map<string, Set<string>>()
+    const stewardsByPool = new Map<string, Set<string>>()
+    for (const row of results.results.bindings) {
+      const r = row as unknown as Record<string, { value: string }>
+      const poolIri = r.pool?.value
+      if (!poolIri) continue
+      if (!byPool.has(poolIri)) byPool.set(poolIri, parsePoolRow(r))
+      const unit = r.acceptedUnits?.value
+      if (unit && !unit.startsWith('[')) {
+        if (!unitsByPool.has(poolIri)) unitsByPool.set(poolIri, new Set())
+        unitsByPool.get(poolIri)!.add(unit)
+      }
+      const steward = r.stewards?.value
+      if (steward && !steward.startsWith('[')) {
+        if (!stewardsByPool.has(poolIri)) stewardsByPool.set(poolIri, new Set())
+        stewardsByPool.get(poolIri)!.add(steward)
+      }
+    }
+    for (const [iri, pool] of byPool) {
+      const units = unitsByPool.get(iri)
+      if (units && units.size > 0) pool.acceptedUnits = Array.from(units)
+      const stewards = stewardsByPool.get(iri)
+      if (stewards && stewards.size > 0) pool.stewards = Array.from(stewards)
+
+      // FR-003: private-pool visibility gate.
+      if (pool.visibility === 'private') {
+        const list = (pool.addressedMembers ?? []).map(a => a.toLowerCase())
+        if (!list.includes(viewer)) continue
+      }
+
+      // Soft capacity warnings.
+      const warnings: PoolListItem['warnings'] = []
+      if (pool.capacityCeiling && pool.capacityCeiling > 0) {
+        const ratio = pool.pledgedTotal / pool.capacityCeiling
+        if (ratio >= 1) warnings.push('capacity-reached')
+        else if (ratio >= 0.9) warnings.push('capacity-near-ceiling')
+      }
+
+      items.push({ ...pool, warnings })
+    }
+    return items
+  }
+
+  /**
+   * Fetch a single pool by id. Returns null when the pool does not appear
+   * in the public mirror or when the viewer is not addressed for a private
+   * pool.
+   */
+  async getPoolDetail(poolId: string, viewerAgentId: string): Promise<Pool | null> {
+    const sparql = poolDetailQuery(poolId)
+    let results: SparqlResults
+    try {
+      results = await this.client.query(sparql)
+    } catch {
+      return null
+    }
+    const rows = results.results.bindings
+    if (rows.length === 0) return null
+    // Multi-valued unit/steward — collapse to set across all rows.
+    const first = rows[0] as unknown as Record<string, { value: string }>
+    const pool = parsePoolRow(first)
+    const units = new Set<string>()
+    const stewards = new Set<string>()
+    for (const row of rows) {
+      const r = row as unknown as Record<string, { value: string }>
+      const u = r.acceptedUnits?.value
+      if (u && !u.startsWith('[')) units.add(u)
+      const s = r.stewards?.value
+      if (s && !s.startsWith('[')) stewards.add(s)
+    }
+    if (units.size > 0) pool.acceptedUnits = Array.from(units)
+    if (stewards.size > 0) pool.stewards = Array.from(stewards)
+    if (pool.visibility === 'private') {
+      const viewer = viewerAgentId.toLowerCase()
+      const list = (pool.addressedMembers ?? []).map(a => a.toLowerCase())
+      if (!list.includes(viewer)) return null
+    }
+    return pool
+  }
+
+  /**
+   * List recent allocations for a pool. v1 returns empty since the
+   * downstream allocation/disbursement spec hasn't shipped — same pattern
+   * as `priorStats.ts`. Once those triples exist, this method applies
+   * `storyPermissions`-aware aggregation per FR-006.
+   */
+  async listRecentAllocations(
+    poolId: string,
+    viewerAgentId: string,
+    limit = 5,
+  ): Promise<PoolAllocationSummary[]> {
+    void viewerAgentId
+    try {
+      const sparql = listRecentAllocationsQuery(poolId, limit)
+      const results = await this.client.query(sparql)
+      const out: PoolAllocationSummary[] = []
+      const aggregated = new Map<string, number>() // unit → count for shareWithSupportTeam aggregation
+      for (const row of results.results.bindings) {
+        const r = row as unknown as Record<string, { value: string }>
+        const amount = Number(r.amount?.value ?? '0') || 0
+        const unit = r.unit?.value ?? ''
+        const awardedAt = r.awardedAt?.value ?? ''
+        const story = r.storyPermissions?.value
+        const outcomeRaw = r.outcomeStatus?.value
+        const outcomeStatus = outcomeRaw === 'fulfilled' || outcomeRaw === 'abandoned' || outcomeRaw === 'in-progress'
+          ? outcomeRaw : undefined
+
+        if (story === 'anonymous') {
+          out.push({ amount, unit, awardedTo: 'anonymized', awardedAt, outcomeStatus })
+        } else if (story === 'shareWithSupportTeam') {
+          aggregated.set(unit, (aggregated.get(unit) ?? 0) + 1)
+        } else {
+          out.push({
+            amount,
+            unit,
+            awardedTo: r.awardedTo?.value ?? 'anonymized',
+            awardedAt,
+            outcomeStatus,
+          })
+        }
+      }
+      for (const [unit, count] of aggregated) {
+        out.push({
+          amount: 0,
+          unit,
+          awardedTo: { kind: 'aggregated', count },
+          awardedAt: '',
         })
       }
       return out
