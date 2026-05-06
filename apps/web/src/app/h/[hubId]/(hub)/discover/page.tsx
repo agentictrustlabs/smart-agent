@@ -7,6 +7,7 @@ import { listNeeds } from '@/lib/actions/needs.action'
 import { listMatches, getHubDiscoverSummary } from '@/lib/actions/discover.action'
 import { listRoundsForViewer } from '@/lib/actions/rounds.action'
 import { listMemberProposals } from '@/lib/actions/grantProposals.action'
+import { listPoolsForViewer } from '@/lib/actions/pools.action'
 import { listIntents } from '@/lib/actions/intents.action'
 import { listTopCandidatesForViewer } from '@/lib/actions/matchInitiations.action'
 import { NeedCard } from '@/components/discover/NeedCard'
@@ -89,6 +90,14 @@ export default async function DiscoverPage({ params }: { params: Promise<{ hubId
 
   const myProposalsResult = await listMemberProposals().catch(() => ({ proposals: [] }))
   const myProposals = myProposalsResult.proposals.slice(0, 5)
+
+  // Spec 002 — Open pools (pool-lane discovery). Best-effort.
+  const openPools = myAgent
+    ? await listPoolsForViewer({
+        hubId: internalHubId,
+        viewerAgentId: myAgent,
+      }).catch(() => [])
+    : []
 
   return (
     <div style={{ paddingBottom: '2rem' }}>
@@ -271,6 +280,44 @@ export default async function DiscoverPage({ params }: { params: Promise<{ hubId
         </section>
       )}
 
+      {/* Open pools (spec 002) */}
+      <section style={{ marginBottom: '1.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+          <h2 style={{ fontSize: '0.7rem', fontWeight: 700, color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0 }}>
+            Open pools
+          </h2>
+          <Link href={`/h/${slug}/pools`} style={{ fontSize: '0.7rem', color: C.accent, textDecoration: 'none', fontWeight: 600 }}>
+            Browse all →
+          </Link>
+        </div>
+        {openPools.length === 0 ? (
+          <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, padding: '1rem', fontSize: '0.85rem', color: C.textMuted, textAlign: 'center' }}>
+            No open pools in this hub.
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            {openPools.slice(0, 3).map(p => {
+              const primaryUnit = p.acceptedUnits[0] ?? 'USD'
+              return (
+                <Link key={p.id} href={`/h/${slug}/pools/${encodeURIComponent(p.id)}`} style={{ display: 'block', background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, padding: '0.7rem 0.85rem', textDecoration: 'none' }}>
+                  <div style={{ fontSize: '0.85rem', fontWeight: 600, color: C.text, marginBottom: '0.2rem' }}>
+                    {p.name || 'Unnamed pool'}
+                    <span style={{ marginLeft: '0.5rem', fontSize: '0.6rem', fontWeight: 700, color: C.accent, padding: '0.1rem 0.45rem', borderRadius: 999, background: C.accentLight, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      {p.domain}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '0.72rem', color: C.textMuted, display: 'flex', gap: '0.65rem', flexWrap: 'wrap' }}>
+                    <span>pledged {p.pledgedTotal} {primaryUnit}</span>
+                    {p.capacityCeiling != null && <span>· ceiling {p.capacityCeiling} {primaryUnit}</span>}
+                    <span>· {p.governanceModel}</span>
+                  </div>
+                </Link>
+              )
+            })}
+          </div>
+        )}
+      </section>
+
       {/* Footer CTAs */}
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
         <Link href={`/h/${slug}/needs`} style={{ display: 'inline-block', padding: '0.55rem 1rem', background: C.accent, color: '#fff', borderRadius: 8, fontWeight: 600, fontSize: '0.85rem', textDecoration: 'none' }}>
@@ -281,6 +328,12 @@ export default async function DiscoverPage({ params }: { params: Promise<{ hubId
         </Link>
         <Link href={`/h/${slug}/proposals`} style={{ display: 'inline-block', padding: '0.55rem 1rem', background: '#fff', color: C.accent, border: `1px solid ${C.accent}`, borderRadius: 8, fontWeight: 600, fontSize: '0.85rem', textDecoration: 'none' }}>
           My proposals
+        </Link>
+        <Link href={`/h/${slug}/pools`} style={{ display: 'inline-block', padding: '0.55rem 1rem', background: '#fff', color: C.accent, border: `1px solid ${C.accent}`, borderRadius: 8, fontWeight: 600, fontSize: '0.85rem', textDecoration: 'none' }}>
+          Pools
+        </Link>
+        <Link href={`/h/${slug}/pledges`} style={{ display: 'inline-block', padding: '0.55rem 1rem', background: '#fff', color: C.accent, border: `1px solid ${C.accent}`, borderRadius: 8, fontWeight: 600, fontSize: '0.85rem', textDecoration: 'none' }}>
+          My pledges
         </Link>
         <Link href={`/h/${slug}/offerings`} style={{ display: 'inline-block', padding: '0.55rem 1rem', background: '#fff', color: C.accent, border: `1px solid ${C.accent}`, borderRadius: 8, fontWeight: 600, fontSize: '0.85rem', textDecoration: 'none' }}>
           My offerings
