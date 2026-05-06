@@ -473,6 +473,34 @@ sqliteHandle.exec(`
     updated_at TEXT NOT NULL
   );
   CREATE INDEX IF NOT EXISTS idx_holder_state_principal ON engagement_holder_state(principal);
+
+  -- ─── Spec 002: Intent Marketplace — Pool Lane ─────────────────────────
+  -- pool_pledges — body of sa:PoolPledge (donor-owned, IA § 2.2).
+  -- principal = pledgerAgentId. visibility cascades from pool visibility +
+  -- donor's storyPermissions; public + non-anonymous rows anchor
+  -- sa:PledgeAssertion on chain.
+  CREATE TABLE IF NOT EXISTS pool_pledges (
+    id TEXT PRIMARY KEY,
+    principal TEXT NOT NULL,
+    pool_agent_id TEXT NOT NULL,
+    cadence TEXT NOT NULL,
+    unit TEXT NOT NULL,
+    amount INTEGER NOT NULL,
+    duration INTEGER,
+    restrictions TEXT,
+    story_permissions TEXT NOT NULL,
+    pledged_at TEXT NOT NULL,
+    stopped_at TEXT,
+    status TEXT NOT NULL DEFAULT 'active',
+    history TEXT NOT NULL DEFAULT '[]',
+    visibility TEXT NOT NULL DEFAULT 'private',
+    on_chain_assertion_id TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_pool_pledges_principal ON pool_pledges(principal);
+  CREATE INDEX IF NOT EXISTS idx_pool_pledges_pool ON pool_pledges(pool_agent_id);
+  CREATE INDEX IF NOT EXISTS idx_pool_pledges_status ON pool_pledges(status);
 `)
 
 /** Raw better-sqlite3 handle. Used by the absorbed ssi storage modules. */

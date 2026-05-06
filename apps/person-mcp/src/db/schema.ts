@@ -448,3 +448,37 @@ export const engagementHolderState = sqliteTable('engagement_holder_state', {
   lastActivityId: text('last_activity_id'),
   updatedAt: text('updated_at').notNull(),
 })
+
+// ---------------------------------------------------------------------------
+// Spec 002 — Intent Marketplace (Pool Lane).
+// poolPledges — body of `sa:PoolPledge` (donor-owned per IA § 2.2).
+// Mirrors the org-mcp twin so org donors and solo human donors can both pledge.
+//   - principal = pledgerAgentId (tenancy column).
+//   - Visibility cascades from pool's visibility + donor's storyPermissions:
+//       pool public + storyPermissions=public               → 'public'
+//       pool public + storyPermissions=shareWithSupportTeam → 'public-coarse'
+//       pool public + storyPermissions=anonymous            → 'private'
+//       pool private (any storyPermissions)                 → 'private'
+//   - Public/public-coarse rows anchor sa:PledgeAssertion on chain.
+//     SHACL `sa:AnonymousPledgeNoAnchorShape` and
+//     `sa:PrivatePoolPledgeNoAnchorShape` enforce no-anchor for the rest.
+// ---------------------------------------------------------------------------
+export const poolPledges = sqliteTable('pool_pledges', {
+  id: text('id').primaryKey(),
+  principal: text('principal').notNull(),                       // = pledgerAgentId
+  poolAgentId: text('pool_agent_id').notNull(),
+  cadence: text('cadence').notNull(),                           // one-time | monthly | annual
+  unit: text('unit').notNull(),
+  amount: integer('amount').notNull(),
+  duration: integer('duration'),                                // months / years; null for one-time
+  restrictions: text('restrictions'),                           // JSON: PledgeRestrictions
+  storyPermissions: text('story_permissions').notNull(),        // public | shareWithSupportTeam | anonymous
+  pledgedAt: text('pledged_at').notNull(),
+  stoppedAt: text('stopped_at'),
+  status: text('status').notNull().default('active'),           // active | waitlisted | stopped | auto-stopped | fulfilled
+  history: text('history').notNull().default('[]'),             // JSON array: PledgeAmendment[]
+  visibility: text('visibility').notNull().default('private'),  // public | public-coarse | private
+  onChainAssertionId: text('on_chain_assertion_id'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+})

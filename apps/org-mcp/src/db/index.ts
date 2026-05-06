@@ -319,6 +319,63 @@ sqliteHandle.exec(`
   CREATE INDEX IF NOT EXISTS idx_match_initiations_viewed ON match_initiations(viewed_intent_id);
   CREATE INDEX IF NOT EXISTS idx_match_initiations_candidate ON match_initiations(candidate_intent_id);
 
+  -- ─── Spec 002: Intent Marketplace — Pool Lane ─────────────────────
+  -- Pool body (sa:Pool). Pool authoring is OUT of scope for this spec;
+  -- this table is the canonical home for pre-seeded pools (similar to
+  -- rounds in spec 003). Persistence per IA § 2.2.
+  CREATE TABLE IF NOT EXISTS pools (
+    id TEXT PRIMARY KEY,
+    org_principal TEXT NOT NULL,
+    name TEXT NOT NULL,
+    domain TEXT NOT NULL,
+    mandate TEXT NOT NULL,
+    governance_model TEXT NOT NULL,
+    accepted_restrictions TEXT NOT NULL,
+    accepted_units TEXT NOT NULL,
+    capacity_ceiling INTEGER,
+    ceiling_policy TEXT NOT NULL DEFAULT 'accept',
+    addressed_to TEXT NOT NULL,
+    addressed_members TEXT,
+    visibility TEXT NOT NULL DEFAULT 'public',
+    stewardship_agent TEXT NOT NULL,
+    stewards TEXT NOT NULL DEFAULT '[]',
+    accepts_open_calls INTEGER NOT NULL DEFAULT 0,
+    pledged_total INTEGER NOT NULL DEFAULT 0,
+    allocated_total INTEGER NOT NULL DEFAULT 0,
+    available_total INTEGER NOT NULL DEFAULT 0,
+    on_chain_assertion_id TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_pools_org ON pools(org_principal);
+  CREATE INDEX IF NOT EXISTS idx_pools_domain ON pools(domain);
+  CREATE INDEX IF NOT EXISTS idx_pools_visibility ON pools(visibility);
+
+  -- pool_pledges — org-mcp twin of person-mcp's pool_pledges. principal =
+  -- pledgerAgentId. SHACL invariants on storyPermissions / visibility.
+  CREATE TABLE IF NOT EXISTS pool_pledges (
+    id TEXT PRIMARY KEY,
+    principal TEXT NOT NULL,
+    pool_agent_id TEXT NOT NULL,
+    cadence TEXT NOT NULL,
+    unit TEXT NOT NULL,
+    amount INTEGER NOT NULL,
+    duration INTEGER,
+    restrictions TEXT,
+    story_permissions TEXT NOT NULL,
+    pledged_at TEXT NOT NULL,
+    stopped_at TEXT,
+    status TEXT NOT NULL DEFAULT 'active',
+    history TEXT NOT NULL DEFAULT '[]',
+    visibility TEXT NOT NULL DEFAULT 'private',
+    on_chain_assertion_id TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_pool_pledges_principal ON pool_pledges(principal);
+  CREATE INDEX IF NOT EXISTS idx_pool_pledges_pool ON pool_pledges(pool_agent_id);
+  CREATE INDEX IF NOT EXISTS idx_pool_pledges_status ON pool_pledges(status);
+
   -- ─── Engagement provider-side state ─────────────────────────────────
   CREATE TABLE IF NOT EXISTS engagement_provider_state (
     entitlement_id TEXT PRIMARY KEY,

@@ -304,6 +304,58 @@ export const matchInitiations = sqliteTable('match_initiations', {
   updatedAt: text('updated_at').notNull(),
 })
 
+// ─── Spec 002: Intent Marketplace — Pool Lane ─────────────────────────────
+// pools — body of `sa:Pool` (operator-owned per IA § 2.2). Pool authoring is
+// OUT of scope for this spec; this table is the canonical home for pre-seeded
+// pools. org_principal here is the pool agent's own address (pools are
+// first-class agents — `sa:Pool subClassOf sa:OrganizationAgent`).
+export const pools = sqliteTable('pools', {
+  id: text('id').primaryKey(),                                  // = poolAgentId IRI
+  orgPrincipal: text('org_principal').notNull(),                // = pool's own agent (or steward)
+  name: text('name').notNull(),
+  domain: text('domain').notNull(),                             // funding|coaching|prayer|skills|hospitality|...
+  mandate: text('mandate').notNull(),                           // JSON: { narrative, tags?, ... }
+  governanceModel: text('governance_model').notNull(),          // DAF|giving-circle|fund|...
+  acceptedRestrictions: text('accepted_restrictions').notNull(),// JSON: AcceptedRestrictions
+  acceptedUnits: text('accepted_units').notNull(),              // JSON array of strings (Q1 open enum)
+  capacityCeiling: integer('capacity_ceiling'),                 // optional cap
+  ceilingPolicy: text('ceiling_policy').notNull().default('accept'), // block|waitlist|accept
+  addressedTo: text('addressed_to').notNull(),                  // hub:<id>|network:<id>|agent:<addr>
+  addressedMembers: text('addressed_members'),                  // JSON array; null for public
+  visibility: text('visibility').notNull().default('public'),   // public|private
+  stewardshipAgent: text('stewardship_agent').notNull(),        // pool itself or designated agent
+  stewards: text('stewards').notNull().default('[]'),           // JSON array of agent IRIs
+  acceptsOpenCalls: integer('accepts_open_calls', { mode: 'boolean' }).notNull().default(false),
+  pledgedTotal: integer('pledged_total').notNull().default(0),
+  allocatedTotal: integer('allocated_total').notNull().default(0),
+  availableTotal: integer('available_total').notNull().default(0),
+  onChainAssertionId: text('on_chain_assertion_id'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+})
+
+// pool_pledges — org-mcp twin of person-mcp's pool_pledges (orgs can also
+// donate). principal = pledgerAgentId.
+export const poolPledges = sqliteTable('pool_pledges', {
+  id: text('id').primaryKey(),
+  principal: text('principal').notNull(),                       // = pledgerAgentId
+  poolAgentId: text('pool_agent_id').notNull(),
+  cadence: text('cadence').notNull(),
+  unit: text('unit').notNull(),
+  amount: integer('amount').notNull(),
+  duration: integer('duration'),
+  restrictions: text('restrictions'),
+  storyPermissions: text('story_permissions').notNull(),
+  pledgedAt: text('pledged_at').notNull(),
+  stoppedAt: text('stopped_at'),
+  status: text('status').notNull().default('active'),
+  history: text('history').notNull().default('[]'),
+  visibility: text('visibility').notNull().default('private'),
+  onChainAssertionId: text('on_chain_assertion_id'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+})
+
 // ─── Engagement provider-side state ────────────────────────────────────────
 
 export const engagementProviderState = sqliteTable('engagement_provider_state', {
