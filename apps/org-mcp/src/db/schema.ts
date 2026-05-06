@@ -281,6 +281,29 @@ export const rounds = sqliteTable('rounds', {
   updatedAt: text('updated_at').notNull(),
 })
 
+// ─── Spec 001: Intent Marketplace — Direct Lane ────────────────────────────
+// match_initiations — body of `sa:MatchInitiation` (initiator-owned per IA § 2.1).
+// org-mcp twin of person-mcp's `match_initiations` table; tenancy column kept
+// as `principal` (NOT `org_principal`) to match the IA classification doc and
+// the contract's `principal === initiatorAgentId` invariant. The `principal`
+// here is the initiator's on-chain agent address (lowercased) when the
+// initiator is an org.
+export const matchInitiations = sqliteTable('match_initiations', {
+  id: text('id').primaryKey(),
+  principal: text('principal').notNull(),                   // = initiatorAgentId
+  viewedIntentId: text('viewed_intent_id').notNull(),
+  candidateIntentId: text('candidate_intent_id').notNull(),
+  initiatorAgentId: text('initiator_agent_id').notNull(),   // redundant mirror of principal
+  initiationKind: text('initiation_kind').notNull(),        // 'self' | 'connector'
+  proposedAt: text('proposed_at').notNull(),
+  basis: text('basis').notNull(),                           // JSON: RankBasis snapshot
+  status: text('status').notNull().default('pending'),
+  visibility: text('visibility').notNull().default('private'),
+  onChainAssertionId: text('on_chain_assertion_id'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+})
+
 // ─── Engagement provider-side state ────────────────────────────────────────
 
 export const engagementProviderState = sqliteTable('engagement_provider_state', {

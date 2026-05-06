@@ -31,6 +31,7 @@ import { workItemsTools } from './tools/work-items.js'
 import { crossDelegationsTools } from './tools/cross-delegations.js'
 import { receivedDelegationsTools } from './tools/received-delegations.js'
 import { grantProposalsTools } from './tools/grantProposals.js'
+import { matchInitiationsTools } from './tools/matchInitiations.js'
 
 // ---------------------------------------------------------------------------
 // Collect all tool definitions and handlers
@@ -55,6 +56,7 @@ const allTools = {
   ...crossDelegationsTools,
   ...receivedDelegationsTools,
   ...grantProposalsTools,
+  ...matchInitiationsTools,
 } as const
 
 const toolDefinitions = Object.values(allTools).map(

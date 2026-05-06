@@ -409,6 +409,35 @@ export const proposalSubmissions = sqliteTable('proposal_submissions', {
 })
 
 // ---------------------------------------------------------------------------
+// Spec 001 — Intent Marketplace (Direct Lane).
+// matchInitiations — body of `sa:MatchInitiation` (initiator-owned per IA § 2.1).
+// Per the contract:
+//   - `principal` = initiatorAgentId (tenancy column).
+//   - `initiatorAgentId` is a redundant mirror kept for symmetry with org-mcp.
+//   - status starts at 'pending'; downstream specs advance to 'superseded' /
+//     'consumed'. Discovery never advances past 'pending'.
+//   - Visibility is the strictest of the two source intents (cascade per IA § 3.1).
+//     Public/public-coarse rows are anchored on chain via `sa:MatchInitiationAssertion`
+//     and `onChainAssertionId` is captured here. Private/off-chain rows stay
+//     MCP-only (no GraphDB mirror).
+// ---------------------------------------------------------------------------
+export const matchInitiations = sqliteTable('match_initiations', {
+  id: text('id').primaryKey(),
+  principal: text('principal').notNull(),                   // = initiatorAgentId
+  viewedIntentId: text('viewed_intent_id').notNull(),
+  candidateIntentId: text('candidate_intent_id').notNull(),
+  initiatorAgentId: text('initiator_agent_id').notNull(),   // redundant mirror of principal
+  initiationKind: text('initiation_kind').notNull(),        // 'self' | 'connector'
+  proposedAt: text('proposed_at').notNull(),
+  basis: text('basis').notNull(),                           // JSON: RankBasis snapshot
+  status: text('status').notNull().default('pending'),      // 'pending' | 'superseded' | 'consumed'
+  visibility: text('visibility').notNull().default('private'), // public | public-coarse | private | off-chain
+  onChainAssertionId: text('on_chain_assertion_id'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+})
+
+// ---------------------------------------------------------------------------
 // engagementHolderState — holder-side per-entitlement metadata
 // ---------------------------------------------------------------------------
 export const engagementHolderState = sqliteTable('engagement_holder_state', {

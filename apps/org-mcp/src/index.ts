@@ -22,6 +22,7 @@ import { orgNotificationsTools, orgBeliefsTools } from './tools/notifications-be
 import { orgWorkItemsTools, engagementTools } from './tools/work-items-engagement.js'
 import { grantProposalsTools } from './tools/grantProposals.js'
 import { roundsTools } from './tools/rounds.js'
+import { matchInitiationsTools } from './tools/matchInitiations.js'
 
 const allTools = {
   ...orgProfileTools,
@@ -36,6 +37,7 @@ const allTools = {
   ...engagementTools,
   ...grantProposalsTools,
   ...roundsTools,
+  ...matchInitiationsTools,
 } as const
 
 const toolDefinitions = Object.values(allTools).map(
