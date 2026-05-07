@@ -51,19 +51,31 @@ export function PoolCard({
     ? Math.min(1, pool.pledgedTotal / pool.capacityCeiling)
     : 0
 
+  // The whole card is one Link to the detail page, with a sibling "Pledge"
+  // action button positioned in the corner so donors don't have to drill
+  // in just to find the pledge composer. Two-link pattern (no nested
+  // anchors) — outer wrapper is a positioning context, body link expands
+  // to fill, explicit Pledge button sits on top.
+  const ceilingClosed = pool.warnings.includes('capacity-reached') && pool.ceilingPolicy === 'block'
   return (
-    <Link
-      href={`/h/${hubSlug}/pools/${safeId}`}
+    <article
       style={{
-        display: 'block',
+        position: 'relative',
         background: C.card,
         border: `1px solid ${C.border}`,
         borderRadius: 12,
-        padding: '0.85rem 1rem',
-        textDecoration: 'none',
-        color: C.text,
       }}
     >
+      <Link
+        href={`/h/${hubSlug}/pools/${safeId}`}
+        style={{
+          display: 'block',
+          padding: '0.85rem 1rem',
+          paddingRight: '7.5rem',  // reserve space for the Pledge button
+          textDecoration: 'none',
+          color: C.text,
+        }}
+      >
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.4rem', flexWrap: 'wrap' }}>
         <span style={{
           fontSize: '0.62rem',
@@ -162,7 +174,45 @@ export function PoolCard({
           </span>
         )}
       </div>
-    </Link>
+      </Link>
+      {/* Pledge CTA — positioned on top of the card, sibling to the body
+          link so we don't nest anchors. Disabled state when the pool is
+          ceiling-blocked. */}
+      {ceilingClosed ? (
+        <span
+          style={{
+            position: 'absolute',
+            top: '0.85rem',
+            right: '1rem',
+            fontSize: '0.72rem',
+            color: C.textMuted,
+            fontStyle: 'italic',
+            padding: '0.4rem 0.75rem',
+          }}
+        >
+          Closed
+        </span>
+      ) : (
+        <Link
+          href={`/h/${hubSlug}/pools/${safeId}/pledge`}
+          style={{
+            position: 'absolute',
+            top: '0.85rem',
+            right: '1rem',
+            padding: '0.4rem 0.85rem',
+            background: C.accent,
+            color: '#fff',
+            borderRadius: 8,
+            fontSize: '0.78rem',
+            fontWeight: 700,
+            textDecoration: 'none',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          Pledge →
+        </Link>
+      )}
+    </article>
   )
 }
 

@@ -20,7 +20,7 @@
 
 import { randomUUID } from 'crypto'
 import { db, schema } from '@/db'
-import { and, eq, desc } from 'drizzle-orm'
+import { and, eq, desc, inArray } from 'drizzle-orm'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { scoreOfferingAgainstNeed, type ScoredMatch } from '@/lib/discover/scorer'
 import {
@@ -612,13 +612,34 @@ export async function listOpenNeedsForActor(hubId: string): Promise<PickerOption
 }
 
 export async function getHubDiscoverSummary(hubId: string): Promise<HubDiscoverSummary> {
+  // openNeeds: count of receive-shape intents in this hub at `expressed` /
+  // `acknowledged`. The legacy `needs` table is read only as a fallback
+  // for the topNeeds card stack (NeedRow shape) — the headline number
+  // tracks the intents table, which is the post-spec-001 source of truth.
+  let openIntentCount = 0
+  try {
+    const rows = db.select({ id: schema.intents.id }).from(schema.intents)
+      .where(and(
+        eq(schema.intents.hubId, hubId),
+        eq(schema.intents.direction, 'receive'),
+        inArray(schema.intents.status, ['expressed', 'acknowledged']),
+      ))
+      .all()
+    openIntentCount = rows.length
+  } catch { /* intents table missing — count stays 0 */ }
+
+  // topNeeds card stack still reads the legacy `needs` table.
   let openRows: any[] = []
   try { openRows = await db.select().from(schema.needs)
     .where(and(eq(schema.needs.hubId, hubId), eq(schema.needs.status, 'open')))
     .orderBy(desc(schema.needs.updatedAt))
     .limit(50) } catch { /* needs table dropped */ }
 
-  // Count proposed matches across all open needs in this hub.
+  // Count proposed matches across legacy `needResourceMatches`. The newer
+  // `match_initiations` mirror lives in person-mcp; surfacing it through
+  // this hub-level summary requires a downstream MCP call that's intentionally
+  // not in v1's hot path. Per-intent candidate counts already render on the
+  // intent detail page from `listCandidatesForIntent`.
   const needIds = (openRows as any[]).map((r: any) => r.id)
   let proposedMatches = 0
   if (needIds.length > 0) {
@@ -662,7 +683,7 @@ export async function getHubDiscoverSummary(hubId: string): Promise<HubDiscoverS
     }))
 
   return {
-    openNeeds: openRows.length,
+    openNeeds: Math.max(openIntentCount, openRows.length),
     proposedMatches,
     topNeeds,
   }

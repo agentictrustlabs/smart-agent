@@ -46,7 +46,7 @@ export interface RoundOpenedPayloadFull {
     budgetCeiling: number
     expectedAwards: number
   }
-  reportingCadence: 'quarterly' | 'milestone' | 'annual' | 'none'
+  reportingCadence: 'monthly' | 'quarterly' | 'milestone' | 'annual' | 'none'
   deadline: string // ISO-8601
   decisionDate: string // ISO-8601
   requiredCredentials: string[]

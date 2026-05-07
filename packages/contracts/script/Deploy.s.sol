@@ -11,6 +11,14 @@ import "../src/enforcers/AllowedMethodsEnforcer.sol";
 import "../src/enforcers/DataScopeEnforcer.sol";
 import "../src/enforcers/RateLimitEnforcer.sol";
 import "../src/enforcers/RecoveryEnforcer.sol";
+import "../src/enforcers/PoolMandateEnforcer.sol";
+import "../src/enforcers/RoundDecisionWindowEnforcer.sol";
+import "../src/enforcers/AllocationLimitEnforcer.sol";
+import "../src/enforcers/StewardEligibilityEnforcer.sol";
+import "../src/enforcers/QuorumEnforcer.sol";
+import "../src/MandateRegistry.sol";
+import "../src/StewardEligibilityRegistry.sol";
+import "../src/ApprovedHashRegistry.sol";
 import "../src/validators/PasskeyValidator.sol";
 import "../src/UniversalSignatureValidator.sol";
 import "../src/AgentRelationship.sol";
@@ -104,6 +112,32 @@ contract Deploy is Script {
         console.log("AllowedMethodsEnforcer:", address(allowedMethodsEnforcer));
         DataScopeEnforcer dataScopeEnforcer = new DataScopeEnforcer();
         console.log("DataScopeEnforcer:", address(dataScopeEnforcer));
+
+        // 4b. Treasury Phase 2 — pool/round/quorum policy primitives.
+        // Registries first (they're referenced by enforcers' terms encoding).
+        MandateRegistry mandateRegistry = new MandateRegistry();
+        console.log("MandateRegistry:", address(mandateRegistry));
+
+        StewardEligibilityRegistry stewardEligibilityRegistry = new StewardEligibilityRegistry();
+        console.log("StewardEligibilityRegistry:", address(stewardEligibilityRegistry));
+
+        ApprovedHashRegistry approvedHashRegistry = new ApprovedHashRegistry();
+        console.log("ApprovedHashRegistry:", address(approvedHashRegistry));
+
+        PoolMandateEnforcer poolMandateEnforcer = new PoolMandateEnforcer();
+        console.log("PoolMandateEnforcer:", address(poolMandateEnforcer));
+
+        RoundDecisionWindowEnforcer roundDecisionWindowEnforcer = new RoundDecisionWindowEnforcer();
+        console.log("RoundDecisionWindowEnforcer:", address(roundDecisionWindowEnforcer));
+
+        AllocationLimitEnforcer allocationLimitEnforcer = new AllocationLimitEnforcer();
+        console.log("AllocationLimitEnforcer:", address(allocationLimitEnforcer));
+
+        StewardEligibilityEnforcer stewardEligibilityEnforcer = new StewardEligibilityEnforcer();
+        console.log("StewardEligibilityEnforcer:", address(stewardEligibilityEnforcer));
+
+        QuorumEnforcer quorumEnforcer = new QuorumEnforcer();
+        console.log("QuorumEnforcer:", address(quorumEnforcer));
 
         // 5. Relationship Protocol (3 contracts)
         AgentRelationship agentRelationship = new AgentRelationship();
@@ -320,6 +354,15 @@ contract Deploy is Script {
         _logEnv("SKILL_DEFINITION_REGISTRY_ADDRESS", address(skillDefs));
         _logEnv("AGENT_SKILL_REGISTRY_ADDRESS", address(skillClaims));
         _logEnv("SKILL_ISSUER_REGISTRY_ADDRESS", address(skillIssuers));
+        // Treasury Phase 2 — pool/round/quorum policy primitives
+        _logEnv("MANDATE_REGISTRY_ADDRESS", address(mandateRegistry));
+        _logEnv("STEWARD_ELIGIBILITY_REGISTRY_ADDRESS", address(stewardEligibilityRegistry));
+        _logEnv("APPROVED_HASH_REGISTRY_ADDRESS", address(approvedHashRegistry));
+        _logEnv("POOL_MANDATE_ENFORCER_ADDRESS", address(poolMandateEnforcer));
+        _logEnv("ROUND_DECISION_WINDOW_ENFORCER_ADDRESS", address(roundDecisionWindowEnforcer));
+        _logEnv("ALLOCATION_LIMIT_ENFORCER_ADDRESS", address(allocationLimitEnforcer));
+        _logEnv("STEWARD_ELIGIBILITY_ENFORCER_ADDRESS", address(stewardEligibilityEnforcer));
+        _logEnv("QUORUM_ENFORCER_ADDRESS", address(quorumEnforcer));
     }
 
     function _logEnv(string memory key, address addr) internal pure {

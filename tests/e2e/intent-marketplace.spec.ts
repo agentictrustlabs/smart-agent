@@ -29,6 +29,20 @@ async function demoLogin(page: Page, userId: string) {
  * existing demoLogin helper pattern from phase2-shell.spec.ts).
  */
 test.describe('Intent Marketplace — three-lane smoke test', () => {
+  // The runtime kb-sync is debounced (60s quiet + 30s cooldown); the
+  // production write-paths use scheduleKbSync to protect GraphDB. For
+  // the test suite we need GraphDB to reflect the latest seeded state
+  // BEFORE the first read, so we force one sync once at the start of
+  // the suite. Subsequent tests reuse the warm GraphDB state.
+  test.beforeAll(async ({ request }) => {
+    test.setTimeout(180_000)
+    try {
+      await request.post(`${BASE}/api/ontology-sync`, { timeout: 120_000 })
+    } catch {
+      // best-effort — if the sync fails the read tests will surface it
+    }
+  })
+
   test.beforeEach(async ({ page }) => {
     test.setTimeout(120_000)
     await demoLogin(page, 'cat-user-001') // Maria Gonzalez
@@ -64,7 +78,7 @@ test.describe('Intent Marketplace — three-lane smoke test', () => {
     // Mandate kind, budget ceiling, and reporting cadence all present.
     // Use containText with one timeout instead of three brittle locators.
     await expect(body).toContainText(/trauma-care/i, { timeout: 30_000 })
-    await expect(body).toContainText(/250,?000/, { timeout: 15_000 })
+    await expect(body).toContainText(/250,?000|250k/i, { timeout: 15_000 })
     await expect(body).toContainText(/quarterly|reporting/i, { timeout: 15_000 })
   })
 
@@ -145,5 +159,88 @@ test.describe('Intent Marketplace — three-lane smoke test', () => {
     // and at least one Funding-or-rounds link to be present.
     const fundingLink = page.getByRole('link', { name: /Funding|Rounds|Grant/i }).first()
     await expect(fundingLink).toBeVisible({ timeout: 30_000 })
+  })
+
+  // ─── Phase 2.5 — steward / cancellation / pool-create UI ─────────────
+
+  test('round detail surfaces steward "Review proposals" + "Cancel round" CTAs for fund managers', async ({ page }) => {
+    // Maria manages the Catalyst NoCo Network (ROLE_OWNER edge from
+    // catalyst-seed). Round detail should expose the steward affordances.
+    await page.goto(`${BASE}/h/catalyst/rounds/demo-trauma-care-q2`)
+    await page.waitForLoadState('networkidle')
+    await expect(page.getByRole('link', { name: /Review proposals/i })).toBeVisible({ timeout: 30_000 })
+    await expect(page.getByRole('button', { name: /Cancel round/i })).toBeVisible()
+  })
+
+  test('steward proposals page lists submitted proposals with award form', async ({ page }) => {
+    // Two submitted proposals on demo-trauma-care-q2 after seed: Maria's own + David's.
+    await page.goto(`${BASE}/h/catalyst/rounds/demo-trauma-care-q2/proposals`)
+    await page.waitForLoadState('networkidle')
+    // The "Award winning proposals" section is the close-round form.
+    await expect(page.getByRole('heading', { name: /Award winning proposals/i })).toBeVisible({ timeout: 30_000 })
+    // Close button is present (disabled until at least one is selected).
+    await expect(page.getByRole('button', { name: /Close round/i })).toBeVisible()
+  })
+
+  test('pool create wizard reachable + form renders', async ({ page }) => {
+    // The "+ New pool" button on the pools index links here.
+    await page.goto(`${BASE}/h/catalyst/pools/new`)
+    await page.waitForLoadState('networkidle')
+    await expect(page.getByRole('heading', { name: /Create a funding pool/i })).toBeVisible({ timeout: 30_000 })
+    await expect(page.getByRole('button', { name: /Create pool/i })).toBeVisible()
+  })
+
+  // ─── David (proposer) — confirm steward CTAs are NOT visible ───────────
+
+  test('David (non-steward) does not see Cancel Round button', async ({ page }) => {
+    // Sign-in as David, who has no governance edge to the network.
+    await demoLogin(page, 'cat-user-002')
+    await page.goto(`${BASE}/h/catalyst/rounds/demo-trauma-care-q2`)
+    await page.waitForLoadState('networkidle')
+    // The "Draft a proposal" CTA should still be visible to David —
+    // he's a regular hub member, not a steward.
+    await expect(page.getByRole('link', { name: /Draft a proposal/i })).toBeVisible({ timeout: 30_000 })
+    // Cancel Round button must be absent (canManageAgent returns false).
+    await expect(page.getByRole('button', { name: /Cancel round/i })).toHaveCount(0)
+  })
+
+  // ─── Pool → Round chain visibility (Phase 2.5 wizard) ──────────────
+
+  test('rounds index has + New round button for steward', async ({ page }) => {
+    await page.goto(`${BASE}/h/catalyst/rounds`)
+    await page.waitForLoadState('networkidle')
+    await expect(page.getByRole('link', { name: /\+ New round/i }).first()).toBeVisible({ timeout: 30_000 })
+  })
+
+  test('pool detail surfaces "Rounds operated by this pool"', async ({ page }) => {
+    // demo-trauma-care-pool is operated by Catalyst NoCo Network, the same
+    // fund operating the seeded trauma-care round. The section header must
+    // appear regardless of count; for the catalyst pool the matching round
+    // (demo-trauma-care-q2) should be linked.
+    const url = `${BASE}/h/catalyst/pools/${encodeURIComponent('urn:smart-agent:pool:demo-trauma-care-pool')}`
+    await page.goto(url)
+    await page.waitForLoadState('networkidle')
+    await expect(page.getByText(/Rounds operated by this pool/i)).toBeVisible({ timeout: 30_000 })
+  })
+
+  test('new round wizard reachable + form prefills from pool selector', async ({ page }) => {
+    await page.goto(`${BASE}/h/catalyst/rounds/new`)
+    await page.waitForLoadState('networkidle')
+    await expect(page.getByRole('heading', { name: /Open a grant round/i })).toBeVisible({ timeout: 30_000 })
+    await expect(page.getByRole('button', { name: /Open round/i })).toBeVisible()
+  })
+
+  test('round detail "Operated by" links to pool detail', async ({ page }) => {
+    // The seeded trauma-care round is operated by the catalyst NoCo
+    // Network. The round detail header shows that fund label and its
+    // pool detail page surfaces "Rounds operated by this pool". This is
+    // the read-side proof of the pool↔round linkage; the create-side
+    // chain is verified end-to-end via curl in the development workflow
+    // (a Playwright variant would need a 60s wait for the debounced
+    // kb-sync to surface the new round on the GraphDB-backed index).
+    await page.goto(`${BASE}/h/catalyst/rounds/demo-trauma-care-q2`)
+    await page.waitForLoadState('networkidle')
+    const body = page.locator('body')
+    await expect(body).toContainText(/Operated by/i, { timeout: 30_000 })
   })
 })

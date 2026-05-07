@@ -901,6 +901,199 @@ const cloneTool = {
   },
 }
 
+// ───────────────────────────────────────────────────────────────────────
+// Tool: grant_proposal:award
+// ───────────────────────────────────────────────────────────────────────
+//
+// Treasury Phase 2.5 — flips a submitted proposal to `awarded`. Called by
+// the steward set during round close (after the AllocationDecided payload
+// is signed N-of-M). The web action layer emits sa:GrantAwardedAssertion
+// in the same orchestration; this MCP tool just persists the row state.
+
+interface AwardArgs {
+  token: string
+  proposalId: string
+  totalAwarded: number
+  unit: string
+  awardedAt?: string
+}
+
+const awardTool = {
+  name: 'grant_proposal:award',
+  description:
+    "Mark a submitted GrantProposal as awarded. Records totalAwarded + unit. Called by steward set during round close after the AllocationDecided payload is signed N-of-M; web action layer pairs with sa:GrantAwardedAssertion.",
+  inputSchema: {
+    type: 'object' as const,
+    properties: {
+      token: { type: 'string' },
+      proposalId: { type: 'string' },
+      totalAwarded: { type: 'number' },
+      unit: { type: 'string' },
+      awardedAt: { type: 'string' },
+    },
+    required: ['token', 'proposalId', 'totalAwarded', 'unit'],
+  },
+  handler: async (args: AwardArgs) => {
+    await requireOrgPrincipal(args.token, args, 'grant_proposal:award')
+    const existing = db.select().from(proposalSubmissions)
+      .where(eq(proposalSubmissions.id, args.proposalId))
+      .all()[0]
+    if (!existing) throw new Error(`proposal ${args.proposalId} not found`)
+    if (existing.status !== 'submitted') {
+      throw new Error(`proposal ${args.proposalId} cannot be awarded (status=${existing.status})`)
+    }
+    const awardedAt = args.awardedAt ?? nowIso()
+    // Award metadata is stitched into existing fields without a schema
+    // migration: status = 'awarded', and the fund-mandate slot carries
+    // (totalAwarded, unit, awardedAt) JSON for downstream queries.
+    const awardPayload = JSON.stringify({
+      totalAwarded: args.totalAwarded,
+      unit: args.unit,
+      awardedAt,
+    })
+    db.update(proposalSubmissions)
+      .set({
+        status: 'awarded',
+        fundMandateId: awardPayload,
+        lastEditedAt: awardedAt,
+      })
+      .where(eq(proposalSubmissions.id, args.proposalId))
+      .run()
+    return mcpText({
+      proposalId: args.proposalId,
+      totalAwarded: args.totalAwarded,
+      unit: args.unit,
+      awardedAt,
+    })
+  },
+}
+
+// ───────────────────────────────────────────────────────────────────────
+// Tool: grant_proposal:revoke_award
+// ───────────────────────────────────────────────────────────────────────
+//
+// Cancellation guardian for the per-proposal path: revokes an award
+// BETWEEN AllocationDecided and the first Disbursement. Companion to
+// `round:cancel` (round-level) and `grant_proposal:rescind` (post-disbursement).
+//
+// Per output/onchain-treasury-plan.md § 2.4 R4b — emits sa:AllocationRevokedAssertion.
+
+interface RevokeAwardArgs {
+  token: string
+  proposalId: string
+  reasonKind: 'dispute-upheld' | 'fraud' | 'mandate-mismatch' | 'recipient-withdrew' | 'other'
+  reasonURI?: string
+}
+
+const revokeAwardTool = {
+  name: 'grant_proposal:revoke_award',
+  description:
+    "Revoke an awarded GrantProposal between AllocationDecided and the first Disbursement (cancellation-guardian path). Web action layer pairs with sa:AllocationRevokedAssertion.",
+  inputSchema: {
+    type: 'object' as const,
+    properties: {
+      token: { type: 'string' },
+      proposalId: { type: 'string' },
+      reasonKind: { type: 'string', enum: ['dispute-upheld', 'fraud', 'mandate-mismatch', 'recipient-withdrew', 'other'] },
+      reasonURI: { type: 'string' },
+    },
+    required: ['token', 'proposalId', 'reasonKind'],
+  },
+  handler: async (args: RevokeAwardArgs) => {
+    await requireOrgPrincipal(args.token, args, 'grant_proposal:revoke_award')
+    const existing = db.select().from(proposalSubmissions)
+      .where(eq(proposalSubmissions.id, args.proposalId))
+      .all()[0]
+    if (!existing) throw new Error(`proposal ${args.proposalId} not found`)
+    if (existing.status !== 'awarded') {
+      throw new Error(`proposal ${args.proposalId} cannot be revoked (status=${existing.status})`)
+    }
+    const now = nowIso()
+    const revokePayload = JSON.stringify({
+      kind: 'revoke',
+      reasonKind: args.reasonKind,
+      reasonURI: args.reasonURI ?? null,
+      revokedAt: now,
+    })
+    db.update(proposalSubmissions)
+      .set({
+        status: 'revoked',
+        fundMandateId: revokePayload,
+        lastEditedAt: now,
+      })
+      .where(eq(proposalSubmissions.id, args.proposalId))
+      .run()
+    return mcpText({
+      proposalId: args.proposalId,
+      reasonKind: args.reasonKind,
+      revokedAt: now,
+    })
+  },
+}
+
+// ───────────────────────────────────────────────────────────────────────
+// Tool: grant_proposal:rescind
+// ───────────────────────────────────────────────────────────────────────
+//
+// Post-disbursement clawback path. Different from revoke_award (which
+// stops the disbursement before it lands). Rescind acknowledges that
+// funds were paid and may file a dispute against the recipient via
+// AgentDisputeRecord. Web action layer emits sa:GrantRescindedAssertion.
+
+interface RescindArgs {
+  token: string
+  proposalId: string
+  reasonURI: string
+  fileDispute?: boolean
+}
+
+const rescindTool = {
+  name: 'grant_proposal:rescind',
+  description:
+    "Rescind a previously-disbursed grant (post-disbursement clawback). Web action layer pairs with sa:GrantRescindedAssertion and may also call AgentDisputeRecord.fileDispute when fileDispute=true.",
+  inputSchema: {
+    type: 'object' as const,
+    properties: {
+      token: { type: 'string' },
+      proposalId: { type: 'string' },
+      reasonURI: { type: 'string' },
+      fileDispute: { type: 'boolean' },
+    },
+    required: ['token', 'proposalId', 'reasonURI'],
+  },
+  handler: async (args: RescindArgs) => {
+    await requireOrgPrincipal(args.token, args, 'grant_proposal:rescind')
+    const existing = db.select().from(proposalSubmissions)
+      .where(eq(proposalSubmissions.id, args.proposalId))
+      .all()[0]
+    if (!existing) throw new Error(`proposal ${args.proposalId} not found`)
+    if (existing.status !== 'awarded' && existing.status !== 'rescinded') {
+      throw new Error(`proposal ${args.proposalId} cannot be rescinded (status=${existing.status})`)
+    }
+    const now = nowIso()
+    const rescindPayload = JSON.stringify({
+      kind: 'rescind',
+      reasonURI: args.reasonURI,
+      fileDispute: args.fileDispute === true,
+      rescindedAt: now,
+    })
+    db.update(proposalSubmissions)
+      .set({
+        status: 'rescinded',
+        fundMandateId: rescindPayload,
+        lastEditedAt: now,
+      })
+      .where(eq(proposalSubmissions.id, args.proposalId))
+      .run()
+    return mcpText({
+      proposalId: args.proposalId,
+      reasonURI: args.reasonURI,
+      fileDispute: args.fileDispute === true,
+      rescindedAt: now,
+    })
+  },
+}
+
 export const grantProposalsTools = {
   'grant_proposal:submit': submitTool,
   'grant_proposal:draft': draftTool,
@@ -910,4 +1103,7 @@ export const grantProposalsTools = {
   'grant_proposal:edit_pre_deadline': editPreDeadlineTool,
   'grant_proposal:withdraw': withdrawTool,
   'grant_proposal:clone': cloneTool,
+  'grant_proposal:award': awardTool,
+  'grant_proposal:revoke_award': revokeAwardTool,
+  'grant_proposal:rescind': rescindTool,
 }

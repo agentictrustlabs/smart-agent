@@ -29,11 +29,12 @@ import { redirect, notFound } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { HUB_SLUG_MAP } from '@/lib/hub-routes'
 import { getHubProfile } from '@/lib/hub-profiles'
-import { getPersonAgentForUser } from '@/lib/agent-registry'
+import { getPersonAgentForUser, canManageAgent } from '@/lib/agent-registry'
 import { getRoundForViewer } from '@/lib/actions/rounds.action'
 import { listProposalsForRoundSteward } from '@/lib/actions/grantProposals.action'
 import { rankCue } from '@smart-agent/sdk'
 import type { RankBasis, GrantProposal } from '@smart-agent/sdk'
+import { CloseRoundForm, type CloseableProposal } from './CloseRoundForm'
 
 export const dynamic = 'force-dynamic'
 
@@ -96,15 +97,31 @@ export default async function StewardProposalsPage({
     return <NotAuthorizedSurface hubSlug={slug} reason="not-found-or-private" />
   }
 
-  // v1 steward gate: viewer's agent address must match the round's fundAgentId.
-  // // TODO: replace with stewards-roster lookup.
-  const isSteward = round.fundAgentId.toLowerCase() === myAgent.toLowerCase()
+  // Steward gate (v1.5): viewer must be able to manage the round's fund —
+  // either via a governance edge (ROLE_OWNER / ROLE_OPERATOR / ROLE_BOARD)
+  // or via the fund's ATL_CONTROLLER list. canManageAgent encapsulates both
+  // paths and matches the catalyst-seed auth model. Production round-creation
+  // flows will surface a real stewards roster on the pool.
+  //
+  // The discovery query returns fundAgentId as a full IRI; strip the
+  // prefix so canManageAgent receives a bare address.
+  const AGENT_IRI_PREFIX = 'https://smartagent.io/ontology/core#agent/'
+  const fundAddress = round.fundAgentId.startsWith(AGENT_IRI_PREFIX)
+    ? round.fundAgentId.slice(AGENT_IRI_PREFIX.length)
+    : round.fundAgentId
+  const isSteward = await canManageAgent(myAgent, fundAddress)
   if (!isSteward) {
     return <NotAuthorizedSurface hubSlug={slug} reason="not-steward" />
   }
 
+  // The MCP tool's WHERE clause matches roundId exactly; rows are stored
+  // with full URN (urn:smart-agent:round:<slug>) while the URL param is
+  // just the slug. Normalize.
+  const fullRoundId = roundId.startsWith('urn:smart-agent:round:')
+    ? roundId
+    : `urn:smart-agent:round:${roundId}`
   const ranked = await listProposalsForRoundSteward({
-    roundId,
+    roundId: fullRoundId,
     stewardAgentId: myAgent,
     fundAgentId: round.fundAgentId,
   })
@@ -160,6 +177,24 @@ export default async function StewardProposalsPage({
           ))}
         </div>
       )}
+
+      {/* Phase 2.5 — close-round form. Renders only when the round is still
+          open (non-canceled, non-closed) AND there's at least one submitted
+          proposal to award. */}
+      <CloseRoundForm
+        hubSlug={slug}
+        roundId={roundId}
+        poolAgentId={round.fundAgentId}
+        proposals={ranked
+          .filter(r => r.proposal.status === 'submitted')
+          .map<CloseableProposal>(r => ({
+            proposalIRI: r.proposal.id,
+            proposerAgentId: r.proposal.proposerAgentId,
+            proposerLabel: `${r.proposal.proposerAgentId.slice(0, 6)}…${r.proposal.proposerAgentId.slice(-4)}`,
+            suggestedAmount: r.proposal.budget?.total ?? 0,
+            unit: r.proposal.budget?.lineItems?.[0]?.unit ?? 'USD',
+          }))}
+      />
     </div>
   )
 }

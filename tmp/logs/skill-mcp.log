@@ -2,7 +2,174 @@
 > @smart-agent/skill-mcp@0.0.1 dev /home/barb/smart-agent/apps/skill-mcp
 > tsx src/index.ts
 
-[skill-mcp] Smart Agent Skill Steward @ did:ethr:31337:0xa84585fb6728f413d4d89ec972c45e94686bf38e
-[skill-mcp] listening on http://localhost:3800
-<-- GET /health
---> GET /health [32m200[0m 0ms
+[skill-mcp] fatal: ContractFunctionExecutionError: The contract function "getIssuerByAddress" reverted.
+
+Contract Call:
+  address:   0xc5a5C42992dECbae36851359345FE25997F5C42d
+  function:  getIssuerByAddress(address account)
+  args:                        (0xA84585fb6728f413d4d89eC972c45E94686bf38e)
+
+Docs: https://viem.sh/docs/contract/readContract
+Details: execution reverted
+Version: viem@2.47.10
+    at getContractError (/home/barb/smart-agent/node_modules/.pnpm/viem@2.47.10_bufferutil@4.1.0_typescript@5.9.3_utf-8-validate@6.0.6_zod@3.25.76/node_modules/viem/utils/errors/getContractError.ts:82:10)
+    at readContract (/home/barb/smart-agent/node_modules/.pnpm/viem@2.47.10_bufferutil@4.1.0_typescript@5.9.3_utf-8-validate@6.0.6_zod@3.25.76/node_modules/viem/actions/public/readContract.ts:138:27)
+    ... 5 lines matching cause stack trace ...
+    at async main (/home/barb/smart-agent/apps/skill-mcp/src/index.ts:34:3) {
+  cause: ContractFunctionRevertedError: The contract function "getIssuerByAddress" reverted.
+  
+  Details: execution reverted
+  Version: viem@2.47.10
+      at <anonymous> (/home/barb/smart-agent/node_modules/.pnpm/viem@2.47.10_bufferutil@4.1.0_typescript@5.9.3_utf-8-validate@6.0.6_zod@3.25.76/node_modules/viem/utils/errors/getContractError.ts:68:14)
+      at getContractError (/home/barb/smart-agent/node_modules/.pnpm/viem@2.47.10_bufferutil@4.1.0_typescript@5.9.3_utf-8-validate@6.0.6_zod@3.25.76/node_modules/viem/utils/errors/getContractError.ts:80:5)
+      at readContract (/home/barb/smart-agent/node_modules/.pnpm/viem@2.47.10_bufferutil@4.1.0_typescript@5.9.3_utf-8-validate@6.0.6_zod@3.25.76/node_modules/viem/actions/public/readContract.ts:138:27)
+      at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+      at async OnChainResolver.resolveIssuer (/home/barb/smart-agent/packages/credential-registry/src/on-chain-resolver.ts:217:15)
+      ... 3 lines matching cause stack trace ...
+      at async main (/home/barb/smart-agent/apps/skill-mcp/src/index.ts:34:3) {
+    details: 'execution reverted',
+    docsPath: undefined,
+    metaMessages: undefined,
+    shortMessage: 'The contract function "getIssuerByAddress" reverted.',
+    version: '2.47.10',
+    data: undefined,
+    raw: '0x',
+    reason: 'execution reverted',
+    signature: undefined,
+    [cause]: CallExecutionError: Execution reverted for an unknown reason.
+    
+    Raw Call Arguments:
+      to:    0xc5a5C42992dECbae36851359345FE25997F5C42d
+      data:  0x5f8818d0000000000000000000000000a84585fb6728f413d4d89ec972c45e94686bf38e
+    
+    Details: execution reverted
+    Version: viem@2.47.10
+        at getCallError (/home/barb/smart-agent/node_modules/.pnpm/viem@2.47.10_bufferutil@4.1.0_typescript@5.9.3_utf-8-validate@6.0.6_zod@3.25.76/node_modules/viem/utils/errors/getCallError.ts:42:10)
+        at call (/home/barb/smart-agent/node_modules/.pnpm/viem@2.47.10_bufferutil@4.1.0_typescript@5.9.3_utf-8-validate@6.0.6_zod@3.25.76/node_modules/viem/actions/public/call.ts:307:23)
+        ... 5 lines matching cause stack trace ...
+        at async ensureSkillsRegistered (/home/barb/smart-agent/apps/skill-mcp/src/issuers/skill.ts:61:3)
+        at async main (/home/barb/smart-agent/apps/skill-mcp/src/index.ts:34:3) {
+      cause: [ExecutionRevertedError],
+      details: 'execution reverted',
+      docsPath: undefined,
+      metaMessages: [Array],
+      shortMessage: 'Execution reverted for an unknown reason.',
+      version: '2.47.10'
+    }
+  },
+  details: 'execution reverted',
+  docsPath: '/docs/contract/readContract',
+  metaMessages: [
+    'Contract Call:',
+    '  address:   0xc5a5C42992dECbae36851359345FE25997F5C42d\n' +
+      '  function:  getIssuerByAddress(address account)\n' +
+      '  args:                        (0xA84585fb6728f413d4d89eC972c45E94686bf38e)'
+  ],
+  shortMessage: 'The contract function "getIssuerByAddress" reverted.',
+  version: '2.47.10',
+  abi: [
+    {
+      type: 'function',
+      name: 'registerIssuer',
+      stateMutability: 'nonpayable',
+      inputs: [Array],
+      outputs: []
+    },
+    {
+      type: 'function',
+      name: 'publishSchema',
+      stateMutability: 'nonpayable',
+      inputs: [Array],
+      outputs: []
+    },
+    {
+      type: 'function',
+      name: 'publishCredDef',
+      stateMutability: 'nonpayable',
+      inputs: [Array],
+      outputs: []
+    },
+    {
+      type: 'function',
+      name: 'getIssuer',
+      stateMutability: 'view',
+      inputs: [Array],
+      outputs: [Array]
+    },
+    {
+      type: 'function',
+      name: 'getIssuerByAddress',
+      stateMutability: 'view',
+      inputs: [Array],
+      outputs: [Array]
+    },
+    {
+      type: 'function',
+      name: 'isSchemaPublished',
+      stateMutability: 'view',
+      inputs: [Array],
+      outputs: [Array]
+    },
+    {
+      type: 'function',
+      name: 'isCredDefPublished',
+      stateMutability: 'view',
+      inputs: [Array],
+      outputs: [Array]
+    },
+    {
+      type: 'function',
+      name: 'schemaJsonHash',
+      stateMutability: 'view',
+      inputs: [Array],
+      outputs: [Array]
+    },
+    {
+      type: 'function',
+      name: 'credDefJsonHash',
+      stateMutability: 'view',
+      inputs: [Array],
+      outputs: [Array]
+    },
+    {
+      type: 'function',
+      name: 'schemaIssuerOf',
+      stateMutability: 'view',
+      inputs: [Array],
+      outputs: [Array]
+    },
+    {
+      type: 'function',
+      name: 'credDefIssuerOf',
+      stateMutability: 'view',
+      inputs: [Array],
+      outputs: [Array]
+    },
+    {
+      type: 'event',
+      name: 'IssuerRegistered',
+      anonymous: false,
+      inputs: [Array]
+    },
+    {
+      type: 'event',
+      name: 'SchemaPublished',
+      anonymous: false,
+      inputs: [Array]
+    },
+    {
+      type: 'event',
+      name: 'CredDefPublished',
+      anonymous: false,
+      inputs: [Array]
+    }
+  ],
+  args: [ '0xA84585fb6728f413d4d89eC972c45E94686bf38e' ],
+  contractAddress: '0xc5a5C42992dECbae36851359345FE25997F5C42d',
+  formattedArgs: undefined,
+  functionName: 'getIssuerByAddress',
+  sender: undefined
+}
+/home/barb/smart-agent/apps/skill-mcp:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @smart-agent/skill-mcp@0.0.1 dev: `tsx src/index.ts`
+Exit status 1

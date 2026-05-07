@@ -76,6 +76,54 @@ sa:RoundClosedAssertion
     rdfs:label "Round Closed Assertion" ;
     rdfs:comment "On-chain anchor minted when a Round closes (deadline pass or decision)." .
 
+sa:AllocationDecidedAssertion
+    a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "Allocation Decided Assertion" ;
+    rdfs:comment "On-chain anchor minted when stewards finalize allocations for a Round. Carries the awards list (proposal IRIs + tranche schedule) plus the steward quorum proof (Merkle awardsRoot committed in the SESSION_DELEGATION terms). The companion to sa:RoundClosedAssertion — Closed marks the lifecycle, Decided carries the decision payload." .
+
+sa:DisbursementAssertion
+    a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "Disbursement Assertion" ;
+    rdfs:comment "On-chain anchor minted when a tranche of an awarded proposal is disbursed from the pool's AgentAccount. Emitted atomically with the USDC.transfer via MultiSendCallOnly (or as the same userOp via the pool's AgentAccount.execute). References the source sa:AllocationDecidedAssertion + trancheId." .
+
+sa:GrantAwardedAssertion
+    a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "Grant Awarded Assertion" ;
+    rdfs:comment "Coarse public attestation that a specific GrantProposal won a Round. References the proposal IRI by hash; the proposal body remains private in the proposer's MCP. Asserter is the pool's AgentAccount." .
+
+sa:GrantRescindedAssertion
+    a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "Grant Rescinded Assertion" ;
+    rdfs:comment "On-chain attestation that a previously-awarded grant has been rescinded (cause: outcome failure, fraud, dispute). Companion to AgentDisputeRecord.fileDispute when a dispute drives the rescission." .
+
+sa:OutcomeAttestationAssertion
+    a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "Outcome Attestation Assertion" ;
+    rdfs:comment "Validator attestation against a disbursed tranche or completed grant. Asserter = validator's AgentAccount. Payload carries outcomeKind ∈ {delivered, partial, not_delivered, disputed} + outcomeQuality ∈ 1..5 + evidenceURI. Drives the matchmaker reputation feedback loop via a derived sa:ProposerTrackRecord projection." .
+
+sa:DisputeWindowOpenedAssertion
+    a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "Dispute Window Opened Assertion" ;
+    rdfs:comment "On-chain anchor minted alongside sa:AllocationDecidedAssertion that opens a 72h optimistic-execution challenge period. RoundDecisionWindowEnforcer + TimestampEnforcer lower-bound block disbursement until disputeUntil. Pattern borrowed from oSnap / UMA Optimistic Oracle. See output/dao-pool-round-best-practices.md § 3 Q6." .
+
+sa:RoundCanceledAssertion
+    a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "Round Canceled Assertion" ;
+    rdfs:comment "On-chain anchor when a Round is canceled before any disbursement (cancellation-guardian path à la OZ Governor). Cause: dispute, security incident, mandate change. Different from sa:RoundClosedAssertion (which marks normal lifecycle close)." .
+
+sa:AllocationRevokedAssertion
+    a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "Allocation Revoked Assertion" ;
+    rdfs:comment "On-chain anchor when a specific award within an AllocationDecided is revoked between AllocationDecided and Disbursement. Carries proposalIRI + reasonURI. Companion to sa:GrantRescindedAssertion (which is post-disbursement)." .
+
 # ─── Round properties ──────────────────────────────────────────────
 
 sa:operatedByFund

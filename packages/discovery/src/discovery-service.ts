@@ -154,6 +154,8 @@ function parseRoundRow(row: Record<string, { value: string }>): Round {
 
   return {
     id: row.roundId?.value ?? row.round?.value ?? '',
+    displayName: row.roundName?.value || undefined,
+    fundName: row.fundName?.value || undefined,
     fundAgentId: row.fundAgentId?.value ?? '',
     mandate,
     milestoneTemplate,

@@ -1,13 +1,15 @@
 /**
- * Spec 002 — Intent Marketplace (Pool Lane). Pledge seed for Maria.
+ * Spec 002 — Pledge seed for Maria + Pastor David across multiple pools.
  *
- * Inserts a pledge for Maria (person-mcp side) targeting the demo pool seeded
- * by `seed-test-pool.ts`: $100/monthly for 12 months, restrictions
- * { kinds: ['trauma-care'] }, storyPermissions: 'shareWithSupportTeam'.
+ * Three pledges that exercise pool-lane variety:
+ *   - Maria: $100 monthly × 12 → trauma-care pool ($1200 total)
+ *   - David: $50 monthly × 12 → spanish-bibles pool ($600 total)
+ *   - Maria: 10 prayer-minutes daily × 365 → prayer-chain pool (3650 min)
  *
  *   pnpm exec tsx scripts/seed-test-pledge.ts
  *
- * Idempotent: uses INSERT OR REPLACE on a stable id.
+ * Idempotent: INSERT OR REPLACE on stable ids; org-mcp aggregates are
+ * recomputed instead of additively bumped so re-runs don't double count.
  */
 
 import path from 'node:path'
@@ -17,31 +19,80 @@ import { fileURLToPath } from 'node:url'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(__dirname, '..')
 
-// ────────────────────────────────────────────────────────────────────────
-// Constants
-// ────────────────────────────────────────────────────────────────────────
-
-const PLEDGE_ID = 'demo-maria-trauma-care-pledge'
-// Maria's person-mcp principal. Default matches the convention used by
-// proposal_submissions seed (`person_<demo-user-id>`); override via env
-// if seeding into a different tenant.
-const MARIA_ADDRESS = (process.env.MARIA_AGENT_ADDRESS ?? 'person_cat-user-001').toLowerCase()
-const POOL_IRI = 'urn:smart-agent:pool:demo-trauma-care-pool'
 const NOW = new Date().toISOString()
 
-const RESTRICTIONS_JSON = JSON.stringify({ kinds: ['trauma-care'] })
+interface PledgeSeed {
+  id: string
+  /** person-mcp principal that owns the pledge body. */
+  principal: string
+  poolId: string
+  cadence: 'one-time' | 'monthly' | 'annual'
+  unit: string
+  amount: number
+  duration: number
+  restrictions: { kinds?: string[]; geoRoots?: string[] } | null
+  storyPermissions: 'public' | 'shareWithSupportTeam' | 'anonymous'
+}
+
+const PLEDGES: PledgeSeed[] = [
+  {
+    id: 'demo-maria-trauma-care-pledge',
+    principal: 'person_cat-user-001',
+    poolId: 'demo-trauma-care-pool',
+    cadence: 'monthly',
+    unit: 'USD',
+    amount: 100,
+    duration: 12,
+    restrictions: { kinds: ['trauma-care', 'CompassionMinistry'] },
+    storyPermissions: 'shareWithSupportTeam',
+  },
+  {
+    id: 'demo-david-spanish-bibles-pledge',
+    principal: 'person_cat-user-002',
+    poolId: 'demo-spanish-bibles-pool',
+    cadence: 'monthly',
+    unit: 'USD',
+    amount: 50,
+    duration: 12,
+    restrictions: { kinds: ['HeartLanguageScripture', 'BibleStudy'] },
+    storyPermissions: 'public',
+  },
+  {
+    id: 'demo-maria-prayer-chain-pledge',
+    principal: 'person_cat-user-001',
+    poolId: 'demo-prayer-chain-pool',
+    cadence: 'monthly',
+    unit: 'prayer-minutes',
+    amount: 300, // 10 minutes × 30 days/mo
+    duration: 12,
+    restrictions: { kinds: ['DailyPrayer', 'Intercession'] },
+    storyPermissions: 'anonymous',
+  },
+]
+
+interface SqliteStmt {
+  run: (params: Record<string, unknown>) => void
+  all?: (params?: Record<string, unknown>) => unknown[]
+}
+interface SqliteHandle {
+  prepare: (sql: string) => SqliteStmt
+  close: () => void
+}
+
+async function openSqlite(dbPath: string): Promise<SqliteHandle> {
+  const Database = (await import(
+    path.join(repoRoot, 'node_modules/.pnpm/better-sqlite3@11.10.0/node_modules/better-sqlite3/lib/index.js')
+  ) as { default: new (path: string) => SqliteHandle }).default
+  return new Database(dbPath)
+}
 
 async function seedSql(): Promise<void> {
-  // MARIA_ADDRESS now has a sensible default; nothing to gate.
   const dbPath = path.join(repoRoot, 'apps/person-mcp/person-mcp.db')
   if (!fs.existsSync(dbPath)) {
     console.warn(`[seed-test-pledge] ${dbPath} does not exist — skipping`)
     return
   }
-  const Database = (await import(
-    path.join(repoRoot, 'node_modules/.pnpm/better-sqlite3@11.10.0/node_modules/better-sqlite3/lib/index.js')
-  ) as { default: new (path: string) => { prepare: (sql: string) => { run: (params: Record<string, unknown>) => void }; close: () => void } }).default
-  const db = new Database(dbPath)
+  const db = await openSqlite(dbPath)
   try {
     const stmt = db.prepare(`
       INSERT OR REPLACE INTO pool_pledges (
@@ -54,42 +105,56 @@ async function seedSql(): Promise<void> {
         @history, @visibility, @on_chain_assertion_id, @created_at, @updated_at
       )
     `)
-    stmt.run({
-      id: PLEDGE_ID,
-      principal: MARIA_ADDRESS,
-      pool_agent_id: POOL_IRI,
-      cadence: 'monthly',
-      unit: 'USD',
-      amount: 100,
-      duration: 12,
-      restrictions: RESTRICTIONS_JSON,
-      story_permissions: 'shareWithSupportTeam',
-      pledged_at: NOW,
-      stopped_at: null,
-      status: 'active',
-      history: '[]',
-      visibility: 'public-coarse',
-      on_chain_assertion_id: null,
-      created_at: NOW,
-      updated_at: NOW,
-    })
-    console.log(`[seed-test-pledge] SQL ok — pledge ${PLEDGE_ID} for ${MARIA_ADDRESS} in ${dbPath}`)
+    for (const p of PLEDGES) {
+      stmt.run({
+        id: p.id,
+        principal: p.principal,
+        pool_agent_id: `urn:smart-agent:pool:${p.poolId}`,
+        cadence: p.cadence,
+        unit: p.unit,
+        amount: p.amount,
+        duration: p.duration,
+        restrictions: p.restrictions ? JSON.stringify(p.restrictions) : null,
+        story_permissions: p.storyPermissions,
+        pledged_at: NOW,
+        stopped_at: null,
+        status: 'active',
+        history: '[]',
+        visibility: p.storyPermissions === 'anonymous' ? 'public-coarse' : 'public',
+        on_chain_assertion_id: null,
+        created_at: NOW,
+        updated_at: NOW,
+      })
+      console.log(`[seed-test-pledge] SQL ok — ${p.id} (${p.principal} → ${p.poolId})`)
+    }
   } finally {
     db.close()
   }
 
-  // Bump pool's pledgedTotal by the cadence-aware total ($100 × 12 = $1200).
+  // Recompute pool aggregates (pledged_total / available_total) from the
+  // pledges we just seeded. Idempotent: per-pool totals are summed once
+  // from this script's PLEDGES array, then written. Re-runs converge on
+  // the same number instead of double-counting.
   const orgDbPath = path.join(repoRoot, 'apps/org-mcp/org-mcp.db')
   if (!fs.existsSync(orgDbPath)) return
-  const orgDb = new Database(orgDbPath)
+  const orgDb = await openSqlite(orgDbPath)
   try {
-    orgDb.prepare(`
-      UPDATE pools SET pledged_total = pledged_total + 1200,
-                       available_total = pledged_total + 1200 - allocated_total,
-                       updated_at = @now
+    const totalsByPool = new Map<string, number>()
+    for (const p of PLEDGES) {
+      const iri = `urn:smart-agent:pool:${p.poolId}`
+      totalsByPool.set(iri, (totalsByPool.get(iri) ?? 0) + p.amount * p.duration)
+    }
+    const update = orgDb.prepare(`
+      UPDATE pools SET
+        pledged_total = @total,
+        available_total = @total - allocated_total,
+        updated_at = @now
       WHERE id = @poolIri
-    `).run({ poolIri: POOL_IRI, now: NOW })
-    console.log(`[seed-test-pledge] org-mcp pool aggregate bumped by $1200 (12 × $100)`)
+    `)
+    for (const [poolIri, total] of totalsByPool) {
+      update.run({ poolIri, total, now: NOW })
+      console.log(`[seed-test-pledge] org-mcp aggregate set: ${poolIri} → ${total}`)
+    }
   } finally {
     orgDb.close()
   }
@@ -97,7 +162,11 @@ async function seedSql(): Promise<void> {
 
 async function main(): Promise<void> {
   await seedSql()
-  console.log(`\n✓ Seeded pledge '${PLEDGE_ID}' for Maria targeting demo pool.`)
+  console.log(`\n✓ Seeded ${PLEDGES.length} pledges across the catalyst pools:`)
+  for (const p of PLEDGES) {
+    const total = p.amount * p.duration
+    console.log(`    · ${p.id} — ${p.principal}: ${total} ${p.unit} via ${p.poolId}`)
+  }
   console.log(`  Visit: http://localhost:3000/h/catalyst/pledges (after Maria signs in)`)
 }
 

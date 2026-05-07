@@ -275,6 +275,43 @@ trigger_boot_seed() {
     echo "  (ontology-sync curl failed — boot-seed already attempted it; check tmp/logs/web.log)"
 }
 
+# Lane-specific demo seeds for the three intent-marketplace lanes
+# (specs 001 / 002 / 003). Run after boot-seed so Maria + Pastor David's
+# person agents already exist in apps/web/local.db. Each script is
+# idempotent so failures from a partial run are safe to re-attempt.
+seed_marketplace_lanes() {
+  banner "9/9  Seeding intent-marketplace lanes (specs 001/002/003)"
+  cd "$ROOT_DIR/apps/web"
+  local steps=(
+    "../../scripts/sync-ontology.ts"
+    "../../scripts/seed-test-round.ts"
+    "../../scripts/seed-test-pool.ts"
+    "../../scripts/seed-test-proposal.ts"
+    "../../scripts/seed-test-pledge.ts"
+    "../../scripts/seed-test-match-initiation.ts"
+  )
+  for step in "${steps[@]}"; do
+    local label
+    label=$(basename "$step" .ts)
+    if pnpm exec tsx "$step" >> "$LOG_DIR/lane-seeds.log" 2>&1; then
+      echo "  ✓ $label"
+    else
+      echo "  ⚠ $label failed — see tmp/logs/lane-seeds.log"
+    fi
+  done
+  cd "$ROOT_DIR"
+  # Lane seeds emit on-chain assertions (e.g., sa:RoundOpenedAssertion,
+  # sa:PoolOpenedAssertion) AFTER the sync-ontology step, so a follow-up
+  # sync is required for the public-tier mirror to reflect them. Without
+  # this, the GraphDB shows class assertion counts of 0 until the next
+  # mutation triggers the debounced sync.
+  echo "  forcing follow-up on-chain → GraphDB sync …"
+  curl -fsS -X POST "http://127.0.0.1:$WEB_PORT/api/ontology-sync" \
+    -H 'content-type: application/json' >/dev/null 2>&1 \
+    && echo "  ✓ post-anchor sync" \
+    || echo "  ⚠ post-anchor sync failed — see tmp/logs/web.log"
+}
+
 # ─── Run ───────────────────────────────────────────────────────────────
 
 stop_all
@@ -287,6 +324,7 @@ if (( START_SERVICES )); then
   start_services
   start_web
   trigger_boot_seed
+  seed_marketplace_lanes
 fi
 
 banner "Done — fresh stack at http://localhost:$WEB_PORT"

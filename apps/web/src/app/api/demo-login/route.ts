@@ -110,13 +110,23 @@ export async function POST(request: Request) {
   // KB write-through — the new person agent (and any community-seed
   // edges that just landed on chain) need to be mirrored into GraphDB
   // so /agents and other DiscoveryService-backed views see this user
-  // without a manual /api/ontology-sync. Debounced + idempotent —
-  // failures log and move on.
-  try {
-    const { scheduleKbSync } = await import('@/lib/ontology/kb-write-through')
-    scheduleKbSync()
-  } catch (err) {
-    console.warn('[demo-login] KB sync schedule threw:', err)
+  // without a manual /api/ontology-sync.
+  //
+  // Schedule ONCE per process-lifetime — every kb-sync is a full-graph
+  // PUT, which is CPU-bound on the GraphDB side (re-parse + reindex of
+  // the entire named graph). Repeated demo-logins (Playwright sweeps,
+  // fresh-start polling) used to schedule a sync per login and saturate
+  // GraphDB CPU. The first login post-startup mirrors fresh state;
+  // subsequent in-process state changes route through the action-layer
+  // scheduleKbSync calls.
+  if (!(globalThis as { __demoLoginKbSynced?: boolean }).__demoLoginKbSynced) {
+    try {
+      const { scheduleKbSync } = await import('@/lib/ontology/kb-write-through')
+      scheduleKbSync()
+      ;(globalThis as { __demoLoginKbSynced?: boolean }).__demoLoginKbSynced = true
+    } catch (err) {
+      console.warn('[demo-login] KB sync schedule threw:', err)
+    }
   }
 
   // Bootstrap an A2A delegation session so MCP-backed surfaces work

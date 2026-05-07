@@ -148,6 +148,16 @@ export async function submitPledge(
     /* best-effort */
   }
 
+  // Pool aggregates (`pledgedTotal`, `availableTotal`) live in org-mcp; the
+  // detail/index pages read them through GraphDB per IA P4. The runtime
+  // kb-sync only re-runs when an on-chain edge is created — pledges don't
+  // create edges, so without an explicit nudge here the new aggregate
+  // never propagates and the UI shows the pre-pledge total. Use the
+  // debounced scheduler (60s quiet + 30s cooldown) to coalesce
+  // burst-y user activity and protect GraphDB from Cloudflare 524s.
+  const { scheduleKbSync } = await import('@/lib/ontology/kb-write-through')
+  scheduleKbSync()
+
   return result
 }
 

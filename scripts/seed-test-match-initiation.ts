@@ -1,34 +1,24 @@
 /**
- * One-shot demo seed — creates a MatchInitiation pair for Maria so
- * /h/catalyst/intents/<id> shows the spec-001 candidates section in action.
+ * Spec 001 — Direct lane demo seed. Multiple complementary intent pairs
+ * with one MatchInitiation primer for Maria's coaching need.
  *
  *   pnpm exec tsx scripts/seed-test-match-initiation.ts
  *
  * What it does:
  *
- *   1. Ensures TWO complementary intents exist in apps/web/local.db:
- *      - A receive-shaped intent expressed by Maria (for trauma-care).
- *      - A give-shaped counter-intent on the same object expressed by another
- *        seeded agent (so Maria can see + propose a match).
- *      Both intents are inserted with the canonical web `intents` table shape
- *      and `status = 'expressed'`. Existing rows are left alone (idempotent
- *      via INSERT OR IGNORE on `id`).
+ *   1. INSERT OR IGNORE three faith-themed intent pairs into apps/web/local.db
+ *      (`intents` table). Each pair has a receive intent and a give counter-
+ *      offering on the same object so the candidate ranker has live data.
  *
- *   2. Inserts a `match_initiations` row into apps/person-mcp/person-mcp.db
- *      with Maria as initiator (self mode — Maria is one of the two
- *      expressers). status='pending'. Visibility derived as the strictest of
- *      the two source intents' visibilities.
+ *   2. INSERT OR REPLACE one MatchInitiation in person-mcp.db so Maria's
+ *      trauma-care intent detail page already shows a pending pair (used by
+ *      the Playwright suite).
  *
- *   3. Optionally seeds a *connector-mode* MatchInitiation: a third party
- *      initiator who expressed neither of the two intents. Disabled by
- *      default; enable with --connector to add.
+ *   3. Optionally adds a connector-mode initiation when called with
+ *      `--connector` for the third-party variant.
  *
- * Round body validation in the MCP `match_initiation:create` tool is
- * skipped here (we INSERT directly into SQLite). The real MCP tool runs
- * full validation.
- *
- * Re-running is safe: INSERT OR IGNORE on intents; the `match_initiations`
- * row is INSERT OR REPLACE on the deterministic id below.
+ * Idempotent: stable ids; INSERT OR IGNORE on intents (preserves any user
+ * edits), INSERT OR REPLACE on the initiation.
  */
 
 import path from 'node:path'
@@ -38,7 +28,6 @@ import { fileURLToPath } from 'node:url'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(__dirname, '..')
 
-// Load env from apps/web/.env (for DATABASE_URL etc.).
 const envFile = path.join(repoRoot, 'apps/web/.env')
 if (fs.existsSync(envFile)) {
   for (const line of fs.readFileSync(envFile, 'utf8').split('\n')) {
@@ -53,33 +42,146 @@ if (fs.existsSync(envFile)) {
 }
 
 // ────────────────────────────────────────────────────────────────────────
-// Constants
+// Constants — placeholders re-bound at runtime when the catalyst seed has
+// already provisioned Maria + Pastor David's person agents.
 // ────────────────────────────────────────────────────────────────────────
 
-// Canonical Maria principal in person-mcp (mirrors seed-test-proposal.ts).
 const MARIA_PRINCIPAL = 'person_cat-user-001'
-// Approximate Maria agent address used in seeded data — keep aligned with
-// the rest of the demo seed scripts.
+const DAVID_PRINCIPAL = 'person_cat-user-002'
+
 const MARIA_AGENT_PLACEHOLDER = '0x6F669E6851A15FD0E5904EB197c369C2ab578D9b'.toLowerCase()
+const DAVID_AGENT_PLACEHOLDER = '0x1A669E6851A15FD0E5904EB197c369C2ab578D9b'.toLowerCase()
 let MARIA_AGENT_ADDRESS = MARIA_AGENT_PLACEHOLDER
-// Counter-party (a coach who can offer trauma-care training).
-const COACH_AGENT_ADDRESS = '0x1A669E6851A15FD0E5904EB197c369C2ab578D9b'.toLowerCase()
-// Connector (agent who expressed neither intent — for connector-mode demo).
+let DAVID_AGENT_ADDRESS = DAVID_AGENT_PLACEHOLDER
+// Connector for the optional connector-mode initiation (a third party who
+// expressed neither side of the pair).
 const CONNECTOR_AGENT_ADDRESS = '0x2B669E6851A15FD0E5904EB197c369C2ab578D9b'.toLowerCase()
 
 const HUB_ID = 'catalyst'
-
-// Intent IDs (URNs).
-// Slug-style ids (no colons) — Next.js dynamic-route segments handle these
-// cleanly without URL encoding, while URN-style ids ('urn:smart-agent:...')
-// hit a router quirk that always returns the 404 page even when the row
-// exists. Slug ids preserve the URN semantics in `payload.iri` for callers
-// that need the canonical IRI.
-const MARIA_INTENT_ID = 'demo-maria-need-trauma-coaching'
-const COACH_INTENT_ID = 'demo-coach-offer-trauma-coaching'
 const NOW = new Date().toISOString()
 
-// MatchInitiation IDs (deterministic so re-running is idempotent).
+// ────────────────────────────────────────────────────────────────────────
+// Intent pairs — each entry produces a receive + give pair with a stable
+// id so the candidates list on the receive intent's detail page lights up.
+// Stored as functions so we can substitute resolved agent addresses at
+// runtime (the catalyst seed deploys the person agents whose addresses we
+// reference here).
+// ────────────────────────────────────────────────────────────────────────
+
+interface IntentRow {
+  id: string
+  direction: 'receive' | 'give'
+  object: string
+  topic: string
+  intentType: string
+  intentTypeLabel: string
+  expressedByAgent: string
+  expressedByUserId: string | null
+  title: string
+  detail: string
+  payload: Record<string, unknown>
+  priority: 'critical' | 'high' | 'normal' | 'low'
+}
+
+function buildIntentPairs(): IntentRow[] {
+  return [
+    // ── Pair 1: trauma-care training (Maria → coach) ──────────────
+    // Slug-style ids — Next.js routes URN-style ids with colons to 404.
+    {
+      id: 'demo-maria-need-trauma-coaching',
+      direction: 'receive',
+      object: 'resourceType:Worker',
+      topic: 'Trauma-care training for migrant-family ministries',
+      intentType: 'intentType:NeedCoaching',
+      intentTypeLabel: 'Need: Coaching',
+      expressedByAgent: MARIA_AGENT_ADDRESS,
+      expressedByUserId: 'cat-user-001',
+      title: 'Need: Trauma-Care coach for NoCo migrant-family cohort',
+      detail: 'Looking for an experienced compassion-ministry coach to support our 6-month trauma-care training cohort serving migrant families across Wellington and Loveland.',
+      payload: { geo: 'us/colorado', beneficiaryAgent: MARIA_AGENT_ADDRESS },
+      priority: 'high',
+    },
+    {
+      id: 'demo-david-offer-trauma-coaching',
+      direction: 'give',
+      object: 'resourceType:Worker',
+      topic: 'Compassion-ministry trauma-care coaching',
+      intentType: 'intentType:OfferTeaching',
+      intentTypeLabel: 'Offer: Teaching',
+      expressedByAgent: DAVID_AGENT_ADDRESS,
+      expressedByUserId: 'cat-user-002',
+      title: 'Offer: Compassion-trauma trainer available for NoCo cohorts',
+      detail: 'Certified trauma-care trainer with 8 years coaching bilingual ministry leaders. Available for one 6-month cohort starting Q3.',
+      payload: { geo: 'us/colorado' },
+      priority: 'normal',
+    },
+    // ── Pair 2: Spanish heart-language scripture (Maria → David) ───
+    {
+      id: 'demo-maria-need-spanish-bible-leader',
+      direction: 'receive',
+      object: 'resourceType:Worker',
+      topic: 'Bilingual Spanish Bible study facilitator for new families',
+      intentType: 'intentType:NeedTeacher',
+      intentTypeLabel: 'Need: Teacher',
+      expressedByAgent: MARIA_AGENT_ADDRESS,
+      expressedByUserId: 'cat-user-001',
+      title: 'Need: Bilingual Spanish Bible study leader for new families',
+      detail: 'Seeking a bilingual facilitator for an 8-week introductory Bible study for first-generation Spanish-speaking families across the Wellington and Loveland circles.',
+      payload: { geo: 'us/colorado', beneficiaryAgent: MARIA_AGENT_ADDRESS, language: 'es' },
+      priority: 'normal',
+    },
+    {
+      id: 'demo-david-offer-spanish-bible-leader',
+      direction: 'give',
+      object: 'resourceType:Worker',
+      topic: 'Bilingual Spanish Bible study facilitation',
+      intentType: 'intentType:OfferTeaching',
+      intentTypeLabel: 'Offer: Teaching',
+      expressedByAgent: DAVID_AGENT_ADDRESS,
+      expressedByUserId: 'cat-user-002',
+      title: 'Offer: Bilingual Bible study facilitator (Spanish/English)',
+      detail: 'Pastor David Chen, fluent Spanish/English, offers to lead introductory and discipleship Bible studies in NoCo Hispanic communities. 5 years prior experience.',
+      payload: { geo: 'us/colorado', language: 'es' },
+      priority: 'normal',
+    },
+    // ── Pair 3: prayer partners for church-plant discernment ───────
+    // David is the receiver here so the demo shows direction in both ways.
+    {
+      id: 'demo-david-need-prayer-partners',
+      direction: 'receive',
+      object: 'resourceType:Prayer',
+      topic: 'Daily prayer partners for church-plant discernment',
+      intentType: 'intentType:NeedPrayerPartner',
+      intentTypeLabel: 'Need: Prayer Partner',
+      expressedByAgent: DAVID_AGENT_ADDRESS,
+      expressedByUserId: 'cat-user-002',
+      title: 'Need: Daily prayer partners for Loveland church-plant discernment',
+      detail: 'Standing prayer partners for the next 90 days as our team discerns location and timing for a Loveland Spanish-speaking house-church plant.',
+      payload: { geo: 'us/colorado', beneficiaryAgent: DAVID_AGENT_ADDRESS },
+      priority: 'high',
+    },
+    {
+      id: 'demo-maria-offer-prayer-commitment',
+      direction: 'give',
+      object: 'resourceType:Prayer',
+      topic: 'Daily intercessory prayer for NoCo church planters',
+      intentType: 'intentType:OfferPrayer',
+      intentTypeLabel: 'Offer: Prayer',
+      expressedByAgent: MARIA_AGENT_ADDRESS,
+      expressedByUserId: 'cat-user-001',
+      title: 'Offer: Daily intercessory prayer for NoCo church planters',
+      detail: 'Standing daily prayer commitment for any NoCo church-plant discernment process. 10 minutes per day, anonymous attribution unless requested otherwise.',
+      payload: { geo: 'us/colorado' },
+      priority: 'normal',
+    },
+  ]
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// Match initiation — primer for the Playwright assertion that Maria's
+// trauma-care detail page renders a pending pair on first paint.
+// ────────────────────────────────────────────────────────────────────────
+
 const SELF_INITIATION_ID = 'urn:smart-agent:match-initiation:maria-self-trauma-q2'
 const CONNECTOR_INITIATION_ID = 'urn:smart-agent:match-initiation:connector-trauma-q2'
 
@@ -102,45 +204,48 @@ const BASIS_CONNECTOR = JSON.stringify({
 })
 
 // ────────────────────────────────────────────────────────────────────────
-// better-sqlite3 loader (lazy through pnpm store; matches seed-test-proposal)
-// ────────────────────────────────────────────────────────────────────────
 
-async function openSqlite(dbPath: string): Promise<{
-  prepare: (sql: string) => { run: (params?: Record<string, unknown>) => void; get: (params?: Record<string, unknown>) => unknown }
+interface SqliteHandle {
+  prepare: (sql: string) => {
+    run: (params?: Record<string, unknown> | string | number) => void
+    get: (...args: unknown[]) => unknown
+  }
   close: () => void
-}> {
+}
+
+async function openSqlite(dbPath: string): Promise<SqliteHandle> {
   const Database = (await import(
     path.join(repoRoot, 'node_modules/.pnpm/better-sqlite3@11.10.0/node_modules/better-sqlite3/lib/index.js')
-  ) as { default: new (path: string) => {
-    prepare: (sql: string) => { run: (params?: Record<string, unknown>) => void; get: (params?: Record<string, unknown>) => unknown }
-    close: () => void
-  } }).default
+  ) as { default: new (path: string) => SqliteHandle }).default
   return new Database(dbPath)
 }
 
-// ────────────────────────────────────────────────────────────────────────
-// 1. Seed two complementary intents in apps/web/local.db
-// ────────────────────────────────────────────────────────────────────────
-
-async function seedIntents(): Promise<void> {
+async function seedIntents(): Promise<IntentRow[]> {
   const dbPath = path.join(repoRoot, 'apps/web/local.db')
   if (!fs.existsSync(dbPath)) {
     console.warn(`[seed-test-match-initiation] web db not found at ${dbPath} — skipping intent seed`)
-    return
+    return []
   }
   const db = await openSqlite(dbPath)
   try {
-    // Look up Maria's real on-chain agent (set by demo-login). Falls back to
-    // the placeholder if she hasn't signed in yet — re-run after first sign-in.
+    // Resolve Maria + Pastor David's real on-chain agents (provisioned by
+    // the catalyst seed). Falls back to the placeholders if either user
+    // isn't seeded yet — in that case re-run after fresh-start finishes.
     try {
-      const row = (db.prepare(`SELECT lower(person_agent_address) AS addr FROM users WHERE id = 'cat-user-001'`) as { get: () => { addr?: string } | undefined }).get()
+      const row = (db.prepare(`SELECT lower(person_agent_address) AS addr FROM users WHERE id = 'cat-user-001'`)).get() as { addr?: string } | undefined
       if (row?.addr) MARIA_AGENT_ADDRESS = row.addr
-    } catch { /* users table may not exist yet — keep placeholder */ }
+    } catch { /* users table may not exist yet */ }
+    try {
+      const row = (db.prepare(`SELECT lower(person_agent_address) AS addr FROM users WHERE id = 'cat-user-002'`)).get() as { addr?: string } | undefined
+      if (row?.addr) DAVID_AGENT_ADDRESS = row.addr
+    } catch { /* users table may not exist yet */ }
     if (MARIA_AGENT_ADDRESS !== MARIA_AGENT_PLACEHOLDER) {
       console.log(`[seed-test-match-initiation] resolved Maria agent → ${MARIA_AGENT_ADDRESS}`)
     }
-    // Local alias to keep the literal usages below stable.
-    const resolvedMariaAgent = MARIA_AGENT_ADDRESS
+    if (DAVID_AGENT_ADDRESS !== DAVID_AGENT_PLACEHOLDER) {
+      console.log(`[seed-test-match-initiation] resolved Pastor David agent → ${DAVID_AGENT_ADDRESS}`)
+    }
+    const pairs = buildIntentPairs()
     const stmt = db.prepare(`
       INSERT OR IGNORE INTO intents (
         id, direction, object, topic, intent_type, intent_type_label,
@@ -154,81 +259,47 @@ async function seedIntents(): Promise<void> {
         @expected_outcome, @projection_ref, @valid_until, @created_at, @updated_at
       )
     `)
-
-    // Maria's need.
-    stmt.run({
-      id: MARIA_INTENT_ID,
-      direction: 'receive',
-      object: 'resourceType:Worker',
-      topic: 'Trauma-care training in Northern Colorado',
-      intent_type: 'intentType:NeedCoaching',
-      intent_type_label: 'Need: Coaching',
-      expressed_by_agent: resolvedMariaAgent,
-      expressed_by_user_id: 'cat-user-001',
-      addressed_to: `hub:${HUB_ID}`,
-      hub_id: HUB_ID,
-      title: 'Need: Trauma-care coaching for NoCo cohort',
-      detail: 'Looking for an experienced coach to support our NoCo trauma-care leadership cohort over 6 months.',
-      payload: JSON.stringify({ geo: 'us/colorado', beneficiaryAgent: resolvedMariaAgent }),
-      status: 'expressed',
-      priority: 'high',
-      visibility: 'public',
-      expected_outcome: null,
-      projection_ref: null,
-      valid_until: null,
-      created_at: NOW,
-      updated_at: NOW,
-    })
-
-    // Coach's offer (counter-intent on the same object).
-    stmt.run({
-      id: COACH_INTENT_ID,
-      direction: 'give',
-      object: 'resourceType:Worker',
-      topic: 'Coaching for trauma-care leaders',
-      intent_type: 'intentType:OfferTeaching',
-      intent_type_label: 'Offer: Teaching',
-      expressed_by_agent: COACH_AGENT_ADDRESS,
-      expressed_by_user_id: null,
-      addressed_to: `hub:${HUB_ID}`,
-      hub_id: HUB_ID,
-      title: 'Offer: Trauma-care coach available for NoCo',
-      detail: 'Certified trauma-care trainer offering coaching cohorts in Northern Colorado.',
-      payload: JSON.stringify({ geo: 'us/colorado' }),
-      status: 'expressed',
-      priority: 'normal',
-      visibility: 'public',
-      expected_outcome: null,
-      projection_ref: null,
-      valid_until: null,
-      created_at: NOW,
-      updated_at: NOW,
-    })
-
-    // Verify the inserts actually landed (the table may not exist if the
-    // web app hasn't auto-run drizzle migrations yet — fail loudly instead
-    // of silently moving on to the match-initiation insert).
+    for (const p of pairs) {
+      stmt.run({
+        id: p.id,
+        direction: p.direction,
+        object: p.object,
+        topic: p.topic,
+        intent_type: p.intentType,
+        intent_type_label: p.intentTypeLabel,
+        expressed_by_agent: p.expressedByAgent,
+        expressed_by_user_id: p.expressedByUserId,
+        addressed_to: `hub:${HUB_ID}`,
+        hub_id: HUB_ID,
+        title: p.title,
+        detail: p.detail,
+        payload: JSON.stringify(p.payload),
+        status: 'expressed',
+        priority: p.priority,
+        visibility: 'public',
+        expected_outcome: null,
+        projection_ref: null,
+        valid_until: null,
+        created_at: NOW,
+        updated_at: NOW,
+      })
+    }
     type CountRow = { n: number }
-    const seededRow = (db.prepare(`SELECT COUNT(*) AS n FROM intents WHERE id IN (?, ?)`) as {
-      get: (a: string, b: string) => CountRow | undefined
-    }).get(MARIA_INTENT_ID, COACH_INTENT_ID)
+    const seededRow = (db.prepare(`SELECT COUNT(*) AS n FROM intents WHERE id LIKE 'demo-%'`)).get() as CountRow | undefined
     const seeded = seededRow?.n ?? 0
-    if (seeded < 2) {
+    if (seeded < pairs.length) {
       throw new Error(
-        `[seed-test-match-initiation] expected 2 seed intents, found ${seeded} — ` +
+        `[seed-test-match-initiation] expected ${pairs.length} demo intents, found ${seeded} — ` +
         `the web app's intents table may not exist (auto-migration hasn't run). ` +
         `Visit http://localhost:3000/ once to trigger migration, then re-run this script.`,
       )
     }
-    console.log(`[seed-test-match-initiation] verified ${seeded} intents in local.db`)
+    console.log(`[seed-test-match-initiation] verified ${seeded} demo intents in local.db`)
+    return pairs
   } finally {
     db.close()
   }
 }
-
-// ────────────────────────────────────────────────────────────────────────
-// 2. Seed MatchInitiation in apps/person-mcp/person-mcp.db
-// ────────────────────────────────────────────────────────────────────────
 
 async function seedInitiation(opts: { connector: boolean }): Promise<void> {
   const dbPath = path.join(repoRoot, 'apps/person-mcp/person-mcp.db')
@@ -249,13 +320,11 @@ async function seedInitiation(opts: { connector: boolean }): Promise<void> {
         @created_at, @updated_at
       )
     `)
-
-    // Self-mode initiation (Maria initiates between her own and the coach's intent).
     stmt.run({
       id: SELF_INITIATION_ID,
       principal: MARIA_PRINCIPAL,
-      viewed_intent_id: MARIA_INTENT_ID,
-      candidate_intent_id: COACH_INTENT_ID,
+      viewed_intent_id: 'demo-maria-need-trauma-coaching',
+      candidate_intent_id: 'demo-david-offer-trauma-coaching',
       initiator_agent_id: MARIA_AGENT_ADDRESS,
       initiation_kind: 'self',
       proposed_at: NOW,
@@ -267,17 +336,12 @@ async function seedInitiation(opts: { connector: boolean }): Promise<void> {
       updated_at: NOW,
     })
     console.log('[seed-test-match-initiation] inserted self-mode MatchInitiation for Maria')
-
     if (opts.connector) {
-      // Connector-mode: a third party initiates between two intents they
-      // didn't express. The principal is still Maria for v1 (the demo only
-      // surfaces her MCP); a real connector would have their own MCP row.
-      // Documented limitation.
       stmt.run({
         id: CONNECTOR_INITIATION_ID,
         principal: MARIA_PRINCIPAL,
-        viewed_intent_id: MARIA_INTENT_ID,
-        candidate_intent_id: COACH_INTENT_ID,
+        viewed_intent_id: 'demo-maria-need-trauma-coaching',
+        candidate_intent_id: 'demo-david-offer-trauma-coaching',
         initiator_agent_id: CONNECTOR_AGENT_ADDRESS,
         initiation_kind: 'connector',
         proposed_at: NOW,
@@ -298,12 +362,18 @@ async function seedInitiation(opts: { connector: boolean }): Promise<void> {
 async function main(): Promise<void> {
   const argv = process.argv.slice(2)
   const seedConnector = argv.includes('--connector')
-  await seedIntents()
+  const pairs = await seedIntents()
   await seedInitiation({ connector: seedConnector })
-  console.log('\n✓ Seeded MatchInitiation demo for Maria.')
+  console.log(`\n✓ Seeded ${pairs.length} intents (${pairs.length / 2} faith-themed pairs):`)
+  for (const p of pairs) {
+    const arrow = p.direction === 'receive' ? '←' : '→'
+    console.log(`    ${arrow} ${p.id} — ${p.title}`)
+  }
   console.log('  Sign in as Maria, visit:')
   console.log(`    http://localhost:3000/h/${HUB_ID}/intents`)
-  console.log(`    http://localhost:3000/h/${HUB_ID}/intents/${encodeURIComponent(MARIA_INTENT_ID)}`)
+  console.log(`    http://localhost:3000/h/${HUB_ID}/intents/demo-maria-need-trauma-coaching`)
+  console.log(`    http://localhost:3000/h/${HUB_ID}/intents/demo-maria-need-spanish-bible-leader`)
+  console.log(`    http://localhost:3000/h/${HUB_ID}/intents/demo-david-need-prayer-partners`)
 }
 
 main().catch((e) => {

@@ -740,6 +740,11 @@ function HubLayoutInner({ children }: { children: React.ReactNode }) {
             {/* Single context strip — surfaces "Working as X · Role · Hub" so
                 pages don't have to re-render the chip themselves. */}
             <PrincipalContextChip />
+            {/* Sub-nav for marketplace lanes (Discover, Funding) — surfaced
+                here so every lane page (rounds, pools, pledges, proposals,
+                intents, matches, offerings) gets the same horizontal pills
+                without each page having to render them. */}
+            <ActiveSubTabsStrip />
             {children}
           </main>
 
@@ -827,6 +832,52 @@ function HubLayoutInner({ children }: { children: React.ReactNode }) {
         )}
       </div>
     </CatalystViewCtx.Provider>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Sub-tabs strip — renders horizontal pills for the nav item that matches
+// the current pathname. Currently used by the Discover and Funding sections
+// in the Catalyst hub. Pure passthrough when the active item has no subTabs.
+// ---------------------------------------------------------------------------
+function ActiveSubTabsStrip() {
+  const { activeSubTabs } = useHubContext()
+  const pathname = usePathname() ?? ''
+  if (!activeSubTabs || activeSubTabs.length === 0) return null
+  return (
+    <nav
+      aria-label="Section navigation"
+      style={{
+        display: 'flex',
+        gap: '0.4rem',
+        flexWrap: 'wrap',
+        margin: '0.6rem 0 1rem',
+        paddingBottom: '0.6rem',
+        borderBottom: '1px solid #ece6db',
+      }}
+    >
+      {activeSubTabs.map(t => {
+        const active = pathname === t.href || pathname.startsWith(t.href + '/')
+        return (
+          <Link
+            key={t.href}
+            href={t.href}
+            style={{
+              fontSize: '0.8rem',
+              fontWeight: 600,
+              padding: '0.4rem 0.85rem',
+              borderRadius: 999,
+              background: active ? '#8b5e3c' : '#ffffff',
+              color: active ? '#fff' : '#5c4a3a',
+              border: `1px solid ${active ? '#8b5e3c' : '#ece6db'}`,
+              textDecoration: 'none',
+            }}
+          >
+            {t.label}
+          </Link>
+        )
+      })}
+    </nav>
   )
 }
 

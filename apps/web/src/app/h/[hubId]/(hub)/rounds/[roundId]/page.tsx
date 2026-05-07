@@ -31,10 +31,11 @@ import { redirect, notFound } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { HUB_SLUG_MAP } from '@/lib/hub-routes'
 import { getHubProfile } from '@/lib/hub-profiles'
-import { getPersonAgentForUser } from '@/lib/agent-registry'
+import { getPersonAgentForUser, canManageAgent } from '@/lib/agent-registry'
 import { getRoundForViewer } from '@/lib/actions/rounds.action'
 import { EligibilityBlock } from '../(components)/EligibilityBlock'
 import { PriorStatsBlock } from '../(components)/PriorStatsBlock'
+import { CancelRoundButton } from './CancelRoundButton'
 import type { ReportingCadence } from '@smart-agent/sdk'
 
 export const dynamic = 'force-dynamic'
@@ -106,6 +107,14 @@ export default async function RoundDetailPage({
   const mandateNarrative = (round.mandate.acceptedKinds ?? []).slice(0, 3).join(', ') || 'Open mandate'
   const tranches = round.milestoneTemplate.trancheHints
   const canApply = !deadline.isPast
+  // Steward gate (Phase 2.5): pool root / lead steward sees the cancel
+  // button. The discovery query returns fundAgentId as a full IRI
+  // (https://smartagent.io/ontology/core#agent/0x...); canManageAgent
+  // expects the bare address. Strip the prefix.
+  const fundAddress = round.fundAgentId.startsWith('https://smartagent.io/ontology/core#agent/')
+    ? round.fundAgentId.slice('https://smartagent.io/ontology/core#agent/'.length)
+    : round.fundAgentId
+  const canCancel = await canManageAgent(myAgent, fundAddress)
 
   // v1 placeholder for credential ownership. The AnonCreds verifier
   // helper (`userHoldsCredential`) is not yet wired — when it lands,
@@ -120,8 +129,13 @@ export default async function RoundDetailPage({
           {profile.name} · Round
         </div>
         <h1 style={{ fontSize: '1.45rem', fontWeight: 700, color: C.text, margin: '0.1rem 0' }}>
-          {mandateNarrative}
+          {round.displayName ?? mandateNarrative}
         </h1>
+        {round.displayName && mandateNarrative && (
+          <div style={{ fontSize: '0.78rem', color: C.textMuted, marginTop: '0.15rem' }}>
+            Accepts {mandateNarrative}
+          </div>
+        )}
         <div style={{ fontSize: '0.78rem', color: C.textMuted, display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
           <span>Operated by {fundLabel}</span>
           {round.visibility === 'private' && (
@@ -220,8 +234,21 @@ export default async function RoundDetailPage({
       {/* Prior stats */}
       <PriorStatsBlock stats={round.priorStats} />
 
-      {/* Apply CTA */}
-      <div style={{ marginTop: '1.25rem', display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+      {/* Apply CTA + steward actions */}
+      <div style={{ marginTop: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          {canCancel && (
+            <>
+              <Link
+                href={`/h/${slug}/rounds/${roundId}/proposals`}
+                style={{ padding: '0.55rem 0.95rem', background: C.card, color: C.text, border: `1px solid ${C.border}`, borderRadius: 8, fontSize: '0.82rem', fontWeight: 600, textDecoration: 'none' }}
+              >
+                Review proposals →
+              </Link>
+              <CancelRoundButton hubSlug={slug} roundId={roundId} />
+            </>
+          )}
+        </div>
         {canApply ? (
           <Link
             href={`/h/${slug}/rounds/${roundId}/apply`}

@@ -168,13 +168,53 @@ function upsertUser(u: { id: string; name: string; email: string; wallet: string
  * Deploys all agents, creates all relationships, registers metadata.
  * Requires anvil + deployed contracts.
  */
-// Simple lock to prevent concurrent seeds
-let seeding = false
+// Process-lifetime locks live on globalThis so Next.js HMR module reloads
+// don't reset them — without this, every hot-reload of the dev server
+// resets the flags and lets re-seeds slip through.
+//
+// `__catalystSeeding` is the in-flight guard (concurrent calls return
+// early); `__catalystSeededOnce` is the completed-once guard (subsequent
+// calls in the same process short-circuit). Re-runs ARE idempotent at
+// the individual-write level (each register / setController /
+// mintGeoClaim re-checks state before writing), but the cumulative cost
+// of N×M idempotent writes — multiplied by every demo-login fired by
+// Playwright, fresh-start polling, etc. — saturates the deployer-lock
+// and ends up scheduling enough kb-syncs to crash GraphDB.
+//
+// `fresh-start.sh` resets the process so the flags clear naturally; a
+// running dev server reseeds only after a manual restart. That's the
+// right tradeoff for the demo workflow.
+const G = globalThis as { __catalystSeeding?: boolean; __catalystSeededOnce?: boolean }
+
+/**
+ * `CATALYST_SEED_MODE` selects how much of the catalyst community we seed.
+ *
+ *   minimal (default) — just Maria, Pastor David, the Catalyst NoCo Network
+ *     org, the Fort Collins Network facilitator org, and the Catalyst Hub
+ *     agent. ~30 on-chain ops total. Plenty for testing the three intent-
+ *     marketplace lanes without crushing the public GraphDB instance.
+ *
+ *   full — the historical seed: 12 users, 11 orgs/AI agents, naming
+ *     hierarchy, namespace edges, cross-delegations, dispute records.
+ *     ~3000 on-chain ops; reserved for full demo recordings.
+ *
+ * Lane-specific seed scripts (seed-test-round / pool / proposal /
+ * match-initiation) only need Maria + Network + Hub, so minimal is enough
+ * to drive every spec-001/002/003 surface.
+ */
+function seedMode(): 'minimal' | 'full' {
+  return (process.env.CATALYST_SEED_MODE ?? 'minimal') === 'full' ? 'full' : 'minimal'
+}
 
 export async function seedCatalystOnChain() {
-  if (seeding) { console.log('[catalyst-seed] Already in progress'); return }
-  seeding = true
-  try { await doSeed() } finally { seeding = false }
+  if (G.__catalystSeeding) { console.log('[catalyst-seed] Already in progress'); return }
+  if (G.__catalystSeededOnce) { return }
+  G.__catalystSeeding = true
+  try {
+    if (seedMode() === 'full') await doSeed()
+    else await doMinimalSeed()
+    G.__catalystSeededOnce = true
+  } finally { G.__catalystSeeding = false }
 }
 
 async function doSeed() {
@@ -840,4 +880,98 @@ async function doSeed() {
   }
 
   console.log('[catalyst-seed] NoCo Catalyst community deployed: 18 agents, 27+ on-chain edges')
+}
+
+/**
+ * Minimal seed — just enough on-chain state to exercise every page in the
+ * three intent-marketplace lanes (specs 001 / 002 / 003) without overloading
+ * the public GraphDB instance.
+ *
+ * Seeds:
+ *   - 2 demo users: Maria Gonzalez (cat-user-001), Pastor David Chen (cat-user-002)
+ *   - 3 org/hub agents: Catalyst NoCo Network, Fort Collins Network, Catalyst Hub
+ *   - Geo claims (residentOf for users, operatesIn for orgs)
+ *   - Governance + membership edges (Maria→Network OWNER, David→Hub OWNER, David→Network MEMBER)
+ *   - Issuer-EOA → Network controller link (org-mcp credential lookup)
+ *   - Org→User cross-delegations (Network/Maria, Hub/David)
+ *   - HAS_MEMBER edges from Catalyst Hub to all four agents
+ *
+ * Skipped vs full mode: 9 sub-circles, 1 people-group sub-org, analytics
+ * AI agent, naming hierarchy, namespace edges, cross-circle alliances,
+ * generational lineage, coaching delegations, engagement-overlap dispute.
+ */
+async function doMinimalSeed() {
+  console.log('[catalyst-seed:minimal] Seeding catalyst essentials only (CATALYST_SEED_MODE=minimal)...')
+
+  // Seed only the two users we exercise across the three lanes.
+  upsertUser({ id: 'cat-user-001', name: 'Maria Gonzalez',    email: 'maria@catalystnoco.org', wallet: '0x00000000000000000000000000000000000b0001', did: 'did:demo:cat-001' })
+  upsertUser({ id: 'cat-user-002', name: 'Pastor David Chen', email: 'david@catalystnoco.org', wallet: '0x00000000000000000000000000000000000b0002', did: 'did:demo:cat-002' })
+
+  // Provision wallets + person agents (one-time per user). `ensureDemoUser`
+  // is idempotent — re-runs are no-ops.
+  const { ensureDemoUser } = await import('./lookup-users')
+  const maria = await ensureDemoUser('cat-user-001')
+  const david = await ensureDemoUser('cat-user-002')
+  const paMaria = maria.personAgentAddress as `0x${string}`
+  const paDavid = david.personAgentAddress as `0x${string}`
+
+  // Deploy the three org-tier smart accounts (idempotent salts).
+  const network = await deploy(200001)
+  const hub = await deploy(200002)
+  const hubCatalyst = await deploy(290001)
+  console.log(`[catalyst-seed:minimal] Deployed: network=${network} hub=${hub} catalystHub=${hubCatalyst}`)
+
+  await register(network, 'Catalyst NoCo Network', 'Northern Colorado catalyst network — Hispanic community outreach and church planting north of Fort Collins', TYPE_ORGANIZATION)
+  await register(hub, 'Fort Collins Network', 'Regional facilitator org — bilingual community development across Fort Collins and surrounding circles', TYPE_ORGANIZATION)
+  await register(hubCatalyst, 'Catalyst Hub', 'Catalyst NoCo Network hub — Hispanic outreach, activity tracking, multiplication mapping', TYPE_HUB)
+
+  // Controllers — let signed-in users approve PROPOSED edges.
+  await setController(network, maria.walletAddress)
+  await setController(hub, david.walletAddress)
+
+  // Issuer EOA → Network controller. The org-mcp service mints credentials
+  // signed by ORG_PRIVATE_KEY; the wallet UI walks ATL_CONTROLLER lists
+  // back to a human-readable org name.
+  try {
+    const orgKey = (process.env.ORG_PRIVATE_KEY ?? ('0x' + 'c'.repeat(64))) as `0x${string}`
+    const { privateKeyToAccount } = await import('viem/accounts')
+    const orgIssuerEoa = privateKeyToAccount(orgKey).address
+    await setController(network, orgIssuerEoa)
+    console.log('[catalyst-seed:minimal] Linked issuer EOA → Network:', orgIssuerEoa)
+  } catch (e) {
+    console.warn('[catalyst-seed:minimal] Issuer→Network controller link failed (non-fatal):', e)
+  }
+
+  // Geo (Fort Collins anchor for both orgs) + GeoClaims.
+  await setGeo(network, '40.5853', '-105.0844')
+  await setGeo(hub, '40.5734', '-105.0836')
+  await mintGeoClaim({ subject: network, cityKey: 'us/colorado/fortcollins', relation: 'operatesIn', confidence: 100 })
+  await mintGeoClaim({ subject: hub,     cityKey: 'us/colorado/fortcollins', relation: 'operatesIn', confidence: 100 })
+  await mintGeoClaim({ subject: paMaria, cityKey: 'us/colorado/fortcollins', relation: 'residentOf', confidence: 90 })
+  await mintGeoClaim({ subject: paDavid, cityKey: 'us/colorado/fortcollins', relation: 'residentOf', confidence: 90 })
+
+  // Governance + membership — minimum for proposal/pledge/match flows.
+  await createEdge(paMaria, network, ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
+  await createEdge(paDavid, hub,     ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
+  await createEdge(paDavid, network, ORGANIZATION_MEMBERSHIP, [ROLE_OPERATOR])
+  await createEdge(network, hub,     ALLIANCE,                [ROLE_STRATEGIC_PARTNER])
+
+  // Org→user cross-delegations so org-acting actions don't need the deployer key.
+  try {
+    const { seedOrgCrossDelegations } = await import('./seed-org-delegations')
+    const created = await seedOrgCrossDelegations([
+      { orgAddress: network, ownerUserId: 'cat-user-001' },
+      { orgAddress: hub,     ownerUserId: 'cat-user-002' },
+    ])
+    console.log(`[catalyst-seed:minimal] Cross-delegations created: ${created}`)
+  } catch (err) {
+    console.warn('[catalyst-seed:minimal] Cross-delegation seed failed:', (err as Error).message)
+  }
+
+  // HAS_MEMBER edges connect agents to the hub (drives /h/catalyst routing).
+  for (const agent of [network, hub, paMaria, paDavid]) {
+    await createEdge(hubCatalyst, agent, HAS_MEMBER as `0x${string}`, [ROLE_MEMBER])
+  }
+
+  console.log('[catalyst-seed:minimal] Done — 4 agents + ~12 edges. Set CATALYST_SEED_MODE=full to seed the complete community.')
 }

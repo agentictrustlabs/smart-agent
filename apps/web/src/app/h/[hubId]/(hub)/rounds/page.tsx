@@ -18,6 +18,7 @@
  * Implements FR-001 / FR-002 / FR-003 / FR-004.
  */
 
+import Link from 'next/link'
 import { redirect, notFound } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { HUB_SLUG_MAP } from '@/lib/hub-routes'
@@ -109,6 +110,12 @@ export default async function RoundsListPage({
           <h1 style={{ fontSize: '1.45rem', fontWeight: 700, color: C.text, margin: '0.1rem 0' }}>
             Open rounds {total > 0 && <span style={{ color: C.textMuted, fontSize: '0.95rem', fontWeight: 500 }}>({total})</span>}
           </h1>
+          <Link
+            href={`/h/${slug}/rounds/new`}
+            style={{ padding: '0.4rem 0.85rem', background: C.accent, color: '#fff', borderRadius: 8, fontSize: '0.78rem', fontWeight: 700, textDecoration: 'none' }}
+          >
+            + New round
+          </Link>
         </div>
         <p style={{ fontSize: '0.85rem', color: C.textMuted, margin: '0.2rem 0 0' }}>
           Grant rounds, RFPs, and proposal windows from funds operating in this hub.

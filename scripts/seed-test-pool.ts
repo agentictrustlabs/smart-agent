@@ -1,22 +1,13 @@
 /**
- * Spec 002 — Intent Marketplace (Pool Lane). One-shot demo seed.
+ * Spec 002 — Intent Marketplace (Pool Lane). Multi-pool demo seed.
  *
- * Creates a single test pool under Catalyst NoCo Network so Maria (and other
- * Catalyst hub users) can see something on /h/catalyst/pools after fresh-start.
+ * Creates three faith-flavored pools under Catalyst NoCo Network so the
+ * /h/catalyst/pools index has variety: a compassion-care fund, a Spanish
+ * scripture distribution fund, and a non-monetary prayer-chain pool.
  *
  *   pnpm exec tsx scripts/seed-test-pool.ts
  *
- * What it does:
- *
- *   1. INSERT OR REPLACE the pool body in apps/org-mcp/org-mcp.db (pools table).
- *   2. SPARQL INSERT (additive) the sa:Pool triples into the data graph at
- *      <https://smartagent.io/graph/data/onchain> so the discovery query
- *      surfaces the pool.
- *
- * Why additive INSERT instead of PUT: matches scripts/seed-test-round.ts —
- * the runtime KB-sync uses PUT for the data graph; until graphdb-sync
- * extends to read pools natively (it does, now — emitPoolsTurtle), this
- * script is the bridge for one-off demo seeding before any sync runs.
+ * Idempotent: INSERT OR REPLACE on stable ids; SPARQL INSERT DATA.
  */
 
 import path from 'node:path'
@@ -26,7 +17,6 @@ import { fileURLToPath } from 'node:url'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(__dirname, '..')
 
-// Load env from apps/web/.env so we get GRAPHDB_* vars.
 const envFile = path.join(repoRoot, 'apps/web/.env')
 if (fs.existsSync(envFile)) {
   for (const line of fs.readFileSync(envFile, 'utf8').split('\n')) {
@@ -40,32 +30,74 @@ if (fs.existsSync(envFile)) {
   }
 }
 
-// ────────────────────────────────────────────────────────────────────────
-// Constants
-// ────────────────────────────────────────────────────────────────────────
-
-const POOL_ID = 'demo-trauma-care-pool'
-const POOL_IRI = `urn:smart-agent:pool:${POOL_ID}`
-
-// Catalyst NoCo Network — the fund operating the pool (real seeded org).
 const FUND_ADDRESS = '0x0F669E6851A15FD0E5904EB197c369C2ab578D9b'.toLowerCase()
 const FUND_AGENT_IRI = `https://smartagent.io/ontology/core#agent/${FUND_ADDRESS}`
-
 const NOW = new Date().toISOString()
 
-const MANDATE = 'Trauma-care training and church-planting capital for Northern Colorado leaders. Stewards prioritize evidence-based outcomes; donors may restrict by kind / geo or accept the open mandate.'
+interface PoolSeed {
+  id: string
+  name: string
+  domain: string
+  mandate: string
+  governanceModel: 'fund' | 'coaching-network' | 'prayer-chain'
+  acceptedRestrictions: { kinds?: string[]; geoRoots?: string[]; notForAdmin?: boolean }
+  acceptedUnits: string[]
+  ceilingPolicy: 'block' | 'waitlist' | 'accept'
+}
 
-const ACCEPTED_RESTRICTIONS_JSON = JSON.stringify({
-  kinds: ['trauma-care', 'church-planting', 'leader-care'],
-  geoRoots: ['us/colorado', 'us/wyoming'],
-  notForAdmin: true,
-})
-const ACCEPTED_UNITS_JSON = JSON.stringify(['USD'])
-const STEWARDS_JSON = JSON.stringify([FUND_AGENT_IRI])
+const POOLS: PoolSeed[] = [
+  {
+    id: 'demo-trauma-care-pool',
+    name: 'Trauma-Care + Migrant Family Compassion Pool',
+    domain: 'funding',
+    mandate: 'Compassion-ministry funding for trauma-care training, migrant-family support, and church-based crisis response in Northern Colorado. Donors may restrict by kind / geo or accept the open compassion mandate.',
+    governanceModel: 'fund',
+    acceptedRestrictions: {
+      kinds: ['trauma-care', 'CompassionMinistry', 'MigrantFamilyCare', 'leader-care'],
+      geoRoots: ['us/colorado', 'us/wyoming'],
+      notForAdmin: true,
+    },
+    acceptedUnits: ['USD'],
+    ceilingPolicy: 'accept',
+  },
+  {
+    id: 'demo-spanish-bibles-pool',
+    name: 'Spanish Bibles for New Families Pool',
+    domain: 'funding',
+    mandate: 'Heart-language scripture distribution for first-generation Spanish-speaking families in NoCo. Funds bilingual Bibles, study guides, and host-family curriculum kits. Stewards prioritize newly-formed circles in church-plant catchments.',
+    governanceModel: 'fund',
+    acceptedRestrictions: {
+      kinds: ['HeartLanguageScripture', 'BibleStudy', 'Discipleship'],
+      geoRoots: ['us/colorado'],
+      notForAdmin: true,
+    },
+    acceptedUnits: ['USD'],
+    ceilingPolicy: 'accept',
+  },
+  {
+    id: 'demo-prayer-chain-pool',
+    name: 'Hispanic Family Prayer Chain Pool',
+    domain: 'prayer',
+    mandate: 'Standing prayer commitments for migrant families, church-plant catalysts, and discipleship circles across Northern Colorado. Donors pledge prayer minutes (not money); the steward routes specific intercession requests to the chain.',
+    governanceModel: 'prayer-chain',
+    acceptedRestrictions: {
+      kinds: ['PrayerCommitment', 'Intercession', 'DailyPrayer'],
+      geoRoots: ['us/colorado'],
+    },
+    acceptedUnits: ['prayer-minutes'],
+    ceilingPolicy: 'accept',
+  },
+]
 
-// ────────────────────────────────────────────────────────────────────────
-// 1. SQL — insert pool into org-mcp
-// ────────────────────────────────────────────────────────────────────────
+async function openSqlite(dbPath: string) {
+  const Database = (await import(
+    path.join(repoRoot, 'node_modules/.pnpm/better-sqlite3@11.10.0/node_modules/better-sqlite3/lib/index.js')
+  ) as { default: new (path: string) => {
+    prepare: (sql: string) => { run: (params: Record<string, unknown>) => void }
+    close: () => void
+  } }).default
+  return new Database(dbPath)
+}
 
 async function seedSql(): Promise<void> {
   const dbPath = path.join(repoRoot, 'apps/org-mcp/org-mcp.db')
@@ -73,10 +105,7 @@ async function seedSql(): Promise<void> {
     console.warn(`[seed-test-pool] ${dbPath} does not exist — skipping SQL insert`)
     return
   }
-  const Database = (await import(
-    path.join(repoRoot, 'node_modules/.pnpm/better-sqlite3@11.10.0/node_modules/better-sqlite3/lib/index.js')
-  ) as { default: new (path: string) => { prepare: (sql: string) => { run: (params: Record<string, unknown>) => void }; close: () => void } }).default
-  const db = new Database(dbPath)
+  const db = await openSqlite(dbPath)
   try {
     const stmt = db.prepare(`
       INSERT OR REPLACE INTO pools (
@@ -93,39 +122,38 @@ async function seedSql(): Promise<void> {
         @on_chain_assertion_id, @created_at, @updated_at
       )
     `)
-    stmt.run({
-      id: POOL_IRI,
-      org_principal: FUND_ADDRESS,
-      name: 'Catalyst Trauma-Care + Planting Pool',
-      domain: 'funding',
-      mandate: MANDATE,
-      governance_model: 'fund',
-      accepted_restrictions: ACCEPTED_RESTRICTIONS_JSON,
-      accepted_units: ACCEPTED_UNITS_JSON,
-      capacity_ceiling: null, // ceilingPolicy: 'accept' (per seed brief)
-      ceiling_policy: 'accept',
-      addressed_to: 'hub:catalyst',
-      addressed_members: null,
-      visibility: 'public',
-      stewardship_agent: FUND_AGENT_IRI,
-      stewards: STEWARDS_JSON,
-      accepts_open_calls: 1,
-      pledged_total: 0,
-      allocated_total: 0,
-      available_total: 0,
-      on_chain_assertion_id: null,
-      created_at: NOW,
-      updated_at: NOW,
-    })
-    console.log(`[seed-test-pool] SQL ok — pool ${POOL_ID} in ${dbPath}`)
+    for (const p of POOLS) {
+      const iri = `urn:smart-agent:pool:${p.id}`
+      stmt.run({
+        id: iri,
+        org_principal: FUND_ADDRESS,
+        name: p.name,
+        domain: p.domain,
+        mandate: p.mandate,
+        governance_model: p.governanceModel,
+        accepted_restrictions: JSON.stringify(p.acceptedRestrictions),
+        accepted_units: JSON.stringify(p.acceptedUnits),
+        capacity_ceiling: null,
+        ceiling_policy: p.ceilingPolicy,
+        addressed_to: 'hub:catalyst',
+        addressed_members: null,
+        visibility: 'public',
+        stewardship_agent: FUND_AGENT_IRI,
+        stewards: JSON.stringify([FUND_AGENT_IRI]),
+        accepts_open_calls: 1,
+        pledged_total: 0,
+        allocated_total: 0,
+        available_total: 0,
+        on_chain_assertion_id: null,
+        created_at: NOW,
+        updated_at: NOW,
+      })
+      console.log(`[seed-test-pool] SQL ok — ${p.id} (${p.name})`)
+    }
   } finally {
     db.close()
   }
 }
-
-// ────────────────────────────────────────────────────────────────────────
-// 2. SPARQL INSERT — additive write into the data graph
-// ────────────────────────────────────────────────────────────────────────
 
 async function seedGraphDB(): Promise<void> {
   const baseUrl = process.env.GRAPHDB_BASE_URL
@@ -139,24 +167,20 @@ async function seedGraphDB(): Promise<void> {
   const auth = `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`
   const url = `${baseUrl}/repositories/${repository}/statements`
 
-  const escapedMandate = MANDATE.replace(/"/g, '\\"').replace(/\n/g, '\\n')
-  const escapedRestrictions = ACCEPTED_RESTRICTIONS_JSON.replace(/"/g, '\\"')
-
-  const sparql = `
-PREFIX sa: <https://smartagent.io/ontology/core#>
-PREFIX prov: <http://www.w3.org/ns/prov#>
-PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
-
-INSERT DATA {
-  GRAPH <https://smartagent.io/graph/data/onchain> {
-    <${POOL_IRI}> a sa:Pool ;
-      sa:displayName "Catalyst Trauma-Care + Planting Pool" ;
-      sa:domain "funding" ;
-      sa:poolMandate "${escapedMandate}" ;
-      sa:governanceModel "fund" ;
-      sa:acceptedRestrictions "${escapedRestrictions}" ;
-      sa:acceptsUnit "USD" ;
-      sa:ceilingPolicy "accept" ;
+  const triples = POOLS.map(p => {
+    const iri = `urn:smart-agent:pool:${p.id}`
+    const escMandate = p.mandate.replace(/"/g, '\\"').replace(/\n/g, '\\n')
+    const escRestrictions = JSON.stringify(p.acceptedRestrictions).replace(/"/g, '\\"')
+    const unitTriples = p.acceptedUnits.map(u => `      sa:acceptsUnit "${u}" ;`).join('\n')
+    return `
+    <${iri}> a sa:Pool ;
+      sa:displayName "${p.name.replace(/"/g, '\\"')}" ;
+      sa:domain "${p.domain}" ;
+      sa:poolMandate "${escMandate}" ;
+      sa:governanceModel "${p.governanceModel}" ;
+      sa:acceptedRestrictions "${escRestrictions}" ;
+${unitTriples}
+      sa:ceilingPolicy "${p.ceilingPolicy}" ;
       sa:addressedTo "hub:catalyst" ;
       sa:visibility "public" ;
       sa:stewardshipAgent <${FUND_AGENT_IRI}> ;
@@ -165,31 +189,95 @@ INSERT DATA {
       sa:pledgedTotal 0 ;
       sa:allocatedTotal 0 ;
       sa:availableTotal 0 .
+`
+  }).join('\n')
+
+  const sparql = `
+PREFIX sa: <https://smartagent.io/ontology/core#>
+PREFIX prov: <http://www.w3.org/ns/prov#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+INSERT DATA {
+  GRAPH <https://smartagent.io/graph/data/onchain> {
+${triples}
   }
 }
 `
 
   const response = await fetch(url, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/sparql-update',
-      Authorization: auth,
-    },
+    headers: { 'Content-Type': 'application/sparql-update', Authorization: auth },
     body: sparql,
   })
   if (!response.ok) {
     const body = await response.text()
     throw new Error(`SPARQL UPDATE failed (${response.status}): ${body}`)
   }
-  console.log(`[seed-test-pool] GraphDB ok — INSERT into data graph`)
+  console.log(`[seed-test-pool] GraphDB ok — INSERT ${POOLS.length} pools into data graph`)
 }
 
-// ────────────────────────────────────────────────────────────────────────
+/**
+ * Treasury Phase 1 — anchor each seeded pool with `sa:PoolOpenedAssertion`.
+ * The treasury address is left as a placeholder (the demo pools are
+ * org-mcp rows, not deployed AgentAccounts) until Phase 2 wires real
+ * factory-deployed pool agents. Public-tier payload carries mandate
+ * detail; private pools would emit a coarse variant — none seeded yet.
+ */
+async function emitPoolAnchors(): Promise<void> {
+  const rpcUrl = process.env.RPC_URL
+  const contractAddress = process.env.CLASS_ASSERTION_ADDRESS
+  const operatorPrivateKey = process.env.DEPLOYER_PRIVATE_KEY
+  if (!rpcUrl || !contractAddress || !operatorPrivateKey) {
+    console.warn('[seed-test-pool] anchor emit skipped — missing env')
+    return
+  }
+  // Import the SDK by file path — same reasoning as seed-test-round.ts.
+  const sdk = await import(path.join(repoRoot, 'packages/sdk/src/index.ts')) as {
+    emitClassAssertion: (
+      cfg: { rpcUrl: string; contractAddress: `0x${string}`; operatorPrivateKey: `0x${string}` },
+      input: { classIri: string; subjectIri: string; payload: Record<string, unknown> },
+    ) => Promise<{ assertionId: string }>
+  }
+  const { emitClassAssertion } = sdk
+  const POOL_OPENED = 'sa:PoolOpenedAssertion'
+  const openedAt = NOW
+  for (const p of POOLS) {
+    const subjectIri = `urn:smart-agent:pool:${p.id}`
+    const payload = {
+      id: p.id,
+      // v1 placeholder — real pool deployment lands in Phase 2 (pool:create
+      // tool calls AgentAccountFactory).
+      treasuryAddress: FUND_ADDRESS,
+      governanceModel: p.governanceModel,
+      acceptedUnits: p.acceptedUnits,
+      acceptedKinds: p.acceptedRestrictions.kinds ?? [],
+      acceptedGeo: p.acceptedRestrictions.geoRoots ?? [],
+      ceilingPolicy: p.ceilingPolicy,
+      capacityCeiling: null,
+      visibility: 'public' as const,
+      stewards: [FUND_ADDRESS],
+      openedAt,
+    }
+    try {
+      const res = await emitClassAssertion(
+        { rpcUrl, contractAddress: contractAddress as `0x${string}`, operatorPrivateKey: operatorPrivateKey as `0x${string}` },
+        { classIri: POOL_OPENED, subjectIri, payload },
+      )
+      console.log(`[seed-test-pool] anchored ${p.id} → assertionId=${res.assertionId}`)
+    } catch (err) {
+      console.warn(`[seed-test-pool] anchor failed for ${p.id}: ${err instanceof Error ? err.message : err}`)
+    }
+  }
+}
 
 async function main(): Promise<void> {
   await seedSql()
   await seedGraphDB()
-  console.log(`\n✓ Seeded pool '${POOL_ID}' operated by Catalyst NoCo Network.`)
+  await emitPoolAnchors()
+  console.log(`\n✓ Seeded ${POOLS.length} pools operated by Catalyst NoCo Network:`)
+  for (const p of POOLS) {
+    console.log(`    · ${p.id} — ${p.name}`)
+  }
   console.log(`  Visit: http://localhost:3000/h/catalyst/pools (after Maria signs in)`)
 }
 

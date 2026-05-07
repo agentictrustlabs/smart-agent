@@ -30,6 +30,7 @@ import { CatalystFieldZone } from '@/components/catalyst/CatalystFieldZone'
 import { CatalystAttentionStrip, CatalystAttentionStripSkeleton } from '@/components/catalyst/CatalystAttentionStrip'
 import { OpenNeedsStrip } from '@/components/discover/OpenNeedsStrip'
 import { ActiveFulfillmentsStrip } from '@/components/entitlements/ActiveFulfillmentsStrip'
+import { ActiveMarketplaceStrip } from '@/components/dashboard/ActiveMarketplaceStrip'
 
 /**
  * Hub-aware dashboard view. Pure render — caller (a route) decides which
@@ -571,6 +572,14 @@ async function CatalystFieldDashboard({
           work. Hidden until the user has ≥1 live entitlement. */}
       <Suspense fallback={<div style={{ height: 90, background: 'rgba(139,94,60,0.04)', borderRadius: 12, marginBottom: '1rem' }} aria-hidden />}>
         <ActiveFulfillmentsStrip userId={currentUser.id} hubSlug="catalyst" />
+      </Suspense>
+
+      {/* Zone 4.45 — Your marketplace activity (specs 001/002/003).
+          Surfaces the viewer's open pledges / proposals / intents so
+          they can navigate back to a draft or pledge they made earlier
+          without already knowing the URL. Hidden when count == 0. */}
+      <Suspense fallback={<div style={{ height: 90, background: 'rgba(139,94,60,0.04)', borderRadius: 12, marginBottom: '1rem' }} aria-hidden />}>
+        <ActiveMarketplaceStrip userId={currentUser.id} hubSlug="catalyst" hubId={hubId} />
       </Suspense>
 
       {/* Zone 4.5 — Where the hub needs help (Discover layer).

@@ -132,6 +132,11 @@ export interface RoundPriorStats {
 
 export interface Round {
   id: string
+  /** Human-readable display name (sa:displayName). Optional — only set
+   *  by rounds that emit it via the seed or future round:open MCP tool. */
+  displayName?: string
+  /** Display name of the fund operating the round, when resolvable. */
+  fundName?: string
   /** → sa:operatedByFund (range sa:Fund — Pool with governanceModel='fund'). */
   fundAgentId: string
   mandate: RoundMandate

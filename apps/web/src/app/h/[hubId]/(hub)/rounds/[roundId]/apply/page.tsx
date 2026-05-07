@@ -125,16 +125,34 @@ export default async function RoundApplyPage({
     )
   }
 
+  // Build a friendly description string from the mandate so the proposer
+  // sees what kinds of work the round funds before drafting. Falls back
+  // to the kinds list when no GraphDB-stored displayName is available.
+  const kinds = round.mandate.acceptedKinds ?? []
+  const geo = round.mandate.acceptedGeo ?? []
+  const description = (() => {
+    const kindsLabel = kinds.length > 0 ? kinds.join(', ') : 'all eligible kinds'
+    const geoLabel = geo.length > 0 ? ` in ${geo.join(', ')}` : ''
+    const award = round.mandate.budgetCeiling > 0
+      ? ` · up to $${round.mandate.budgetCeiling.toLocaleString()} across ${round.mandate.expectedAwards} awards`
+      : ''
+    return `Accepts ${kindsLabel}${geoLabel}${award}.`
+  })()
+
   return (
     <ProposalComposer
       hubSlug={slug}
       roundId={roundId}
       proposerAgentId={myAgent}
       round={{
+        roundId,
+        displayName: round.displayName ?? `Round ${roundId}`,
+        description,
+        fundName: round.fundName,
         deadline: round.deadline,
         decisionDate: round.decisionDate,
         budgetCeiling: round.mandate.budgetCeiling,
-        acceptedKinds: round.mandate.acceptedKinds ?? [],
+        acceptedKinds: kinds,
         milestoneMin: round.milestoneTemplate.minMilestones,
         milestoneMax: round.milestoneTemplate.maxMilestones,
       }}

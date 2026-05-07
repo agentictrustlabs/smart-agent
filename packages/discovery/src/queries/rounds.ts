@@ -123,7 +123,7 @@ export function listRoundsQuery(
   return `${PREFIXES}
 PREFIX p-plan: <http://purl.org/net/p-plan#>
 
-SELECT ?round ?roundId ?fundAgentId ?fundName
+SELECT ?round ?roundId ?roundName ?fundAgentId ?fundName
        ?mandate ?milestoneTemplate ?validatorRequirements
        ?reportingCadence ?deadline ?decisionDate
        ?requiredCredentials ?visibility ?addressedApplicants
@@ -139,6 +139,7 @@ WHERE {
     BIND(IRI(CONCAT("urn:smart-agent:round:", STR(?subjectId))) AS ?round)
     BIND(STR(?subjectId) AS ?roundId)
 
+    OPTIONAL { ?round sa:displayName ?roundName }
     OPTIONAL { ?round sa:operatedByFund ?fundAgentId }
     OPTIONAL {
       ?fund sa:onChainAddress ?fundAgentId .
@@ -178,7 +179,7 @@ export function roundDetailQuery(roundId: string): string {
   return `${PREFIXES}
 PREFIX p-plan: <http://purl.org/net/p-plan#>
 
-SELECT ?round ?fundAgentId ?fundName
+SELECT ?round ?roundName ?fundAgentId ?fundName
        ?mandate ?milestoneTemplate ?validatorRequirements
        ?reportingCadence ?deadline ?decisionDate
        ?requiredCredentials ?visibility ?addressedApplicants
@@ -194,6 +195,7 @@ WHERE {
       FILTER(STR(?subjectId) = "${id}")
     }
 
+    OPTIONAL { ?round sa:displayName ?roundName }
     OPTIONAL { ?round sa:operatedByFund ?fundAgentId }
     OPTIONAL {
       ?fund sa:onChainAddress ?fundAgentId .

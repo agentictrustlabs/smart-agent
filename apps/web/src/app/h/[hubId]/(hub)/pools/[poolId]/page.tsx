@@ -21,6 +21,7 @@ import { HUB_SLUG_MAP } from '@/lib/hub-routes'
 import { getHubProfile } from '@/lib/hub-profiles'
 import { getPersonAgentForUser } from '@/lib/agent-registry'
 import { getPoolForViewer, getPoolRecentAllocations } from '@/lib/actions/pools.action'
+import { DiscoveryService } from '@smart-agent/discovery'
 
 export const dynamic = 'force-dynamic'
 
@@ -70,6 +71,31 @@ export default async function PoolDetailPage({
 
   const allocations = await getPoolRecentAllocations(poolId, myAgent, 5)
   const primaryUnit = pool.acceptedUnits[0] ?? 'USD'
+
+  // Rounds operated by this pool's stewardship agent. We hit
+  // DiscoveryService.listRounds directly instead of going through the
+  // listRoundsForViewer action, because that action does an N+1
+  // proposerSideSignals fetch per round (5 rounds × ~15s GraphDB query
+  // = up to 75s page-render time). On the pool detail surface we just
+  // need the round list — no ranking — so a single SPARQL call suffices.
+  //
+  // Wrapped in try/catch — a slow / 524-ing GraphDB shouldn't block the
+  // whole pool detail page render. The "no rounds yet" empty state is
+  // friendlier than a 500.
+  let roundsForPool: Array<{ id: string; displayName?: string; fundAgentId: string; deadline: string; mandate: { acceptedKinds: string[] } }> = []
+  try {
+    const discovery = DiscoveryService.fromEnv()
+    const allHubRounds = await discovery.listRounds({
+      hubId: internalHubId,
+      viewerAgentId: myAgent,
+      includeClosed: true,
+    })
+    roundsForPool = allHubRounds.filter(r =>
+      (r.fundAgentId ?? '').toLowerCase() === (pool.stewardshipAgent ?? '').toLowerCase()
+    )
+  } catch (err) {
+    console.warn('[pool-detail] listRounds failed (showing empty state):', err instanceof Error ? err.message : err)
+  }
   const ratio = pool.capacityCeiling && pool.capacityCeiling > 0
     ? Math.min(1, pool.pledgedTotal / pool.capacityCeiling)
     : 0
@@ -214,6 +240,38 @@ export default async function PoolDetailPage({
                 )}
               </li>
             ))}
+          </ul>
+        )}
+      </Section>
+
+      {/* Rounds operated by this pool — surfaces the pool→round linkage so
+          a steward can see what rounds draw from this pool's treasury and a
+          proposer can see what they can apply against. */}
+      <Section title={`Rounds operated by this pool (${roundsForPool.length})`}>
+        {roundsForPool.length === 0 ? (
+          <div style={{ fontSize: '0.85rem', color: C.textMuted, fontStyle: 'italic' }}>
+            No rounds yet — stewards open them via the rounds index.
+          </div>
+        ) : (
+          <ul style={{ margin: 0, paddingLeft: '0.6rem', listStyle: 'none' }}>
+            {roundsForPool.map(r => {
+              const slugId = r.id.replace(/^urn:smart-agent:round:/, '')
+              const deadlineRel = r.deadline ? new Date(r.deadline).toISOString().slice(0, 10) : '—'
+              return (
+                <li key={r.id} style={{ marginBottom: '0.45rem' }}>
+                  <Link
+                    href={`/h/${slug}/rounds/${encodeURIComponent(slugId)}`}
+                    style={{ color: C.accent, fontSize: '0.88rem', fontWeight: 600, textDecoration: 'none' }}
+                  >
+                    {r.displayName ?? slugId}
+                  </Link>
+                  <span style={{ fontSize: '0.75rem', color: C.textMuted, marginLeft: '0.5rem' }}>
+                    deadline {deadlineRel}
+                    {r.mandate.acceptedKinds?.length ? ` · ${r.mandate.acceptedKinds.slice(0, 3).join(', ')}` : ''}
+                  </span>
+                </li>
+              )
+            })}
           </ul>
         )}
       </Section>

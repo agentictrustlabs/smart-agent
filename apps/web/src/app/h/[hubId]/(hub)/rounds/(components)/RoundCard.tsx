@@ -163,10 +163,11 @@ export function RoundCard({
       </div>
 
       <div style={{ fontSize: '0.95rem', fontWeight: 700, color: C.text, marginBottom: '0.2rem' }}>
-        {mandateNarrative}
+        {round.displayName ?? mandateNarrative}
       </div>
 
       <div style={{ fontSize: '0.72rem', color: C.textMuted, marginBottom: '0.4rem' }}>
+        {round.displayName ? <>Accepts {mandateNarrative} · </> : null}
         {fundLabel}
         {round.mandate.acceptedGeo?.length > 0 && <> · {round.mandate.acceptedGeo.slice(0, 2).join(', ')}</>}
       </div>

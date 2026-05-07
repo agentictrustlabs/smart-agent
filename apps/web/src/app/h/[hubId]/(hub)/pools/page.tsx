@@ -10,6 +10,7 @@
  *   - <EmptyState />   — friendly empty message
  */
 
+import Link from 'next/link'
 import { redirect, notFound } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { HUB_SLUG_MAP } from '@/lib/hub-routes'
@@ -83,6 +84,12 @@ export default async function PoolsListPage({
           <h1 style={{ fontSize: '1.45rem', fontWeight: 700, color: C.text, margin: '0.1rem 0' }}>
             Open pools {total > 0 && <span style={{ color: C.textMuted, fontSize: '0.95rem', fontWeight: 500 }}>({total})</span>}
           </h1>
+          <Link
+            href={`/h/${slug}/pools/new`}
+            style={{ padding: '0.4rem 0.85rem', background: C.accent, color: '#fff', borderRadius: 8, fontSize: '0.78rem', fontWeight: 700, textDecoration: 'none' }}
+          >
+            + New pool
+          </Link>
         </div>
         <p style={{ fontSize: '0.85rem', color: C.textMuted, margin: '0.2rem 0 0' }}>
           Funds, coaching networks, prayer chains, skills benches, hospitality networks accepting pledges in this hub.

@@ -440,6 +440,17 @@ const KNOWN_ASSERTION_CLASSES: ReadonlyArray<{ iri: string; localName: string }>
   { iri: 'sa:PoolPledgedTotalAssertion', localName: 'PoolPledgedTotalAssertion' },
   { iri: 'sa:RoundOpenedAssertion', localName: 'RoundOpenedAssertion' },
   { iri: 'sa:RoundClosedAssertion', localName: 'RoundClosedAssertion' },
+  // Treasury Phase 1 — public-tier on-chain anchors for Pool / Round /
+  // Proposal lane state changes per output/onchain-treasury-plan.md § 3.5.
+  { iri: 'sa:PoolOpenedAssertion', localName: 'PoolOpenedAssertion' },
+  { iri: 'sa:PoolMandateUpdatedAssertion', localName: 'PoolMandateUpdatedAssertion' },
+  { iri: 'sa:StewardSetUpdatedAssertion', localName: 'StewardSetUpdatedAssertion' },
+  { iri: 'sa:PoolClosedAssertion', localName: 'PoolClosedAssertion' },
+  { iri: 'sa:AllocationDecidedAssertion', localName: 'AllocationDecidedAssertion' },
+  { iri: 'sa:DisbursementAssertion', localName: 'DisbursementAssertion' },
+  { iri: 'sa:GrantAwardedAssertion', localName: 'GrantAwardedAssertion' },
+  { iri: 'sa:GrantRescindedAssertion', localName: 'GrantRescindedAssertion' },
+  { iri: 'sa:OutcomeAttestationAssertion', localName: 'OutcomeAttestationAssertion' },
 ]
 
 function assertionIRI(id: bigint): string {
@@ -642,6 +653,16 @@ export async function emitRoundsTurtle(): Promise<string> {
     // Round subject + body fields.
     lines.push(`<${roundIri}> a sa:Round ;`)
     lines.push(`  sa:operatedByFund <${fundIri}> ;`)
+    // Mandate JSON may carry a displayName field stashed by the seed —
+    // hoist it into a `sa:displayName` triple so the apply-page header
+    // can show "Pastoral Coaching Cohort for NoCo Q2" instead of the
+    // raw kind tags.
+    try {
+      const m = JSON.parse(row.mandate ?? '{}') as { displayName?: string }
+      if (m.displayName) {
+        lines.push(`  sa:displayName "${escapeTurtleString(m.displayName)}" ;`)
+      }
+    } catch { /* mandate not JSON — skip */ }
     lines.push(`  sa:roundMandate "${escapeTurtleString(row.mandate)}" ;`)
     lines.push(`  sa:milestoneTemplate "${escapeTurtleString(row.milestone_template)}" ;`)
     lines.push(`  sa:validatorRequirements "${escapeTurtleString(row.validator_requirements)}" ;`)

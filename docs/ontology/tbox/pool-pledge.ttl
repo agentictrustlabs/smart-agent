@@ -162,6 +162,30 @@ sa:PoolPledgedTotalAssertion
     rdfs:label "Pool Pledged Total Assertion" ;
     rdfs:comment "Aggregate on-chain assertion published by the pool's session signer when the pool wants its pledgedTotal mirrored to GraphDB despite anonymous / private contributions. Carries pool IRI + scalar total (no donor information)." .
 
+sa:PoolOpenedAssertion
+    a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "Pool Opened Assertion" ;
+    rdfs:comment "On-chain anchor minted when a Pool is created. Carries treasury address (the pool's AgentAccount), governance model, accepted units / kinds / geo, ceiling policy, and the initial steward set. Public-tier pools always anchor; private pools anchor a coarse variant (no addressedMembers list)." .
+
+sa:PoolMandateUpdatedAssertion
+    a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "Pool Mandate Updated Assertion" ;
+    rdfs:comment "On-chain anchor minted when a Pool's mandate (acceptedKinds, geoRoot, ceilingPolicy) changes. Carries prevMandateHash + newMandate. Issued by the pool's STEWARDSHIP_DELEGATION via a steward quorum tx." .
+
+sa:StewardSetUpdatedAssertion
+    a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "Steward Set Updated Assertion" ;
+    rdfs:comment "On-chain anchor minted when a Pool's steward set rotates. Carries prev + new steward IRIs, new quorum threshold, and the list of explicitly revoked session-delegation hashes (Safe lesson — see output/safe-architecture-comparison.md § 3 Q6)." .
+
+sa:PoolClosedAssertion
+    a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "Pool Closed Assertion" ;
+    rdfs:comment "On-chain anchor minted when a Pool is wound down. Carries final disposition tx hashes (return-of-funds disbursements) and the closure reason (mandate-fulfilled, sunset, dispute-resolution, etc.)." .
+
 # ─── PoolPledge properties ──────────────────────────────────────────
 
 sa:pledger

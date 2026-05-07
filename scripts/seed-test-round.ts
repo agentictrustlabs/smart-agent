@@ -1,28 +1,18 @@
 /**
- * One-shot demo seed — creates a single test round under Catalyst NoCo Network
- * so Maria (and other Catalyst hub users) can see something on /h/catalyst/rounds
- * after fresh-start.
+ * Demo seed — multiple grant rounds under Catalyst NoCo Network so Maria
+ * (and other Catalyst hub users) see distinct, faith-flavored options on
+ * /h/catalyst/rounds. Each round has a unique mandate so they're easy to
+ * tell apart in the index list and downstream proposal seeds.
  *
  *   pnpm exec tsx scripts/seed-test-round.ts
  *
- * What it does:
- *
- *   1. INSERT OR REPLACE the round body in apps/org-mcp/org-mcp.db (rounds table).
- *   2. SPARQL INSERT (additive — does NOT replace the data graph) the round
- *      triples + a synthetic sa:RoundOpenedAssertion mirror into GraphDB at
- *      `https://smartagent.io/graph/data/onchain` so the discovery query
- *      surfaces the round.
- *
- * Why additive INSERT instead of PUT:
- *   The runtime KB-sync (apps/web/src/lib/ontology/graphdb-sync.ts) uses PUT
- *   for the data graph, which wipes everything we don't re-emit. Until the
- *   sync extends to read rounds from org-mcp, this script is the bridge.
- *   Re-running this script after a sync wipe restores the round.
+ * Idempotent: INSERT OR REPLACE on stable ids (and SPARQL INSERT DATA is
+ * forgiving of repeats — duplicate triples coalesce).
  *
  * Caveat: a real round-creation flow would (a) anchor a real
- * sa:RoundOpenedAssertion on chain via emitClassAssertion, and (b) extend
- * the on-chain → GraphDB sync to read the body fields from org-mcp. This
- * script short-circuits both for v1 demo purposes.
+ * sa:RoundOpenedAssertion on chain, and (b) extend the on-chain → GraphDB
+ * sync to read the body fields from org-mcp. This script short-circuits
+ * both for v1 demo purposes.
  */
 
 import path from 'node:path'
@@ -32,7 +22,6 @@ import { fileURLToPath } from 'node:url'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(__dirname, '..')
 
-// Load env from apps/web/.env so we get GRAPHDB_* vars.
 const envFile = path.join(repoRoot, 'apps/web/.env')
 if (fs.existsSync(envFile)) {
   for (const line of fs.readFileSync(envFile, 'utf8').split('\n')) {
@@ -46,38 +35,91 @@ if (fs.existsSync(envFile)) {
   }
 }
 
-// ────────────────────────────────────────────────────────────────────────
-// Constants
-// ────────────────────────────────────────────────────────────────────────
-
-const ROUND_ID = 'demo-trauma-care-q2'
-const ROUND_IRI = `urn:smart-agent:round:${ROUND_ID}`
-const ASSERTION_IRI = `urn:smart-agent:assertion:${ROUND_ID}-opened`
-
-// Catalyst NoCo Network — the fund operating the round (real seeded org).
 const FUND_ADDRESS = '0x0F669E6851A15FD0E5904EB197c369C2ab578D9b'.toLowerCase()
 const FUND_AGENT_IRI = `https://smartagent.io/ontology/core#agent/${FUND_ADDRESS}`
-
 const NOW = new Date().toISOString()
-const DEADLINE = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString() // +14 days
-const DECISION = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // +30 days
+const days = (n: number) => new Date(Date.now() + n * 24 * 60 * 60 * 1000).toISOString()
 
-const MANDATE_JSON = JSON.stringify({
-  acceptedKinds: ['trauma-care', 'CoachingNeed', 'NeedCoaching'],
-  acceptedGeo: ['us/colorado'],
-  budgetCeiling: 250000,
-  expectedAwards: 6,
-})
-const MILESTONE_JSON = JSON.stringify({
-  minMilestones: 2,
-  maxMilestones: 5,
-  trancheHints: { atKickoff: 0.3, midpoint: 0.4, completion: 0.3 },
-})
-const VALIDATOR_JSON = JSON.stringify({ minValidators: 2 })
+interface RoundSeed {
+  id: string
+  displayName: string
+  mandate: {
+    acceptedKinds: string[]
+    acceptedGeo: string[]
+    budgetCeiling: number
+    expectedAwards: number
+  }
+  milestone: {
+    minMilestones: number
+    maxMilestones: number
+    trancheHints: { atKickoff: number; midpoint: number; completion: number }
+  }
+  validators: { minValidators: number }
+  reportingCadence: 'monthly' | 'quarterly' | 'annual'
+  deadline: string
+  decisionDate: string
+}
 
-// ────────────────────────────────────────────────────────────────────────
-// 1. SQL — insert round into org-mcp
-// ────────────────────────────────────────────────────────────────────────
+// Three rounds — distinct titles, distinct mandates, distinct sizes.
+// The trauma-care round retains its slug for downstream test coverage but
+// is reframed as a compassion-ministry initiative for migrant families.
+const ROUNDS: RoundSeed[] = [
+  {
+    id: 'demo-trauma-care-q2',
+    displayName: 'Trauma-Care for Migrant Families — Compassion Ministry Q2',
+    mandate: {
+      acceptedKinds: ['trauma-care', 'CompassionMinistry', 'MigrantFamilyCare'],
+      acceptedGeo: ['us/colorado'],
+      budgetCeiling: 250000,
+      expectedAwards: 6,
+    },
+    milestone: { minMilestones: 2, maxMilestones: 5, trancheHints: { atKickoff: 0.3, midpoint: 0.4, completion: 0.3 } },
+    validators: { minValidators: 2 },
+    reportingCadence: 'quarterly',
+    deadline: days(14),
+    decisionDate: days(30),
+  },
+  {
+    id: 'demo-spanish-scripture-q2',
+    displayName: 'Spanish Heart-Language Scripture & Discipleship Q2',
+    mandate: {
+      acceptedKinds: ['HeartLanguageScripture', 'BibleStudy', 'Discipleship'],
+      acceptedGeo: ['us/colorado', 'us/wyoming'],
+      budgetCeiling: 60000,
+      expectedAwards: 8,
+    },
+    milestone: { minMilestones: 2, maxMilestones: 4, trancheHints: { atKickoff: 0.4, midpoint: 0.3, completion: 0.3 } },
+    validators: { minValidators: 1 },
+    reportingCadence: 'quarterly',
+    deadline: days(21),
+    decisionDate: days(45),
+  },
+  {
+    id: 'demo-pastoral-coaching-q2',
+    displayName: 'Pastoral Coaching Cohort for NoCo Church Planters Q2',
+    mandate: {
+      acceptedKinds: ['CircleCoach', 'PastoralCoaching', 'ChurchPlanting'],
+      acceptedGeo: ['us/colorado'],
+      budgetCeiling: 75000,
+      expectedAwards: 3,
+    },
+    milestone: { minMilestones: 3, maxMilestones: 6, trancheHints: { atKickoff: 0.25, midpoint: 0.5, completion: 0.25 } },
+    validators: { minValidators: 2 },
+    reportingCadence: 'monthly',
+    deadline: days(28),
+    decisionDate: days(60),
+  },
+]
+
+async function openSqlite(dbPath: string) {
+  const Database = (await import(
+    path.join(repoRoot, 'node_modules/.pnpm/better-sqlite3@11.10.0/node_modules/better-sqlite3/lib/index.js')
+  ) as { default: new (path: string) => {
+    prepare: (sql: string) => { run: (params: Record<string, unknown>) => void }
+    close: () => void
+  } }).default
+  return new Database(dbPath)
+}
 
 async function seedSql(): Promise<void> {
   const dbPath = path.join(repoRoot, 'apps/org-mcp/org-mcp.db')
@@ -85,13 +127,7 @@ async function seedSql(): Promise<void> {
     console.warn(`[seed-test-round] ${dbPath} does not exist — skipping SQL insert`)
     return
   }
-
-  // Lazy import — better-sqlite3 isn't a direct repo-root dep, so resolve
-  // through the pnpm store path used by the apps that own SQLite.
-  const Database = (await import(
-    path.join(repoRoot, 'node_modules/.pnpm/better-sqlite3@11.10.0/node_modules/better-sqlite3/lib/index.js')
-  ) as { default: new (path: string) => { prepare: (sql: string) => { run: (params: Record<string, unknown>) => void }; close: () => void } }).default
-  const db = new Database(dbPath)
+  const db = await openSqlite(dbPath)
   try {
     const stmt = db.prepare(`
       INSERT OR REPLACE INTO rounds (
@@ -106,32 +142,37 @@ async function seedSql(): Promise<void> {
         @on_chain_assertion_id, @created_at, @updated_at
       )
     `)
-    stmt.run({
-      id: ROUND_IRI,
-      org_principal: FUND_ADDRESS,
-      mandate: MANDATE_JSON,
-      milestone_template: MILESTONE_JSON,
-      validator_requirements: VALIDATOR_JSON,
-      reporting_cadence: 'quarterly',
-      deadline: DEADLINE,
-      decision_date: DECISION,
-      required_credentials: '[]',
-      visibility: 'public',
-      addressed_applicants: null,
-      proposals_received: 0,
-      on_chain_assertion_id: ASSERTION_IRI,
-      created_at: NOW,
-      updated_at: NOW,
-    })
-    console.log(`[seed-test-round] SQL ok — round ${ROUND_ID} in ${dbPath}`)
+    for (const r of ROUNDS) {
+      const iri = `urn:smart-agent:round:${r.id}`
+      const assertionIri = `urn:smart-agent:assertion:${r.id}-opened`
+      // Stash displayName + description inside the mandate JSON so the
+      // runtime emitRoundsTurtle sync can re-emit them after every PUT.
+      // The on-chain assertion payload doesn't currently carry these
+      // fields; the rounds table is the seed's persistence anchor.
+      const mandateWithDisplay = { ...r.mandate, displayName: r.displayName }
+      stmt.run({
+        id: iri,
+        org_principal: FUND_ADDRESS,
+        mandate: JSON.stringify(mandateWithDisplay),
+        milestone_template: JSON.stringify(r.milestone),
+        validator_requirements: JSON.stringify(r.validators),
+        reporting_cadence: r.reportingCadence,
+        deadline: r.deadline,
+        decision_date: r.decisionDate,
+        required_credentials: '[]',
+        visibility: 'public',
+        addressed_applicants: null,
+        proposals_received: 0,
+        on_chain_assertion_id: assertionIri,
+        created_at: NOW,
+        updated_at: NOW,
+      })
+      console.log(`[seed-test-round] SQL ok — ${r.id} (${r.displayName})`)
+    }
   } finally {
     db.close()
   }
 }
-
-// ────────────────────────────────────────────────────────────────────────
-// 2. SPARQL INSERT — additive write into the data graph
-// ────────────────────────────────────────────────────────────────────────
 
 async function seedGraphDB(): Promise<void> {
   const baseUrl = process.env.GRAPHDB_BASE_URL
@@ -144,11 +185,33 @@ async function seedGraphDB(): Promise<void> {
   const auth = `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`
   const url = `${baseUrl}/repositories/${repository}/statements`
 
-  // Build INSERT DATA (additive). We escape `"""` by relying on JSON.stringify
-  // never producing triple-quotes in our payloads.
-  const escapedMandate = MANDATE_JSON.replace(/"/g, '\\"')
-  const escapedMilestone = MILESTONE_JSON.replace(/"/g, '\\"')
-  const escapedValidator = VALIDATOR_JSON.replace(/"/g, '\\"')
+  const triples = ROUNDS.map(r => {
+    const iri = `urn:smart-agent:round:${r.id}`
+    const assertionIri = `urn:smart-agent:assertion:${r.id}-opened`
+    const escMandate = JSON.stringify(r.mandate).replace(/"/g, '\\"')
+    const escMilestone = JSON.stringify(r.milestone).replace(/"/g, '\\"')
+    const escValidator = JSON.stringify(r.validators).replace(/"/g, '\\"')
+    return `
+    <${iri}> a sa:Round ;
+      sa:displayName "${r.displayName.replace(/"/g, '\\"')}" ;
+      sa:operatedByFund <${FUND_AGENT_IRI}> ;
+      sa:roundMandate "${escMandate}" ;
+      sa:milestoneTemplate "${escMilestone}" ;
+      sa:validatorRequirements "${escValidator}" ;
+      sa:reportingCadence "${r.reportingCadence}" ;
+      sa:deadline "${r.deadline}"^^xsd:dateTime ;
+      sa:decisionDate "${r.decisionDate}"^^xsd:dateTime ;
+      sa:requiredCredentials "[]" ;
+      sa:visibility "public" ;
+      sa:proposalsReceived 0 .
+
+    <${assertionIri}> a sa:RoundOpenedAssertion ;
+      sa:onChainAssertionId "${assertionIri}" ;
+      sa:subjectId "${r.id}" ;
+      sa:payloadURI "data:application/json,${encodeURIComponent(JSON.stringify(r.mandate))}" ;
+      prov:generatedAtTime "${NOW}"^^xsd:dateTime .
+`
+  }).join('\n')
 
   const sparql = `
 PREFIX sa: <https://smartagent.io/ontology/core#>
@@ -157,42 +220,22 @@ PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
 
 INSERT DATA {
   GRAPH <https://smartagent.io/graph/data/onchain> {
-    <${ROUND_IRI}> a sa:Round ;
-      sa:operatedByFund <${FUND_AGENT_IRI}> ;
-      sa:roundMandate "${escapedMandate}" ;
-      sa:milestoneTemplate "${escapedMilestone}" ;
-      sa:validatorRequirements "${escapedValidator}" ;
-      sa:reportingCadence "quarterly" ;
-      sa:deadline "${DEADLINE}"^^xsd:dateTime ;
-      sa:decisionDate "${DECISION}"^^xsd:dateTime ;
-      sa:requiredCredentials "[]" ;
-      sa:visibility "public" ;
-      sa:proposalsReceived 0 .
-
-    <${ASSERTION_IRI}> a sa:RoundOpenedAssertion ;
-      sa:onChainAssertionId "${ASSERTION_IRI}" ;
-      sa:subjectId "${ROUND_ID}" ;
-      sa:payloadURI "data:application/json,${encodeURIComponent(MANDATE_JSON)}" ;
-      prov:generatedAtTime "${NOW}"^^xsd:dateTime .
+${triples}
   }
 }
 `
 
   const response = await fetch(url, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/sparql-update',
-      Authorization: auth,
-    },
+    headers: { 'Content-Type': 'application/sparql-update', Authorization: auth },
     body: sparql,
   })
   if (!response.ok) {
     const body = await response.text()
     throw new Error(`SPARQL UPDATE failed (${response.status}): ${body}`)
   }
-  console.log(`[seed-test-round] GraphDB ok — INSERT into data graph`)
+  console.log(`[seed-test-round] GraphDB ok — INSERT ${ROUNDS.length} rounds into data graph`)
 
-  // Verification.
   const askResp = await fetch(`${baseUrl}/repositories/${repository}`, {
     method: 'POST',
     headers: {
@@ -210,16 +253,67 @@ SELECT (COUNT(?r) AS ?n) WHERE {
   console.log(`[seed-test-round] verify — rounds in data graph: ${result.results.bindings[0]?.n?.value ?? '?'}`)
 }
 
-// ────────────────────────────────────────────────────────────────────────
+/**
+ * Treasury Phase 1 — for each seeded round, emit `sa:RoundOpenedAssertion`
+ * on chain so the public read source (GraphDB mirror) reflects every public
+ * state-change moment. Uses @smart-agent/sdk's `emitClassAssertion` directly
+ * with the env (RPC_URL / CLASS_ASSERTION_ADDRESS / DEPLOYER_PRIVATE_KEY)
+ * loaded from apps/web/.env above. Failures log + continue — the SQL/SPARQL
+ * seed has already landed; the on-chain anchor is best-effort for now.
+ */
+async function emitRoundAnchors(): Promise<void> {
+  const rpcUrl = process.env.RPC_URL
+  const contractAddress = process.env.CLASS_ASSERTION_ADDRESS
+  const operatorPrivateKey = process.env.DEPLOYER_PRIVATE_KEY
+  if (!rpcUrl || !contractAddress || !operatorPrivateKey) {
+    console.warn('[seed-test-round] anchor emit skipped — missing RPC_URL / CLASS_ASSERTION_ADDRESS / DEPLOYER_PRIVATE_KEY')
+    return
+  }
+  // Import the SDK by file path — this script runs at repo root via tsx
+  // and doesn't have @smart-agent/sdk in its module-resolution scope.
+  const sdk = await import(path.join(repoRoot, 'packages/sdk/src/index.ts')) as {
+    emitClassAssertion: (
+      cfg: { rpcUrl: string; contractAddress: `0x${string}`; operatorPrivateKey: `0x${string}` },
+      input: { classIri: string; subjectIri: string; payload: Record<string, unknown> },
+    ) => Promise<{ assertionId: string }>
+  }
+  const { emitClassAssertion } = sdk
+  const ROUND_OPENED = 'sa:RoundOpenedAssertion'
+  for (const r of ROUNDS) {
+    const subjectIri = `urn:smart-agent:round:${r.id}`
+    const payload = {
+      id: r.id,
+      fundAgentId: FUND_ADDRESS,
+      mandate: r.mandate,
+      reportingCadence: r.reportingCadence,
+      deadline: r.deadline,
+      decisionDate: r.decisionDate,
+      requiredCredentials: [],
+      visibility: 'public' as const,
+    }
+    try {
+      const res = await emitClassAssertion(
+        { rpcUrl, contractAddress: contractAddress as `0x${string}`, operatorPrivateKey: operatorPrivateKey as `0x${string}` },
+        { classIri: ROUND_OPENED, subjectIri, payload },
+      )
+      console.log(`[seed-test-round] anchored ${r.id} → assertionId=${res.assertionId}`)
+    } catch (err) {
+      console.warn(`[seed-test-round] anchor failed for ${r.id}: ${err instanceof Error ? err.message : err}`)
+    }
+  }
+}
 
 async function main(): Promise<void> {
   await seedSql()
   await seedGraphDB()
-  console.log(`\n✓ Seeded round '${ROUND_ID}' operated by Catalyst NoCo Network.`)
+  await emitRoundAnchors()
+  console.log(`\n✓ Seeded ${ROUNDS.length} rounds operated by Catalyst NoCo Network:`)
+  for (const r of ROUNDS) {
+    console.log(`    · ${r.id} — ${r.displayName}`)
+  }
   console.log(`  Visit: http://localhost:3000/h/catalyst/rounds (after Maria signs in)`)
-  console.log(`  NOTE: the runtime KB sync will wipe the GraphDB part of this seed`)
-  console.log(`        whenever any on-chain edge is created. Re-run this script`)
-  console.log(`        if the rounds page goes empty again.`)
+  console.log(`  NOTE: the runtime KB sync may wipe the GraphDB part of this seed.`)
+  console.log(`        Re-run this script if rounds disappear from the index.`)
 }
 
 main().catch((e) => {

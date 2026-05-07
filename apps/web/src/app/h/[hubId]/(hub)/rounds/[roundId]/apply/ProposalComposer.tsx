@@ -23,6 +23,14 @@ const C = {
 }
 
 interface RoundContext {
+  /** Round id slug (e.g. demo-trauma-care-q2) — for the back link. */
+  roundId: string
+  /** Friendly human-readable name (sa:displayName or fallback). */
+  displayName: string
+  /** Short description of the mandate (kinds + geo + budget summary). */
+  description: string
+  /** Display name of the fund operating the round, when resolvable. */
+  fundName?: string
   deadline: string
   decisionDate: string
   budgetCeiling: number
@@ -189,12 +197,39 @@ export function ProposalComposer(props: ProposalComposerProps) {
       <div style={{ marginBottom: '1.25rem' }}>
         <div style={{ fontSize: '0.65rem', fontWeight: 700, color: C.accent, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
           Draft a proposal
+          {props.round.fundName ? <> · {props.round.fundName}</> : null}
         </div>
         <h1 style={{ fontSize: '1.4rem', fontWeight: 700, color: C.text, margin: '0.15rem 0' }}>
-          Apply to round
+          {props.round.displayName}
         </h1>
-        <div style={{ fontSize: '0.78rem', color: C.textMuted }}>
-          Deadline {deadlineDate} · Decision by {decisionDateStr}
+        <p style={{ fontSize: '0.85rem', color: C.text, margin: '0.3rem 0 0.4rem' }}>
+          {props.round.description}
+        </p>
+        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center', marginTop: '0.4rem' }}>
+          {props.round.acceptedKinds.map(k => (
+            <span key={k} style={{
+              fontSize: '0.7rem',
+              fontWeight: 600,
+              padding: '0.18rem 0.55rem',
+              borderRadius: 999,
+              background: 'rgba(139,94,60,0.10)',
+              color: C.accent,
+              border: `1px solid rgba(139,94,60,0.20)`,
+            }}>
+              {k}
+            </span>
+          ))}
+          <span style={{ fontSize: '0.78rem', color: C.textMuted, marginLeft: 'auto' }}>
+            Deadline {deadlineDate} · Decision by {decisionDateStr}
+          </span>
+        </div>
+        <div style={{ marginTop: '0.65rem' }}>
+          <a
+            href={`/h/${props.hubSlug}/rounds/${props.round.roundId}`}
+            style={{ color: C.accent, fontSize: '0.78rem', textDecoration: 'none' }}
+          >
+            ← Back to round detail
+          </a>
         </div>
       </div>
 

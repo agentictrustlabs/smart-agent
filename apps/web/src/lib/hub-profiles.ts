@@ -255,11 +255,42 @@ export const HUB_PROFILES: HubProfile[] = [
       // circles, house churches, and metro hubs across sister networks).
       { href: '/groups', label: 'Groups', section: 'primary', activePrefixes: ['/groups', '/catalyst/groups', '/catalyst/map'] },
       { href: '/steward', label: 'Steward', section: 'primary', requiresCapability: 'governance', activePrefixes: ['/steward', '/treasury', '/reviews', '/network', '/trust'] },
+      // Spec 001 — Direct lane (intents / matches / discover) entry point.
+      // Aggregates intents, matches, hub-wide needs/offerings, and the
+      // composite Discover landing surface.
+      {
+        href: '/h/catalyst/discover',
+        label: 'Discover',
+        section: 'primary',
+        activePrefixes: [
+          '/h/catalyst/discover',
+          '/h/catalyst/intents',
+          '/h/catalyst/matches',
+          '/h/catalyst/needs',
+          '/h/catalyst/offerings',
+        ],
+        subTabs: [
+          { href: '/h/catalyst/discover', label: 'Discover' },
+          { href: '/h/catalyst/intents',  label: 'Intents' },
+          { href: '/h/catalyst/matches',  label: 'My matches' },
+          { href: '/h/catalyst/offerings', label: 'Offerings' },
+        ],
+      },
       // Specs 002 + 003 — Intent Marketplace (Proposal + Pool lanes).
       // Funding tab covers grant rounds + the proposer's own proposals
-      // (spec 003) + pools + the donor's own pledges (spec 002). Discover
-      // page also links here.
-      { href: '/h/catalyst/rounds', label: 'Funding', section: 'primary', activePrefixes: ['/rounds', '/proposals', '/pools', '/pledges', '/h/catalyst/rounds', '/h/catalyst/proposals', '/h/catalyst/pools', '/h/catalyst/pledges'] },
+      // (spec 003) + pools + the donor's own pledges (spec 002).
+      {
+        href: '/h/catalyst/rounds',
+        label: 'Funding',
+        section: 'primary',
+        activePrefixes: ['/rounds', '/proposals', '/pools', '/pledges', '/h/catalyst/rounds', '/h/catalyst/proposals', '/h/catalyst/pools', '/h/catalyst/pledges'],
+        subTabs: [
+          { href: '/h/catalyst/rounds',    label: 'Rounds' },
+          { href: '/h/catalyst/pools',     label: 'Pools' },
+          { href: '/h/catalyst/pledges',   label: 'My pledges' },
+          { href: '/h/catalyst/proposals', label: 'My proposals' },
+        ],
+      },
       { href: '/activity', label: 'Activity', section: 'primary', activePrefixes: ['/activity', '/catalyst/activities', '/activities'] },
       { href: '/agents', label: 'Agents', section: 'admin', requiresCapability: 'agents' },
       { href: '/settings', label: 'Settings', section: 'admin', requiresCapability: 'settings' },
