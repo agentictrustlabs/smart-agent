@@ -28,6 +28,14 @@ export {
   skillDefinitionRegistryAbi,
   agentSkillRegistryAbi,
   skillIssuerRegistryAbi,
+  // Phase 0 attribute store + shape primitives
+  ontologyAttributeStoreAbi,
+  attributeAuthAbi,
+  shapeRegistryAbi,
+  poolRegistryAbi,
+  fundRegistryAbi,
+  proposalRegistryAbi,
+  agentNameAttributeResolverAbi,
 } from './abi'
 
 // ─── Account Client ──────────────────────────────────────────────────
@@ -439,3 +447,17 @@ export type {
   SubmitPledgeError,
   AmendPledgeRequest,
 } from './poolPledges'
+
+// ─── On-chain attribute store helpers (Phase 0) ──────────────────────
+export {
+  agentSubject,
+  nameSubject,
+  roundSubject,
+  proposalSubject,
+  matchSubject,
+  pledgeSubject,
+  subjectId,
+  predicateId,
+  DT,
+} from './onchain/attributes/subject'
+export type { SubjectDomain, Datatype } from './onchain/attributes/subject'

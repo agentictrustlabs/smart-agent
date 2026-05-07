@@ -4,6 +4,8 @@ pragma solidity ^0.8.28;
 import "forge-std/Test.sol";
 import "../src/AgentAccountFactory.sol";
 import "../src/OntologyTermRegistry.sol";
+import "../src/OntologyAttributeStore.sol";
+import "../src/AttributeAuth.sol";
 import "../src/AgentAccountResolver.sol";
 import "../src/AgentPredicates.sol";
 import "account-abstraction/interfaces/IEntryPoint.sol";
@@ -13,6 +15,8 @@ contract AgentResolverTest is Test {
     EntryPoint entryPoint;
     AgentAccountFactory factory;
     OntologyTermRegistry ontology;
+    OntologyAttributeStore store;
+    AttributeAuth attrAuth;
     AgentAccountResolver resolver;
 
     address alice;
@@ -26,19 +30,24 @@ contract AgentResolverTest is Test {
 
         entryPoint = new EntryPoint();
         ontology = new OntologyTermRegistry(address(this));
-        resolver = new AgentAccountResolver(address(ontology));
+        attrAuth = new AttributeAuth(address(this));
+        store = new OntologyAttributeStore(address(ontology), address(this));
+        store.setAuth(address(attrAuth));
+        resolver = new AgentAccountResolver(address(ontology), address(store));
+        attrAuth.setTrustedWriter(address(resolver), true);
+
         factory = new AgentAccountFactory(IEntryPoint(address(entryPoint)), address(0), address(this));
 
         // Deploy two agent accounts (this contract is the server signer / co-owner)
         agentAlice = address(factory.createAccount(alice, 1));
         agentBob = address(factory.createAccount(bob, 2));
 
-        // Register required ontology terms
+        // Register required ontology terms — agentType / aiAgentClass moved to bytes32
         _registerTerm("atl:displayName", "string");
         _registerTerm("atl:description", "string");
         _registerTerm("atl:isActive", "bool");
-        _registerTerm("atl:agentType", "string");
-        _registerTerm("atl:aiAgentClass", "string");
+        _registerTerm("atl:agentType", "bytes32");
+        _registerTerm("atl:aiAgentClass", "bytes32");
         _registerTerm("atl:hasCapability", "string[]");
         _registerTerm("atl:supportedTrustModel", "string[]");
         _registerTerm("atl:hasA2AEndpoint", "string");
@@ -48,6 +57,7 @@ contract AgentResolverTest is Test {
         _registerTerm("atl:metadataURI", "string");
         _registerTerm("atl:metadataHash", "bytes32");
         _registerTerm("atl:schemaURI", "string");
+        _registerTerm("atl:registeredAt", "uint256");
     }
 
     function _registerTerm(string memory curie, string memory dtype) internal {
@@ -58,7 +68,7 @@ contract AgentResolverTest is Test {
     // ─── OntologyTermRegistry Tests ─────────────────────────────────
 
     function test_ontology_term_count() public view {
-        assertEq(ontology.termCount(), 14, "Should have 14 registered terms");
+        assertEq(ontology.termCount(), 15, "Should have 15 registered terms");
     }
 
     function test_ontology_term_is_registered() public view {
@@ -231,24 +241,26 @@ contract AgentResolverTest is Test {
 
     function test_predicate_keys_tracked() public {
         resolver.register(agentAlice, "A", "", bytes32(0), bytes32(0), "");
+        // register writes 3 predicates: displayName, isActive, registeredAt
 
         resolver.setStringProperty(agentAlice, AgentPredicates.ATL_A2A_ENDPOINT, "http://a2a");
         resolver.addMultiStringProperty(agentAlice, AgentPredicates.ATL_CAPABILITY, "cap1");
-        resolver.setBoolProperty(agentAlice, AgentPredicates.ATL_IS_ACTIVE, true);
+        resolver.setBoolProperty(agentAlice, AgentPredicates.ATL_IS_ACTIVE, true); // already tracked
 
         bytes32[] memory keys = resolver.getPredicateKeys(agentAlice);
-        assertEq(keys.length, 3, "should track 3 unique predicates");
+        assertEq(keys.length, 5, "register's 3 + 2 new predicates (isActive already tracked)");
     }
 
     function test_predicate_keys_no_duplicates() public {
         resolver.register(agentAlice, "A", "", bytes32(0), bytes32(0), "");
+        // register writes 3 predicates: displayName, isActive, registeredAt
 
         bytes32 pred = AgentPredicates.ATL_A2A_ENDPOINT;
         resolver.setStringProperty(agentAlice, pred, "v1");
         resolver.setStringProperty(agentAlice, pred, "v2"); // same predicate, updated value
 
         bytes32[] memory keys = resolver.getPredicateKeys(agentAlice);
-        assertEq(keys.length, 1, "should not duplicate predicate key");
+        assertEq(keys.length, 4, "register's 3 + 1 new predicate (no dup on second set)");
     }
 
     // ─── Agent Enumeration ──────────────────────────────────────────

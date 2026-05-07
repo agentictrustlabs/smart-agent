@@ -2490,3 +2490,20 @@
  GET /h/catalyst/rounds/new 200 in 2697ms
  GET /api/auth/session 200 in 35ms
  GET /h/catalyst/rounds 200 in 18105ms
+ ✓ Compiled in 9.4s (6312 modules)
+ GET /h/catalyst/rounds/new 200 in 1922ms
+ ○ Compiling /api/auth/session ...
+ ✓ Compiled /api/auth/session in 1005ms (4770 modules)
+ GET /api/auth/session 200 in 2443ms
+ GET /api/auth/session 200 in 2445ms
+ ✓ Compiled in 7s (6331 modules)
+ ✓ Compiled in 1ms (4770 modules)
+ ✓ Compiled in 0ms (4770 modules)
+ ✓ Compiled in 0ms (4770 modules)
+ GET /api/auth/session 200 in 8658ms
+ GET /api/auth/session 200 in 8660ms
+ GET /h/catalyst/rounds/new 200 in 5409ms
+ ✓ Compiled in 3.6s (6335 modules)
+ GET /h/catalyst/rounds/new 200 in 1983ms
+ GET /api/auth/session 200 in 85ms
+ GET /api/auth/session 200 in 114ms

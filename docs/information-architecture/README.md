@@ -19,6 +19,9 @@ This folder is the **authoritative map of where data lives** across Smart Agent'
 | 8 | [08-team-assignments.md](08-team-assignments.md) | Which agent role does what part |
 | 9 | [09-privacy-audit.md](09-privacy-audit.md) | Current-state scan: every place private data sits in a risky store, with severity and fix |
 | 10 | [10-intent-marketplace-classification.md](10-intent-marketplace-classification.md) | Per-entity classification for specs 001/002/003 (MatchInitiation, PoolPledge, ProposalSubmission, Round, Pool/Fund extensions) |
+| 11 | [11-org-data-management.md](11-org-data-management.md) | Organization-agent data split across on-chain attributes, semantic names, org-mcp private storage, and trust signals |
+| 12 | [12-person-data-management.md](12-person-data-management.md) | Person-agent data split across minimal on-chain identity, semantic names, person-mcp private storage, credentials, and trust signals |
+| 13 | [13-agent-service-data-management.md](13-agent-service-data-management.md) | Service-agent data split across on-chain capabilities, semantic service names, private service operations, delegation, and trust signals |
 
 ## Companion Docs
 

@@ -36,10 +36,17 @@ import "../src/AgentTrustProfile.sol";
 import "../src/AgentControl.sol";
 import "../src/MockTeeVerifier.sol";
 import "../src/OntologyTermRegistry.sol";
+import "../src/OntologyAttributeStore.sol";
+import "../src/AttributeAuth.sol";
+import "../src/ShapeRegistry.sol";
 import "../src/AgentAccountResolver.sol";
 import "../src/AgentUniversalResolver.sol";
 import "../src/AgentNameRegistry.sol";
 import "../src/AgentNameResolver.sol";
+import "../src/AgentNameAttributeResolver.sol";
+import "../src/PoolRegistry.sol";
+import "../src/FundRegistry.sol";
+import "../src/ProposalRegistry.sol";
 import "../src/AgentNameUniversalResolver.sol";
 import "../src/enforcers/NameScopeEnforcer.sol";
 import "../src/enforcers/MembershipProofEnforcer.sol";
@@ -203,8 +210,42 @@ contract Deploy is Script {
         OntologyTermRegistry ontologyRegistry = new OntologyTermRegistry(deployer);
         console.log("OntologyTermRegistry:", address(ontologyRegistry));
 
-        // 15. Agent Account Resolver (on-chain agent metadata)
-        AgentAccountResolver accountResolver = new AgentAccountResolver(address(ontologyRegistry));
+        // 15a. Phase 0.0 — On-chain attribute store + shape registry primitives.
+        // Phase 0.1: AgentAccountResolver routes its writes through this store.
+        AttributeAuth attributeAuth = new AttributeAuth(deployer);
+        console.log("AttributeAuth:", address(attributeAuth));
+
+        OntologyAttributeStore attributeStore = new OntologyAttributeStore(address(ontologyRegistry), deployer);
+        attributeStore.setAuth(address(attributeAuth));
+        console.log("OntologyAttributeStore:", address(attributeStore));
+
+        ShapeRegistry shapeRegistry = new ShapeRegistry(address(attributeStore), deployer);
+        console.log("ShapeRegistry:", address(shapeRegistry));
+
+        // 15b. Phase 0.3 — PoolRegistry: pool body via the shared store.
+        PoolRegistry poolRegistry = new PoolRegistry(address(attributeStore), address(shapeRegistry));
+        attributeAuth.setTrustedWriter(address(poolRegistry), true);
+        console.log("PoolRegistry:", address(poolRegistry));
+
+        // 15c. Phase 0.4 — FundRegistry: fund + round body via the shared store.
+        FundRegistry fundRegistry = new FundRegistry(address(attributeStore), address(shapeRegistry));
+        attributeAuth.setTrustedWriter(address(fundRegistry), true);
+        console.log("FundRegistry:", address(fundRegistry));
+
+        // 15d. Phase 0.5 — ProposalRegistry: PUBLIC FACETS ONLY at award time.
+        // Proposal body never anchors here — privacy invariant from
+        // sa:GrantProposalAlwaysPrivateShape. On-chain class is
+        // sa:GrantProposalPublicFacet (a separate class).
+        ProposalRegistry proposalRegistry = new ProposalRegistry(address(attributeStore), address(shapeRegistry));
+        attributeAuth.setTrustedWriter(address(proposalRegistry), true);
+        console.log("ProposalRegistry:", address(proposalRegistry));
+
+        // 15. Agent Account Resolver (Phase 0.1 shim — routes through attributeStore)
+        AgentAccountResolver accountResolver = new AgentAccountResolver(
+            address(ontologyRegistry),
+            address(attributeStore)
+        );
+        attributeAuth.setTrustedWriter(address(accountResolver), true);
         console.log("AgentAccountResolver:", address(accountResolver));
 
         // 16. Agent Universal Resolver (read-only aggregation façade)
@@ -224,6 +265,16 @@ contract Deploy is Script {
 
         AgentNameResolver nameResolver = new AgentNameResolver(nameRegistry);
         console.log("AgentNameResolver:", address(nameResolver));
+
+        // Phase 0.2 — store-backed name resolver. Deployed alongside legacy
+        // (callers migrate progressively; legacy is dropped in Phase 0.6).
+        AgentNameAttributeResolver nameAttributeResolver = new AgentNameAttributeResolver(
+            nameRegistry,
+            address(ontologyRegistry),
+            address(attributeStore)
+        );
+        attributeAuth.setTrustedWriter(address(nameAttributeResolver), true);
+        console.log("AgentNameAttributeResolver:", address(nameAttributeResolver));
 
         AgentNameUniversalResolver nameUniversalResolver = new AgentNameUniversalResolver(
             nameRegistry, nameResolver, accountResolver
@@ -292,6 +343,9 @@ contract Deploy is Script {
         // writes work from block 1. Mirrors the predicates in
         // packages/sdk/src/predicates.ts.
         _seedOntology(ontologyRegistry);
+        _seedPoolOntologyAndShape(ontologyRegistry, shapeRegistry, poolRegistry);
+        _seedFundOntologyAndShape(ontologyRegistry, shapeRegistry, fundRegistry);
+        _seedProposalOntologyAndShape(ontologyRegistry, shapeRegistry, proposalRegistry);
 
         // ─── P-256 verifier (OpenZeppelin-backed) ─────────────────────
         // AgentAccount's P256Verifier library tries:
@@ -339,6 +393,7 @@ contract Deploy is Script {
         _logEnv("AGENT_RELATIONSHIP_QUERY_ADDRESS", address(relQuery));
         _logEnv("AGENT_NAME_REGISTRY_ADDRESS", address(nameRegistry));
         _logEnv("AGENT_NAME_RESOLVER_ADDRESS", address(nameResolver));
+        _logEnv("AGENT_NAME_ATTRIBUTE_RESOLVER_ADDRESS", address(nameAttributeResolver));
         _logEnv("AGENT_NAME_UNIVERSAL_RESOLVER_ADDRESS", address(nameUniversalResolver));
         _logEnv("NAME_SCOPE_ENFORCER_ADDRESS", address(nameScopeEnforcer));
         _logEnv("CREDENTIAL_REGISTRY_CONTRACT_ADDRESS", address(credentialRegistry));
@@ -363,15 +418,399 @@ contract Deploy is Script {
         _logEnv("ALLOCATION_LIMIT_ENFORCER_ADDRESS", address(allocationLimitEnforcer));
         _logEnv("STEWARD_ELIGIBILITY_ENFORCER_ADDRESS", address(stewardEligibilityEnforcer));
         _logEnv("QUORUM_ENFORCER_ADDRESS", address(quorumEnforcer));
+        // Phase 0 foundation
+        _logEnv("ATTRIBUTE_AUTH_ADDRESS", address(attributeAuth));
+        _logEnv("ONTOLOGY_ATTRIBUTE_STORE_ADDRESS", address(attributeStore));
+        _logEnv("SHAPE_REGISTRY_ADDRESS", address(shapeRegistry));
+        _logEnv("POOL_REGISTRY_ADDRESS", address(poolRegistry));
+        _logEnv("FUND_REGISTRY_ADDRESS", address(fundRegistry));
+        _logEnv("PROPOSAL_REGISTRY_ADDRESS", address(proposalRegistry));
     }
 
     function _logEnv(string memory key, address addr) internal pure {
         console.log(string.concat(key, "=", vm.toString(addr)));
     }
 
+    function _seedPoolOntologyAndShape(OntologyTermRegistry ont, ShapeRegistry shapes, PoolRegistry pool) internal {
+        // ─── Pool predicates ────────────────────────────────────────
+        string[12] memory curies = [
+            "sa:poolDomain",
+            "sa:poolGovernanceModel",
+            "sa:poolMandateHash",
+            "sa:poolMandateURI",
+            "sa:poolAcceptedUnits",
+            "sa:poolAcceptedKinds",
+            "sa:poolCeilingPolicy",
+            "sa:poolCapacityCeiling",
+            "sa:poolStewards",
+            "sa:poolVisibility",
+            "sa:poolOpenedAt",
+            "sa:poolClosedAt"
+        ];
+        string[12] memory dtypes = [
+            "bytes32",
+            "bytes32",
+            "bytes32",
+            "string",
+            "bytes32[]",
+            "bytes32[]",
+            "bytes32",
+            "uint256",
+            "address[]",
+            "bytes32",
+            "uint256",
+            "uint256"
+        ];
+        bytes32[] memory ids = new bytes32[](12);
+        string[] memory cd = new string[](12);
+        string[] memory ud = new string[](12);
+        string[] memory ld = new string[](12);
+        string[] memory dd = new string[](12);
+        for (uint256 i = 0; i < 12; i++) {
+            ids[i] = keccak256(bytes(curies[i]));
+            cd[i] = curies[i];
+            ud[i] = string.concat("https://agentictrust.io/ontology/sa#", curies[i]);
+            ld[i] = curies[i];
+            dd[i] = dtypes[i];
+        }
+        ont.registerTermBatch(ids, cd, ud, ld, dd);
+
+        // ─── Enum sets ──────────────────────────────────────────────
+        bytes32 enumGov = keccak256(abi.encodePacked(pool.CLASS_POOL(), pool.SA_POOL_GOVERNANCE_MODEL()));
+        bytes32[] memory govValues = new bytes32[](4);
+        govValues[0] = keccak256("sa:GovDAF");
+        govValues[1] = keccak256("sa:GovGivingCircle");
+        govValues[2] = keccak256("sa:GovFund");
+        govValues[3] = keccak256("sa:GovOpenCall");
+        shapes.defineEnumSet(enumGov, govValues);
+
+        bytes32 enumCeiling = keccak256(abi.encodePacked(pool.CLASS_POOL(), pool.SA_POOL_CEILING_POLICY()));
+        bytes32[] memory ceilingValues = new bytes32[](3);
+        ceilingValues[0] = keccak256("sa:CeilingBlock");
+        ceilingValues[1] = keccak256("sa:CeilingWaitlist");
+        ceilingValues[2] = keccak256("sa:CeilingAccept");
+        shapes.defineEnumSet(enumCeiling, ceilingValues);
+
+        bytes32 enumVis = keccak256(abi.encodePacked(pool.CLASS_POOL(), pool.SA_POOL_VISIBILITY()));
+        bytes32[] memory visValues = new bytes32[](2);
+        visValues[0] = keccak256("sa:VisibilityPublic");
+        visValues[1] = keccak256("sa:VisibilityPrivate");
+        shapes.defineEnumSet(enumVis, visValues);
+
+        // ─── sa:Pool shape ──────────────────────────────────────────
+        ShapeRegistry.PropertyConstraint[] memory props = new ShapeRegistry.PropertyConstraint[](9);
+        props[0] = ShapeRegistry.PropertyConstraint({
+            predicate: pool.SA_POOL_DOMAIN(),
+            expectedDatatype: 5, // DT_BYTES32
+            cardinality: ShapeRegistry.Cardinality.REQUIRED_ONE,
+            enumSetId: bytes32(0),
+            expectedClass: bytes32(0)
+        });
+        props[1] = ShapeRegistry.PropertyConstraint({
+            predicate: pool.SA_POOL_GOVERNANCE_MODEL(),
+            expectedDatatype: 5,
+            cardinality: ShapeRegistry.Cardinality.REQUIRED_ONE,
+            enumSetId: enumGov,
+            expectedClass: bytes32(0)
+        });
+        props[2] = ShapeRegistry.PropertyConstraint({
+            predicate: pool.SA_POOL_MANDATE_HASH(),
+            expectedDatatype: 5,
+            cardinality: ShapeRegistry.Cardinality.REQUIRED_ONE,
+            enumSetId: bytes32(0),
+            expectedClass: bytes32(0)
+        });
+        props[3] = ShapeRegistry.PropertyConstraint({
+            predicate: pool.SA_POOL_ACCEPTED_KINDS(),
+            expectedDatatype: 8, // DT_BYTES32_ARR
+            cardinality: ShapeRegistry.Cardinality.REQUIRED_MANY,
+            enumSetId: bytes32(0),
+            expectedClass: bytes32(0)
+        });
+        props[4] = ShapeRegistry.PropertyConstraint({
+            predicate: pool.SA_POOL_CEILING_POLICY(),
+            expectedDatatype: 5,
+            cardinality: ShapeRegistry.Cardinality.REQUIRED_ONE,
+            enumSetId: enumCeiling,
+            expectedClass: bytes32(0)
+        });
+        props[5] = ShapeRegistry.PropertyConstraint({
+            predicate: pool.SA_POOL_STEWARDS(),
+            expectedDatatype: 7, // DT_ADDRESS_ARR
+            cardinality: ShapeRegistry.Cardinality.REQUIRED_MANY,
+            enumSetId: bytes32(0),
+            expectedClass: bytes32(0)
+        });
+        props[6] = ShapeRegistry.PropertyConstraint({
+            predicate: pool.SA_POOL_VISIBILITY(),
+            expectedDatatype: 5,
+            cardinality: ShapeRegistry.Cardinality.REQUIRED_ONE,
+            enumSetId: enumVis,
+            expectedClass: bytes32(0)
+        });
+        props[7] = ShapeRegistry.PropertyConstraint({
+            predicate: pool.SA_POOL_OPENED_AT(),
+            expectedDatatype: 4, // DT_UINT256
+            cardinality: ShapeRegistry.Cardinality.REQUIRED_ONE,
+            enumSetId: bytes32(0),
+            expectedClass: bytes32(0)
+        });
+        props[8] = ShapeRegistry.PropertyConstraint({
+            predicate: pool.SA_POOL_CAPACITY_CEILING(),
+            expectedDatatype: 4,
+            cardinality: ShapeRegistry.Cardinality.OPTIONAL,
+            enumSetId: bytes32(0),
+            expectedClass: bytes32(0)
+        });
+        shapes.defineShape(
+            pool.CLASS_POOL(),
+            props,
+            "https://agentictrust.io/ontology/tbox/shacl/pool-shapes.ttl#PoolShape",
+            keccak256("PoolShape.v1")
+        );
+    }
+
+    function _seedFundOntologyAndShape(OntologyTermRegistry ont, ShapeRegistry shapes, FundRegistry fund) internal {
+        // ─── Fund + Round predicates ────────────────────────────────
+        string[11] memory curies = [
+            "sa:fundAcceptedKinds",
+            "sa:fundOpenForCalls",
+            "sa:roundFundAgent",
+            "sa:roundDeadline",
+            "sa:roundDecisionDate",
+            "sa:roundReportingCadence",
+            "sa:roundRequiredCredentials",
+            "sa:roundStatus",
+            "sa:roundVisibility",
+            "sa:roundAwardsRoot",
+            "sa:roundDisputeUntil"
+        ];
+        string[11] memory dtypes = [
+            "bytes32[]",
+            "bool",
+            "address",
+            "uint256",
+            "uint256",
+            "bytes32",
+            "bytes32[]",
+            "bytes32",
+            "bytes32",
+            "bytes32",
+            "uint256"
+        ];
+        bytes32[] memory ids = new bytes32[](12);
+        string[] memory cd = new string[](12);
+        string[] memory ud = new string[](12);
+        string[] memory ld = new string[](12);
+        string[] memory dd = new string[](12);
+        for (uint256 i = 0; i < 11; i++) {
+            ids[i] = keccak256(bytes(curies[i]));
+            cd[i] = curies[i];
+            ud[i] = string.concat("https://agentictrust.io/ontology/sa#", curies[i]);
+            ld[i] = curies[i];
+            dd[i] = dtypes[i];
+        }
+        // sa:roundOpenedAt — written by openRound; required uint256
+        ids[11] = keccak256("sa:roundOpenedAt");
+        cd[11] = "sa:roundOpenedAt";
+        ud[11] = "https://agentictrust.io/ontology/sa#roundOpenedAt";
+        ld[11] = "sa:roundOpenedAt";
+        dd[11] = "uint256";
+        ont.registerTermBatch(ids, cd, ud, ld, dd);
+
+        // ─── Round status enum ──────────────────────────────────────
+        bytes32 enumStatus = keccak256(abi.encodePacked(fund.CLASS_ROUND(), fund.SA_ROUND_STATUS()));
+        bytes32[] memory statusValues = new bytes32[](5);
+        statusValues[0] = keccak256("sa:RoundOpen");
+        statusValues[1] = keccak256("sa:RoundReview");
+        statusValues[2] = keccak256("sa:RoundDecided");
+        statusValues[3] = keccak256("sa:RoundClosed");
+        statusValues[4] = keccak256("sa:RoundCanceled");
+        shapes.defineEnumSet(enumStatus, statusValues);
+
+        // ─── Round visibility enum ──────────────────────────────────
+        bytes32 enumVis = keccak256(abi.encodePacked(fund.CLASS_ROUND(), fund.SA_ROUND_VISIBILITY()));
+        bytes32[] memory visValues = new bytes32[](2);
+        visValues[0] = keccak256("sa:VisibilityPublic");
+        visValues[1] = keccak256("sa:VisibilityPrivate");
+        shapes.defineEnumSet(enumVis, visValues);
+
+        // ─── sa:Round shape ─────────────────────────────────────────
+        ShapeRegistry.PropertyConstraint[] memory props = new ShapeRegistry.PropertyConstraint[](7);
+        props[0] = ShapeRegistry.PropertyConstraint({
+            predicate: fund.SA_ROUND_FUND_AGENT(),
+            expectedDatatype: 2, // DT_ADDRESS
+            cardinality: ShapeRegistry.Cardinality.REQUIRED_ONE,
+            enumSetId: bytes32(0),
+            expectedClass: bytes32(0)
+        });
+        props[1] = ShapeRegistry.PropertyConstraint({
+            predicate: fund.SA_ROUND_DEADLINE(),
+            expectedDatatype: 4, // DT_UINT256
+            cardinality: ShapeRegistry.Cardinality.REQUIRED_ONE,
+            enumSetId: bytes32(0),
+            expectedClass: bytes32(0)
+        });
+        props[2] = ShapeRegistry.PropertyConstraint({
+            predicate: fund.SA_ROUND_DECISION_DATE(),
+            expectedDatatype: 4,
+            cardinality: ShapeRegistry.Cardinality.REQUIRED_ONE,
+            enumSetId: bytes32(0),
+            expectedClass: bytes32(0)
+        });
+        props[3] = ShapeRegistry.PropertyConstraint({
+            predicate: fund.SA_ROUND_REPORTING_CADENCE(),
+            expectedDatatype: 5, // DT_BYTES32
+            cardinality: ShapeRegistry.Cardinality.REQUIRED_ONE,
+            enumSetId: bytes32(0),
+            expectedClass: bytes32(0)
+        });
+        props[4] = ShapeRegistry.PropertyConstraint({
+            predicate: fund.SA_ROUND_STATUS(),
+            expectedDatatype: 5,
+            cardinality: ShapeRegistry.Cardinality.REQUIRED_ONE,
+            enumSetId: enumStatus,
+            expectedClass: bytes32(0)
+        });
+        props[5] = ShapeRegistry.PropertyConstraint({
+            predicate: fund.SA_ROUND_VISIBILITY(),
+            expectedDatatype: 5,
+            cardinality: ShapeRegistry.Cardinality.REQUIRED_ONE,
+            enumSetId: enumVis,
+            expectedClass: bytes32(0)
+        });
+        props[6] = ShapeRegistry.PropertyConstraint({
+            predicate: fund.SA_ROUND_OPENED_AT(),
+            expectedDatatype: 4,
+            cardinality: ShapeRegistry.Cardinality.REQUIRED_ONE,
+            enumSetId: bytes32(0),
+            expectedClass: bytes32(0)
+        });
+        shapes.defineShape(
+            fund.CLASS_ROUND(),
+            props,
+            "https://agentictrust.io/ontology/tbox/shacl/round-shapes.ttl#RoundShape",
+            keccak256("RoundShape.v1")
+        );
+    }
+
+    function _seedProposalOntologyAndShape(OntologyTermRegistry ont, ShapeRegistry shapes, ProposalRegistry proposal) internal {
+        // ─── Proposal predicates (PUBLIC FACETS ONLY) ────────────────
+        string[10] memory curies = [
+            "sa:proposalKind",
+            "sa:proposalStatus",
+            "sa:proposalBasedOnIntentId",
+            "sa:proposalRound",
+            "sa:proposalProposer",
+            "sa:proposalRecipient",
+            "sa:proposalTotalAwarded",
+            "sa:proposalAwardedAt",
+            "sa:proposalBodyHash",
+            "sa:proposalAwardingFund"
+        ];
+        string[10] memory dtypes = [
+            "bytes32",
+            "bytes32",
+            "bytes32",
+            "bytes32",
+            "address",
+            "address",
+            "uint256",
+            "uint256",
+            "bytes32",
+            "address"
+        ];
+        bytes32[] memory ids = new bytes32[](10);
+        string[] memory cd = new string[](10);
+        string[] memory ud = new string[](10);
+        string[] memory ld = new string[](10);
+        string[] memory dd = new string[](10);
+        for (uint256 i = 0; i < 10; i++) {
+            ids[i] = keccak256(bytes(curies[i]));
+            cd[i] = curies[i];
+            ud[i] = string.concat("https://agentictrust.io/ontology/sa#", curies[i]);
+            ld[i] = curies[i];
+            dd[i] = dtypes[i];
+        }
+        ont.registerTermBatch(ids, cd, ud, ld, dd);
+
+        // ─── Proposal status enum ───────────────────────────────────
+        // ProposalSubmitted is INTENTIONALLY ABSENT — submitted proposals
+        // never anchor. Body lives in MCP per sa:GrantProposalAlwaysPrivateShape.
+        bytes32 enumStatus = keccak256(abi.encodePacked(
+            proposal.CLASS_PROPOSAL_PUBLIC_FACET(),
+            proposal.SA_PROPOSAL_STATUS()
+        ));
+        bytes32[] memory statusValues = new bytes32[](3);
+        statusValues[0] = keccak256("sa:ProposalAwarded");
+        statusValues[1] = keccak256("sa:ProposalDeclined");
+        statusValues[2] = keccak256("sa:ProposalRescinded");
+        shapes.defineEnumSet(enumStatus, statusValues);
+
+        // ─── sa:GrantProposalPublicFacet shape ──────────────────────
+        ShapeRegistry.PropertyConstraint[] memory props = new ShapeRegistry.PropertyConstraint[](7);
+        props[0] = ShapeRegistry.PropertyConstraint({
+            predicate: proposal.SA_PROPOSAL_KIND(),
+            expectedDatatype: 5, // DT_BYTES32
+            cardinality: ShapeRegistry.Cardinality.REQUIRED_ONE,
+            enumSetId: bytes32(0),
+            expectedClass: bytes32(0)
+        });
+        props[1] = ShapeRegistry.PropertyConstraint({
+            predicate: proposal.SA_PROPOSAL_STATUS(),
+            expectedDatatype: 5,
+            cardinality: ShapeRegistry.Cardinality.REQUIRED_ONE,
+            enumSetId: enumStatus,
+            expectedClass: bytes32(0)
+        });
+        props[2] = ShapeRegistry.PropertyConstraint({
+            predicate: proposal.SA_PROPOSAL_ROUND(),
+            expectedDatatype: 5,
+            cardinality: ShapeRegistry.Cardinality.REQUIRED_ONE,
+            enumSetId: bytes32(0),
+            expectedClass: bytes32(0)
+        });
+        props[3] = ShapeRegistry.PropertyConstraint({
+            predicate: proposal.SA_PROPOSAL_PROPOSER(),
+            expectedDatatype: 2, // DT_ADDRESS
+            cardinality: ShapeRegistry.Cardinality.REQUIRED_ONE,
+            enumSetId: bytes32(0),
+            expectedClass: bytes32(0)
+        });
+        props[4] = ShapeRegistry.PropertyConstraint({
+            predicate: proposal.SA_PROPOSAL_RECIPIENT(),
+            expectedDatatype: 2,
+            cardinality: ShapeRegistry.Cardinality.REQUIRED_ONE,
+            enumSetId: bytes32(0),
+            expectedClass: bytes32(0)
+        });
+        props[5] = ShapeRegistry.PropertyConstraint({
+            predicate: proposal.SA_PROPOSAL_TOTAL_AWARDED(),
+            expectedDatatype: 4, // DT_UINT256
+            cardinality: ShapeRegistry.Cardinality.REQUIRED_ONE,
+            enumSetId: bytes32(0),
+            expectedClass: bytes32(0)
+        });
+        props[6] = ShapeRegistry.PropertyConstraint({
+            predicate: proposal.SA_PROPOSAL_AWARDING_FUND(),
+            expectedDatatype: 2,
+            cardinality: ShapeRegistry.Cardinality.REQUIRED_ONE,
+            enumSetId: bytes32(0),
+            expectedClass: bytes32(0)
+        });
+        shapes.defineShape(
+            proposal.CLASS_PROPOSAL_PUBLIC_FACET(),
+            props,
+            "https://agentictrust.io/ontology/tbox/shacl/proposal-shapes.ttl#GrantProposalPublicFacetShape",
+            keccak256("GrantProposalPublicFacetShape.v1")
+        );
+    }
+
     function _seedOntology(OntologyTermRegistry ont) internal {
         // Single batched call instead of N separate registerTerm txs.
-        string[44] memory curies = [
+        // Phase 0.1: atl:agentType / atl:aiAgentClass moved string→bytes32 to
+        // match the on-chain attribute store; atl:registeredAt added.
+        string[45] memory curies = [
             "atl:displayName", "atl:description", "atl:isActive", "atl:version",
             "atl:agentType", "atl:aiAgentClass", "atl:hasA2AEndpoint", "atl:hasMCPServer",
             "atl:hasServiceEndpoint", "atl:supportedTrustModel", "atl:hasCapability",
@@ -386,11 +825,12 @@ contract Deploy is Script {
             // Phase 5 (geo-overlap.v1) reads city/region/country directly off
             // the agent for the coarse trust score; the precise GeoSPARQL
             // path uses lat/long + GeoFeatureRegistry features.
-            "atl:city", "atl:region", "atl:country"
+            "atl:city", "atl:region", "atl:country",
+            "atl:registeredAt"
         ];
-        string[44] memory dtypes = [
+        string[45] memory dtypes = [
             "string", "string", "bool", "string",
-            "string", "string", "string", "string",
+            "bytes32", "bytes32", "string", "string",
             "string", "string[]", "string[]",
             "address[]", "address", "string", "bytes32",
             "string", "string", "string", "string",
@@ -400,14 +840,15 @@ contract Deploy is Script {
             "string", "string", "string", "string",
             "string", "string", "string", "address",
             "address", "address",
-            "string", "string", "string"
+            "string", "string", "string",
+            "uint256"
         ];
-        bytes32[] memory ids = new bytes32[](44);
-        string[] memory curiesDyn = new string[](44);
-        string[] memory uris = new string[](44);
-        string[] memory labels = new string[](44);
-        string[] memory dtypesDyn = new string[](44);
-        for (uint256 i = 0; i < 44; i++) {
+        bytes32[] memory ids = new bytes32[](45);
+        string[] memory curiesDyn = new string[](45);
+        string[] memory uris = new string[](45);
+        string[] memory labels = new string[](45);
+        string[] memory dtypesDyn = new string[](45);
+        for (uint256 i = 0; i < 45; i++) {
             ids[i] = keccak256(bytes(curies[i]));
             curiesDyn[i] = curies[i];
             uris[i] = string.concat("https://agentictrust.io/ontology/core#", curies[i]);
