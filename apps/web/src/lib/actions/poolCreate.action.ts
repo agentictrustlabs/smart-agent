@@ -113,8 +113,8 @@ export async function createPool(input: CreatePoolInput): Promise<CreatePoolResu
     stewards: input.stewards,
   })
 
-  const { scheduleKbSync } = await import('@/lib/ontology/kb-write-through')
-  scheduleKbSync()
+  const { scheduleKbSyncEager } = await import('@/lib/ontology/kb-write-through')
+  scheduleKbSyncEager()
 
   return {
     poolAgentId: `urn:smart-agent:pool:${input.id}`,

@@ -197,8 +197,8 @@ export async function createDataDelegation(
       metadataURI,
     })
     await confirmRelationship(edgeId)
-    const { scheduleKbSync } = await import('@/lib/ontology/kb-write-through')
-    scheduleKbSync()
+    const { scheduleKbSyncEager } = await import('@/lib/ontology/kb-write-through')
+    scheduleKbSyncEager()
   } catch (err) {
     console.warn('[data-delegation] Edge creation failed:', err)
     // Continue — delegation still works without the edge

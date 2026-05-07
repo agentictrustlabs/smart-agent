@@ -758,11 +758,11 @@ export async function emitPoolsTurtle(): Promise<string> {
   let rows: OrgMcpPoolRow[]
   try {
     rows = db.prepare(`
-      SELECT id, org_principal, name, domain, mandate, governance_model,
+      SELECT id, treasury_address, name,
              accepted_restrictions, accepted_units, capacity_ceiling, ceiling_policy,
-             addressed_members, visibility, stewards,
+             visibility, addressed_members, stewards,
              pledged_total, allocated_total, available_total,
-             created_at, updated_at, treasury_address
+             created_at, updated_at
         FROM pools
     `).all() as OrgMcpPoolRow[]
   } catch {
@@ -812,7 +812,15 @@ export async function emitPoolsTurtle(): Promise<string> {
     }
     try {
       const stewards = JSON.parse(row.stewards) as string[]
-      if (Array.isArray(stewards)) {
+      if (Array.isArray(stewards) && stewards.length > 0) {
+        // First entry is the canonical stewardship agent — the agent the
+        // round-create / cancel-round UI gates against via canManageAgent.
+        const first = stewards[0]
+        if (/^https?:|^urn:/.test(first)) {
+          lines.push(`  sa:stewardshipAgent <${first}> ;`)
+        } else if (/^0x[0-9a-fA-F]{40}$/.test(first)) {
+          lines.push(`  sa:stewardshipAgent <${SA}agent/${first.toLowerCase()}> ;`)
+        }
         for (const s of stewards) {
           if (/^https?:|^urn:/.test(s)) {
             lines.push(`  sa:steward <${s}> ;`)

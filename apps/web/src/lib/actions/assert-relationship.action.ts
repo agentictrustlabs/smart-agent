@@ -2,7 +2,7 @@
 
 import { requireSession } from '@/lib/auth/session'
 import { createRelationship, confirmRelationship } from '@/lib/contracts'
-import { scheduleKbSync } from '@/lib/ontology/kb-write-through'
+import { scheduleKbSyncEager } from '@/lib/ontology/kb-write-through'
 import { db, schema } from '@/db'
 import { eq } from 'drizzle-orm'
 import {
@@ -60,7 +60,7 @@ export async function assertRelationship(
       roles: [input.role],
       relationshipType: input.relationshipType,
     })
-    scheduleKbSync()
+    scheduleKbSyncEager()
 
     // Check if user owns the object agent (created it or has ownership relationship)
     const userOwnsObject = await checkUserOwnsAgent(user.id, input.objectAgentAddress)
@@ -69,7 +69,7 @@ export async function assertRelationship(
       // Auto-confirm: user owns both sides, no counterparty needed
       try {
         await confirmRelationship(edgeId)
-        scheduleKbSync()
+        scheduleKbSyncEager()
 
         return { success: true, edgeId, autoConfirmed: true }
       } catch {

@@ -155,8 +155,8 @@ export async function submitPledge(
   // never propagates and the UI shows the pre-pledge total. Use the
   // debounced scheduler (60s quiet + 30s cooldown) to coalesce
   // burst-y user activity and protect GraphDB from Cloudflare 524s.
-  const { scheduleKbSync } = await import('@/lib/ontology/kb-write-through')
-  scheduleKbSync()
+  const { scheduleKbSyncEager } = await import('@/lib/ontology/kb-write-through')
+  scheduleKbSyncEager()
 
   return result
 }

@@ -88,6 +88,16 @@ export function ExpressIntentForm({ hubId, hubSlug, eligibleAgents }: Props) {
       if (requirementSkill) payload.skill = requirementSkill
       if (requirementRole) payload.role = requirementRole
 
+      // For org-expressed intents, the action requires an explicit
+      // beneficiaryAgent (R16 — no fallback). Eligible agents[0] is always
+      // the user's own person agent, so when they pick an org we default
+      // the beneficiary to themselves: "On behalf of MyOrg, I (the user)
+      // need X" is the common case.
+      const personAgent = eligibleAgents[0]?.address
+      if (personAgent && expressedByAgent.toLowerCase() !== personAgent.toLowerCase()) {
+        payload.beneficiaryAgent = personAgent.toLowerCase()
+      }
+
       const expectedOutcome = outcomeDescription.trim()
         ? {
             description: outcomeDescription.trim(),

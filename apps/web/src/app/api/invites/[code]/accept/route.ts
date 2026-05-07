@@ -101,8 +101,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ cod
           relationshipType: mapping.relType,
         })
         await confirmRelationship(edgeId)
-        const { scheduleKbSync } = await import('@/lib/ontology/kb-write-through')
-        scheduleKbSync()
+        const { scheduleKbSyncEager } = await import('@/lib/ontology/kb-write-through')
+        scheduleKbSyncEager()
       } catch (e) {
         console.warn('Failed to create relationship edge (may already exist):', e)
       }

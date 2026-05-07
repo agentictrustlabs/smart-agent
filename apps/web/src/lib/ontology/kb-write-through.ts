@@ -67,7 +67,31 @@ async function runSync(): Promise<boolean> {
   return result.success
 }
 
+/**
+ * Schedule a debounced sync. Use for non-user-facing burst writes (e.g.,
+ * seed scripts, multi-edge migrations) where coalescing is the goal.
+ *
+ * For user-driven UI actions where the user expects to see their write
+ * reflected on the next page load, prefer `scheduleKbSyncEager()` — it
+ * skips the quiet-after-write debounce and fires as soon as the cooldown
+ * and min-interval allow.
+ */
 export function scheduleKbSync(): void {
+  schedule({ eager: false })
+}
+
+/**
+ * Like `scheduleKbSync()` but skips QUIET_MS — fires immediately if no
+ * sync is in flight and we're past MIN_INTERVAL_MS / COOLDOWN_MS. Use
+ * after user-driven writes (createPool, openRound, etc.) so the
+ * /pools, /rounds index pages reflect the new state on the user's next
+ * navigation without a 2-minute lag.
+ */
+export function scheduleKbSyncEager(): void {
+  schedule({ eager: true })
+}
+
+function schedule(opts: { eager: boolean }): void {
   if (syncDisabled()) return
 
   // If a sync is already running, mark pending so we re-arm when it ends.
@@ -78,7 +102,9 @@ export function scheduleKbSync(): void {
   const sinceStart  = now - lock.lastSyncStartedAt
   const waitForOk    = sinceOk    < COOLDOWN_MS     ? COOLDOWN_MS - sinceOk        : 0
   const waitForStart = sinceStart < MIN_INTERVAL_MS ? MIN_INTERVAL_MS - sinceStart : 0
-  const wait = Math.max(QUIET_MS, waitForOk, waitForStart)
+  // Eager bypasses QUIET_MS but still respects the rate-limit floors.
+  const baseWait = opts.eager ? 0 : QUIET_MS
+  const wait = Math.max(baseWait, waitForOk, waitForStart)
 
   if (lock.timer) clearTimeout(lock.timer)
   lock.timer = setTimeout(() => {
@@ -92,7 +118,7 @@ export function scheduleKbSync(): void {
         lock.inflight = null
         if (lock.pending) {
           lock.pending = false
-          scheduleKbSync()
+          schedule({ eager: false })
         }
       })
   }, wait)

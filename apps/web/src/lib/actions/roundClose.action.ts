@@ -168,8 +168,8 @@ export async function closeRound(input: CloseRoundInput): Promise<CloseRoundResu
     })
   }
 
-  const { scheduleKbSync } = await import('@/lib/ontology/kb-write-through')
-  scheduleKbSync()
+  const { scheduleKbSyncEager } = await import('@/lib/ontology/kb-write-through')
+  scheduleKbSyncEager()
 
   return {
     roundId: fullRoundId,

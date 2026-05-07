@@ -300,12 +300,11 @@ async function main(): Promise<void> {
   const walletClient = createWalletClient({ account, chain: undefined, transport: http(RPC_URL) })
   const publicClient = createPublicClient({ chain: undefined, transport: http(RPC_URL) })
 
-  // 1. Deploy a dedicated fund agent for these rounds.
-  const fundSalt = BigInt(keccak256(toHex('fund:catalyst-noco-funds')))
-  const fundAgent = await deployFundAgent(
-    walletClient, publicClient, sdk.agentAccountFactoryAbi, account.address, fundSalt,
-  )
-  console.log(`[seed-test-round] fund agent → ${fundAgent}`)
+  // 1. Use the catalyst NoCo Network as the fund agent so Maria (governance
+  //    owner of the network) can manage these rounds. The deployer is also
+  //    a co-owner of the network, so registerFund + openRound will succeed.
+  const fundAgent = '0x0F669E6851A15FD0E5904EB197c369C2ab578D9b' as Address
+  console.log(`[seed-test-round] fund agent (catalyst network) → ${fundAgent}`)
 
   const client = new sdk.FundRegistryClient({
     registryAddress: FUND_REGISTRY_ADDR!,

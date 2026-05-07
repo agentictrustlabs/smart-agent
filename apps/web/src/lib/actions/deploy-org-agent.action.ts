@@ -8,7 +8,7 @@ import { agentControlAbi, ORGANIZATION_GOVERNANCE, ROLE_OWNER } from '@smart-age
 import { keccak256, encodePacked } from 'viem'
 import { registerAgentMetadata } from '@/lib/actions/agent-metadata.action'
 import { addAgentController } from '@/lib/agent-resolver'
-import { scheduleKbSync } from '@/lib/ontology/kb-write-through'
+import { scheduleKbSyncEager } from '@/lib/ontology/kb-write-through'
 
 export interface DeployOrgAgentInput {
   name: string
@@ -130,7 +130,7 @@ export async function deployOrgAgent(
           relationshipType: ORGANIZATION_GOVERNANCE,
         })
         await confirmRelationship(edgeId)
-        scheduleKbSync()
+        scheduleKbSyncEager()
       } catch (e) {
         console.warn('Owner edge mint failed (non-fatal):', (e as Error).message)
       }

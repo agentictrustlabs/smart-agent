@@ -97,8 +97,8 @@ export async function openRound(input: OpenRoundInput): Promise<OpenRoundResult>
     addressedApplicants: input.addressedApplicants,
   })
 
-  const { scheduleKbSync } = await import('@/lib/ontology/kb-write-through')
-  scheduleKbSync()
+  const { scheduleKbSyncEager } = await import('@/lib/ontology/kb-write-through')
+  scheduleKbSyncEager()
 
   return {
     roundId: fullId,

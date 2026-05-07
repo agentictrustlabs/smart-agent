@@ -69,8 +69,8 @@ export async function cancelRound(input: CancelRoundInput): Promise<CancelRoundR
     revokedSessionHash: input.revokedSessionHash,
   })
 
-  const { scheduleKbSync } = await import('@/lib/ontology/kb-write-through')
-  scheduleKbSync()
+  const { scheduleKbSyncEager } = await import('@/lib/ontology/kb-write-through')
+  scheduleKbSyncEager()
 
   return {
     roundId: fullRoundId,

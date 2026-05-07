@@ -156,22 +156,50 @@ export function getWalletClient() {
 
   const writeContract = ((args: WriteArgs) =>
     withDeployerLock(async () => {
-      const nonce = await nextDeployerNonce(account.address)
+      const attempt = async (): Promise<unknown> => {
+        const nonce = await nextDeployerNonce(account.address)
+        try {
+          return await originalWriteContract({ ...(args as object), nonce } as never)
+        } catch (err) {
+          rollbackDeployerNonce()
+          throw err
+        }
+      }
       try {
-        return await originalWriteContract({ ...(args as object), nonce } as never)
+        return await attempt()
       } catch (err) {
-        rollbackDeployerNonce()
+        // Nonce desync (e.g., a sibling tool / seed script wrote outside the
+        // cached counter). Roll back already happened in `attempt`'s catch;
+        // the next call will pull fresh from chain. Retry exactly once with
+        // the resynced nonce so the user doesn't see the raw viem error.
+        const msg = err instanceof Error ? err.message : String(err)
+        if (/nonce too low|already known|nonce has already been used/i.test(msg)) {
+          console.warn('[deployer-lock] nonce desync detected; retrying once with fresh nonce')
+          return await attempt()
+        }
         throw err
       }
     }, `writeContract(${(args as { functionName?: string }).functionName ?? '?'})`)) as typeof base.writeContract
 
   const sendTransaction = ((args: SendArgs) =>
     withDeployerLock(async () => {
-      const nonce = await nextDeployerNonce(account.address)
+      const attempt = async (): Promise<unknown> => {
+        const nonce = await nextDeployerNonce(account.address)
+        try {
+          return await originalSendTransaction({ ...(args as object), nonce } as never)
+        } catch (err) {
+          rollbackDeployerNonce()
+          throw err
+        }
+      }
       try {
-        return await originalSendTransaction({ ...(args as object), nonce } as never)
+        return await attempt()
       } catch (err) {
-        rollbackDeployerNonce()
+        const msg = err instanceof Error ? err.message : String(err)
+        if (/nonce too low|already known|nonce has already been used/i.test(msg)) {
+          console.warn('[deployer-lock] nonce desync detected; retrying once with fresh nonce')
+          return await attempt()
+        }
         throw err
       }
     }, 'sendTransaction')) as typeof base.sendTransaction

@@ -55,6 +55,11 @@ if (!POOL_REGISTRY_ADDR) {
   throw new Error('seed-test-pool: POOL_REGISTRY_ADDRESS not set — run scripts/fresh-start.sh first')
 }
 
+// Catalyst NoCo Network — Maria has governance over this; using it as the
+// stewardshipAgent so the round-create UI's canManageAgent gate passes.
+const CATALYST_NETWORK = '0x0F669E6851A15FD0E5904EB197c369C2ab578D9b' as Address
+const CATALYST_NETWORK_IRI = `https://smartagent.io/ontology/core#agent/${CATALYST_NETWORK.toLowerCase()}`
+
 const NOW = new Date().toISOString()
 
 interface PoolSeed {
@@ -212,7 +217,9 @@ async function seedSqlCounters(deployedPools: Array<{ pool: PoolSeed; treasuryAd
         ceiling_policy: pool.ceilingPolicy,
         visibility: 'public',
         addressed_members: null,
-        stewards: JSON.stringify([treasuryAddress]),
+        // Catalyst network as the stewardship agent — Maria has governance over
+      // it, so the round-create UI's canManageAgent gate passes for her.
+      stewards: JSON.stringify([CATALYST_NETWORK_IRI]),
         pledged_total: 0,
         allocated_total: 0,
         available_total: 0,
@@ -252,7 +259,8 @@ ${unitTriples}
       sa:ceilingPolicy "${pool.ceilingPolicy}" ;
       sa:visibility "public" ;
       sa:treasuryAddress "${treasuryAddress}" ;
-      sa:steward <eth:${treasuryAddress.toLowerCase()}> ;
+      sa:stewardshipAgent <${CATALYST_NETWORK_IRI}> ;
+      sa:steward <${CATALYST_NETWORK_IRI}> ;
       sa:acceptsOpenCalls true ;
       sa:pledgedTotal 0 ;
       sa:allocatedTotal 0 ;

@@ -21,7 +21,7 @@
 
 import { redirect, notFound } from 'next/navigation'
 import { db, schema } from '@/db'
-import { and, eq } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { getPersonAgentForUser } from '@/lib/agent-registry'
 import { HUB_SLUG_MAP } from '@/lib/hub-routes'
@@ -38,14 +38,22 @@ interface ViewerIntentOption {
 
 async function loadViewerIntentOptions(
   hubId: string,
-  expressedByAgent: string,
+  viewerAgent: string,
 ): Promise<ViewerIntentOption[]> {
+  // Include both:
+  //   - intents the viewer expressed directly (expressedByAgent = me), AND
+  //   - intents expressed on the viewer's behalf by an org they manage
+  //     (payload.beneficiaryAgent = me)
+  // The second case lets a user draft a proposal against a need their org
+  // expressed for them.
   let rows: Array<{
     id: string
     title: string
     intentType: string | null
     object: string | null
     status: string
+    payload: string | null
+    expressedByAgent: string
   }> = []
   try {
     rows = await db
@@ -55,17 +63,26 @@ async function loadViewerIntentOptions(
         intentType: schema.intents.intentType,
         object: schema.intents.object,
         status: schema.intents.status,
+        payload: schema.intents.payload,
+        expressedByAgent: schema.intents.expressedByAgent,
       })
       .from(schema.intents)
-      .where(and(
-        eq(schema.intents.hubId, hubId),
-        eq(schema.intents.expressedByAgent, expressedByAgent.toLowerCase()),
-      ))
+      .where(eq(schema.intents.hubId, hubId))
   } catch {
     return []
   }
+  const me = viewerAgent.toLowerCase()
   return rows
-    .filter((r) => r.status === 'expressed' || r.status === 'acknowledged')
+    .filter((r) => {
+      if (r.status !== 'expressed' && r.status !== 'acknowledged') return false
+      if (r.expressedByAgent.toLowerCase() === me) return true
+      try {
+        const p = JSON.parse(r.payload ?? '{}') as { beneficiaryAgent?: string }
+        return typeof p.beneficiaryAgent === 'string' && p.beneficiaryAgent.toLowerCase() === me
+      } catch {
+        return false
+      }
+    })
     .map((r) => {
       const intentTypeBare = r.intentType?.split(':').pop() ?? null
       const objectBare = r.object?.split(':').pop() ?? null

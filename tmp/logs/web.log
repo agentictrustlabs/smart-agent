@@ -6004,3 +6004,2208 @@
  POST /h/catalyst/home 200 in 616ms
  POST /h/catalyst/home 200 in 474ms
  POST /h/catalyst/home 200 in 33ms
+ ○ Compiling /h/[hubId]/rounds ...
+ ✓ Compiled /h/[hubId]/rounds in 1332ms (6399 modules)
+ GET /h/catalyst/rounds 200 in 3732ms
+ GET /api/auth/session 200 in 47ms
+ ○ Compiling /h/[hubId]/pools ...
+ ✓ Compiled /h/[hubId]/pools in 846ms (6326 modules)
+ GET /h/catalyst/pools 200 in 5442ms
+ GET /api/auth/session 200 in 45ms
+ GET /h/catalyst/rounds 200 in 393ms
+ GET /api/auth/session 200 in 56ms
+ ○ Compiling /h/[hubId]/rounds/new ...
+ ✓ Compiled /h/[hubId]/rounds/new in 1191ms (6334 modules)
+ GET /h/catalyst/rounds/new 200 in 6266ms
+ GET /api/auth/session 200 in 46ms
+[kb-sync] error: Cannot read properties of undefined (reading 'call')
+ GET /h/catalyst/pools 200 in 2164ms
+ GET /api/auth/session 200 in 47ms
+ ○ Compiling /api/ontology-sync ...
+ ✓ Compiled /api/ontology-sync in 1153ms (4779 modules)
+[ontology-sync] Starting on-chain → GraphDB sync...
+[ontology-sync] Emitted 68 agents. Building combined data-graph turtle...
+[ontology-sync] Data graph uploaded: 68 agents + 0 class assertions + 3 rounds + 0 pools
+ POST /api/ontology-sync 200 in 5110ms
+ ✓ Compiled in 2.5s (6349 modules)
+ GET /h/catalyst/pools 200 in 1459ms
+ ✓ Compiled in 1294ms (6330 modules)
+ GET /h/catalyst/pools 200 in 1589ms
+ ○ Compiling /api/ontology-sync ...
+ ✓ Compiled /api/ontology-sync in 865ms (4779 modules)
+[ontology-sync] Starting on-chain → GraphDB sync...
+ GET /h/catalyst/pools 200 in 185ms
+[ontology-sync] Emitted 68 agents. Building combined data-graph turtle...
+[ontology-sync] Data graph uploaded: 68 agents + 0 class assertions + 3 rounds + 3 pools
+ POST /api/ontology-sync 200 in 4225ms
+[ontology-sync] Starting on-chain → GraphDB sync...
+[ontology-sync] Emitted 68 agents. Building combined data-graph turtle...
+[ontology-sync] Data graph uploaded: 68 agents + 0 class assertions + 3 rounds + 3 pools
+ POST /api/ontology-sync 200 in 2620ms
+ ○ Compiling / ...
+ ✓ Compiled / in 1035ms (4783 modules)
+ GET / 200 in 1368ms
+ ○ Compiling /api/auth/session ...
+ ✓ Compiled /api/auth/session in 1747ms (4849 modules)
+ ✓ Compiled (4851 modules)
+ GET /api/auth/session 200 in 3151ms
+ GET /api/auth/session 200 in 3153ms
+ GET /api/auth/session 200 in 3154ms
+[multiply-seed] Seeding personal Multiply data...
+[multiply-seed] catalyst activities: inserted 111, skipped 0 (already present)
+[mc-seed] training catalog seeded; mc business data now lives in MCPs
+[multiply-seed] Multiply data seeding done
+[seed-mcp] starting MCP demo seed (delegation-only)…
+[seed-mcp] person-mcp totals: {
+  oikos: 0,
+  prayers: 0,
+  training411: 33,
+  cocObeying: 44,
+  preferences: 8,
+  notifications: 0,
+  cocTeaching: 4,
+  bdc: 6,
+  profiles: 0,
+  coaching: 0,
+  privateCoaching: 1,
+  intents: 0
+}
+[seed-mcp] org-mcp: revenue=0 proposals=0
+[seed-mcp] on-chain activities: 0
+[seed-mcp] done
+[demo-seed] Senegal Wolof Outreach not yet on-chain; PG seed deferred to next demo-login
+ POST /api/demo-login 200 in 6468ms
+ GET /api/auth/session 200 in 188ms
+ ○ Compiling /api/user-context ...
+ ✓ Compiled /api/user-context in 1284ms (4853 modules)
+ GET /api/auth/session 200 in 2806ms
+ GET /api/auth/session 200 in 2808ms
+ GET /api/auth/session 200 in 2811ms
+ GET /api/user-context 200 in 3084ms
+ GET /h/catalyst/rounds 200 in 4195ms
+ GET / 200 in 199ms
+[multiply-seed] Seeding personal Multiply data...
+[multiply-seed] catalyst activities: inserted 111, skipped 0 (already present)
+[mc-seed] training catalog seeded; mc business data now lives in MCPs
+[multiply-seed] Multiply data seeding done
+[seed-mcp] starting MCP demo seed (delegation-only)…
+ GET /api/auth/session 200 in 34ms
+ GET /api/auth/session 200 in 63ms
+ GET /api/auth/session 200 in 64ms
+[seed-mcp] person-mcp totals: {
+  oikos: 0,
+  prayers: 0,
+  training411: 33,
+  cocObeying: 44,
+  preferences: 8,
+  notifications: 0,
+  cocTeaching: 4,
+  bdc: 6,
+  profiles: 0,
+  coaching: 0,
+  privateCoaching: 1,
+  intents: 0
+}
+[seed-mcp] org-mcp: revenue=0 proposals=0
+[seed-mcp] on-chain activities: 0
+[seed-mcp] done
+[demo-seed] Senegal Wolof Outreach not yet on-chain; PG seed deferred to next demo-login
+ POST /api/demo-login 200 in 2469ms
+ GET /api/auth/session 200 in 486ms
+ GET /api/auth/session 200 in 537ms
+ GET /api/auth/session 200 in 550ms
+ GET /api/auth/session 200 in 552ms
+ GET /api/user-context 200 in 644ms
+ GET /h/catalyst/pools 200 in 3280ms
+ GET / 200 in 95ms
+ GET /api/auth/session 200 in 36ms
+ GET /api/auth/session 200 in 64ms
+ GET /api/auth/session 200 in 75ms
+[multiply-seed] Seeding personal Multiply data...
+[multiply-seed] catalyst activities: inserted 111, skipped 0 (already present)
+[mc-seed] training catalog seeded; mc business data now lives in MCPs
+[multiply-seed] Multiply data seeding done
+[seed-mcp] starting MCP demo seed (delegation-only)…
+[seed-mcp] person-mcp totals: {
+  oikos: 0,
+  prayers: 0,
+  training411: 33,
+  cocObeying: 44,
+  preferences: 8,
+  notifications: 0,
+  cocTeaching: 4,
+  bdc: 6,
+  profiles: 0,
+  coaching: 0,
+  privateCoaching: 1,
+  intents: 0
+}
+[seed-mcp] org-mcp: revenue=0 proposals=0
+[seed-mcp] on-chain activities: 0
+[seed-mcp] done
+[demo-seed] Senegal Wolof Outreach not yet on-chain; PG seed deferred to next demo-login
+ POST /api/demo-login 200 in 2394ms
+ GET /h/catalyst/home 200 in 1936ms
+ GET /api/auth/session 200 in 55ms
+ GET /api/auth/session 200 in 98ms
+ GET /api/auth/session 200 in 100ms
+ GET /api/auth/session 200 in 112ms
+ GET /api/user-context 200 in 205ms
+ POST /h/catalyst/home 200 in 1489ms
+ POST /h/catalyst/home 200 in 380ms
+ POST /h/catalyst/home 200 in 61ms
+ POST /h/catalyst/home 200 in 81ms
+ POST /h/catalyst/home 200 in 375ms
+ POST /h/catalyst/home 200 in 55ms
+ GET / 200 in 67ms
+[multiply-seed] Seeding personal Multiply data...
+[multiply-seed] catalyst activities: inserted 111, skipped 0 (already present)
+[mc-seed] training catalog seeded; mc business data now lives in MCPs
+[multiply-seed] Multiply data seeding done
+[seed-mcp] starting MCP demo seed (delegation-only)…
+ GET /api/auth/session 200 in 42ms
+ GET /api/auth/session 200 in 70ms
+ GET /api/auth/session 200 in 71ms
+[seed-mcp] person-mcp totals: {
+  oikos: 0,
+  prayers: 0,
+  training411: 33,
+  cocObeying: 44,
+  preferences: 8,
+  notifications: 0,
+  cocTeaching: 4,
+  bdc: 6,
+  profiles: 0,
+  coaching: 0,
+  privateCoaching: 1,
+  intents: 0
+}
+[seed-mcp] org-mcp: revenue=0 proposals=0
+[seed-mcp] on-chain activities: 0
+[seed-mcp] done
+[demo-seed] Senegal Wolof Outreach not yet on-chain; PG seed deferred to next demo-login
+ POST /api/demo-login 200 in 2255ms
+ ○ Compiling /h/[hubId]/rounds/[roundId] ...
+ ✓ Compiled /h/[hubId]/rounds/[roundId] in 1802ms (6405 modules)
+ GET /h/catalyst/rounds/demo-trauma-care-q2 200 in 3983ms
+ GET /api/auth/session 200 in 43ms
+ GET /api/auth/session 200 in 96ms
+ GET /api/auth/session 200 in 98ms
+ GET /api/auth/session 200 in 100ms
+ GET /api/user-context 200 in 200ms
+ GET / 200 in 80ms
+[multiply-seed] Seeding personal Multiply data...
+[multiply-seed] catalyst activities: inserted 111, skipped 0 (already present)
+[mc-seed] training catalog seeded; mc business data now lives in MCPs
+[multiply-seed] Multiply data seeding done
+[seed-mcp] starting MCP demo seed (delegation-only)…
+ GET /api/auth/session 200 in 40ms
+ GET /api/auth/session 200 in 67ms
+ GET /api/auth/session 200 in 69ms
+[seed-mcp] person-mcp totals: {
+  oikos: 0,
+  prayers: 0,
+  training411: 33,
+  cocObeying: 44,
+  preferences: 8,
+  notifications: 0,
+  cocTeaching: 4,
+  bdc: 6,
+  profiles: 0,
+  coaching: 0,
+  privateCoaching: 1,
+  intents: 0
+}
+[seed-mcp] org-mcp: revenue=0 proposals=0
+[seed-mcp] on-chain activities: 0
+[seed-mcp] done
+[demo-seed] Senegal Wolof Outreach not yet on-chain; PG seed deferred to next demo-login
+ POST /api/demo-login 200 in 3043ms
+ ○ Compiling /h/[hubId]/pools/new ...
+ ✓ Compiled /h/[hubId]/pools/new in 979ms (6413 modules)
+ GET /h/catalyst/pools/new 200 in 2865ms
+ GET /api/auth/session 200 in 59ms
+ GET /api/auth/session 200 in 112ms
+ GET /api/auth/session 200 in 141ms
+ GET /api/auth/session 200 in 143ms
+ GET /api/user-context 200 in 227ms
+ GET / 200 in 85ms
+[multiply-seed] Seeding personal Multiply data...
+[multiply-seed] catalyst activities: inserted 111, skipped 0 (already present)
+[mc-seed] training catalog seeded; mc business data now lives in MCPs
+[multiply-seed] Multiply data seeding done
+[seed-mcp] starting MCP demo seed (delegation-only)…
+ GET /api/auth/session 200 in 40ms
+ GET /api/auth/session 200 in 68ms
+ GET /api/auth/session 200 in 70ms
+[seed-mcp] person-mcp totals: {
+  oikos: 0,
+  prayers: 0,
+  training411: 33,
+  cocObeying: 44,
+  preferences: 8,
+  notifications: 0,
+  cocTeaching: 4,
+  bdc: 6,
+  profiles: 0,
+  coaching: 0,
+  privateCoaching: 1,
+  intents: 0
+}
+[seed-mcp] org-mcp: revenue=0 proposals=0
+[seed-mcp] on-chain activities: 0
+[seed-mcp] done
+[demo-seed] Senegal Wolof Outreach not yet on-chain; PG seed deferred to next demo-login
+ POST /api/demo-login 200 in 2617ms
+ GET /api/auth/session 200 in 276ms
+ GET /api/auth/session 200 in 341ms
+ GET /api/auth/session 200 in 343ms
+ GET /api/auth/session 200 in 343ms
+ GET /api/user-context 200 in 426ms
+ GET /h/catalyst/rounds/new 200 in 2556ms
+ GET / 200 in 61ms
+[multiply-seed] Seeding personal Multiply data...
+[multiply-seed] catalyst activities: inserted 111, skipped 0 (already present)
+[mc-seed] training catalog seeded; mc business data now lives in MCPs
+[multiply-seed] Multiply data seeding done
+[seed-mcp] starting MCP demo seed (delegation-only)…
+ GET /api/auth/session 200 in 43ms
+ GET /api/auth/session 200 in 73ms
+ GET /api/auth/session 200 in 74ms
+[seed-mcp] person-mcp totals: {
+  oikos: 0,
+  prayers: 0,
+  training411: 33,
+  cocObeying: 44,
+  preferences: 8,
+  notifications: 0,
+  cocTeaching: 4,
+  bdc: 6,
+  profiles: 0,
+  coaching: 0,
+  privateCoaching: 1,
+  intents: 0
+}
+[seed-mcp] org-mcp: revenue=0 proposals=0
+[seed-mcp] on-chain activities: 0
+[seed-mcp] done
+[demo-seed] Senegal Wolof Outreach not yet on-chain; PG seed deferred to next demo-login
+ POST /api/demo-login 200 in 2282ms
+ GET /api/auth/session 200 in 603ms
+ GET /api/auth/session 200 in 673ms
+ GET /api/auth/session 200 in 673ms
+ GET /api/auth/session 200 in 673ms
+ GET /api/user-context 200 in 756ms
+ GET /h/catalyst/rounds 200 in 2045ms
+[ontology-sync] Starting on-chain → GraphDB sync...
+[ontology-sync] Emitted 68 agents. Building combined data-graph turtle...
+[ontology-sync] Data graph uploaded: 68 agents + 0 class assertions + 3 rounds + 3 pools
+ POST /api/ontology-sync 200 in 1992ms
+ GET / 200 in 77ms
+[multiply-seed] Seeding personal Multiply data...
+[multiply-seed] catalyst activities: inserted 111, skipped 0 (already present)
+[mc-seed] training catalog seeded; mc business data now lives in MCPs
+[multiply-seed] Multiply data seeding done
+[seed-mcp] starting MCP demo seed (delegation-only)…
+ GET /api/auth/session 200 in 55ms
+ GET /api/auth/session 200 in 87ms
+ GET /api/auth/session 200 in 87ms
+[seed-mcp] person-mcp totals: {
+  oikos: 0,
+  prayers: 0,
+  training411: 33,
+  cocObeying: 44,
+  preferences: 8,
+  notifications: 0,
+  cocTeaching: 4,
+  bdc: 6,
+  profiles: 0,
+  coaching: 0,
+  privateCoaching: 1,
+  intents: 0
+}
+[seed-mcp] org-mcp: revenue=0 proposals=0
+[seed-mcp] on-chain activities: 0
+[seed-mcp] done
+[demo-seed] Senegal Wolof Outreach not yet on-chain; PG seed deferred to next demo-login
+ POST /api/demo-login 200 in 2399ms
+ ○ Compiling /h/[hubId]/discover ...
+ ✓ Compiled /h/[hubId]/discover in 2.2s (6427 modules)
+ GET /api/auth/session 200 in 37ms
+ GET /api/auth/session 200 in 96ms
+ GET /api/auth/session 200 in 98ms
+ GET /api/auth/session 200 in 99ms
+ GET /api/user-context 200 in 211ms
+ GET /h/catalyst/discover 200 in 11417ms
+ GET / 200 in 81ms
+[multiply-seed] Seeding personal Multiply data...
+[multiply-seed] catalyst activities: inserted 111, skipped 0 (already present)
+[mc-seed] training catalog seeded; mc business data now lives in MCPs
+[multiply-seed] Multiply data seeding done
+[seed-mcp] starting MCP demo seed (delegation-only)…
+ GET /api/auth/session 200 in 41ms
+ GET /api/auth/session 200 in 74ms
+ GET /api/auth/session 200 in 75ms
+[seed-mcp] person-mcp totals: {
+  oikos: 0,
+  prayers: 0,
+  training411: 33,
+  cocObeying: 44,
+  preferences: 8,
+  notifications: 0,
+  cocTeaching: 4,
+  bdc: 6,
+  profiles: 0,
+  coaching: 0,
+  privateCoaching: 1,
+  intents: 0
+}
+[seed-mcp] org-mcp: revenue=0 proposals=0
+[seed-mcp] on-chain activities: 0
+[seed-mcp] done
+[demo-seed] Senegal Wolof Outreach not yet on-chain; PG seed deferred to next demo-login
+ POST /api/demo-login 200 in 2875ms
+ GET /api/auth/session 200 in 587ms
+ GET /api/auth/session 200 in 669ms
+ GET /api/auth/session 200 in 683ms
+ GET /api/auth/session 200 in 684ms
+ GET /api/user-context 200 in 753ms
+ GET /h/catalyst/rounds 200 in 2248ms
+ GET / 200 in 62ms
+[multiply-seed] Seeding personal Multiply data...
+[multiply-seed] catalyst activities: inserted 111, skipped 0 (already present)
+[mc-seed] training catalog seeded; mc business data now lives in MCPs
+[multiply-seed] Multiply data seeding done
+[seed-mcp] starting MCP demo seed (delegation-only)…
+ GET /api/auth/session 200 in 103ms
+ GET /api/auth/session 200 in 139ms
+ GET /api/auth/session 200 in 94ms
+[seed-mcp] person-mcp totals: {
+  oikos: 0,
+  prayers: 0,
+  training411: 33,
+  cocObeying: 44,
+  preferences: 8,
+  notifications: 0,
+  cocTeaching: 4,
+  bdc: 6,
+  profiles: 0,
+  coaching: 0,
+  privateCoaching: 1,
+  intents: 0
+}
+[seed-mcp] org-mcp: revenue=0 proposals=0
+[seed-mcp] on-chain activities: 0
+[seed-mcp] done
+[demo-seed] Senegal Wolof Outreach not yet on-chain; PG seed deferred to next demo-login
+ POST /api/demo-login 200 in 2351ms
+ GET /h/catalyst/rounds/demo-trauma-care-q2 200 in 251ms
+ GET /api/auth/session 200 in 484ms
+ GET /api/auth/session 200 in 551ms
+ GET /api/auth/session 200 in 553ms
+ GET /api/auth/session 200 in 554ms
+ GET /api/user-context 200 in 629ms
+ GET / 200 in 81ms
+[multiply-seed] Seeding personal Multiply data...
+[multiply-seed] catalyst activities: inserted 111, skipped 0 (already present)
+[mc-seed] training catalog seeded; mc business data now lives in MCPs
+[multiply-seed] Multiply data seeding done
+[seed-mcp] starting MCP demo seed (delegation-only)…
+ GET /api/auth/session 200 in 47ms
+ GET /api/auth/session 200 in 82ms
+ GET /api/auth/session 200 in 84ms
+[seed-mcp] person-mcp totals: {
+  oikos: 0,
+  prayers: 0,
+  training411: 33,
+  cocObeying: 44,
+  preferences: 8,
+  notifications: 0,
+  cocTeaching: 4,
+  bdc: 6,
+  profiles: 0,
+  coaching: 0,
+  privateCoaching: 1,
+  intents: 0
+}
+[seed-mcp] org-mcp: revenue=0 proposals=0
+[seed-mcp] on-chain activities: 0
+[seed-mcp] done
+[demo-seed] Senegal Wolof Outreach not yet on-chain; PG seed deferred to next demo-login
+ POST /api/demo-login 200 in 2274ms
+ ○ Compiling /h/[hubId]/rounds/[roundId]/apply ...
+ ✓ Compiled /h/[hubId]/rounds/[roundId]/apply in 1989ms (6356 modules)
+ GET / 200 in 1519ms
+ GET /h/catalyst/pools 200 in 1513ms
+ GET /h/catalyst/rounds/demo-trauma-care-q2/apply 200 in 4362ms
+ GET /api/auth/session 200 in 47ms
+ GET /api/auth/session 200 in 141ms
+ GET /api/auth/session 200 in 142ms
+ GET /api/auth/session 200 in 143ms
+ GET /api/user-context 200 in 231ms
+ GET / 200 in 61ms
+[multiply-seed] Seeding personal Multiply data...
+[multiply-seed] catalyst activities: inserted 111, skipped 0 (already present)
+[mc-seed] training catalog seeded; mc business data now lives in MCPs
+[multiply-seed] Multiply data seeding done
+[seed-mcp] starting MCP demo seed (delegation-only)…
+ GET /api/auth/session 200 in 53ms
+ GET /api/auth/session 200 in 90ms
+ GET /api/auth/session 200 in 92ms
+[seed-mcp] person-mcp totals: {
+  oikos: 0,
+  prayers: 0,
+  training411: 33,
+  cocObeying: 44,
+  preferences: 8,
+  notifications: 0,
+  cocTeaching: 4,
+  bdc: 6,
+  profiles: 0,
+  coaching: 0,
+  privateCoaching: 1,
+  intents: 0
+}
+[seed-mcp] org-mcp: revenue=0 proposals=0
+[seed-mcp] on-chain activities: 0
+[seed-mcp] done
+[demo-seed] Senegal Wolof Outreach not yet on-chain; PG seed deferred to next demo-login
+ POST /api/demo-login 200 in 2408ms
+ ○ Compiling /h/[hubId]/proposals ...
+ ✓ Compiled /h/[hubId]/proposals in 1033ms (6359 modules)
+ GET /h/catalyst/proposals 200 in 3835ms
+ GET /api/auth/session 200 in 58ms
+ GET /api/auth/session 200 in 135ms
+ GET /api/auth/session 200 in 138ms
+ GET /api/auth/session 200 in 140ms
+ GET /api/user-context 200 in 240ms
+ GET / 200 in 75ms
+[multiply-seed] Seeding personal Multiply data...
+[multiply-seed] catalyst activities: inserted 111, skipped 0 (already present)
+[mc-seed] training catalog seeded; mc business data now lives in MCPs
+[multiply-seed] Multiply data seeding done
+[seed-mcp] starting MCP demo seed (delegation-only)…
+ GET /api/auth/session 200 in 45ms
+ GET /api/auth/session 200 in 95ms
+ GET /api/auth/session 200 in 96ms
+[seed-mcp] person-mcp totals: {
+  oikos: 0,
+  prayers: 0,
+  training411: 33,
+  cocObeying: 44,
+  preferences: 8,
+  notifications: 0,
+  cocTeaching: 4,
+  bdc: 6,
+  profiles: 0,
+  coaching: 0,
+  privateCoaching: 1,
+  intents: 0
+}
+[seed-mcp] org-mcp: revenue=0 proposals=0
+[seed-mcp] on-chain activities: 0
+[seed-mcp] done
+[demo-seed] Senegal Wolof Outreach not yet on-chain; PG seed deferred to next demo-login
+ POST /api/demo-login 200 in 2427ms
+ GET /api/auth/session 200 in 591ms
+ GET /api/auth/session 200 in 687ms
+ GET /api/auth/session 200 in 688ms
+ GET /api/auth/session 200 in 690ms
+ GET /api/user-context 200 in 763ms
+ GET /h/catalyst/pools 200 in 2587ms
+ GET / 200 in 71ms
+[multiply-seed] Seeding personal Multiply data...
+[multiply-seed] catalyst activities: inserted 111, skipped 0 (already present)
+[mc-seed] training catalog seeded; mc business data now lives in MCPs
+[multiply-seed] Multiply data seeding done
+[seed-mcp] starting MCP demo seed (delegation-only)…
+ GET /api/auth/session 200 in 50ms
+ GET /api/auth/session 200 in 100ms
+ GET /api/auth/session 200 in 102ms
+[seed-mcp] person-mcp totals: {
+  oikos: 0,
+  prayers: 0,
+  training411: 33,
+  cocObeying: 44,
+  preferences: 8,
+  notifications: 0,
+  cocTeaching: 4,
+  bdc: 6,
+  profiles: 0,
+  coaching: 0,
+  privateCoaching: 1,
+  intents: 0
+}
+[seed-mcp] org-mcp: revenue=0 proposals=0
+[seed-mcp] on-chain activities: 0
+[seed-mcp] done
+[demo-seed] Senegal Wolof Outreach not yet on-chain; PG seed deferred to next demo-login
+ POST /api/demo-login 200 in 2270ms
+ ○ Compiling /h/[hubId]/pledges ...
+ ✓ Compiled /h/[hubId]/pledges in 1054ms (6358 modules)
+ GET /h/catalyst/pledges 200 in 3117ms
+ GET /api/auth/session 200 in 48ms
+ GET /api/auth/session 200 in 131ms
+ GET /api/auth/session 200 in 132ms
+ GET /api/auth/session 200 in 134ms
+ GET /api/user-context 200 in 219ms
+ GET / 200 in 71ms
+[multiply-seed] Seeding personal Multiply data...
+[multiply-seed] catalyst activities: inserted 111, skipped 0 (already present)
+[mc-seed] training catalog seeded; mc business data now lives in MCPs
+[multiply-seed] Multiply data seeding done
+[seed-mcp] starting MCP demo seed (delegation-only)…
+ GET /api/auth/session 200 in 61ms
+ GET /api/auth/session 200 in 94ms
+ GET /api/auth/session 200 in 94ms
+[seed-mcp] person-mcp totals: {
+  oikos: 0,
+  prayers: 0,
+  training411: 33,
+  cocObeying: 44,
+  preferences: 8,
+  notifications: 0,
+  cocTeaching: 4,
+  bdc: 6,
+  profiles: 0,
+  coaching: 0,
+  privateCoaching: 1,
+  intents: 0
+}
+[seed-mcp] org-mcp: revenue=0 proposals=0
+[seed-mcp] on-chain activities: 0
+[seed-mcp] done
+[demo-seed] Senegal Wolof Outreach not yet on-chain; PG seed deferred to next demo-login
+ POST /api/demo-login 200 in 2284ms
+ ○ Compiling /h/[hubId]/intents ...
+ ✓ Compiled /h/[hubId]/intents in 1159ms (6367 modules)
+ GET /h/catalyst/intents 200 in 3060ms
+ GET /api/auth/session 200 in 64ms
+ GET /api/auth/session 200 in 154ms
+ GET /api/auth/session 200 in 156ms
+ GET /api/auth/session 200 in 157ms
+ GET /api/user-context 200 in 236ms
+ GET / 200 in 794ms
+[multiply-seed] Seeding personal Multiply data...
+[multiply-seed] catalyst activities: inserted 111, skipped 0 (already present)
+[mc-seed] training catalog seeded; mc business data now lives in MCPs
+[multiply-seed] Multiply data seeding done
+[seed-mcp] starting MCP demo seed (delegation-only)…
+ GET /api/auth/session 200 in 163ms
+ GET /api/auth/session 200 in 197ms
+ GET /api/auth/session 200 in 198ms
+[seed-mcp] person-mcp totals: {
+  oikos: 0,
+  prayers: 0,
+  training411: 33,
+  cocObeying: 44,
+  preferences: 8,
+  notifications: 0,
+  cocTeaching: 4,
+  bdc: 6,
+  profiles: 0,
+  coaching: 0,
+  privateCoaching: 1,
+  intents: 0
+}
+[seed-mcp] org-mcp: revenue=0 proposals=0
+[seed-mcp] on-chain activities: 0
+[seed-mcp] done
+[demo-seed] Senegal Wolof Outreach not yet on-chain; PG seed deferred to next demo-login
+ POST /api/demo-login 200 in 2430ms
+ ○ Compiling /h/[hubId]/intents/[id] ...
+ ✓ Compiled /h/[hubId]/intents/[id] in 1320ms (6375 modules)
+ GET /api/auth/session 200 in 46ms
+ GET /api/auth/session 200 in 115ms
+ GET /api/auth/session 200 in 117ms
+ GET /api/auth/session 200 in 119ms
+ GET /api/user-context 200 in 292ms
+ GET /h/catalyst/intents/demo-maria-need-trauma-coaching 200 in 4394ms
+ GET / 200 in 87ms
+[multiply-seed] Seeding personal Multiply data...
+[multiply-seed] catalyst activities: inserted 111, skipped 0 (already present)
+[mc-seed] training catalog seeded; mc business data now lives in MCPs
+[multiply-seed] Multiply data seeding done
+[seed-mcp] starting MCP demo seed (delegation-only)…
+ GET /api/auth/session 200 in 59ms
+ GET /api/auth/session 200 in 103ms
+ GET /api/auth/session 200 in 104ms
+[seed-mcp] person-mcp totals: {
+  oikos: 0,
+  prayers: 0,
+  training411: 33,
+  cocObeying: 44,
+  preferences: 8,
+  notifications: 0,
+  cocTeaching: 4,
+  bdc: 6,
+  profiles: 0,
+  coaching: 0,
+  privateCoaching: 1,
+  intents: 0
+}
+[seed-mcp] org-mcp: revenue=0 proposals=0
+[seed-mcp] on-chain activities: 0
+[seed-mcp] done
+[demo-seed] Senegal Wolof Outreach not yet on-chain; PG seed deferred to next demo-login
+ POST /api/demo-login 200 in 3132ms
+ ○ Compiling /h/[hubId]/home ...
+ ✓ Compiled /h/[hubId]/home in 2.4s (4890 modules)
+ GET /h/catalyst/pools 200 in 1502ms
+ GET /h/catalyst/home 200 in 6273ms
+ GET /api/auth/session 200 in 396ms
+ GET /api/auth/session 200 in 501ms
+ GET /api/auth/session 200 in 503ms
+ GET /api/auth/session 200 in 505ms
+ GET /api/user-context 200 in 585ms
+ POST /h/catalyst/home 200 in 1184ms
+ POST /h/catalyst/home 200 in 440ms
+ POST /h/catalyst/home 200 in 53ms
+ POST /h/catalyst/home 200 in 504ms
+ POST /h/catalyst/home 200 in 338ms
+ POST /h/catalyst/home 200 in 64ms
+ GET / 200 in 103ms
+[multiply-seed] Seeding personal Multiply data...
+[multiply-seed] catalyst activities: inserted 111, skipped 0 (already present)
+[mc-seed] training catalog seeded; mc business data now lives in MCPs
+[multiply-seed] Multiply data seeding done
+[seed-mcp] starting MCP demo seed (delegation-only)…
+ GET /api/auth/session 200 in 48ms
+ GET /api/auth/session 200 in 98ms
+ GET /api/auth/session 200 in 99ms
+[seed-mcp] person-mcp totals: {
+  oikos: 0,
+  prayers: 0,
+  training411: 33,
+  cocObeying: 44,
+  preferences: 8,
+  notifications: 0,
+  cocTeaching: 4,
+  bdc: 6,
+  profiles: 0,
+  coaching: 0,
+  privateCoaching: 1,
+  intents: 0
+}
+[seed-mcp] org-mcp: revenue=0 proposals=0
+[seed-mcp] on-chain activities: 0
+[seed-mcp] done
+[demo-seed] Senegal Wolof Outreach not yet on-chain; PG seed deferred to next demo-login
+ POST /api/demo-login 200 in 2436ms
+ GET /h/catalyst/rounds/demo-trauma-care-q2 200 in 364ms
+ GET /api/auth/session 200 in 578ms
+ GET /api/auth/session 200 in 689ms
+ GET /api/auth/session 200 in 691ms
+ GET /api/auth/session 200 in 692ms
+ GET /api/user-context 200 in 758ms
+ GET / 200 in 67ms
+[multiply-seed] Seeding personal Multiply data...
+[multiply-seed] catalyst activities: inserted 111, skipped 0 (already present)
+[mc-seed] training catalog seeded; mc business data now lives in MCPs
+[multiply-seed] Multiply data seeding done
+[seed-mcp] starting MCP demo seed (delegation-only)…
+ GET /api/auth/session 200 in 58ms
+ GET /api/auth/session 200 in 97ms
+ GET /api/auth/session 200 in 98ms
+[seed-mcp] person-mcp totals: {
+  oikos: 0,
+  prayers: 0,
+  training411: 33,
+  cocObeying: 44,
+  preferences: 8,
+  notifications: 0,
+  cocTeaching: 4,
+  bdc: 6,
+  profiles: 0,
+  coaching: 0,
+  privateCoaching: 1,
+  intents: 0
+}
+[seed-mcp] org-mcp: revenue=0 proposals=0
+[seed-mcp] on-chain activities: 0
+[seed-mcp] done
+[demo-seed] Senegal Wolof Outreach not yet on-chain; PG seed deferred to next demo-login
+ POST /api/demo-login 200 in 2311ms
+ ○ Compiling /h/[hubId]/rounds/[roundId]/proposals ...
+ ✓ Compiled /h/[hubId]/rounds/[roundId]/proposals in 2.2s (6453 modules)
+ GET / 200 in 2344ms
+ GET /h/catalyst/pools 200 in 2358ms
+ GET /h/catalyst/rounds/demo-trauma-care-q2/proposals 200 in 5032ms
+ GET /api/auth/session 200 in 54ms
+ GET /api/auth/session 200 in 123ms
+ GET /api/auth/session 200 in 125ms
+ GET /api/auth/session 200 in 127ms
+ GET /api/user-context 200 in 233ms
+ ○ Compiling /api/ontology-sync ...
+ ✓ Compiled /api/ontology-sync in 999ms (4866 modules)
+[ontology-sync] Starting on-chain → GraphDB sync...
+[ontology-sync] Emitted 68 agents. Building combined data-graph turtle...
+[ontology-sync] Data graph uploaded: 68 agents + 0 class assertions + 3 rounds + 3 pools
+ POST /api/ontology-sync 200 in 4097ms
+ GET / 200 in 191ms
+ GET /api/auth/session 200 in 70ms
+ GET /api/auth/session 200 in 117ms
+ GET /api/auth/session 200 in 118ms
+[multiply-seed] Seeding personal Multiply data...
+[multiply-seed] catalyst activities: inserted 111, skipped 0 (already present)
+[mc-seed] training catalog seeded; mc business data now lives in MCPs
+[multiply-seed] Multiply data seeding done
+[seed-mcp] starting MCP demo seed (delegation-only)…
+[seed-mcp] person-mcp totals: {
+  oikos: 0,
+  prayers: 0,
+  training411: 33,
+  cocObeying: 44,
+  preferences: 8,
+  notifications: 0,
+  cocTeaching: 4,
+  bdc: 6,
+  profiles: 0,
+  coaching: 0,
+  privateCoaching: 1,
+  intents: 0
+}
+[seed-mcp] org-mcp: revenue=0 proposals=0
+[seed-mcp] on-chain activities: 0
+[seed-mcp] done
+[demo-seed] Senegal Wolof Outreach not yet on-chain; PG seed deferred to next demo-login
+ POST /api/demo-login 200 in 3749ms
+ GET /h/catalyst/rounds/demo-trauma-care-q2/proposals 200 in 412ms
+ GET /api/auth/session 200 in 56ms
+ GET /api/auth/session 200 in 154ms
+ GET /api/auth/session 200 in 156ms
+ GET /api/auth/session 200 in 158ms
+ GET /api/user-context 200 in 245ms
+[ontology-sync] Starting on-chain → GraphDB sync...
+[ontology-sync] Emitted 68 agents. Building combined data-graph turtle...
+[ontology-sync] Data graph uploaded: 68 agents + 0 class assertions + 3 rounds + 3 pools
+ POST /api/ontology-sync 200 in 2172ms
+ GET / 200 in 90ms
+[multiply-seed] Seeding personal Multiply data...
+[multiply-seed] catalyst activities: inserted 111, skipped 0 (already present)
+[mc-seed] training catalog seeded; mc business data now lives in MCPs
+[multiply-seed] Multiply data seeding done
+[seed-mcp] starting MCP demo seed (delegation-only)…
+ GET /api/auth/session 200 in 48ms
+ GET /api/auth/session 200 in 98ms
+ GET /api/auth/session 200 in 99ms
+[seed-mcp] person-mcp totals: {
+  oikos: 0,
+  prayers: 0,
+  training411: 33,
+  cocObeying: 44,
+  preferences: 8,
+  notifications: 0,
+  cocTeaching: 4,
+  bdc: 6,
+  profiles: 0,
+  coaching: 0,
+  privateCoaching: 1,
+  intents: 0
+}
+[seed-mcp] org-mcp: revenue=0 proposals=0
+[seed-mcp] on-chain activities: 0
+[seed-mcp] done
+[demo-seed] Senegal Wolof Outreach not yet on-chain; PG seed deferred to next demo-login
+ POST /api/demo-login 200 in 2444ms
+ ○ Compiling /h/[hubId]/pools/new ...
+ ✓ Compiled /h/[hubId]/pools/new in 825ms (4855 modules)
+ GET /h/catalyst/pools/new 200 in 3273ms
+ GET /api/auth/session 200 in 51ms
+ GET /api/auth/session 200 in 133ms
+ GET /api/auth/session 200 in 177ms
+ GET /api/auth/session 200 in 180ms
+ GET /api/user-context 200 in 266ms
+ GET / 200 in 84ms
+[multiply-seed] Seeding personal Multiply data...
+[multiply-seed] catalyst activities: inserted 111, skipped 0 (already present)
+[mc-seed] training catalog seeded; mc business data now lives in MCPs
+[multiply-seed] Multiply data seeding done
+[seed-mcp] starting MCP demo seed (delegation-only)…
+ GET /api/auth/session 200 in 56ms
+ GET /api/auth/session 200 in 97ms
+ GET /api/auth/session 200 in 97ms
+[seed-mcp] person-mcp totals: {
+  oikos: 0,
+  prayers: 0,
+  training411: 33,
+  cocObeying: 44,
+  preferences: 8,
+  notifications: 0,
+  cocTeaching: 4,
+  bdc: 6,
+  profiles: 0,
+  coaching: 0,
+  privateCoaching: 1,
+  intents: 0
+}
+[seed-mcp] org-mcp: revenue=0 proposals=0
+[seed-mcp] on-chain activities: 0
+[seed-mcp] done
+[demo-seed] Senegal Wolof Outreach not yet on-chain; PG seed deferred to next demo-login
+ POST /api/demo-login 200 in 2378ms
+ ○ Compiling /h/[hubId]/rounds/new ...
+ ✓ Compiled /h/[hubId]/rounds/new in 820ms (4861 modules)
+ GET /api/auth/session 200 in 51ms
+ GET /api/auth/session 200 in 170ms
+ GET /api/auth/session 200 in 172ms
+ GET /api/auth/session 200 in 173ms
+ GET /api/user-context 200 in 257ms
+ GET /h/catalyst/rounds/new 200 in 6010ms
+ GET / 200 in 80ms
+[multiply-seed] Seeding personal Multiply data...
+[multiply-seed] catalyst activities: inserted 111, skipped 0 (already present)
+[mc-seed] training catalog seeded; mc business data now lives in MCPs
+[multiply-seed] Multiply data seeding done
+[seed-mcp] starting MCP demo seed (delegation-only)…
+ GET /api/auth/session 200 in 53ms
+ GET /api/auth/session 200 in 85ms
+ GET /api/auth/session 200 in 86ms
+[seed-mcp] person-mcp totals: {
+  oikos: 0,
+  prayers: 0,
+  training411: 33,
+  cocObeying: 44,
+  preferences: 8,
+  notifications: 0,
+  cocTeaching: 4,
+  bdc: 6,
+  profiles: 0,
+  coaching: 0,
+  privateCoaching: 1,
+  intents: 0
+}
+[seed-mcp] org-mcp: revenue=0 proposals=0
+[seed-mcp] on-chain activities: 0
+[seed-mcp] done
+[demo-seed] Senegal Wolof Outreach not yet on-chain; PG seed deferred to next demo-login
+ POST /api/demo-login 200 in 2427ms
+ GET / 200 in 114ms
+[multiply-seed] Seeding personal Multiply data...
+[multiply-seed] catalyst activities: inserted 111, skipped 0 (already present)
+[mc-seed] training catalog seeded; mc business data now lives in MCPs
+[multiply-seed] Multiply data seeding done
+[seed-mcp] starting MCP demo seed (delegation-only)…
+ GET /api/auth/session 200 in 57ms
+ GET /api/auth/session 200 in 112ms
+ GET /api/auth/session 200 in 113ms
+[seed-mcp] person-mcp totals: {
+  oikos: 0,
+  prayers: 0,
+  training411: 33,
+  cocObeying: 44,
+  preferences: 8,
+  notifications: 0,
+  cocTeaching: 4,
+  bdc: 6,
+  profiles: 0,
+  coaching: 0,
+  privateCoaching: 1,
+  intents: 0
+}
+[seed-mcp] org-mcp: revenue=0 proposals=0
+[seed-mcp] on-chain activities: 0
+[seed-mcp] done
+[demo-seed] Senegal Wolof Outreach not yet on-chain; PG seed deferred to next demo-login
+ POST /api/demo-login 200 in 2358ms
+ ○ Compiling /h/[hubId]/rounds/[roundId] ...
+ ✓ Compiled /h/[hubId]/rounds/[roundId] in 800ms (4870 modules)
+ GET /h/catalyst/rounds/demo-trauma-care-q2 200 in 3581ms
+ GET /api/auth/session 200 in 55ms
+ GET /api/auth/session 200 in 134ms
+ GET /api/auth/session 200 in 135ms
+ GET /api/auth/session 200 in 188ms
+ GET /api/user-context 200 in 325ms
+ GET / 200 in 96ms
+[multiply-seed] Seeding personal Multiply data...
+[multiply-seed] catalyst activities: inserted 111, skipped 0 (already present)
+[mc-seed] training catalog seeded; mc business data now lives in MCPs
+[multiply-seed] Multiply data seeding done
+[seed-mcp] starting MCP demo seed (delegation-only)…
+ GET /api/auth/session 200 in 65ms
+ GET /api/auth/session 200 in 105ms
+ GET /api/auth/session 200 in 108ms
+[seed-mcp] person-mcp totals: {
+  oikos: 0,
+  prayers: 0,
+  training411: 33,
+  cocObeying: 44,
+  preferences: 8,
+  notifications: 0,
+  cocTeaching: 4,
+  bdc: 6,
+  profiles: 0,
+  coaching: 0,
+  privateCoaching: 1,
+  intents: 0
+}
+[seed-mcp] org-mcp: revenue=0 proposals=0
+[seed-mcp] on-chain activities: 0
+[seed-mcp] done
+[demo-seed] Senegal Wolof Outreach not yet on-chain; PG seed deferred to next demo-login
+ POST /api/demo-login 200 in 3262ms
+ ○ Compiling /h/[hubId]/rounds ...
+ ✓ Compiled /h/[hubId]/rounds in 874ms (4865 modules)
+ GET /api/auth/session 200 in 43ms
+ GET /api/auth/session 200 in 164ms
+ GET /api/auth/session 200 in 165ms
+ GET /api/auth/session 200 in 166ms
+ GET /api/user-context 200 in 255ms
+ GET /h/catalyst/rounds 200 in 4271ms
+ GET / 200 in 102ms
+[multiply-seed] Seeding personal Multiply data...
+[multiply-seed] catalyst activities: inserted 111, skipped 0 (already present)
+[mc-seed] training catalog seeded; mc business data now lives in MCPs
+[multiply-seed] Multiply data seeding done
+[seed-mcp] starting MCP demo seed (delegation-only)…
+ GET /api/auth/session 200 in 48ms
+ GET /api/auth/session 200 in 88ms
+ GET /api/auth/session 200 in 90ms
+[seed-mcp] person-mcp totals: {
+  oikos: 0,
+  prayers: 0,
+  training411: 33,
+  cocObeying: 44,
+  preferences: 8,
+  notifications: 0,
+  cocTeaching: 4,
+  bdc: 6,
+  profiles: 0,
+  coaching: 0,
+  privateCoaching: 1,
+  intents: 0
+}
+[seed-mcp] org-mcp: revenue=0 proposals=0
+[seed-mcp] on-chain activities: 0
+[seed-mcp] done
+[demo-seed] Senegal Wolof Outreach not yet on-chain; PG seed deferred to next demo-login
+ POST /api/demo-login 200 in 2508ms
+ ○ Compiling /h/[hubId]/pools/[poolId] ...
+ ✓ Compiled /h/[hubId]/pools/[poolId] in 3s (6431 modules)
+ GET /api/auth/session 200 in 61ms
+ GET /api/auth/session 200 in 129ms
+ GET /api/auth/session 200 in 130ms
+ GET /api/auth/session 200 in 130ms
+ GET /api/user-context 200 in 253ms
+ GET /h/catalyst/pools/urn%3Asmart-agent%3Apool%3Ademo-trauma-care-pool 200 in 6481ms
+ GET / 200 in 102ms
+[multiply-seed] Seeding personal Multiply data...
+[multiply-seed] catalyst activities: inserted 111, skipped 0 (already present)
+[mc-seed] training catalog seeded; mc business data now lives in MCPs
+[multiply-seed] Multiply data seeding done
+[seed-mcp] starting MCP demo seed (delegation-only)…
+ GET /api/auth/session 200 in 42ms
+ GET /api/auth/session 200 in 95ms
+ GET /api/auth/session 200 in 97ms
+[seed-mcp] person-mcp totals: {
+  oikos: 0,
+  prayers: 0,
+  training411: 33,
+  cocObeying: 44,
+  preferences: 8,
+  notifications: 0,
+  cocTeaching: 4,
+  bdc: 6,
+  profiles: 0,
+  coaching: 0,
+  privateCoaching: 1,
+  intents: 0
+}
+[seed-mcp] org-mcp: revenue=0 proposals=0
+[seed-mcp] on-chain activities: 0
+[seed-mcp] done
+[demo-seed] Senegal Wolof Outreach not yet on-chain; PG seed deferred to next demo-login
+ POST /api/demo-login 200 in 2375ms
+ GET /api/auth/session 200 in 592ms
+ GET /api/auth/session 200 in 736ms
+ GET /api/auth/session 200 in 738ms
+ GET /api/auth/session 200 in 740ms
+ GET /api/user-context 200 in 809ms
+ GET /h/catalyst/rounds/new 200 in 2654ms
+ GET / 200 in 80ms
+[multiply-seed] Seeding personal Multiply data...
+[multiply-seed] catalyst activities: inserted 111, skipped 0 (already present)
+[mc-seed] training catalog seeded; mc business data now lives in MCPs
+[multiply-seed] Multiply data seeding done
+[seed-mcp] starting MCP demo seed (delegation-only)…
+ GET /api/auth/session 200 in 44ms
+ GET /api/auth/session 200 in 94ms
+ GET /api/auth/session 200 in 95ms
+[seed-mcp] person-mcp totals: {
+  oikos: 0,
+  prayers: 0,
+  training411: 33,
+  cocObeying: 44,
+  preferences: 8,
+  notifications: 0,
+  cocTeaching: 4,
+  bdc: 6,
+  profiles: 0,
+  coaching: 0,
+  privateCoaching: 1,
+  intents: 0
+}
+[seed-mcp] org-mcp: revenue=0 proposals=0
+[seed-mcp] on-chain activities: 0
+[seed-mcp] done
+[demo-seed] Senegal Wolof Outreach not yet on-chain; PG seed deferred to next demo-login
+ POST /api/demo-login 200 in 2436ms
+ GET /h/catalyst/rounds/demo-trauma-care-q2 200 in 367ms
+ GET /api/auth/session 200 in 499ms
+ GET /api/auth/session 200 in 637ms
+ GET /api/auth/session 200 in 638ms
+ GET /api/auth/session 200 in 640ms
+ GET /api/user-context 200 in 717ms
+[ontology-sync] Starting on-chain → GraphDB sync...
+[ontology-sync] Emitted 68 agents. Building combined data-graph turtle...
+[ontology-sync] Data graph uploaded: 68 agents + 0 class assertions + 3 rounds + 3 pools
+ POST /api/ontology-sync 200 in 6509ms
+ GET / 200 in 110ms
+[multiply-seed] Seeding personal Multiply data...
+[multiply-seed] catalyst activities: inserted 111, skipped 0 (already present)
+[mc-seed] training catalog seeded; mc business data now lives in MCPs
+[multiply-seed] Multiply data seeding done
+[seed-mcp] starting MCP demo seed (delegation-only)…
+ GET /api/auth/session 200 in 61ms
+ GET /api/auth/session 200 in 112ms
+ GET /api/auth/session 200 in 114ms
+[seed-mcp] person-mcp totals: {
+  oikos: 0,
+  prayers: 0,
+  training411: 33,
+  cocObeying: 44,
+  preferences: 8,
+  notifications: 0,
+  cocTeaching: 4,
+  bdc: 6,
+  profiles: 0,
+  coaching: 0,
+  privateCoaching: 1,
+  intents: 0
+}
+[seed-mcp] org-mcp: revenue=0 proposals=0
+[seed-mcp] on-chain activities: 0
+[seed-mcp] done
+[demo-seed] Senegal Wolof Outreach not yet on-chain; PG seed deferred to next demo-login
+ POST /api/demo-login 200 in 2349ms
+ ○ Compiling /h/[hubId]/discover ...
+ ✓ Compiled /h/[hubId]/discover in 2.7s (4864 modules)
+ GET /api/auth/session 200 in 53ms
+ GET /api/auth/session 200 in 132ms
+ GET /api/auth/session 200 in 187ms
+ GET /api/auth/session 200 in 190ms
+ GET /api/user-context 200 in 275ms
+ GET /h/catalyst/discover 200 in 10651ms
+ GET / 200 in 102ms
+[multiply-seed] Seeding personal Multiply data...
+[multiply-seed] catalyst activities: inserted 111, skipped 0 (already present)
+[mc-seed] training catalog seeded; mc business data now lives in MCPs
+[multiply-seed] Multiply data seeding done
+[seed-mcp] starting MCP demo seed (delegation-only)…
+ GET /api/auth/session 200 in 65ms
+ GET /api/auth/session 200 in 112ms
+ GET /api/auth/session 200 in 114ms
+[seed-mcp] person-mcp totals: {
+  oikos: 0,
+  prayers: 0,
+  training411: 33,
+  cocObeying: 44,
+  preferences: 8,
+  notifications: 0,
+  cocTeaching: 4,
+  bdc: 6,
+  profiles: 0,
+  coaching: 0,
+  privateCoaching: 1,
+  intents: 0
+}
+[seed-mcp] org-mcp: revenue=0 proposals=0
+[seed-mcp] on-chain activities: 0
+[seed-mcp] done
+[demo-seed] Senegal Wolof Outreach not yet on-chain; PG seed deferred to next demo-login
+ POST /api/demo-login 200 in 2652ms
+ ○ Compiling /h/[hubId]/rounds ...
+ ✓ Compiled /h/[hubId]/rounds in 1649ms (4785 modules)
+ GET /api/auth/session 200 in 70ms
+ GET /api/auth/session 200 in 150ms
+ GET /api/auth/session 200 in 152ms
+ GET /api/auth/session 200 in 152ms
+ GET /api/user-context 200 in 289ms
+ GET /h/catalyst/rounds 200 in 5565ms
+ GET / 200 in 94ms
+[multiply-seed] Seeding personal Multiply data...
+[multiply-seed] catalyst activities: inserted 111, skipped 0 (already present)
+[mc-seed] training catalog seeded; mc business data now lives in MCPs
+[multiply-seed] Multiply data seeding done
+[seed-mcp] starting MCP demo seed (delegation-only)…
+ GET /api/auth/session 200 in 182ms
+ GET /api/auth/session 200 in 234ms
+ GET /api/auth/session 200 in 235ms
+[seed-mcp] person-mcp totals: {
+  oikos: 0,
+  prayers: 0,
+  training411: 33,
+  cocObeying: 44,
+  preferences: 8,
+  notifications: 0,
+  cocTeaching: 4,
+  bdc: 6,
+  profiles: 0,
+  coaching: 0,
+  privateCoaching: 1,
+  intents: 0
+}
+[seed-mcp] org-mcp: revenue=0 proposals=0
+[seed-mcp] on-chain activities: 0
+[seed-mcp] done
+[demo-seed] Senegal Wolof Outreach not yet on-chain; PG seed deferred to next demo-login
+ POST /api/demo-login 200 in 2657ms
+ ○ Compiling /h/[hubId]/rounds/[roundId] ...
+ ✓ Compiled /h/[hubId]/rounds/[roundId] in 807ms (4793 modules)
+ GET /h/catalyst/rounds/demo-trauma-care-q2 200 in 3176ms
+ GET /api/auth/session 200 in 56ms
+ GET /api/auth/session 200 in 131ms
+ GET /api/auth/session 200 in 202ms
+ GET /api/auth/session 200 in 204ms
+ GET /api/user-context 200 in 289ms
+ GET / 200 in 85ms
+[multiply-seed] Seeding personal Multiply data...
+[multiply-seed] catalyst activities: inserted 111, skipped 0 (already present)
+[mc-seed] training catalog seeded; mc business data now lives in MCPs
+[multiply-seed] Multiply data seeding done
+[seed-mcp] starting MCP demo seed (delegation-only)…
+ GET /api/auth/session 200 in 46ms
+ GET /api/auth/session 200 in 85ms
+ GET /api/auth/session 200 in 86ms
+[seed-mcp] person-mcp totals: {
+  oikos: 0,
+  prayers: 0,
+  training411: 33,
+  cocObeying: 44,
+  preferences: 8,
+  notifications: 0,
+  cocTeaching: 4,
+  bdc: 6,
+  profiles: 0,
+  coaching: 0,
+  privateCoaching: 1,
+  intents: 0
+}
+[seed-mcp] org-mcp: revenue=0 proposals=0
+[seed-mcp] on-chain activities: 0
+[seed-mcp] done
+[demo-seed] Senegal Wolof Outreach not yet on-chain; PG seed deferred to next demo-login
+ POST /api/demo-login 200 in 2475ms
+ ○ Compiling /h/[hubId]/rounds/[roundId]/apply ...
+ ✓ Compiled /h/[hubId]/rounds/[roundId]/apply in 2.8s (4799 modules)
+ GET /h/catalyst/rounds/demo-trauma-care-q2/apply 200 in 5216ms
+ GET /api/auth/session 200 in 48ms
+ GET /api/auth/session 200 in 116ms
+ GET /api/auth/session 200 in 119ms
+ GET /api/auth/session 200 in 176ms
+ GET /api/user-context 200 in 248ms
+ GET / 200 in 101ms
+[multiply-seed] Seeding personal Multiply data...
+[multiply-seed] catalyst activities: inserted 111, skipped 0 (already present)
+[mc-seed] training catalog seeded; mc business data now lives in MCPs
+[multiply-seed] Multiply data seeding done
+[seed-mcp] starting MCP demo seed (delegation-only)…
+ GET /api/auth/session 200 in 50ms
+ GET /api/auth/session 200 in 90ms
+ GET /api/auth/session 200 in 90ms
+[seed-mcp] person-mcp totals: {
+  oikos: 0,
+  prayers: 0,
+  training411: 33,
+  cocObeying: 44,
+  preferences: 8,
+  notifications: 0,
+  cocTeaching: 4,
+  bdc: 6,
+  profiles: 0,
+  coaching: 0,
+  privateCoaching: 1,
+  intents: 0
+}
+[seed-mcp] org-mcp: revenue=0 proposals=0
+[seed-mcp] on-chain activities: 0
+[seed-mcp] done
+[demo-seed] Senegal Wolof Outreach not yet on-chain; PG seed deferred to next demo-login
+ POST /api/demo-login 200 in 2642ms
+ ○ Compiling /h/[hubId]/proposals ...
+ ✓ Compiled /h/[hubId]/proposals in 2.9s (4802 modules)
+ GET /h/catalyst/proposals 200 in 4373ms
+ GET /api/auth/session 200 in 52ms
+ GET /api/auth/session 200 in 174ms
+ GET /api/auth/session 200 in 174ms
+ GET /api/auth/session 200 in 175ms
+ GET /api/user-context 200 in 259ms
+ GET / 200 in 111ms
+[multiply-seed] Seeding personal Multiply data...
+[multiply-seed] catalyst activities: inserted 111, skipped 0 (already present)
+[mc-seed] training catalog seeded; mc business data now lives in MCPs
+[multiply-seed] Multiply data seeding done
+[seed-mcp] starting MCP demo seed (delegation-only)…
+ GET /api/auth/session 200 in 46ms
+ GET /api/auth/session 200 in 99ms
+ GET /api/auth/session 200 in 100ms
+[seed-mcp] person-mcp totals: {
+  oikos: 0,
+  prayers: 0,
+  training411: 33,
+  cocObeying: 44,
+  preferences: 8,
+  notifications: 0,
+  cocTeaching: 4,
+  bdc: 6,
+  profiles: 0,
+  coaching: 0,
+  privateCoaching: 1,
+  intents: 0
+}
+[seed-mcp] org-mcp: revenue=0 proposals=0
+[seed-mcp] on-chain activities: 0
+[seed-mcp] done
+[demo-seed] Senegal Wolof Outreach not yet on-chain; PG seed deferred to next demo-login
+ POST /api/demo-login 200 in 2653ms
+ GET /api/auth/session 200 in 65ms
+ GET /api/auth/session 200 in 141ms
+ GET /api/auth/session 200 in 144ms
+ GET /api/auth/session 200 in 145ms
+ GET /api/user-context 200 in 259ms
+ GET /h/catalyst/pools 200 in 3049ms
+ GET / 200 in 73ms
+[multiply-seed] Seeding personal Multiply data...
+[multiply-seed] catalyst activities: inserted 111, skipped 0 (already present)
+[mc-seed] training catalog seeded; mc business data now lives in MCPs
+[multiply-seed] Multiply data seeding done
+[seed-mcp] starting MCP demo seed (delegation-only)…
+ GET /api/auth/session 200 in 68ms
+ GET /api/auth/session 200 in 110ms
+ GET /api/auth/session 200 in 111ms
+[seed-mcp] person-mcp totals: {
+  oikos: 0,
+  prayers: 0,
+  training411: 33,
+  cocObeying: 44,
+  preferences: 8,
+  notifications: 0,
+  cocTeaching: 4,
+  bdc: 6,
+  profiles: 0,
+  coaching: 0,
+  privateCoaching: 1,
+  intents: 0
+}
+[seed-mcp] org-mcp: revenue=0 proposals=0
+[seed-mcp] on-chain activities: 0
+[seed-mcp] done
+[demo-seed] Senegal Wolof Outreach not yet on-chain; PG seed deferred to next demo-login
+ POST /api/demo-login 200 in 2596ms
+ ○ Compiling /h/[hubId]/pledges ...
+ ✓ Compiled /h/[hubId]/pledges in 943ms (4805 modules)
+ GET /h/catalyst/pledges 200 in 2413ms
+ GET /api/auth/session 200 in 45ms
+ GET /api/auth/session 200 in 114ms
+ GET /api/auth/session 200 in 115ms
+ GET /api/auth/session 200 in 169ms
+ GET /api/user-context 200 in 247ms
+ GET / 200 in 99ms
+[multiply-seed] Seeding personal Multiply data...
+[multiply-seed] catalyst activities: inserted 111, skipped 0 (already present)
+[mc-seed] training catalog seeded; mc business data now lives in MCPs
+[multiply-seed] Multiply data seeding done
+[seed-mcp] starting MCP demo seed (delegation-only)…
+ GET /api/auth/session 200 in 48ms
+ GET /api/auth/session 200 in 107ms
+ GET /api/auth/session 200 in 108ms
+[seed-mcp] person-mcp totals: {
+  oikos: 0,
+  prayers: 0,
+  training411: 33,
+  cocObeying: 44,
+  preferences: 8,
+  notifications: 0,
+  cocTeaching: 4,
+  bdc: 6,
+  profiles: 0,
+  coaching: 0,
+  privateCoaching: 1,
+  intents: 0
+}
+[seed-mcp] org-mcp: revenue=0 proposals=0
+[seed-mcp] on-chain activities: 0
+[seed-mcp] done
+[demo-seed] Senegal Wolof Outreach not yet on-chain; PG seed deferred to next demo-login
+ POST /api/demo-login 200 in 2460ms
+ ○ Compiling /h/[hubId]/intents ...
+ ✓ Compiled /h/[hubId]/intents in 1032ms (4812 modules)
+ GET /h/catalyst/intents 200 in 3435ms
+ GET /api/auth/session 200 in 48ms
+ GET /api/auth/session 200 in 178ms
+ GET /api/auth/session 200 in 180ms
+ GET /api/auth/session 200 in 182ms
+ GET /api/user-context 200 in 262ms
+ GET / 200 in 107ms
+[multiply-seed] Seeding personal Multiply data...
+[multiply-seed] catalyst activities: inserted 111, skipped 0 (already present)
+[mc-seed] training catalog seeded; mc business data now lives in MCPs
+[multiply-seed] Multiply data seeding done
+[seed-mcp] starting MCP demo seed (delegation-only)…
+ GET /api/auth/session 200 in 48ms
+ GET /api/auth/session 200 in 109ms
+ GET /api/auth/session 200 in 110ms
+[seed-mcp] person-mcp totals: {
+  oikos: 0,
+  prayers: 0,
+  training411: 33,
+  cocObeying: 44,
+  preferences: 8,
+  notifications: 0,
+  cocTeaching: 4,
+  bdc: 6,
+  profiles: 0,
+  coaching: 0,
+  privateCoaching: 1,
+  intents: 0
+}
+[seed-mcp] org-mcp: revenue=0 proposals=0
+[seed-mcp] on-chain activities: 0
+[seed-mcp] done
+[demo-seed] Senegal Wolof Outreach not yet on-chain; PG seed deferred to next demo-login
+ POST /api/demo-login 200 in 2468ms
+ ○ Compiling /h/[hubId]/intents/[id] ...
+ ✓ Compiled /h/[hubId]/intents/[id] in 1062ms (4820 modules)
+ GET /api/auth/session 200 in 73ms
+ GET /api/auth/session 200 in 273ms
+ GET /api/auth/session 200 in 275ms
+ GET /api/auth/session 200 in 278ms
+ GET /h/catalyst/intents/demo-maria-need-trauma-coaching 200 in 4028ms
+ GET /api/user-context 200 in 358ms
+ GET / 200 in 88ms
+[multiply-seed] Seeding personal Multiply data...
+[multiply-seed] catalyst activities: inserted 111, skipped 0 (already present)
+[mc-seed] training catalog seeded; mc business data now lives in MCPs
+[multiply-seed] Multiply data seeding done
+[seed-mcp] starting MCP demo seed (delegation-only)…
+ GET /api/auth/session 200 in 48ms
+ GET /api/auth/session 200 in 98ms
+ GET /api/auth/session 200 in 99ms
+[seed-mcp] person-mcp totals: {
+  oikos: 0,
+  prayers: 0,
+  training411: 33,
+  cocObeying: 44,
+  preferences: 8,
+  notifications: 0,
+  cocTeaching: 4,
+  bdc: 6,
+  profiles: 0,
+  coaching: 0,
+  privateCoaching: 1,
+  intents: 0
+}
+[seed-mcp] org-mcp: revenue=0 proposals=0
+[seed-mcp] on-chain activities: 0
+[seed-mcp] done
+[demo-seed] Senegal Wolof Outreach not yet on-chain; PG seed deferred to next demo-login
+ POST /api/demo-login 200 in 2415ms
+ ○ Compiling /h/[hubId]/home ...
+ ✓ Compiled /h/[hubId]/home in 3.1s (4889 modules)
+ GET /h/catalyst/pools 200 in 2188ms
+ GET /h/catalyst/home 200 in 7220ms
+ GET /api/auth/session 200 in 516ms
+ GET /api/auth/session 200 in 610ms
+ GET /api/auth/session 200 in 612ms
+ GET /api/auth/session 200 in 614ms
+ GET /api/user-context 200 in 710ms
+ POST /h/catalyst/home 200 in 1589ms
+ POST /h/catalyst/home 200 in 480ms
+ POST /h/catalyst/home 200 in 62ms
+ POST /h/catalyst/home 200 in 544ms
+ POST /h/catalyst/home 200 in 408ms
+ POST /h/catalyst/home 200 in 88ms
+ GET / 200 in 109ms
+[multiply-seed] Seeding personal Multiply data...
+[multiply-seed] catalyst activities: inserted 111, skipped 0 (already present)
+[mc-seed] training catalog seeded; mc business data now lives in MCPs
+[multiply-seed] Multiply data seeding done
+[seed-mcp] starting MCP demo seed (delegation-only)…
+ GET /api/auth/session 200 in 71ms
+ GET /api/auth/session 200 in 113ms
+ GET /api/auth/session 200 in 115ms
+[seed-mcp] person-mcp totals: {
+  oikos: 0,
+  prayers: 0,
+  training411: 33,
+  cocObeying: 44,
+  preferences: 8,
+  notifications: 0,
+  cocTeaching: 4,
+  bdc: 6,
+  profiles: 0,
+  coaching: 0,
+  privateCoaching: 1,
+  intents: 0
+}
+[seed-mcp] org-mcp: revenue=0 proposals=0
+[seed-mcp] on-chain activities: 0
+[seed-mcp] done
+[demo-seed] Senegal Wolof Outreach not yet on-chain; PG seed deferred to next demo-login
+ POST /api/demo-login 200 in 2551ms
+ GET /h/catalyst/rounds/demo-trauma-care-q2 200 in 396ms
+ GET /api/auth/session 200 in 502ms
+ GET /api/auth/session 200 in 588ms
+ GET /api/auth/session 200 in 589ms
+ GET /api/auth/session 200 in 589ms
+ GET /api/user-context 200 in 689ms
+ GET / 200 in 69ms
+[multiply-seed] Seeding personal Multiply data...
+[multiply-seed] catalyst activities: inserted 111, skipped 0 (already present)
+[mc-seed] training catalog seeded; mc business data now lives in MCPs
+[multiply-seed] Multiply data seeding done
+[seed-mcp] starting MCP demo seed (delegation-only)…
+ GET /api/auth/session 200 in 69ms
+ GET /api/auth/session 200 in 111ms
+ GET /api/auth/session 200 in 113ms
+[seed-mcp] person-mcp totals: {
+  oikos: 0,
+  prayers: 0,
+  training411: 33,
+  cocObeying: 44,
+  preferences: 8,
+  notifications: 0,
+  cocTeaching: 4,
+  bdc: 6,
+  profiles: 0,
+  coaching: 0,
+  privateCoaching: 1,
+  intents: 0
+}
+[seed-mcp] org-mcp: revenue=0 proposals=0
+[seed-mcp] on-chain activities: 0
+[seed-mcp] done
+[demo-seed] Senegal Wolof Outreach not yet on-chain; PG seed deferred to next demo-login
+ POST /api/demo-login 200 in 2353ms
+ GET /api/auth/session 200 in 602ms
+ GET /api/auth/session 200 in 747ms
+ GET /api/auth/session 200 in 748ms
+ GET /api/auth/session 200 in 750ms
+ GET /h/catalyst/rounds/demo-trauma-care-q2/proposals 200 in 1393ms
+ GET /api/user-context 200 in 819ms
+ GET / 200 in 87ms
+[multiply-seed] Seeding personal Multiply data...
+[multiply-seed] catalyst activities: inserted 111, skipped 0 (already present)
+[mc-seed] training catalog seeded; mc business data now lives in MCPs
+[multiply-seed] Multiply data seeding done
+[seed-mcp] starting MCP demo seed (delegation-only)…
+ GET /api/auth/session 200 in 47ms
+ GET /api/auth/session 200 in 95ms
+ GET /api/auth/session 200 in 96ms
+[seed-mcp] person-mcp totals: {
+  oikos: 0,
+  prayers: 0,
+  training411: 33,
+  cocObeying: 44,
+  preferences: 8,
+  notifications: 0,
+  cocTeaching: 4,
+  bdc: 6,
+  profiles: 0,
+  coaching: 0,
+  privateCoaching: 1,
+  intents: 0
+}
+[seed-mcp] org-mcp: revenue=0 proposals=0
+[seed-mcp] on-chain activities: 0
+[seed-mcp] done
+[demo-seed] Senegal Wolof Outreach not yet on-chain; PG seed deferred to next demo-login
+ POST /api/demo-login 200 in 2336ms
+ ○ Compiling /h/[hubId]/pools/new ...
+ ✓ Compiled /h/[hubId]/pools/new in 2.6s (4889 modules)
+ GET /h/catalyst/pools/new 200 in 4177ms
+ GET /h/catalyst/pools 200 in 313ms
+ GET /api/auth/session 200 in 591ms
+ GET /api/auth/session 200 in 669ms
+ GET /api/auth/session 200 in 722ms
+ GET /api/auth/session 200 in 725ms
+ GET /api/user-context 200 in 819ms
+ GET / 200 in 69ms
+[multiply-seed] Seeding personal Multiply data...
+[multiply-seed] catalyst activities: inserted 111, skipped 0 (already present)
+[mc-seed] training catalog seeded; mc business data now lives in MCPs
+[multiply-seed] Multiply data seeding done
+[seed-mcp] starting MCP demo seed (delegation-only)…
+ GET /api/auth/session 200 in 80ms
+ GET /api/auth/session 200 in 112ms
+ GET /api/auth/session 200 in 112ms
+[seed-mcp] person-mcp totals: {
+  oikos: 0,
+  prayers: 0,
+  training411: 33,
+  cocObeying: 44,
+  preferences: 8,
+  notifications: 0,
+  cocTeaching: 4,
+  bdc: 6,
+  profiles: 0,
+  coaching: 0,
+  privateCoaching: 1,
+  intents: 0
+}
+[seed-mcp] org-mcp: revenue=0 proposals=0
+[seed-mcp] on-chain activities: 0
+[seed-mcp] done
+[demo-seed] Senegal Wolof Outreach not yet on-chain; PG seed deferred to next demo-login
+ POST /api/demo-login 200 in 2590ms
+ GET /api/auth/session 200 in 66ms
+ GET /api/auth/session 200 in 145ms
+ GET /api/auth/session 200 in 147ms
+ GET /api/auth/session 200 in 148ms
+ GET /api/user-context 200 in 253ms
+ GET /h/catalyst/rounds/new 200 in 2633ms
+ GET / 200 in 92ms
+[multiply-seed] Seeding personal Multiply data...
+[multiply-seed] catalyst activities: inserted 111, skipped 0 (already present)
+[mc-seed] training catalog seeded; mc business data now lives in MCPs
+[multiply-seed] Multiply data seeding done
+[seed-mcp] starting MCP demo seed (delegation-only)…
+ GET /api/auth/session 200 in 50ms
+ GET /api/auth/session 200 in 107ms
+ GET /api/auth/session 200 in 109ms
+[seed-mcp] person-mcp totals: {
+  oikos: 0,
+  prayers: 0,
+  training411: 33,
+  cocObeying: 44,
+  preferences: 8,
+  notifications: 0,
+  cocTeaching: 4,
+  bdc: 6,
+  profiles: 0,
+  coaching: 0,
+  privateCoaching: 1,
+  intents: 0
+}
+[seed-mcp] org-mcp: revenue=0 proposals=0
+[seed-mcp] on-chain activities: 0
+[seed-mcp] done
+[demo-seed] Senegal Wolof Outreach not yet on-chain; PG seed deferred to next demo-login
+ POST /api/demo-login 200 in 3024ms
+ GET / 200 in 90ms
+[multiply-seed] Seeding personal Multiply data...
+[multiply-seed] catalyst activities: inserted 111, skipped 0 (already present)
+[mc-seed] training catalog seeded; mc business data now lives in MCPs
+[multiply-seed] Multiply data seeding done
+[seed-mcp] starting MCP demo seed (delegation-only)…
+ GET /api/auth/session 200 in 65ms
+ GET /api/auth/session 200 in 117ms
+ GET /api/auth/session 200 in 119ms
+[seed-mcp] person-mcp totals: {
+  oikos: 0,
+  prayers: 0,
+  training411: 33,
+  cocObeying: 44,
+  preferences: 8,
+  notifications: 0,
+  cocTeaching: 4,
+  bdc: 6,
+  profiles: 0,
+  coaching: 0,
+  privateCoaching: 1,
+  intents: 0
+}
+[seed-mcp] org-mcp: revenue=0 proposals=0
+[seed-mcp] on-chain activities: 0
+[seed-mcp] done
+[demo-seed] Senegal Wolof Outreach not yet on-chain; PG seed deferred to next demo-login
+ POST /api/demo-login 200 in 2323ms
+ GET /h/catalyst/rounds/demo-trauma-care-q2 200 in 398ms
+ GET /api/auth/session 200 in 395ms
+ GET /api/auth/session 200 in 494ms
+ GET /api/auth/session 200 in 496ms
+ GET /api/auth/session 200 in 497ms
+ GET /api/user-context 200 in 594ms
+ GET / 200 in 80ms
+[multiply-seed] Seeding personal Multiply data...
+[multiply-seed] catalyst activities: inserted 111, skipped 0 (already present)
+[mc-seed] training catalog seeded; mc business data now lives in MCPs
+[multiply-seed] Multiply data seeding done
+[seed-mcp] starting MCP demo seed (delegation-only)…
+ GET /api/auth/session 200 in 57ms
+ GET /api/auth/session 200 in 115ms
+ GET /api/auth/session 200 in 117ms
+[seed-mcp] person-mcp totals: {
+  oikos: 0,
+  prayers: 0,
+  training411: 33,
+  cocObeying: 44,
+  preferences: 8,
+  notifications: 0,
+  cocTeaching: 4,
+  bdc: 6,
+  profiles: 0,
+  coaching: 0,
+  privateCoaching: 1,
+  intents: 0
+}
+[seed-mcp] org-mcp: revenue=0 proposals=0
+[seed-mcp] on-chain activities: 0
+[seed-mcp] done
+[demo-seed] Senegal Wolof Outreach not yet on-chain; PG seed deferred to next demo-login
+ POST /api/demo-login 200 in 2264ms
+ ○ Compiling /h/[hubId]/rounds ...
+ ✓ Compiled /h/[hubId]/rounds in 960ms (4891 modules)
+ GET /api/auth/session 200 in 55ms
+ GET /api/auth/session 200 in 126ms
+ GET /api/auth/session 200 in 128ms
+ GET /api/auth/session 200 in 131ms
+ GET /api/user-context 200 in 270ms
+ GET /h/catalyst/rounds 200 in 4581ms
+ GET / 200 in 113ms
+[multiply-seed] Seeding personal Multiply data...
+[multiply-seed] catalyst activities: inserted 111, skipped 0 (already present)
+[mc-seed] training catalog seeded; mc business data now lives in MCPs
+[multiply-seed] Multiply data seeding done
+[seed-mcp] starting MCP demo seed (delegation-only)…
+ GET /api/auth/session 200 in 43ms
+ GET /api/auth/session 200 in 101ms
+ GET /api/auth/session 200 in 102ms
+[seed-mcp] person-mcp totals: {
+  oikos: 0,
+  prayers: 0,
+  training411: 33,
+  cocObeying: 44,
+  preferences: 8,
+  notifications: 0,
+  cocTeaching: 4,
+  bdc: 6,
+  profiles: 0,
+  coaching: 0,
+  privateCoaching: 1,
+  intents: 0
+}
+[seed-mcp] org-mcp: revenue=0 proposals=0
+[seed-mcp] on-chain activities: 0
+[seed-mcp] done
+[demo-seed] Senegal Wolof Outreach not yet on-chain; PG seed deferred to next demo-login
+ POST /api/demo-login 200 in 2387ms
+ ○ Compiling /h/[hubId]/pools/[poolId] ...
+ ✓ Compiled /h/[hubId]/pools/[poolId] in 3.3s (4878 modules)
+ GET /api/auth/session 200 in 54ms
+ GET /api/auth/session 200 in 201ms
+ GET /api/auth/session 200 in 202ms
+ GET /api/auth/session 200 in 204ms
+ GET /api/user-context 200 in 289ms
+ GET /h/catalyst/pools/urn%3Asmart-agent%3Apool%3Ademo-trauma-care-pool 200 in 6024ms
+ GET / 200 in 117ms
+[multiply-seed] Seeding personal Multiply data...
+[multiply-seed] catalyst activities: inserted 111, skipped 0 (already present)
+[mc-seed] training catalog seeded; mc business data now lives in MCPs
+[multiply-seed] Multiply data seeding done
+[seed-mcp] starting MCP demo seed (delegation-only)…
+ GET /api/auth/session 200 in 64ms
+ GET /api/auth/session 200 in 115ms
+ GET /api/auth/session 200 in 116ms
+[seed-mcp] person-mcp totals: {
+  oikos: 0,
+  prayers: 0,
+  training411: 33,
+  cocObeying: 44,
+  preferences: 8,
+  notifications: 0,
+  cocTeaching: 4,
+  bdc: 6,
+  profiles: 0,
+  coaching: 0,
+  privateCoaching: 1,
+  intents: 0
+}
+[seed-mcp] org-mcp: revenue=0 proposals=0
+[seed-mcp] on-chain activities: 0
+[seed-mcp] done
+[demo-seed] Senegal Wolof Outreach not yet on-chain; PG seed deferred to next demo-login
+ POST /api/demo-login 200 in 2458ms
+ GET /api/auth/session 200 in 604ms
+ GET /api/auth/session 200 in 692ms
+ GET /api/auth/session 200 in 693ms
+ GET /api/auth/session 200 in 695ms
+ GET /api/user-context 200 in 788ms
+ GET /h/catalyst/rounds/new 200 in 2343ms
+ GET / 200 in 92ms
+[multiply-seed] Seeding personal Multiply data...
+[multiply-seed] catalyst activities: inserted 111, skipped 0 (already present)
+[mc-seed] training catalog seeded; mc business data now lives in MCPs
+[multiply-seed] Multiply data seeding done
+[seed-mcp] starting MCP demo seed (delegation-only)…
+ GET /api/auth/session 200 in 52ms
+ GET /api/auth/session 200 in 103ms
+ GET /api/auth/session 200 in 106ms
+[seed-mcp] person-mcp totals: {
+  oikos: 0,
+  prayers: 0,
+  training411: 33,
+  cocObeying: 44,
+  preferences: 8,
+  notifications: 0,
+  cocTeaching: 4,
+  bdc: 6,
+  profiles: 0,
+  coaching: 0,
+  privateCoaching: 1,
+  intents: 0
+}
+[seed-mcp] org-mcp: revenue=0 proposals=0
+[seed-mcp] on-chain activities: 0
+[seed-mcp] done
+[demo-seed] Senegal Wolof Outreach not yet on-chain; PG seed deferred to next demo-login
+ POST /api/demo-login 200 in 2471ms
+ GET /h/catalyst/rounds/demo-trauma-care-q2 200 in 2486ms
+ GET /api/auth/session 200 in 50ms
+ GET /api/auth/session 200 in 130ms
+ GET /api/auth/session 200 in 132ms
+ GET /api/auth/session 200 in 134ms
+ GET /api/user-context 200 in 280ms
+ GET /api/auth/session 200 in 482ms
+ GET /api/auth/session 200 in 589ms
+ GET /api/auth/session 200 in 590ms
+ GET /api/auth/session 200 in 593ms
+ GET /api/user-context 200 in 749ms
+ GET /h/catalyst/pools 200 in 2976ms
+ GET /h/catalyst/rounds 200 in 1667ms
+ GET /api/auth/session 200 in 62ms
+ GET /h/catalyst/rounds/demo-pastoral-coaching-q2 200 in 231ms
+ GET /api/auth/session 200 in 68ms
+ GET /h/catalyst/pools 200 in 2151ms
+ GET /api/auth/session 200 in 48ms
+ GET /h/catalyst/pools/new 200 in 161ms
+ GET /api/auth/session 200 in 39ms
+ ○ Compiling /h/[hubId]/pools/new/submit ...
+ ✓ Compiled /h/[hubId]/pools/new/submit in 5.8s (6346 modules)
+ GET /h/catalyst/pools/new 200 in 191ms
+[deployer-lock] #1432 writeContract(createAccount) queued (depth=0)
+[deployer-lock] #1432 acquired after 1ms
+[deployer-lock] #1432 released (held 20ms)
+ POST /h/catalyst/pools/new/submit 500 in 7932ms
+ ✓ Compiled in 12.8s (6342 modules)
+ GET /h/catalyst/pools/new 200 in 1233ms
+ ○ Compiling /api/ontology-sync ...
+ ✓ Compiled /api/ontology-sync in 664ms (4778 modules)
+[ontology-sync] Starting on-chain → GraphDB sync...
+ GET /h/catalyst/pools/new 200 in 179ms
+[ontology-sync] Emitted 68 agents. Building combined data-graph turtle...
+[ontology-sync] Data graph uploaded: 68 agents + 0 class assertions + 3 rounds + 3 pools
+ POST /api/ontology-sync 200 in 3875ms
+ ○ Compiling / ...
+ ✓ Compiled / in 2.3s (4782 modules)
+ GET / 200 in 3312ms
+ GET /h/catalyst/pools/new 200 in 1156ms
+ ○ Compiling /api/auth/session ...
+ ✓ Compiled /api/auth/session in 5.7s (4848 modules)
+ ✓ Compiled in 1ms (4850 modules)
+ ✓ Compiled in 0ms (4850 modules)
+ ✓ Compiled in 0ms (4850 modules)
+[multiply-seed] Seeding personal Multiply data...
+[multiply-seed] catalyst activities: inserted 111, skipped 0 (already present)
+[mc-seed] training catalog seeded; mc business data now lives in MCPs
+[multiply-seed] Multiply data seeding done
+[seed-mcp] starting MCP demo seed (delegation-only)…
+ GET /api/auth/session 200 in 11891ms
+ GET /api/auth/session 200 in 11894ms
+ GET /api/auth/session 200 in 11895ms
+ GET /h/catalyst/pools/new 200 in 6041ms
+ GET / 200 in 6051ms
+ GET / 200 in 142ms
+ GET /h/catalyst/pools/new 200 in 127ms
+[seed-mcp] person-mcp totals: {
+  oikos: 0,
+  prayers: 0,
+  training411: 33,
+  cocObeying: 44,
+  preferences: 8,
+  notifications: 0,
+  cocTeaching: 4,
+  bdc: 6,
+  profiles: 0,
+  coaching: 0,
+  privateCoaching: 1,
+  intents: 0
+}
+[seed-mcp] org-mcp: revenue=0 proposals=0
+[seed-mcp] on-chain activities: 0
+[seed-mcp] done
+[demo-seed] Senegal Wolof Outreach not yet on-chain; PG seed deferred to next demo-login
+ POST /api/demo-login 200 in 15470ms
+ GET /h/catalyst/pools/new 200 in 328ms
+ GET /api/auth/session 200 in 403ms
+ ○ Compiling /api/user-context ...
+ ✓ Compiled /api/user-context in 2.4s (4766 modules)
+ ✓ Compiled in 1ms (4766 modules)
+ GET /api/auth/session 200 in 5074ms
+ GET /api/auth/session 200 in 5077ms
+ GET /api/auth/session 200 in 5080ms
+ ✓ Compiled in 1ms (4766 modules)
+ ✓ Compiled in 1ms (4766 modules)
+ GET /api/user-context 200 in 7139ms
+ GET /h/catalyst/pools/new 200 in 6659ms
+ GET /h/catalyst/pools/new 200 in 6661ms
+ GET / 200 in 212ms
+ GET /api/auth/session 200 in 698ms
+ GET /api/auth/session 200 in 760ms
+ GET /api/auth/session 200 in 762ms
+[multiply-seed] Seeding personal Multiply data...
+[multiply-seed] catalyst activities: inserted 111, skipped 0 (already present)
+[mc-seed] training catalog seeded; mc business data now lives in MCPs
+[multiply-seed] Multiply data seeding done
+[seed-mcp] starting MCP demo seed (delegation-only)…
+[seed-mcp] person-mcp totals: {
+  oikos: 0,
+  prayers: 0,
+  training411: 33,
+  cocObeying: 44,
+  preferences: 8,
+  notifications: 0,
+  cocTeaching: 4,
+  bdc: 6,
+  profiles: 0,
+  coaching: 0,
+  privateCoaching: 1,
+  intents: 0
+}
+[seed-mcp] org-mcp: revenue=0 proposals=0
+[seed-mcp] on-chain activities: 0
+[seed-mcp] done
+[demo-seed] Senegal Wolof Outreach not yet on-chain; PG seed deferred to next demo-login
+ POST /api/demo-login 200 in 3700ms
+ ○ Compiling /h/[hubId]/rounds/new ...
+ ✓ Compiled /h/[hubId]/rounds/new in 1995ms (4772 modules)
+ GET /h/catalyst/pools/new 200 in 260ms
+ GET /api/auth/session 200 in 468ms
+ GET /api/auth/session 200 in 549ms
+ GET /api/auth/session 200 in 554ms
+ GET /api/auth/session 200 in 557ms
+ GET /api/user-context 200 in 679ms
+ GET /h/catalyst/rounds/new 200 in 6390ms
+ ○ Compiling /h/[hubId]/pools/new/submit ...
+ ✓ Compiled /h/[hubId]/pools/new/submit in 7.4s (4698 modules)
+[deployer-lock] #1433 writeContract(createAccount) queued (depth=0)
+[deployer-lock] #1433 acquired after 0ms
+[deployer-lock] #1433 fn done in 30ms
+[deployer-lock] #1433 released (held 31ms)
+[deployer-lock] #1434 writeContract(open) queued (depth=0)
+[deployer-lock] #1434 acquired after 0ms
+[deployer-lock] #1434 fn done in 20ms
+[deployer-lock] #1434 released (held 21ms)
+ POST /h/catalyst/pools/new/submit 200 in 10097ms
+ GET /h/catalyst/pools/new 200 in 857ms
+ ○ Compiling /h/[hubId]/pools/[poolId] ...
+ ✓ Compiled /h/[hubId]/pools/[poolId] in 1900ms (4700 modules)
+ GET /h/catalyst/pools/urn%3Asmart-agent%3Apool%3Apfund 200 in 3405ms
+ GET /h/catalyst/pools/new 200 in 422ms
+ ○ Compiling /api/user-context ...
+ ✓ Compiled /api/user-context in 2.1s (4689 modules)
+[ontology-sync] Starting on-chain → GraphDB sync...
+ ✓ Compiled (4693 modules)
+ GET /api/auth/session 200 in 5235ms
+ GET /api/auth/session 200 in 5238ms
+ GET /api/auth/session 200 in 5239ms
+ GET /api/auth/session 200 in 5241ms
+ GET /api/user-context 200 in 5350ms
+[ontology-sync] Emitted 68 agents. Building combined data-graph turtle...
+[ontology-sync] Data graph uploaded: 68 agents + 0 class assertions + 3 rounds + 4 pools
+[kb-sync] ok (68 agents)
+ ○ Compiling /h/[hubId]/pools/new/submit ...
+ ✓ Compiled /h/[hubId]/pools/new/submit in 896ms (4703 modules)
+[deployer-lock] #1435 writeContract(createAccount) queued (depth=0)
+[deployer-lock] #1435 acquired after 1ms
+[deployer-lock] #1435 fn done in 18ms
+[deployer-lock] #1435 released (held 19ms)
+[deployer-lock] #1436 writeContract(open) queued (depth=0)
+[deployer-lock] #1436 acquired after 0ms
+[deployer-lock] #1436 fn done in 14ms
+[deployer-lock] #1436 released (held 14ms)
+ POST /h/catalyst/pools/new/submit 200 in 10681ms
+ ○ Compiling /h/[hubId]/pools/[poolId] ...
+ ✓ Compiled /h/[hubId]/pools/[poolId] in 750ms (4705 modules)
+ GET /h/catalyst/pools/urn%3Asmart-agent%3Apool%3Ap2pool 200 in 2505ms
+ GET /h/catalyst/pools/urn%3Asmart-agent%3Apool%3Ap2pool 200 in 275ms
+ GET /api/auth/session 200 in 53ms
+ GET /h/catalyst/rounds 200 in 1845ms
+ GET /api/auth/session 200 in 64ms
+ GET /h/catalyst/pools 200 in 3218ms
+ GET /api/auth/session 200 in 57ms
+ GET /h/catalyst/pools/urn%3Asmart-agent%3Apool%3Apfund 200 in 1300ms
+ GET /api/auth/session 200 in 74ms
+ GET /h/catalyst/rounds 200 in 1482ms
+ GET /api/auth/session 200 in 34ms
+ GET /h/catalyst/pools 200 in 2998ms
+ GET /api/auth/session 200 in 54ms
+ GET /h/catalyst/pools/new 200 in 1934ms
+ GET /api/auth/session 200 in 64ms
+[deployer-lock] #1437 writeContract(createAccount) queued (depth=0)
+[deployer-lock] #1437 acquired after 0ms
+[deployer-lock] #1437 fn done in 19ms
+[deployer-lock] #1437 released (held 19ms)
+[deployer-lock] #1438 writeContract(open) queued (depth=0)
+[deployer-lock] #1438 acquired after 0ms
+[deployer-lock] #1438 fn done in 14ms
+[deployer-lock] #1438 released (held 14ms)
+ POST /h/catalyst/pools/new/submit 200 in 8214ms
+ GET /h/catalyst/pools/urn%3Asmart-agent%3Apool%3Apedersen3 200 in 292ms
+ GET /h/catalyst/pools/urn%3Asmart-agent%3Apool%3Apedersen3 200 in 182ms
+ GET /api/auth/session 200 in 38ms
+[ontology-sync] Starting on-chain → GraphDB sync...
+[ontology-sync] Emitted 68 agents. Building combined data-graph turtle...
+[ontology-sync] Data graph uploaded: 68 agents + 0 class assertions + 3 rounds + 6 pools
+[kb-sync] ok (68 agents)
+ GET /h/catalyst/rounds 200 in 1754ms
+ GET /api/auth/session 200 in 40ms
+ GET /h/catalyst/pools 200 in 3957ms
+ GET /api/auth/session 200 in 56ms
+ ○ Compiling /h/[hubId]/pools/[poolId]/pledge ...
+ ✓ Compiled /h/[hubId]/pools/[poolId]/pledge in 6.5s (6255 modules)
+ GET /h/catalyst/pools/urn%3Asmart-agent%3Apool%3Apedersen3/pledge 200 in 9310ms
+ GET /api/auth/session 200 in 67ms
+ ○ Compiling /h/[hubId]/pools/[poolId]/pledge/submit ...
+ ✓ Compiled /h/[hubId]/pools/[poolId]/pledge/submit in 6.4s (6267 modules)
+ POST /h/catalyst/pools/urn%3Asmart-agent%3Apool%3Apedersen3/pledge/submit 303 in 12155ms
+ ○ Compiling /h/[hubId]/pledges ...
+ ✓ Compiled /h/[hubId]/pledges in 700ms (4703 modules)
+ GET /h/catalyst/pledges 200 in 2236ms
+ GET /h/catalyst/pools/urn%3Asmart-agent%3Apool%3Apedersen3/pledge 200 in 276ms
+ GET /h/catalyst/pledges 200 in 287ms
+ GET /api/auth/session 200 in 54ms
+ GET /h/catalyst/pools 200 in 4269ms
+ GET /api/auth/session 200 in 36ms
+ GET /h/catalyst/rounds 200 in 2471ms
+ GET /api/auth/session 200 in 48ms
+ ○ Compiling /h/[hubId]/rounds/new ...
+ ✓ Compiled /h/[hubId]/rounds/new in 2.1s (4701 modules)
+ GET /h/catalyst/rounds/new 200 in 291ms
+ GET /api/auth/session 200 in 57ms
+ GET /h/catalyst/rounds/new 200 in 8752ms
+ ○ Compiling /h/[hubId]/rounds/new/submit ...
+ ✓ Compiled /h/[hubId]/rounds/new/submit in 3.5s (6267 modules)
+[deployer-lock] #1439 writeContract(openRound) queued (depth=0)
+[deployer-lock] #1439 acquired after 0ms
+[deployer-lock] nonce desync detected; retrying once with fresh nonce
+[deployer-lock] #1439 fn done in 55ms
+[deployer-lock] #1439 released (held 55ms)
+ POST /h/catalyst/rounds/new/submit 200 in 9157ms
+ ○ Compiling /h/[hubId]/rounds/[roundId] ...
+ ✓ Compiled /h/[hubId]/rounds/[roundId] in 4.1s (4709 modules)
+ GET /h/catalyst/rounds/p3f-1 200 in 5874ms
+ GET /h/catalyst/rounds/p3f-1 200 in 339ms
+ GET /h/catalyst/rounds/p3f-1 200 in 436ms
+ GET /api/auth/session 200 in 49ms
+ GET /h/catalyst/pledges 200 in 273ms
+ GET /api/auth/session 200 in 64ms
+ ○ Compiling /h/[hubId]/proposals ...
+ ✓ Compiled /h/[hubId]/proposals in 794ms (4705 modules)
+ GET /h/catalyst/proposals 200 in 2188ms
+ GET /h/catalyst/proposals 200 in 134ms
+ GET /api/auth/session 200 in 41ms
+ ○ Compiling /h/[hubId]/rounds ...
+ ✓ Compiled /h/[hubId]/rounds in 725ms (4713 modules)
+ GET /h/catalyst/rounds 200 in 3576ms
+ GET /api/auth/session 200 in 42ms
+ GET /h/catalyst/rounds 200 in 2379ms
+ GET /api/auth/session 200 in 60ms
+ ○ Compiling /api/user-context ...
+ ✓ Compiled /api/user-context in 7.9s (4710 modules)
+ GET /api/auth/session 200 in 10404ms
+ GET /api/auth/session 200 in 10407ms
+ GET /api/auth/session 200 in 10409ms
+ GET /api/user-context 200 in 10620ms
+[ontology-sync] Starting on-chain → GraphDB sync...
+[ontology-sync] Emitted 68 agents. Building combined data-graph turtle...
+[ontology-sync] Data graph uploaded: 68 agents + 1 class assertions + 4 rounds + 6 pools
+[kb-sync] ok (68 agents)
+ ✓ Compiled in 6.5s (6261 modules)
+ GET /h/catalyst/rounds 200 in 1598ms
+ ✓ Compiled in 254ms (1585 modules)
+ GET /h/catalyst/rounds 200 in 124ms
+ ✓ Compiled in 280ms (1585 modules)
+ GET /h/catalyst/rounds 200 in 127ms
+ ✓ Compiled in 220ms (1585 modules)
+ GET /h/catalyst/rounds 200 in 147ms
+ ✓ Compiled in 7.9s (6261 modules)
+ GET /h/catalyst/rounds 200 in 1595ms
+ ✓ Compiled in 270ms (1585 modules)
+ GET /h/catalyst/rounds 200 in 157ms
+ ○ Compiling /api/ontology-sync ...
+ ✓ Compiled /api/ontology-sync in 3.7s (4697 modules)
+[ontology-sync] Starting on-chain → GraphDB sync...
+[ontology-sync] Emitted 68 agents. Building combined data-graph turtle...
+[ontology-sync] Data graph uploaded: 68 agents + 1 class assertions + 4 rounds + 6 pools
+ POST /api/ontology-sync 200 in 6781ms
+ ○ Compiling /api/user-context ...
+ ✓ Compiled /api/user-context in 2.3s (4695 modules)
+ GET /h/catalyst/rounds 200 in 6020ms
+ ✓ Compiled (4699 modules)
+ GET /api/auth/session 200 in 10527ms
+ GET /api/auth/session 200 in 10529ms
+ GET /api/auth/session 200 in 10533ms
+ GET /api/auth/session 200 in 10535ms
+ GET /api/user-context 200 in 10769ms
+ GET /h/catalyst/rounds/p3f-1 200 in 413ms
+ GET /api/auth/session 200 in 72ms
+ ○ Compiling /h/[hubId]/rounds/[roundId]/apply ...
+ ✓ Compiled /h/[hubId]/rounds/[roundId]/apply in 4s (4705 modules)
+ GET /h/catalyst/rounds/p3f-1/apply 200 in 145ms
+ GET /api/auth/session 200 in 53ms
+ GET /h/catalyst/rounds/p3f-1/apply 200 in 6645ms
+ ○ Compiling /h/[hubId]/discover ...
+ ✓ Compiled /h/[hubId]/discover in 4.9s (4711 modules)
+ GET /h/catalyst/discover 200 in 203ms
+ GET /api/auth/session 200 in 48ms
+ GET /h/catalyst/discover 200 in 15275ms
+ ○ Compiling /h/[hubId]/intents ...
+ ✓ Compiled /h/[hubId]/intents in 732ms (4711 modules)
+ GET /h/catalyst/intents 200 in 1884ms
+ GET /h/catalyst/intents 200 in 152ms
+ GET /api/auth/session 200 in 54ms
+ ○ Compiling /h/[hubId]/intents/new ...
+ ✓ Compiled /h/[hubId]/intents/new in 5.5s (6281 modules)
+ GET /h/catalyst/intents/new 200 in 8111ms
+ GET /api/auth/session 200 in 64ms
+ POST /h/catalyst/intents/new 200 in 1313ms
+ ✓ Compiled in 4.3s (6276 modules)
+ GET /h/catalyst/intents/new 200 in 1633ms
+ POST /h/catalyst/intents/new 200 in 1008ms
+ ○ Compiling /h/[hubId]/intents/[id] ...
+ ✓ Compiled /h/[hubId]/intents/[id] in 3.7s (4696 modules)
+ GET /h/catalyst/intents/02aaff76-96ef-4ffa-8d5b-6a6d3ed2e5d9 200 in 299ms
+ GET /h/catalyst/intents/02aaff76-96ef-4ffa-8d5b-6a6d3ed2e5d9 200 in 5407ms
+ ○ Compiling /api/auth/session ...
+ ✓ Compiled /api/auth/session in 631ms (4715 modules)
+ GET /api/auth/session 200 in 1234ms
+ GET /h/catalyst/rounds 200 in 3474ms
+ GET /api/auth/session 200 in 40ms
+ ○ Compiling /h/[hubId]/rounds/[roundId] ...
+ ✓ Compiled /h/[hubId]/rounds/[roundId] in 5.2s (4723 modules)
+ GET /h/catalyst/rounds/p3f-1 200 in 6868ms
+ GET /api/auth/session 200 in 42ms
+ GET /h/catalyst/rounds/p3f-1/apply 200 in 379ms
+ GET /api/auth/session 200 in 45ms
+ ✓ Compiled in 7.4s (6277 modules)
+ GET /h/catalyst/rounds/p3f-1/apply 200 in 1508ms
+ ✓ Compiled in 913ms (6277 modules)
+ GET /h/catalyst/rounds/p3f-1/apply 200 in 1456ms
+ ○ Compiling /api/ontology-sync ...
+ ✓ Compiled /api/ontology-sync in 6.7s (4710 modules)
+[ontology-sync] Starting on-chain → GraphDB sync...
+[ontology-sync] Emitted 68 agents. Building combined data-graph turtle...
+[ontology-sync] Data graph uploaded: 68 agents + 1 class assertions + 4 rounds + 6 pools
+ POST /api/ontology-sync 200 in 9931ms
+ ○ Compiling / ...
+ ✓ Compiled / in 3.8s (4714 modules)
+ GET / 200 in 6160ms
+ GET /h/catalyst/rounds/p3f-1/apply 200 in 1370ms
+ ○ Compiling /api/demo-login ...
+ ✓ Compiled /api/auth/session in 4.8s (4781 modules)
+ ✓ Compiled (4783 modules)
+ GET /api/auth/session 200 in 5710ms
+ GET /api/auth/session 200 in 5713ms
+ GET /api/auth/session 200 in 5717ms
+[multiply-seed] Seeding personal Multiply data...
+[multiply-seed] catalyst activities: inserted 111, skipped 0 (already present)
+[mc-seed] training catalog seeded; mc business data now lives in MCPs
+[multiply-seed] Multiply data seeding done
+[seed-mcp] starting MCP demo seed (delegation-only)…
+ GET / 200 in 300ms
+ GET /h/catalyst/rounds/p3f-1/apply 200 in 285ms
+[seed-mcp] person-mcp totals: {
+  oikos: 0,
+  prayers: 0,
+  training411: 33,
+  cocObeying: 44,
+  preferences: 8,
+  notifications: 0,
+  cocTeaching: 4,
+  bdc: 6,
+  profiles: 0,
+  coaching: 0,
+  privateCoaching: 1,
+  intents: 0
+}
+[seed-mcp] org-mcp: revenue=0 proposals=0
+[seed-mcp] on-chain activities: 0
+[seed-mcp] done
+[demo-seed] Senegal Wolof Outreach not yet on-chain; PG seed deferred to next demo-login
+ POST /api/demo-login 200 in 12340ms
+ ○ Compiling /_not-found ...
+ ✓ Compiled /_not-found in 5.1s (6349 modules)
+ POST /api/intents/express 404 in 6423ms
+ GET /h/catalyst/rounds/demo-trauma-care-q2/apply 200 in 1647ms
+ GET /api/auth/session 200 in 81ms
+ ○ Compiling /api/user-context ...
+ ✓ Compiled /api/user-context in 1017ms (4778 modules)
+ GET /api/auth/session 200 in 4118ms
+ GET /api/auth/session 200 in 4120ms
+ GET /api/auth/session 200 in 4123ms
+ GET /api/user-context 200 in 4314ms
+ GET / 200 in 244ms
+[multiply-seed] Seeding personal Multiply data...
+[multiply-seed] catalyst activities: inserted 111, skipped 0 (already present)
+[mc-seed] training catalog seeded; mc business data now lives in MCPs
+[multiply-seed] Multiply data seeding done
+[seed-mcp] starting MCP demo seed (delegation-only)…
+ GET /api/auth/session 200 in 44ms
+ GET /api/auth/session 200 in 107ms
+ GET /api/auth/session 200 in 108ms
+[seed-mcp] person-mcp totals: {
+  oikos: 0,
+  prayers: 0,
+  training411: 33,
+  cocObeying: 44,
+  preferences: 8,
+  notifications: 0,
+  cocTeaching: 4,
+  bdc: 6,
+  profiles: 0,
+  coaching: 0,
+  privateCoaching: 1,
+  intents: 0
+}
+[seed-mcp] org-mcp: revenue=0 proposals=0
+[seed-mcp] on-chain activities: 0
+[seed-mcp] done
+[demo-seed] Senegal Wolof Outreach not yet on-chain; PG seed deferred to next demo-login
+ POST /api/demo-login 200 in 2746ms
+ ○ Compiling /h/[hubId]/rounds/new ...
+ ✓ Compiled /h/[hubId]/rounds/new in 2.6s (4786 modules)
+ GET /h/catalyst/rounds/p3f-1/apply 200 in 298ms
+ GET /api/auth/session 200 in 608ms
+ GET /api/auth/session 200 in 698ms
+ GET /api/auth/session 200 in 700ms
+ GET /api/auth/session 200 in 702ms
+ GET /api/user-context 200 in 830ms
+ GET /h/catalyst/rounds/new 200 in 8345ms
+ ○ Compiling /h/[hubId]/rounds/[roundId]/apply/submit ...
+ ✓ Compiled /h/[hubId]/rounds/[roundId]/apply/submit in 10.9s (6262 modules)
+ POST /h/catalyst/rounds/p3f-1/apply/submit 303 in 14215ms
+ ○ Compiling /h/[hubId]/proposals/[proposalId] ...
+ ✓ Compiled /h/[hubId]/proposals/[proposalId] in 964ms (6265 modules)
+ GET /h/catalyst/proposals/9049e9c8-c0f2-4f3d-900a-1ccbfa77145a 200 in 3032ms
+ GET /h/catalyst/proposals/9049e9c8-c0f2-4f3d-900a-1ccbfa77145a 200 in 232ms
+ ○ Compiling /api/auth/session ...
+ ✓ Compiled /api/auth/session in 827ms (4698 modules)
+ GET /api/auth/session 200 in 1445ms
+ ○ Compiling /h/[hubId]/discover ...
+ ✓ Compiled /h/[hubId]/discover in 5.1s (4708 modules)
+ GET /h/catalyst/discover 200 in 126ms
+ GET /api/auth/session 200 in 48ms
+ GET /h/catalyst/discover 200 in 15079ms
+ ○ Compiling /h/[hubId]/proposals ...
+ ✓ Compiled /h/[hubId]/proposals in 934ms (4702 modules)
+ GET /h/catalyst/proposals 200 in 3761ms
+ GET /h/catalyst/proposals 200 in 156ms
+ GET /api/auth/session 200 in 55ms
+ GET /h/catalyst/proposals/9049e9c8-c0f2-4f3d-900a-1ccbfa77145a 200 in 337ms
+ GET /api/auth/session 200 in 66ms
+ ○ Compiling /h/[hubId]/pledges ...
+ ✓ Compiled /h/[hubId]/pledges in 4.2s (4701 modules)
+ GET /h/catalyst/pledges 200 in 5723ms
+ GET /h/catalyst/pledges 200 in 134ms
+ GET /api/auth/session 200 in 56ms
