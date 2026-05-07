@@ -10,8 +10,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { getPersonAgentForUser, canManageAgent } from '@/lib/agent-registry'
 import { getRoundForViewer } from '@/lib/actions/rounds.action'
-import { cancelRound } from '@/lib/actions/roundCancel.action'
-import type { RoundCancelReason } from '@/lib/onchain/roundCanceledAssertion'
+import { cancelRound, type RoundCancelReason } from '@/lib/actions/roundCancel.action'
 
 export const dynamic = 'force-dynamic'
 

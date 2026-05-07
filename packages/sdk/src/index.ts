@@ -28,9 +28,7 @@ export {
   skillDefinitionRegistryAbi,
   agentSkillRegistryAbi,
   skillIssuerRegistryAbi,
-  // Phase 0 attribute store + shape primitives
-  ontologyAttributeStoreAbi,
-  attributeAuthAbi,
+  // Per-registry attribute storage (each registry inherits AttributeStorage)
   shapeRegistryAbi,
   poolRegistryAbi,
   fundRegistryAbi,
@@ -461,3 +459,20 @@ export {
   DT,
 } from './onchain/attributes/subject'
 export type { SubjectDomain, Datatype } from './onchain/attributes/subject'
+
+export { PoolRegistryClient, normalizeGovernance } from './onchain/attributes/poolRegistry'
+export type {
+  OpenPoolInput,
+  PoolRegistryClientConfig,
+  PoolGovernanceModel as OnChainPoolGovernanceModel,
+  PoolCeilingPolicy as OnChainPoolCeilingPolicy,
+  PoolVisibility as OnChainPoolVisibility,
+} from './onchain/attributes/poolRegistry'
+
+export { FundRegistryClient, roundSubjectFor } from './onchain/attributes/fundRegistry'
+export type {
+  OpenRoundInput as OnChainOpenRoundInput,
+  FundRegistryClientConfig,
+  RoundStatus,
+  RoundVisibility,
+} from './onchain/attributes/fundRegistry'

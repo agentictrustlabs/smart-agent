@@ -57,7 +57,7 @@ const getRoundTool = {
     if (!r) return mcpText({ round: null })
     const round = {
       id: r.id,
-      fundAgentId: r.orgPrincipal,
+      fundAgentId: r.fundAgentId,
       mandate: safeJson(r.mandate, {}),
       milestoneTemplate: safeJson(r.milestoneTemplate, {}),
       validatorRequirements: safeJson(r.validatorRequirements, {}),
@@ -67,8 +67,8 @@ const getRoundTool = {
       requiredCredentials: safeJson<string[]>(r.requiredCredentials, []),
       visibility: r.visibility,
       addressedApplicants: r.addressedApplicants ? safeJson<string[]>(r.addressedApplicants, []) : null,
+      status: r.status,
       proposalsReceived: r.proposalsReceived,
-      onChainAssertionId: r.onChainAssertionId,
     }
     return mcpText({ round })
   },
@@ -161,7 +161,7 @@ const openRoundTool = {
     const now = nowIso()
     db.insert(rounds).values({
       id: args.id,
-      orgPrincipal: args.fundAgentId,
+      fundAgentId: args.fundAgentId,
       mandate: JSON.stringify(args.mandate),
       milestoneTemplate: JSON.stringify(args.milestoneTemplate ?? {}),
       validatorRequirements: JSON.stringify(args.validatorRequirements ?? {}),
@@ -171,8 +171,8 @@ const openRoundTool = {
       requiredCredentials: JSON.stringify(args.requiredCredentials ?? []),
       visibility: args.visibility,
       addressedApplicants: args.addressedApplicants ? JSON.stringify(args.addressedApplicants) : null,
+      status: 'open',
       proposalsReceived: 0,
-      onChainAssertionId: args.onChainAssertionId ?? null,
       createdAt: now,
       updatedAt: now,
     }).run()

@@ -260,23 +260,26 @@ export const proposalSubmissions = sqliteTable('proposal_submissions', {
 
 // Round body lives in the FUND'S org-mcp tenant (per IA § 2.4). Rounds are
 // pre-seeded for spec 003 (round authoring is out of scope); this is the
-// canonical home for the row. The fund's stewards mint
-// sa:RoundOpenedAssertion / sa:RoundClosedAssertion on chain; the public
-// mirror lives in GraphDB via the on-chain → GraphDB sync.
+// canonical body for a Round lives on chain in FundRegistry's own
+// typed-attribute storage. This row is a denormalized cache used by the
+// proposal-flow
+// hot path (validation, addressed-applicants lookup) plus the proposalsReceived
+// counter (high-frequency aggregate, IA P4 § 8.2).
 export const rounds = sqliteTable('rounds', {
   id: text('id').primaryKey(),
-  orgPrincipal: text('org_principal').notNull(),                // = fundAgentId
-  mandate: text('mandate').notNull(),                           // JSON: RoundMandate
-  milestoneTemplate: text('milestone_template').notNull(),      // JSON: RoundMilestoneTemplate
-  validatorRequirements: text('validator_requirements').notNull(), // JSON: RoundValidatorRequirements
-  reportingCadence: text('reporting_cadence').notNull(),        // quarterly|milestone|annual|none
+  fundAgentId: text('fund_agent_id').notNull(),                 // = fund's agent address
+  mandate: text('mandate').notNull().default('{}'),             // JSON: RoundMandate (cache)
+  milestoneTemplate: text('milestone_template').notNull().default('{}'),
+  validatorRequirements: text('validator_requirements').notNull().default('{}'),
+  reportingCadence: text('reporting_cadence').notNull(),        // sa:CadenceQuarterly|...
   deadline: text('deadline').notNull(),                         // ISO-8601
   decisionDate: text('decision_date').notNull(),                // ISO-8601
-  requiredCredentials: text('required_credentials').notNull(),  // JSON array of strings
+  requiredCredentials: text('required_credentials').notNull().default('[]'),
   visibility: text('visibility').notNull().default('public'),   // public|private
   addressedApplicants: text('addressed_applicants'),            // JSON array; null for public rounds
+  status: text('status').notNull().default('open'),             // mirror of on-chain status
+  // Aggregate counters
   proposalsReceived: integer('proposals_received').notNull().default(0),
-  onChainAssertionId: text('on_chain_assertion_id'),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 })
@@ -304,32 +307,33 @@ export const matchInitiations = sqliteTable('match_initiations', {
   updatedAt: text('updated_at').notNull(),
 })
 
-// ─── Spec 002: Intent Marketplace — Pool Lane ─────────────────────────────
-// pools — body of `sa:Pool` (operator-owned per IA § 2.2). Pool authoring is
-// OUT of scope for this spec; this table is the canonical home for pre-seeded
-// pools. org_principal here is the pool agent's own address (pools are
-// first-class agents — `sa:Pool subClassOf sa:OrganizationAgent`).
+// ─── Spec 002: Intent Marketplace — Pool Lane (Phase 0.3 — counters + cache) ─
+// Pool *body* (mandate, governance model, etc.) is the source-of-truth on
+// chain in PoolRegistry's own typed-attribute storage. This table holds the
+// high-frequency aggregate counters (per IA P4 § 8.2) AND a denormalized
+// body cache for the pledge-time validation hot path — the donor's
+// poolPledge:submit handler reads accepted units, restrictions, and capacity
+// to gate the pledge BEFORE writing it. We refresh this cache from the
+// action layer when the on-chain registry mutates.
+//
+// `id` is the canonical pool IRI (`urn:smart-agent:pool:<slug>`).
+// `treasuryAddress` is the pool agent's smart-account address.
 export const pools = sqliteTable('pools', {
-  id: text('id').primaryKey(),                                  // = poolAgentId IRI
-  orgPrincipal: text('org_principal').notNull(),                // = pool's own agent (or steward)
+  id: text('id').primaryKey(),                                  // = pool IRI
+  treasuryAddress: text('treasury_address').notNull(),          // = pool's agent address
   name: text('name').notNull(),
-  domain: text('domain').notNull(),                             // funding|coaching|prayer|skills|hospitality|...
-  mandate: text('mandate').notNull(),                           // JSON: { narrative, tags?, ... }
-  governanceModel: text('governance_model').notNull(),          // DAF|giving-circle|fund|...
-  acceptedRestrictions: text('accepted_restrictions').notNull(),// JSON: AcceptedRestrictions
-  acceptedUnits: text('accepted_units').notNull(),              // JSON array of strings (Q1 open enum)
-  capacityCeiling: integer('capacity_ceiling'),                 // optional cap
-  ceilingPolicy: text('ceiling_policy').notNull().default('accept'), // block|waitlist|accept
-  addressedTo: text('addressed_to').notNull(),                  // hub:<id>|network:<id>|agent:<addr>
+  // Denormalized body cache — refreshed from chain by the action layer.
+  acceptedRestrictions: text('accepted_restrictions').notNull().default('{}'),
+  acceptedUnits: text('accepted_units').notNull().default('[]'),
+  capacityCeiling: integer('capacity_ceiling'),
+  ceilingPolicy: text('ceiling_policy').notNull().default('accept'),
+  visibility: text('visibility').notNull().default('public'),
   addressedMembers: text('addressed_members'),                  // JSON array; null for public
-  visibility: text('visibility').notNull().default('public'),   // public|private
-  stewardshipAgent: text('stewardship_agent').notNull(),        // pool itself or designated agent
   stewards: text('stewards').notNull().default('[]'),           // JSON array of agent IRIs
-  acceptsOpenCalls: integer('accepts_open_calls', { mode: 'boolean' }).notNull().default(false),
+  // Aggregate counters (canonical home per IA P4 § 8.2).
   pledgedTotal: integer('pledged_total').notNull().default(0),
   allocatedTotal: integer('allocated_total').notNull().default(0),
   availableTotal: integer('available_total').notNull().default(0),
-  onChainAssertionId: text('on_chain_assertion_id'),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 })

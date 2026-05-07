@@ -2,42 +2,41 @@
 pragma solidity ^0.8.28;
 
 import "./OntologyTermRegistry.sol";
-import "./IAttributeAuth.sol";
 
 /**
- * @title OntologyAttributeStore
- * @notice Generic typed-attribute store keyed by `bytes32 subject` and
- *         `bytes32 predicate`. Subjects are derived off-chain (agent address,
- *         name node, synthetic id for non-agent classes) and passed in.
+ * @title AttributeStorage
+ * @notice Abstract base for typed attribute storage. Each contract that
+ *         inherits gets its OWN copy of the mappings — there is no shared
+ *         backend. Subclasses are free to choose their auth model; the
+ *         setters are `internal` so the subclass enforces preconditions.
  *
- * Eight value families:
+ * Eight typed value families, identified by uint8 datatype discriminators:
  *   1 string, 2 address, 3 bool, 4 uint256,
  *   5 bytes32, 6 string[], 7 address[], 8 bytes32[]
  *
- * Auth: every setter calls AUTH.canWrite(subject, predicate, msg.sender).
- *       Predicate must be active in OntologyTermRegistry (or be the literal
- *       SUBJECT_VERSION marker — reserved internal use).
+ * Predicate enumeration: `predicatesOf(subject)` returns the list of
+ * predicates ever set on a subject (insertion order, no duplicates).
+ * `subjectVersion(subject)` is bumped on every write — off-chain syncs
+ * use it as a watermark for diff-aware emission.
  *
- * Diff-aware indexing: every write bumps `_subjectVersion[subject]` and emits
- * an event carrying the new version. Off-chain syncs use the version as a
- * watermark to re-emit only changed subjects.
+ * Predicate validation: every internal setter checks the predicate is
+ * active in `ONTOLOGY` (an OntologyTermRegistry the subclass passes in).
+ * This catches typos and unregistered terms at write time.
  */
-contract OntologyAttributeStore {
+abstract contract AttributeStorage {
     OntologyTermRegistry public immutable ONTOLOGY;
-    IAttributeAuth public auth;
-    address public governor;
 
     // ─── Datatype discriminators ────────────────────────────────────
-    uint8 public constant DT_STRING       = 1;
-    uint8 public constant DT_ADDRESS      = 2;
-    uint8 public constant DT_BOOL         = 3;
-    uint8 public constant DT_UINT256      = 4;
-    uint8 public constant DT_BYTES32      = 5;
-    uint8 public constant DT_STRING_ARR   = 6;
-    uint8 public constant DT_ADDRESS_ARR  = 7;
-    uint8 public constant DT_BYTES32_ARR  = 8;
+    uint8 internal constant DT_STRING       = 1;
+    uint8 internal constant DT_ADDRESS      = 2;
+    uint8 internal constant DT_BOOL         = 3;
+    uint8 internal constant DT_UINT256      = 4;
+    uint8 internal constant DT_BYTES32      = 5;
+    uint8 internal constant DT_STRING_ARR   = 6;
+    uint8 internal constant DT_ADDRESS_ARR  = 7;
+    uint8 internal constant DT_BYTES32_ARR  = 8;
 
-    // ─── Typed value families (subject => predicate => value) ───────
+    // ─── Typed value families ───────────────────────────────────────
     mapping(bytes32 => mapping(bytes32 => string))    private _string;
     mapping(bytes32 => mapping(bytes32 => address))   private _address;
     mapping(bytes32 => mapping(bytes32 => bool))      private _bool;
@@ -61,88 +60,60 @@ contract OntologyAttributeStore {
     event AttributeUnset(bytes32 indexed subject, bytes32 indexed predicate, uint64 version);
     event AttributeAppended(bytes32 indexed subject, bytes32 indexed predicate, uint8 datatype, uint64 version);
     event SubjectFirstSeen(bytes32 indexed subject);
-    event AuthChanged(address indexed previousAuth, address indexed newAuth);
-    event GovernorTransferred(address indexed previousGovernor, address indexed newGovernor);
 
     // ─── Errors ─────────────────────────────────────────────────────
-    error NotGovernor();
-    error NotAuthorized();
     error PredicateNotActive();
-    error WrongDatatype(uint8 expected, uint8 actual);
     error AttributeNotSet();
-    error AuthNotSet();
 
-    modifier onlyGovernor() {
-        if (msg.sender != governor) revert NotGovernor();
-        _;
-    }
-
-    modifier authed(bytes32 subject, bytes32 predicate) {
-        if (address(auth) == address(0)) revert AuthNotSet();
-        if (!ONTOLOGY.isActive(predicate)) revert PredicateNotActive();
-        if (!auth.canWrite(subject, predicate, msg.sender)) revert NotAuthorized();
-        _;
-    }
-
-    constructor(address ontologyRegistry, address governor_) {
+    constructor(address ontologyRegistry) {
         ONTOLOGY = OntologyTermRegistry(ontologyRegistry);
-        governor = governor_;
     }
 
-    // ─── Governance ─────────────────────────────────────────────────
+    // ─── Public datatype discriminator readers (for ShapeRegistry) ──
 
-    function setAuth(address newAuth) external onlyGovernor {
-        emit AuthChanged(address(auth), newAuth);
-        auth = IAttributeAuth(newAuth);
-    }
+    function DT_STRING_PUB() external pure returns (uint8) { return DT_STRING; }
+    function DT_ADDRESS_PUB() external pure returns (uint8) { return DT_ADDRESS; }
+    function DT_BOOL_PUB() external pure returns (uint8) { return DT_BOOL; }
+    function DT_UINT256_PUB() external pure returns (uint8) { return DT_UINT256; }
+    function DT_BYTES32_PUB() external pure returns (uint8) { return DT_BYTES32; }
+    function DT_STRING_ARR_PUB() external pure returns (uint8) { return DT_STRING_ARR; }
+    function DT_ADDRESS_ARR_PUB() external pure returns (uint8) { return DT_ADDRESS_ARR; }
+    function DT_BYTES32_ARR_PUB() external pure returns (uint8) { return DT_BYTES32_ARR; }
 
-    function transferGovernor(address newGovernor) external onlyGovernor {
-        emit GovernorTransferred(governor, newGovernor);
-        governor = newGovernor;
-    }
+    // ─── Internal setters (subclass-only) ───────────────────────────
 
-    // ─── Setters: scalars ───────────────────────────────────────────
-
-    function setString(bytes32 subject, bytes32 predicate, string calldata value)
-        external authed(subject, predicate)
-    {
+    function _setString(bytes32 subject, bytes32 predicate, string memory value) internal {
+        _requirePredicate(predicate);
         _string[subject][predicate] = value;
         _record(subject, predicate, DT_STRING);
     }
 
-    function setAddress(bytes32 subject, bytes32 predicate, address value)
-        external authed(subject, predicate)
-    {
+    function _setAddress(bytes32 subject, bytes32 predicate, address value) internal {
+        _requirePredicate(predicate);
         _address[subject][predicate] = value;
         _record(subject, predicate, DT_ADDRESS);
     }
 
-    function setBool(bytes32 subject, bytes32 predicate, bool value)
-        external authed(subject, predicate)
-    {
+    function _setBool(bytes32 subject, bytes32 predicate, bool value) internal {
+        _requirePredicate(predicate);
         _bool[subject][predicate] = value;
         _record(subject, predicate, DT_BOOL);
     }
 
-    function setUint(bytes32 subject, bytes32 predicate, uint256 value)
-        external authed(subject, predicate)
-    {
+    function _setUint(bytes32 subject, bytes32 predicate, uint256 value) internal {
+        _requirePredicate(predicate);
         _uint[subject][predicate] = value;
         _record(subject, predicate, DT_UINT256);
     }
 
-    function setBytes32(bytes32 subject, bytes32 predicate, bytes32 value)
-        external authed(subject, predicate)
-    {
+    function _setBytes32(bytes32 subject, bytes32 predicate, bytes32 value) internal {
+        _requirePredicate(predicate);
         _bytes32[subject][predicate] = value;
         _record(subject, predicate, DT_BYTES32);
     }
 
-    // ─── Setters: arrays (full replace) ─────────────────────────────
-
-    function setStringArr(bytes32 subject, bytes32 predicate, string[] calldata values)
-        external authed(subject, predicate)
-    {
+    function _setStringArr(bytes32 subject, bytes32 predicate, string[] memory values) internal {
+        _requirePredicate(predicate);
         delete _stringArr[subject][predicate];
         for (uint256 i = 0; i < values.length; i++) {
             _stringArr[subject][predicate].push(values[i]);
@@ -150,9 +121,8 @@ contract OntologyAttributeStore {
         _record(subject, predicate, DT_STRING_ARR);
     }
 
-    function setAddressArr(bytes32 subject, bytes32 predicate, address[] calldata values)
-        external authed(subject, predicate)
-    {
+    function _setAddressArr(bytes32 subject, bytes32 predicate, address[] memory values) internal {
+        _requirePredicate(predicate);
         delete _addressArr[subject][predicate];
         for (uint256 i = 0; i < values.length; i++) {
             _addressArr[subject][predicate].push(values[i]);
@@ -160,9 +130,8 @@ contract OntologyAttributeStore {
         _record(subject, predicate, DT_ADDRESS_ARR);
     }
 
-    function setBytes32Arr(bytes32 subject, bytes32 predicate, bytes32[] calldata values)
-        external authed(subject, predicate)
-    {
+    function _setBytes32Arr(bytes32 subject, bytes32 predicate, bytes32[] memory values) internal {
+        _requirePredicate(predicate);
         delete _bytes32Arr[subject][predicate];
         for (uint256 i = 0; i < values.length; i++) {
             _bytes32Arr[subject][predicate].push(values[i]);
@@ -170,32 +139,25 @@ contract OntologyAttributeStore {
         _record(subject, predicate, DT_BYTES32_ARR);
     }
 
-    // ─── Append (single value to existing array) ────────────────────
-
-    function appendString(bytes32 subject, bytes32 predicate, string calldata value)
-        external authed(subject, predicate)
-    {
+    function _appendString(bytes32 subject, bytes32 predicate, string memory value) internal {
+        _requirePredicate(predicate);
         _stringArr[subject][predicate].push(value);
         _recordAppend(subject, predicate, DT_STRING_ARR);
     }
 
-    function appendAddress(bytes32 subject, bytes32 predicate, address value)
-        external authed(subject, predicate)
-    {
+    function _appendAddress(bytes32 subject, bytes32 predicate, address value) internal {
+        _requirePredicate(predicate);
         _addressArr[subject][predicate].push(value);
         _recordAppend(subject, predicate, DT_ADDRESS_ARR);
     }
 
-    function appendBytes32(bytes32 subject, bytes32 predicate, bytes32 value)
-        external authed(subject, predicate)
-    {
+    function _appendBytes32(bytes32 subject, bytes32 predicate, bytes32 value) internal {
+        _requirePredicate(predicate);
         _bytes32Arr[subject][predicate].push(value);
         _recordAppend(subject, predicate, DT_BYTES32_ARR);
     }
 
-    // ─── Unset ──────────────────────────────────────────────────────
-
-    function unset(bytes32 subject, bytes32 predicate) external authed(subject, predicate) {
+    function _unset(bytes32 subject, bytes32 predicate) internal {
         if (!_isSet[subject][predicate]) revert AttributeNotSet();
         uint8 dt = _datatype[subject][predicate];
         if (dt == DT_STRING)            delete _string[subject][predicate];
@@ -206,86 +168,67 @@ contract OntologyAttributeStore {
         else if (dt == DT_STRING_ARR)   delete _stringArr[subject][predicate];
         else if (dt == DT_ADDRESS_ARR)  delete _addressArr[subject][predicate];
         else if (dt == DT_BYTES32_ARR)  delete _bytes32Arr[subject][predicate];
-
         _isSet[subject][predicate] = false;
         delete _datatype[subject][predicate];
         delete _updatedAt[subject][predicate];
-
-        // Note: predicate stays in _predicates[subject] enumeration list to
-        // preserve historical key ordering. Off-chain consumers should check
-        // isSet() before reading.
-
         uint64 v = _bumpVersion(subject);
         emit AttributeUnset(subject, predicate, v);
     }
 
-    // ─── Getters: scalars ───────────────────────────────────────────
+    // ─── Public getters ─────────────────────────────────────────────
 
     function getString(bytes32 subject, bytes32 predicate) external view returns (string memory) {
         return _string[subject][predicate];
     }
-
     function getAddress(bytes32 subject, bytes32 predicate) external view returns (address) {
         return _address[subject][predicate];
     }
-
     function getBool(bytes32 subject, bytes32 predicate) external view returns (bool) {
         return _bool[subject][predicate];
     }
-
     function getUint(bytes32 subject, bytes32 predicate) external view returns (uint256) {
         return _uint[subject][predicate];
     }
-
     function getBytes32(bytes32 subject, bytes32 predicate) external view returns (bytes32) {
         return _bytes32[subject][predicate];
     }
-
-    // ─── Getters: arrays ────────────────────────────────────────────
-
     function getStringArr(bytes32 subject, bytes32 predicate) external view returns (string[] memory) {
         return _stringArr[subject][predicate];
     }
-
     function getAddressArr(bytes32 subject, bytes32 predicate) external view returns (address[] memory) {
         return _addressArr[subject][predicate];
     }
-
     function getBytes32Arr(bytes32 subject, bytes32 predicate) external view returns (bytes32[] memory) {
         return _bytes32Arr[subject][predicate];
     }
 
-    // ─── Enumeration / metadata ─────────────────────────────────────
-
     function predicatesOf(bytes32 subject) external view returns (bytes32[] memory) {
         return _predicates[subject];
     }
-
     function datatypeOf(bytes32 subject, bytes32 predicate) external view returns (uint8) {
         return _datatype[subject][predicate];
     }
-
     function updatedAt(bytes32 subject, bytes32 predicate) external view returns (uint64) {
         return _updatedAt[subject][predicate];
     }
-
     function isSet(bytes32 subject, bytes32 predicate) external view returns (bool) {
         return _isSet[subject][predicate];
     }
-
     function subjectVersion(bytes32 subject) external view returns (uint64) {
         return _subjectVersion[subject];
     }
-
     function allSubjects() external view returns (bytes32[] memory) {
         return _allSubjects;
     }
-
     function subjectCount() external view returns (uint256) {
         return _allSubjects.length;
     }
 
-    // ─── Internal ───────────────────────────────────────────────────
+    // ─── Internal helpers ───────────────────────────────────────────
+
+    function _requirePredicate(bytes32 predicate) internal view {
+        if (!ONTOLOGY.isActive(predicate)) revert PredicateNotActive();
+    }
 
     function _record(bytes32 subject, bytes32 predicate, uint8 dt) internal {
         _trackSubject(subject);
@@ -324,4 +267,17 @@ contract OntologyAttributeStore {
         _subjectVersion[subject] = next;
         return next;
     }
+}
+
+/**
+ * @title IAttributeReader
+ * @notice Read-only interface every AttributeStorage subclass exposes.
+ *         ShapeRegistry takes this so a single shape definition can
+ *         validate any registry's subject.
+ */
+interface IAttributeReader {
+    function isSet(bytes32 subject, bytes32 predicate) external view returns (bool);
+    function datatypeOf(bytes32 subject, bytes32 predicate) external view returns (uint8);
+    function getBytes32(bytes32 subject, bytes32 predicate) external view returns (bytes32);
+    function getBytes32Arr(bytes32 subject, bytes32 predicate) external view returns (bytes32[] memory);
 }

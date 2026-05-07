@@ -271,27 +271,30 @@ sqliteHandle.exec(`
   CREATE INDEX IF NOT EXISTS idx_proposal_submissions_round ON proposal_submissions(round_id);
   CREATE INDEX IF NOT EXISTS idx_proposal_submissions_status ON proposal_submissions(status);
 
-  -- Round body in the fund's org-mcp tenant (org_principal = fundAgentId).
-  -- Mandate / template / counters / addressed-applicants list per IA § 2.4.
+  -- Round body source-of-truth lives on chain in FundRegistry's typed-attribute
+  -- storage. This is a denormalized cache for the proposal-flow hot path
+  -- (validation, addressed-applicants) plus the proposalsReceived counter
+  -- (high-frequency aggregate per IA P4 § 8.2).
   CREATE TABLE IF NOT EXISTS rounds (
     id TEXT PRIMARY KEY,
-    org_principal TEXT NOT NULL,
-    mandate TEXT NOT NULL,
-    milestone_template TEXT NOT NULL,
-    validator_requirements TEXT NOT NULL,
+    fund_agent_id TEXT NOT NULL,
+    mandate TEXT NOT NULL DEFAULT '{}',
+    milestone_template TEXT NOT NULL DEFAULT '{}',
+    validator_requirements TEXT NOT NULL DEFAULT '{}',
     reporting_cadence TEXT NOT NULL,
     deadline TEXT NOT NULL,
     decision_date TEXT NOT NULL,
-    required_credentials TEXT NOT NULL,
+    required_credentials TEXT NOT NULL DEFAULT '[]',
     visibility TEXT NOT NULL DEFAULT 'public',
     addressed_applicants TEXT,
+    status TEXT NOT NULL DEFAULT 'open',
     proposals_received INTEGER NOT NULL DEFAULT 0,
-    on_chain_assertion_id TEXT,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
   );
-  CREATE INDEX IF NOT EXISTS idx_rounds_org ON rounds(org_principal);
+  CREATE INDEX IF NOT EXISTS idx_rounds_fund ON rounds(fund_agent_id);
   CREATE INDEX IF NOT EXISTS idx_rounds_visibility ON rounds(visibility);
+  CREATE INDEX IF NOT EXISTS idx_rounds_status ON rounds(status);
 
   -- ─── Spec 001: Intent Marketplace — Direct Lane ─────────────────────
   -- match_initiations — body of sa:MatchInitiation (initiator-owned, IA § 2.1).
@@ -319,36 +322,29 @@ sqliteHandle.exec(`
   CREATE INDEX IF NOT EXISTS idx_match_initiations_viewed ON match_initiations(viewed_intent_id);
   CREATE INDEX IF NOT EXISTS idx_match_initiations_candidate ON match_initiations(candidate_intent_id);
 
-  -- ─── Spec 002: Intent Marketplace — Pool Lane ─────────────────────
-  -- Pool body (sa:Pool). Pool authoring is OUT of scope for this spec;
-  -- this table is the canonical home for pre-seeded pools (similar to
-  -- rounds in spec 003). Persistence per IA § 2.2.
+  -- ─── Spec 002: Intent Marketplace — Pool Lane (Phase 0.3 — counters + cache) ─
+  -- Pool body source-of-truth lives on chain in PoolRegistry's typed-attribute
+  -- storage. This row holds the high-frequency aggregate counters (per
+  -- IA P4 § 8.2) AND a denormalized body cache for the pledge-time validation
+  -- hot path. The action layer refreshes the cache from chain on registry mutations.
   CREATE TABLE IF NOT EXISTS pools (
     id TEXT PRIMARY KEY,
-    org_principal TEXT NOT NULL,
+    treasury_address TEXT NOT NULL,
     name TEXT NOT NULL,
-    domain TEXT NOT NULL,
-    mandate TEXT NOT NULL,
-    governance_model TEXT NOT NULL,
-    accepted_restrictions TEXT NOT NULL,
-    accepted_units TEXT NOT NULL,
+    accepted_restrictions TEXT NOT NULL DEFAULT '{}',
+    accepted_units TEXT NOT NULL DEFAULT '[]',
     capacity_ceiling INTEGER,
     ceiling_policy TEXT NOT NULL DEFAULT 'accept',
-    addressed_to TEXT NOT NULL,
-    addressed_members TEXT,
     visibility TEXT NOT NULL DEFAULT 'public',
-    stewardship_agent TEXT NOT NULL,
+    addressed_members TEXT,
     stewards TEXT NOT NULL DEFAULT '[]',
-    accepts_open_calls INTEGER NOT NULL DEFAULT 0,
     pledged_total INTEGER NOT NULL DEFAULT 0,
     allocated_total INTEGER NOT NULL DEFAULT 0,
     available_total INTEGER NOT NULL DEFAULT 0,
-    on_chain_assertion_id TEXT,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
   );
-  CREATE INDEX IF NOT EXISTS idx_pools_org ON pools(org_principal);
-  CREATE INDEX IF NOT EXISTS idx_pools_domain ON pools(domain);
+  CREATE INDEX IF NOT EXISTS idx_pools_treasury ON pools(treasury_address);
   CREATE INDEX IF NOT EXISTS idx_pools_visibility ON pools(visibility);
 
   -- pool_pledges — org-mcp twin of person-mcp's pool_pledges. principal =

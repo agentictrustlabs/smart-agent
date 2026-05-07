@@ -1,30 +1,23 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import "./OntologyAttributeStore.sol";
+import "./AttributeStorage.sol";
 import "./ShapeRegistry.sol";
 
 /**
  * @title FundRegistry
- * @notice Phase 0.4 — Fund body + Round body via the shared attribute store.
+ * @notice Fund body + Round body in this contract's own typed-attribute
+ *         storage (inherited from AttributeStorage). Decoupled.
  *
- * A Fund is an OrganizationAgent (sa:Fund subClassOf sa:Pool subClassOf
- * sa:OrganizationAgent). Its subject is the fund's agent address.
+ * Fund subject = fund's agent address (Fund is an OrganizationAgent).
+ * Round subject = keccak256(abi.encodePacked("sa:round:", roundId)) — rounds
+ * are not agents, so a synthetic id keeps them in the same store as their
+ * owning fund.
  *
- * A Round is NOT an agent. Its subject is a synthetic id derived from a
- * caller-supplied string id:
- *     subject = keccak256(abi.encodePacked("sa:round:", roundId))
- *
- * The same registry contract handles both because round ownership chains
- * back to its fund: every round write requires the round's sa:roundFundAgent
- * to be set AND msg.sender to be an owner of that fund's smart account.
- *
- * Auth: fund mutations require fund.AgentAccount.isOwner(msg.sender).
- *       Round mutations require the round's fund's AgentAccount.isOwner
- *       (derived from sa:roundFundAgent — must be set by openRound first).
+ * Auth: fund mutations require fund.AgentAccount.isOwner(msg.sender);
+ * round mutations require the round's fund's AgentAccount.isOwner.
  */
-contract FundRegistry {
-    OntologyAttributeStore public immutable STORE;
+contract FundRegistry is AttributeStorage {
     ShapeRegistry public immutable SHAPES;
 
     bytes32 public constant CLASS_FUND  = keccak256("sa:Fund");
@@ -53,7 +46,6 @@ contract FundRegistry {
     event RoundStatusChanged(bytes32 indexed roundSubject, bytes32 newStatus);
     event RoundAwardsRootSet(bytes32 indexed roundSubject, bytes32 awardsRoot, uint256 disputeUntil);
 
-    /// @dev Bag of args for openRound — keeps the public ABI legible.
     struct OpenRoundParams {
         bytes32 roundSubject;
         address fundAgent;
@@ -65,8 +57,7 @@ contract FundRegistry {
         bytes32 initialStatus;
     }
 
-    constructor(address store, address shapes) {
-        STORE = OntologyAttributeStore(store);
+    constructor(address ontologyRegistry, address shapes) AttributeStorage(ontologyRegistry) {
         SHAPES = ShapeRegistry(shapes);
     }
 
@@ -74,7 +65,6 @@ contract FundRegistry {
         return bytes32(uint256(uint160(fundAgent)));
     }
 
-    /// @notice Compute the canonical round subject id for an off-chain string id.
     function roundSubject(string calldata roundId) external pure returns (bytes32) {
         return keccak256(abi.encodePacked("sa:round:", roundId));
     }
@@ -93,8 +83,8 @@ contract FundRegistry {
     }
 
     modifier onlyRoundFundOwner(bytes32 round) {
-        if (!STORE.isSet(round, SA_ROUND_FUND_AGENT)) revert RoundNotInitialized();
-        address fundAgent = STORE.getAddress(round, SA_ROUND_FUND_AGENT);
+        if (!this.isSet(round, SA_ROUND_FUND_AGENT)) revert RoundNotInitialized();
+        address fundAgent = this.getAddress(round, SA_ROUND_FUND_AGENT);
         if (!_isAccountOwner(fundAgent, msg.sender)) revert NotFundOwner();
         _;
     }
@@ -107,17 +97,17 @@ contract FundRegistry {
         bool openForCalls
     ) external onlyFundOwner(fundAgent) {
         bytes32 s = _fundSubject(fundAgent);
-        STORE.setBytes32Arr(s, SA_FUND_ACCEPTED_KINDS, acceptedKinds);
-        STORE.setBool(s, SA_FUND_OPEN_FOR_CALLS, openForCalls);
+        _setBytes32Arr(s, SA_FUND_ACCEPTED_KINDS, acceptedKinds);
+        _setBool(s, SA_FUND_OPEN_FOR_CALLS, openForCalls);
         emit FundRegistered(fundAgent, s);
     }
 
     function setFundOpenForCalls(address fundAgent, bool openForCalls) external onlyFundOwner(fundAgent) {
-        STORE.setBool(_fundSubject(fundAgent), SA_FUND_OPEN_FOR_CALLS, openForCalls);
+        _setBool(_fundSubject(fundAgent), SA_FUND_OPEN_FOR_CALLS, openForCalls);
     }
 
     function setFundAcceptedKinds(address fundAgent, bytes32[] calldata kinds) external onlyFundOwner(fundAgent) {
-        STORE.setBytes32Arr(_fundSubject(fundAgent), SA_FUND_ACCEPTED_KINDS, kinds);
+        _setBytes32Arr(_fundSubject(fundAgent), SA_FUND_ACCEPTED_KINDS, kinds);
     }
 
     // ─── Round ─────────────────────────────────────────────────────
@@ -125,26 +115,25 @@ contract FundRegistry {
     function openRound(OpenRoundParams calldata p) external onlyFundOwner(p.fundAgent) {
         if (p.fundAgent == address(0)) revert MissingFundAgent();
 
-        STORE.setAddress(p.roundSubject, SA_ROUND_FUND_AGENT, p.fundAgent);
-        STORE.setUint(p.roundSubject, SA_ROUND_DEADLINE, p.deadline);
-        STORE.setUint(p.roundSubject, SA_ROUND_DECISION_DATE, p.decisionDate);
-        STORE.setBytes32(p.roundSubject, SA_ROUND_REPORTING_CADENCE, p.reportingCadence);
+        _setAddress(p.roundSubject, SA_ROUND_FUND_AGENT, p.fundAgent);
+        _setUint(p.roundSubject, SA_ROUND_DEADLINE, p.deadline);
+        _setUint(p.roundSubject, SA_ROUND_DECISION_DATE, p.decisionDate);
+        _setBytes32(p.roundSubject, SA_ROUND_REPORTING_CADENCE, p.reportingCadence);
         if (p.requiredCredentials.length > 0) {
-            STORE.setBytes32Arr(p.roundSubject, SA_ROUND_REQUIRED_CREDENTIALS, p.requiredCredentials);
+            _setBytes32Arr(p.roundSubject, SA_ROUND_REQUIRED_CREDENTIALS, p.requiredCredentials);
         }
-        STORE.setBytes32(p.roundSubject, SA_ROUND_VISIBILITY, p.visibility);
-        STORE.setBytes32(p.roundSubject, SA_ROUND_STATUS, p.initialStatus);
-        STORE.setUint(p.roundSubject, SA_ROUND_OPENED_AT, block.timestamp);
+        _setBytes32(p.roundSubject, SA_ROUND_VISIBILITY, p.visibility);
+        _setBytes32(p.roundSubject, SA_ROUND_STATUS, p.initialStatus);
+        _setUint(p.roundSubject, SA_ROUND_OPENED_AT, block.timestamp);
 
-        SHAPES.validateSubject(CLASS_ROUND, p.roundSubject);
+        SHAPES.validateSubject(CLASS_ROUND, p.roundSubject, address(this));
 
         emit RoundOpened(p.roundSubject, p.fundAgent);
     }
 
     function setRoundStatus(bytes32 round, bytes32 newStatus) external onlyRoundFundOwner(round) {
-        STORE.setBytes32(round, SA_ROUND_STATUS, newStatus);
-        // Re-validate to ensure the new status passes the enum constraint
-        SHAPES.validateSubject(CLASS_ROUND, round);
+        _setBytes32(round, SA_ROUND_STATUS, newStatus);
+        SHAPES.validateSubject(CLASS_ROUND, round, address(this));
         emit RoundStatusChanged(round, newStatus);
     }
 
@@ -153,58 +142,47 @@ contract FundRegistry {
         bytes32 awardsRoot,
         uint256 disputeUntil
     ) external onlyRoundFundOwner(round) {
-        STORE.setBytes32(round, SA_ROUND_AWARDS_ROOT, awardsRoot);
-        STORE.setUint(round, SA_ROUND_DISPUTE_UNTIL, disputeUntil);
+        _setBytes32(round, SA_ROUND_AWARDS_ROOT, awardsRoot);
+        _setUint(round, SA_ROUND_DISPUTE_UNTIL, disputeUntil);
         emit RoundAwardsRootSet(round, awardsRoot, disputeUntil);
     }
 
     // ─── Read helpers ──────────────────────────────────────────────
 
     function getFundAcceptedKinds(address fundAgent) external view returns (bytes32[] memory) {
-        return STORE.getBytes32Arr(_fundSubject(fundAgent), SA_FUND_ACCEPTED_KINDS);
+        return this.getBytes32Arr(_fundSubject(fundAgent), SA_FUND_ACCEPTED_KINDS);
     }
-
     function isFundOpenForCalls(address fundAgent) external view returns (bool) {
-        return STORE.getBool(_fundSubject(fundAgent), SA_FUND_OPEN_FOR_CALLS);
+        return this.getBool(_fundSubject(fundAgent), SA_FUND_OPEN_FOR_CALLS);
     }
-
     function getRoundFundAgent(bytes32 round) external view returns (address) {
-        return STORE.getAddress(round, SA_ROUND_FUND_AGENT);
+        return this.getAddress(round, SA_ROUND_FUND_AGENT);
     }
-
     function getRoundStatus(bytes32 round) external view returns (bytes32) {
-        return STORE.getBytes32(round, SA_ROUND_STATUS);
+        return this.getBytes32(round, SA_ROUND_STATUS);
     }
-
     function getRoundDeadline(bytes32 round) external view returns (uint256) {
-        return STORE.getUint(round, SA_ROUND_DEADLINE);
+        return this.getUint(round, SA_ROUND_DEADLINE);
     }
-
     function getRoundDecisionDate(bytes32 round) external view returns (uint256) {
-        return STORE.getUint(round, SA_ROUND_DECISION_DATE);
+        return this.getUint(round, SA_ROUND_DECISION_DATE);
     }
-
     function getRoundVisibility(bytes32 round) external view returns (bytes32) {
-        return STORE.getBytes32(round, SA_ROUND_VISIBILITY);
+        return this.getBytes32(round, SA_ROUND_VISIBILITY);
     }
-
     function getRoundReportingCadence(bytes32 round) external view returns (bytes32) {
-        return STORE.getBytes32(round, SA_ROUND_REPORTING_CADENCE);
+        return this.getBytes32(round, SA_ROUND_REPORTING_CADENCE);
     }
-
     function getRoundRequiredCredentials(bytes32 round) external view returns (bytes32[] memory) {
-        return STORE.getBytes32Arr(round, SA_ROUND_REQUIRED_CREDENTIALS);
+        return this.getBytes32Arr(round, SA_ROUND_REQUIRED_CREDENTIALS);
     }
-
     function getRoundAwardsRoot(bytes32 round) external view returns (bytes32) {
-        return STORE.getBytes32(round, SA_ROUND_AWARDS_ROOT);
+        return this.getBytes32(round, SA_ROUND_AWARDS_ROOT);
     }
-
     function getRoundDisputeUntil(bytes32 round) external view returns (uint256) {
-        return STORE.getUint(round, SA_ROUND_DISPUTE_UNTIL);
+        return this.getUint(round, SA_ROUND_DISPUTE_UNTIL);
     }
-
     function getRoundOpenedAt(bytes32 round) external view returns (uint256) {
-        return STORE.getUint(round, SA_ROUND_OPENED_AT);
+        return this.getUint(round, SA_ROUND_OPENED_AT);
     }
 }

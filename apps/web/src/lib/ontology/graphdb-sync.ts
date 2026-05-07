@@ -337,6 +337,20 @@ const CBOX_GRAPH = 'https://smartagent.io/graph/schema/cbox'
 export async function syncOnChainToGraphDB(): Promise<{ success: boolean; message: string; agentCount?: number }> {
   console.log('[ontology-sync] Starting on-chain → GraphDB sync...')
 
+  // Pre-flight: skip the (potentially multi-MB) turtle build entirely if
+  // GraphDB is unreachable. Cheaper than retrying a big PUT three times
+  // through Cloudflare's 524 path. The next debounce tick will try again.
+  const discovery = DiscoveryService.fromEnv()
+  const client = discovery.getClient()
+  try {
+    const reachable = await client.ping()
+    if (!reachable) {
+      return { success: false, message: 'GraphDB ping failed — skipping sync (will retry next debounce)' }
+    }
+  } catch (pingErr) {
+    return { success: false, message: `GraphDB ping error: ${pingErr instanceof Error ? pingErr.message : pingErr}` }
+  }
+
   const agentTurtle = await emitAgentsTurtle()
   if (!agentTurtle) {
     return { success: false, message: 'No agents found or resolver not configured.' }
@@ -344,9 +358,6 @@ export async function syncOnChainToGraphDB(): Promise<{ success: boolean; messag
 
   const agentCount = (agentTurtle.match(/a sa:(PersonAgent|OrganizationAgent|AIAgentAccount|HubAgent)/g) ?? []).length
   console.log(`[ontology-sync] Emitted ${agentCount} agents. Building combined data-graph turtle...`)
-
-  const discovery = DiscoveryService.fromEnv()
-  const client = discovery.getClient()
 
   try {
     // Combine ALL data-graph contributions into one turtle and PUT once.
@@ -567,7 +578,7 @@ export async function emitClassAssertionsTurtle(): Promise<string> {
 
 interface OrgMcpRoundRow {
   id: string
-  org_principal: string
+  fund_agent_id: string
   mandate: string
   milestone_template: string
   validator_requirements: string
@@ -577,8 +588,8 @@ interface OrgMcpRoundRow {
   required_credentials: string
   visibility: string
   addressed_applicants: string | null
+  status: string
   proposals_received: number
-  on_chain_assertion_id: string | null
   created_at: string
   updated_at: string
 }
@@ -623,10 +634,10 @@ export async function emitRoundsTurtle(): Promise<string> {
   let rows: OrgMcpRoundRow[]
   try {
     rows = db.prepare(`
-      SELECT id, org_principal, mandate, milestone_template, validator_requirements,
+      SELECT id, fund_agent_id, mandate, milestone_template, validator_requirements,
              reporting_cadence, deadline, decision_date, required_credentials,
-             visibility, addressed_applicants, proposals_received,
-             on_chain_assertion_id, created_at, updated_at
+             visibility, addressed_applicants, status, proposals_received,
+             created_at, updated_at
       FROM rounds
     `).all() as OrgMcpRoundRow[]
   } catch {
@@ -644,25 +655,18 @@ export async function emitRoundsTurtle(): Promise<string> {
   lines.push('')
 
   for (const row of rows) {
-    // Round id — stored as the full IRI (urn:smart-agent:round:<sub>).
-    // Strip the prefix to get the subjectId for the assertion mirror.
     const roundIri = row.id
     const subjectId = roundIri.replace(/^urn:smart-agent:round:/, '')
-    const fundIri = `${SA}agent/${row.org_principal.toLowerCase()}`
+    const fundIri = `${SA}agent/${row.fund_agent_id.toLowerCase()}`
 
-    // Round subject + body fields.
     lines.push(`<${roundIri}> a sa:Round ;`)
     lines.push(`  sa:operatedByFund <${fundIri}> ;`)
-    // Mandate JSON may carry a displayName field stashed by the seed —
-    // hoist it into a `sa:displayName` triple so the apply-page header
-    // can show "Pastoral Coaching Cohort for NoCo Q2" instead of the
-    // raw kind tags.
     try {
       const m = JSON.parse(row.mandate ?? '{}') as { displayName?: string }
       if (m.displayName) {
         lines.push(`  sa:displayName "${escapeTurtleString(m.displayName)}" ;`)
       }
-    } catch { /* mandate not JSON — skip */ }
+    } catch { /* not JSON — skip */ }
     lines.push(`  sa:roundMandate "${escapeTurtleString(row.mandate)}" ;`)
     lines.push(`  sa:milestoneTemplate "${escapeTurtleString(row.milestone_template)}" ;`)
     lines.push(`  sa:validatorRequirements "${escapeTurtleString(row.validator_requirements)}" ;`)
@@ -671,16 +675,16 @@ export async function emitRoundsTurtle(): Promise<string> {
     lines.push(`  sa:decisionDate "${row.decision_date}"^^xsd:dateTime ;`)
     lines.push(`  sa:requiredCredentials "${escapeTurtleString(row.required_credentials)}" ;`)
     lines.push(`  sa:visibility "${escapeTurtleString(row.visibility)}" ;`)
+    lines.push(`  sa:status "${escapeTurtleString(row.status)}" ;`)
     if (row.addressed_applicants) {
       lines.push(`  sa:addressedApplicants "${escapeTurtleString(row.addressed_applicants)}" ;`)
     }
     lines.push(`  sa:proposalsReceived ${row.proposals_received | 0} .`)
     lines.push('')
 
-    // Synthetic RoundOpenedAssertion mirror — required by listRoundsQuery's
-    // anchor-based subject binding (BIND(IRI(CONCAT("urn:smart-agent:round:",
-    // STR(?subjectId))) AS ?round)).
-    const asnIri = row.on_chain_assertion_id ?? `urn:smart-agent:assertion:${subjectId}-opened`
+    // Synthetic anchor mirror — listRoundsQuery binds via subjectId. Stable
+    // synthetic IRI per round so duplicates collapse.
+    const asnIri = `urn:smart-agent:assertion:${subjectId}-opened`
     lines.push(`<${asnIri}> a sa:RoundOpenedAssertion ;`)
     lines.push(`  sa:onChainAssertionId "${escapeTurtleString(asnIri)}" ;`)
     lines.push(`  sa:subjectId "${escapeTurtleString(subjectId)}" ;`)
@@ -711,25 +715,18 @@ export async function emitRoundsTurtle(): Promise<string> {
 
 interface OrgMcpPoolRow {
   id: string
-  org_principal: string
+  treasury_address: string
   name: string
-  domain: string
-  mandate: string
-  governance_model: string
   accepted_restrictions: string
   accepted_units: string
   capacity_ceiling: number | null
   ceiling_policy: string
-  addressed_to: string
-  addressed_members: string | null
   visibility: string
-  stewardship_agent: string
+  addressed_members: string | null
   stewards: string
-  accepts_open_calls: number
   pledged_total: number
   allocated_total: number
   available_total: number
-  on_chain_assertion_id: string | null
   created_at: string
   updated_at: string
 }
@@ -763,9 +760,9 @@ export async function emitPoolsTurtle(): Promise<string> {
     rows = db.prepare(`
       SELECT id, org_principal, name, domain, mandate, governance_model,
              accepted_restrictions, accepted_units, capacity_ceiling, ceiling_policy,
-             addressed_to, addressed_members, visibility, stewardship_agent, stewards,
-             accepts_open_calls, pledged_total, allocated_total, available_total,
-             on_chain_assertion_id, created_at, updated_at
+             addressed_members, visibility, stewards,
+             pledged_total, allocated_total, available_total,
+             created_at, updated_at, treasury_address
         FROM pools
     `).all() as OrgMcpPoolRow[]
   } catch {
@@ -783,19 +780,20 @@ export async function emitPoolsTurtle(): Promise<string> {
   lines.push('')
 
   for (const row of rows) {
-    // Pool id is the full IRI (the pool is itself an agent — `sa:Pool
-    // subClassOf sa:OrganizationAgent`). For seeded pools this is typically
-    // already a urn or agent IRI; we accept either.
+    // Pool body source-of-truth lives on chain in PoolRegistry. This emit
+    // mirrors the cached body fields the org-mcp row carries — name,
+    // accepted-units/restrictions, ceiling, visibility, stewards, counters.
+    // Domain / governance model / mandate are read via the registry directly
+    // by the proper attribute-walk emitter (Phase 0.6 cleanup item).
     const poolIri = row.id
-    const stewardshipAgent = row.stewardship_agent
+    const treasuryIri = `${SA}agent/${row.treasury_address.toLowerCase()}`
 
     lines.push(`<${poolIri}> a sa:Pool ;`)
     lines.push(`  sa:displayName "${escapeTurtleString(row.name)}" ;`)
-    lines.push(`  sa:domain "${escapeTurtleString(row.domain)}" ;`)
-    lines.push(`  sa:poolMandate "${escapeTurtleString(row.mandate)}" ;`)
-    lines.push(`  sa:governanceModel "${escapeTurtleString(row.governance_model)}" ;`)
-    lines.push(`  sa:acceptedRestrictions "${escapeTurtleString(row.accepted_restrictions)}" ;`)
-    // acceptedUnits is multi-valued; emit one triple per unit.
+    lines.push(`  sa:treasuryAgent <${treasuryIri}> ;`)
+    if (row.accepted_restrictions && row.accepted_restrictions !== '{}') {
+      lines.push(`  sa:acceptedRestrictions "${escapeTurtleString(row.accepted_restrictions)}" ;`)
+    }
     try {
       const units = JSON.parse(row.accepted_units) as string[]
       if (Array.isArray(units)) {
@@ -808,24 +806,9 @@ export async function emitPoolsTurtle(): Promise<string> {
       lines.push(`  sa:capacityCeiling ${row.capacity_ceiling | 0} ;`)
     }
     lines.push(`  sa:ceilingPolicy "${escapeTurtleString(row.ceiling_policy)}" ;`)
-    lines.push(`  sa:addressedTo "${escapeTurtleString(row.addressed_to)}" ;`)
-    if (row.addressed_members) {
-      // Per IA § 2.5, the addressedMembers list lives in the pool's org-mcp
-      // ONLY (no on-chain anchor). We DELIBERATELY do NOT emit it to GraphDB
-      // for private pools — the action layer resolves it via the pool's
-      // org-mcp at read time.
-      if (row.visibility !== 'private') {
-        lines.push(`  sa:addressedMembers "${escapeTurtleString(row.addressed_members)}" ;`)
-      }
-    }
     lines.push(`  sa:visibility "${escapeTurtleString(row.visibility)}" ;`)
-    if (stewardshipAgent) {
-      // Emit as IRI when it looks like one; literal otherwise.
-      if (/^https?:|^urn:/.test(stewardshipAgent)) {
-        lines.push(`  sa:stewardshipAgent <${stewardshipAgent}> ;`)
-      } else {
-        lines.push(`  sa:stewardshipAgent "${escapeTurtleString(stewardshipAgent)}" ;`)
-      }
+    if (row.addressed_members && row.visibility !== 'private') {
+      lines.push(`  sa:addressedMembers "${escapeTurtleString(row.addressed_members)}" ;`)
     }
     try {
       const stewards = JSON.parse(row.stewards) as string[]
@@ -833,13 +816,14 @@ export async function emitPoolsTurtle(): Promise<string> {
         for (const s of stewards) {
           if (/^https?:|^urn:/.test(s)) {
             lines.push(`  sa:steward <${s}> ;`)
+          } else if (/^0x[0-9a-fA-F]{40}$/.test(s)) {
+            lines.push(`  sa:steward <${SA}agent/${s.toLowerCase()}> ;`)
           } else {
             lines.push(`  sa:steward "${escapeTurtleString(s)}" ;`)
           }
         }
       }
     } catch { /* noop */ }
-    lines.push(`  sa:acceptsOpenCalls ${row.accepts_open_calls ? 'true' : 'false'} ;`)
     lines.push(`  sa:pledgedTotal ${row.pledged_total | 0} ;`)
     lines.push(`  sa:allocatedTotal ${row.allocated_total | 0} ;`)
     lines.push(`  sa:availableTotal ${row.available_total | 0} .`)

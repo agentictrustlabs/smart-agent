@@ -89,7 +89,7 @@ function readLocalPool(poolId: string): PoolBody | null {
   if (!r) return null
   return {
     id: r.id,
-    orgPrincipal: r.orgPrincipal.toLowerCase(),
+    orgPrincipal: r.treasuryAddress.toLowerCase(),
     acceptedRestrictions: safeJson<PledgeRestrictions>(r.acceptedRestrictions, {}),
     acceptedUnits: safeJson<string[]>(r.acceptedUnits, []),
     capacityCeiling: r.capacityCeiling,

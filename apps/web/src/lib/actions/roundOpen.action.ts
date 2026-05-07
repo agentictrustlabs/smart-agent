@@ -1,26 +1,29 @@
 'use server'
 
 /**
- * Treasury Phase 2.5 — Round opening orchestration.
+ * Round opening orchestration (Phase 0.4 — on-chain attribute store).
  *
- * Calls the org-mcp `round:open` write tool to persist the round body
- * and emits `sa:RoundOpenedAssertion` so the public mirror picks up the
- * round at the moment it opens. Until this action existed, rounds were
- * seed-only; this is the production path a UI can hit.
+ * Flow:
+ *   1. Open the round on chain via FundRegistry.openRound(...) — body lives
+ *      in FundRegistry's own typed-attribute storage. ShapeRegistry validates.
+ *   2. Cache body in org-mcp via the `round:open` MCP tool — used by the
+ *      proposal-flow hot path (validation, addressed-applicants check).
+ *   3. Trigger debounced kb-sync.
  *
- * The emit helper bifurcates public vs. private (coarse) — for private
- * rounds the on-chain payload omits `addressedApplicants` and the rest
- * of the addressed list lives only in the fund's org-mcp.
+ * Drops the legacy `sa:RoundOpenedAssertion` emit — registry's RoundOpened
+ * event + on-chain attribute writes are the new public mirror source.
  */
 
+import { type Address } from 'viem'
 import { callMcp } from '@/lib/clients/mcp-client'
-import { emitRoundOpenedAssertion } from '@/lib/onchain/roundAssertion'
+import { getWalletClient, getPublicClient } from '@/lib/contracts'
+import { FundRegistryClient } from '@smart-agent/sdk'
 
 export interface OpenRoundInput {
-  /** Canonical round id slug (e.g. "demo-trauma-care-q2"). */
+  /** Canonical round id slug (e.g. 'demo-trauma-care-q2'). */
   id: string
-  /** The fund / pool agent operating the round (URN or address). */
-  fundAgentId: string
+  /** The fund / pool agent operating the round (address). */
+  fundAgentId: Address
   mandate: {
     acceptedKinds: string[]
     acceptedGeo: string[]
@@ -41,15 +44,45 @@ export interface OpenRoundInput {
 
 export interface OpenRoundResult {
   roundId: string
-  fundAgentId: string
+  fundAgentId: Address
   visibility: 'public' | 'private'
-  onChainAssertionId: string | null
+  txHash: `0x${string}`
+}
+
+const CADENCE_CONCEPT: Record<OpenRoundInput['reportingCadence'], string> = {
+  monthly: 'sa:CadenceMonthly',
+  quarterly: 'sa:CadenceQuarterly',
+  annual: 'sa:CadenceAnnual',
+  milestone: 'sa:CadenceMilestone',
+  none: 'sa:CadenceNone',
 }
 
 export async function openRound(input: OpenRoundInput): Promise<OpenRoundResult> {
-  const fullId = `urn:smart-agent:round:${input.id}`
+  const registryAddr = process.env.FUND_REGISTRY_ADDRESS as Address | undefined
+  if (!registryAddr) throw new Error('FUND_REGISTRY_ADDRESS not set')
 
-  // 1. Persist body.
+  const fullId = `urn:smart-agent:round:${input.id}`
+  const deadlineSec = BigInt(Math.floor(Date.parse(input.deadline) / 1000))
+  const decisionSec = BigInt(Math.floor(Date.parse(input.decisionDate) / 1000))
+
+  const client = new FundRegistryClient({
+    registryAddress: registryAddr,
+    walletClient: getWalletClient(),
+    publicClient: getPublicClient(),
+  })
+
+  const { txHash } = await client.openRound({
+    roundId: input.id,
+    fundAgent: input.fundAgentId,
+    deadline: deadlineSec,
+    decisionDate: decisionSec,
+    reportingCadence: CADENCE_CONCEPT[input.reportingCadence],
+    requiredCredentials: input.requiredCredentials,
+    visibility: input.visibility,
+    initialStatus: 'open',
+  })
+
+  // Cache body in org-mcp for the proposal hot-path validator.
   await callMcp('org', 'round:open', {
     id: fullId,
     fundAgentId: input.fundAgentId,
@@ -64,22 +97,6 @@ export async function openRound(input: OpenRoundInput): Promise<OpenRoundResult>
     addressedApplicants: input.addressedApplicants,
   })
 
-  // 2. Public anchor (or coarse for private).
-  const onChainAssertionId = await emitRoundOpenedAssertion({
-    id: input.id,
-    fundAgentId: input.fundAgentId,
-    mandate: input.mandate,
-    reportingCadence: input.reportingCadence,
-    deadline: input.deadline,
-    decisionDate: input.decisionDate,
-    requiredCredentials: input.requiredCredentials ?? [],
-    visibility: input.visibility,
-    addressedApplicants: input.addressedApplicants,
-  })
-
-  // Debounced kb-sync (60s quiet + 30s cooldown) — user-triggered
-  // writes can pile up; direct syncs hammer GraphDB. Cost: up to 60s
-  // before the new round appears on /h/<hub>/rounds.
   const { scheduleKbSync } = await import('@/lib/ontology/kb-write-through')
   scheduleKbSync()
 
@@ -87,6 +104,6 @@ export async function openRound(input: OpenRoundInput): Promise<OpenRoundResult>
     roundId: fullId,
     fundAgentId: input.fundAgentId,
     visibility: input.visibility,
-    onChainAssertionId,
+    txHash,
   }
 }

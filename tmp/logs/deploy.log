@@ -16,10 +16,10 @@
   AllocationLimitEnforcer: 0x0DCd1Bf9A1b36cE34237eEaFef220932846BCD82
   StewardEligibilityEnforcer: 0x9A676e781A523b5d0C0e43731313A708CB607508
   QuorumEnforcer: 0x0B306BF915C4d645ff596e518fAf3F9669b97016
-  NameScopeEnforcer: 0x851356ae760d987E095750cCeb3bC6014560891C
-  MembershipProofEnforcer: 0x95401dc811bb5740090279Ba06cfA8fcF6113778
-  RateLimitEnforcer: 0x998abeb3E57409262aE5b751f60747921B33613E
-  RecoveryEnforcer: 0x70e0bA845a1A0F2DA3359C97E0285013525FFC49
+  NameScopeEnforcer: 0x4826533B4897376654Bb4d4AD88B7faFD0C98528
+  MembershipProofEnforcer: 0x0E801D84Fa97b50751Dbf25036d067dCf18858bF
+  RateLimitEnforcer: 0x8f86403A4DE0BB5791fa46B8e795C547942fE4Cf
+  RecoveryEnforcer: 0x9d4454B023096f34B160D6B654540c56A1F81688
 
 === Extracted addresses ===
 EntryPoint:                0x5FbDB2315678afecb367f032d93F642f64180aa3
@@ -43,15 +43,15 @@ AllowedMethodsEnforcer:    0x0165878A594ca255338adfa4d48449f69242Eb8F
 DataScopeEnforcer:         0xa513E6E4b8f2a923D98304ec87F64353C4D5C853
 MockTeeVerifier:           0x67d269191c92Caf3cD7723F116c85e6E9bf55933
 OntologyTermRegistry:      0xE6E340D132b5f46d1e472DebcD681B2aBc16e57E
-AgentAccountResolver:      0xc3e53F4d16Ae77Db1c982e75a937B9f60FE63690
-AgentUniversalResolver:    0x84eA74d481Ee0A5332c457a4d796187F6Ba67fEB
-0x1613beB3B2C4f22Ee086B2b38C1476A3cE7f78E8
+AgentAccountResolver:      0x1613beB3B2C4f22Ee086B2b38C1476A3cE7f78E8
+AgentUniversalResolver:    0x851356ae760d987E095750cCeb3bC6014560891C
+0x70e0bA845a1A0F2DA3359C97E0285013525FFC49
 RelationshipTypeRegistry: 0xc6e7DF5E7b4f2A278906862b61205850344D4e7d
 AgentRelationshipQuery:   0x59b670e9fA9D0A427751Af201D676719a970857b
-AgentNameRegistry:        0x9E545E3C0baAB3E08CdfD552C960A1050f373042
-AgentNameResolver:        0xa82fF9aFd8f496c3d6ac40E2a0F282E47488CFc9
-AgentNameUniversalRes:    0x1613beB3B2C4f22Ee086B2b38C1476A3cE7f78E8
-NameScopeEnforcer:        0x851356ae760d987E095750cCeb3bC6014560891C
+AgentNameRegistry:        0xf5059a5D33d5853360D16C683c16e67980206f36
+AgentNameResolver:        0x95401dc811bb5740090279Ba06cfA8fcF6113778
+AgentNameUniversalRes:    0x70e0bA845a1A0F2DA3359C97E0285013525FFC49
+NameScopeEnforcer:        0x4826533B4897376654Bb4d4AD88B7faFD0C98528
 
 === Updated /home/barb/smart-agent/apps/web/.env ===
 Updated /home/barb/smart-agent/apps/org-mcp/.env
@@ -101,7 +101,7 @@ Funded org issuer 0xe8acf143AFbF8B1371A20ea934D334180190Eac1, family issuer 0xA8
   (already registered: atl:hubVocabulary)
   (already registered: atl:hubRoleVocabulary)
   (already registered: atl:hubTypeVocabulary)
-=== Ontology terms registered: 45 ===
+=== Ontology terms registered: 80 ===
 
 === Seeding relationship-type registry ===
 === Seeding Relationship Type Registry ===

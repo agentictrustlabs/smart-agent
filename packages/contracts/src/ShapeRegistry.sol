@@ -1,26 +1,24 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import "./OntologyAttributeStore.sol";
+import "./AttributeStorage.sol";
 
 /**
  * @title ShapeRegistry
- * @notice SHACL-inspired class shape constraints applied to subjects in the
- *         OntologyAttributeStore.
+ * @notice SHACL-inspired class shape constraints. Decoupled from any
+ *         specific store — every validation call takes the reader address,
+ *         so one registry holds shapes that can be validated against any
+ *         AttributeStorage subclass.
  *
  * Supported subset:
  *   sh:path        → predicate id
- *   sh:datatype    → store datatype family discriminator (DT_*)
+ *   sh:datatype    → AttributeStorage datatype family discriminator (DT_*)
  *   sh:minCount /  → cardinality enum
  *   sh:maxCount
  *   sh:in          → enumSetId referencing _enumValues[id]
  *   sh:class       → expectedClass id (off-chain class IRI hash); informational
- *
- * Validation is read-only: validateSubject reverts on first violation;
- * isValid returns false instead of reverting.
  */
 contract ShapeRegistry {
-    OntologyAttributeStore public immutable STORE;
     address public governor;
 
     enum Cardinality {
@@ -74,8 +72,7 @@ contract ShapeRegistry {
         _;
     }
 
-    constructor(address store, address governor_) {
-        STORE = OntologyAttributeStore(store);
+    constructor(address governor_) {
         governor = governor_;
     }
 
@@ -93,7 +90,6 @@ contract ShapeRegistry {
         bytes32 shapeHash
     ) external onlyGovernor returns (uint16) {
         if (_shapes[classId].exists) revert ShapeAlreadyDefined();
-
         _shapes[classId] = Shape({
             classId: classId,
             shapeURI: shapeURI,
@@ -106,7 +102,6 @@ contract ShapeRegistry {
         for (uint256 i = 0; i < props.length; i++) {
             _props[classId].push(props[i]);
         }
-
         emit ShapeDefined(classId, 1, shapeURI, shapeHash);
         return 1;
     }
@@ -119,16 +114,13 @@ contract ShapeRegistry {
     ) external onlyGovernor returns (uint16) {
         Shape storage s = _shapes[classId];
         if (!s.exists) revert ShapeNotDefined();
-
         s.version += 1;
         s.shapeURI = shapeURI;
         s.shapeHash = shapeHash;
-
         delete _props[classId];
         for (uint256 i = 0; i < props.length; i++) {
             _props[classId].push(props[i]);
         }
-
         emit ShapeUpdated(classId, s.version, shapeHash);
         return s.version;
     }
@@ -149,14 +141,11 @@ contract ShapeRegistry {
 
     function defineEnumSet(bytes32 enumSetId, bytes32[] calldata allowedValues) external onlyGovernor {
         if (allowedValues.length == 0) revert EnumSetEmpty();
-
-        // Reset (allow re-definition for shape evolution)
         bytes32[] storage existing = _enumValues[enumSetId];
         for (uint256 i = 0; i < existing.length; i++) {
             _enumContains[enumSetId][existing[i]] = false;
         }
         delete _enumValues[enumSetId];
-
         for (uint256 i = 0; i < allowedValues.length; i++) {
             _enumValues[enumSetId].push(allowedValues[i]);
             _enumContains[enumSetId][allowedValues[i]] = true;
@@ -166,19 +155,20 @@ contract ShapeRegistry {
 
     // ─── Validation ─────────────────────────────────────────────────
 
-    function validateSubject(bytes32 classId, bytes32 subject) external view {
-        _validate(classId, subject);
+    /// @notice Validate `subject` in `store` against the shape `classId`.
+    function validateSubject(bytes32 classId, bytes32 subject, address store) external view {
+        _validate(classId, subject, IAttributeReader(store));
     }
 
-    function isValid(bytes32 classId, bytes32 subject) external view returns (bool) {
-        try this.validateSubject(classId, subject) {
+    function isValid(bytes32 classId, bytes32 subject, address store) external view returns (bool) {
+        try this.validateSubject(classId, subject, store) {
             return true;
         } catch {
             return false;
         }
     }
 
-    function _validate(bytes32 classId, bytes32 subject) internal view {
+    function _validate(bytes32 classId, bytes32 subject, IAttributeReader store) internal view {
         Shape storage s = _shapes[classId];
         if (!s.exists) revert ShapeNotDefined();
         if (!s.active) revert ShapeNotActive();
@@ -186,8 +176,7 @@ contract ShapeRegistry {
         PropertyConstraint[] storage props = _props[classId];
         for (uint256 i = 0; i < props.length; i++) {
             PropertyConstraint storage p = props[i];
-
-            bool present = STORE.isSet(subject, p.predicate);
+            bool present = store.isSet(subject, p.predicate);
             bool required = p.cardinality == Cardinality.REQUIRED_ONE
                 || p.cardinality == Cardinality.REQUIRED_MANY;
 
@@ -196,27 +185,25 @@ contract ShapeRegistry {
                 continue;
             }
 
-            uint8 actualDt = STORE.datatypeOf(subject, p.predicate);
+            uint8 actualDt = store.datatypeOf(subject, p.predicate);
             if (actualDt != p.expectedDatatype) {
                 revert WrongDatatype(p.predicate, actualDt, p.expectedDatatype);
             }
 
             if (p.enumSetId != bytes32(0)) {
-                if (p.expectedDatatype == STORE.DT_BYTES32()) {
-                    bytes32 v = STORE.getBytes32(subject, p.predicate);
+                if (p.expectedDatatype == 5) { // DT_BYTES32
+                    bytes32 v = store.getBytes32(subject, p.predicate);
                     if (!_enumContains[p.enumSetId][v]) {
                         revert EnumValueNotAllowed(p.predicate, v);
                     }
-                } else if (p.expectedDatatype == STORE.DT_BYTES32_ARR()) {
-                    bytes32[] memory arr = STORE.getBytes32Arr(subject, p.predicate);
+                } else if (p.expectedDatatype == 8) { // DT_BYTES32_ARR
+                    bytes32[] memory arr = store.getBytes32Arr(subject, p.predicate);
                     for (uint256 j = 0; j < arr.length; j++) {
                         if (!_enumContains[p.enumSetId][arr[j]]) {
                             revert EnumValueNotAllowed(p.predicate, arr[j]);
                         }
                     }
                 }
-                // Enum constraints on non-bytes32 datatypes are silently ignored —
-                // SHACL sh:in for strings/uints isn't part of this subset.
             }
         }
     }
@@ -226,23 +213,18 @@ contract ShapeRegistry {
     function getShape(bytes32 classId) external view returns (Shape memory) {
         return _shapes[classId];
     }
-
     function getProperties(bytes32 classId) external view returns (PropertyConstraint[] memory) {
         return _props[classId];
     }
-
     function getEnumValues(bytes32 enumSetId) external view returns (bytes32[] memory) {
         return _enumValues[enumSetId];
     }
-
     function isInEnumSet(bytes32 enumSetId, bytes32 value) external view returns (bool) {
         return _enumContains[enumSetId][value];
     }
-
     function shapeCount() external view returns (uint256) {
         return _classIds.length;
     }
-
     function getClassIdAt(uint256 index) external view returns (bytes32) {
         return _classIds[index];
     }

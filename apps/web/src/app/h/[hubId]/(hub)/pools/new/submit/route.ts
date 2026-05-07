@@ -46,7 +46,9 @@ export async function POST(req: NextRequest) {
       addressedMembers: body.addressedMembers,
       // Stewards default to caller's person agent so the just-created pool
       // has at least one steward who can manage it.
-      stewards: body.stewards && body.stewards.length > 0 ? body.stewards : [myAgent],
+      stewards: (body.stewards && body.stewards.length > 0
+        ? body.stewards
+        : [myAgent]) as `0x${string}`[],
     })
     return NextResponse.json({ ok: true, result })
   } catch (err) {

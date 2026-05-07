@@ -1,37 +1,36 @@
 'use server'
 
 /**
- * Treasury Phase 2.5 — Pool creation orchestration.
+ * Pool creation orchestration (Phase 0.3 — on-chain attribute store).
  *
- * End-to-end flow:
+ * Flow:
  *   1. Deploy the pool's AgentAccount (its treasury) via AgentAccountFactory.
- *   2. Persist the pool body in org-mcp via the `pool:create` MCP tool.
- *   3. Emit `sa:PoolOpenedAssertion` so the public mirror picks it up.
+ *   2. Call PoolRegistry.open(...) — body lives on chain in the shared
+ *      registry's own typed-attribute storage. ShapeRegistry validates the write.
+ *   3. Initialize the aggregate-counter row in org-mcp (per IA P4 § 8.2 the
+ *      high-frequency aggregates stay in MCP as a debounced cache).
+ *   4. Trigger debounced kb-sync so the public mirror picks up the new pool.
  *
- * Phase 2.5 simplification — the on-chain registry writes
- * (`MandateRegistry.setMandate`, `StewardEligibilityRegistry.setSteward × N`,
- * STEWARDSHIP_DELEGATION mint) are DEFERRED. The pool body in the MCP
- * carries the mandate JSON, which is what discovery queries read today;
- * registry-side enforcement only matters at disbursement time (Phase 3).
+ * The body — domain, governance, mandate, accepted kinds/units, ceiling
+ * policy, stewards, visibility — is NOT written to org-mcp. The only thing
+ * the MCP holds is the pledged/allocated/available counters keyed by the
+ * pool agent address.
  *
- * Caller responsibilities:
- *   - Auth: server action enforces the user's session via the standard
- *     `getCurrentUser()` chain. The MCP call uses the user's delegation
- *     token (their own org's principal) to authorize `pool:create`.
- *   - Salt selection: pass a salt that hasn't been used yet for this owner.
- *     We default to a deterministic hash of the pool id so re-runs are
- *     idempotent at the factory level (existing addr returned).
+ * The legacy `sa:PoolOpenedAssertion` emit is dropped — the registry's
+ * PoolOpened event + on-chain attribute writes are the new public mirror
+ * source. GraphDB sync walks the attribute store directly.
  */
 
-import { keccak256, toBytes, type Address } from 'viem'
-import { deploySmartAccount, getWalletClient } from '@/lib/contracts'
+import { keccak256, toBytes, toHex, type Address, type Hex } from 'viem'
+import { deploySmartAccount, getWalletClient, getPublicClient } from '@/lib/contracts'
 import { callMcp } from '@/lib/clients/mcp-client'
-import { emitPoolOpenedAssertion } from '@/lib/onchain/poolOpenedAssertion'
+import { PoolRegistryClient, normalizeGovernance } from '@smart-agent/sdk'
 
 export interface CreatePoolInput {
-  /** Canonical pool id slug (e.g. "demo-trauma-care-pool"). */
+  /** Canonical pool id slug (e.g. 'demo-trauma-care-pool'). */
   id: string
   name: string
+  /** Free-text domain slug (e.g. 'faith-network', 'coaching-network'). */
   domain: string
   /** Mandate JSON: { acceptedKinds[], acceptedGeo[], budgetCeiling?, expectedAwards? } */
   mandate: {
@@ -46,76 +45,80 @@ export interface CreatePoolInput {
   capacityCeiling?: number | null
   ceilingPolicy: 'block' | 'waitlist' | 'accept'
   visibility: 'public' | 'private'
-  /** Optional addressed-members list for private pools. */
+  /** Optional addressed-members list for private pools (kept for the MCP counter row). */
   addressedMembers?: string[]
-  /** Initial steward set — agent IRIs (or addresses cast to IRIs). */
-  stewards: string[]
+  /** Initial steward addresses. */
+  stewards: Address[]
 }
 
 export interface CreatePoolResult {
   poolAgentId: string
   treasuryAddress: Address
-  onChainAssertionId: string | null
+  txHash: Hex
 }
 
-/**
- * Create a Pool. Idempotent at the factory level (same salt → same addr);
- * the MCP `pool:create` call rejects duplicates so re-running with the
- * same id returns an error from the persistence step.
- */
 export async function createPool(input: CreatePoolInput): Promise<CreatePoolResult> {
-  // Deterministic salt from pool id so the address is reproducible per pool.
+  const registryAddr = process.env.POOL_REGISTRY_ADDRESS as Address | undefined
+  if (!registryAddr) throw new Error('POOL_REGISTRY_ADDRESS not set')
+
+  // Deterministic salt per pool id so the address is reproducible.
   const salt = BigInt(keccak256(toBytes(`pool:${input.id}`)))
   const owner = getWalletClient().account!.address as Address
   const treasuryAddress = await deploySmartAccount(owner, salt)
 
-  // Persist the body. The MCP throws on duplicate id which is the right
-  // behavior — caller can catch and surface "already exists" to the user.
-  await callMcp('org', 'pool:create', {
-    id: `urn:smart-agent:pool:${input.id}`,
-    name: input.name,
+  // Hash the canonical mandate JSON so the on-chain entry has an integrity
+  // anchor for the (off-chain) full mandate document.
+  const mandateJson = JSON.stringify({
+    acceptedKinds: input.mandate.acceptedKinds,
+    acceptedGeo: input.mandate.acceptedGeo,
+    budgetCeiling: input.mandate.budgetCeiling ?? null,
+    expectedAwards: input.mandate.expectedAwards ?? null,
+    acceptedRestrictions: input.acceptedRestrictions,
+  })
+  const mandateHash = keccak256(toHex(mandateJson))
+
+  const client = new PoolRegistryClient({
+    registryAddress: registryAddr,
+    walletClient: getWalletClient(),
+    publicClient: getPublicClient(),
+  })
+  const txHash = await client.open({
+    poolAgent: treasuryAddress,
     domain: input.domain,
-    mandate: input.mandate,
-    governanceModel: input.governanceModel,
+    governanceModel: normalizeGovernance(input.governanceModel),
+    mandateHash,
+    mandateURI: '',
+    acceptedUnits: input.acceptedUnits,
+    acceptedKinds: input.mandate.acceptedKinds,
+    ceilingPolicy: input.ceilingPolicy,
+    capacityCeiling: input.capacityCeiling != null ? BigInt(input.capacityCeiling) : 0n,
+    stewards: input.stewards,
+    visibility: input.visibility,
+  })
+
+  // Aggregate-counter row in org-mcp — kept per IA P4 § 8.2 because the
+  // pledged/allocated/available counters mutate on every pledge, too
+  // frequent to anchor on chain. The on-chain anchor for these is the
+  // event-style sa:PoolPledgedTotalAssertion debounced at minute granularity.
+  await callMcp('org', 'pool:init_counters', {
+    poolAgentId: `urn:smart-agent:pool:${input.id}`,
+    treasuryAddress,
+    name: input.name,
     acceptedRestrictions: input.acceptedRestrictions,
     acceptedUnits: input.acceptedUnits,
     capacityCeiling: input.capacityCeiling ?? null,
     ceilingPolicy: input.ceilingPolicy,
     visibility: input.visibility,
-    treasuryAddress,
-    stewards: input.stewards,
-    acceptsOpenCalls: true,
-    addressedMembers: input.addressedMembers,
-  })
-
-  // Public-tier anchor. Private pools anchor a coarse variant via the
-  // emit helper's internal bifurcation — see poolOpenedAssertion.ts.
-  const onChainAssertionId = await emitPoolOpenedAssertion({
-    id: input.id,
-    treasuryAddress: treasuryAddress.toLowerCase(),
-    governanceModel: input.governanceModel,
-    acceptedUnits: input.acceptedUnits,
-    acceptedKinds: input.mandate.acceptedKinds,
-    acceptedGeo: input.mandate.acceptedGeo,
-    ceilingPolicy: input.ceilingPolicy,
-    capacityCeiling: input.capacityCeiling ?? null,
-    visibility: input.visibility,
     addressedMembers: input.addressedMembers,
     stewards: input.stewards,
-    openedAt: new Date().toISOString(),
   })
 
-  // Trigger the debounced kb-sync so the pools index picks up the new
-  // pool. We use scheduleKbSync (60s quiet + 30s cooldown) instead of a
-  // direct sync because user-triggered writes can pile up — direct syncs
-  // would hammer GraphDB and drive Cloudflare 524s. The cost: up to a
-  // 60s lag before the new pool appears on /h/<hub>/pools.
   const { scheduleKbSync } = await import('@/lib/ontology/kb-write-through')
   scheduleKbSync()
 
   return {
     poolAgentId: `urn:smart-agent:pool:${input.id}`,
     treasuryAddress,
-    onChainAssertionId,
+    txHash,
   }
 }

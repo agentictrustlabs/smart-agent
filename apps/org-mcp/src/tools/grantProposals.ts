@@ -146,7 +146,7 @@ function readLocalRound(roundId: string): RoundBody | null {
   const r = rows[0]
   return {
     id: r.id,
-    orgPrincipal: r.orgPrincipal.toLowerCase(),
+    orgPrincipal: r.fundAgentId.toLowerCase(),
     mandate: safeJson(r.mandate, { acceptedKinds: [], acceptedGeo: [], budgetCeiling: 0, expectedAwards: 0 }),
     visibility: (r.visibility === 'private' ? 'private' : 'public'),
     addressedApplicants: r.addressedApplicants ? safeJson<string[]>(r.addressedApplicants, []) : null,

@@ -1,23 +1,30 @@
 /**
- * Demo seed — multiple grant rounds under Catalyst NoCo Network so Maria
- * (and other Catalyst hub users) see distinct, faith-flavored options on
- * /h/catalyst/rounds. Each round has a unique mandate so they're easy to
- * tell apart in the index list and downstream proposal seeds.
+ * Demo seed — multiple grant rounds under Catalyst NoCo Network.
+ *
+ * Phase 0.4 — exercises the new on-chain attribute store path:
+ *   1. Pool 0 from seed-test-pool.ts is treated as the operating fund.
+ *      We register it as a Fund + open each round via FundRegistry.openRound.
+ *   2. Body lives on chain in FundRegistry's typed-attribute storage.
+ *   3. org-mcp.db rounds row is the denormalized cache for the proposal-flow
+ *      hot path (validation, addressed-applicants).
+ *   4. INSERT DATA into GraphDB so /h/catalyst/rounds renders before the
+ *      attribute-walking emitter ships.
  *
  *   pnpm exec tsx scripts/seed-test-round.ts
  *
- * Idempotent: INSERT OR REPLACE on stable ids (and SPARQL INSERT DATA is
- * forgiving of repeats — duplicate triples coalesce).
- *
- * Caveat: a real round-creation flow would (a) anchor a real
- * sa:RoundOpenedAssertion on chain, and (b) extend the on-chain → GraphDB
- * sync to read the body fields from org-mcp. This script short-circuits
- * both for v1 demo purposes.
+ * Idempotent at the SQL layer; FundRegistry.openRound reverts if a round
+ * subject is already initialized — caught + logged so the script continues.
  */
 
 import path from 'node:path'
 import fs from 'node:fs'
 import { fileURLToPath } from 'node:url'
+import {
+  createWalletClient, createPublicClient, http,
+  keccak256, toHex,
+  type Address, type Hex,
+} from 'viem'
+import { privateKeyToAccount } from 'viem/accounts'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(__dirname, '..')
@@ -35,8 +42,18 @@ if (fs.existsSync(envFile)) {
   }
 }
 
-const FUND_ADDRESS = '0x0F669E6851A15FD0E5904EB197c369C2ab578D9b'.toLowerCase()
-const FUND_AGENT_IRI = `https://smartagent.io/ontology/core#agent/${FUND_ADDRESS}`
+const RPC_URL = process.env.RPC_URL!
+const DEPLOYER_KEY = process.env.DEPLOYER_PRIVATE_KEY as Hex
+const FACTORY_ADDR = process.env.AGENT_FACTORY_ADDRESS as Address
+const FUND_REGISTRY_ADDR = process.env.FUND_REGISTRY_ADDRESS as Address | undefined
+
+if (!RPC_URL || !DEPLOYER_KEY || !FACTORY_ADDR) {
+  throw new Error('seed-test-round: RPC_URL / DEPLOYER_PRIVATE_KEY / AGENT_FACTORY_ADDRESS required in apps/web/.env')
+}
+if (!FUND_REGISTRY_ADDR) {
+  throw new Error('seed-test-round: FUND_REGISTRY_ADDRESS not set — run scripts/fresh-start.sh first')
+}
+
 const NOW = new Date().toISOString()
 const days = (n: number) => new Date(Date.now() + n * 24 * 60 * 60 * 1000).toISOString()
 
@@ -60,9 +77,6 @@ interface RoundSeed {
   decisionDate: string
 }
 
-// Three rounds — distinct titles, distinct mandates, distinct sizes.
-// The trauma-care round retains its slug for downstream test coverage but
-// is reframed as a compassion-ministry initiative for migrant families.
 const ROUNDS: RoundSeed[] = [
   {
     id: 'demo-trauma-care-q2',
@@ -111,6 +125,60 @@ const ROUNDS: RoundSeed[] = [
   },
 ]
 
+const CADENCE_CONCEPT: Record<RoundSeed['reportingCadence'], string> = {
+  monthly: 'sa:CadenceMonthly',
+  quarterly: 'sa:CadenceQuarterly',
+  annual: 'sa:CadenceAnnual',
+}
+
+async function loadSdk() {
+  return await import(path.join(repoRoot, 'packages/sdk/src/index.ts')) as {
+    FundRegistryClient: new (cfg: {
+      registryAddress: Address
+      walletClient: ReturnType<typeof createWalletClient>
+      publicClient: ReturnType<typeof createPublicClient>
+    }) => {
+      registerFund: (fundAgent: Address, acceptedKinds: string[], openForCalls: boolean) => Promise<Hex>
+      openRound: (input: {
+        roundId: string
+        fundAgent: Address
+        deadline: bigint
+        decisionDate: bigint
+        reportingCadence: string
+        requiredCredentials?: string[]
+        visibility: 'public' | 'private'
+        initialStatus?: 'open' | 'review' | 'decided' | 'closed' | 'canceled'
+      }) => Promise<{ txHash: Hex; roundSubject: Hex }>
+    }
+    agentAccountFactoryAbi: readonly unknown[]
+  }
+}
+
+async function deployFundAgent(
+  walletClient: ReturnType<typeof createWalletClient>,
+  publicClient: ReturnType<typeof createPublicClient>,
+  factoryAbi: readonly unknown[],
+  ownerAddr: Address,
+  salt: bigint,
+): Promise<Address> {
+  const account = walletClient.account!
+  const txHash = await walletClient.writeContract({
+    address: FACTORY_ADDR,
+    abi: factoryAbi,
+    functionName: 'createAccount',
+    args: [ownerAddr, salt],
+    account,
+    chain: walletClient.chain ?? null,
+  })
+  await publicClient.waitForTransactionReceipt({ hash: txHash })
+  return await publicClient.readContract({
+    address: FACTORY_ADDR,
+    abi: factoryAbi,
+    functionName: 'getAddress',
+    args: [ownerAddr, salt],
+  }) as Address
+}
+
 async function openSqlite(dbPath: string) {
   const Database = (await import(
     path.join(repoRoot, 'node_modules/.pnpm/better-sqlite3@11.10.0/node_modules/better-sqlite3/lib/index.js')
@@ -121,7 +189,7 @@ async function openSqlite(dbPath: string) {
   return new Database(dbPath)
 }
 
-async function seedSql(): Promise<void> {
+async function seedSqlCache(fundAgent: Address): Promise<void> {
   const dbPath = path.join(repoRoot, 'apps/org-mcp/org-mcp.db')
   if (!fs.existsSync(dbPath)) {
     console.warn(`[seed-test-round] ${dbPath} does not exist — skipping SQL insert`)
@@ -131,28 +199,23 @@ async function seedSql(): Promise<void> {
   try {
     const stmt = db.prepare(`
       INSERT OR REPLACE INTO rounds (
-        id, org_principal, mandate, milestone_template, validator_requirements,
+        id, fund_agent_id, mandate, milestone_template, validator_requirements,
         reporting_cadence, deadline, decision_date, required_credentials,
-        visibility, addressed_applicants, proposals_received,
-        on_chain_assertion_id, created_at, updated_at
+        visibility, addressed_applicants, status, proposals_received,
+        created_at, updated_at
       ) VALUES (
-        @id, @org_principal, @mandate, @milestone_template, @validator_requirements,
+        @id, @fund_agent_id, @mandate, @milestone_template, @validator_requirements,
         @reporting_cadence, @deadline, @decision_date, @required_credentials,
-        @visibility, @addressed_applicants, @proposals_received,
-        @on_chain_assertion_id, @created_at, @updated_at
+        @visibility, @addressed_applicants, @status, @proposals_received,
+        @created_at, @updated_at
       )
     `)
     for (const r of ROUNDS) {
       const iri = `urn:smart-agent:round:${r.id}`
-      const assertionIri = `urn:smart-agent:assertion:${r.id}-opened`
-      // Stash displayName + description inside the mandate JSON so the
-      // runtime emitRoundsTurtle sync can re-emit them after every PUT.
-      // The on-chain assertion payload doesn't currently carry these
-      // fields; the rounds table is the seed's persistence anchor.
       const mandateWithDisplay = { ...r.mandate, displayName: r.displayName }
       stmt.run({
         id: iri,
-        org_principal: FUND_ADDRESS,
+        fund_agent_id: fundAgent,
         mandate: JSON.stringify(mandateWithDisplay),
         milestone_template: JSON.stringify(r.milestone),
         validator_requirements: JSON.stringify(r.validators),
@@ -162,8 +225,8 @@ async function seedSql(): Promise<void> {
         required_credentials: '[]',
         visibility: 'public',
         addressed_applicants: null,
+        status: 'open',
         proposals_received: 0,
-        on_chain_assertion_id: assertionIri,
         created_at: NOW,
         updated_at: NOW,
       })
@@ -174,27 +237,27 @@ async function seedSql(): Promise<void> {
   }
 }
 
-async function seedGraphDB(): Promise<void> {
+async function seedGraphDB(fundAgent: Address): Promise<void> {
   const baseUrl = process.env.GRAPHDB_BASE_URL
   const repository = process.env.GRAPHDB_REPOSITORY
   const username = process.env.GRAPHDB_USERNAME
   const password = process.env.GRAPHDB_PASSWORD
   if (!baseUrl || !repository || !username || !password) {
-    throw new Error('GRAPHDB_BASE_URL / GRAPHDB_REPOSITORY / GRAPHDB_USERNAME / GRAPHDB_PASSWORD must be set')
+    console.warn('[seed-test-round] GraphDB env not set — SQL-only seed')
+    return
   }
   const auth = `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`
   const url = `${baseUrl}/repositories/${repository}/statements`
 
   const triples = ROUNDS.map(r => {
     const iri = `urn:smart-agent:round:${r.id}`
-    const assertionIri = `urn:smart-agent:assertion:${r.id}-opened`
     const escMandate = JSON.stringify(r.mandate).replace(/"/g, '\\"')
     const escMilestone = JSON.stringify(r.milestone).replace(/"/g, '\\"')
     const escValidator = JSON.stringify(r.validators).replace(/"/g, '\\"')
     return `
     <${iri}> a sa:Round ;
       sa:displayName "${r.displayName.replace(/"/g, '\\"')}" ;
-      sa:operatedByFund <${FUND_AGENT_IRI}> ;
+      sa:operatedByFund <eth:${fundAgent.toLowerCase()}> ;
       sa:roundMandate "${escMandate}" ;
       sa:milestoneTemplate "${escMilestone}" ;
       sa:validatorRequirements "${escValidator}" ;
@@ -203,13 +266,8 @@ async function seedGraphDB(): Promise<void> {
       sa:decisionDate "${r.decisionDate}"^^xsd:dateTime ;
       sa:requiredCredentials "[]" ;
       sa:visibility "public" ;
+      sa:status "open" ;
       sa:proposalsReceived 0 .
-
-    <${assertionIri}> a sa:RoundOpenedAssertion ;
-      sa:onChainAssertionId "${assertionIri}" ;
-      sa:subjectId "${r.id}" ;
-      sa:payloadURI "data:application/json,${encodeURIComponent(JSON.stringify(r.mandate))}" ;
-      prov:generatedAtTime "${NOW}"^^xsd:dateTime .
 `
   }).join('\n')
 
@@ -224,7 +282,6 @@ ${triples}
   }
 }
 `
-
   const response = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/sparql-update', Authorization: auth },
@@ -234,86 +291,64 @@ ${triples}
     const body = await response.text()
     throw new Error(`SPARQL UPDATE failed (${response.status}): ${body}`)
   }
-  console.log(`[seed-test-round] GraphDB ok — INSERT ${ROUNDS.length} rounds into data graph`)
-
-  const askResp = await fetch(`${baseUrl}/repositories/${repository}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/sparql-query',
-      Accept: 'application/sparql-results+json',
-      Authorization: auth,
-    },
-    body: `PREFIX sa: <https://smartagent.io/ontology/core#>
-SELECT (COUNT(?r) AS ?n) WHERE {
-  GRAPH <https://smartagent.io/graph/data/onchain> { ?r a sa:Round }
-}`,
-  })
-  if (!askResp.ok) throw new Error(`verify query failed (${askResp.status})`)
-  const result = (await askResp.json()) as { results: { bindings: Array<{ n: { value: string } }> } }
-  console.log(`[seed-test-round] verify — rounds in data graph: ${result.results.bindings[0]?.n?.value ?? '?'}`)
-}
-
-/**
- * Treasury Phase 1 — for each seeded round, emit `sa:RoundOpenedAssertion`
- * on chain so the public read source (GraphDB mirror) reflects every public
- * state-change moment. Uses @smart-agent/sdk's `emitClassAssertion` directly
- * with the env (RPC_URL / CLASS_ASSERTION_ADDRESS / DEPLOYER_PRIVATE_KEY)
- * loaded from apps/web/.env above. Failures log + continue — the SQL/SPARQL
- * seed has already landed; the on-chain anchor is best-effort for now.
- */
-async function emitRoundAnchors(): Promise<void> {
-  const rpcUrl = process.env.RPC_URL
-  const contractAddress = process.env.CLASS_ASSERTION_ADDRESS
-  const operatorPrivateKey = process.env.DEPLOYER_PRIVATE_KEY
-  if (!rpcUrl || !contractAddress || !operatorPrivateKey) {
-    console.warn('[seed-test-round] anchor emit skipped — missing RPC_URL / CLASS_ASSERTION_ADDRESS / DEPLOYER_PRIVATE_KEY')
-    return
-  }
-  // Import the SDK by file path — this script runs at repo root via tsx
-  // and doesn't have @smart-agent/sdk in its module-resolution scope.
-  const sdk = await import(path.join(repoRoot, 'packages/sdk/src/index.ts')) as {
-    emitClassAssertion: (
-      cfg: { rpcUrl: string; contractAddress: `0x${string}`; operatorPrivateKey: `0x${string}` },
-      input: { classIri: string; subjectIri: string; payload: Record<string, unknown> },
-    ) => Promise<{ assertionId: string }>
-  }
-  const { emitClassAssertion } = sdk
-  const ROUND_OPENED = 'sa:RoundOpenedAssertion'
-  for (const r of ROUNDS) {
-    const subjectIri = `urn:smart-agent:round:${r.id}`
-    const payload = {
-      id: r.id,
-      fundAgentId: FUND_ADDRESS,
-      mandate: r.mandate,
-      reportingCadence: r.reportingCadence,
-      deadline: r.deadline,
-      decisionDate: r.decisionDate,
-      requiredCredentials: [],
-      visibility: 'public' as const,
-    }
-    try {
-      const res = await emitClassAssertion(
-        { rpcUrl, contractAddress: contractAddress as `0x${string}`, operatorPrivateKey: operatorPrivateKey as `0x${string}` },
-        { classIri: ROUND_OPENED, subjectIri, payload },
-      )
-      console.log(`[seed-test-round] anchored ${r.id} → assertionId=${res.assertionId}`)
-    } catch (err) {
-      console.warn(`[seed-test-round] anchor failed for ${r.id}: ${err instanceof Error ? err.message : err}`)
-    }
-  }
+  console.log(`[seed-test-round] GraphDB ok — INSERT ${ROUNDS.length} rounds`)
 }
 
 async function main(): Promise<void> {
-  await seedSql()
-  await seedGraphDB()
-  await emitRoundAnchors()
-  console.log(`\n✓ Seeded ${ROUNDS.length} rounds operated by Catalyst NoCo Network:`)
+  const sdk = await loadSdk()
+  const account = privateKeyToAccount(DEPLOYER_KEY)
+  const walletClient = createWalletClient({ account, chain: undefined, transport: http(RPC_URL) })
+  const publicClient = createPublicClient({ chain: undefined, transport: http(RPC_URL) })
+
+  // 1. Deploy a dedicated fund agent for these rounds.
+  const fundSalt = BigInt(keccak256(toHex('fund:catalyst-noco-funds')))
+  const fundAgent = await deployFundAgent(
+    walletClient, publicClient, sdk.agentAccountFactoryAbi, account.address, fundSalt,
+  )
+  console.log(`[seed-test-round] fund agent → ${fundAgent}`)
+
+  const client = new sdk.FundRegistryClient({
+    registryAddress: FUND_REGISTRY_ADDR!,
+    walletClient,
+    publicClient,
+  })
+
+  // 2. Register the fund (idempotent — re-runs overwrite acceptedKinds).
+  const acceptedKinds = Array.from(new Set(ROUNDS.flatMap(r => r.mandate.acceptedKinds)))
+    .map(k => `sa:${k.replace(/[^a-zA-Z0-9]/g, '')}`)
+  try {
+    const tx = await client.registerFund(fundAgent, acceptedKinds, true)
+    console.log(`[seed-test-round] FundRegistry.registerFund ok — tx ${tx}`)
+  } catch (err) {
+    console.warn(`[seed-test-round] registerFund warn: ${err instanceof Error ? err.message : err}`)
+  }
+
+  // 3. Open each round on chain.
+  for (const r of ROUNDS) {
+    try {
+      const { txHash } = await client.openRound({
+        roundId: r.id,
+        fundAgent,
+        deadline: BigInt(Math.floor(Date.parse(r.deadline) / 1000)),
+        decisionDate: BigInt(Math.floor(Date.parse(r.decisionDate) / 1000)),
+        reportingCadence: CADENCE_CONCEPT[r.reportingCadence],
+        requiredCredentials: [],
+        visibility: 'public',
+        initialStatus: 'open',
+      })
+      console.log(`[seed-test-round] FundRegistry.openRound ok — ${r.id} → tx ${txHash}`)
+    } catch (err) {
+      console.warn(`[seed-test-round] openRound warn for ${r.id}: ${err instanceof Error ? err.message : err}`)
+    }
+  }
+
+  await seedSqlCache(fundAgent)
+  await seedGraphDB(fundAgent)
+
+  console.log(`\n✓ Seeded ${ROUNDS.length} rounds operated by fund ${fundAgent}:`)
   for (const r of ROUNDS) {
     console.log(`    · ${r.id} — ${r.displayName}`)
   }
-  console.log(`  Visit: http://localhost:3000/h/catalyst/rounds (after Maria signs in)`)
-  console.log(`  NOTE: the runtime KB sync may wipe the GraphDB part of this seed.`)
-  console.log(`        Re-run this script if rounds disappear from the index.`)
 }
 
 main().catch((e) => {

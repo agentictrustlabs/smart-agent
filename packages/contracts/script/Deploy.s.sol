@@ -36,8 +36,6 @@ import "../src/AgentTrustProfile.sol";
 import "../src/AgentControl.sol";
 import "../src/MockTeeVerifier.sol";
 import "../src/OntologyTermRegistry.sol";
-import "../src/OntologyAttributeStore.sol";
-import "../src/AttributeAuth.sol";
 import "../src/ShapeRegistry.sol";
 import "../src/AgentAccountResolver.sol";
 import "../src/AgentUniversalResolver.sol";
@@ -210,42 +208,27 @@ contract Deploy is Script {
         OntologyTermRegistry ontologyRegistry = new OntologyTermRegistry(deployer);
         console.log("OntologyTermRegistry:", address(ontologyRegistry));
 
-        // 15a. Phase 0.0 — On-chain attribute store + shape registry primitives.
-        // Phase 0.1: AgentAccountResolver routes its writes through this store.
-        AttributeAuth attributeAuth = new AttributeAuth(deployer);
-        console.log("AttributeAuth:", address(attributeAuth));
-
-        OntologyAttributeStore attributeStore = new OntologyAttributeStore(address(ontologyRegistry), deployer);
-        attributeStore.setAuth(address(attributeAuth));
-        console.log("OntologyAttributeStore:", address(attributeStore));
-
-        ShapeRegistry shapeRegistry = new ShapeRegistry(address(attributeStore), deployer);
+        // 15a. Shape registry — shared validation surface, decoupled from
+        //      any one store. Each registry below owns its own typed
+        //      attribute storage via the AttributeStorage abstract base.
+        ShapeRegistry shapeRegistry = new ShapeRegistry(deployer);
         console.log("ShapeRegistry:", address(shapeRegistry));
 
-        // 15b. Phase 0.3 — PoolRegistry: pool body via the shared store.
-        PoolRegistry poolRegistry = new PoolRegistry(address(attributeStore), address(shapeRegistry));
-        attributeAuth.setTrustedWriter(address(poolRegistry), true);
+        // 15b. PoolRegistry — owns its pool-attribute storage.
+        PoolRegistry poolRegistry = new PoolRegistry(address(ontologyRegistry), address(shapeRegistry));
         console.log("PoolRegistry:", address(poolRegistry));
 
-        // 15c. Phase 0.4 — FundRegistry: fund + round body via the shared store.
-        FundRegistry fundRegistry = new FundRegistry(address(attributeStore), address(shapeRegistry));
-        attributeAuth.setTrustedWriter(address(fundRegistry), true);
+        // 15c. FundRegistry — owns its fund + round attribute storage.
+        FundRegistry fundRegistry = new FundRegistry(address(ontologyRegistry), address(shapeRegistry));
         console.log("FundRegistry:", address(fundRegistry));
 
-        // 15d. Phase 0.5 — ProposalRegistry: PUBLIC FACETS ONLY at award time.
-        // Proposal body never anchors here — privacy invariant from
-        // sa:GrantProposalAlwaysPrivateShape. On-chain class is
-        // sa:GrantProposalPublicFacet (a separate class).
-        ProposalRegistry proposalRegistry = new ProposalRegistry(address(attributeStore), address(shapeRegistry));
-        attributeAuth.setTrustedWriter(address(proposalRegistry), true);
+        // 15d. ProposalRegistry — public facets only at award time. Body
+        //      never anchors here per sa:GrantProposalAlwaysPrivateShape.
+        ProposalRegistry proposalRegistry = new ProposalRegistry(address(ontologyRegistry), address(shapeRegistry));
         console.log("ProposalRegistry:", address(proposalRegistry));
 
-        // 15. Agent Account Resolver (Phase 0.1 shim — routes through attributeStore)
-        AgentAccountResolver accountResolver = new AgentAccountResolver(
-            address(ontologyRegistry),
-            address(attributeStore)
-        );
-        attributeAuth.setTrustedWriter(address(accountResolver), true);
+        // 15. AgentAccountResolver — owns its agent metadata storage.
+        AgentAccountResolver accountResolver = new AgentAccountResolver(address(ontologyRegistry));
         console.log("AgentAccountResolver:", address(accountResolver));
 
         // 16. Agent Universal Resolver (read-only aggregation façade)
@@ -266,14 +249,11 @@ contract Deploy is Script {
         AgentNameResolver nameResolver = new AgentNameResolver(nameRegistry);
         console.log("AgentNameResolver:", address(nameResolver));
 
-        // Phase 0.2 — store-backed name resolver. Deployed alongside legacy
-        // (callers migrate progressively; legacy is dropped in Phase 0.6).
+        // Store-backed name resolver — owns its own typed attribute state.
         AgentNameAttributeResolver nameAttributeResolver = new AgentNameAttributeResolver(
             nameRegistry,
-            address(ontologyRegistry),
-            address(attributeStore)
+            address(ontologyRegistry)
         );
-        attributeAuth.setTrustedWriter(address(nameAttributeResolver), true);
         console.log("AgentNameAttributeResolver:", address(nameAttributeResolver));
 
         AgentNameUniversalResolver nameUniversalResolver = new AgentNameUniversalResolver(
@@ -418,9 +398,7 @@ contract Deploy is Script {
         _logEnv("ALLOCATION_LIMIT_ENFORCER_ADDRESS", address(allocationLimitEnforcer));
         _logEnv("STEWARD_ELIGIBILITY_ENFORCER_ADDRESS", address(stewardEligibilityEnforcer));
         _logEnv("QUORUM_ENFORCER_ADDRESS", address(quorumEnforcer));
-        // Phase 0 foundation
-        _logEnv("ATTRIBUTE_AUTH_ADDRESS", address(attributeAuth));
-        _logEnv("ONTOLOGY_ATTRIBUTE_STORE_ADDRESS", address(attributeStore));
+        // Per-registry storage foundation
         _logEnv("SHAPE_REGISTRY_ADDRESS", address(shapeRegistry));
         _logEnv("POOL_REGISTRY_ADDRESS", address(poolRegistry));
         _logEnv("FUND_REGISTRY_ADDRESS", address(fundRegistry));

@@ -1,29 +1,26 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import "./OntologyAttributeStore.sol";
+import "./AttributeStorage.sol";
 import "./ShapeRegistry.sol";
 
 /**
  * @title PoolRegistry
- * @notice Phase 0.3 — pool body on chain via the shared attribute store.
+ * @notice Pool body lives in this contract's own typed-attribute storage
+ *         (inherited from AttributeStorage). Decoupled from any other
+ *         contract — no shared backend.
  *
  * A Pool is an OrganizationAgent (sa:Pool subClassOf sa:OrganizationAgent),
- * so the subject id is the pool's agent address. Pool-specific predicates
- * coexist with agent-level predicates on the same subject.
- *
- * Aggregate counters (sa:poolPledgedTotal / sa:poolAllocatedTotal /
- * sa:poolAvailableTotal) stay off-chain in org-mcp as a debounced cache —
- * mutations are too frequent for the on-chain audit anchor; the public
- * mirror is emitted as event-style PoolPledgedTotal assertions at
- * minute-granularity.
+ * so the subject id is the pool's agent address.
  *
  * Auth: pool's AgentAccount.isOwner(msg.sender) must be true. The registry
- * is registered as a trustedWriter on AttributeAuth so its store writes
- * pass through.
+ * contract IS the only writer of its own state via the inherited internal
+ * setters — no external auth surface.
+ *
+ * Aggregate counters (sa:poolPledgedTotal etc.) stay off-chain in org-mcp
+ * per IA P4 § 8.2 — too high-frequency for the on-chain anchor.
  */
-contract PoolRegistry {
-    OntologyAttributeStore public immutable STORE;
+contract PoolRegistry is AttributeStorage {
     ShapeRegistry public immutable SHAPES;
 
     bytes32 public constant CLASS_POOL = keccak256("sa:Pool");
@@ -48,8 +45,6 @@ contract PoolRegistry {
     event PoolMandateUpdated(address indexed poolAgent, bytes32 newMandateHash);
     event PoolStewardsRotated(address indexed poolAgent, uint256 stewardCount);
 
-    /// @dev Bag of args for `open` — keeps the public ABI legible without
-    ///      hitting Solidity's stack-depth limit.
     struct OpenParams {
         address poolAgent;
         bytes32 domain;
@@ -73,8 +68,7 @@ contract PoolRegistry {
         _;
     }
 
-    constructor(address store, address shapes) {
-        STORE = OntologyAttributeStore(store);
+    constructor(address ontologyRegistry, address shapes) AttributeStorage(ontologyRegistry) {
         SHAPES = ShapeRegistry(shapes);
     }
 
@@ -85,32 +79,32 @@ contract PoolRegistry {
     function open(OpenParams calldata p) external onlyPoolOwner(p.poolAgent) {
         bytes32 s = _subject(p.poolAgent);
 
-        STORE.setBytes32(s, SA_POOL_DOMAIN, p.domain);
-        STORE.setBytes32(s, SA_POOL_GOVERNANCE_MODEL, p.governanceModel);
-        STORE.setBytes32(s, SA_POOL_MANDATE_HASH, p.mandateHash);
+        _setBytes32(s, SA_POOL_DOMAIN, p.domain);
+        _setBytes32(s, SA_POOL_GOVERNANCE_MODEL, p.governanceModel);
+        _setBytes32(s, SA_POOL_MANDATE_HASH, p.mandateHash);
         if (bytes(p.mandateURI).length > 0) {
-            STORE.setString(s, SA_POOL_MANDATE_URI, p.mandateURI);
+            _setString(s, SA_POOL_MANDATE_URI, p.mandateURI);
         }
         if (p.acceptedUnits.length > 0) {
-            STORE.setBytes32Arr(s, SA_POOL_ACCEPTED_UNITS, p.acceptedUnits);
+            _setBytes32Arr(s, SA_POOL_ACCEPTED_UNITS, p.acceptedUnits);
         }
-        STORE.setBytes32Arr(s, SA_POOL_ACCEPTED_KINDS, p.acceptedKinds);
-        STORE.setBytes32(s, SA_POOL_CEILING_POLICY, p.ceilingPolicy);
+        _setBytes32Arr(s, SA_POOL_ACCEPTED_KINDS, p.acceptedKinds);
+        _setBytes32(s, SA_POOL_CEILING_POLICY, p.ceilingPolicy);
         if (p.capacityCeiling > 0) {
-            STORE.setUint(s, SA_POOL_CAPACITY_CEILING, p.capacityCeiling);
+            _setUint(s, SA_POOL_CAPACITY_CEILING, p.capacityCeiling);
         }
-        STORE.setAddressArr(s, SA_POOL_STEWARDS, p.stewards);
-        STORE.setBytes32(s, SA_POOL_VISIBILITY, p.visibility);
-        STORE.setUint(s, SA_POOL_OPENED_AT, block.timestamp);
+        _setAddressArr(s, SA_POOL_STEWARDS, p.stewards);
+        _setBytes32(s, SA_POOL_VISIBILITY, p.visibility);
+        _setUint(s, SA_POOL_OPENED_AT, block.timestamp);
 
-        SHAPES.validateSubject(CLASS_POOL, s);
+        SHAPES.validateSubject(CLASS_POOL, s, address(this));
 
         emit PoolOpened(p.poolAgent, s);
     }
 
     function close(address poolAgent) external onlyPoolOwner(poolAgent) {
         bytes32 s = _subject(poolAgent);
-        STORE.setUint(s, SA_POOL_CLOSED_AT, block.timestamp);
+        _setUint(s, SA_POOL_CLOSED_AT, block.timestamp);
         emit PoolClosed(poolAgent, s);
     }
 
@@ -120,9 +114,9 @@ contract PoolRegistry {
         string calldata newMandateURI
     ) external onlyPoolOwner(poolAgent) {
         bytes32 s = _subject(poolAgent);
-        STORE.setBytes32(s, SA_POOL_MANDATE_HASH, newMandateHash);
+        _setBytes32(s, SA_POOL_MANDATE_HASH, newMandateHash);
         if (bytes(newMandateURI).length > 0) {
-            STORE.setString(s, SA_POOL_MANDATE_URI, newMandateURI);
+            _setString(s, SA_POOL_MANDATE_URI, newMandateURI);
         }
         emit PoolMandateUpdated(poolAgent, newMandateHash);
     }
@@ -132,60 +126,49 @@ contract PoolRegistry {
         address[] calldata newStewards
     ) external onlyPoolOwner(poolAgent) {
         bytes32 s = _subject(poolAgent);
-        STORE.setAddressArr(s, SA_POOL_STEWARDS, newStewards);
+        _setAddressArr(s, SA_POOL_STEWARDS, newStewards);
         emit PoolStewardsRotated(poolAgent, newStewards.length);
     }
 
-    // ─── Read helpers ──────────────────────────────────────────────
+    // ─── Convenience getters keyed by agent address ────────────────
 
     function getDomain(address poolAgent) external view returns (bytes32) {
-        return STORE.getBytes32(_subject(poolAgent), SA_POOL_DOMAIN);
+        return this.getBytes32(_subject(poolAgent), SA_POOL_DOMAIN);
     }
-
     function getGovernanceModel(address poolAgent) external view returns (bytes32) {
-        return STORE.getBytes32(_subject(poolAgent), SA_POOL_GOVERNANCE_MODEL);
+        return this.getBytes32(_subject(poolAgent), SA_POOL_GOVERNANCE_MODEL);
     }
-
     function getMandate(address poolAgent) external view returns (bytes32 mandateHash, string memory mandateURI) {
         bytes32 s = _subject(poolAgent);
-        mandateHash = STORE.getBytes32(s, SA_POOL_MANDATE_HASH);
-        mandateURI = STORE.getString(s, SA_POOL_MANDATE_URI);
+        mandateHash = this.getBytes32(s, SA_POOL_MANDATE_HASH);
+        mandateURI = this.getString(s, SA_POOL_MANDATE_URI);
     }
-
     function getAcceptedKinds(address poolAgent) external view returns (bytes32[] memory) {
-        return STORE.getBytes32Arr(_subject(poolAgent), SA_POOL_ACCEPTED_KINDS);
+        return this.getBytes32Arr(_subject(poolAgent), SA_POOL_ACCEPTED_KINDS);
     }
-
     function getAcceptedUnits(address poolAgent) external view returns (bytes32[] memory) {
-        return STORE.getBytes32Arr(_subject(poolAgent), SA_POOL_ACCEPTED_UNITS);
+        return this.getBytes32Arr(_subject(poolAgent), SA_POOL_ACCEPTED_UNITS);
     }
-
     function getStewards(address poolAgent) external view returns (address[] memory) {
-        return STORE.getAddressArr(_subject(poolAgent), SA_POOL_STEWARDS);
+        return this.getAddressArr(_subject(poolAgent), SA_POOL_STEWARDS);
     }
-
     function getCeilingPolicy(address poolAgent) external view returns (bytes32) {
-        return STORE.getBytes32(_subject(poolAgent), SA_POOL_CEILING_POLICY);
+        return this.getBytes32(_subject(poolAgent), SA_POOL_CEILING_POLICY);
     }
-
     function getCapacityCeiling(address poolAgent) external view returns (uint256) {
-        return STORE.getUint(_subject(poolAgent), SA_POOL_CAPACITY_CEILING);
+        return this.getUint(_subject(poolAgent), SA_POOL_CAPACITY_CEILING);
     }
-
     function getVisibility(address poolAgent) external view returns (bytes32) {
-        return STORE.getBytes32(_subject(poolAgent), SA_POOL_VISIBILITY);
+        return this.getBytes32(_subject(poolAgent), SA_POOL_VISIBILITY);
     }
-
     function getOpenedAt(address poolAgent) external view returns (uint256) {
-        return STORE.getUint(_subject(poolAgent), SA_POOL_OPENED_AT);
+        return this.getUint(_subject(poolAgent), SA_POOL_OPENED_AT);
     }
-
     function getClosedAt(address poolAgent) external view returns (uint256) {
-        return STORE.getUint(_subject(poolAgent), SA_POOL_CLOSED_AT);
+        return this.getUint(_subject(poolAgent), SA_POOL_CLOSED_AT);
     }
-
     function isOpen(address poolAgent) external view returns (bool) {
         bytes32 s = _subject(poolAgent);
-        return STORE.isSet(s, SA_POOL_OPENED_AT) && !STORE.isSet(s, SA_POOL_CLOSED_AT);
+        return this.isSet(s, SA_POOL_OPENED_AT) && !this.isSet(s, SA_POOL_CLOSED_AT);
     }
 }

@@ -1,7 +1,7 @@
 import { keccak256, pad, toHex, encodePacked, type Address, type Hex } from 'viem'
 
 /**
- * Canonical subject id derivation for OntologyAttributeStore.
+ * Canonical subject id derivation for the per-registry attribute stores.
  *
  * Every caller MUST go through this helper — no ad-hoc keccak256 or pad calls.
  * The contract layer assumes these exact derivations:
@@ -19,7 +19,7 @@ export type SubjectDomain =
   | 'match'
   | 'pledge'
 
-/** Datatype discriminators — must match `OntologyAttributeStore.DT_*`. */
+/** Datatype discriminators — must match `AttributeStorage.DT_*`. */
 export const DT = {
   STRING: 1,
   ADDRESS: 2,

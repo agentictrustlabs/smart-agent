@@ -79,19 +79,13 @@ export async function POST(
   try {
     const result = await closeRound({
       roundId,
-      poolAgentId: body.poolAgentId,
+      poolAgentId: body.poolAgentId as `0x${string}`,
       awards: body.awards.map(a => ({
         proposalIRI: a.proposalIRI,
         recipientAgentIRI: a.recipientAgentIRI,
-        recipientAddr: a.recipientAddr,
-        totalAmount: a.totalAmount,
+        recipientAddr: a.recipientAddr as `0x${string}`,
+        totalAmount: BigInt(a.totalAmount),
         unit: a.unit,
-        // Default tranche schedule: single tranche = total amount.
-        tranches: [{
-          trancheId: `${roundId}/${a.proposalIRI}/tranche-1`,
-          amount: a.totalAmount,
-          milestoneRef: 'milestone-1',
-        }],
       })),
     })
     return NextResponse.json({ ok: true, result })

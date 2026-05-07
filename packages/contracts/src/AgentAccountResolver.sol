@@ -1,24 +1,20 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import "./OntologyTermRegistry.sol";
-import "./OntologyAttributeStore.sol";
+import "./AttributeStorage.sol";
 import "./AgentPredicates.sol";
 
 /**
  * @title AgentAccountResolver
- * @notice ENS-style resolver for agent metadata. Phase 0.1: thin shim over
- *         OntologyAttributeStore. External API preserved; storage routes
- *         through the shared attribute store.
+ * @notice ENS-style resolver for agent metadata. Inherits AttributeStorage
+ *         and owns its OWN typed-attribute state — no shared backend.
  *
- * Subject id for an agent is `bytes32(uint256(uint160(agent)))`. The resolver
- * is registered as a trustedWriter on AttributeAuth so authorized owner-mediated
- * writes pass through to the store.
+ * Subject id for an agent is `bytes32(uint256(uint160(agent)))`.
+ * Auth: only an owner of the agent (checked via AgentAccount.isOwner) may
+ * write. Predicate validation handled by AttributeStorage's internal
+ * setters against the OntologyTermRegistry passed to the constructor.
  */
-contract AgentAccountResolver {
-    OntologyTermRegistry public immutable ONTOLOGY;
-    OntologyAttributeStore public immutable STORE;
-
+contract AgentAccountResolver is AttributeStorage {
     struct CoreRecord {
         string displayName;
         string description;
@@ -29,7 +25,7 @@ contract AgentAccountResolver {
         string schemaURI;
         bool active;
         uint256 registeredAt;
-        uint256 updatedAt;     // returns subjectVersion (monotonic counter)
+        uint256 updatedAt;     // = subjectVersion (monotonic counter)
     }
 
     address[] private _agents;
@@ -47,7 +43,6 @@ contract AgentAccountResolver {
     error NotAgentOwner();
     error AlreadyRegistered();
     error NotRegistered();
-    error PredicateNotRegistered();
 
     modifier onlyAgentOwner(address agent) {
         (bool ok, bytes memory data) = agent.staticcall(
@@ -62,17 +57,7 @@ contract AgentAccountResolver {
         _;
     }
 
-    modifier validPredicate(bytes32 predicate) {
-        if (!ONTOLOGY.isActive(predicate)) revert PredicateNotRegistered();
-        _;
-    }
-
-    constructor(address ontologyRegistry, address attributeStore) {
-        ONTOLOGY = OntologyTermRegistry(ontologyRegistry);
-        STORE = OntologyAttributeStore(attributeStore);
-    }
-
-    // ─── Internal helpers ───────────────────────────────────────────
+    constructor(address ontologyRegistry) AttributeStorage(ontologyRegistry) {}
 
     function _subject(address agent) internal pure returns (bytes32) {
         return bytes32(uint256(uint160(agent)));
@@ -91,21 +76,21 @@ contract AgentAccountResolver {
         if (_registered[agent]) revert AlreadyRegistered();
 
         bytes32 s = _subject(agent);
-        STORE.setString(s, AgentPredicates.ATL_DISPLAY_NAME, displayName);
+        _setString(s, AgentPredicates.ATL_DISPLAY_NAME, displayName);
         if (bytes(description).length > 0) {
-            STORE.setString(s, AgentPredicates.ATL_DESCRIPTION, description);
+            _setString(s, AgentPredicates.ATL_DESCRIPTION, description);
         }
         if (agentType != bytes32(0)) {
-            STORE.setBytes32(s, AgentPredicates.ATL_AGENT_TYPE, agentType);
+            _setBytes32(s, AgentPredicates.ATL_AGENT_TYPE, agentType);
         }
         if (agentClass != bytes32(0)) {
-            STORE.setBytes32(s, AgentPredicates.ATL_AI_AGENT_CLASS, agentClass);
+            _setBytes32(s, AgentPredicates.ATL_AI_AGENT_CLASS, agentClass);
         }
         if (bytes(schemaURI).length > 0) {
-            STORE.setString(s, AgentPredicates.ATL_SCHEMA_URI, schemaURI);
+            _setString(s, AgentPredicates.ATL_SCHEMA_URI, schemaURI);
         }
-        STORE.setBool(s, AgentPredicates.ATL_IS_ACTIVE, true);
-        STORE.setUint(s, ATL_REGISTERED_AT, block.timestamp);
+        _setBool(s, AgentPredicates.ATL_IS_ACTIVE, true);
+        _setUint(s, ATL_REGISTERED_AT, block.timestamp);
 
         _registered[agent] = true;
         _agents.push(agent);
@@ -123,15 +108,15 @@ contract AgentAccountResolver {
         bytes32 agentClass
     ) external onlyAgentOwner(agent) onlyRegistered(agent) {
         bytes32 s = _subject(agent);
-        STORE.setString(s, AgentPredicates.ATL_DISPLAY_NAME, displayName);
-        STORE.setString(s, AgentPredicates.ATL_DESCRIPTION, description);
-        STORE.setBytes32(s, AgentPredicates.ATL_AGENT_TYPE, agentType);
-        STORE.setBytes32(s, AgentPredicates.ATL_AI_AGENT_CLASS, agentClass);
+        _setString(s, AgentPredicates.ATL_DISPLAY_NAME, displayName);
+        _setString(s, AgentPredicates.ATL_DESCRIPTION, description);
+        _setBytes32(s, AgentPredicates.ATL_AGENT_TYPE, agentType);
+        _setBytes32(s, AgentPredicates.ATL_AI_AGENT_CLASS, agentClass);
         emit CoreUpdated(agent, displayName, agentType);
     }
 
     function setActive(address agent, bool active) external onlyAgentOwner(agent) onlyRegistered(agent) {
-        STORE.setBool(_subject(agent), AgentPredicates.ATL_IS_ACTIVE, active);
+        _setBool(_subject(agent), AgentPredicates.ATL_IS_ACTIVE, active);
         emit AgentUpdated(agent, block.timestamp);
     }
 
@@ -141,8 +126,8 @@ contract AgentAccountResolver {
         bytes32 hash
     ) external onlyAgentOwner(agent) onlyRegistered(agent) {
         bytes32 s = _subject(agent);
-        STORE.setString(s, AgentPredicates.ATL_METADATA_URI, uri);
-        STORE.setBytes32(s, AgentPredicates.ATL_METADATA_HASH, hash);
+        _setString(s, AgentPredicates.ATL_METADATA_URI, uri);
+        _setBytes32(s, AgentPredicates.ATL_METADATA_HASH, hash);
         emit MetadataUpdated(agent, uri, hash);
     }
 
@@ -150,43 +135,43 @@ contract AgentAccountResolver {
         address agent,
         string calldata uri
     ) external onlyAgentOwner(agent) onlyRegistered(agent) {
-        STORE.setString(_subject(agent), AgentPredicates.ATL_SCHEMA_URI, uri);
+        _setString(_subject(agent), AgentPredicates.ATL_SCHEMA_URI, uri);
     }
 
     // ─── Generic property setters ───────────────────────────────────
 
     function setStringProperty(
         address agent, bytes32 predicate, string calldata value
-    ) external onlyAgentOwner(agent) onlyRegistered(agent) validPredicate(predicate) {
-        STORE.setString(_subject(agent), predicate, value);
+    ) external onlyAgentOwner(agent) onlyRegistered(agent) {
+        _setString(_subject(agent), predicate, value);
         emit PropertySet(agent, predicate);
     }
 
     function setAddressProperty(
         address agent, bytes32 predicate, address value
-    ) external onlyAgentOwner(agent) onlyRegistered(agent) validPredicate(predicate) {
-        STORE.setAddress(_subject(agent), predicate, value);
+    ) external onlyAgentOwner(agent) onlyRegistered(agent) {
+        _setAddress(_subject(agent), predicate, value);
         emit PropertySet(agent, predicate);
     }
 
     function setBoolProperty(
         address agent, bytes32 predicate, bool value
-    ) external onlyAgentOwner(agent) onlyRegistered(agent) validPredicate(predicate) {
-        STORE.setBool(_subject(agent), predicate, value);
+    ) external onlyAgentOwner(agent) onlyRegistered(agent) {
+        _setBool(_subject(agent), predicate, value);
         emit PropertySet(agent, predicate);
     }
 
     function setUintProperty(
         address agent, bytes32 predicate, uint256 value
-    ) external onlyAgentOwner(agent) onlyRegistered(agent) validPredicate(predicate) {
-        STORE.setUint(_subject(agent), predicate, value);
+    ) external onlyAgentOwner(agent) onlyRegistered(agent) {
+        _setUint(_subject(agent), predicate, value);
         emit PropertySet(agent, predicate);
     }
 
     function addMultiStringProperty(
         address agent, bytes32 predicate, string calldata value
-    ) external onlyAgentOwner(agent) onlyRegistered(agent) validPredicate(predicate) {
-        STORE.appendString(_subject(agent), predicate, value);
+    ) external onlyAgentOwner(agent) onlyRegistered(agent) {
+        _appendString(_subject(agent), predicate, value);
         emit MultiPropertyAdded(agent, predicate, value);
     }
 
@@ -194,37 +179,37 @@ contract AgentAccountResolver {
         address agent, bytes32 predicate
     ) external onlyAgentOwner(agent) onlyRegistered(agent) {
         string[] memory empty = new string[](0);
-        STORE.setStringArr(_subject(agent), predicate, empty);
+        _setStringArr(_subject(agent), predicate, empty);
         emit PropertySet(agent, predicate);
     }
 
     function addMultiAddressProperty(
         address agent, bytes32 predicate, address value
-    ) external onlyAgentOwner(agent) onlyRegistered(agent) validPredicate(predicate) {
-        STORE.appendAddress(_subject(agent), predicate, value);
+    ) external onlyAgentOwner(agent) onlyRegistered(agent) {
+        _appendAddress(_subject(agent), predicate, value);
     }
 
     function clearMultiAddressProperty(
         address agent, bytes32 predicate
     ) external onlyAgentOwner(agent) onlyRegistered(agent) {
         address[] memory empty = new address[](0);
-        STORE.setAddressArr(_subject(agent), predicate, empty);
+        _setAddressArr(_subject(agent), predicate, empty);
     }
 
     // ─── Readers ────────────────────────────────────────────────────
 
     function getCore(address agent) external view returns (CoreRecord memory c) {
         bytes32 s = _subject(agent);
-        c.displayName  = STORE.getString(s, AgentPredicates.ATL_DISPLAY_NAME);
-        c.description  = STORE.getString(s, AgentPredicates.ATL_DESCRIPTION);
-        c.agentType    = STORE.getBytes32(s, AgentPredicates.ATL_AGENT_TYPE);
-        c.agentClass   = STORE.getBytes32(s, AgentPredicates.ATL_AI_AGENT_CLASS);
-        c.metadataURI  = STORE.getString(s, AgentPredicates.ATL_METADATA_URI);
-        c.metadataHash = STORE.getBytes32(s, AgentPredicates.ATL_METADATA_HASH);
-        c.schemaURI    = STORE.getString(s, AgentPredicates.ATL_SCHEMA_URI);
-        c.active       = STORE.getBool(s, AgentPredicates.ATL_IS_ACTIVE);
-        c.registeredAt = STORE.getUint(s, ATL_REGISTERED_AT);
-        c.updatedAt    = uint256(STORE.subjectVersion(s));
+        c.displayName  = this.getString(s, AgentPredicates.ATL_DISPLAY_NAME);
+        c.description  = this.getString(s, AgentPredicates.ATL_DESCRIPTION);
+        c.agentType    = this.getBytes32(s, AgentPredicates.ATL_AGENT_TYPE);
+        c.agentClass   = this.getBytes32(s, AgentPredicates.ATL_AI_AGENT_CLASS);
+        c.metadataURI  = this.getString(s, AgentPredicates.ATL_METADATA_URI);
+        c.metadataHash = this.getBytes32(s, AgentPredicates.ATL_METADATA_HASH);
+        c.schemaURI    = this.getString(s, AgentPredicates.ATL_SCHEMA_URI);
+        c.active       = this.getBool(s, AgentPredicates.ATL_IS_ACTIVE);
+        c.registeredAt = this.getUint(s, ATL_REGISTERED_AT);
+        c.updatedAt    = uint256(this.subjectVersion(s));
     }
 
     function isRegistered(address agent) external view returns (bool) {
@@ -244,30 +229,30 @@ contract AgentAccountResolver {
     }
 
     function getStringProperty(address agent, bytes32 predicate) external view returns (string memory) {
-        return STORE.getString(_subject(agent), predicate);
+        return this.getString(_subject(agent), predicate);
     }
 
     function getAddressProperty(address agent, bytes32 predicate) external view returns (address) {
-        return STORE.getAddress(_subject(agent), predicate);
+        return this.getAddress(_subject(agent), predicate);
     }
 
     function getBoolProperty(address agent, bytes32 predicate) external view returns (bool) {
-        return STORE.getBool(_subject(agent), predicate);
+        return this.getBool(_subject(agent), predicate);
     }
 
     function getUintProperty(address agent, bytes32 predicate) external view returns (uint256) {
-        return STORE.getUint(_subject(agent), predicate);
+        return this.getUint(_subject(agent), predicate);
     }
 
     function getMultiStringProperty(address agent, bytes32 predicate) external view returns (string[] memory) {
-        return STORE.getStringArr(_subject(agent), predicate);
+        return this.getStringArr(_subject(agent), predicate);
     }
 
     function getMultiAddressProperty(address agent, bytes32 predicate) external view returns (address[] memory) {
-        return STORE.getAddressArr(_subject(agent), predicate);
+        return this.getAddressArr(_subject(agent), predicate);
     }
 
     function getPredicateKeys(address agent) external view returns (bytes32[] memory) {
-        return STORE.predicatesOf(_subject(agent));
+        return this.predicatesOf(_subject(agent));
     }
 }

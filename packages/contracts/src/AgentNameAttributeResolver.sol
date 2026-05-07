@@ -2,32 +2,26 @@
 pragma solidity ^0.8.28;
 
 import "./AgentNameRegistry.sol";
-import "./OntologyTermRegistry.sol";
-import "./OntologyAttributeStore.sol";
+import "./AttributeStorage.sol";
 
 /**
  * @title AgentNameAttributeResolver
- * @notice Per-node resolver for the .agent namespace. Phase 0.2: typed text
- *         records route through OntologyAttributeStore; ENSIP-9 multi-coin
- *         address records stay on-contract because they don't fit the
- *         attribute-store model cleanly.
+ * @notice Per-node resolver for the .agent namespace. Inherits
+ *         AttributeStorage and owns its own typed-attribute state.
+ *         Decoupled from any other store.
  *
  * Subject id for a name node is the node itself (already a bytes32 namehash).
- * The resolver is registered as a trustedWriter on AttributeAuth so
- * authorized writes pass through to the store.
  *
- * Compatibility: the legacy text(node, key) ABI is preserved. The key is
- * hashed to a predicate id; unregistered keys soft-fail to "" (mirrors ENS
- * "no record set" semantics).
+ * ENSIP-9 multi-coin address records stay on-contract because they don't
+ * fit the attribute-store model cleanly. The `text(node, key)` ABI is
+ * preserved as a compat shim — keys hash to predicate ids and unregistered
+ * keys soft-fail to "" (mirrors ENS no-record-set semantics).
  */
-contract AgentNameAttributeResolver {
+contract AgentNameAttributeResolver is AttributeStorage {
     AgentNameRegistry public immutable REGISTRY;
-    OntologyTermRegistry public immutable ONTOLOGY;
-    OntologyAttributeStore public immutable STORE;
 
     error NotAuthorized();
     error NodeNotFound();
-    error PredicateNotRegistered();
 
     event AddrChanged(bytes32 indexed node, uint256 coinType, address addr);
     event AliasSet(bytes32 indexed node, bytes32 targetNode);
@@ -35,16 +29,13 @@ contract AgentNameAttributeResolver {
     event OperatorSet(bytes32 indexed node, address indexed operator, bool approved);
     event AttributeRouted(bytes32 indexed node, bytes32 indexed predicate);
 
-    // Address records — multi-coin per ENSIP-9; on-contract.
     mapping(bytes32 => mapping(uint256 => address)) private _addresses;
     mapping(bytes32 => bytes32) private _aliases;
     mapping(bytes32 => uint64) private _versions;
     mapping(bytes32 => mapping(address => bool)) private _operators;
 
-    constructor(AgentNameRegistry registry, address ontologyRegistry, address attributeStore) {
+    constructor(AgentNameRegistry registry, address ontologyRegistry) AttributeStorage(ontologyRegistry) {
         REGISTRY = registry;
-        ONTOLOGY = OntologyTermRegistry(ontologyRegistry);
-        STORE = OntologyAttributeStore(attributeStore);
     }
 
     // ─── Address records (ENSIP-9) ──────────────────────────────────
@@ -73,70 +64,62 @@ contract AgentNameAttributeResolver {
 
     function setStringAttribute(bytes32 node, bytes32 predicate, string calldata value) external {
         _requireAuth(node);
-        if (!ONTOLOGY.isActive(predicate)) revert PredicateNotRegistered();
-        STORE.setString(node, predicate, value);
+        _setString(node, predicate, value);
         emit AttributeRouted(node, predicate);
     }
 
     function setAddressAttribute(bytes32 node, bytes32 predicate, address value) external {
         _requireAuth(node);
-        if (!ONTOLOGY.isActive(predicate)) revert PredicateNotRegistered();
-        STORE.setAddress(node, predicate, value);
+        _setAddress(node, predicate, value);
         emit AttributeRouted(node, predicate);
     }
 
     function setBoolAttribute(bytes32 node, bytes32 predicate, bool value) external {
         _requireAuth(node);
-        if (!ONTOLOGY.isActive(predicate)) revert PredicateNotRegistered();
-        STORE.setBool(node, predicate, value);
+        _setBool(node, predicate, value);
         emit AttributeRouted(node, predicate);
     }
 
     function setUintAttribute(bytes32 node, bytes32 predicate, uint256 value) external {
         _requireAuth(node);
-        if (!ONTOLOGY.isActive(predicate)) revert PredicateNotRegistered();
-        STORE.setUint(node, predicate, value);
+        _setUint(node, predicate, value);
         emit AttributeRouted(node, predicate);
     }
 
     function setBytes32Attribute(bytes32 node, bytes32 predicate, bytes32 value) external {
         _requireAuth(node);
-        if (!ONTOLOGY.isActive(predicate)) revert PredicateNotRegistered();
-        STORE.setBytes32(node, predicate, value);
+        _setBytes32(node, predicate, value);
         emit AttributeRouted(node, predicate);
     }
 
-    // ─── Typed attribute getters (read-side; alias resolution applied) ─
+    // ─── Typed attribute getters with alias resolution ──────────────
 
     function getStringAttribute(bytes32 node, bytes32 predicate) external view returns (string memory) {
-        return STORE.getString(_resolveAlias(node), predicate);
+        return this.getString(_resolveAlias(node), predicate);
     }
 
     function getAddressAttribute(bytes32 node, bytes32 predicate) external view returns (address) {
-        return STORE.getAddress(_resolveAlias(node), predicate);
+        return this.getAddress(_resolveAlias(node), predicate);
     }
 
     function getBoolAttribute(bytes32 node, bytes32 predicate) external view returns (bool) {
-        return STORE.getBool(_resolveAlias(node), predicate);
+        return this.getBool(_resolveAlias(node), predicate);
     }
 
     function getUintAttribute(bytes32 node, bytes32 predicate) external view returns (uint256) {
-        return STORE.getUint(_resolveAlias(node), predicate);
+        return this.getUint(_resolveAlias(node), predicate);
     }
 
     function getBytes32Attribute(bytes32 node, bytes32 predicate) external view returns (bytes32) {
-        return STORE.getBytes32(_resolveAlias(node), predicate);
+        return this.getBytes32(_resolveAlias(node), predicate);
     }
 
     // ─── ENS-style text() compatibility shim ─────────────────────────
 
-    /// @notice ENS-style text record lookup. Hashes the key to a predicate
-    ///         id and reads from the attribute store; returns "" if the
-    ///         predicate is not registered (mirrors ENS no-record-set).
     function text(bytes32 node, string calldata key) external view returns (string memory) {
         bytes32 predicate = keccak256(bytes(key));
         if (!ONTOLOGY.isActive(predicate)) return "";
-        return STORE.getString(_resolveAlias(node), predicate);
+        return this.getString(_resolveAlias(node), predicate);
     }
 
     // ─── Aliases / versioning / operators ───────────────────────────

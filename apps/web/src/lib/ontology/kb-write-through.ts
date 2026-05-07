@@ -15,19 +15,26 @@
  *     re-arm the timer once it finishes, guaranteeing the latest state
  *     eventually lands.
  *
- * Backpressure: after a SUCCESSFUL sync we earn a COOLDOWN_MS of
- * silence before the next sync — even if writes pile up, we don't
- * hammer GraphDB. This was the load source that was killing the public
- * GraphDB instance: catalyst-seed bursts at ~3 edges/sec triggered ~3
- * syncs/sec, each PUTting a multi-MB combined turtle. Cooldown bounds
- * sync frequency to at most 1 every 30s regardless of write volume.
+ * Backpressure (in order of strictness):
+ *   1. QUIET_MS         — wait this long after the LAST mutation before
+ *                          syncing. Coalesces bursts.
+ *   2. COOLDOWN_MS      — after a SUCCESSFUL sync, hold off this long
+ *                          before starting another even if mutations pile up.
+ *   3. MIN_INTERVAL_MS  — hard floor between sync STARTS regardless of
+ *                          success. Caps load when GraphDB is failing
+ *                          (524 / 500) and we'd otherwise retry too fast.
  *
  * Failure handling: log and move on. The next call retriggers the sync;
  * a manual `POST /api/ontology-sync` still works as a backstop.
+ *
+ * Env-gate `SKIP_KB_SYNC=true` → `scheduleKbSync()` is a no-op. Use during
+ * seed scripts that drive their own SPARQL writes so the action layer
+ * doesn't pile follow-up full-graph PUTs on top.
  */
 
-const QUIET_MS = 60_000        // wait this long after the last write before syncing
-const COOLDOWN_MS = 30_000     // wait at least this long after a successful sync
+const QUIET_MS         = 120_000   // wait this long after the last write before syncing
+const COOLDOWN_MS      = 90_000    // wait at least this long after a successful sync
+const MIN_INTERVAL_MS  = 60_000    // hard floor between sync starts
 
 type LockState = {
   timer: NodeJS.Timeout | null
@@ -35,16 +42,25 @@ type LockState = {
   pending: boolean
   /** Epoch ms of the last successful sync; 0 means never. */
   lastSyncOkAt: number
+  /** Epoch ms of the last sync START (success or failure). */
+  lastSyncStartedAt: number
 }
 
 // globalThis singleton so Next.js HMR doesn't fork independent timers.
 const G = globalThis as unknown as { __kbSyncLock?: LockState }
-if (!G.__kbSyncLock) G.__kbSyncLock = { timer: null, inflight: null, pending: false, lastSyncOkAt: 0 }
+if (!G.__kbSyncLock) {
+  G.__kbSyncLock = { timer: null, inflight: null, pending: false, lastSyncOkAt: 0, lastSyncStartedAt: 0 }
+}
 const lock = G.__kbSyncLock
 
+function syncDisabled(): boolean {
+  const v = process.env.SKIP_KB_SYNC?.toLowerCase()
+  return v === '1' || v === 'true' || v === 'yes'
+}
+
 async function runSync(): Promise<boolean> {
-  // Lazy import — graphdb-sync pulls heavy deps; we don't want to load it
-  // on every request, only when a mutation actually happens.
+  lock.lastSyncStartedAt = Date.now()
+  // Lazy import — graphdb-sync pulls heavy deps; only load on actual sync.
   const mod = await import('./graphdb-sync')
   const result = await mod.syncOnChainToGraphDB()
   console.log('[kb-sync]', result.success ? `ok (${result.agentCount} agents)` : `failed: ${result.message}`)
@@ -52,14 +68,17 @@ async function runSync(): Promise<boolean> {
 }
 
 export function scheduleKbSync(): void {
+  if (syncDisabled()) return
+
   // If a sync is already running, mark pending so we re-arm when it ends.
   if (lock.inflight) { lock.pending = true; return }
 
-  // If we synced successfully recently, stretch the timer until the
-  // cooldown elapses.
   const now = Date.now()
-  const sinceOk = now - lock.lastSyncOkAt
-  const wait = sinceOk < COOLDOWN_MS ? Math.max(QUIET_MS, COOLDOWN_MS - sinceOk) : QUIET_MS
+  const sinceOk     = now - lock.lastSyncOkAt
+  const sinceStart  = now - lock.lastSyncStartedAt
+  const waitForOk    = sinceOk    < COOLDOWN_MS     ? COOLDOWN_MS - sinceOk        : 0
+  const waitForStart = sinceStart < MIN_INTERVAL_MS ? MIN_INTERVAL_MS - sinceStart : 0
+  const wait = Math.max(QUIET_MS, waitForOk, waitForStart)
 
   if (lock.timer) clearTimeout(lock.timer)
   lock.timer = setTimeout(() => {

@@ -1,18 +1,31 @@
 /**
  * Spec 002 — Intent Marketplace (Pool Lane). Multi-pool demo seed.
  *
- * Creates three faith-flavored pools under Catalyst NoCo Network so the
- * /h/catalyst/pools index has variety: a compassion-care fund, a Spanish
- * scripture distribution fund, and a non-monetary prayer-chain pool.
+ * Phase 0.3 — exercises the new on-chain attribute store path:
+ *   1. Deploy a dedicated AgentAccount per pool via AgentAccountFactory.
+ *   2. Call PoolRegistry.open(...) to write pool body into the shared
+ *      PoolRegistry's own typed-attribute storage (with shape validation).
+ *   3. Initialize the aggregate-counter row in org-mcp.db (slimmed schema).
+ *   4. INSERT DATA into GraphDB so the /h/catalyst/pools index has data
+ *      until the diff-aware attribute-walking emitter ships in
+ *      Phase 0.6 cleanup.
  *
  *   pnpm exec tsx scripts/seed-test-pool.ts
  *
- * Idempotent: INSERT OR REPLACE on stable ids; SPARQL INSERT DATA.
+ * Idempotent: if PoolRegistry.open reverts on already-set required keys
+ * (subjectVersion > 0), the seed continues. SQL insert uses INSERT OR
+ * REPLACE on stable ids.
  */
 
 import path from 'node:path'
 import fs from 'node:fs'
 import { fileURLToPath } from 'node:url'
+import {
+  createWalletClient, createPublicClient, http,
+  keccak256, toBytes, toHex,
+  type Address, type Hex,
+} from 'viem'
+import { privateKeyToAccount } from 'viem/accounts'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(__dirname, '..')
@@ -30,8 +43,18 @@ if (fs.existsSync(envFile)) {
   }
 }
 
-const FUND_ADDRESS = '0x0F669E6851A15FD0E5904EB197c369C2ab578D9b'.toLowerCase()
-const FUND_AGENT_IRI = `https://smartagent.io/ontology/core#agent/${FUND_ADDRESS}`
+const RPC_URL = process.env.RPC_URL!
+const DEPLOYER_KEY = process.env.DEPLOYER_PRIVATE_KEY as Hex
+const FACTORY_ADDR = process.env.AGENT_FACTORY_ADDRESS as Address
+const POOL_REGISTRY_ADDR = process.env.POOL_REGISTRY_ADDRESS as Address | undefined
+
+if (!RPC_URL || !DEPLOYER_KEY || !FACTORY_ADDR) {
+  throw new Error('seed-test-pool: RPC_URL / DEPLOYER_PRIVATE_KEY / AGENT_FACTORY_ADDRESS required in apps/web/.env')
+}
+if (!POOL_REGISTRY_ADDR) {
+  throw new Error('seed-test-pool: POOL_REGISTRY_ADDRESS not set — run scripts/fresh-start.sh first')
+}
+
 const NOW = new Date().toISOString()
 
 interface PoolSeed {
@@ -39,8 +62,9 @@ interface PoolSeed {
   name: string
   domain: string
   mandate: string
-  governanceModel: 'fund' | 'coaching-network' | 'prayer-chain'
+  governance: 'fund' | 'open-call' | 'giving-circle' | 'daf'
   acceptedRestrictions: { kinds?: string[]; geoRoots?: string[]; notForAdmin?: boolean }
+  acceptedKinds: string[]
   acceptedUnits: string[]
   ceilingPolicy: 'block' | 'waitlist' | 'accept'
 }
@@ -51,12 +75,13 @@ const POOLS: PoolSeed[] = [
     name: 'Trauma-Care + Migrant Family Compassion Pool',
     domain: 'funding',
     mandate: 'Compassion-ministry funding for trauma-care training, migrant-family support, and church-based crisis response in Northern Colorado. Donors may restrict by kind / geo or accept the open compassion mandate.',
-    governanceModel: 'fund',
+    governance: 'fund',
     acceptedRestrictions: {
       kinds: ['trauma-care', 'CompassionMinistry', 'MigrantFamilyCare', 'leader-care'],
       geoRoots: ['us/colorado', 'us/wyoming'],
       notForAdmin: true,
     },
+    acceptedKinds: ['sa:GivingKind', 'sa:CompassionMinistry'],
     acceptedUnits: ['USD'],
     ceilingPolicy: 'accept',
   },
@@ -64,13 +89,14 @@ const POOLS: PoolSeed[] = [
     id: 'demo-spanish-bibles-pool',
     name: 'Spanish Bibles for New Families Pool',
     domain: 'funding',
-    mandate: 'Heart-language scripture distribution for first-generation Spanish-speaking families in NoCo. Funds bilingual Bibles, study guides, and host-family curriculum kits. Stewards prioritize newly-formed circles in church-plant catchments.',
-    governanceModel: 'fund',
+    mandate: 'Heart-language scripture distribution for first-generation Spanish-speaking families in NoCo.',
+    governance: 'fund',
     acceptedRestrictions: {
       kinds: ['HeartLanguageScripture', 'BibleStudy', 'Discipleship'],
       geoRoots: ['us/colorado'],
       notForAdmin: true,
     },
+    acceptedKinds: ['sa:GivingKind', 'sa:Discipleship'],
     acceptedUnits: ['USD'],
     ceilingPolicy: 'accept',
   },
@@ -78,16 +104,70 @@ const POOLS: PoolSeed[] = [
     id: 'demo-prayer-chain-pool',
     name: 'Hispanic Family Prayer Chain Pool',
     domain: 'prayer',
-    mandate: 'Standing prayer commitments for migrant families, church-plant catalysts, and discipleship circles across Northern Colorado. Donors pledge prayer minutes (not money); the steward routes specific intercession requests to the chain.',
-    governanceModel: 'prayer-chain',
+    mandate: 'Standing prayer commitments for migrant families, church-plant catalysts, and discipleship circles across Northern Colorado.',
+    governance: 'open-call',
     acceptedRestrictions: {
       kinds: ['PrayerCommitment', 'Intercession', 'DailyPrayer'],
       geoRoots: ['us/colorado'],
     },
+    acceptedKinds: ['sa:PrayerKind', 'sa:Intercession'],
     acceptedUnits: ['prayer-minutes'],
     ceilingPolicy: 'accept',
   },
 ]
+
+async function loadSdk() {
+  return await import(path.join(repoRoot, 'packages/sdk/src/index.ts')) as {
+    PoolRegistryClient: new (cfg: {
+      registryAddress: Address
+      walletClient: ReturnType<typeof createWalletClient>
+      publicClient: ReturnType<typeof createPublicClient>
+    }) => {
+      open: (input: {
+        poolAgent: Address
+        domain: string
+        governanceModel: 'fund' | 'open-call' | 'giving-circle' | 'daf'
+        mandateHash: Hex
+        mandateURI?: string
+        acceptedUnits?: string[]
+        acceptedKinds: string[]
+        ceilingPolicy: 'block' | 'waitlist' | 'accept'
+        capacityCeiling?: bigint
+        stewards: Address[]
+        visibility: 'public' | 'private'
+      }) => Promise<Hex>
+    }
+    agentAccountFactoryAbi: readonly unknown[]
+  }
+}
+
+async function deployPoolAgent(
+  walletClient: ReturnType<typeof createWalletClient>,
+  publicClient: ReturnType<typeof createPublicClient>,
+  factoryAbi: readonly unknown[],
+  ownerAddr: Address,
+  salt: bigint,
+): Promise<Address> {
+  const deployerAccount = walletClient.account!
+  const txHash = await walletClient.writeContract({
+    address: FACTORY_ADDR,
+    abi: factoryAbi,
+    functionName: 'createAccount',
+    args: [ownerAddr, salt],
+    account: deployerAccount,
+    chain: walletClient.chain ?? null,
+  })
+  await publicClient.waitForTransactionReceipt({ hash: txHash })
+  // Read deterministic address (createAccount returns it but receipt parsing
+  // is fiddly — call the view-side getAddress instead).
+  const computed = await publicClient.readContract({
+    address: FACTORY_ADDR,
+    abi: factoryAbi,
+    functionName: 'getAddress',
+    args: [ownerAddr, salt],
+  }) as Address
+  return computed
+}
 
 async function openSqlite(dbPath: string) {
   const Database = (await import(
@@ -99,7 +179,7 @@ async function openSqlite(dbPath: string) {
   return new Database(dbPath)
 }
 
-async function seedSql(): Promise<void> {
+async function seedSqlCounters(deployedPools: Array<{ pool: PoolSeed; treasuryAddress: Address }>): Promise<void> {
   const dbPath = path.join(repoRoot, 'apps/org-mcp/org-mcp.db')
   if (!fs.existsSync(dbPath)) {
     console.warn(`[seed-test-pool] ${dbPath} does not exist — skipping SQL insert`)
@@ -109,53 +189,44 @@ async function seedSql(): Promise<void> {
   try {
     const stmt = db.prepare(`
       INSERT OR REPLACE INTO pools (
-        id, org_principal, name, domain, mandate, governance_model,
-        accepted_restrictions, accepted_units, capacity_ceiling, ceiling_policy,
-        addressed_to, addressed_members, visibility, stewardship_agent, stewards,
-        accepts_open_calls, pledged_total, allocated_total, available_total,
-        on_chain_assertion_id, created_at, updated_at
+        id, treasury_address, name, accepted_restrictions, accepted_units,
+        capacity_ceiling, ceiling_policy, visibility, addressed_members, stewards,
+        pledged_total, allocated_total, available_total,
+        created_at, updated_at
       ) VALUES (
-        @id, @org_principal, @name, @domain, @mandate, @governance_model,
-        @accepted_restrictions, @accepted_units, @capacity_ceiling, @ceiling_policy,
-        @addressed_to, @addressed_members, @visibility, @stewardship_agent, @stewards,
-        @accepts_open_calls, @pledged_total, @allocated_total, @available_total,
-        @on_chain_assertion_id, @created_at, @updated_at
+        @id, @treasury_address, @name, @accepted_restrictions, @accepted_units,
+        @capacity_ceiling, @ceiling_policy, @visibility, @addressed_members, @stewards,
+        @pledged_total, @allocated_total, @available_total,
+        @created_at, @updated_at
       )
     `)
-    for (const p of POOLS) {
-      const iri = `urn:smart-agent:pool:${p.id}`
+    for (const { pool, treasuryAddress } of deployedPools) {
+      const iri = `urn:smart-agent:pool:${pool.id}`
       stmt.run({
         id: iri,
-        org_principal: FUND_ADDRESS,
-        name: p.name,
-        domain: p.domain,
-        mandate: p.mandate,
-        governance_model: p.governanceModel,
-        accepted_restrictions: JSON.stringify(p.acceptedRestrictions),
-        accepted_units: JSON.stringify(p.acceptedUnits),
+        treasury_address: treasuryAddress,
+        name: pool.name,
+        accepted_restrictions: JSON.stringify(pool.acceptedRestrictions),
+        accepted_units: JSON.stringify(pool.acceptedUnits),
         capacity_ceiling: null,
-        ceiling_policy: p.ceilingPolicy,
-        addressed_to: 'hub:catalyst',
-        addressed_members: null,
+        ceiling_policy: pool.ceilingPolicy,
         visibility: 'public',
-        stewardship_agent: FUND_AGENT_IRI,
-        stewards: JSON.stringify([FUND_AGENT_IRI]),
-        accepts_open_calls: 1,
+        addressed_members: null,
+        stewards: JSON.stringify([treasuryAddress]),
         pledged_total: 0,
         allocated_total: 0,
         available_total: 0,
-        on_chain_assertion_id: null,
         created_at: NOW,
         updated_at: NOW,
       })
-      console.log(`[seed-test-pool] SQL ok — ${p.id} (${p.name})`)
+      console.log(`[seed-test-pool] SQL ok — ${pool.id} (${pool.name})`)
     }
   } finally {
     db.close()
   }
 }
 
-async function seedGraphDB(): Promise<void> {
+async function seedGraphDB(deployedPools: Array<{ pool: PoolSeed; treasuryAddress: Address }>): Promise<void> {
   const baseUrl = process.env.GRAPHDB_BASE_URL
   const repository = process.env.GRAPHDB_REPOSITORY
   const username = process.env.GRAPHDB_USERNAME
@@ -167,24 +238,21 @@ async function seedGraphDB(): Promise<void> {
   const auth = `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`
   const url = `${baseUrl}/repositories/${repository}/statements`
 
-  const triples = POOLS.map(p => {
-    const iri = `urn:smart-agent:pool:${p.id}`
-    const escMandate = p.mandate.replace(/"/g, '\\"').replace(/\n/g, '\\n')
-    const escRestrictions = JSON.stringify(p.acceptedRestrictions).replace(/"/g, '\\"')
-    const unitTriples = p.acceptedUnits.map(u => `      sa:acceptsUnit "${u}" ;`).join('\n')
+  const triples = deployedPools.map(({ pool, treasuryAddress }) => {
+    const iri = `urn:smart-agent:pool:${pool.id}`
+    const escMandate = pool.mandate.replace(/"/g, '\\"').replace(/\n/g, '\\n')
+    const unitTriples = pool.acceptedUnits.map(u => `      sa:acceptsUnit "${u}" ;`).join('\n')
     return `
     <${iri}> a sa:Pool ;
-      sa:displayName "${p.name.replace(/"/g, '\\"')}" ;
-      sa:domain "${p.domain}" ;
+      sa:displayName "${pool.name.replace(/"/g, '\\"')}" ;
+      sa:domain "${pool.domain}" ;
       sa:poolMandate "${escMandate}" ;
-      sa:governanceModel "${p.governanceModel}" ;
-      sa:acceptedRestrictions "${escRestrictions}" ;
+      sa:governanceModel "${pool.governance}" ;
 ${unitTriples}
-      sa:ceilingPolicy "${p.ceilingPolicy}" ;
-      sa:addressedTo "hub:catalyst" ;
+      sa:ceilingPolicy "${pool.ceilingPolicy}" ;
       sa:visibility "public" ;
-      sa:stewardshipAgent <${FUND_AGENT_IRI}> ;
-      sa:steward <${FUND_AGENT_IRI}> ;
+      sa:treasuryAddress "${treasuryAddress}" ;
+      sa:steward <eth:${treasuryAddress.toLowerCase()}> ;
       sa:acceptsOpenCalls true ;
       sa:pledgedTotal 0 ;
       sa:allocatedTotal 0 ;
@@ -213,70 +281,65 @@ ${triples}
     const body = await response.text()
     throw new Error(`SPARQL UPDATE failed (${response.status}): ${body}`)
   }
-  console.log(`[seed-test-pool] GraphDB ok — INSERT ${POOLS.length} pools into data graph`)
-}
-
-/**
- * Treasury Phase 1 — anchor each seeded pool with `sa:PoolOpenedAssertion`.
- * The treasury address is left as a placeholder (the demo pools are
- * org-mcp rows, not deployed AgentAccounts) until Phase 2 wires real
- * factory-deployed pool agents. Public-tier payload carries mandate
- * detail; private pools would emit a coarse variant — none seeded yet.
- */
-async function emitPoolAnchors(): Promise<void> {
-  const rpcUrl = process.env.RPC_URL
-  const contractAddress = process.env.CLASS_ASSERTION_ADDRESS
-  const operatorPrivateKey = process.env.DEPLOYER_PRIVATE_KEY
-  if (!rpcUrl || !contractAddress || !operatorPrivateKey) {
-    console.warn('[seed-test-pool] anchor emit skipped — missing env')
-    return
-  }
-  // Import the SDK by file path — same reasoning as seed-test-round.ts.
-  const sdk = await import(path.join(repoRoot, 'packages/sdk/src/index.ts')) as {
-    emitClassAssertion: (
-      cfg: { rpcUrl: string; contractAddress: `0x${string}`; operatorPrivateKey: `0x${string}` },
-      input: { classIri: string; subjectIri: string; payload: Record<string, unknown> },
-    ) => Promise<{ assertionId: string }>
-  }
-  const { emitClassAssertion } = sdk
-  const POOL_OPENED = 'sa:PoolOpenedAssertion'
-  const openedAt = NOW
-  for (const p of POOLS) {
-    const subjectIri = `urn:smart-agent:pool:${p.id}`
-    const payload = {
-      id: p.id,
-      // v1 placeholder — real pool deployment lands in Phase 2 (pool:create
-      // tool calls AgentAccountFactory).
-      treasuryAddress: FUND_ADDRESS,
-      governanceModel: p.governanceModel,
-      acceptedUnits: p.acceptedUnits,
-      acceptedKinds: p.acceptedRestrictions.kinds ?? [],
-      acceptedGeo: p.acceptedRestrictions.geoRoots ?? [],
-      ceilingPolicy: p.ceilingPolicy,
-      capacityCeiling: null,
-      visibility: 'public' as const,
-      stewards: [FUND_ADDRESS],
-      openedAt,
-    }
-    try {
-      const res = await emitClassAssertion(
-        { rpcUrl, contractAddress: contractAddress as `0x${string}`, operatorPrivateKey: operatorPrivateKey as `0x${string}` },
-        { classIri: POOL_OPENED, subjectIri, payload },
-      )
-      console.log(`[seed-test-pool] anchored ${p.id} → assertionId=${res.assertionId}`)
-    } catch (err) {
-      console.warn(`[seed-test-pool] anchor failed for ${p.id}: ${err instanceof Error ? err.message : err}`)
-    }
-  }
+  console.log(`[seed-test-pool] GraphDB ok — INSERT ${deployedPools.length} pools into data graph`)
 }
 
 async function main(): Promise<void> {
-  await seedSql()
-  await seedGraphDB()
-  await emitPoolAnchors()
+  const sdk = await loadSdk()
+  const account = privateKeyToAccount(DEPLOYER_KEY)
+  const walletClient = createWalletClient({ account, chain: undefined, transport: http(RPC_URL) })
+  const publicClient = createPublicClient({ chain: undefined, transport: http(RPC_URL) })
+
+  const client = new sdk.PoolRegistryClient({
+    registryAddress: POOL_REGISTRY_ADDR!,
+    walletClient,
+    publicClient,
+  })
+
+  const deployedPools: Array<{ pool: PoolSeed; treasuryAddress: Address }> = []
+
+  for (const pool of POOLS) {
+    const salt = BigInt(keccak256(toBytes(`pool:${pool.id}`)))
+    const treasuryAddress = await deployPoolAgent(
+      walletClient, publicClient, sdk.agentAccountFactoryAbi, account.address, salt,
+    )
+    console.log(`[seed-test-pool] deployed pool agent ${pool.id} → ${treasuryAddress}`)
+
+    const mandateHash = keccak256(toHex(JSON.stringify({
+      narrative: pool.mandate,
+      acceptedRestrictions: pool.acceptedRestrictions,
+    })))
+
+    try {
+      const txHash = await client.open({
+        poolAgent: treasuryAddress,
+        domain: pool.domain,
+        governanceModel: pool.governance,
+        mandateHash,
+        mandateURI: '',
+        acceptedUnits: pool.acceptedUnits,
+        acceptedKinds: pool.acceptedKinds,
+        ceilingPolicy: pool.ceilingPolicy,
+        capacityCeiling: 0n,
+        stewards: [treasuryAddress],
+        visibility: 'public',
+      })
+      console.log(`[seed-test-pool] PoolRegistry.open ok — ${pool.id} → tx ${txHash}`)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      // If the pool is already opened (re-seed), continue.
+      console.warn(`[seed-test-pool] PoolRegistry.open warn for ${pool.id}: ${msg}`)
+    }
+
+    deployedPools.push({ pool, treasuryAddress })
+  }
+
+  await seedSqlCounters(deployedPools)
+  await seedGraphDB(deployedPools)
+
   console.log(`\n✓ Seeded ${POOLS.length} pools operated by Catalyst NoCo Network:`)
-  for (const p of POOLS) {
-    console.log(`    · ${p.id} — ${p.name}`)
+  for (const { pool, treasuryAddress } of deployedPools) {
+    console.log(`    · ${pool.id} — ${pool.name}  (treasury ${treasuryAddress})`)
   }
   console.log(`  Visit: http://localhost:3000/h/catalyst/pools (after Maria signs in)`)
 }

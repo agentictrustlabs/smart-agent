@@ -1,33 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import "./OntologyAttributeStore.sol";
+import "./AttributeStorage.sol";
 import "./ShapeRegistry.sol";
 
 /**
  * @title ProposalRegistry
- * @notice Phase 0.5 — public-facet registry for awarded grant proposals.
+ * @notice Public-facet registry for awarded grant proposals. Body never
+ *         anchors here per sa:GrantProposalAlwaysPrivateShape — the
+ *         on-chain class for entries is sa:GrantProposalPublicFacet, a
+ *         separate ontology class. Status enum intentionally excludes
+ *         Submitted.
  *
- * Privacy invariant (per sa:GrantProposalAlwaysPrivateShape in
- * docs/ontology/tbox/shacl/visibility.ttl): the proposal *body* — narrative,
- * detailed budget, milestones — must never anchor on chain. Bodies stay in
- * person-mcp `proposal_submissions`.
- *
- * The on-chain class for entries here is `sa:GrantProposalPublicFacet`, a
- * separate ontology class from `sa:GrantProposal`. The shape only permits
- * statuses that imply the proposal has *already become public* — Awarded,
- * Declined, Rescinded. Submitted is intentionally absent.
- *
- * Subject id derivation:
- *     subject = keccak256(abi.encodePacked("sa:proposal:", proposalId))
- *
- * Auth: announceAward and setStatus require the caller to own the awarding
- * fund's AgentAccount. The awarding fund is recorded as
- * sa:proposalAwardingFund at announce time so subsequent mutations can
- * verify against it.
+ * Decoupled storage: this contract owns its attribute state via
+ * AttributeStorage inheritance. Auth: caller must own the awarding fund's
+ * AgentAccount.
  */
-contract ProposalRegistry {
-    OntologyAttributeStore public immutable STORE;
+contract ProposalRegistry is AttributeStorage {
     ShapeRegistry public immutable SHAPES;
 
     bytes32 public constant CLASS_PROPOSAL_PUBLIC_FACET = keccak256("sa:GrantProposalPublicFacet");
@@ -63,12 +52,10 @@ contract ProposalRegistry {
         bytes32 status;
     }
 
-    constructor(address store, address shapes) {
-        STORE = OntologyAttributeStore(store);
+    constructor(address ontologyRegistry, address shapes) AttributeStorage(ontologyRegistry) {
         SHAPES = ShapeRegistry(shapes);
     }
 
-    /// @notice Compute the canonical proposal subject id for an off-chain id.
     function proposalSubject(string calldata proposalId) external pure returns (bytes32) {
         return keccak256(abi.encodePacked("sa:proposal:", proposalId));
     }
@@ -87,86 +74,76 @@ contract ProposalRegistry {
     }
 
     modifier onlyAwardingFundOwner(bytes32 proposal) {
-        if (!STORE.isSet(proposal, SA_PROPOSAL_AWARDING_FUND)) revert ProposalNotInitialized();
-        address awardingFund = STORE.getAddress(proposal, SA_PROPOSAL_AWARDING_FUND);
+        if (!this.isSet(proposal, SA_PROPOSAL_AWARDING_FUND)) revert ProposalNotInitialized();
+        address awardingFund = this.getAddress(proposal, SA_PROPOSAL_AWARDING_FUND);
         if (!_isAccountOwner(awardingFund, msg.sender)) revert NotFundOwner();
         _;
     }
 
     function announceAward(AnnounceParams calldata p) external onlyFundOwner(p.awardingFund) {
-        if (STORE.isSet(p.proposalSubject, SA_PROPOSAL_AWARDING_FUND)) {
+        if (this.isSet(p.proposalSubject, SA_PROPOSAL_AWARDING_FUND)) {
             revert ProposalAlreadyAnnounced();
         }
 
-        STORE.setBytes32(p.proposalSubject, SA_PROPOSAL_KIND, p.kind);
-        STORE.setBytes32(p.proposalSubject, SA_PROPOSAL_STATUS, p.status);
+        _setBytes32(p.proposalSubject, SA_PROPOSAL_KIND, p.kind);
+        _setBytes32(p.proposalSubject, SA_PROPOSAL_STATUS, p.status);
         if (p.basedOnIntentId != bytes32(0)) {
-            STORE.setBytes32(p.proposalSubject, SA_PROPOSAL_BASED_ON_INTENT, p.basedOnIntentId);
+            _setBytes32(p.proposalSubject, SA_PROPOSAL_BASED_ON_INTENT, p.basedOnIntentId);
         }
-        STORE.setBytes32(p.proposalSubject, SA_PROPOSAL_ROUND, p.round);
-        STORE.setAddress(p.proposalSubject, SA_PROPOSAL_PROPOSER, p.proposer);
-        STORE.setAddress(p.proposalSubject, SA_PROPOSAL_RECIPIENT, p.recipient);
-        STORE.setUint(p.proposalSubject, SA_PROPOSAL_TOTAL_AWARDED, p.totalAwarded);
-        STORE.setUint(p.proposalSubject, SA_PROPOSAL_AWARDED_AT, block.timestamp);
+        _setBytes32(p.proposalSubject, SA_PROPOSAL_ROUND, p.round);
+        _setAddress(p.proposalSubject, SA_PROPOSAL_PROPOSER, p.proposer);
+        _setAddress(p.proposalSubject, SA_PROPOSAL_RECIPIENT, p.recipient);
+        _setUint(p.proposalSubject, SA_PROPOSAL_TOTAL_AWARDED, p.totalAwarded);
+        _setUint(p.proposalSubject, SA_PROPOSAL_AWARDED_AT, block.timestamp);
         if (p.bodyHash != bytes32(0)) {
-            STORE.setBytes32(p.proposalSubject, SA_PROPOSAL_BODY_HASH, p.bodyHash);
+            _setBytes32(p.proposalSubject, SA_PROPOSAL_BODY_HASH, p.bodyHash);
         }
-        STORE.setAddress(p.proposalSubject, SA_PROPOSAL_AWARDING_FUND, p.awardingFund);
+        _setAddress(p.proposalSubject, SA_PROPOSAL_AWARDING_FUND, p.awardingFund);
 
-        SHAPES.validateSubject(CLASS_PROPOSAL_PUBLIC_FACET, p.proposalSubject);
+        SHAPES.validateSubject(CLASS_PROPOSAL_PUBLIC_FACET, p.proposalSubject, address(this));
 
         emit ProposalAwardAnnounced(p.proposalSubject, p.round, p.totalAwarded);
     }
 
     function setStatus(bytes32 proposal, bytes32 newStatus) external onlyAwardingFundOwner(proposal) {
-        STORE.setBytes32(proposal, SA_PROPOSAL_STATUS, newStatus);
-        SHAPES.validateSubject(CLASS_PROPOSAL_PUBLIC_FACET, proposal);
+        _setBytes32(proposal, SA_PROPOSAL_STATUS, newStatus);
+        SHAPES.validateSubject(CLASS_PROPOSAL_PUBLIC_FACET, proposal, address(this));
         emit ProposalStatusChanged(proposal, newStatus);
     }
 
     // ─── Read helpers ──────────────────────────────────────────────
 
     function getStatus(bytes32 proposal) external view returns (bytes32) {
-        return STORE.getBytes32(proposal, SA_PROPOSAL_STATUS);
+        return this.getBytes32(proposal, SA_PROPOSAL_STATUS);
     }
-
     function getKind(bytes32 proposal) external view returns (bytes32) {
-        return STORE.getBytes32(proposal, SA_PROPOSAL_KIND);
+        return this.getBytes32(proposal, SA_PROPOSAL_KIND);
     }
-
     function getBasedOnIntentId(bytes32 proposal) external view returns (bytes32) {
-        return STORE.getBytes32(proposal, SA_PROPOSAL_BASED_ON_INTENT);
+        return this.getBytes32(proposal, SA_PROPOSAL_BASED_ON_INTENT);
     }
-
     function getRound(bytes32 proposal) external view returns (bytes32) {
-        return STORE.getBytes32(proposal, SA_PROPOSAL_ROUND);
+        return this.getBytes32(proposal, SA_PROPOSAL_ROUND);
     }
-
     function getProposer(bytes32 proposal) external view returns (address) {
-        return STORE.getAddress(proposal, SA_PROPOSAL_PROPOSER);
+        return this.getAddress(proposal, SA_PROPOSAL_PROPOSER);
     }
-
     function getRecipient(bytes32 proposal) external view returns (address) {
-        return STORE.getAddress(proposal, SA_PROPOSAL_RECIPIENT);
+        return this.getAddress(proposal, SA_PROPOSAL_RECIPIENT);
     }
-
     function getTotalAwarded(bytes32 proposal) external view returns (uint256) {
-        return STORE.getUint(proposal, SA_PROPOSAL_TOTAL_AWARDED);
+        return this.getUint(proposal, SA_PROPOSAL_TOTAL_AWARDED);
     }
-
     function getAwardedAt(bytes32 proposal) external view returns (uint256) {
-        return STORE.getUint(proposal, SA_PROPOSAL_AWARDED_AT);
+        return this.getUint(proposal, SA_PROPOSAL_AWARDED_AT);
     }
-
     function getBodyHash(bytes32 proposal) external view returns (bytes32) {
-        return STORE.getBytes32(proposal, SA_PROPOSAL_BODY_HASH);
+        return this.getBytes32(proposal, SA_PROPOSAL_BODY_HASH);
     }
-
     function getAwardingFund(bytes32 proposal) external view returns (address) {
-        return STORE.getAddress(proposal, SA_PROPOSAL_AWARDING_FUND);
+        return this.getAddress(proposal, SA_PROPOSAL_AWARDING_FUND);
     }
-
     function isAnnounced(bytes32 proposal) external view returns (bool) {
-        return STORE.isSet(proposal, SA_PROPOSAL_AWARDING_FUND);
+        return this.isSet(proposal, SA_PROPOSAL_AWARDING_FUND);
     }
 }
