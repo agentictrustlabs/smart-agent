@@ -50,6 +50,11 @@ export function RoundCreateForm({ hubSlug, pools }: Props) {
   const month = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
   const [deadline, setDeadline] = useState(fortnight)
   const [decisionDate, setDecisionDate] = useState(month)
+  // Voting strategy config (Sprint B). Defaults match the steward-quorum
+  // 2-of-3 + 7-day window decided up-front.
+  const [votingStrategy, setVotingStrategy] = useState<'steward-quorum' | 'member-approval' | 'quadratic' | 'ranked-choice'>('steward-quorum')
+  const [votingThreshold, setVotingThreshold] = useState(2)
+  const [votingWindowDays, setVotingWindowDays] = useState(7)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
@@ -97,6 +102,9 @@ export function RoundCreateForm({ hubSlug, pools }: Props) {
             decisionDate: isoDateInputToDateTime(decisionDate),
             visibility: 'public',
             requiredCredentials: [],
+            votingStrategy,
+            votingThreshold,
+            votingWindowDays,
           }),
         })
         if (!res.ok) {
@@ -173,6 +181,29 @@ export function RoundCreateForm({ hubSlug, pools }: Props) {
           {CADENCE_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
         </select>
       ))}
+
+      {/* Voting strategy config (Sprint B) */}
+      <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: '0.85rem', marginTop: '0.55rem' }}>
+        <div style={{ fontSize: '0.7rem', fontWeight: 700, color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.55rem' }}>
+          Steward voting
+        </div>
+        {field('Voting strategy', (
+          <select value={votingStrategy} onChange={e => setVotingStrategy(e.target.value as typeof votingStrategy)} style={inputStyle}>
+            <option value="steward-quorum">Steward quorum (N approvals)</option>
+            <option value="member-approval" disabled>Member approval (coming soon)</option>
+            <option value="quadratic" disabled>Quadratic (coming soon)</option>
+            <option value="ranked-choice" disabled>Ranked choice (coming soon)</option>
+          </select>
+        ))}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.7rem' }}>
+          {field('Approvals required', (
+            <input type="number" min={1} max={20} value={votingThreshold} onChange={e => setVotingThreshold(parseInt(e.target.value || '0', 10) || 0)} style={inputStyle} />
+          ))}
+          {field('Voting window (days post-deadline)', (
+            <input type="number" min={1} max={60} value={votingWindowDays} onChange={e => setVotingWindowDays(parseInt(e.target.value || '0', 10) || 0)} style={inputStyle} />
+          ))}
+        </div>
+      </div>
 
       {error && (
         <div style={{ marginBottom: '0.7rem', padding: '0.5rem 0.7rem', background: C.errorBg, color: C.errorFg, borderRadius: 6, fontSize: '0.78rem' }}>

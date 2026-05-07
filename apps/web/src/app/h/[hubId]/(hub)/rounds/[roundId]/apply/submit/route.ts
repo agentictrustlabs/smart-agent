@@ -57,10 +57,16 @@ export async function POST(
     return NextResponse.json({ ok: false, error: { kind: 'validation', messages: ['invalid-json'] } }, { status: 400 })
   }
 
-  // Construct request.
+  // Construct request. Normalize roundId to URN form — the steward
+  // listing query filters by URN form, so the proposal's stored round_id
+  // must match.
+  const rawRound = body.roundId ?? roundId
+  const fullRoundId = rawRound.startsWith('urn:smart-agent:round:')
+    ? rawRound
+    : `urn:smart-agent:round:${rawRound}`
   const request: SubmitGrantProposalRequest = {
     proposerAgentId: body.proposerAgentId ?? myAgent,
-    roundId: body.roundId ?? roundId,
+    roundId: fullRoundId,
     fundMandateId: body.fundMandateId ?? null,
     basedOnIntentId: body.basedOnIntentId ?? '',
     budget: body.budget ?? { lineItems: [], total: 0 },

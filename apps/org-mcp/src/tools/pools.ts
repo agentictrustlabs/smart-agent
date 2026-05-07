@@ -175,8 +175,66 @@ const contributeToTotalTool = {
   },
 }
 
+// ───────────────────────────────────────────────────────────────────────
+// Tool: pool:update_cache (Sprint B — pool admin)
+// ───────────────────────────────────────────────────────────────────────
+//
+// Mirrors body-cache fields after the action layer writes on-chain via
+// PoolRegistry. Body source-of-truth lives on chain in PoolRegistry; this
+// tool keeps the SQL cache + GraphDB-feeder rows current so the UI
+// reflects updates without waiting for a full refresh.
+
+interface UpdateCacheArgs {
+  token: string
+  poolAgentId: string
+  acceptedRestrictions?: Record<string, unknown>
+  acceptedUnits?: string[]
+  capacityCeiling?: number | null
+  ceilingPolicy?: 'block' | 'waitlist' | 'accept'
+  visibility?: 'public' | 'private'
+  addressedMembers?: string[] | null
+  stewards?: string[]
+}
+
+const updateCacheTool = {
+  name: 'pool:update_cache',
+  description:
+    'Update the pool cache (body fields). Source of truth is on chain via PoolRegistry; this is a denormalized mirror for the pledge-time hot path + GraphDB feed.',
+  inputSchema: {
+    type: 'object' as const,
+    properties: {
+      token: { type: 'string' },
+      poolAgentId: { type: 'string' },
+      acceptedRestrictions: { type: 'object' },
+      acceptedUnits: { type: 'array', items: { type: 'string' } },
+      capacityCeiling: { type: 'number' },
+      ceilingPolicy: { type: 'string', enum: ['block', 'waitlist', 'accept'] },
+      visibility: { type: 'string', enum: ['public', 'private'] },
+      addressedMembers: { type: 'array', items: { type: 'string' } },
+      stewards: { type: 'array', items: { type: 'string' } },
+    },
+    required: ['token', 'poolAgentId'],
+  },
+  handler: async (args: UpdateCacheArgs) => {
+    await requireOrgPrincipal(args.token, args, 'pool:update_cache')
+    const r = db.select().from(pools).where(eq(pools.id, args.poolAgentId)).all()[0]
+    if (!r) throw new Error(`pool ${args.poolAgentId} not found`)
+    const update: Record<string, unknown> = { updatedAt: nowIso() }
+    if (args.acceptedRestrictions !== undefined) update.acceptedRestrictions = JSON.stringify(args.acceptedRestrictions)
+    if (args.acceptedUnits !== undefined)        update.acceptedUnits = JSON.stringify(args.acceptedUnits)
+    if (args.capacityCeiling !== undefined)      update.capacityCeiling = args.capacityCeiling
+    if (args.ceilingPolicy !== undefined)        update.ceilingPolicy = args.ceilingPolicy
+    if (args.visibility !== undefined)           update.visibility = args.visibility
+    if (args.addressedMembers !== undefined)     update.addressedMembers = args.addressedMembers ? JSON.stringify(args.addressedMembers) : null
+    if (args.stewards !== undefined)             update.stewards = JSON.stringify(args.stewards)
+    db.update(pools).set(update).where(eq(pools.id, args.poolAgentId)).run()
+    return mcpText({ poolAgentId: args.poolAgentId, ok: true })
+  },
+}
+
 export const poolsTools = {
   'pool:init_counters': initCountersTool,
   'pool:read_counters': readCountersTool,
   'pool:contribute_to_total': contributeToTotalTool,
+  'pool:update_cache': updateCacheTool,
 }

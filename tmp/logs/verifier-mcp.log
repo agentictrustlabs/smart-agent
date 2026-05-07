@@ -8,3 +8,5 @@
 --> GET /health [32m200[0m 1ms
 <-- GET /.well-known/agent.json
 --> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 2ms

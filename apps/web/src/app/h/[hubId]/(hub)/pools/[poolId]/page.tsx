@@ -276,8 +276,14 @@ export default async function PoolDetailPage({
         )}
       </Section>
 
-      {/* Pledge CTA */}
-      <div style={{ marginTop: '1.25rem', display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+      {/* Pledge CTA + steward affordances */}
+      <div style={{ marginTop: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+        <Link
+          href={`/h/${slug}/pools/${safeId}/admin`}
+          style={{ padding: '0.55rem 0.95rem', background: C.card, color: C.text, border: `1px solid ${C.border}`, borderRadius: 8, fontSize: '0.82rem', fontWeight: 600, textDecoration: 'none' }}
+        >
+          Admin →
+        </Link>
         {reachedCeiling && pool.ceilingPolicy === 'block' ? (
           <span style={{ fontSize: '0.85rem', color: C.textMuted, padding: '0.65rem 1.1rem', fontStyle: 'italic' }}>
             This pool is closed to new pledges (ceiling reached, block policy).

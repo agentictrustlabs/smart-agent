@@ -288,6 +288,11 @@ sqliteHandle.exec(`
     visibility TEXT NOT NULL DEFAULT 'public',
     addressed_applicants TEXT,
     status TEXT NOT NULL DEFAULT 'open',
+    voting_strategy TEXT NOT NULL DEFAULT 'steward-quorum',
+    voting_threshold INTEGER NOT NULL DEFAULT 2,
+    voting_window_starts_at TEXT,
+    voting_window_ends_at TEXT,
+    eligible_voters TEXT NOT NULL DEFAULT '{"kind":"stewards"}',
     proposals_received INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
@@ -295,6 +300,61 @@ sqliteHandle.exec(`
   CREATE INDEX IF NOT EXISTS idx_rounds_fund ON rounds(fund_agent_id);
   CREATE INDEX IF NOT EXISTS idx_rounds_visibility ON rounds(visibility);
   CREATE INDEX IF NOT EXISTS idx_rounds_status ON rounds(status);
+
+  -- Disbursements (Sprint C) — off-chain ledger for the funding stage.
+  -- Real USDC custody in Treasury Phase 3 (deferred); this mirrors what
+  -- would otherwise happen on chain so the demo flow shows claim → paid.
+  CREATE TABLE IF NOT EXISTS disbursements (
+    id TEXT PRIMARY KEY,
+    proposal_id TEXT NOT NULL,
+    round_id TEXT NOT NULL,
+    tranche_label TEXT NOT NULL,
+    amount INTEGER NOT NULL,
+    unit TEXT NOT NULL DEFAULT 'USD',
+    recipient_agent_id TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','claimed','paid','revoked')),
+    claimed_at TEXT,
+    paid_at TEXT,
+    tx_hash TEXT,
+    notes TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_disbursements_proposal ON disbursements(proposal_id);
+  CREATE INDEX IF NOT EXISTS idx_disbursements_round ON disbursements(round_id);
+  CREATE INDEX IF NOT EXISTS idx_disbursements_recipient ON disbursements(recipient_agent_id);
+
+  -- Outcome attestations (Sprint C) — validators record milestone delivery.
+  -- Multiple per milestone allowed; dispute resolution rules apply server-side.
+  CREATE TABLE IF NOT EXISTS outcome_attestations (
+    id TEXT PRIMARY KEY,
+    proposal_id TEXT NOT NULL,
+    milestone_label TEXT NOT NULL,
+    validator_agent_id TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('delivered','partial','disputed','overdue')),
+    evidence TEXT,
+    attested_at TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_attest_proposal ON outcome_attestations(proposal_id);
+
+  -- DAO voting (Sprint A). Per output/voting-and-admin-plan.md.
+  CREATE TABLE IF NOT EXISTS proposal_votes (
+    id TEXT PRIMARY KEY,
+    round_id TEXT NOT NULL,
+    proposal_id TEXT NOT NULL,
+    voter_agent_id TEXT NOT NULL,
+    vote TEXT NOT NULL CHECK (vote IN ('approve', 'reject', 'abstain')),
+    weight INTEGER NOT NULL DEFAULT 1,
+    rationale TEXT,
+    signature TEXT,
+    cast_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    UNIQUE (round_id, proposal_id, voter_agent_id)
+  );
+  CREATE INDEX IF NOT EXISTS idx_votes_round ON proposal_votes(round_id);
+  CREATE INDEX IF NOT EXISTS idx_votes_proposal ON proposal_votes(proposal_id);
+  CREATE INDEX IF NOT EXISTS idx_votes_voter ON proposal_votes(voter_agent_id);
 
   -- ─── Spec 001: Intent Marketplace — Direct Lane ─────────────────────
   -- match_initiations — body of sa:MatchInitiation (initiator-owned, IA § 2.1).

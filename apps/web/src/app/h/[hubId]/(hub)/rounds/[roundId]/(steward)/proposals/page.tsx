@@ -32,6 +32,7 @@ import { getHubProfile } from '@/lib/hub-profiles'
 import { getPersonAgentForUser, canManageAgent } from '@/lib/agent-registry'
 import { getRoundForViewer } from '@/lib/actions/rounds.action'
 import { listProposalsForRoundSteward } from '@/lib/actions/grantProposals.action'
+import { StewardTallySummary } from '@/components/voting/StewardTallySummary'
 import { rankCue } from '@smart-agent/sdk'
 import type { RankBasis, GrantProposal } from '@smart-agent/sdk'
 import { CloseRoundForm, type CloseableProposal } from './CloseRoundForm'
@@ -164,7 +165,11 @@ export default async function StewardProposalsPage({
         }}>
           No submitted proposals on this round yet.
         </div>
-      ) : (
+      ) : (<>
+        <StewardTallySummary
+          roundId={fullRoundId}
+          proposalIds={ranked.filter(r => r.proposal.status === 'submitted').map(r => r.proposal.id)}
+        />
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
           {ranked.map((r, i) => (
             <ProposalRow
@@ -176,7 +181,7 @@ export default async function StewardProposalsPage({
             />
           ))}
         </div>
-      )}
+      </>)}
 
       {/* Phase 2.5 — close-round form. Renders only when the round is still
           open (non-canceled, non-closed) AND there's at least one submitted

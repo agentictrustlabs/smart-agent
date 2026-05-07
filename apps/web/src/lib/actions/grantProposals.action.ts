@@ -114,7 +114,28 @@ export async function submitProposal(
   const augmented = basis
     ? ({ ...input.request, basis } as unknown as SubmitGrantProposalRequest)
     : input.request
-  return client.submit(augmented)
+  const result = await client.submit(augmented)
+
+  // 3. Cross-MCP mirror to the fund's org-mcp tenant. The proposer's MCP
+  //    holds the authoritative body (per IA P4 — the proposal's owner is
+  //    the proposer); the fund's org-mcp gets a mirror so steward review
+  //    queries (`listProposalsForRoundSteward`) see it without a federated
+  //    read. Single-process dev: both MCPs are the same SQLite file, so
+  //    this is just a second insert. Production: this becomes a
+  //    cross-delegation federated copy.
+  if (input.proposerKind === 'person') {
+    try {
+      const fundInvoker = makeMcpInvoker('fund')
+      const fundClient = new GrantProposalClient(fundInvoker)
+      await fundClient.submit(augmented)
+    } catch (err) {
+      // Mirror is best-effort: if it fails, the proposal still exists in
+      // the proposer's MCP and the steward can recover via a manual
+      // federated read. Don't block the user-facing submit on this.
+      console.warn('[submitProposal] fund-mcp mirror failed (non-fatal):', err instanceof Error ? err.message : err)
+    }
+  }
+  return result
 }
 
 // ───────────────────────────────────────────────────────────────────────

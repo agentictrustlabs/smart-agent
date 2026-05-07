@@ -278,9 +278,78 @@ export const rounds = sqliteTable('rounds', {
   visibility: text('visibility').notNull().default('public'),   // public|private
   addressedApplicants: text('addressed_applicants'),            // JSON array; null for public rounds
   status: text('status').notNull().default('open'),             // mirror of on-chain status
+  // ─── Voting config (DAO governance) ────────────────────────────────
+  // Per output/voting-and-admin-plan.md. v1 ships steward-quorum only;
+  // other strategies plug in via the same columns later.
+  votingStrategy: text('voting_strategy').notNull().default('steward-quorum'),
+  votingThreshold: integer('voting_threshold').notNull().default(2),  // approves needed to award
+  votingWindowStartsAt: text('voting_window_starts_at'),  // ISO; defaults to deadline
+  votingWindowEndsAt: text('voting_window_ends_at'),      // ISO; defaults to deadline + 7d
+  eligibleVoters: text('eligible_voters').notNull().default('{"kind":"stewards"}'),  // JSON
   // Aggregate counters
   proposalsReceived: integer('proposals_received').notNull().default(0),
   createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+})
+
+// ─── Disbursements (Sprint C) ─────────────────────────────────────────
+// Per-tranche records of grant disbursements. Created when a round is
+// finalized (one row per award, then split into milestone tranches as the
+// proposer hits delivery checkpoints). Status flow:
+//   pending → claimed (proposer requested payout) → paid (real transfer
+//   recorded in v2; v1 stub flips to paid immediately on claim).
+// Real ERC-20 USDC custody lives in Treasury Phase 3; this is the off-chain
+// ledger that mirrors what would otherwise happen on chain.
+export const disbursements = sqliteTable('disbursements', {
+  id: text('id').primaryKey(),                                  // uuid
+  proposalId: text('proposal_id').notNull(),                    // urn:smart-agent:grant-proposal:<slug>
+  roundId: text('round_id').notNull(),
+  trancheLabel: text('tranche_label').notNull(),                // 'Cohort 1 onboarded', 'Mid-cohort'
+  amount: integer('amount').notNull(),                          // in unit (USD by default)
+  unit: text('unit').notNull().default('USD'),
+  recipientAgentId: text('recipient_agent_id').notNull(),       // proposer or designated recipient
+  status: text('status').notNull().default('pending'),          // pending | claimed | paid | revoked
+  claimedAt: text('claimed_at'),
+  paidAt: text('paid_at'),
+  txHash: text('tx_hash'),                                      // future: USDC transfer tx
+  notes: text('notes'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+})
+
+// ─── Outcome attestations (Sprint C) ─────────────────────────────────
+// Validators (or stewards acting as validators in v1) record milestone
+// delivery against awarded proposals. Multiple attestations per milestone
+// are allowed — `disputed` outcomes win over `delivered` per dispute rules.
+// On-chain mirror is sa:OutcomeAttestationAssertion (Phase 0 § 6 — kept
+// as event-style class assertion).
+export const outcomeAttestations = sqliteTable('outcome_attestations', {
+  id: text('id').primaryKey(),                                  // uuid
+  proposalId: text('proposal_id').notNull(),
+  milestoneLabel: text('milestone_label').notNull(),            // matches proposal.milestones[i].name
+  validatorAgentId: text('validator_agent_id').notNull(),
+  status: text('status', { enum: ['delivered', 'partial', 'disputed', 'overdue'] }).notNull(),
+  evidence: text('evidence'),                                   // free-text or URI
+  attestedAt: text('attested_at').notNull(),
+  createdAt: text('created_at').notNull(),
+})
+
+// ─── Voting (Sprint A) ──────────────────────────────────────────────
+// One ballot per (round, proposal, voter). Vote changes are UPSERTs —
+// stewards may revise pre-finalize per the user's decision.
+// Bodies are off-chain (IA P5 — votes never reach GraphDB); the on-chain
+// commit is the awards Merkle root that the close-round flow produces
+// from the final tally.
+export const proposalVotes = sqliteTable('proposal_votes', {
+  id: text('id').primaryKey(),                                  // random uuid
+  roundId: text('round_id').notNull(),                          // URN form
+  proposalId: text('proposal_id').notNull(),
+  voterAgentId: text('voter_agent_id').notNull(),               // person OR org agent
+  vote: text('vote', { enum: ['approve', 'reject', 'abstain'] }).notNull(),
+  weight: integer('weight').notNull().default(1),               // 1 for steward-quorum
+  rationale: text('rationale'),                                 // optional 1-2 line reason
+  signature: text('signature'),                                 // EIP-712 sig; nullable for v1 demo
+  castAt: text('cast_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 })
 

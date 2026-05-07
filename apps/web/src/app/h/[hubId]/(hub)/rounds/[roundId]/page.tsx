@@ -245,6 +245,12 @@ export default async function RoundDetailPage({
               >
                 Review proposals →
               </Link>
+              <Link
+                href={`/h/${slug}/rounds/${roundId}/admin`}
+                style={{ padding: '0.55rem 0.95rem', background: C.card, color: C.text, border: `1px solid ${C.border}`, borderRadius: 8, fontSize: '0.82rem', fontWeight: 600, textDecoration: 'none' }}
+              >
+                Admin →
+              </Link>
               <CancelRoundButton hubSlug={slug} roundId={roundId} />
             </>
           )}

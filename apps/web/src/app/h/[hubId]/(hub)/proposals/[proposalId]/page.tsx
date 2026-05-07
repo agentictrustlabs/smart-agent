@@ -26,6 +26,9 @@ import { getHubProfile } from '@/lib/hub-profiles'
 import { getPersonAgentForUser } from '@/lib/agent-registry'
 import { getMemberProposal } from '@/lib/actions/grantProposals.action'
 import { getRoundForViewer } from '@/lib/actions/rounds.action'
+import { ProposalVotePanel } from '@/components/voting/ProposalVotePanel'
+import { FundingAndOutcomesPanel } from '@/components/voting/FundingAndOutcomesPanel'
+import { canManageAgent } from '@/lib/agent-registry'
 import type { GrantProposal } from '@smart-agent/sdk'
 
 export const dynamic = 'force-dynamic'
@@ -95,19 +98,28 @@ export default async function ProposalDetailPage({
     return <NotFoundSurface hubSlug={slug} reason="not-found" />
   }
 
-  // Look up the round to compute the deadline-aware action set.
+  // Look up the round to compute the deadline-aware action set + the
+  // fund agent (needed for the funding panel's canManage gate).
   let deadlinePassed = false
+  let fundAgentForRound: string | null = null
   if (proposal.roundId) {
     const { round } = await getRoundForViewer(proposal.roundId, myAgent)
     if (round?.deadline) {
       deadlinePassed = Date.now() > Date.parse(round.deadline)
     }
+    fundAgentForRound = round?.fundAgentId ?? null
+  }
+  let canManageFund = false
+  if (fundAgentForRound) {
+    try { canManageFund = await canManageAgent(myAgent, fundAgentForRound) } catch { canManageFund = false }
   }
 
   const status = proposal.status
   const canEdit = status === 'submitted' && !deadlinePassed
   const canWithdraw = status === 'submitted' || status === 'draft'
   const canClone = true
+  const isProposer = proposal.proposerAgentId.toLowerCase() === myAgent.toLowerCase()
+                  || proposal.proposerAgentId.toLowerCase() === `person_${user.id}`.toLowerCase()
 
   return (
     <div style={{ paddingBottom: '2rem' }}>
@@ -285,6 +297,23 @@ export default async function ProposalDetailPage({
           </div>
         ) : null}
       </Section>
+
+      {/* Steward voting panel — visible to everyone but only stewards can cast.
+          Renders only when the proposal is on a round (drafts skip). */}
+      {proposal.roundId && proposal.status !== 'draft' && (
+        <ProposalVotePanel roundId={proposal.roundId} proposalId={proposal.id} />
+      )}
+
+      {/* Funding + outcomes — only for awarded proposals (Sprint C). */}
+      {proposal.status === 'awarded' && fundAgentForRound && (
+        <FundingAndOutcomesPanel
+          proposalId={proposal.id}
+          fundAgent={fundAgentForRound}
+          isProposer={isProposer}
+          canManageFund={canManageFund}
+          milestoneLabels={(proposal.milestones ?? []).map((m) => m.name).filter(Boolean)}
+        />
+      )}
 
       {/* Action affordances */}
       <div style={{ marginTop: '1.25rem', display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', flexWrap: 'wrap' }}>

@@ -25,6 +25,9 @@ interface IncomingBody {
   decisionDate?: string
   visibility?: 'public' | 'private'
   requiredCredentials?: string[]
+  votingStrategy?: 'steward-quorum' | 'member-approval' | 'quadratic' | 'ranked-choice'
+  votingThreshold?: number
+  votingWindowDays?: number
 }
 
 export async function POST(req: NextRequest) {
@@ -61,6 +64,9 @@ export async function POST(req: NextRequest) {
       decisionDate: body.decisionDate,
       visibility: body.visibility,
       requiredCredentials: body.requiredCredentials,
+      votingStrategy: body.votingStrategy,
+      votingThreshold: body.votingThreshold,
+      votingWindowDays: body.votingWindowDays,
     })
     return NextResponse.json({ ok: true, result })
   } catch (err) {

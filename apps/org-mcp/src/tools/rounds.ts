@@ -129,6 +129,11 @@ interface OpenRoundArgs {
   visibility: 'public' | 'private'
   addressedApplicants?: string[]
   onChainAssertionId?: string
+  votingStrategy?: 'steward-quorum' | 'member-approval' | 'quadratic' | 'ranked-choice'
+  votingThreshold?: number
+  votingWindowStartsAt?: string
+  votingWindowEndsAt?: string
+  eligibleVoters?: Record<string, unknown>
 }
 
 const openRoundTool = {
@@ -151,6 +156,11 @@ const openRoundTool = {
       visibility: { type: 'string', enum: ['public', 'private'] },
       addressedApplicants: { type: 'array', items: { type: 'string' } },
       onChainAssertionId: { type: 'string' },
+      votingStrategy: { type: 'string', enum: ['steward-quorum', 'member-approval', 'quadratic', 'ranked-choice'] },
+      votingThreshold: { type: 'integer' },
+      votingWindowStartsAt: { type: 'string' },
+      votingWindowEndsAt: { type: 'string' },
+      eligibleVoters: { type: 'object' },
     },
     required: ['token', 'id', 'fundAgentId', 'mandate', 'reportingCadence', 'deadline', 'decisionDate', 'visibility'],
   },
@@ -172,6 +182,11 @@ const openRoundTool = {
       visibility: args.visibility,
       addressedApplicants: args.addressedApplicants ? JSON.stringify(args.addressedApplicants) : null,
       status: 'open',
+      votingStrategy: args.votingStrategy ?? 'steward-quorum',
+      votingThreshold: args.votingThreshold ?? 2,
+      votingWindowStartsAt: args.votingWindowStartsAt ?? null,
+      votingWindowEndsAt: args.votingWindowEndsAt ?? null,
+      eligibleVoters: JSON.stringify(args.eligibleVoters ?? { kind: 'stewards' }),
       proposalsReceived: 0,
       createdAt: now,
       updatedAt: now,
@@ -332,10 +347,83 @@ const cancelRoundTool = {
   },
 }
 
+// ───────────────────────────────────────────────────────────────────────
+// Tool: round:update_status (Sprint B — round admin)
+// ───────────────────────────────────────────────────────────────────────
+const updateStatusTool = {
+  name: 'round:update_status',
+  description: 'Update the cached round status (open / review / decided / closed / canceled). Mirrors on-chain FundRegistry.setRoundStatus.',
+  inputSchema: {
+    type: 'object' as const,
+    properties: {
+      token: { type: 'string' },
+      roundId: { type: 'string' },
+      status: { type: 'string', enum: ['open', 'review', 'decided', 'closed', 'canceled'] },
+    },
+    required: ['token', 'roundId', 'status'],
+  },
+  handler: async (args: { token: string; roundId: string; status: string }) => {
+    await requireOrgPrincipal(args.token, args, 'round:update_status')
+    const r = db.select().from(rounds).where(eq(rounds.id, args.roundId)).all()[0]
+    if (!r) throw new Error(`round ${args.roundId} not found`)
+    db.update(rounds)
+      .set({ status: args.status, updatedAt: nowIso() })
+      .where(eq(rounds.id, args.roundId))
+      .run()
+    return mcpText({ roundId: args.roundId, status: args.status })
+  },
+}
+
+// ───────────────────────────────────────────────────────────────────────
+// Tool: round:update_voting_config (Sprint B — round admin)
+// ───────────────────────────────────────────────────────────────────────
+interface UpdateVotingArgs {
+  token: string
+  roundId: string
+  votingStrategy?: 'steward-quorum' | 'member-approval' | 'quadratic' | 'ranked-choice'
+  votingThreshold?: number
+  votingWindowStartsAt?: string
+  votingWindowEndsAt?: string
+  eligibleVoters?: Record<string, unknown>
+}
+
+const updateVotingConfigTool = {
+  name: 'round:update_voting_config',
+  description: "Update the round's off-chain voting config (strategy, threshold, window, eligible voters). Strategy result is committed on chain via FundRegistry.setRoundAwardsRoot at finalize.",
+  inputSchema: {
+    type: 'object' as const,
+    properties: {
+      token: { type: 'string' },
+      roundId: { type: 'string' },
+      votingStrategy: { type: 'string', enum: ['steward-quorum', 'member-approval', 'quadratic', 'ranked-choice'] },
+      votingThreshold: { type: 'integer' },
+      votingWindowStartsAt: { type: 'string' },
+      votingWindowEndsAt: { type: 'string' },
+      eligibleVoters: { type: 'object' },
+    },
+    required: ['token', 'roundId'],
+  },
+  handler: async (args: UpdateVotingArgs) => {
+    await requireOrgPrincipal(args.token, args, 'round:update_voting_config')
+    const r = db.select().from(rounds).where(eq(rounds.id, args.roundId)).all()[0]
+    if (!r) throw new Error(`round ${args.roundId} not found`)
+    const update: Record<string, unknown> = { updatedAt: nowIso() }
+    if (args.votingStrategy !== undefined)        update.votingStrategy = args.votingStrategy
+    if (args.votingThreshold !== undefined)       update.votingThreshold = args.votingThreshold
+    if (args.votingWindowStartsAt !== undefined)  update.votingWindowStartsAt = args.votingWindowStartsAt
+    if (args.votingWindowEndsAt !== undefined)    update.votingWindowEndsAt = args.votingWindowEndsAt
+    if (args.eligibleVoters !== undefined)        update.eligibleVoters = JSON.stringify(args.eligibleVoters)
+    db.update(rounds).set(update).where(eq(rounds.id, args.roundId)).run()
+    return mcpText({ roundId: args.roundId, ok: true })
+  },
+}
+
 export const roundsTools = {
   get_round: getRoundTool,
   'round:open': openRoundTool,
   'round:increment_proposals_received': incrementProposalsReceivedTool,
   'round:close': closeRoundTool,
   'round:cancel': cancelRoundTool,
+  'round:update_status': updateStatusTool,
+  'round:update_voting_config': updateVotingConfigTool,
 }

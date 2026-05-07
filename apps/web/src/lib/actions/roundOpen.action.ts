@@ -40,6 +40,10 @@ export interface OpenRoundInput {
   requiredCredentials?: string[]
   visibility: 'public' | 'private'
   addressedApplicants?: string[]
+  // Sprint B — caller-overridable voting config (defaults applied below).
+  votingStrategy?: 'steward-quorum' | 'member-approval' | 'quadratic' | 'ranked-choice'
+  votingThreshold?: number
+  votingWindowDays?: number
 }
 
 export interface OpenRoundResult {
@@ -82,6 +86,18 @@ export async function openRound(input: OpenRoundInput): Promise<OpenRoundResult>
     initialStatus: 'open',
   })
 
+  // Voting window defaults (per output/voting-and-admin-plan.md):
+  //   - opens at the submission deadline
+  //   - closes N days later (default 7; configurable via the create form)
+  //   - threshold = 2 approves (matches "2-of-3 stewards")
+  const windowDays = Math.max(1, input.votingWindowDays ?? 7)
+  const votingWindowStartsAt = input.deadline
+  const votingWindowEndsAt = new Date(
+    Date.parse(input.deadline) + windowDays * 24 * 60 * 60 * 1000,
+  ).toISOString()
+  const votingStrategy = input.votingStrategy ?? 'steward-quorum'
+  const votingThreshold = input.votingThreshold ?? 2
+
   // Cache body in org-mcp for the proposal hot-path validator.
   await callMcp('org', 'round:open', {
     id: fullId,
@@ -95,6 +111,11 @@ export async function openRound(input: OpenRoundInput): Promise<OpenRoundResult>
     requiredCredentials: input.requiredCredentials ?? [],
     visibility: input.visibility,
     addressedApplicants: input.addressedApplicants,
+    votingStrategy,
+    votingThreshold,
+    votingWindowStartsAt,
+    votingWindowEndsAt,
+    eligibleVoters: { kind: 'stewards' },
   })
 
   const { scheduleKbSyncEager } = await import('@/lib/ontology/kb-write-through')
