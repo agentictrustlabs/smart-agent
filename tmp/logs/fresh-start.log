@@ -1,46 +1,37 @@
 
-[1;36m=== 1/8  Stopping anvil + every dev service[0m  (14:45:13)
-  killing pid(s) 410418 on :8545
-  killing pid(s) 414306 on :3000
-  killing pid(s) 414074 on :3400
-  killing pid(s) 414054 on :3500
-  killing pid(s) 414035 on :3200
-  killing pid(s) 414117 on :3100
-  killing pid(s) 414064 on :3600
-  killing pid(s) 414090 on :3700
-  killing pid(s) 414075 on :3300
+[1;36m=== 1/8  Stopping anvil + every dev service[0m  (17:05:31)
 
-[1;36m=== 2/8  Wiping DB + Askar state[0m  (14:45:14)
+[1;36m=== 2/8  Wiping DB + Askar state[0m  (17:05:32)
   removed: 35 path globs
 
-[1;36m=== 3/8  Starting fresh anvil (chain id 31337)[0m  (14:45:14)
-  anvil → pid=466750 log=/home/barb/smart-agent/tmp/logs/anvil.log
+[1;36m=== 3/8  Starting fresh anvil (chain id 31337)[0m  (17:05:32)
+  anvil → pid=22778 log=/home/barb/smart-agent/tmp/logs/anvil.log
   ✓ anvil up
 
-[1;36m=== 4/8  Deploying contracts + seeding ontology[0m  (14:45:15)
+[1;36m=== 4/8  Deploying contracts + seeding ontology[0m  (17:05:34)
 === Deploying contracts to local Anvil ===
 === Extracted addresses ===
 === Updated /home/barb/smart-agent/apps/web/.env ===
 === Seeding ontology predicates ===
 === Seeding Ontology Term Registry ===
-=== Ontology terms registered: 45 ===
+=== Ontology terms registered: 80 ===
 === Seeding relationship-type registry ===
 === Seeding Relationship Type Registry ===
 === Type Registry seeded: 17 relationship types ===
 
-[1;36m=== 5/8  Post-deploy seeds[0m  (14:45:24)
+[1;36m=== 5/8  Post-deploy seeds[0m  (17:05:48)
   (ontology + relationship-type-registry seeded inline by deploy-local.sh)
   (per-hub on-chain seed runs in-process via /api/boot-seed)
 
-[1;36m=== 6/8  Starting backend services[0m  (14:45:24)
-  org-mcp → pid=471762 log=/home/barb/smart-agent/tmp/logs/org-mcp.log
-  family-mcp → pid=471766 log=/home/barb/smart-agent/tmp/logs/family-mcp.log
-  person-mcp → pid=471770 log=/home/barb/smart-agent/tmp/logs/person-mcp.log
-  a2a-agent → pid=471779 log=/home/barb/smart-agent/tmp/logs/a2a-agent.log
-  geo-mcp → pid=471788 log=/home/barb/smart-agent/tmp/logs/geo-mcp.log
-  verifier-mcp → pid=471797 log=/home/barb/smart-agent/tmp/logs/verifier-mcp.log
-  skill-mcp → pid=471806 log=/home/barb/smart-agent/tmp/logs/skill-mcp.log
-  people-group-mcp → pid=471810 log=/home/barb/smart-agent/tmp/logs/people-group-mcp.log
+[1;36m=== 6/8  Starting backend services[0m  (17:05:48)
+  org-mcp → pid=30585 log=/home/barb/smart-agent/tmp/logs/org-mcp.log
+  family-mcp → pid=30589 log=/home/barb/smart-agent/tmp/logs/family-mcp.log
+  person-mcp → pid=30593 log=/home/barb/smart-agent/tmp/logs/person-mcp.log
+  a2a-agent → pid=30598 log=/home/barb/smart-agent/tmp/logs/a2a-agent.log
+  geo-mcp → pid=30611 log=/home/barb/smart-agent/tmp/logs/geo-mcp.log
+  verifier-mcp → pid=30620 log=/home/barb/smart-agent/tmp/logs/verifier-mcp.log
+  skill-mcp → pid=30629 log=/home/barb/smart-agent/tmp/logs/skill-mcp.log
+  people-group-mcp → pid=30634 log=/home/barb/smart-agent/tmp/logs/people-group-mcp.log
   ✓ org-mcp up
   ✓ family-mcp up
   ✓ person-mcp up
@@ -51,28 +42,25 @@
   ⚠ skill-mcp not responding at http://127.0.0.1:3800/.well-known/agent.json after 5s
   ✓ people-group-mcp up
 
-[1;36m=== 7/8  Starting web (Next.js)[0m  (14:46:04)
-  web → pid=474510 log=/home/barb/smart-agent/tmp/logs/web.log
+[1;36m=== 7/8  Starting web (Next.js)[0m  (17:06:31)
+  web → pid=31379 log=/home/barb/smart-agent/tmp/logs/web.log
   ✓ web up
 
-[1;36m=== 8/8  Triggering /api/boot-seed (also runs final on-chain → KB sync)[0m  (14:46:13)
+[1;36m=== 8/8  Triggering /api/boot-seed (also runs final on-chain → KB sync)[0m  (17:06:39)
   polling /api/system-readiness …
   ⚠ readiness still false after 240s — see tmp/logs/web.log
   forcing on-chain → GraphDB sync …
 
-[1;36m=== 9/9  Seeding intent-marketplace lanes (specs 001/002/003)[0m  (14:50:29)
+[1;36m=== 9/9  Seeding intent-marketplace lanes (specs 001/002/003)[0m  (17:10:59)
   ✓ sync-ontology
   ✓ seed-test-round
   ✓ seed-test-pool
   ✓ seed-test-proposal
   ✓ seed-test-pledge
   ✓ seed-test-match-initiation
+  forcing follow-up on-chain → GraphDB sync …
+  ✓ post-anchor sync
 
-[1;36m=== Done — fresh stack at http://localhost:3000[0m  (14:51:06)
+[1;36m=== Done — fresh stack at http://localhost:3000[0m  (17:11:30)
 Tail logs:   tail -f /home/barb/smart-agent/tmp/logs/<service>.log
 Stop later:  for f in /home/barb/smart-agent/tmp/pids/*.pid; do kill "$(cat "$f")" 2>/dev/null || true; done
-Terminated
-Terminated
-Terminated
-Terminated
-Terminated
