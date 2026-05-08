@@ -411,7 +411,7 @@ contract Deploy is Script {
 
     function _seedPoolOntologyAndShape(OntologyTermRegistry ont, ShapeRegistry shapes, PoolRegistry pool) internal {
         // ─── Pool predicates ────────────────────────────────────────
-        string[12] memory curies = [
+        string[14] memory curies = [
             "sa:poolDomain",
             "sa:poolGovernanceModel",
             "sa:poolMandateHash",
@@ -423,9 +423,11 @@ contract Deploy is Script {
             "sa:poolStewards",
             "sa:poolVisibility",
             "sa:poolOpenedAt",
-            "sa:poolClosedAt"
+            "sa:poolClosedAt",
+            "sa:poolAcceptedRestrictions",
+            "sa:poolSlug"
         ];
-        string[12] memory dtypes = [
+        string[14] memory dtypes = [
             "bytes32",
             "bytes32",
             "bytes32",
@@ -437,14 +439,16 @@ contract Deploy is Script {
             "address[]",
             "bytes32",
             "uint256",
-            "uint256"
+            "uint256",
+            "string",
+            "string"
         ];
-        bytes32[] memory ids = new bytes32[](12);
-        string[] memory cd = new string[](12);
-        string[] memory ud = new string[](12);
-        string[] memory ld = new string[](12);
-        string[] memory dd = new string[](12);
-        for (uint256 i = 0; i < 12; i++) {
+        bytes32[] memory ids = new bytes32[](14);
+        string[] memory cd = new string[](14);
+        string[] memory ud = new string[](14);
+        string[] memory ld = new string[](14);
+        string[] memory dd = new string[](14);
+        for (uint256 i = 0; i < 14; i++) {
             ids[i] = keccak256(bytes(curies[i]));
             cd[i] = curies[i];
             ud[i] = string.concat("https://agentictrust.io/ontology/sa#", curies[i]);
@@ -550,7 +554,7 @@ contract Deploy is Script {
 
     function _seedFundOntologyAndShape(OntologyTermRegistry ont, ShapeRegistry shapes, FundRegistry fund) internal {
         // ─── Fund + Round predicates ────────────────────────────────
-        string[11] memory curies = [
+        string[15] memory curies = [
             "sa:fundAcceptedKinds",
             "sa:fundOpenForCalls",
             "sa:roundFundAgent",
@@ -561,9 +565,13 @@ contract Deploy is Script {
             "sa:roundStatus",
             "sa:roundVisibility",
             "sa:roundAwardsRoot",
-            "sa:roundDisputeUntil"
+            "sa:roundDisputeUntil",
+            "sa:roundMandate",
+            "sa:roundMilestoneTemplate",
+            "sa:roundValidatorRequirements",
+            "sa:roundSlug"
         ];
-        string[11] memory dtypes = [
+        string[15] memory dtypes = [
             "bytes32[]",
             "bool",
             "address",
@@ -574,14 +582,18 @@ contract Deploy is Script {
             "bytes32",
             "bytes32",
             "bytes32",
-            "uint256"
+            "uint256",
+            "string",
+            "string",
+            "string",
+            "string"
         ];
-        bytes32[] memory ids = new bytes32[](12);
-        string[] memory cd = new string[](12);
-        string[] memory ud = new string[](12);
-        string[] memory ld = new string[](12);
-        string[] memory dd = new string[](12);
-        for (uint256 i = 0; i < 11; i++) {
+        bytes32[] memory ids = new bytes32[](16);
+        string[] memory cd = new string[](16);
+        string[] memory ud = new string[](16);
+        string[] memory ld = new string[](16);
+        string[] memory dd = new string[](16);
+        for (uint256 i = 0; i < 15; i++) {
             ids[i] = keccak256(bytes(curies[i]));
             cd[i] = curies[i];
             ud[i] = string.concat("https://agentictrust.io/ontology/sa#", curies[i]);
@@ -589,11 +601,11 @@ contract Deploy is Script {
             dd[i] = dtypes[i];
         }
         // sa:roundOpenedAt — written by openRound; required uint256
-        ids[11] = keccak256("sa:roundOpenedAt");
-        cd[11] = "sa:roundOpenedAt";
-        ud[11] = "https://agentictrust.io/ontology/sa#roundOpenedAt";
-        ld[11] = "sa:roundOpenedAt";
-        dd[11] = "uint256";
+        ids[15] = keccak256("sa:roundOpenedAt");
+        cd[15] = "sa:roundOpenedAt";
+        ud[15] = "https://agentictrust.io/ontology/sa#roundOpenedAt";
+        ld[15] = "sa:roundOpenedAt";
+        dd[15] = "uint256";
         ont.registerTermBatch(ids, cd, ud, ld, dd);
 
         // ─── Round status enum ──────────────────────────────────────

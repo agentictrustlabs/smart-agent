@@ -60,6 +60,10 @@ contract FundRegistryTest is Test {
         _registerTerm(funds.SA_ROUND_AWARDS_ROOT(), "sa:roundAwardsRoot", "bytes32");
         _registerTerm(funds.SA_ROUND_DISPUTE_UNTIL(), "sa:roundDisputeUntil", "uint256");
         _registerTerm(funds.SA_ROUND_OPENED_AT(), "sa:roundOpenedAt", "uint256");
+        _registerTerm(funds.SA_ROUND_MANDATE(), "sa:roundMandate", "string");
+        _registerTerm(funds.SA_ROUND_MILESTONE_TEMPLATE(), "sa:roundMilestoneTemplate", "string");
+        _registerTerm(funds.SA_ROUND_VALIDATOR_REQUIREMENTS(), "sa:roundValidatorRequirements", "string");
+        _registerTerm(funds.SA_ROUND_SLUG(), "sa:roundSlug", "string");
 
         enumStatus = keccak256(abi.encodePacked(funds.CLASS_ROUND(), funds.SA_ROUND_STATUS()));
         bytes32[] memory statusValues = new bytes32[](4);
@@ -112,7 +116,11 @@ contract FundRegistryTest is Test {
             reportingCadence: CADENCE_QUARTERLY,
             requiredCredentials: creds,
             visibility: VIS_PUBLIC,
-            initialStatus: STATUS_OPEN
+            initialStatus: STATUS_OPEN,
+            mandate: "",
+            milestoneTemplate: "",
+            validatorRequirements: "",
+            slug: ""
         });
     }
 
@@ -251,5 +259,48 @@ contract FundRegistryTest is Test {
         vm.prank(otherOwner);
         vm.expectRevert(FundRegistry.NotFundOwner.selector);
         funds.setRoundStatus(round, STATUS_CANCELED);
+    }
+
+    function test_openRound_with_body_strings_writes_them() public {
+        bytes32 round = funds.roundSubject("body-test");
+        FundRegistry.OpenRoundParams memory p = _validRoundParams(round, fundAgent);
+        p.mandate = "{\"acceptedKinds\":[\"trauma-care\"]}";
+        p.milestoneTemplate = "[{\"label\":\"M1\",\"pct\":50}]";
+        p.validatorRequirements = "{\"min\":2}";
+        vm.prank(fundOwner);
+        funds.openRound(p);
+        assertEq(funds.getRoundMandate(round), p.mandate);
+        assertEq(funds.getRoundMilestoneTemplate(round), p.milestoneTemplate);
+        assertEq(funds.getRoundValidatorRequirements(round), p.validatorRequirements);
+    }
+
+    function test_openRound_with_empty_body_strings_skips_storage() public {
+        bytes32 round = funds.roundSubject("empty-body-test");
+        FundRegistry.OpenRoundParams memory p = _validRoundParams(round, fundAgent);
+        vm.prank(fundOwner);
+        funds.openRound(p);
+        assertEq(funds.getRoundMandate(round), "");
+        assertEq(funds.getRoundMilestoneTemplate(round), "");
+        assertEq(funds.getRoundValidatorRequirements(round), "");
+    }
+
+    function test_setRoundMandate_updates_after_open() public {
+        bytes32 round = funds.roundSubject("mandate-update");
+        FundRegistry.OpenRoundParams memory p = _validRoundParams(round, fundAgent);
+        vm.prank(fundOwner);
+        funds.openRound(p);
+        vm.prank(fundOwner);
+        funds.setRoundMandate(round, "{\"updated\":true}");
+        assertEq(funds.getRoundMandate(round), "{\"updated\":true}");
+    }
+
+    function test_setRoundMandate_reverts_if_not_owner() public {
+        bytes32 round = funds.roundSubject("mandate-auth");
+        FundRegistry.OpenRoundParams memory p = _validRoundParams(round, fundAgent);
+        vm.prank(fundOwner);
+        funds.openRound(p);
+        vm.prank(outsider);
+        vm.expectRevert(FundRegistry.NotFundOwner.selector);
+        funds.setRoundMandate(round, "{}");
     }
 }

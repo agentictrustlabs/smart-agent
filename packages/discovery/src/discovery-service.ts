@@ -208,6 +208,11 @@ function parsePoolRow(row: Record<string, { value: string }>): Pool {
 
   const visibility: 'public' | 'private' = row.visibility?.value === 'private' ? 'private' : 'public'
   const stewardshipAgent = row.stewardshipAgent?.value ?? ''
+  const treasuryAgentIri = row.treasuryAgent?.value ?? ''
+  const AGENT_IRI_PREFIX = 'https://smartagent.io/ontology/core#agent/'
+  const treasuryAddress = treasuryAgentIri.startsWith(AGENT_IRI_PREFIX)
+    ? treasuryAgentIri.slice(AGENT_IRI_PREFIX.length)
+    : treasuryAgentIri
   const stewardsRaw = row.stewards?.value ?? ''
   let stewards: string[] = []
   if (stewardsRaw.startsWith('[')) {
@@ -235,6 +240,7 @@ function parsePoolRow(row: Record<string, { value: string }>): Pool {
     addressedMembers,
     visibility,
     stewardshipAgent,
+    treasuryAddress,
     stewards,
     acceptsOpenCalls,
     pledgedTotal,
@@ -487,13 +493,13 @@ export class DiscoveryService {
    * 403-style page when this returns null + the roundId clearly
    * exists.
    */
-  async getRoundDetail(roundId: string, viewerAgentId: string): Promise<Round | null> {
+  async getRoundDetail(roundId: string, viewerAgentId: string | null): Promise<Round | null> {
     const sparql = roundDetailQuery(roundId)
     const results = await this.client.query(sparql)
     const row = results.results.bindings[0]
     if (!row) return null
     const round = parseRoundRow(row as unknown as Record<string, { value: string }>)
-    if (round.visibility === 'private') {
+    if (viewerAgentId !== null && round.visibility === 'private') {
       const viewer = viewerAgentId.toLowerCase()
       const list = (round.addressedApplicants ?? []).map(a => a.toLowerCase())
       if (!list.includes(viewer)) return null

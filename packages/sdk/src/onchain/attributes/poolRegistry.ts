@@ -72,6 +72,10 @@ export interface OpenPoolInput {
   capacityCeiling?: bigint
   stewards: Address[]
   visibility: PoolVisibility
+  /** JSON-encoded acceptance restrictions (e.g. {minPledge: 100}). */
+  acceptedRestrictions?: string
+  /** Off-chain slug for IRI derivation (e.g. "demo-trauma-care-pool"). */
+  slug?: string
 }
 
 export interface PoolRegistryClientConfig {
@@ -97,6 +101,8 @@ export class PoolRegistryClient {
       capacityCeiling: input.capacityCeiling ?? 0n,
       stewards: input.stewards,
       visibility: concept(VISIBILITY_CONCEPT[input.visibility]),
+      acceptedRestrictions: input.acceptedRestrictions ?? '',
+      slug: input.slug ?? '',
     } as const
   }
 
@@ -164,5 +170,42 @@ export class PoolRegistryClient {
     })
     await this.cfg.publicClient.waitForTransactionReceipt({ hash })
     return hash
+  }
+
+  async setAcceptedRestrictions(poolAgent: Address, restrictionsJson: string): Promise<Hex> {
+    const account = this.cfg.walletClient.account
+    if (!account) throw new Error('PoolRegistryClient.setAcceptedRestrictions: walletClient has no account')
+    const hash = await this.cfg.walletClient.writeContract({
+      address: this.cfg.registryAddress,
+      abi: poolRegistryAbi,
+      functionName: 'setAcceptedRestrictions',
+      args: [poolAgent, restrictionsJson],
+      account,
+      chain: this.cfg.walletClient.chain ?? null,
+    })
+    await this.cfg.publicClient.waitForTransactionReceipt({ hash })
+    return hash
+  }
+
+  async getAcceptedRestrictions(poolAgent: Address): Promise<string> {
+    const result = await this.cfg.publicClient.readContract({
+      address: this.cfg.registryAddress,
+      abi: poolRegistryAbi,
+      functionName: 'getAcceptedRestrictions',
+      args: [poolAgent],
+    })
+    return result as string
+  }
+
+  /** Read pool's off-chain slug. Used by on-chain → GraphDB sync to derive
+   *  the canonical urn:smart-agent:pool:<slug> IRI. */
+  async getPoolSlug(poolAgent: Address): Promise<string> {
+    const result = await this.cfg.publicClient.readContract({
+      address: this.cfg.registryAddress,
+      abi: poolRegistryAbi,
+      functionName: 'getPoolSlug',
+      args: [poolAgent],
+    })
+    return result as string
   }
 }

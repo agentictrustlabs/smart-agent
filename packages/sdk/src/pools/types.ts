@@ -60,6 +60,8 @@ export interface Pool {
   addressedMembers?: string[]
   visibility: 'public' | 'private'
   stewardshipAgent: string
+  /** Hex address of the on-chain treasury agent (parsed from sa:treasuryAgent IRI). */
+  treasuryAddress: string
   stewards: string[]
   /** Used by spec 003 — funds with acceptsOpenCalls=true accept open-call
    *  grant proposals (no roundId). */

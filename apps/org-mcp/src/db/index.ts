@@ -10,13 +10,7 @@ sqliteHandle.pragma('journal_mode = WAL')
 // Schema bootstrap. Mirrors apps/person-mcp/src/db/index.ts pattern.
 sqliteHandle.exec(`
   -- ─── Auth foundation ─────────────────────────────────────────────────
-  CREATE TABLE IF NOT EXISTS org_accounts (
-    org_principal TEXT PRIMARY KEY,
-    account_address TEXT NOT NULL UNIQUE,
-    chain_id INTEGER NOT NULL,
-    label TEXT,
-    created_at TEXT NOT NULL
-  );
+  -- org_accounts removed: agent records canonical on-chain.
 
   CREATE TABLE IF NOT EXISTS org_token_usage (
     jti TEXT PRIMARY KEY,
@@ -85,23 +79,7 @@ sqliteHandle.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_revenue_org ON revenue_reports(org_principal);
 
-  CREATE TABLE IF NOT EXISTS proposals (
-    id TEXT PRIMARY KEY,
-    org_principal TEXT NOT NULL,
-    kind TEXT NOT NULL,
-    title TEXT NOT NULL,
-    description TEXT,
-    proposer_agent TEXT,
-    target_address TEXT,
-    quorum_required INTEGER NOT NULL DEFAULT 2,
-    votes_for INTEGER NOT NULL DEFAULT 0,
-    votes_against INTEGER NOT NULL DEFAULT 0,
-    status TEXT NOT NULL DEFAULT 'open',
-    on_chain_proposal_id TEXT,
-    executed_at TEXT,
-    created_at TEXT NOT NULL
-  );
-  CREATE INDEX IF NOT EXISTS idx_proposals_org ON proposals(org_principal);
+  -- proposals removed: legacy, superseded by proposal_submissions.
 
   CREATE TABLE IF NOT EXISTS org_activity_log_entries (
     id TEXT PRIMARY KEY,
@@ -183,15 +161,7 @@ sqliteHandle.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_org_outcomes_org ON org_outcomes(org_principal);
 
-  CREATE TABLE IF NOT EXISTS orchestration_plans (
-    id TEXT PRIMARY KEY,
-    org_principal TEXT NOT NULL,
-    parent_intent_id TEXT NOT NULL,
-    sub_intents TEXT,
-    dependencies TEXT,
-    created_at TEXT NOT NULL
-  );
-  CREATE INDEX IF NOT EXISTS idx_orchestration_org ON orchestration_plans(org_principal);
+  -- orchestration_plans removed: defined but never used.
 
   CREATE TABLE IF NOT EXISTS org_work_items (
     id TEXT PRIMARY KEY,

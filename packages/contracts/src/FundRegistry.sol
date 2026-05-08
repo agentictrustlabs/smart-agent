@@ -37,6 +37,14 @@ contract FundRegistry is AttributeStorage {
     bytes32 public constant SA_ROUND_DISPUTE_UNTIL  = keccak256("sa:roundDisputeUntil");
     bytes32 public constant SA_ROUND_OPENED_AT      = keccak256("sa:roundOpenedAt");
 
+    bytes32 public constant SA_ROUND_MANDATE                = keccak256("sa:roundMandate");
+    bytes32 public constant SA_ROUND_MILESTONE_TEMPLATE     = keccak256("sa:roundMilestoneTemplate");
+    bytes32 public constant SA_ROUND_VALIDATOR_REQUIREMENTS = keccak256("sa:roundValidatorRequirements");
+    /** Original off-chain slug (e.g. "demo-trauma-care-q2"). Needed by the
+     *  on-chain → GraphDB sync to construct urn:smart-agent:round:<slug>
+     *  IRIs without consulting any off-chain index. */
+    bytes32 public constant SA_ROUND_SLUG                   = keccak256("sa:roundSlug");
+
     error NotFundOwner();
     error RoundNotInitialized();
     error MissingFundAgent();
@@ -55,6 +63,10 @@ contract FundRegistry is AttributeStorage {
         bytes32[] requiredCredentials;
         bytes32 visibility;
         bytes32 initialStatus;
+        string mandate;                // JSON; empty string means unset
+        string milestoneTemplate;      // JSON
+        string validatorRequirements;  // JSON
+        string slug;                   // off-chain id; required for IRI derivation
     }
 
     constructor(address ontologyRegistry, address shapes) AttributeStorage(ontologyRegistry) {
@@ -125,6 +137,18 @@ contract FundRegistry is AttributeStorage {
         _setBytes32(p.roundSubject, SA_ROUND_VISIBILITY, p.visibility);
         _setBytes32(p.roundSubject, SA_ROUND_STATUS, p.initialStatus);
         _setUint(p.roundSubject, SA_ROUND_OPENED_AT, block.timestamp);
+        if (bytes(p.mandate).length > 0) {
+            _setString(p.roundSubject, SA_ROUND_MANDATE, p.mandate);
+        }
+        if (bytes(p.milestoneTemplate).length > 0) {
+            _setString(p.roundSubject, SA_ROUND_MILESTONE_TEMPLATE, p.milestoneTemplate);
+        }
+        if (bytes(p.validatorRequirements).length > 0) {
+            _setString(p.roundSubject, SA_ROUND_VALIDATOR_REQUIREMENTS, p.validatorRequirements);
+        }
+        if (bytes(p.slug).length > 0) {
+            _setString(p.roundSubject, SA_ROUND_SLUG, p.slug);
+        }
 
         SHAPES.validateSubject(CLASS_ROUND, p.roundSubject, address(this));
 
@@ -145,6 +169,18 @@ contract FundRegistry is AttributeStorage {
         _setBytes32(round, SA_ROUND_AWARDS_ROOT, awardsRoot);
         _setUint(round, SA_ROUND_DISPUTE_UNTIL, disputeUntil);
         emit RoundAwardsRootSet(round, awardsRoot, disputeUntil);
+    }
+
+    function setRoundMandate(bytes32 round, string calldata mandate) external onlyRoundFundOwner(round) {
+        _setString(round, SA_ROUND_MANDATE, mandate);
+    }
+
+    function setRoundMilestoneTemplate(bytes32 round, string calldata template) external onlyRoundFundOwner(round) {
+        _setString(round, SA_ROUND_MILESTONE_TEMPLATE, template);
+    }
+
+    function setRoundValidatorRequirements(bytes32 round, string calldata requirements) external onlyRoundFundOwner(round) {
+        _setString(round, SA_ROUND_VALIDATOR_REQUIREMENTS, requirements);
     }
 
     // ─── Read helpers ──────────────────────────────────────────────
@@ -184,5 +220,17 @@ contract FundRegistry is AttributeStorage {
     }
     function getRoundOpenedAt(bytes32 round) external view returns (uint256) {
         return this.getUint(round, SA_ROUND_OPENED_AT);
+    }
+    function getRoundMandate(bytes32 round) external view returns (string memory) {
+        return this.getString(round, SA_ROUND_MANDATE);
+    }
+    function getRoundMilestoneTemplate(bytes32 round) external view returns (string memory) {
+        return this.getString(round, SA_ROUND_MILESTONE_TEMPLATE);
+    }
+    function getRoundValidatorRequirements(bytes32 round) external view returns (string memory) {
+        return this.getString(round, SA_ROUND_VALIDATOR_REQUIREMENTS);
+    }
+    function getRoundSlug(bytes32 round) external view returns (string memory) {
+        return this.getString(round, SA_ROUND_SLUG);
     }
 }

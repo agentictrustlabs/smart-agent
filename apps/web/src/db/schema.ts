@@ -413,18 +413,6 @@ export const outcomes = sqliteTable('outcomes', {
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
 })
 
-/** OrchestrationPlan — decomposes a parent intent into sub-intents
- *  routed to different agents. Replaces a CollaborationIntent class. */
-export const orchestrationPlans = sqliteTable('orchestration_plans', {
-  id: text('id').primaryKey(),
-  parentIntentId: text('parent_intent_id').notNull().references(() => intents.id),
-  authorAgent: text('author_agent').notNull(),
-  /** JSON: { steps: [{ subIntentId, dependsOn?: [subIntentId], targetAgent }], rationale }. */
-  blueprint: text('blueprint').notNull(),
-  status: text('status', { enum: ['draft', 'active', 'paused', 'completed', 'abandoned'] }).notNull().default('active'),
-  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
-})
-
 /** Belief — light wrapper over AgentAssertion. Most beliefs are on
  *  chain; this table is for off-chain working beliefs that inform
  *  intent expression but don't yet warrant an Assertion mint. */

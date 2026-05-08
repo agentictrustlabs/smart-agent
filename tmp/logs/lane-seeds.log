@@ -364,3 +364,184 @@ Node.js v24.12.0
     http://localhost:3000/h/catalyst/intents/demo-maria-need-trauma-coaching
     http://localhost:3000/h/catalyst/intents/demo-maria-need-spanish-bible-leader
     http://localhost:3000/h/catalyst/intents/demo-david-need-prayer-partners
+Found 22 T-Box .ttl files (under docs/ontology/tbox)
+  · docs/ontology/tbox/core.ttl
+  · docs/ontology/tbox/delegation.ttl
+  · docs/ontology/tbox/entitlements.ttl
+  · docs/ontology/tbox/geo.ttl
+  · docs/ontology/tbox/governance.ttl
+  · docs/ontology/tbox/hub.ttl
+  · docs/ontology/tbox/identity.ttl
+  · docs/ontology/tbox/intents.ttl
+  · docs/ontology/tbox/marketplace-lifecycle.ttl
+  · docs/ontology/tbox/matches.ttl
+  · docs/ontology/tbox/namespace.ttl
+  · docs/ontology/tbox/needs.ttl
+  · docs/ontology/tbox/people-groups.ttl
+  · docs/ontology/tbox/pg.ttl
+  · docs/ontology/tbox/pool-pledge.ttl
+  · docs/ontology/tbox/proposal.ttl
+  · docs/ontology/tbox/relationships.ttl
+  · docs/ontology/tbox/resources.ttl
+  · docs/ontology/tbox/roles.ttl
+  · docs/ontology/tbox/shacl/visibility.ttl
+  · docs/ontology/tbox/skills.ttl
+  · docs/ontology/tbox/trust.ttl
+Found 15 C-Box .ttl files (under docs/ontology/cbox)
+  · docs/ontology/cbox/agent-shapes.shacl.ttl
+  · docs/ontology/cbox/capacity-units.ttl
+  · docs/ontology/cbox/controlled-vocabularies.ttl
+  · docs/ontology/cbox/entitlement-shapes.shacl.ttl
+  · docs/ontology/cbox/hub-vocabulary.ttl
+  · docs/ontology/cbox/intent-shapes.shacl.ttl
+  · docs/ontology/cbox/intent-types.ttl
+  · docs/ontology/cbox/needs-shapes.shacl.ttl
+  · docs/ontology/cbox/people-group-scopes.ttl
+  · docs/ontology/cbox/people-group-shapes.shacl.ttl
+  · docs/ontology/cbox/reachedness-vocabulary.ttl
+  · docs/ontology/cbox/resource-types.ttl
+  · docs/ontology/cbox/skill-shapes.shacl.ttl
+  · docs/ontology/cbox/skill-vocabulary-oasf.ttl
+  · docs/ontology/cbox/skill-vocabulary.ttl
+
+Uploading T-Box + SHACL → https://smartagent.io/graph/schema/tbox
+  ✓ T-Box uploaded.
+
+Uploading C-Box → https://smartagent.io/graph/schema/cbox
+  ✓ C-Box uploaded.
+
+Verifying via SPARQL counts...
+  T-Box classes:  235
+  SHACL shapes:   6
+  C-Box concepts: 204
+  Marketplace classes present: 11 / 11
+    · https://smartagent.io/ontology/core#Fund
+    · https://smartagent.io/ontology/core#GrantProposal
+    · https://smartagent.io/ontology/core#MatchInitiation
+    · https://smartagent.io/ontology/core#MatchInitiationAssertion
+    · https://smartagent.io/ontology/core#PledgeAssertion
+    · https://smartagent.io/ontology/core#Pool
+    · https://smartagent.io/ontology/core#PoolPledge
+    · https://smartagent.io/ontology/core#PoolPledgedTotalAssertion
+    · https://smartagent.io/ontology/core#Round
+    · https://smartagent.io/ontology/core#RoundClosedAssertion
+    · https://smartagent.io/ontology/core#RoundOpenedAssertion
+
+✓ Sync complete.
+[seed-test-round] fund agent (catalyst network) → 0x0F669E6851A15FD0E5904EB197c369C2ab578D9b
+[seed-test-round] registerFund warn: The contract function "registerFund" reverted.
+
+Error: NotFundOwner()
+ 
+Contract Call:
+  address:   0x9E545E3C0baAB3E08CdfD552C960A1050f373042
+  function:  registerFund(address fundAgent, bytes32[] acceptedKinds, bool openForCalls)
+  args:                  (0x0F669E6851A15FD0E5904EB197c369C2ab578D9b, ["0xe0763b6c82186160294b38982232e94f51e512b9f0e57d8eeb214ef2ee216a8b","0x28be1ff2b788efd3ef4b7749c2d0f81b2a43ababc36f2c8960dfe0c5db10580b","0xa31cb8e69ab09e362158b9bf851a54ece02060a706a8d52e7d947187be1a7bf5","0x7580d6244892989b460c96e64993a3ad3bfa5f64d354202b5ca34d00f75157c5","0x0f13c9d8222dbfb492d0af3dfd79bd0d84a51901cd45667b2374b6496a054c1a","0xd77fac1577d7fe76b7fed53864aa1cc6ca93bffa816c8edcd2fa72f4aa3ab3dc","0xc8d8c296e0c0e9617c16f250cef6bf1698592e08938576e6b044a3c5ef818c76","0x2d0f4ea592791ed7b8919f50b7079d3fa0dcbc666e8ad327b1516b6376e0781f","0x4b506235cb25b0517e0240f70e24fc2f750bfed6d2544fe5fc1f6fc301d3397e"], true)
+  sender:    0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+
+Docs: https://viem.sh/docs/contract/writeContract
+Details: execution reverted: custom error 0xb3545ef3
+Version: viem@2.47.10
+[seed-test-round] openRound warn for demo-trauma-care-q2: The contract function "openRound" reverted.
+
+Error: NotFundOwner()
+ 
+Contract Call:
+  address:   0x9E545E3C0baAB3E08CdfD552C960A1050f373042
+  function:  openRound((bytes32 roundSubject, address fundAgent, uint256 deadline, uint256 decisionDate, bytes32 reportingCadence, bytes32[] requiredCredentials, bytes32 visibility, bytes32 initialStatus))
+  args:               ({"roundSubject":"0xba7d5720d844ca4eabf89927d1babbe65bda75b6bec359184086371631c8bf61","fundAgent":"0x0F669E6851A15FD0E5904EB197c369C2ab578D9b","deadline":"1779405061","decisionDate":"1780787461","reportingCadence":"0x48680686fbaa3eb8a498d231a3766e99deb42819048529968dd20c370020cb28","requiredCredentials":[],"visibility":"0xebbc4f758526443c65cbc630276923c89e5f8ac0cef719eeb96b0a87cad53346","initialStatus":"0x0d37f17e287bdf05078af1c070b07ef59413a6a131f54dac6263f76d080c9990"})
+  sender:    0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+
+Docs: https://viem.sh/docs/contract/writeContract
+Details: execution reverted: custom error 0xb3545ef3
+Version: viem@2.47.10
+[seed-test-round] openRound warn for demo-spanish-scripture-q2: The contract function "openRound" reverted.
+
+Error: NotFundOwner()
+ 
+Contract Call:
+  address:   0x9E545E3C0baAB3E08CdfD552C960A1050f373042
+  function:  openRound((bytes32 roundSubject, address fundAgent, uint256 deadline, uint256 decisionDate, bytes32 reportingCadence, bytes32[] requiredCredentials, bytes32 visibility, bytes32 initialStatus))
+  args:               ({"roundSubject":"0x4d64467f9f671a10580ffee37b171d7e1c40f7882b323a331fd1e9d581a678cd","fundAgent":"0x0F669E6851A15FD0E5904EB197c369C2ab578D9b","deadline":"1780009861","decisionDate":"1782083461","reportingCadence":"0x48680686fbaa3eb8a498d231a3766e99deb42819048529968dd20c370020cb28","requiredCredentials":[],"visibility":"0xebbc4f758526443c65cbc630276923c89e5f8ac0cef719eeb96b0a87cad53346","initialStatus":"0x0d37f17e287bdf05078af1c070b07ef59413a6a131f54dac6263f76d080c9990"})
+  sender:    0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+
+Docs: https://viem.sh/docs/contract/writeContract
+Details: execution reverted: custom error 0xb3545ef3
+Version: viem@2.47.10
+[seed-test-round] openRound warn for demo-pastoral-coaching-q2: The contract function "openRound" reverted.
+
+Error: NotFundOwner()
+ 
+Contract Call:
+  address:   0x9E545E3C0baAB3E08CdfD552C960A1050f373042
+  function:  openRound((bytes32 roundSubject, address fundAgent, uint256 deadline, uint256 decisionDate, bytes32 reportingCadence, bytes32[] requiredCredentials, bytes32 visibility, bytes32 initialStatus))
+  args:               ({"roundSubject":"0x93ea8dd282a4cb83ab115e1b023fc4ed2f8fbb98e1aa6c81ea153521b34873a1","fundAgent":"0x0F669E6851A15FD0E5904EB197c369C2ab578D9b","deadline":"1780614661","decisionDate":"1783379461","reportingCadence":"0x7dc5939eec0033571e0a0cf7a81c00cc3cf42e60ac518fce8caf8c411d116466","requiredCredentials":[],"visibility":"0xebbc4f758526443c65cbc630276923c89e5f8ac0cef719eeb96b0a87cad53346","initialStatus":"0x0d37f17e287bdf05078af1c070b07ef59413a6a131f54dac6263f76d080c9990"})
+  sender:    0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+
+Docs: https://viem.sh/docs/contract/writeContract
+Details: execution reverted: custom error 0xb3545ef3
+Version: viem@2.47.10
+[seed-test-round] SQL ok — demo-trauma-care-q2 (Trauma-Care for Migrant Families — Compassion Ministry Q2)
+[seed-test-round] SQL ok — demo-spanish-scripture-q2 (Spanish Heart-Language Scripture & Discipleship Q2)
+[seed-test-round] SQL ok — demo-pastoral-coaching-q2 (Pastoral Coaching Cohort for NoCo Church Planters Q2)
+[seed-test-round] GraphDB ok — INSERT 3 rounds
+
+✓ Seeded 3 rounds operated by fund 0x0F669E6851A15FD0E5904EB197c369C2ab578D9b:
+    · demo-trauma-care-q2 — Trauma-Care for Migrant Families — Compassion Ministry Q2
+    · demo-spanish-scripture-q2 — Spanish Heart-Language Scripture & Discipleship Q2
+    · demo-pastoral-coaching-q2 — Pastoral Coaching Cohort for NoCo Church Planters Q2
+[seed-test-pool] deployed pool agent demo-trauma-care-pool → 0x675E11eC5854eBd6656Fc9155D99746c9e438a16
+[seed-test-pool] PoolRegistry.open ok — demo-trauma-care-pool → tx 0x7fe7488ab24040d1ad97dd4a5a265da18fb100b668568ede45fadcc655304bee
+[seed-test-pool] deployed pool agent demo-spanish-bibles-pool → 0xA6Ca03d6c704C84cA9f495BDA26b5Fa1dDaaE461
+[seed-test-pool] PoolRegistry.open ok — demo-spanish-bibles-pool → tx 0x77b223753b2d73c567c164478afe540b8ebf3a34b4268069816a7b0ab02f7394
+[seed-test-pool] deployed pool agent demo-prayer-chain-pool → 0x21681cFE20d8d18DBD746aeD92077DC4b8BFc17A
+[seed-test-pool] PoolRegistry.open ok — demo-prayer-chain-pool → tx 0xb0f6029451048dd5ee5791cd299812e6b08649af854932a54eb7186b86d68cfb
+[seed-test-pool] SQL ok — demo-trauma-care-pool (Trauma-Care + Migrant Family Compassion Pool)
+[seed-test-pool] SQL ok — demo-spanish-bibles-pool (Spanish Bibles for New Families Pool)
+[seed-test-pool] SQL ok — demo-prayer-chain-pool (Hispanic Family Prayer Chain Pool)
+[seed-test-pool] GraphDB ok — INSERT 3 pools into data graph
+
+✓ Seeded 3 pools operated by Catalyst NoCo Network:
+    · demo-trauma-care-pool — Trauma-Care + Migrant Family Compassion Pool  (treasury 0x675E11eC5854eBd6656Fc9155D99746c9e438a16)
+    · demo-spanish-bibles-pool — Spanish Bibles for New Families Pool  (treasury 0xA6Ca03d6c704C84cA9f495BDA26b5Fa1dDaaE461)
+    · demo-prayer-chain-pool — Hispanic Family Prayer Chain Pool  (treasury 0x21681cFE20d8d18DBD746aeD92077DC4b8BFc17A)
+  Visit: http://localhost:3000/h/catalyst/pools (after Maria signs in)
+[seed-test-proposal] wrote 5 proposals to person-mcp
+[seed-test-proposal] wrote 5 proposals to org-mcp
+
+✓ Seeded 5 GrantProposals across the catalyst rounds:
+    · draft     person_cat-user-001 → demo-trauma-care-q2
+    · submitted person_cat-user-001 → demo-trauma-care-q2
+    · submitted person_cat-user-001 → demo-spanish-scripture-q2
+    · submitted person_cat-user-002 → demo-trauma-care-q2
+    · draft     person_cat-user-002 → demo-pastoral-coaching-q2
+  Visit: http://localhost:3000/h/catalyst/proposals (after Maria signs in)
+[seed-test-pledge] SQL ok — demo-maria-trauma-care-pledge (person_cat-user-001 → demo-trauma-care-pool)
+[seed-test-pledge] SQL ok — demo-david-spanish-bibles-pledge (person_cat-user-002 → demo-spanish-bibles-pool)
+[seed-test-pledge] SQL ok — demo-maria-prayer-chain-pledge (person_cat-user-001 → demo-prayer-chain-pool)
+[seed-test-pledge] org-mcp aggregate set: urn:smart-agent:pool:demo-trauma-care-pool → 1200
+[seed-test-pledge] org-mcp aggregate set: urn:smart-agent:pool:demo-spanish-bibles-pool → 600
+[seed-test-pledge] org-mcp aggregate set: urn:smart-agent:pool:demo-prayer-chain-pool → 3600
+
+✓ Seeded 3 pledges across the catalyst pools:
+    · demo-maria-trauma-care-pledge — person_cat-user-001: 1200 USD via demo-trauma-care-pool
+    · demo-david-spanish-bibles-pledge — person_cat-user-002: 600 USD via demo-spanish-bibles-pool
+    · demo-maria-prayer-chain-pledge — person_cat-user-001: 3600 prayer-minutes via demo-prayer-chain-pool
+  Visit: http://localhost:3000/h/catalyst/pledges (after Maria signs in)
+[seed-test-match-initiation] resolved Maria agent → 0xdf0d47096e3c1770c1d282cea1d5e03896524ae3
+[seed-test-match-initiation] resolved Pastor David agent → 0xae61be574d5ee97879e7b2b4c45b3f9031afa335
+[seed-test-match-initiation] verified 6 demo intents in local.db
+[seed-test-match-initiation] inserted self-mode MatchInitiation for Maria
+
+✓ Seeded 6 intents (3 faith-themed pairs):
+    ← demo-maria-need-trauma-coaching — Need: Trauma-Care coach for NoCo migrant-family cohort
+    → demo-david-offer-trauma-coaching — Offer: Compassion-trauma trainer available for NoCo cohorts
+    ← demo-maria-need-spanish-bible-leader — Need: Bilingual Spanish Bible study leader for new families
+    → demo-david-offer-spanish-bible-leader — Offer: Bilingual Bible study facilitator (Spanish/English)
+    ← demo-david-need-prayer-partners — Need: Daily prayer partners for Loveland church-plant discernment
+    → demo-maria-offer-prayer-commitment — Offer: Daily intercessory prayer for NoCo church planters
+  Sign in as Maria, visit:
+    http://localhost:3000/h/catalyst/intents
+    http://localhost:3000/h/catalyst/intents/demo-maria-need-trauma-coaching
+    http://localhost:3000/h/catalyst/intents/demo-maria-need-spanish-bible-leader
+    http://localhost:3000/h/catalyst/intents/demo-david-need-prayer-partners

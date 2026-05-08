@@ -22,6 +22,9 @@ import { getPersonAgentForUser, canManageAgent } from '@/lib/agent-registry'
 import { getWalletClient, getPublicClient } from '@/lib/contracts'
 import { FundRegistryClient, type RoundStatus } from '@smart-agent/sdk'
 import { callMcp } from '@/lib/clients/mcp-client'
+import { DiscoveryService } from '@smart-agent/discovery'
+
+const AGENT_IRI_PREFIX = 'https://smartagent.io/ontology/core#agent/'
 
 export type RoundLifecycleAction = 'advance-to-review' | 'advance-to-decided' | 'advance-to-closed' | 'cancel'
 
@@ -53,30 +56,23 @@ async function authForRound(roundFullId: string): Promise<{ ok: true; fundAgent:
   if (!user) return { ok: false, error: 'not-authenticated' }
   const myAgent = await getPersonAgentForUser(user.id)
   if (!myAgent) return { ok: false, error: 'no-person-agent' }
-  // Read fund_agent_id from org-mcp.db cache.
-  const path = await import('path')
-  const fs = await import('fs')
-  const candidates = [
-    path.resolve(process.cwd(), '../org-mcp/org-mcp.db'),
-    path.resolve(process.cwd(), 'apps/org-mcp/org-mcp.db'),
-  ]
-  const dbPath = candidates.find((p) => fs.existsSync(p))
-  if (!dbPath) return { ok: false, error: 'org-mcp-db-not-found' }
-  const Database = (await import('better-sqlite3')).default
-  const db = new Database(dbPath, { readonly: true })
-  let fundAgentRaw: string | null = null
-  try {
-    const r = db.prepare('SELECT fund_agent_id FROM rounds WHERE id = ?').get(roundFullId) as { fund_agent_id?: string } | undefined
-    fundAgentRaw = r?.fund_agent_id ?? null
-  } finally { db.close() }
+  const roundSlug = roundFullId.startsWith('urn:smart-agent:round:')
+    ? roundFullId.slice('urn:smart-agent:round:'.length)
+    : roundFullId
+  // Read fund_agent_id from the GraphDB public mirror. Fund owners aren't
+  // listed in addressedApplicants, so pass a null viewer to skip that
+  // gate — authorization here is done via canManageAgent below.
+  const discovery = DiscoveryService.fromEnv()
+  const round = await discovery.getRoundDetail(roundSlug, null)
+  if (!round) return { ok: false, error: 'round-not-found' }
+  const fundAgentRaw = round.fundAgentId.startsWith(AGENT_IRI_PREFIX)
+    ? round.fundAgentId.slice(AGENT_IRI_PREFIX.length)
+    : round.fundAgentId
   if (!fundAgentRaw) return { ok: false, error: 'round-not-found' }
   const fundAgent = fundAgentRaw as Address
   let canMng = false
   try { canMng = await canManageAgent(myAgent, fundAgent) } catch { canMng = false }
   if (!canMng) return { ok: false, error: 'not-fund-owner' }
-  const roundSlug = roundFullId.startsWith('urn:smart-agent:round:')
-    ? roundFullId.slice('urn:smart-agent:round:'.length)
-    : roundFullId
   return { ok: true, fundAgent, roundSlug }
 }
 

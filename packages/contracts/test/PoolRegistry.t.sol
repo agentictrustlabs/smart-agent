@@ -61,6 +61,8 @@ contract PoolRegistryTest is Test {
         _registerTerm(pools.SA_POOL_VISIBILITY(), "sa:poolVisibility", "bytes32");
         _registerTerm(pools.SA_POOL_OPENED_AT(), "sa:poolOpenedAt", "uint256");
         _registerTerm(pools.SA_POOL_CLOSED_AT(), "sa:poolClosedAt", "uint256");
+        _registerTerm(pools.SA_POOL_ACCEPTED_RESTRICTIONS(), "sa:poolAcceptedRestrictions", "string");
+        _registerTerm(pools.SA_POOL_SLUG(), "sa:poolSlug", "string");
 
         enumGov = keccak256(abi.encodePacked(pools.CLASS_POOL(), pools.SA_POOL_GOVERNANCE_MODEL()));
         bytes32[] memory govValues = new bytes32[](2);
@@ -128,7 +130,9 @@ contract PoolRegistryTest is Test {
             ceilingPolicy: CEILING_BLOCK,
             capacityCeiling: 5_000e6,
             stewards: stewards,
-            visibility: VIS_PUBLIC
+            visibility: VIS_PUBLIC,
+            acceptedRestrictions: "",
+            slug: ""
         });
     }
 

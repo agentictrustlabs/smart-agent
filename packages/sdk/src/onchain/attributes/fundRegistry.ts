@@ -54,7 +54,16 @@ export interface OpenRoundInput {
   requiredCredentials?: string[]
   visibility: RoundVisibility
   initialStatus?: RoundStatus
+  /** JSON-encoded round mandate (acceptedKinds, geoScope, etc.). */
+  mandate?: string
+  /** JSON-encoded milestone template. */
+  milestoneTemplate?: string
+  /** JSON-encoded validator requirements. */
+  validatorRequirements?: string
 }
+
+// roundId itself is the slug used for IRI derivation; the buildOpenParams
+// helper passes it as p.slug.
 
 export interface FundRegistryClientConfig {
   registryAddress: Address
@@ -75,6 +84,10 @@ export class FundRegistryClient {
       requiredCredentials: (input.requiredCredentials ?? []).map(concept),
       visibility: concept(VISIBILITY_CONCEPT[input.visibility]),
       initialStatus: concept(STATUS_CONCEPT[input.initialStatus ?? 'open']),
+      mandate: input.mandate ?? '',
+      milestoneTemplate: input.milestoneTemplate ?? '',
+      validatorRequirements: input.validatorRequirements ?? '',
+      slug: input.roundId,
     } as const
   }
 
@@ -137,5 +150,94 @@ export class FundRegistryClient {
     })
     await this.cfg.publicClient.waitForTransactionReceipt({ hash })
     return hash
+  }
+
+  async setRoundMandate(roundId: string, mandateJson: string): Promise<Hex> {
+    const account = this.cfg.walletClient.account
+    if (!account) throw new Error('FundRegistryClient.setRoundMandate: walletClient has no account')
+    const hash = await this.cfg.walletClient.writeContract({
+      address: this.cfg.registryAddress,
+      abi: fundRegistryAbi,
+      functionName: 'setRoundMandate',
+      args: [roundSubjectFor(roundId), mandateJson],
+      account,
+      chain: this.cfg.walletClient.chain ?? null,
+    })
+    await this.cfg.publicClient.waitForTransactionReceipt({ hash })
+    return hash
+  }
+
+  async setRoundMilestoneTemplate(roundId: string, templateJson: string): Promise<Hex> {
+    const account = this.cfg.walletClient.account
+    if (!account) throw new Error('FundRegistryClient.setRoundMilestoneTemplate: walletClient has no account')
+    const hash = await this.cfg.walletClient.writeContract({
+      address: this.cfg.registryAddress,
+      abi: fundRegistryAbi,
+      functionName: 'setRoundMilestoneTemplate',
+      args: [roundSubjectFor(roundId), templateJson],
+      account,
+      chain: this.cfg.walletClient.chain ?? null,
+    })
+    await this.cfg.publicClient.waitForTransactionReceipt({ hash })
+    return hash
+  }
+
+  async setRoundValidatorRequirements(roundId: string, requirementsJson: string): Promise<Hex> {
+    const account = this.cfg.walletClient.account
+    if (!account) throw new Error('FundRegistryClient.setRoundValidatorRequirements: walletClient has no account')
+    const hash = await this.cfg.walletClient.writeContract({
+      address: this.cfg.registryAddress,
+      abi: fundRegistryAbi,
+      functionName: 'setRoundValidatorRequirements',
+      args: [roundSubjectFor(roundId), requirementsJson],
+      account,
+      chain: this.cfg.walletClient.chain ?? null,
+    })
+    await this.cfg.publicClient.waitForTransactionReceipt({ hash })
+    return hash
+  }
+
+  // ─── Read helpers ──────────────────────────────────────────────
+
+  async getRoundMandate(roundId: string): Promise<string> {
+    const result = await this.cfg.publicClient.readContract({
+      address: this.cfg.registryAddress,
+      abi: fundRegistryAbi,
+      functionName: 'getRoundMandate',
+      args: [roundSubjectFor(roundId)],
+    })
+    return result as string
+  }
+
+  async getRoundMilestoneTemplate(roundId: string): Promise<string> {
+    const result = await this.cfg.publicClient.readContract({
+      address: this.cfg.registryAddress,
+      abi: fundRegistryAbi,
+      functionName: 'getRoundMilestoneTemplate',
+      args: [roundSubjectFor(roundId)],
+    })
+    return result as string
+  }
+
+  async getRoundValidatorRequirements(roundId: string): Promise<string> {
+    const result = await this.cfg.publicClient.readContract({
+      address: this.cfg.registryAddress,
+      abi: fundRegistryAbi,
+      functionName: 'getRoundValidatorRequirements',
+      args: [roundSubjectFor(roundId)],
+    })
+    return result as string
+  }
+
+  /** Read the round's stored slug given its on-chain subject hash. Used by
+   *  the on-chain → GraphDB sync to derive the canonical urn:smart-agent:round:<slug> IRI. */
+  async getRoundSlug(roundSubject: Hex): Promise<string> {
+    const result = await this.cfg.publicClient.readContract({
+      address: this.cfg.registryAddress,
+      abi: fundRegistryAbi,
+      functionName: 'getRoundSlug',
+      args: [roundSubject],
+    })
+    return result as string
   }
 }

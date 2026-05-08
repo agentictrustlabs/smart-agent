@@ -37,6 +37,9 @@ contract PoolRegistry is AttributeStorage {
     bytes32 public constant SA_POOL_VISIBILITY        = keccak256("sa:poolVisibility");
     bytes32 public constant SA_POOL_OPENED_AT         = keccak256("sa:poolOpenedAt");
     bytes32 public constant SA_POOL_CLOSED_AT         = keccak256("sa:poolClosedAt");
+    bytes32 public constant SA_POOL_ACCEPTED_RESTRICTIONS = keccak256("sa:poolAcceptedRestrictions");
+    /** Off-chain pool slug (used to derive urn:smart-agent:pool:<slug> IRI). */
+    bytes32 public constant SA_POOL_SLUG                  = keccak256("sa:poolSlug");
 
     error NotPoolOwner();
 
@@ -57,6 +60,8 @@ contract PoolRegistry is AttributeStorage {
         uint256 capacityCeiling;
         address[] stewards;
         bytes32 visibility;
+        string  acceptedRestrictions;  // JSON; empty string means unset
+        string  slug;                  // off-chain id; required for IRI derivation
     }
 
     modifier onlyPoolOwner(address poolAgent) {
@@ -96,6 +101,12 @@ contract PoolRegistry is AttributeStorage {
         _setAddressArr(s, SA_POOL_STEWARDS, p.stewards);
         _setBytes32(s, SA_POOL_VISIBILITY, p.visibility);
         _setUint(s, SA_POOL_OPENED_AT, block.timestamp);
+        if (bytes(p.acceptedRestrictions).length > 0) {
+            _setString(s, SA_POOL_ACCEPTED_RESTRICTIONS, p.acceptedRestrictions);
+        }
+        if (bytes(p.slug).length > 0) {
+            _setString(s, SA_POOL_SLUG, p.slug);
+        }
 
         SHAPES.validateSubject(CLASS_POOL, s, address(this));
 
@@ -128,6 +139,13 @@ contract PoolRegistry is AttributeStorage {
         bytes32 s = _subject(poolAgent);
         _setAddressArr(s, SA_POOL_STEWARDS, newStewards);
         emit PoolStewardsRotated(poolAgent, newStewards.length);
+    }
+
+    function setAcceptedRestrictions(
+        address poolAgent,
+        string calldata restrictionsJson
+    ) external onlyPoolOwner(poolAgent) {
+        _setString(_subject(poolAgent), SA_POOL_ACCEPTED_RESTRICTIONS, restrictionsJson);
     }
 
     // ─── Convenience getters keyed by agent address ────────────────
@@ -170,5 +188,11 @@ contract PoolRegistry is AttributeStorage {
     function isOpen(address poolAgent) external view returns (bool) {
         bytes32 s = _subject(poolAgent);
         return this.isSet(s, SA_POOL_OPENED_AT) && !this.isSet(s, SA_POOL_CLOSED_AT);
+    }
+    function getAcceptedRestrictions(address poolAgent) external view returns (string memory) {
+        return this.getString(_subject(poolAgent), SA_POOL_ACCEPTED_RESTRICTIONS);
+    }
+    function getPoolSlug(address poolAgent) external view returns (string memory) {
+        return this.getString(_subject(poolAgent), SA_POOL_SLUG);
     }
 }

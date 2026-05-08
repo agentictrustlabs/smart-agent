@@ -72,7 +72,7 @@ export function listPoolsQuery(filters: PoolListFilters): string {
 SELECT ?pool ?poolId ?name ?domain ?mandate ?governanceModel
        ?acceptedRestrictions ?acceptedUnits ?capacityCeiling ?ceilingPolicy
        ?addressedTo ?addressedMembers ?visibility
-       ?stewardshipAgent ?stewards ?acceptsOpenCalls
+       ?stewardshipAgent ?treasuryAgent ?stewards ?acceptsOpenCalls
        ?pledgedTotal ?allocatedTotal ?availableTotal
        ?onChainAssertionId
 WHERE {
@@ -92,6 +92,7 @@ WHERE {
     OPTIONAL { ?pool sa:addressedMembers ?addressedMembers }
     OPTIONAL { ?pool sa:visibility ?visibility }
     OPTIONAL { ?pool sa:stewardshipAgent ?stewardshipAgent }
+    OPTIONAL { ?pool sa:treasuryAgent ?treasuryAgent }
     OPTIONAL { ?pool sa:steward ?stewards }
     OPTIONAL { ?pool sa:acceptsOpenCalls ?acceptsOpenCalls }
     OPTIONAL { ?pool sa:pledgedTotal ?pledgedTotal }
@@ -117,7 +118,7 @@ export function poolDetailQuery(poolId: string): string {
 SELECT ?pool ?name ?domain ?mandate ?governanceModel
        ?acceptedRestrictions ?acceptedUnits ?capacityCeiling ?ceilingPolicy
        ?addressedTo ?addressedMembers ?visibility
-       ?stewardshipAgent ?stewards ?acceptsOpenCalls
+       ?stewardshipAgent ?treasuryAgent ?stewards ?acceptsOpenCalls
        ?pledgedTotal ?allocatedTotal ?availableTotal
        ?onChainAssertionId
 WHERE {
@@ -137,6 +138,7 @@ WHERE {
     OPTIONAL { ?pool sa:addressedMembers ?addressedMembers }
     OPTIONAL { ?pool sa:visibility ?visibility }
     OPTIONAL { ?pool sa:stewardshipAgent ?stewardshipAgent }
+    OPTIONAL { ?pool sa:treasuryAgent ?treasuryAgent }
     OPTIONAL { ?pool sa:steward ?stewards }
     OPTIONAL { ?pool sa:acceptsOpenCalls ?acceptsOpenCalls }
     OPTIONAL { ?pool sa:pledgedTotal ?pledgedTotal }

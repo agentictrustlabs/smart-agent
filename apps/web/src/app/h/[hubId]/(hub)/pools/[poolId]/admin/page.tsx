@@ -42,32 +42,7 @@ export default async function PoolAdminPage({
   const { pool } = await getPoolForViewer(poolId, myAgent)
   if (!pool) notFound()
 
-  // Resolve treasury (the on-chain agent address). Pool's `stewardshipAgent`
-  // in our cache is the IRI form; treasuryAddress is the actual address we
-  // pass to PoolRegistry.
-  const treasuryRaw = (pool as unknown as { treasuryAddress?: string }).treasuryAddress
-  let treasuryAddress = treasuryRaw
-  if (!treasuryAddress) {
-    // Fallback: look up via the org-mcp pool:read_counters cache.
-    try {
-      const path = await import('path')
-      const fs = await import('fs')
-      const cwd = process.cwd()
-      const candidates = [
-        path.resolve(cwd, '../org-mcp/org-mcp.db'),
-        path.resolve(cwd, 'apps/org-mcp/org-mcp.db'),
-      ]
-      const dbPath = candidates.find((p) => fs.existsSync(p))
-      if (dbPath) {
-        const Database = (await import('better-sqlite3')).default
-        const db = new Database(dbPath, { readonly: true })
-        try {
-          const r = db.prepare('SELECT treasury_address FROM pools WHERE id = ?').get(poolId) as { treasury_address?: string } | undefined
-          treasuryAddress = r?.treasury_address ?? undefined
-        } finally { db.close() }
-      }
-    } catch { /* best effort */ }
-  }
+  const treasuryAddress = pool.treasuryAddress
   if (!treasuryAddress) notFound()
 
   // Auth gate — same canManageAgent check as the round-admin / cancel-round

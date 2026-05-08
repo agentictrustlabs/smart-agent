@@ -15,7 +15,6 @@ import { oid4vciRoutes } from './api/oid4vci.js'
 import { orgProfileTools } from './tools/org-profile.js'
 import { membersTools } from './tools/members.js'
 import { revenueTools } from './tools/revenue.js'
-import { proposalsTools } from './tools/proposals.js'
 import { activityTools } from './tools/activity.js'
 import { orgIntentsTools } from './tools/intents.js'
 import { orgNotificationsTools, orgBeliefsTools } from './tools/notifications-beliefs.js'
@@ -32,7 +31,6 @@ const allTools = {
   ...orgProfileTools,
   ...membersTools,
   ...revenueTools,
-  ...proposalsTools,
   ...activityTools,
   ...orgIntentsTools,
   ...orgNotificationsTools,

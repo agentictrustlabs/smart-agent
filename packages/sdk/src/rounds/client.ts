@@ -34,7 +34,7 @@ import type {
  */
 export interface RoundDiscoveryReader {
   listRounds(filters: RoundListFilters): Promise<RoundListItem[]>
-  getRoundDetail(roundId: string, viewerAgentId: string): Promise<Round | null>
+  getRoundDetail(roundId: string, viewerAgentId: string | null): Promise<Round | null>
 }
 
 /**

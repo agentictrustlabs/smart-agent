@@ -40,7 +40,7 @@ export interface SideSignalsDiscovery {
   /** Round detail (used to look up the fund's agent ID for a given round). */
   getRoundDetail(
     roundId: string,
-    viewerAgentId: string,
+    viewerAgentId: string | null,
   ): Promise<{ fundAgentId: string; mandate?: { acceptedKinds?: string[] } } | null>
   /** Run a raw SPARQL query — used for prior-outcome lookups. */
   rawQuery(sparql: string): Promise<{

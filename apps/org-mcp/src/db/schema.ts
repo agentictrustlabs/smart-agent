@@ -2,13 +2,8 @@ import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core'
 
 // ─── Auth foundation (mirror of person-mcp) ────────────────────────────────
 
-export const orgAccounts = sqliteTable('org_accounts', {
-  orgPrincipal: text('org_principal').primaryKey(),
-  accountAddress: text('account_address').notNull().unique(),
-  chainId: integer('chain_id').notNull(),
-  label: text('label'),
-  createdAt: text('created_at').notNull(),
-})
+// org_accounts dropped: org agents are canonical on-chain via AgentRegistry +
+// AgentAccountResolver, mirrored to GraphDB. No org-mcp tool reads this table.
 
 export const orgTokenUsage = sqliteTable('org_token_usage', {
   jti: text('jti').primaryKey(),
@@ -76,22 +71,8 @@ export const revenueReports = sqliteTable('revenue_reports', {
   verifiedAt: text('verified_at'),
 })
 
-export const proposals = sqliteTable('proposals', {
-  id: text('id').primaryKey(),
-  orgPrincipal: text('org_principal').notNull(),
-  kind: text('kind').notNull(),                       // pause-capital | graduate-wave | ...
-  title: text('title').notNull(),
-  description: text('description'),
-  proposerAgent: text('proposer_agent'),
-  targetAddress: text('target_address'),
-  quorumRequired: integer('quorum_required').notNull().default(2),
-  votesFor: integer('votes_for').notNull().default(0),
-  votesAgainst: integer('votes_against').notNull().default(0),
-  status: text('status').notNull().default('open'),
-  onChainProposalId: text('on_chain_proposal_id'),
-  executedAt: text('executed_at'),
-  createdAt: text('created_at').notNull(),
-})
+// proposals dropped: legacy off-chain governance cache predating spec-003.
+// Superseded by proposal_submissions (GrantProposal body, IA § 2.3).
 
 export const orgActivityLogEntries = sqliteTable('org_activity_log_entries', {
   id: text('id').primaryKey(),
@@ -172,14 +153,7 @@ export const orgOutcomes = sqliteTable('org_outcomes', {
   createdAt: text('created_at').notNull(),
 })
 
-export const orchestrationPlans = sqliteTable('orchestration_plans', {
-  id: text('id').primaryKey(),
-  orgPrincipal: text('org_principal').notNull(),
-  parentIntentId: text('parent_intent_id').notNull(),
-  subIntents: text('sub_intents'),                   // JSON
-  dependencies: text('dependencies'),                 // JSON
-  createdAt: text('created_at').notNull(),
-})
+// orchestration_plans dropped: defined but never written or read anywhere.
 
 export const orgWorkItems = sqliteTable('org_work_items', {
   id: text('id').primaryKey(),
