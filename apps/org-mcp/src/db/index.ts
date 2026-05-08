@@ -32,18 +32,7 @@ sqliteHandle.exec(`
     updated_at TEXT NOT NULL
   );
 
-  CREATE TABLE IF NOT EXISTS org_members (
-    id TEXT PRIMARY KEY,
-    org_principal TEXT NOT NULL,
-    member_agent TEXT NOT NULL,
-    role TEXT,
-    joined_at TEXT,
-    left_at TEXT,
-    edge_id TEXT,
-    internal_notes TEXT
-  );
-  CREATE INDEX IF NOT EXISTS idx_org_members_org ON org_members(org_principal);
-  CREATE INDEX IF NOT EXISTS idx_org_members_agent ON org_members(member_agent);
+  -- org_members removed: canonical on-chain via AgentRelationship edges.
 
   CREATE TABLE IF NOT EXISTS detached_members (
     id TEXT PRIMARY KEY,
@@ -241,35 +230,17 @@ sqliteHandle.exec(`
   CREATE INDEX IF NOT EXISTS idx_proposal_submissions_round ON proposal_submissions(round_id);
   CREATE INDEX IF NOT EXISTS idx_proposal_submissions_status ON proposal_submissions(status);
 
-  -- Round body source-of-truth lives on chain in FundRegistry's typed-attribute
-  -- storage. This is a denormalized cache for the proposal-flow hot path
-  -- (validation, addressed-applicants) plus the proposalsReceived counter
-  -- (high-frequency aggregate per IA P4 § 8.2).
+  -- Round body lives on chain in FundRegistry; mirrored to GraphDB by sync.
+  -- This slim table holds only the off-chain DAO voting config keyed by round id.
   CREATE TABLE IF NOT EXISTS rounds (
     id TEXT PRIMARY KEY,
-    fund_agent_id TEXT NOT NULL,
-    mandate TEXT NOT NULL DEFAULT '{}',
-    milestone_template TEXT NOT NULL DEFAULT '{}',
-    validator_requirements TEXT NOT NULL DEFAULT '{}',
-    reporting_cadence TEXT NOT NULL,
-    deadline TEXT NOT NULL,
-    decision_date TEXT NOT NULL,
-    required_credentials TEXT NOT NULL DEFAULT '[]',
-    visibility TEXT NOT NULL DEFAULT 'public',
-    addressed_applicants TEXT,
-    status TEXT NOT NULL DEFAULT 'open',
     voting_strategy TEXT NOT NULL DEFAULT 'steward-quorum',
     voting_threshold INTEGER NOT NULL DEFAULT 2,
     voting_window_starts_at TEXT,
     voting_window_ends_at TEXT,
     eligible_voters TEXT NOT NULL DEFAULT '{"kind":"stewards"}',
-    proposals_received INTEGER NOT NULL DEFAULT 0,
-    created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
   );
-  CREATE INDEX IF NOT EXISTS idx_rounds_fund ON rounds(fund_agent_id);
-  CREATE INDEX IF NOT EXISTS idx_rounds_visibility ON rounds(visibility);
-  CREATE INDEX IF NOT EXISTS idx_rounds_status ON rounds(status);
 
   -- Disbursements (Sprint C) — off-chain ledger for the funding stage.
   -- Real USDC custody in Treasury Phase 3 (deferred); this mirrors what
@@ -352,30 +323,8 @@ sqliteHandle.exec(`
   CREATE INDEX IF NOT EXISTS idx_match_initiations_viewed ON match_initiations(viewed_intent_id);
   CREATE INDEX IF NOT EXISTS idx_match_initiations_candidate ON match_initiations(candidate_intent_id);
 
-  -- ─── Spec 002: Intent Marketplace — Pool Lane (Phase 0.3 — counters + cache) ─
-  -- Pool body source-of-truth lives on chain in PoolRegistry's typed-attribute
-  -- storage. This row holds the high-frequency aggregate counters (per
-  -- IA P4 § 8.2) AND a denormalized body cache for the pledge-time validation
-  -- hot path. The action layer refreshes the cache from chain on registry mutations.
-  CREATE TABLE IF NOT EXISTS pools (
-    id TEXT PRIMARY KEY,
-    treasury_address TEXT NOT NULL,
-    name TEXT NOT NULL,
-    accepted_restrictions TEXT NOT NULL DEFAULT '{}',
-    accepted_units TEXT NOT NULL DEFAULT '[]',
-    capacity_ceiling INTEGER,
-    ceiling_policy TEXT NOT NULL DEFAULT 'accept',
-    visibility TEXT NOT NULL DEFAULT 'public',
-    addressed_members TEXT,
-    stewards TEXT NOT NULL DEFAULT '[]',
-    pledged_total INTEGER NOT NULL DEFAULT 0,
-    allocated_total INTEGER NOT NULL DEFAULT 0,
-    available_total INTEGER NOT NULL DEFAULT 0,
-    created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL
-  );
-  CREATE INDEX IF NOT EXISTS idx_pools_treasury ON pools(treasury_address);
-  CREATE INDEX IF NOT EXISTS idx_pools_visibility ON pools(visibility);
+  -- pools table removed: pool body lives on-chain in PoolRegistry; counters
+  -- are derived from pool_pledges sums at read time.
 
   -- pool_pledges — org-mcp twin of person-mcp's pool_pledges. principal =
   -- pledgerAgentId. SHACL invariants on storyPermissions / visibility.

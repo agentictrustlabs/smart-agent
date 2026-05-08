@@ -22,10 +22,13 @@
  * Named graph: https://smartagent.io/graph/data/onchain
  */
 
+import { keccak256, toHex } from 'viem'
 import { getPublicClient, getEdgesBySubject, getEdge, getEdgeRoles } from '@/lib/contracts'
 import {
   agentAccountResolverAbi,
   classAssertionAbi,
+  fundRegistryAbi,
+  poolRegistryAbi,
   iriToBytes32,
   ATL_CONTROLLER, ATL_CAPABILITY, ATL_SUPPORTED_TRUST,
   ATL_A2A_ENDPOINT, ATL_MCP_SERVER,
@@ -576,24 +579,6 @@ export async function emitClassAssertionsTurtle(): Promise<string> {
 //      `subjectId`. (When real on-chain anchoring ships for rounds, this
 //      synthetic mirror is replaced by the on-chain → assertion mirror.)
 
-interface OrgMcpRoundRow {
-  id: string
-  fund_agent_id: string
-  mandate: string
-  milestone_template: string
-  validator_requirements: string
-  reporting_cadence: string
-  deadline: string
-  decision_date: string
-  required_credentials: string
-  visibility: string
-  addressed_applicants: string | null
-  status: string
-  proposals_received: number
-  created_at: string
-  updated_at: string
-}
-
 function escapeTurtleString(value: string): string {
   return value
     .replace(/\\/g, '\\\\')
@@ -602,51 +587,68 @@ function escapeTurtleString(value: string): string {
     .replace(/\r/g, '')
 }
 
+// ─── Concept reverse-lookup ─────────────────────────────────────────
+// Round/Pool typed-attrs store concept *hashes* (keccak256 of "sa:Foo"), but
+// the GraphDB mirror has historically used the human label ("open", "public",
+// etc.) as the literal value. Reverse-map known concept hashes back to the
+// short label so the SPARQL queries don't need rewriting.
+const HASH = (s: string) => keccak256(toHex(s)) as `0x${string}`
+const CONCEPT_LABEL: Record<string, string> = {
+  // Round status
+  [HASH('sa:RoundOpen')]: 'open',
+  [HASH('sa:RoundReview')]: 'review',
+  [HASH('sa:RoundDecided')]: 'decided',
+  [HASH('sa:RoundClosed')]: 'closed',
+  [HASH('sa:RoundCanceled')]: 'canceled',
+  // Visibility (shared by Round + Pool)
+  [HASH('sa:VisibilityPublic')]: 'public',
+  [HASH('sa:VisibilityPrivate')]: 'private',
+  // Reporting cadence
+  [HASH('sa:CadenceMonthly')]: 'monthly',
+  [HASH('sa:CadenceQuarterly')]: 'quarterly',
+  [HASH('sa:CadenceAnnual')]: 'annual',
+  [HASH('sa:CadenceMilestone')]: 'milestone',
+  // Pool governance model
+  [HASH('sa:GovDAF')]: 'daf',
+  [HASH('sa:GovGivingCircle')]: 'giving-circle',
+  [HASH('sa:GovFund')]: 'fund',
+  [HASH('sa:GovOpenCall')]: 'open-call',
+  // Pool ceiling policy
+  [HASH('sa:CeilingBlock')]: 'block',
+  [HASH('sa:CeilingWaitlist')]: 'waitlist',
+  [HASH('sa:CeilingAccept')]: 'accept',
+}
+
+function conceptToLabel(hash: `0x${string}` | string): string {
+  const k = (typeof hash === 'string' ? hash : hash).toLowerCase() as `0x${string}`
+  return CONCEPT_LABEL[k] ?? ''
+}
+
+// Bytes32 zero — uninitialized attr returns this from getBytes32.
+const ZERO_BYTES32 = `0x${'0'.repeat(64)}` as `0x${string}`
+
+// FundRegistry predicate hashes (matches the contract's bytes32 constants).
+const SA_ROUND_FUND_AGENT_HASH = HASH('sa:roundFundAgent')
+
 export async function emitRoundsTurtle(): Promise<string> {
-  // Resolve apps/org-mcp/org-mcp.db relative to the repo root. The web app's
-  // cwd is apps/web, so two-up gets us to the monorepo root.
-  const path = await import('path')
-  const fs = await import('fs')
-  const cwd = process.cwd()
-  // Try common locations: cwd/apps/org-mcp, cwd/../org-mcp, cwd/../../apps/org-mcp.
-  const candidates = [
-    path.resolve(cwd, '../org-mcp/org-mcp.db'),                 // when cwd = apps/web
-    path.resolve(cwd, 'apps/org-mcp/org-mcp.db'),               // when cwd = repo root
-    path.resolve(cwd, '../../apps/org-mcp/org-mcp.db'),         // pathological
-  ]
-  const dbPath = candidates.find((p) => fs.existsSync(p))
-  if (!dbPath) return ''
+  const fundRegistryAddr = process.env.FUND_REGISTRY_ADDRESS as `0x${string}` | undefined
+  if (!fundRegistryAddr) return ''
 
-  // Lazy import — better-sqlite3 is heavy; avoid loading on every request.
-  let Database: new (filename: string, options?: { readonly?: boolean; fileMustExist?: boolean }) => {
-    prepare: (sql: string) => { all: () => unknown[] }
-    close: () => void
-  }
+  const client = getPublicClient()
+
+  // Enumerate all subjects in FundRegistry's typed-attribute storage. This
+  // returns both Fund subjects (= bytes32(uint160(fundAgent))) and Round
+  // subjects (= keccak256("sa:round:" + roundId)). We filter by checking
+  // whether SA_ROUND_FUND_AGENT is set; only round subjects have that.
+  let allSubjects: readonly `0x${string}`[]
   try {
-    const mod = await import('better-sqlite3')
-    Database = mod.default as unknown as typeof Database
+    allSubjects = await client.readContract({
+      address: fundRegistryAddr, abi: fundRegistryAbi,
+      functionName: 'allSubjects',
+    }) as readonly `0x${string}`[]
   } catch {
-    // better-sqlite3 not installed in this surface — skip (acceptable in test envs).
     return ''
   }
-
-  const db = new Database(dbPath, { readonly: true, fileMustExist: true })
-  let rows: OrgMcpRoundRow[]
-  try {
-    rows = db.prepare(`
-      SELECT id, fund_agent_id, mandate, milestone_template, validator_requirements,
-             reporting_cadence, deadline, decision_date, required_credentials,
-             visibility, addressed_applicants, status, proposals_received,
-             created_at, updated_at
-      FROM rounds
-    `).all() as OrgMcpRoundRow[]
-  } catch {
-    db.close()
-    return ''
-  }
-  db.close()
-
-  if (rows.length === 0) return ''
 
   const lines: string[] = []
   lines.push(`@prefix sa:   <${SA}> .`)
@@ -654,45 +656,90 @@ export async function emitRoundsTurtle(): Promise<string> {
   lines.push(`@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .`)
   lines.push('')
 
-  for (const row of rows) {
-    const roundIri = row.id
-    const subjectId = roundIri.replace(/^urn:smart-agent:round:/, '')
-    const fundIri = `${SA}agent/${row.fund_agent_id.toLowerCase()}`
+  let emitted = 0
+  for (const s of allSubjects) {
+    let isRound = false
+    try {
+      isRound = await client.readContract({
+        address: fundRegistryAddr, abi: fundRegistryAbi,
+        functionName: 'isSet', args: [s, SA_ROUND_FUND_AGENT_HASH],
+      }) as boolean
+    } catch { isRound = false }
+    if (!isRound) continue
+
+    let slug = ''
+    try {
+      slug = await client.readContract({
+        address: fundRegistryAddr, abi: fundRegistryAbi,
+        functionName: 'getRoundSlug', args: [s],
+      }) as string
+    } catch { /* */ }
+    if (!slug) continue  // skip rounds opened before slug attr existed
+
+    const [
+      fundAgent, deadline, decisionDate, reportingCadenceHash,
+      requiredCredentialsHashes, visibilityHash, statusHash,
+      mandate, milestoneTemplate, validatorRequirements, openedAt,
+    ] = await Promise.all([
+      client.readContract({ address: fundRegistryAddr, abi: fundRegistryAbi, functionName: 'getRoundFundAgent', args: [s] }) as Promise<`0x${string}`>,
+      client.readContract({ address: fundRegistryAddr, abi: fundRegistryAbi, functionName: 'getRoundDeadline', args: [s] }) as Promise<bigint>,
+      client.readContract({ address: fundRegistryAddr, abi: fundRegistryAbi, functionName: 'getRoundDecisionDate', args: [s] }) as Promise<bigint>,
+      client.readContract({ address: fundRegistryAddr, abi: fundRegistryAbi, functionName: 'getRoundReportingCadence', args: [s] }) as Promise<`0x${string}`>,
+      client.readContract({ address: fundRegistryAddr, abi: fundRegistryAbi, functionName: 'getRoundRequiredCredentials', args: [s] }) as Promise<readonly `0x${string}`[]>,
+      client.readContract({ address: fundRegistryAddr, abi: fundRegistryAbi, functionName: 'getRoundVisibility', args: [s] }) as Promise<`0x${string}`>,
+      client.readContract({ address: fundRegistryAddr, abi: fundRegistryAbi, functionName: 'getRoundStatus', args: [s] }) as Promise<`0x${string}`>,
+      client.readContract({ address: fundRegistryAddr, abi: fundRegistryAbi, functionName: 'getRoundMandate', args: [s] }) as Promise<string>,
+      client.readContract({ address: fundRegistryAddr, abi: fundRegistryAbi, functionName: 'getRoundMilestoneTemplate', args: [s] }) as Promise<string>,
+      client.readContract({ address: fundRegistryAddr, abi: fundRegistryAbi, functionName: 'getRoundValidatorRequirements', args: [s] }) as Promise<string>,
+      client.readContract({ address: fundRegistryAddr, abi: fundRegistryAbi, functionName: 'getRoundOpenedAt', args: [s] }) as Promise<bigint>,
+    ])
+
+    const roundIri = `urn:smart-agent:round:${slug}`
+    const fundIri = `${SA}agent/${fundAgent.toLowerCase()}`
+    const cadenceLabel = conceptToLabel(reportingCadenceHash) || reportingCadenceHash
+    const visibilityLabel = conceptToLabel(visibilityHash) || 'public'
+    const statusLabel = conceptToLabel(statusHash) || 'open'
+    const requiredCredsJson = JSON.stringify(
+      requiredCredentialsHashes.filter(h => h !== ZERO_BYTES32).map(h => conceptToLabel(h) || h)
+    )
 
     lines.push(`<${roundIri}> a sa:Round ;`)
     lines.push(`  sa:operatedByFund <${fundIri}> ;`)
-    try {
-      const m = JSON.parse(row.mandate ?? '{}') as { displayName?: string }
-      if (m.displayName) {
-        lines.push(`  sa:displayName "${escapeTurtleString(m.displayName)}" ;`)
-      }
-    } catch { /* not JSON — skip */ }
-    lines.push(`  sa:roundMandate "${escapeTurtleString(row.mandate)}" ;`)
-    lines.push(`  sa:milestoneTemplate "${escapeTurtleString(row.milestone_template)}" ;`)
-    lines.push(`  sa:validatorRequirements "${escapeTurtleString(row.validator_requirements)}" ;`)
-    lines.push(`  sa:reportingCadence "${escapeTurtleString(row.reporting_cadence)}" ;`)
-    lines.push(`  sa:deadline "${row.deadline}"^^xsd:dateTime ;`)
-    lines.push(`  sa:decisionDate "${row.decision_date}"^^xsd:dateTime ;`)
-    lines.push(`  sa:requiredCredentials "${escapeTurtleString(row.required_credentials)}" ;`)
-    lines.push(`  sa:visibility "${escapeTurtleString(row.visibility)}" ;`)
-    lines.push(`  sa:status "${escapeTurtleString(row.status)}" ;`)
-    if (row.addressed_applicants) {
-      lines.push(`  sa:addressedApplicants "${escapeTurtleString(row.addressed_applicants)}" ;`)
+    if (mandate) {
+      try {
+        const m = JSON.parse(mandate) as { displayName?: string }
+        if (m.displayName) {
+          lines.push(`  sa:displayName "${escapeTurtleString(m.displayName)}" ;`)
+        }
+      } catch { /* not JSON — skip */ }
+      lines.push(`  sa:roundMandate "${escapeTurtleString(mandate)}" ;`)
     }
-    lines.push(`  sa:proposalsReceived ${row.proposals_received | 0} .`)
+    if (milestoneTemplate) {
+      lines.push(`  sa:milestoneTemplate "${escapeTurtleString(milestoneTemplate)}" ;`)
+    }
+    if (validatorRequirements) {
+      lines.push(`  sa:validatorRequirements "${escapeTurtleString(validatorRequirements)}" ;`)
+    }
+    lines.push(`  sa:reportingCadence "${escapeTurtleString(cadenceLabel)}" ;`)
+    lines.push(`  sa:deadline "${new Date(Number(deadline) * 1000).toISOString()}"^^xsd:dateTime ;`)
+    lines.push(`  sa:decisionDate "${new Date(Number(decisionDate) * 1000).toISOString()}"^^xsd:dateTime ;`)
+    lines.push(`  sa:requiredCredentials "${escapeTurtleString(requiredCredsJson)}" ;`)
+    lines.push(`  sa:visibility "${visibilityLabel}" ;`)
+    lines.push(`  sa:status "${statusLabel}" .`)
     lines.push('')
 
-    // Synthetic anchor mirror — listRoundsQuery binds via subjectId. Stable
-    // synthetic IRI per round so duplicates collapse.
-    const asnIri = `urn:smart-agent:assertion:${subjectId}-opened`
+    // Synthetic anchor mirror so listRoundsQuery's subjectId join works.
+    const asnIri = `urn:smart-agent:assertion:${slug}-opened`
+    const openedAtIso = new Date(Number(openedAt) * 1000).toISOString()
     lines.push(`<${asnIri}> a sa:RoundOpenedAssertion ;`)
     lines.push(`  sa:onChainAssertionId "${escapeTurtleString(asnIri)}" ;`)
-    lines.push(`  sa:subjectId "${escapeTurtleString(subjectId)}" ;`)
-    lines.push(`  prov:generatedAtTime "${row.created_at}"^^xsd:dateTime .`)
+    lines.push(`  sa:subjectId "${escapeTurtleString(slug)}" ;`)
+    lines.push(`  prov:generatedAtTime "${openedAtIso}"^^xsd:dateTime .`)
     lines.push('')
+    emitted++
   }
 
-  return lines.join('\n')
+  return emitted > 0 ? lines.join('\n') : ''
 }
 
 // ---------------------------------------------------------------------------
@@ -713,25 +760,16 @@ export async function emitRoundsTurtle(): Promise<string> {
 // `emitClassAssertionsTurtle` already mirrors them when present; this
 // helper just emits the body. Best-effort on snapshot freshness.
 
-interface OrgMcpPoolRow {
-  id: string
-  treasury_address: string
-  name: string
-  accepted_restrictions: string
-  accepted_units: string
-  capacity_ceiling: number | null
-  ceiling_policy: string
-  visibility: string
-  addressed_members: string | null
-  stewards: string
-  pledged_total: number
-  allocated_total: number
-  available_total: number
-  created_at: string
-  updated_at: string
-}
+// Predicate hashes used to detect whether a subject in PoolRegistry
+// belongs to a Pool (vs. some other typed-attr subject in the same store).
+const SA_POOL_OPENED_AT_HASH = HASH('sa:poolOpenedAt')
 
-export async function emitPoolsTurtle(): Promise<string> {
+// Derive pool counters from `pool_pledges` table sums (Phase 7 — replaces
+// the `pools.pledged_total` cache that no longer exists). Returns a map
+// keyed by pool URN. allocatedTotal is 0 in v1 (no allocation tracking yet);
+// availableTotal == pledgedTotal until allocation flow ships.
+async function loadPoolCounters(): Promise<Map<string, { pledged: number; allocated: number; available: number }>> {
+  const out = new Map<string, { pledged: number; allocated: number; available: number }>()
   const path = await import('path')
   const fs = await import('fs')
   const cwd = process.cwd()
@@ -741,8 +779,7 @@ export async function emitPoolsTurtle(): Promise<string> {
     path.resolve(cwd, '../../apps/org-mcp/org-mcp.db'),
   ]
   const dbPath = candidates.find(p => fs.existsSync(p))
-  if (!dbPath) return ''
-
+  if (!dbPath) return out
   let Database: new (filename: string, options?: { readonly?: boolean; fileMustExist?: boolean }) => {
     prepare: (sql: string) => { all: () => unknown[] }
     close: () => void
@@ -751,27 +788,46 @@ export async function emitPoolsTurtle(): Promise<string> {
     const mod = await import('better-sqlite3')
     Database = mod.default as unknown as typeof Database
   } catch {
-    return ''
+    return out
   }
-
   const db = new Database(dbPath, { readonly: true, fileMustExist: true })
-  let rows: OrgMcpPoolRow[]
+  let rows: Array<{ pool_agent_id: string; cadence: string; amount: number; duration: number | null }> = []
   try {
-    rows = db.prepare(`
-      SELECT id, treasury_address, name,
-             accepted_restrictions, accepted_units, capacity_ceiling, ceiling_policy,
-             visibility, addressed_members, stewards,
-             pledged_total, allocated_total, available_total,
-             created_at, updated_at
-        FROM pools
-    `).all() as OrgMcpPoolRow[]
-  } catch {
-    db.close()
-    return ''
-  }
+    rows = db.prepare(
+      "SELECT pool_agent_id, cadence, amount, duration FROM pool_pledges WHERE status = 'active'"
+    ).all() as typeof rows
+  } catch { /* table might not exist on first boot */ }
   db.close()
 
-  if (rows.length === 0) return ''
+  const { cadenceAwareTotal } = await import('@smart-agent/sdk')
+  for (const r of rows) {
+    const total = cadenceAwareTotal({ cadence: r.cadence as 'one-time' | 'monthly' | 'annual', amount: r.amount, duration: r.duration ?? undefined })
+    const cur = out.get(r.pool_agent_id) ?? { pledged: 0, allocated: 0, available: 0 }
+    cur.pledged += total
+    cur.available = Math.max(0, cur.pledged - cur.allocated)
+    out.set(r.pool_agent_id, cur)
+  }
+  return out
+}
+
+export async function emitPoolsTurtle(): Promise<string> {
+  const poolRegistryAddr = process.env.POOL_REGISTRY_ADDRESS as `0x${string}` | undefined
+  if (!poolRegistryAddr) return ''
+
+  const client = getPublicClient()
+  const resolverAddr = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}` | undefined
+
+  let allSubjects: readonly `0x${string}`[]
+  try {
+    allSubjects = await client.readContract({
+      address: poolRegistryAddr, abi: poolRegistryAbi,
+      functionName: 'allSubjects',
+    }) as readonly `0x${string}`[]
+  } catch {
+    return ''
+  }
+
+  const counters = await loadPoolCounters()
 
   const lines: string[] = []
   lines.push(`@prefix sa:   <${SA}> .`)
@@ -779,66 +835,107 @@ export async function emitPoolsTurtle(): Promise<string> {
   lines.push(`@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .`)
   lines.push('')
 
-  for (const row of rows) {
-    // Pool body source-of-truth lives on chain in PoolRegistry. This emit
-    // mirrors the cached body fields the org-mcp row carries — name,
-    // accepted-units/restrictions, ceiling, visibility, stewards, counters.
-    // Domain / governance model / mandate are read via the registry directly
-    // by the proper attribute-walk emitter (Phase 0.6 cleanup item).
-    const poolIri = row.id
-    const treasuryIri = `${SA}agent/${row.treasury_address.toLowerCase()}`
+  let emitted = 0
+  for (const s of allSubjects) {
+    let isPool = false
+    try {
+      isPool = await client.readContract({
+        address: poolRegistryAddr, abi: poolRegistryAbi,
+        functionName: 'isSet', args: [s, SA_POOL_OPENED_AT_HASH],
+      }) as boolean
+    } catch { isPool = false }
+    if (!isPool) continue
+
+    // Pool subjects are the bytes32 form of the pool agent address.
+    const poolAgentAddr = (`0x${s.slice(-40)}`).toLowerCase() as `0x${string}`
+
+    let slug = ''
+    try {
+      slug = await client.readContract({
+        address: poolRegistryAddr, abi: poolRegistryAbi,
+        functionName: 'getPoolSlug', args: [poolAgentAddr],
+      }) as string
+    } catch { /* */ }
+    if (!slug) continue  // skip pools opened before slug attr existed
+
+    const [
+      domainHash, governanceModelHash,
+      acceptedKindsHashes, acceptedUnitsHashes,
+      ceilingPolicyHash, capacityCeiling, visibilityHash,
+      stewards, acceptedRestrictions,
+    ] = await Promise.all([
+      client.readContract({ address: poolRegistryAddr, abi: poolRegistryAbi, functionName: 'getDomain', args: [poolAgentAddr] }) as Promise<`0x${string}`>,
+      client.readContract({ address: poolRegistryAddr, abi: poolRegistryAbi, functionName: 'getGovernanceModel', args: [poolAgentAddr] }) as Promise<`0x${string}`>,
+      client.readContract({ address: poolRegistryAddr, abi: poolRegistryAbi, functionName: 'getAcceptedKinds', args: [poolAgentAddr] }) as Promise<readonly `0x${string}`[]>,
+      client.readContract({ address: poolRegistryAddr, abi: poolRegistryAbi, functionName: 'getAcceptedUnits', args: [poolAgentAddr] }) as Promise<readonly `0x${string}`[]>,
+      client.readContract({ address: poolRegistryAddr, abi: poolRegistryAbi, functionName: 'getCeilingPolicy', args: [poolAgentAddr] }) as Promise<`0x${string}`>,
+      client.readContract({ address: poolRegistryAddr, abi: poolRegistryAbi, functionName: 'getCapacityCeiling', args: [poolAgentAddr] }) as Promise<bigint>,
+      client.readContract({ address: poolRegistryAddr, abi: poolRegistryAbi, functionName: 'getVisibility', args: [poolAgentAddr] }) as Promise<`0x${string}`>,
+      client.readContract({ address: poolRegistryAddr, abi: poolRegistryAbi, functionName: 'getStewards', args: [poolAgentAddr] }) as Promise<readonly `0x${string}`[]>,
+      client.readContract({ address: poolRegistryAddr, abi: poolRegistryAbi, functionName: 'getAcceptedRestrictions', args: [poolAgentAddr] }) as Promise<string>,
+    ])
+
+    // Pool's display name lives on its agent record (AgentAccountResolver).
+    let displayName = slug
+    if (resolverAddr) {
+      try {
+        const core = await client.readContract({
+          address: resolverAddr, abi: agentAccountResolverAbi,
+          functionName: 'getCore', args: [poolAgentAddr],
+        }) as { displayName: string }
+        if (core.displayName) displayName = core.displayName
+      } catch { /* */ }
+    }
+
+    const poolIri = `urn:smart-agent:pool:${slug}`
+    const treasuryIri = `${SA}agent/${poolAgentAddr}`
+    const ceilingLabel = conceptToLabel(ceilingPolicyHash) || ceilingPolicyHash
+    const visibilityLabel = conceptToLabel(visibilityHash) || 'public'
+    const governanceLabel = conceptToLabel(governanceModelHash) || governanceModelHash
+    const domainLabel = conceptToLabel(domainHash) || domainHash
 
     lines.push(`<${poolIri}> a sa:Pool ;`)
-    lines.push(`  sa:displayName "${escapeTurtleString(row.name)}" ;`)
+    lines.push(`  sa:displayName "${escapeTurtleString(displayName)}" ;`)
     lines.push(`  sa:treasuryAgent <${treasuryIri}> ;`)
-    if (row.accepted_restrictions && row.accepted_restrictions !== '{}') {
-      lines.push(`  sa:acceptedRestrictions "${escapeTurtleString(row.accepted_restrictions)}" ;`)
+    if (domainLabel) {
+      lines.push(`  sa:domain "${escapeTurtleString(domainLabel)}" ;`)
     }
-    try {
-      const units = JSON.parse(row.accepted_units) as string[]
-      if (Array.isArray(units)) {
-        for (const u of units) {
-          lines.push(`  sa:acceptsUnit "${escapeTurtleString(u)}" ;`)
-        }
+    if (governanceLabel) {
+      lines.push(`  sa:governanceModel "${escapeTurtleString(governanceLabel)}" ;`)
+    }
+    if (acceptedRestrictions && acceptedRestrictions !== '{}') {
+      lines.push(`  sa:acceptedRestrictions "${escapeTurtleString(acceptedRestrictions)}" ;`)
+    }
+    for (const u of acceptedUnitsHashes) {
+      const ulabel = conceptToLabel(u) || u
+      lines.push(`  sa:acceptsUnit "${escapeTurtleString(ulabel)}" ;`)
+    }
+    for (const k of acceptedKindsHashes) {
+      const klabel = conceptToLabel(k) || k
+      lines.push(`  sa:acceptedKind "${escapeTurtleString(klabel)}" ;`)
+    }
+    if (capacityCeiling > 0n) {
+      lines.push(`  sa:capacityCeiling ${capacityCeiling.toString()} ;`)
+    }
+    lines.push(`  sa:ceilingPolicy "${escapeTurtleString(ceilingLabel)}" ;`)
+    lines.push(`  sa:visibility "${visibilityLabel}" ;`)
+    if (stewards.length > 0) {
+      const first = stewards[0]
+      lines.push(`  sa:stewardshipAgent <${SA}agent/${first.toLowerCase()}> ;`)
+      for (const st of stewards) {
+        lines.push(`  sa:steward <${SA}agent/${st.toLowerCase()}> ;`)
       }
-    } catch { /* noop */ }
-    if (row.capacity_ceiling != null) {
-      lines.push(`  sa:capacityCeiling ${row.capacity_ceiling | 0} ;`)
     }
-    lines.push(`  sa:ceilingPolicy "${escapeTurtleString(row.ceiling_policy)}" ;`)
-    lines.push(`  sa:visibility "${escapeTurtleString(row.visibility)}" ;`)
-    if (row.addressed_members && row.visibility !== 'private') {
-      lines.push(`  sa:addressedMembers "${escapeTurtleString(row.addressed_members)}" ;`)
-    }
-    try {
-      const stewards = JSON.parse(row.stewards) as string[]
-      if (Array.isArray(stewards) && stewards.length > 0) {
-        // First entry is the canonical stewardship agent — the agent the
-        // round-create / cancel-round UI gates against via canManageAgent.
-        const first = stewards[0]
-        if (/^https?:|^urn:/.test(first)) {
-          lines.push(`  sa:stewardshipAgent <${first}> ;`)
-        } else if (/^0x[0-9a-fA-F]{40}$/.test(first)) {
-          lines.push(`  sa:stewardshipAgent <${SA}agent/${first.toLowerCase()}> ;`)
-        }
-        for (const s of stewards) {
-          if (/^https?:|^urn:/.test(s)) {
-            lines.push(`  sa:steward <${s}> ;`)
-          } else if (/^0x[0-9a-fA-F]{40}$/.test(s)) {
-            lines.push(`  sa:steward <${SA}agent/${s.toLowerCase()}> ;`)
-          } else {
-            lines.push(`  sa:steward "${escapeTurtleString(s)}" ;`)
-          }
-        }
-      }
-    } catch { /* noop */ }
-    lines.push(`  sa:pledgedTotal ${row.pledged_total | 0} ;`)
-    lines.push(`  sa:allocatedTotal ${row.allocated_total | 0} ;`)
-    lines.push(`  sa:availableTotal ${row.available_total | 0} .`)
+    // Counters derived at sync time from pool_pledges sums (Phase 7).
+    const c = counters.get(poolIri) ?? { pledged: 0, allocated: 0, available: 0 }
+    lines.push(`  sa:pledgedTotal ${c.pledged} ;`)
+    lines.push(`  sa:allocatedTotal ${c.allocated} ;`)
+    lines.push(`  sa:availableTotal ${c.available} .`)
     lines.push('')
+    emitted++
   }
 
-  return lines.join('\n')
+  return emitted > 0 ? lines.join('\n') : ''
 }
 
 /**

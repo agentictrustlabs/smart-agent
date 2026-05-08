@@ -15,6 +15,7 @@ import { callMcp } from '@/lib/clients/mcp-client'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { getPersonAgentForUser } from '@/lib/agent-registry'
 import { getStrategy, type VotingStrategyName, type TallyEntry, type VoteRow } from '@/lib/voting/strategies'
+import { DiscoveryService } from '@smart-agent/discovery'
 
 interface RoundConfigRow {
   id: string
@@ -25,9 +26,12 @@ interface RoundConfigRow {
   votingWindowEndsAt: string | null
 }
 
+const AGENT_IRI_PREFIX = 'https://smartagent.io/ontology/core#agent/'
+
 async function loadRoundConfig(roundId: string): Promise<RoundConfigRow | null> {
-  // Resolve the round body via the existing round-read MCP tool. We could
-  // call the tool, but it's cheaper to read SQLite directly server-side.
+  // Voting fields live in org-mcp's slim rounds table (off-chain DAO config).
+  // fundAgentId lives on chain in FundRegistry — read via DiscoveryService.
+  // Body fields (deadline, status, mandate, etc.) also on chain.
   const path = await import('path')
   const fs = await import('fs')
   const cwd = process.cwd()
@@ -40,32 +44,58 @@ async function loadRoundConfig(roundId: string): Promise<RoundConfigRow | null> 
   if (!dbPath) return null
   const Database = (await import('better-sqlite3')).default
   const db = new Database(dbPath, { readonly: true, fileMustExist: true })
+  let votingRow:
+    | {
+        id: string
+        voting_strategy: string
+        voting_threshold: number
+        voting_window_starts_at: string | null
+        voting_window_ends_at: string | null
+      }
+    | undefined
   try {
-    const row = db.prepare(`
-      SELECT id, fund_agent_id, voting_strategy, voting_threshold,
+    votingRow = db.prepare(`
+      SELECT id, voting_strategy, voting_threshold,
              voting_window_starts_at, voting_window_ends_at
       FROM rounds WHERE id = ?
-    `).get(roundId) as
-      | {
-          id: string
-          fund_agent_id: string
-          voting_strategy: string
-          voting_threshold: number
-          voting_window_starts_at: string | null
-          voting_window_ends_at: string | null
-        }
-      | undefined
-    if (!row) return null
-    return {
-      id: row.id,
-      fundAgentId: row.fund_agent_id,
-      votingStrategy: row.voting_strategy,
-      votingThreshold: row.voting_threshold,
-      votingWindowStartsAt: row.voting_window_starts_at,
-      votingWindowEndsAt: row.voting_window_ends_at,
-    }
+    `).get(roundId) as typeof votingRow
   } finally {
     db.close()
+  }
+
+  // Resolve fundAgentId from the on-chain → GraphDB mirror.
+  const roundSlug = roundId.startsWith('urn:smart-agent:round:')
+    ? roundId.slice('urn:smart-agent:round:'.length)
+    : roundId
+  let fundAgentId = ''
+  try {
+    const round = await DiscoveryService.fromEnv().getRoundDetail(roundSlug, null)
+    if (round) {
+      fundAgentId = round.fundAgentId.startsWith(AGENT_IRI_PREFIX)
+        ? round.fundAgentId.slice(AGENT_IRI_PREFIX.length)
+        : round.fundAgentId
+    }
+  } catch { /* discovery offline → empty fundAgentId; eligibility falls through */ }
+
+  if (!votingRow) {
+    // No voting config row yet — return defaults so the strategy can run.
+    if (!fundAgentId) return null
+    return {
+      id: roundId,
+      fundAgentId,
+      votingStrategy: 'steward-quorum',
+      votingThreshold: 2,
+      votingWindowStartsAt: null,
+      votingWindowEndsAt: null,
+    }
+  }
+  return {
+    id: votingRow.id,
+    fundAgentId,
+    votingStrategy: votingRow.voting_strategy,
+    votingThreshold: votingRow.voting_threshold,
+    votingWindowStartsAt: votingRow.voting_window_starts_at,
+    votingWindowEndsAt: votingRow.voting_window_ends_at,
   }
 }
 

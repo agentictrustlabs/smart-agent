@@ -27,16 +27,10 @@ export const orgProfilesPrivate = sqliteTable('org_profiles_private', {
   updatedAt: text('updated_at').notNull(),
 })
 
-export const orgMembers = sqliteTable('org_members', {
-  id: text('id').primaryKey(),
-  orgPrincipal: text('org_principal').notNull(),
-  memberAgent: text('member_agent').notNull(),
-  role: text('role'),
-  joinedAt: text('joined_at'),
-  leftAt: text('left_at'),
-  edgeId: text('edge_id'),  // on-chain edge that anchors the membership
-  internalNotes: text('internal_notes'),
-})
+// org_members dropped: roster data is canonical on-chain in AgentRelationship
+// edges; web reads via DiscoveryService.getOutgoingEdges. Private annotations
+// (internal notes per member) had zero callers; detached_members below remains
+// for off-roster external personnel that have no on-chain presence.
 
 export const detachedMembers = sqliteTable('detached_members', {
   id: text('id').primaryKey(),
@@ -239,30 +233,22 @@ export const proposalSubmissions = sqliteTable('proposal_submissions', {
 // proposal-flow
 // hot path (validation, addressed-applicants lookup) plus the proposalsReceived
 // counter (high-frequency aggregate, IA P4 § 8.2).
+// Round body lives ON-CHAIN in FundRegistry (mandate, milestone_template,
+// validator_requirements, reporting_cadence, deadline, decision_date,
+// required_credentials, visibility, status, fund_agent_id) — read via
+// FundRegistry getters, mirrored to GraphDB by the on-chain → KB sync.
+// addressed_applicants stays MCP-side (visibility-qualifier list, never
+// mirrored). proposals_received is derived as
+// COUNT(proposal_submissions WHERE round_id = round) at read time.
+//
+// What stays here: voting config (off-chain DAO governance), keyed by round id.
 export const rounds = sqliteTable('rounds', {
   id: text('id').primaryKey(),
-  fundAgentId: text('fund_agent_id').notNull(),                 // = fund's agent address
-  mandate: text('mandate').notNull().default('{}'),             // JSON: RoundMandate (cache)
-  milestoneTemplate: text('milestone_template').notNull().default('{}'),
-  validatorRequirements: text('validator_requirements').notNull().default('{}'),
-  reportingCadence: text('reporting_cadence').notNull(),        // sa:CadenceQuarterly|...
-  deadline: text('deadline').notNull(),                         // ISO-8601
-  decisionDate: text('decision_date').notNull(),                // ISO-8601
-  requiredCredentials: text('required_credentials').notNull().default('[]'),
-  visibility: text('visibility').notNull().default('public'),   // public|private
-  addressedApplicants: text('addressed_applicants'),            // JSON array; null for public rounds
-  status: text('status').notNull().default('open'),             // mirror of on-chain status
-  // ─── Voting config (DAO governance) ────────────────────────────────
-  // Per output/voting-and-admin-plan.md. v1 ships steward-quorum only;
-  // other strategies plug in via the same columns later.
   votingStrategy: text('voting_strategy').notNull().default('steward-quorum'),
-  votingThreshold: integer('voting_threshold').notNull().default(2),  // approves needed to award
-  votingWindowStartsAt: text('voting_window_starts_at'),  // ISO; defaults to deadline
-  votingWindowEndsAt: text('voting_window_ends_at'),      // ISO; defaults to deadline + 7d
-  eligibleVoters: text('eligible_voters').notNull().default('{"kind":"stewards"}'),  // JSON
-  // Aggregate counters
-  proposalsReceived: integer('proposals_received').notNull().default(0),
-  createdAt: text('created_at').notNull(),
+  votingThreshold: integer('voting_threshold').notNull().default(2),
+  votingWindowStartsAt: text('voting_window_starts_at'),
+  votingWindowEndsAt: text('voting_window_ends_at'),
+  eligibleVoters: text('eligible_voters').notNull().default('{"kind":"stewards"}'),
   updatedAt: text('updated_at').notNull(),
 })
 
@@ -359,27 +345,14 @@ export const matchInitiations = sqliteTable('match_initiations', {
 // to gate the pledge BEFORE writing it. We refresh this cache from the
 // action layer when the on-chain registry mutates.
 //
-// `id` is the canonical pool IRI (`urn:smart-agent:pool:<slug>`).
-// `treasuryAddress` is the pool agent's smart-account address.
-export const pools = sqliteTable('pools', {
-  id: text('id').primaryKey(),                                  // = pool IRI
-  treasuryAddress: text('treasury_address').notNull(),          // = pool's agent address
-  name: text('name').notNull(),
-  // Denormalized body cache — refreshed from chain by the action layer.
-  acceptedRestrictions: text('accepted_restrictions').notNull().default('{}'),
-  acceptedUnits: text('accepted_units').notNull().default('[]'),
-  capacityCeiling: integer('capacity_ceiling'),
-  ceilingPolicy: text('ceiling_policy').notNull().default('accept'),
-  visibility: text('visibility').notNull().default('public'),
-  addressedMembers: text('addressed_members'),                  // JSON array; null for public
-  stewards: text('stewards').notNull().default('[]'),           // JSON array of agent IRIs
-  // Aggregate counters (canonical home per IA P4 § 8.2).
-  pledgedTotal: integer('pledged_total').notNull().default(0),
-  allocatedTotal: integer('allocated_total').notNull().default(0),
-  availableTotal: integer('available_total').notNull().default(0),
-  createdAt: text('created_at').notNull(),
-  updatedAt: text('updated_at').notNull(),
-})
+// pools table DROPPED. Pool body lives on-chain in PoolRegistry (treasury =
+// pool agent address itself; mandate/units/kinds/ceiling/visibility/stewards
+// in typed-attrs; slug for IRI derivation). Web/MCP readers should call
+// PoolRegistry getters or DiscoveryService.getPoolDetail. Counters
+// (pledged/allocated/available) are derived from pool_pledges sums at read
+// time. addressed_members stays MCP-side as a visibility filter — but no
+// reader of this column existed when audited; reintroduce a slim table only
+// if a real product need surfaces.
 
 // pool_pledges — org-mcp twin of person-mcp's pool_pledges (orgs can also
 // donate). principal = pledgerAgentId.

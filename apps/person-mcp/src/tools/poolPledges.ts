@@ -28,9 +28,6 @@
  */
 import { randomUUID } from 'node:crypto'
 import { and, eq } from 'drizzle-orm'
-import Database from 'better-sqlite3'
-import path from 'node:path'
-import fs from 'node:fs'
 import { db } from '../db/index.js'
 import { poolPledges, crossDelegationGrants } from '../db/schema.js'
 import { requirePrincipal } from '../auth/principal-context.js'
@@ -63,24 +60,7 @@ interface PledgeAmendment {
 }
 
 type SubmitErrorKind =
-  | { kind: 'unit-not-accepted'; allowedUnits: string[] }
-  | { kind: 'restriction-not-accepted'; allowedRestrictions: PledgeRestrictions }
-  | { kind: 'ceiling-blocked'; remainingCapacity: number }
-  | { kind: 'private-pool-not-addressed' }
   | { kind: 'validation'; messages: string[] }
-
-interface PoolBody {
-  id: string
-  orgPrincipal: string
-  acceptedRestrictions: PledgeRestrictions
-  acceptedUnits: string[]
-  capacityCeiling: number | null
-  ceilingPolicy: 'block' | 'waitlist' | 'accept'
-  visibility: 'public' | 'private'
-  addressedMembers: string[] | null
-  pledgedTotal: number
-  stewards: string[]
-}
 
 // ───────────────────────────────────────────────────────────────────────
 // Helpers
@@ -99,109 +79,17 @@ function safeJson<T>(raw: string | null | undefined, fb: T): T {
   try { return JSON.parse(raw) as T } catch { return fb }
 }
 
-/** Cadence-aware total — used to derive the contribute_to_total delta. */
-function cadenceAwareTotal(p: { cadence: Cadence; amount: number; duration?: number | null }): number {
-  if (p.cadence === 'one-time') return p.amount
-  const dur = p.duration ?? 1
-  return p.amount * Math.max(1, dur)
-}
-
 /**
- * Same-DB shortcut: read a pool body from the org-mcp's `pools` table.
+ * POST-PHASE-7: pool body lives ON-CHAIN in PoolRegistry. The pools table
+ * has been DROPPED from org-mcp; counters (pledgedTotal / allocatedTotal /
+ * availableTotal) are DERIVED from `pool_pledges` row sums at read time.
  *
- * v1 SIMPLIFICATION (// TODO(cross-mcp)): person-mcp doesn't natively know
- * about org-mcp's database. We resolve it via a sibling-path lookup. When
- * the target pool isn't in the local org-mcp DB, validation degrades to
- * best-effort with a console warning.
+ * Pool body validation (acceptedUnits, restrictions, visibility,
+ * capacityCeiling) is the action layer's responsibility — it pre-validates
+ * against `DiscoveryService.getPoolDetail` BEFORE invoking
+ * `pool_pledge:submit`. The MCP layer no longer body-validates and no
+ * longer writes counter rows.
  */
-let cachedOrgDb: Database.Database | null = null
-function getOrgMcpDb(): Database.Database | null {
-  if (cachedOrgDb) return cachedOrgDb
-  // Try common locations relative to person-mcp's cwd. Reads-only.
-  const cwd = process.cwd()
-  const candidates = [
-    path.resolve(cwd, '../org-mcp/org-mcp.db'),               // when cwd = apps/person-mcp
-    path.resolve(cwd, 'apps/org-mcp/org-mcp.db'),             // when cwd = repo root
-    path.resolve(cwd, '../../apps/org-mcp/org-mcp.db'),       // pathological
-  ]
-  const dbPath = candidates.find(p => fs.existsSync(p))
-  if (!dbPath) return null
-  try {
-    cachedOrgDb = new Database(dbPath, { readonly: false })
-    return cachedOrgDb
-  } catch {
-    return null
-  }
-}
-
-function readPool(poolId: string): PoolBody | null {
-  const orgDb = getOrgMcpDb()
-  if (!orgDb) {
-    console.warn(
-      `[person-mcp/poolPledges] org-mcp DB not found — pool ${poolId} validation skipped. // TODO(cross-mcp)`,
-    )
-    return null
-  }
-  try {
-    const stmt = orgDb.prepare(`
-      SELECT id, org_principal, accepted_restrictions, accepted_units,
-             capacity_ceiling, ceiling_policy, visibility, addressed_members,
-             pledged_total, stewards
-      FROM pools WHERE id = ?
-    `)
-    const r = stmt.get(poolId) as Record<string, unknown> | undefined
-    if (!r) return null
-    return {
-      id: String(r.id),
-      orgPrincipal: String(r.org_principal).toLowerCase(),
-      acceptedRestrictions: safeJson<PledgeRestrictions>(r.accepted_restrictions as string, {}),
-      acceptedUnits: safeJson<string[]>(r.accepted_units as string, []),
-      capacityCeiling: r.capacity_ceiling != null ? Number(r.capacity_ceiling) : null,
-      ceilingPolicy: ((['block', 'waitlist', 'accept'] as const).find(p => p === r.ceiling_policy) ?? 'accept'),
-      visibility: r.visibility === 'private' ? 'private' : 'public',
-      addressedMembers: r.addressed_members ? safeJson<string[]>(r.addressed_members as string, []) : null,
-      pledgedTotal: Number(r.pledged_total) || 0,
-      stewards: safeJson<string[]>(r.stewards as string, []),
-    }
-  } catch {
-    return null
-  }
-}
-
-/**
- * Bump the pool's pledgedTotal aggregate (issued as the
- * `pool:contribute_to_total` system-delegation). Same-DB shortcut against
- * org-mcp; logs and degrades when target lives elsewhere.
- */
-function bumpPoolTotal(poolId: string, delta: number): void {
-  const orgDb = getOrgMcpDb()
-  if (!orgDb) {
-    console.warn(
-      `[person-mcp/poolPledges] pool:contribute_to_total skipped — org-mcp DB not found. // TODO(cross-mcp)`,
-    )
-    return
-  }
-  try {
-    const sel = orgDb.prepare('SELECT pledged_total, allocated_total FROM pools WHERE id = ?').get(poolId) as
-      | { pledged_total: number; allocated_total: number }
-      | undefined
-    if (!sel) {
-      console.warn(`[person-mcp/poolPledges] pool ${poolId} not found in org-mcp; total bump skipped. // TODO(cross-mcp)`)
-      return
-    }
-    const next = Math.max(0, (sel.pledged_total ?? 0) + delta)
-    const allocated = sel.allocated_total ?? 0
-    const available = Math.max(0, next - allocated)
-    orgDb.prepare(`
-      UPDATE pools SET pledged_total = ?, available_total = ?, updated_at = ?
-      WHERE id = ?
-    `).run(next, available, nowIso(), poolId)
-  } catch (e) {
-    console.warn(
-      `[person-mcp/poolPledges] pool:contribute_to_total failed: ${e instanceof Error ? e.message : e}`,
-    )
-  }
-}
 
 /** Derive the visibility tier from pool visibility + storyPermissions. */
 function deriveVisibility(
@@ -212,33 +100,6 @@ function deriveVisibility(
   if (story === 'public') return 'public'
   if (story === 'shareWithSupportTeam') return 'public-coarse'
   return 'private' // anonymous
-}
-
-/**
- * Validate the donor's restrictions against the pool's accepted set.
- * `kinds`/`geoRoots` must be subsets; `notForAdmin`/`notForDiscretionary`
- * are pass-through booleans (donor may toggle them on regardless).
- */
-function restrictionsAccepted(
-  donor: PledgeRestrictions | undefined,
-  allowed: PledgeRestrictions,
-): boolean {
-  if (!donor) return true
-  if (donor.kinds && donor.kinds.length > 0) {
-    const allowedKinds = (allowed.kinds ?? []).map(k => k.toLowerCase())
-    if (allowedKinds.length === 0) return false
-    for (const k of donor.kinds) {
-      if (!allowedKinds.includes(k.toLowerCase())) return false
-    }
-  }
-  if (donor.geoRoots && donor.geoRoots.length > 0) {
-    const allowedGeo = (allowed.geoRoots ?? []).map(g => g.toLowerCase())
-    if (allowedGeo.length === 0) return false
-    for (const g of donor.geoRoots) {
-      if (!allowedGeo.includes(g.toLowerCase())) return false
-    }
-  }
-  return true
 }
 
 /**
@@ -279,12 +140,17 @@ interface SubmitArgs {
   duration?: number | null
   restrictions?: PledgeRestrictions
   storyPermissions: StoryPermission
+  /** Pool visibility ('public' | 'private') passed by the action layer
+   *  (it has already validated against DiscoveryService.getPoolDetail).
+   *  Used here only to derive the row's `visibility` cascade. Defaults to
+   *  'public' when omitted. */
+  poolVisibility?: 'public' | 'private'
 }
 
 const submitTool = {
   name: 'pool_pledge:submit',
   description:
-    "Validate a pledge against the target pool and persist the row. Cascades pool:contribute_to_total + sa:PledgeAssertion (when public + non-anonymous) + pool:read_pledge cross-delegation (when non-anonymous).",
+    "Persist a PoolPledge row. Pool body validation (acceptedUnits, restrictions, capacityCeiling, visibility) is the action layer's responsibility — it pre-validates against DiscoveryService.getPoolDetail before calling this tool. Cascades pool:read_pledge cross-delegation (when non-anonymous).",
   inputSchema: {
     type: 'object' as const,
     properties: {
@@ -296,6 +162,7 @@ const submitTool = {
       duration: { type: 'number' },
       restrictions: { type: 'object' },
       storyPermissions: { type: 'string', enum: ['public', 'shareWithSupportTeam', 'anonymous'] },
+      poolVisibility: { type: 'string', enum: ['public', 'private'] },
     },
     required: ['token', 'poolAgentId', 'cadence', 'unit', 'amount', 'storyPermissions'],
   },
@@ -313,52 +180,8 @@ const submitTool = {
       return err({ kind: 'validation', messages: ['recurring pledges require duration > 0'] })
     }
 
-    // Read pool — same-DB shortcut.
-    const pool = readPool(args.poolAgentId)
-    if (!pool) {
-      // v1: pool not local — submit anyway with best-effort warning, since
-      // cross-MCP federation is deferred.
-      console.warn(
-        `[person-mcp/poolPledges] pool ${args.poolAgentId} not found locally — submit-time validation skipped. // TODO(cross-mcp)`,
-      )
-    } else {
-      // FR-008: unit must be in pool.acceptedUnits
-      if (pool.acceptedUnits.length > 0 && !pool.acceptedUnits.includes(args.unit)) {
-        return err({ kind: 'unit-not-accepted', allowedUnits: pool.acceptedUnits })
-      }
-      // FR-009: restrictions ⊆ pool.acceptedRestrictions
-      if (!restrictionsAccepted(args.restrictions, pool.acceptedRestrictions)) {
-        return err({ kind: 'restriction-not-accepted', allowedRestrictions: pool.acceptedRestrictions })
-      }
-      // FR-010: private pools — caller must be in addressedMembers.
-      if (pool.visibility === 'private') {
-        const addressed = (pool.addressedMembers ?? []).map(a => a.toLowerCase())
-        if (!addressed.includes(principal.toLowerCase())) {
-          return err({ kind: 'private-pool-not-addressed' })
-        }
-      }
-    }
-
-    // Compute cadence-aware total + ceiling check (FR-012).
-    const total = cadenceAwareTotal({ cadence: args.cadence, amount: args.amount, duration: args.duration ?? null })
-    let pledgeStatus: PledgeStatus = 'active'
-    if (pool && pool.capacityCeiling != null && pool.capacityCeiling > 0) {
-      const remaining = Math.max(0, pool.capacityCeiling - pool.pledgedTotal)
-      if (pool.pledgedTotal + total > pool.capacityCeiling) {
-        if (pool.ceilingPolicy === 'block') {
-          return err({ kind: 'ceiling-blocked', remainingCapacity: remaining })
-        }
-        if (pool.ceilingPolicy === 'waitlist') {
-          pledgeStatus = 'waitlisted'
-        }
-        // 'accept': proceed normally
-      }
-    }
-
-    // Insert row.
-    const visibility: Visibility = pool
-      ? deriveVisibility(pool.visibility, args.storyPermissions)
-      : deriveVisibility('private', args.storyPermissions) // safer default when pool unknown
+    const poolVisibility: 'public' | 'private' = args.poolVisibility ?? 'public'
+    const visibility: Visibility = deriveVisibility(poolVisibility, args.storyPermissions)
     const id = randomUUID()
     const now = nowIso()
     const row = {
@@ -373,7 +196,7 @@ const submitTool = {
       storyPermissions: args.storyPermissions,
       pledgedAt: now,
       stoppedAt: null,
-      status: pledgeStatus,
+      status: 'active' as PledgeStatus,
       history: '[]',
       visibility,
       onChainAssertionId: null,
@@ -382,14 +205,8 @@ const submitTool = {
     }
     db.insert(poolPledges).values(row).run()
 
-    // Side effect 1: pool:contribute_to_total (only when status='active'; waitlisted
-    // contributions are NOT yet credited to pledgedTotal until they activate).
-    if (pledgeStatus === 'active') {
-      bumpPoolTotal(args.poolAgentId, total)
-    }
-
-    // Side effect 2: pool:read_pledge cross-delegation (only when non-anonymous).
-    if (args.storyPermissions !== 'anonymous' && pool) {
+    // Cross-delegation grant (only when non-anonymous).
+    if (args.storyPermissions !== 'anonymous') {
       try {
         issueReadPledgeGrant({ donorPrincipal: principal, poolAgentId: args.poolAgentId, pledgeId: id })
       } catch (e) {
@@ -399,14 +216,7 @@ const submitTool = {
       }
     }
 
-    // Side effect 3: sa:PledgeAssertion emit is deferred to the action layer
-    // (the on-chain emit lives in apps/web; this MCP returns the row and
-    // the action layer fires the emit + writes back onChainAssertionId).
-    // NOTE: SHACL `sa:AnonymousPledgeNoAnchorShape` and
-    // `sa:PrivatePoolPledgeNoAnchorShape` enforce the privacy invariants —
-    // callers MUST consult `visibility` to decide whether to anchor.
-
-    return mcpText({ ok: true as const, pledge: row, status: pledgeStatus })
+    return mcpText({ ok: true as const, pledge: row, status: row.status })
   },
 }
 
@@ -453,11 +263,6 @@ const amendTool = {
 
     const now = nowIso()
     const history = safeJson<PledgeAmendment[]>(existing.history, [])
-    const oldTotal = cadenceAwareTotal({
-      cadence: existing.cadence as Cadence,
-      amount: existing.amount,
-      duration: existing.duration,
-    })
 
     let nextAmount = existing.amount
     let nextCadence = existing.cadence as Cadence
@@ -499,13 +304,8 @@ const amendTool = {
       .where(eq(poolPledges.id, args.pledgeId))
       .run()
 
-    // Re-issue contribute_to_total for the signed delta. Only meaningful when
-    // status is 'active' (waitlisted pledges aren't credited yet).
-    if (existing.status === 'active') {
-      const newTotal = cadenceAwareTotal({ cadence: nextCadence, amount: nextAmount, duration: nextDuration })
-      const delta = newTotal - oldTotal
-      if (delta !== 0) bumpPoolTotal(existing.poolAgentId, delta)
-    }
+    // Counters are derived at read time — no separate counter write.
+    void nextCadence; void nextAmount; void nextDuration
 
     const updated = db.select().from(poolPledges).where(eq(poolPledges.id, args.pledgeId)).all()[0]
     return mcpText({ ok: true as const, pledge: updated })

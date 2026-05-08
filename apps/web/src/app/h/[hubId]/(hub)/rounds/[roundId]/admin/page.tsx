@@ -16,11 +16,14 @@ import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { HUB_SLUG_MAP } from '@/lib/hub-routes'
 import { getHubProfile } from '@/lib/hub-profiles'
 import { getPersonAgentForUser, canManageAgent } from '@/lib/agent-registry'
+import { DiscoveryService } from '@smart-agent/discovery'
 import { RoundAdminClient } from './RoundAdminClient'
 
 export const dynamic = 'force-dynamic'
 
 const C = { text: '#5c4a3a', textMuted: '#9a8c7e', accent: '#8b5e3c', card: '#ffffff', border: '#ece6db' }
+
+const AGENT_IRI_PREFIX = 'https://smartagent.io/ontology/core#agent/'
 
 interface RoundRow {
   id: string
@@ -36,6 +39,21 @@ interface RoundRow {
 }
 
 async function loadRound(fullRoundId: string): Promise<RoundRow | null> {
+  // Body fields (fundAgentId, deadline, decisionDate, status) live on chain;
+  // read via DiscoveryService. Voting fields live in org-mcp's slim rounds
+  // table.
+  const slug = fullRoundId.startsWith('urn:smart-agent:round:')
+    ? fullRoundId.slice('urn:smart-agent:round:'.length)
+    : fullRoundId
+  let body: Awaited<ReturnType<DiscoveryService['getRoundDetail']>> = null
+  try {
+    body = await DiscoveryService.fromEnv().getRoundDetail(slug, null)
+  } catch { body = null }
+  if (!body) return null
+  const fundAgentId = body.fundAgentId.startsWith(AGENT_IRI_PREFIX)
+    ? body.fundAgentId.slice(AGENT_IRI_PREFIX.length)
+    : body.fundAgentId
+
   const path = await import('path')
   const fs = await import('fs')
   const candidates = [
@@ -43,35 +61,36 @@ async function loadRound(fullRoundId: string): Promise<RoundRow | null> {
     path.resolve(process.cwd(), 'apps/org-mcp/org-mcp.db'),
   ]
   const dbPath = candidates.find((p) => fs.existsSync(p))
-  if (!dbPath) return null
-  const Database = (await import('better-sqlite3')).default
-  const db = new Database(dbPath, { readonly: true })
-  try {
-    const r = db.prepare(`
-      SELECT id, fund_agent_id, status, deadline, decision_date,
-             voting_strategy, voting_threshold, voting_window_starts_at,
-             voting_window_ends_at, eligible_voters
-      FROM rounds WHERE id = ?
-    `).get(fullRoundId) as
-      | { id: string; fund_agent_id: string; status: string; deadline: string; decision_date: string;
-          voting_strategy: string; voting_threshold: number;
-          voting_window_starts_at: string | null; voting_window_ends_at: string | null;
-          eligible_voters: string }
-      | undefined
-    if (!r) return null
-    return {
-      id: r.id,
-      fundAgentId: r.fund_agent_id,
-      status: r.status,
-      deadline: r.deadline,
-      decisionDate: r.decision_date,
-      votingStrategy: r.voting_strategy,
-      votingThreshold: r.voting_threshold,
-      votingWindowStartsAt: r.voting_window_starts_at,
-      votingWindowEndsAt: r.voting_window_ends_at,
-      eligibleVoters: r.eligible_voters,
-    }
-  } finally { db.close() }
+  let voting: {
+    voting_strategy: string
+    voting_threshold: number
+    voting_window_starts_at: string | null
+    voting_window_ends_at: string | null
+    eligible_voters: string
+  } | undefined
+  if (dbPath) {
+    const Database = (await import('better-sqlite3')).default
+    const db = new Database(dbPath, { readonly: true })
+    try {
+      voting = db.prepare(`
+        SELECT voting_strategy, voting_threshold, voting_window_starts_at,
+               voting_window_ends_at, eligible_voters
+        FROM rounds WHERE id = ?
+      `).get(fullRoundId) as typeof voting
+    } finally { db.close() }
+  }
+  return {
+    id: fullRoundId,
+    fundAgentId,
+    status: 'open', // round body status not exposed via DiscoveryService.Round; UI reads via FundRegistry getter when needed
+    deadline: body.deadline,
+    decisionDate: body.decisionDate,
+    votingStrategy: voting?.voting_strategy ?? 'steward-quorum',
+    votingThreshold: voting?.voting_threshold ?? 2,
+    votingWindowStartsAt: voting?.voting_window_starts_at ?? null,
+    votingWindowEndsAt: voting?.voting_window_ends_at ?? null,
+    eligibleVoters: voting?.eligible_voters ?? '{"kind":"stewards"}',
+  }
 }
 
 export default async function RoundAdminPage({

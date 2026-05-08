@@ -23,7 +23,6 @@
 
 import { keccak256, toBytes, toHex, type Address, type Hex } from 'viem'
 import { deploySmartAccount, getWalletClient, getPublicClient } from '@/lib/contracts'
-import { callMcp } from '@/lib/clients/mcp-client'
 import { PoolRegistryClient, normalizeGovernance } from '@smart-agent/sdk'
 
 export interface CreatePoolInput {
@@ -94,24 +93,13 @@ export async function createPool(input: CreatePoolInput): Promise<CreatePoolResu
     capacityCeiling: input.capacityCeiling != null ? BigInt(input.capacityCeiling) : 0n,
     stewards: input.stewards,
     visibility: input.visibility,
+    acceptedRestrictions: JSON.stringify(input.acceptedRestrictions ?? {}),
+    slug: input.id,
   })
 
-  // Aggregate-counter row in org-mcp — kept per IA P4 § 8.2 because the
-  // pledged/allocated/available counters mutate on every pledge, too
-  // frequent to anchor on chain. The on-chain anchor for these is the
-  // event-style sa:PoolPledgedTotalAssertion debounced at minute granularity.
-  await callMcp('org', 'pool:init_counters', {
-    poolAgentId: `urn:smart-agent:pool:${input.id}`,
-    treasuryAddress,
-    name: input.name,
-    acceptedRestrictions: input.acceptedRestrictions,
-    acceptedUnits: input.acceptedUnits,
-    capacityCeiling: input.capacityCeiling ?? null,
-    ceilingPolicy: input.ceilingPolicy,
-    visibility: input.visibility,
-    addressedMembers: input.addressedMembers,
-    stewards: input.stewards,
-  })
+  // Pool body lives ON CHAIN via PoolRegistry.open above. Counters
+  // (pledged/allocated/available) are DERIVED at read time from the
+  // pool_pledges table sums — no SQL cache to seed.
 
   const { scheduleKbSyncEager } = await import('@/lib/ontology/kb-write-through')
   scheduleKbSyncEager()

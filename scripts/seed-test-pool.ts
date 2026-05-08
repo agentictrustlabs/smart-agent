@@ -174,64 +174,10 @@ async function deployPoolAgent(
   return computed
 }
 
-async function openSqlite(dbPath: string) {
-  const Database = (await import(
-    path.join(repoRoot, 'node_modules/.pnpm/better-sqlite3@11.10.0/node_modules/better-sqlite3/lib/index.js')
-  ) as { default: new (path: string) => {
-    prepare: (sql: string) => { run: (params: Record<string, unknown>) => void }
-    close: () => void
-  } }).default
-  return new Database(dbPath)
-}
-
-async function seedSqlCounters(deployedPools: Array<{ pool: PoolSeed; treasuryAddress: Address }>): Promise<void> {
-  const dbPath = path.join(repoRoot, 'apps/org-mcp/org-mcp.db')
-  if (!fs.existsSync(dbPath)) {
-    console.warn(`[seed-test-pool] ${dbPath} does not exist — skipping SQL insert`)
-    return
-  }
-  const db = await openSqlite(dbPath)
-  try {
-    const stmt = db.prepare(`
-      INSERT OR REPLACE INTO pools (
-        id, treasury_address, name, accepted_restrictions, accepted_units,
-        capacity_ceiling, ceiling_policy, visibility, addressed_members, stewards,
-        pledged_total, allocated_total, available_total,
-        created_at, updated_at
-      ) VALUES (
-        @id, @treasury_address, @name, @accepted_restrictions, @accepted_units,
-        @capacity_ceiling, @ceiling_policy, @visibility, @addressed_members, @stewards,
-        @pledged_total, @allocated_total, @available_total,
-        @created_at, @updated_at
-      )
-    `)
-    for (const { pool, treasuryAddress } of deployedPools) {
-      const iri = `urn:smart-agent:pool:${pool.id}`
-      stmt.run({
-        id: iri,
-        treasury_address: treasuryAddress,
-        name: pool.name,
-        accepted_restrictions: JSON.stringify(pool.acceptedRestrictions),
-        accepted_units: JSON.stringify(pool.acceptedUnits),
-        capacity_ceiling: null,
-        ceiling_policy: pool.ceilingPolicy,
-        visibility: 'public',
-        addressed_members: null,
-        // Catalyst network as the stewardship agent — Maria has governance over
-      // it, so the round-create UI's canManageAgent gate passes for her.
-      stewards: JSON.stringify([CATALYST_NETWORK_IRI]),
-        pledged_total: 0,
-        allocated_total: 0,
-        available_total: 0,
-        created_at: NOW,
-        updated_at: NOW,
-      })
-      console.log(`[seed-test-pool] SQL ok — ${pool.id} (${pool.name})`)
-    }
-  } finally {
-    db.close()
-  }
-}
+// openSqlite + seedSqlCounters DROPPED: pool body lives on chain via PoolRegistry.open
+// (called above in main); counters are derived at read time from
+// pool_pledges row sums. No SQL seed for the pools table — the table itself
+// has been dropped.
 
 async function seedGraphDB(deployedPools: Array<{ pool: PoolSeed; treasuryAddress: Address }>): Promise<void> {
   const baseUrl = process.env.GRAPHDB_BASE_URL
@@ -331,6 +277,8 @@ async function main(): Promise<void> {
         capacityCeiling: 0n,
         stewards: [treasuryAddress],
         visibility: 'public',
+        acceptedRestrictions: JSON.stringify(pool.acceptedRestrictions ?? {}),
+        slug: pool.id.replace(/^urn:smart-agent:pool:/, ''),
       })
       console.log(`[seed-test-pool] PoolRegistry.open ok — ${pool.id} → tx ${txHash}`)
     } catch (err) {
@@ -342,7 +290,6 @@ async function main(): Promise<void> {
     deployedPools.push({ pool, treasuryAddress })
   }
 
-  await seedSqlCounters(deployedPools)
   await seedGraphDB(deployedPools)
 
   console.log(`\n✓ Seeded ${POOLS.length} pools operated by Catalyst NoCo Network:`)

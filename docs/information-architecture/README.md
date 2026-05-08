@@ -22,6 +22,7 @@ This folder is the **authoritative map of where data lives** across Smart Agent'
 | 11 | [11-org-data-management.md](11-org-data-management.md) | Organization-agent data split across on-chain attributes, semantic names, org-mcp private storage, and trust signals |
 | 12 | [12-person-data-management.md](12-person-data-management.md) | Person-agent data split across minimal on-chain identity, semantic names, person-mcp private storage, credentials, and trust signals |
 | 13 | [13-agent-service-data-management.md](13-agent-service-data-management.md) | Service-agent data split across on-chain capabilities, semantic service names, private service operations, delegation, and trust signals |
+| 14 | [14-pool-creation-access-architecture.md](14-pool-creation-access-architecture.md) | Pool creation/access object interactions across web app, A2A, MCPs, PoolRegistry, GraphDB sync, and Discovery |
 
 ## Companion Docs
 

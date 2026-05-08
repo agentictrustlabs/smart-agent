@@ -110,16 +110,8 @@ export const SPEC_002_SCOPES = {
     kind: 'user',
     spec: '002',
   },
-  /**
-   * System-delegation: contribute (signed delta) to the pool's pledgedTotal
-   * aggregate. Issued by donor's MCP to pool's org-mcp on submit / amend / stop.
-   */
-  pool_contribute_to_total: {
-    scope: 'pool:contribute_to_total',
-    description: "Apply a signed delta to the pool's pledgedTotal aggregate counter.",
-    kind: 'system',
-    spec: '002',
-  },
+  // pool_contribute_to_total DROPPED (Phase 7): pool counters are derived
+  // at read time from pool_pledges row sums. No system-delegation needed.
   /**
    * System-delegation: auto-stop a pledge when its underlying pool transitions
    * to closed/withdrawn. Issued by pool steward's MCP to pledger's MCP.

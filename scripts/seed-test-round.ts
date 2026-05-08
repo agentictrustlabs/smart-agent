@@ -190,47 +190,45 @@ async function openSqlite(dbPath: string) {
 }
 
 async function seedSqlCache(fundAgent: Address): Promise<void> {
+  // Round body lives ON CHAIN in FundRegistry now; this seed script's
+  // FundRegistry.openRound call (in main()) writes the canonical body. The
+  // org-mcp `rounds` table is slim (voting config only) and auto-creates
+  // rows when `round:update_voting_config` is first called — no SQL seed
+  // needed for the body. Keep the function as a no-op for callsite stability.
+  void fundAgent
   const dbPath = path.join(repoRoot, 'apps/org-mcp/org-mcp.db')
   if (!fs.existsSync(dbPath)) {
-    console.warn(`[seed-test-round] ${dbPath} does not exist — skipping SQL insert`)
+    console.warn(`[seed-test-round] ${dbPath} does not exist — skipping SQL seed`)
     return
   }
   const db = await openSqlite(dbPath)
   try {
+    // Insert default voting config rows (steward-quorum, threshold=2) for
+    // each demo round so the admin / vote pages work without an explicit
+    // round:update_voting_config call.
     const stmt = db.prepare(`
       INSERT OR REPLACE INTO rounds (
-        id, fund_agent_id, mandate, milestone_template, validator_requirements,
-        reporting_cadence, deadline, decision_date, required_credentials,
-        visibility, addressed_applicants, status, proposals_received,
-        created_at, updated_at
+        id, voting_strategy, voting_threshold,
+        voting_window_starts_at, voting_window_ends_at,
+        eligible_voters, updated_at
       ) VALUES (
-        @id, @fund_agent_id, @mandate, @milestone_template, @validator_requirements,
-        @reporting_cadence, @deadline, @decision_date, @required_credentials,
-        @visibility, @addressed_applicants, @status, @proposals_received,
-        @created_at, @updated_at
+        @id, 'steward-quorum', 2,
+        @voting_window_starts_at, @voting_window_ends_at,
+        '{"kind":"stewards"}', @updated_at
       )
     `)
     for (const r of ROUNDS) {
       const iri = `urn:smart-agent:round:${r.id}`
-      const mandateWithDisplay = { ...r.mandate, displayName: r.displayName }
+      // Default voting window: opens at submission deadline, closes 7 days later.
+      const windowStart = r.deadline
+      const windowEnd = new Date(Date.parse(r.deadline) + 7 * 24 * 60 * 60 * 1000).toISOString()
       stmt.run({
         id: iri,
-        fund_agent_id: fundAgent,
-        mandate: JSON.stringify(mandateWithDisplay),
-        milestone_template: JSON.stringify(r.milestone),
-        validator_requirements: JSON.stringify(r.validators),
-        reporting_cadence: r.reportingCadence,
-        deadline: r.deadline,
-        decision_date: r.decisionDate,
-        required_credentials: '[]',
-        visibility: 'public',
-        addressed_applicants: null,
-        status: 'open',
-        proposals_received: 0,
-        created_at: NOW,
+        voting_window_starts_at: windowStart,
+        voting_window_ends_at: windowEnd,
         updated_at: NOW,
       })
-      console.log(`[seed-test-round] SQL ok — ${r.id} (${r.displayName})`)
+      console.log(`[seed-test-round] SQL voting config ok — ${r.id} (${r.displayName})`)
     }
   } finally {
     db.close()
@@ -334,6 +332,9 @@ async function main(): Promise<void> {
         requiredCredentials: [],
         visibility: 'public',
         initialStatus: 'open',
+        mandate: JSON.stringify(r.mandate ?? {}),
+        milestoneTemplate: JSON.stringify(r.milestoneTemplate ?? {}),
+        validatorRequirements: JSON.stringify(r.validatorRequirements ?? {}),
       })
       console.log(`[seed-test-round] FundRegistry.openRound ok — ${r.id} → tx ${txHash}`)
     } catch (err) {

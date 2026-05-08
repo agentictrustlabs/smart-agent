@@ -26,7 +26,6 @@ export interface ActionFailure { ok: false; error: string }
 interface RoundRow {
   id: string
   fundAgentId: string
-  status: string
   votingThreshold: number
 }
 
@@ -39,6 +38,8 @@ interface ProposalRow {
 }
 
 async function loadRound(fullRoundId: string): Promise<RoundRow | null> {
+  // voting_threshold lives in org-mcp's slim rounds table (off-chain DAO
+  // config). fundAgentId + status live on chain — read via DiscoveryService.
   const path = await import('path')
   const fs = await import('fs')
   const candidates = [
@@ -46,16 +47,28 @@ async function loadRound(fullRoundId: string): Promise<RoundRow | null> {
     path.resolve(process.cwd(), 'apps/org-mcp/org-mcp.db'),
   ]
   const dbPath = candidates.find((p) => fs.existsSync(p))
-  if (!dbPath) return null
-  const Database = (await import('better-sqlite3')).default
-  const db = new Database(dbPath, { readonly: true })
-  try {
-    const r = db.prepare('SELECT id, fund_agent_id, status, voting_threshold FROM rounds WHERE id = ?').get(fullRoundId) as
-      | { id: string; fund_agent_id: string; status: string; voting_threshold: number }
-      | undefined
-    if (!r) return null
-    return { id: r.id, fundAgentId: r.fund_agent_id, status: r.status, votingThreshold: r.voting_threshold }
-  } finally { db.close() }
+  let votingThreshold = 2 // default
+  if (dbPath) {
+    const Database = (await import('better-sqlite3')).default
+    const db = new Database(dbPath, { readonly: true })
+    try {
+      const r = db.prepare('SELECT voting_threshold FROM rounds WHERE id = ?').get(fullRoundId) as
+        | { voting_threshold: number }
+        | undefined
+      if (r) votingThreshold = r.voting_threshold
+    } finally { db.close() }
+  }
+  const { DiscoveryService } = await import('@smart-agent/discovery')
+  const slug = fullRoundId.startsWith('urn:smart-agent:round:')
+    ? fullRoundId.slice('urn:smart-agent:round:'.length)
+    : fullRoundId
+  const round = await DiscoveryService.fromEnv().getRoundDetail(slug, null)
+  if (!round) return null
+  const AGENT_IRI_PREFIX = 'https://smartagent.io/ontology/core#agent/'
+  const fundAgentId = round.fundAgentId.startsWith(AGENT_IRI_PREFIX)
+    ? round.fundAgentId.slice(AGENT_IRI_PREFIX.length)
+    : round.fundAgentId
+  return { id: fullRoundId, fundAgentId, votingThreshold }
 }
 
 async function loadProposalsByIds(ids: string[]): Promise<Map<string, ProposalRow>> {

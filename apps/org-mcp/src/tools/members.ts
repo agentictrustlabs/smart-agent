@@ -1,84 +1,16 @@
 import { randomUUID } from 'node:crypto'
 import { and, eq } from 'drizzle-orm'
 import { db } from '../db/index.js'
-import { orgMembers, detachedMembers } from '../db/schema.js'
+import { detachedMembers } from '../db/schema.js'
 import { requireOrgPrincipalAny as requireOrgPrincipal } from '../auth/principal-context.js'
 
 const mcpText = <T>(v: T) => ({ content: [{ type: 'text' as const, text: JSON.stringify(v) }] })
 
+// list_members / upsert_member dropped: org membership lives on-chain in
+// AgentRelationship edges. Web reads via DiscoveryService.getOutgoingEdges;
+// no MCP tool was needed here (zero callers existed).
+
 export const membersTools = {
-  list_members: {
-    name: 'list_members',
-    description: 'List org members (with private metadata). On-chain edges anchor identity; this table holds the private side.',
-    inputSchema: {
-      type: 'object' as const,
-      properties: { token: { type: 'string' } },
-      required: ['token'],
-    },
-    handler: async (args: { token: string }) => {
-      const orgPrincipal = await requireOrgPrincipal(args.token, args, 'list_members')
-      const rows = db.select().from(orgMembers).where(eq(orgMembers.orgPrincipal, orgPrincipal)).all()
-      return mcpText({ members: rows })
-    },
-  },
-
-  upsert_member: {
-    name: 'upsert_member',
-    description: 'Insert or update a private member record (paired with an on-chain edge).',
-    inputSchema: {
-      type: 'object' as const,
-      properties: {
-        token: { type: 'string' },
-        memberAgent: { type: 'string' },
-        role: { type: 'string' },
-        joinedAt: { type: 'string' },
-        leftAt: { type: 'string' },
-        edgeId: { type: 'string' },
-        internalNotes: { type: 'string' },
-      },
-      required: ['token', 'memberAgent'],
-    },
-    handler: async (args: {
-      token: string
-      memberAgent: string
-      role?: string
-      joinedAt?: string
-      leftAt?: string
-      edgeId?: string
-      internalNotes?: string
-    }) => {
-      const orgPrincipal = await requireOrgPrincipal(args.token, args, 'upsert_member')
-      const memberAgent = args.memberAgent.toLowerCase()
-      const existing = db.select().from(orgMembers)
-        .where(and(eq(orgMembers.orgPrincipal, orgPrincipal), eq(orgMembers.memberAgent, memberAgent)))
-        .all()
-
-      if (existing.length === 0) {
-        const row = {
-          id: randomUUID(),
-          orgPrincipal,
-          memberAgent,
-          role: args.role ?? null,
-          joinedAt: args.joinedAt ?? new Date().toISOString(),
-          leftAt: args.leftAt ?? null,
-          edgeId: args.edgeId ?? null,
-          internalNotes: args.internalNotes ?? null,
-        }
-        db.insert(orgMembers).values(row).run()
-        return mcpText({ member: row })
-      }
-      const updates: Record<string, string | null> = {}
-      if (args.role !== undefined) updates.role = args.role
-      if (args.leftAt !== undefined) updates.leftAt = args.leftAt
-      if (args.edgeId !== undefined) updates.edgeId = args.edgeId
-      if (args.internalNotes !== undefined) updates.internalNotes = args.internalNotes
-      db.update(orgMembers).set(updates)
-        .where(and(eq(orgMembers.orgPrincipal, orgPrincipal), eq(orgMembers.memberAgent, memberAgent)))
-        .run()
-      return mcpText({ updated: true, id: existing[0].id })
-    },
-  },
-
   list_detached_members: {
     name: 'list_detached_members',
     description: 'List detached members (people tracked without on-chain identity).',

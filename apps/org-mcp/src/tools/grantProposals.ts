@@ -28,7 +28,6 @@ import { and, eq } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import {
   proposalSubmissions,
-  rounds,
   orgIntents,
   orgCrossDelegationGrants,
 } from '../db/schema.js'
@@ -97,6 +96,12 @@ interface SubmitArgs {
    *  submit tool can transition it from 'draft' to 'submitted' instead of
    *  inserting a fresh row. */
   draftId?: string
+  /** Optional: action-layer hint for the round's fundAgent address (steward
+   *  of the round). When provided, the submit handler issues the
+   *  `proposal:read_for_review` cross-delegation to this address. Action layer
+   *  resolves it via `DiscoveryService.getRoundDetail`; required because the
+   *  MCP layer no longer reads the round body. */
+  stewardAgentHint?: string
 }
 
 type SubmitErrorKind =
@@ -119,41 +124,14 @@ function nowIso(): string {
   return new Date().toISOString()
 }
 
-interface RoundBody {
-  id: string
-  orgPrincipal: string
-  mandate: { acceptedKinds: string[]; acceptedGeo: string[]; budgetCeiling: number; expectedAwards: number }
-  visibility: 'public' | 'private'
-  addressedApplicants: string[] | null
-  requiredCredentials: string[]
-  deadline: string
-}
-
-function safeJson<T>(raw: string | null | undefined, fb: T): T {
-  if (!raw) return fb
-  try { return JSON.parse(raw) as T } catch { return fb }
-}
-
 /**
- * Read a round body from the same-DB rounds table. v1 simplification:
- * cross-MCP federation is deferred. If the fund's org-mcp is a different
- * instance, this returns null and the caller must surface a validation
- * error. // TODO(cross-mcp): replace with a federated round-read RPC.
+ * POST-PHASE-7: Round body lives on chain in FundRegistry — read it via
+ * DiscoveryService.getRoundDetail() in the action layer (web). This MCP
+ * layer no longer body-validates round membership / mandate / deadline. The
+ * action layer pre-validates BEFORE calling grant_proposal:submit and is
+ * the canonical guardrail. SHACL still enforces the visibility-cascade
+ * invariants (e.g., sa:GrantProposalAlwaysPrivateShape).
  */
-function readLocalRound(roundId: string): RoundBody | null {
-  const rows = db.select().from(rounds).where(eq(rounds.id, roundId)).all()
-  if (rows.length === 0) return null
-  const r = rows[0]
-  return {
-    id: r.id,
-    orgPrincipal: r.fundAgentId.toLowerCase(),
-    mandate: safeJson(r.mandate, { acceptedKinds: [], acceptedGeo: [], budgetCeiling: 0, expectedAwards: 0 }),
-    visibility: (r.visibility === 'private' ? 'private' : 'public'),
-    addressedApplicants: r.addressedApplicants ? safeJson<string[]>(r.addressedApplicants, []) : null,
-    requiredCredentials: safeJson<string[]>(r.requiredCredentials, []),
-    deadline: r.deadline,
-  }
-}
 
 /**
  * Validate the AnonCreds credential ownership for the proposer against the
@@ -216,20 +194,12 @@ function bumpAckCount(intentId: string, delta: 1 | -1, orgPrincipal: string): vo
 }
 
 /**
- * Increment the round's proposalsReceived counter. Same-DB call when the
- * round is local; warning otherwise. // TODO(cross-mcp).
+ * NO-OP: proposalsReceived is now DERIVED at read time from
+ * COUNT(proposal_submissions WHERE round_id = ?). Kept as a function
+ * placeholder so the submit / withdraw flows below stay readable.
  */
-function bumpRoundCounter(roundId: string, delta: 1 | -1): void {
-  const r = db.select().from(rounds).where(eq(rounds.id, roundId)).all()[0]
-  if (!r) {
-    console.warn(`[org-mcp/grantProposals] round counter skipped — round ${roundId} not local. // TODO(cross-mcp)`)
-    return
-  }
-  const next = Math.max(0, (r.proposalsReceived ?? 0) + delta)
-  db.update(rounds)
-    .set({ proposalsReceived: next, updatedAt: nowIso() })
-    .where(eq(rounds.id, roundId))
-    .run()
+function bumpRoundCounter(_roundId: string, _delta: 1 | -1): void {
+  // intentional no-op
 }
 
 /**
@@ -315,55 +285,15 @@ const submitTool = {
       return err({ kind: 'missing-required-fields', fields: missing })
     }
 
-    // ─── Round-targeted validation ────────────────────────────────────
-    if (hasRound) {
-      const round = readLocalRound(args.roundId as string)
-      if (!round) {
-        // v1: round in different MCP tenant → cannot validate cross-MCP. Treat
-        // as a soft warning rather than a hard failure for the demo path.
-        // Production: error out. // TODO(cross-mcp).
-        console.warn(
-          `[org-mcp/grantProposals] round ${args.roundId} not local — submit-time validation skipped. // TODO(cross-mcp)`,
-        )
-      } else {
-        // Budget ceiling.
-        if (round.mandate.budgetCeiling > 0 && args.budget.total > round.mandate.budgetCeiling) {
-          return err({
-            kind: 'budget-overage',
-            ceiling: round.mandate.budgetCeiling,
-            submitted: args.budget.total,
-          })
-        }
-        // Required credentials.
-        const credCheck = checkCredentialsHeld(round.requiredCredentials, orgPrincipal)
-        if (!credCheck.ok) {
-          return err({
-            kind: 'missing-credential',
-            required: round.requiredCredentials,
-            held: credCheck.held,
-          })
-        }
-        // Private-round addressee membership (FR-012).
-        if (round.visibility === 'private') {
-          const list = (round.addressedApplicants ?? []).map((a) => a.toLowerCase())
-          if (!list.includes(orgPrincipal.toLowerCase())) {
-            return err({ kind: 'private-round-not-addressed' })
-          }
-        }
-      }
-    }
-
-    // ─── Open-call eligibility (Q5 / FR-014) ──────────────────────────
-    if (hasFund) {
-      // v1 simplification: we can't always read the fund's `acceptsOpenCalls`
-      // metadata in-process (lives on agent profile). For the demo path we
-      // accept the open-call when the proposer explicitly supplies a
-      // fundMandateId — production wires a discovery lookup.
-      // // TODO(open-call): wire DiscoveryService.fundMandateQuery here.
-      console.warn(
-        `[org-mcp/grantProposals] open-call acceptsOpenCalls check stubbed for fund ${args.fundMandateId}. // TODO`,
-      )
-    }
+    // ─── Round / fund body validation ─────────────────────────────────
+    // POST-PHASE-7: round body lives on chain in FundRegistry. Body
+    // validation (budget ceiling, required credentials, private-round
+    // addressee, open-call eligibility) is the action-layer's responsibility
+    // — it pre-validates against DiscoveryService.getRoundDetail BEFORE
+    // calling this tool. The MCP layer trusts the action-layer gate; SHACL
+    // still enforces the always-private invariant on the row.
+    void checkCredentialsHeld  // referenced indirectly; kept for forward-compat
+    void hasFund
 
     // ─── Insert the row ───────────────────────────────────────────────
     const now = nowIso()
@@ -435,16 +365,12 @@ const submitTool = {
     bumpAckCount(args.basedOnIntentId, 1, orgPrincipal)
 
     // ─── Side effect 3: proposal:read_for_review cross-delegation ─────
-    // Fund/round steward = the round's org_principal (= fundAgentId). For the
-    // round case we read the fund-id from the local round body; for open-call
-    // we use the supplied fundMandateId directly.
-    let stewardAgent: string | null = null
-    if (hasRound && args.roundId) {
-      const r = readLocalRound(args.roundId)
-      stewardAgent = r?.orgPrincipal ?? null
-    } else if (hasFund && args.fundMandateId) {
-      stewardAgent = args.fundMandateId
-    }
+    // Fund/round steward = the round's fundAgent (lives on chain in
+    // FundRegistry). The action layer resolves it via DiscoveryService and
+    // passes it in `stewardAgentHint`; for open-call we fall back to
+    // fundMandateId.
+    const stewardAgent: string | null = args.stewardAgentHint
+      ?? (hasFund ? (args.fundMandateId ?? null) : null)
     if (stewardAgent) {
       issueReadForReviewGrant({
         proposerPrincipal: orgPrincipal,
@@ -455,7 +381,7 @@ const submitTool = {
       })
     } else {
       console.warn(
-        `[org-mcp/grantProposals] no steward agent resolvable for proposal ${proposalId}; cross-delegation grant skipped. // TODO(cross-mcp)`,
+        `[org-mcp/grantProposals] no steward agent resolvable for proposal ${proposalId}; cross-delegation grant skipped. Pass stewardAgentHint when calling submit.`,
       )
     }
 
@@ -720,23 +646,9 @@ const editPreDeadlineTool = {
     if (existing.status !== 'submitted') {
       throw new Error(`proposal ${args.proposalId} is not in 'submitted' state (status=${existing.status})`)
     }
-    // Pre-deadline check via local round body (v1 same-DB shortcut).
-    if (existing.roundId) {
-      const round = readLocalRound(existing.roundId)
-      if (round && round.deadline) {
-        if (Date.now() > Date.parse(round.deadline)) {
-          return mcpText({
-            ok: false as const,
-            error: {
-              kind: 'post-deadline' as const,
-              message: 'post-deadline edits require steward consent — out of scope for this spec (FR-022)',
-            },
-          })
-        }
-      }
-      // // TODO(cross-mcp): when round body is in a different MCP tenant,
-      // proxy the deadline check via `get_round`.
-    }
+    // POST-PHASE-7: deadline check moved to the action layer (round body
+    // lives on chain in FundRegistry; the action layer reads it via
+    // DiscoveryService.getRoundDetail and gates this call before invoking it).
     const now = nowIso()
     const nextVersion = (existing.version ?? 0) + 1
     const patchSet: Record<string, unknown> = { lastEditedAt: now, version: nextVersion }

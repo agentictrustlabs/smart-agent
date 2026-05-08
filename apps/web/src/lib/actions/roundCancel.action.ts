@@ -13,7 +13,6 @@
  */
 
 import { type Address, type Hex } from 'viem'
-import { callMcp } from '@/lib/clients/mcp-client'
 import { getWalletClient, getPublicClient } from '@/lib/contracts'
 import { FundRegistryClient } from '@smart-agent/sdk'
 
@@ -62,12 +61,10 @@ export async function cancelRound(input: CancelRoundInput): Promise<CancelRoundR
   // TODO(phase-3): revoke the SESSION_DELEGATION via DelegationManager when
   // input.revokedSessionHash is provided.
 
-  await callMcp('org', 'round:cancel', {
-    roundId: fullRoundId,
-    reasonKind: input.reasonKind,
-    reasonURI: input.reasonURI,
-    revokedSessionHash: input.revokedSessionHash,
-  })
+  // Cancellation lives on chain (status='canceled' set above). The reason
+  // metadata is published via sa:RoundCanceledAssertion in the assertion
+  // emit pipeline, not in SQL. The on-chain → GraphDB sync mirrors status.
+  void input.reasonURI; void input.revokedSessionHash
 
   const { scheduleKbSyncEager } = await import('@/lib/ontology/kb-write-through')
   scheduleKbSyncEager()

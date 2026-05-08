@@ -69,8 +69,9 @@ export class PoolPledgeClient implements IPoolPledgeClient {
   }
 
   /**
-   * Amend a recurring pledge. The MCP appends to history, mutates top-level
-   * fields, and re-issues `pool:contribute_to_total` for the signed delta.
+   * Amend a recurring pledge. The MCP appends to history and mutates
+   * top-level fields. Pool counters are derived at read time, so no
+   * separate counter write is fired (post-Phase-7).
    * Returns the post-amendment row.
    */
   async amend(req: AmendPledgeRequest): Promise<PoolPledge> {

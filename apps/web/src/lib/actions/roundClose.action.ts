@@ -119,14 +119,8 @@ export async function closeRound(input: CloseRoundInput): Promise<CloseRoundResu
   // 2. Status → 'decided'
   const statusTxHash = await fund.setRoundStatus(roundIdSlug, 'decided')
 
-  // 3. Persist closure cache + per-proposal awarded flag (org-mcp).
-  await callMcp('org', 'round:close', {
-    roundId: fullRoundId,
-    awardsRoot,
-    decidedAt,
-    disputeUntil,
-    stewardSetHash: input.stewardSetHash,
-  })
+  // Round closure (awardsRoot + status + dispute window) lives ON CHAIN now.
+  // No SQL mirror; the on-chain → GraphDB sync surfaces the closure.
 
   // 4. Per-proposal: announce on chain (public facet) + flip MCP row.
   const proposalAnnouncements: Array<{ proposalIRI: string; txHash: Hex }> = []

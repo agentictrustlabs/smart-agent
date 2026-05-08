@@ -43,14 +43,6 @@ const ACTION_TO_STATUS: Record<RoundLifecycleAction, RoundStatus> = {
   'cancel': 'canceled',
 }
 
-const STATUS_TO_CACHE: Record<RoundStatus, string> = {
-  open: 'open',
-  review: 'review',
-  decided: 'decided',
-  closed: 'closed',
-  canceled: 'canceled',
-}
-
 async function authForRound(roundFullId: string): Promise<{ ok: true; fundAgent: Address; roundSlug: string } | ActionFailure> {
   const user = await getCurrentUser()
   if (!user) return { ok: false, error: 'not-authenticated' }
@@ -98,14 +90,8 @@ export async function advanceRoundLifecycle(
     return { ok: false, error: err instanceof Error ? err.message : String(err) }
   }
 
-  // Mirror to cache so the proposals page + admin page reflect immediately.
-  try {
-    await callMcp('org', 'round:update_status', {
-      roundId: roundFullId,
-      status: STATUS_TO_CACHE[newStatus],
-    }).catch(() => null)
-  } catch { /* cache best-effort */ }
-
+  // Status is on chain via FundRegistry.setRoundStatus (above) — no SQL
+  // mirror needed; the on-chain → GraphDB sync surfaces the new status.
   const { scheduleKbSyncEager } = await import('@/lib/ontology/kb-write-through')
   scheduleKbSyncEager()
 

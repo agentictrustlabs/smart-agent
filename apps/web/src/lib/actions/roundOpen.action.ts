@@ -19,6 +19,10 @@ import { callMcp } from '@/lib/clients/mcp-client'
 import { getWalletClient, getPublicClient } from '@/lib/contracts'
 import { FundRegistryClient } from '@smart-agent/sdk'
 
+// FundRegistry.openRound writes the round body to chain. Voting config
+// (off-chain DAO settings) is initialized in org-mcp via
+// `round:update_voting_config` (auto-creates the row).
+
 export interface OpenRoundInput {
   /** Canonical round id slug (e.g. 'demo-trauma-care-q2'). */
   id: string
@@ -98,19 +102,10 @@ export async function openRound(input: OpenRoundInput): Promise<OpenRoundResult>
   const votingStrategy = input.votingStrategy ?? 'steward-quorum'
   const votingThreshold = input.votingThreshold ?? 2
 
-  // Cache body in org-mcp for the proposal hot-path validator.
-  await callMcp('org', 'round:open', {
-    id: fullId,
-    fundAgentId: input.fundAgentId,
-    mandate: input.mandate,
-    milestoneTemplate: input.milestoneTemplate ?? {},
-    validatorRequirements: input.validatorRequirements ?? { minValidators: 1 },
-    reportingCadence: input.reportingCadence,
-    deadline: input.deadline,
-    decisionDate: input.decisionDate,
-    requiredCredentials: input.requiredCredentials ?? [],
-    visibility: input.visibility,
-    addressedApplicants: input.addressedApplicants,
+  // Body lives ON CHAIN via the FundRegistry.openRound call above. Initialize
+  // the slim off-chain voting config row in org-mcp.
+  await callMcp('org', 'round:update_voting_config', {
+    roundId: fullId,
     votingStrategy,
     votingThreshold,
     votingWindowStartsAt,

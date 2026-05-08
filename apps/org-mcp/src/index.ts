@@ -23,7 +23,6 @@ import { grantProposalsTools } from './tools/grantProposals.js'
 import { roundsTools } from './tools/rounds.js'
 import { matchInitiationsTools } from './tools/matchInitiations.js'
 import { poolPledgesTools } from './tools/poolPledges.js'
-import { poolsTools } from './tools/pools.js'
 import { proposalVotesTools } from './tools/proposalVotes.js'
 import { fundingTools } from './tools/disbursements.js'
 
@@ -41,7 +40,6 @@ const allTools = {
   ...roundsTools,
   ...matchInitiationsTools,
   ...poolPledgesTools,
-  ...poolsTools,
   ...proposalVotesTools,
   ...fundingTools,
 } as const

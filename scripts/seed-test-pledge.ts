@@ -131,33 +131,9 @@ async function seedSql(): Promise<void> {
     db.close()
   }
 
-  // Recompute pool aggregates (pledged_total / available_total) from the
-  // pledges we just seeded. Idempotent: per-pool totals are summed once
-  // from this script's PLEDGES array, then written. Re-runs converge on
-  // the same number instead of double-counting.
-  const orgDbPath = path.join(repoRoot, 'apps/org-mcp/org-mcp.db')
-  if (!fs.existsSync(orgDbPath)) return
-  const orgDb = await openSqlite(orgDbPath)
-  try {
-    const totalsByPool = new Map<string, number>()
-    for (const p of PLEDGES) {
-      const iri = `urn:smart-agent:pool:${p.poolId}`
-      totalsByPool.set(iri, (totalsByPool.get(iri) ?? 0) + p.amount * p.duration)
-    }
-    const update = orgDb.prepare(`
-      UPDATE pools SET
-        pledged_total = @total,
-        available_total = @total - allocated_total,
-        updated_at = @now
-      WHERE id = @poolIri
-    `)
-    for (const [poolIri, total] of totalsByPool) {
-      update.run({ poolIri, total, now: NOW })
-      console.log(`[seed-test-pledge] org-mcp aggregate set: ${poolIri} → ${total}`)
-    }
-  } finally {
-    orgDb.close()
-  }
+  // Pool counters (pledged_total / allocated_total / available_total) are
+  // DERIVED at read time from pool_pledges row sums (post-Phase-7). The
+  // legacy `pools` table has been dropped — no aggregate write needed.
 }
 
 async function main(): Promise<void> {

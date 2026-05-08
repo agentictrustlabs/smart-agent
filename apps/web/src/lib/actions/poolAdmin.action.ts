@@ -18,7 +18,6 @@ import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { getPersonAgentForUser, canManageAgent } from '@/lib/agent-registry'
 import { getWalletClient, getPublicClient } from '@/lib/contracts'
 import { poolRegistryAbi } from '@smart-agent/sdk'
-import { callMcp } from '@/lib/clients/mcp-client'
 
 export interface ActionFailure { ok: false; error: string }
 
@@ -67,16 +66,9 @@ export async function updatePoolMandate(
     return { ok: false, error: err instanceof Error ? err.message : String(err) }
   }
 
-  // Mirror to MCP cache so the pool detail page reflects the new
-  // accepted-restrictions / accepted-units immediately.
-  try {
-    await callMcp('org', 'pool:update_cache', {
-      poolAgentId: input.poolIRI,
-      acceptedRestrictions: input.mandate.acceptedRestrictions ?? input.mandate,
-      acceptedUnits: input.mandate.acceptedUnits ?? [],
-    }).catch(() => null)
-  } catch { /* best-effort */ }
-
+  // Pool body lives on chain via PoolRegistry — the updateMandate tx above
+  // is the source of truth; the on-chain → GraphDB sync surfaces the new
+  // mandate. No SQL cache to update.
   const { scheduleKbSyncEager } = await import('@/lib/ontology/kb-write-through')
   scheduleKbSyncEager()
 
@@ -114,16 +106,8 @@ export async function rotatePoolStewards(
     return { ok: false, error: err instanceof Error ? err.message : String(err) }
   }
 
-  // Mirror to cache. Stewards in cache are the "displayable" steward set
-  // (governance/management). On-chain `sa:poolStewards` is the actual
-  // steward array we just rotated.
-  try {
-    await callMcp('org', 'pool:update_cache', {
-      poolAgentId: input.poolIRI,
-      stewards: input.stewards,
-    }).catch(() => null)
-  } catch { /* best-effort */ }
-
+  // Stewards live on chain via PoolRegistry.rotateStewards — no SQL cache
+  // to update.
   const { scheduleKbSyncEager } = await import('@/lib/ontology/kb-write-through')
   scheduleKbSyncEager()
 

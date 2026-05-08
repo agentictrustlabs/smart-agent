@@ -1,8 +1,7 @@
 /**
  * Spec 002 — Intent Marketplace (Pool Lane). PoolPledge MCP tools.
  *
- * org-mcp side: org donors. Twins person-mcp's poolPledges.ts. See that
- * file for the full design rationale.
+ * org-mcp side: org donors. Twins person-mcp's poolPledges.ts.
  *
  * Tools registered (each tool name === scope name):
  *   - pool_pledge:submit
@@ -10,17 +9,23 @@
  *   - pool_pledge:stop
  *   - pool_pledge:auto_stop   (system-delegation from pool steward)
  *   - pool_pledge:read_self
+ *   - pool_pledge:read_pool_counters  (derived from pool_pledges sums)
  *
  * Persistence: `pool_pledges` table per IA § 2.2 (org-mcp tenancy column =
  * `principal`, NOT `org_principal`, per the IA classification doc).
  *
- * v1 SIMPLIFICATION: pool body reads run against the LOCAL `pools` table
- * (same DB). Cross-MCP federation deferred. // TODO(cross-mcp).
+ * POST-PHASE-7: pool BODY (acceptedUnits, restrictions, capacityCeiling,
+ * visibility, addressedMembers, stewards) lives ON-CHAIN in PoolRegistry.
+ * The action layer pre-validates against DiscoveryService.getPoolDetail()
+ * BEFORE invoking pool_pledge:submit. The MCP layer no longer body-validates
+ * — it persists the pledge as-is and trusts the action-layer gate. Counters
+ * (pledgedTotal / allocatedTotal / availableTotal) are DERIVED from
+ * `pool_pledges` rows at read time via `pool_pledge:read_pool_counters`.
  */
 import { randomUUID } from 'node:crypto'
-import { and, eq } from 'drizzle-orm'
+import { and, eq, sql } from 'drizzle-orm'
 import { db } from '../db/index.js'
-import { poolPledges, pools, orgCrossDelegationGrants } from '../db/schema.js'
+import { poolPledges, orgCrossDelegationGrants } from '../db/schema.js'
 import { requireOrgPrincipalAny as requireOrgPrincipal } from '../auth/principal-context.js'
 
 const mcpText = <T>(v: T) => ({ content: [{ type: 'text' as const, text: JSON.stringify(v) }] })
@@ -46,24 +51,7 @@ interface PledgeAmendment {
 }
 
 type SubmitErrorKind =
-  | { kind: 'unit-not-accepted'; allowedUnits: string[] }
-  | { kind: 'restriction-not-accepted'; allowedRestrictions: PledgeRestrictions }
-  | { kind: 'ceiling-blocked'; remainingCapacity: number }
-  | { kind: 'private-pool-not-addressed' }
   | { kind: 'validation'; messages: string[] }
-
-interface PoolBody {
-  id: string
-  orgPrincipal: string
-  acceptedRestrictions: PledgeRestrictions
-  acceptedUnits: string[]
-  capacityCeiling: number | null
-  ceilingPolicy: 'block' | 'waitlist' | 'accept'
-  visibility: 'public' | 'private'
-  addressedMembers: string[] | null
-  pledgedTotal: number
-  stewards: string[]
-}
 
 function err(error: SubmitErrorKind) {
   return mcpText({ ok: false as const, error })
@@ -84,36 +72,45 @@ function cadenceAwareTotal(p: { cadence: Cadence; amount: number; duration?: num
   return p.amount * Math.max(1, dur)
 }
 
-function readLocalPool(poolId: string): PoolBody | null {
-  const r = db.select().from(pools).where(eq(pools.id, poolId)).all()[0]
-  if (!r) return null
+/**
+ * Derive a pool's counters from `pool_pledges` rows.
+ *
+ *   pledgedTotal   = SUM(cadence-aware amount * duration)
+ *                    over rows WHERE pool_agent_id = ? AND status = 'active'
+ *   allocatedTotal = 0   (allocation tracking deferred to a future spec)
+ *   availableTotal = pledgedTotal - allocatedTotal
+ *
+ * No source-of-truth columns exist anymore; this is the only counter read.
+ */
+export function getPoolCounters(poolAgentId: string): {
+  pledgedTotal: number
+  allocatedTotal: number
+  availableTotal: number
+} {
+  const rows = db.select({
+    cadence: poolPledges.cadence,
+    amount: poolPledges.amount,
+    duration: poolPledges.duration,
+  }).from(poolPledges)
+    .where(and(
+      eq(poolPledges.poolAgentId, poolAgentId),
+      eq(poolPledges.status, 'active'),
+    ))
+    .all()
+  let pledgedTotal = 0
+  for (const r of rows) {
+    pledgedTotal += cadenceAwareTotal({
+      cadence: r.cadence as Cadence,
+      amount: r.amount,
+      duration: r.duration,
+    })
+  }
+  const allocatedTotal = 0
   return {
-    id: r.id,
-    orgPrincipal: r.treasuryAddress.toLowerCase(),
-    acceptedRestrictions: safeJson<PledgeRestrictions>(r.acceptedRestrictions, {}),
-    acceptedUnits: safeJson<string[]>(r.acceptedUnits, []),
-    capacityCeiling: r.capacityCeiling,
-    ceilingPolicy: ((['block', 'waitlist', 'accept'] as const).find(p => p === r.ceilingPolicy) ?? 'accept'),
-    visibility: r.visibility === 'private' ? 'private' : 'public',
-    addressedMembers: r.addressedMembers ? safeJson<string[]>(r.addressedMembers, []) : null,
-    pledgedTotal: r.pledgedTotal ?? 0,
-    stewards: safeJson<string[]>(r.stewards, []),
+    pledgedTotal,
+    allocatedTotal,
+    availableTotal: Math.max(0, pledgedTotal - allocatedTotal),
   }
-}
-
-function bumpPoolTotal(poolId: string, delta: number): void {
-  const r = db.select().from(pools).where(eq(pools.id, poolId)).all()[0]
-  if (!r) {
-    console.warn(`[org-mcp/poolPledges] pool ${poolId} not local; total bump skipped. // TODO(cross-mcp)`)
-    return
-  }
-  const next = Math.max(0, (r.pledgedTotal ?? 0) + delta)
-  const allocated = r.allocatedTotal ?? 0
-  const available = Math.max(0, next - allocated)
-  db.update(pools)
-    .set({ pledgedTotal: next, availableTotal: available, updatedAt: nowIso() })
-    .where(eq(pools.id, poolId))
-    .run()
 }
 
 function deriveVisibility(
@@ -124,28 +121,6 @@ function deriveVisibility(
   if (story === 'public') return 'public'
   if (story === 'shareWithSupportTeam') return 'public-coarse'
   return 'private'
-}
-
-function restrictionsAccepted(
-  donor: PledgeRestrictions | undefined,
-  allowed: PledgeRestrictions,
-): boolean {
-  if (!donor) return true
-  if (donor.kinds && donor.kinds.length > 0) {
-    const allowedKinds = (allowed.kinds ?? []).map(k => k.toLowerCase())
-    if (allowedKinds.length === 0) return false
-    for (const k of donor.kinds) {
-      if (!allowedKinds.includes(k.toLowerCase())) return false
-    }
-  }
-  if (donor.geoRoots && donor.geoRoots.length > 0) {
-    const allowedGeo = (allowed.geoRoots ?? []).map(g => g.toLowerCase())
-    if (allowedGeo.length === 0) return false
-    for (const g of donor.geoRoots) {
-      if (!allowedGeo.includes(g.toLowerCase())) return false
-    }
-  }
-  return true
 }
 
 function issueReadPledgeGrant(opts: {
@@ -176,12 +151,17 @@ interface SubmitArgs {
   duration?: number | null
   restrictions?: PledgeRestrictions
   storyPermissions: StoryPermission
+  /** Pool visibility ('public' | 'private') passed by the action layer
+   *  (it has already validated against DiscoveryService.getPoolDetail).
+   *  Used here only to derive the row's `visibility` cascade. Defaults to
+   *  'public' when omitted. */
+  poolVisibility?: 'public' | 'private'
 }
 
 const submitTool = {
   name: 'pool_pledge:submit',
   description:
-    "Validate a pledge against the target pool and persist the row. Cascades pool:contribute_to_total + sa:PledgeAssertion (when public + non-anonymous) + pool:read_pledge cross-delegation (when non-anonymous).",
+    "Persist a PoolPledge row. Pool body validation (acceptedUnits, restrictions, capacityCeiling, visibility) is the action layer's responsibility — it pre-validates against DiscoveryService.getPoolDetail before calling this tool. Cascades pool:read_pledge cross-delegation (when non-anonymous).",
   inputSchema: {
     type: 'object' as const,
     properties: {
@@ -193,6 +173,7 @@ const submitTool = {
       duration: { type: 'number' },
       restrictions: { type: 'object' },
       storyPermissions: { type: 'string', enum: ['public', 'shareWithSupportTeam', 'anonymous'] },
+      poolVisibility: { type: 'string', enum: ['public', 'private'] },
     },
     required: ['token', 'poolAgentId', 'cadence', 'unit', 'amount', 'storyPermissions'],
   },
@@ -209,43 +190,9 @@ const submitTool = {
       return err({ kind: 'validation', messages: ['recurring pledges require duration > 0'] })
     }
 
-    const pool = readLocalPool(args.poolAgentId)
-    if (!pool) {
-      console.warn(
-        `[org-mcp/poolPledges] pool ${args.poolAgentId} not local — submit-time validation skipped. // TODO(cross-mcp)`,
-      )
-    } else {
-      if (pool.acceptedUnits.length > 0 && !pool.acceptedUnits.includes(args.unit)) {
-        return err({ kind: 'unit-not-accepted', allowedUnits: pool.acceptedUnits })
-      }
-      if (!restrictionsAccepted(args.restrictions, pool.acceptedRestrictions)) {
-        return err({ kind: 'restriction-not-accepted', allowedRestrictions: pool.acceptedRestrictions })
-      }
-      if (pool.visibility === 'private') {
-        const addressed = (pool.addressedMembers ?? []).map(a => a.toLowerCase())
-        if (!addressed.includes(principal.toLowerCase())) {
-          return err({ kind: 'private-pool-not-addressed' })
-        }
-      }
-    }
+    const poolVisibility: 'public' | 'private' = args.poolVisibility ?? 'public'
+    const visibility: Visibility = deriveVisibility(poolVisibility, args.storyPermissions)
 
-    const total = cadenceAwareTotal({ cadence: args.cadence, amount: args.amount, duration: args.duration ?? null })
-    let pledgeStatus: PledgeStatus = 'active'
-    if (pool && pool.capacityCeiling != null && pool.capacityCeiling > 0) {
-      const remaining = Math.max(0, pool.capacityCeiling - pool.pledgedTotal)
-      if (pool.pledgedTotal + total > pool.capacityCeiling) {
-        if (pool.ceilingPolicy === 'block') {
-          return err({ kind: 'ceiling-blocked', remainingCapacity: remaining })
-        }
-        if (pool.ceilingPolicy === 'waitlist') {
-          pledgeStatus = 'waitlisted'
-        }
-      }
-    }
-
-    const visibility: Visibility = pool
-      ? deriveVisibility(pool.visibility, args.storyPermissions)
-      : deriveVisibility('private', args.storyPermissions)
     const id = randomUUID()
     const now = nowIso()
     const row = {
@@ -260,7 +207,7 @@ const submitTool = {
       storyPermissions: args.storyPermissions,
       pledgedAt: now,
       stoppedAt: null,
-      status: pledgeStatus,
+      status: 'active' as PledgeStatus,
       history: '[]',
       visibility,
       onChainAssertionId: null,
@@ -269,10 +216,7 @@ const submitTool = {
     }
     db.insert(poolPledges).values(row).run()
 
-    if (pledgeStatus === 'active') {
-      bumpPoolTotal(args.poolAgentId, total)
-    }
-    if (args.storyPermissions !== 'anonymous' && pool) {
+    if (args.storyPermissions !== 'anonymous') {
       try {
         issueReadPledgeGrant({ donorPrincipal: principal, poolAgentId: args.poolAgentId, pledgeId: id })
       } catch (e) {
@@ -282,7 +226,7 @@ const submitTool = {
       }
     }
 
-    return mcpText({ ok: true as const, pledge: row, status: pledgeStatus })
+    return mcpText({ ok: true as const, pledge: row, status: row.status })
   },
 }
 
@@ -298,7 +242,7 @@ interface AmendArgs {
 const amendTool = {
   name: 'pool_pledge:amend',
   description:
-    "Amend a recurring PoolPledge (amount/cadence/duration). Appends to history; window-reset semantics per spec.md Q4.",
+    "Amend a recurring PoolPledge (amount/cadence/duration). Appends to history; window-reset semantics per spec.md Q4. Pool counters are derived — no separate counter write.",
   inputSchema: {
     type: 'object' as const,
     properties: {
@@ -325,11 +269,6 @@ const amendTool = {
 
     const now = nowIso()
     const history = safeJson<PledgeAmendment[]>(existing.history, [])
-    const oldTotal = cadenceAwareTotal({
-      cadence: existing.cadence as Cadence,
-      amount: existing.amount,
-      duration: existing.duration,
-    })
 
     let nextAmount = existing.amount
     let nextCadence = existing.cadence as Cadence
@@ -369,12 +308,6 @@ const amendTool = {
       })
       .where(eq(poolPledges.id, args.pledgeId))
       .run()
-
-    if (existing.status === 'active') {
-      const newTotal = cadenceAwareTotal({ cadence: nextCadence, amount: nextAmount, duration: nextDuration })
-      const delta = newTotal - oldTotal
-      if (delta !== 0) bumpPoolTotal(existing.poolAgentId, delta)
-    }
 
     const updated = db.select().from(poolPledges).where(eq(poolPledges.id, args.pledgeId)).all()[0]
     return mcpText({ ok: true as const, pledge: updated })
@@ -471,10 +404,41 @@ const readSelfTool = {
   },
 }
 
+// ───────────────────────────────────────────────────────────────────────
+// Tool: pool_pledge:read_pool_counters
+// ───────────────────────────────────────────────────────────────────────
+//
+// Returns the derived pledged/allocated/available totals for a pool, summed
+// from `pool_pledges` rows. Replaces the dropped `pool:read_counters` tool.
+// `allocatedTotal` is always 0 in v1 (no pledge-side allocation tracking).
+const readPoolCountersTool = {
+  name: 'pool_pledge:read_pool_counters',
+  description:
+    "Read the derived pledged/allocated/available totals for a pool. Computed at read time as SUM(cadence-aware amount) over pool_pledges WHERE pool_agent_id = ? AND status = 'active'.",
+  inputSchema: {
+    type: 'object' as const,
+    properties: {
+      token: { type: 'string' },
+      poolAgentId: { type: 'string' },
+    },
+    required: ['token', 'poolAgentId'],
+  },
+  handler: async (args: { token: string; poolAgentId: string }) => {
+    await requireOrgPrincipal(args.token, args, 'pool_pledge:read_pool_counters')
+    const counters = getPoolCounters(args.poolAgentId)
+    return mcpText({ poolAgentId: args.poolAgentId, ...counters })
+  },
+}
+
+// `sql` is imported above for future raw-aggregate use; reference here so
+// strict TS doesn't flag the import as unused while we keep it documented.
+void sql
+
 export const poolPledgesTools = {
   'pool_pledge:submit': submitTool,
   'pool_pledge:amend': amendTool,
   'pool_pledge:stop': stopTool,
   'pool_pledge:auto_stop': autoStopTool,
   'pool_pledge:read_self': readSelfTool,
+  'pool_pledge:read_pool_counters': readPoolCountersTool,
 }
