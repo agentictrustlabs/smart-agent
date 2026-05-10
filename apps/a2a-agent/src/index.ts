@@ -7,6 +7,8 @@ import { session } from './routes/session'
 import { delegation } from './routes/delegation'
 import { profile } from './routes/profile'
 import { mcpProxy } from './routes/mcp-proxy'
+import { onchainRedeem } from './routes/onchain-redeem'
+import { sessionMeta } from './routes/session-meta'
 import { a2a } from './routes/a2a'
 
 const app = new Hono()
@@ -23,6 +25,16 @@ app.route('/session', session)
 app.route('/delegation', delegation)
 app.route('/profile', profile)
 app.route('/mcp', mcpProxy)
+
+// Phase 1 — Inter-service on-chain redeem (HMAC auth, NOT session bearer).
+// Mounted under /session so the path params (:id) match the canonical
+// HMAC canonical-message format used by callers (signed as bodyJson:ts:sessionId).
+app.route('/session', onchainRedeem)
+
+// Phase 4 — Permission UI metadata endpoints (status, audit).
+// Mounted under /session; matches the suffixed paths /session/:id/status and
+// /session/:id/audit which don't collide with the bare /session/:id handler.
+app.route('/session', sessionMeta)
 
 // Mount a2a at root so /.well-known/agent.json works
 app.route('/', a2a)

@@ -1,33 +1,26 @@
 'use server'
 
 /**
- * Round close + allocation decision orchestration (Phase 0.4 + 0.5).
+ * Round close + allocation decision orchestration — Tier 1.
  *
- * Stewards have signed the AllocationDecided EIP-712 payload off-chain
- * (sigs collected via `treasury_proposal:*` tools). This action lands the
- * decision on chain:
+ * Flow (post-refactor):
  *
- *   1. FundRegistry.setRoundAwardsRoot(roundSubject, root, disputeUntil)
- *   2. FundRegistry.setRoundStatus(roundSubject, 'decided')
- *   3. ProposalRegistry.announceAward(...) per winning proposal — public
- *      facets only; body stays in person-mcp per
- *      sa:GrantProposalAlwaysPrivateShape.
- *   4. (Phase 3) DelegationManager mint of SESSION_DELEGATION whose
- *      RoundDecisionWindowEnforcer terms carry awardsRoot + disputeUntil.
+ *   1. Compute the awards Merkle root (web-side; pure function).
+ *   2. `round:set_awards_root` MCP tool → FundRegistry.setRoundAwardsRoot.
+ *   3. `round:set_status` MCP tool → FundRegistry.setRoundStatus('decided').
+ *   4. ProposalRegistry.announceAward(...) per winning proposal — STILL signed
+ *      web-side via the deployer EOA. ProposalRegistry writes are not yet
+ *      on the org-mcp tool surface; that's a Tier-1.x follow-up.
+ *   5. `grant_proposal:award` MCP tool → flip the proposer's MCP row.
  *
- * org-mcp side: round status flips to 'decided' via the cache update tool.
- * grant_proposal:award still runs to mark the proposer's MCP row.
- *
- * Drops the legacy sa:RoundClosedAssertion / sa:AllocationDecidedAssertion /
- * sa:DisputeWindowOpenedAssertion / sa:GrantAwardedAssertion emits — the
- * registry's events + on-chain attribute writes are the new public mirror.
+ * The web action retains the awards Merkle computation + ProposalRegistry
+ * fan-out; the FundRegistry transitions are now MCP-mediated.
  */
 
 import { keccak256, toBytes, type Address, type Hex } from 'viem'
 import { callMcp } from '@/lib/clients/mcp-client'
 import { getWalletClient, getPublicClient } from '@/lib/contracts'
-import { FundRegistryClient, proposalSubject } from '@smart-agent/sdk'
-import { proposalRegistryAbi } from '@smart-agent/sdk'
+import { proposalSubject, proposalRegistryAbi } from '@smart-agent/sdk'
 
 export interface Award {
   proposalIRI: string
@@ -93,9 +86,7 @@ function computeAwardsRoot(awards: Award[]): Hex {
 const KIND_DEFAULT = 'sa:GivingKind'
 
 export async function closeRound(input: CloseRoundInput): Promise<CloseRoundResult> {
-  const fundRegistryAddr = process.env.FUND_REGISTRY_ADDRESS as Address | undefined
   const proposalRegistryAddr = process.env.PROPOSAL_REGISTRY_ADDRESS as Address | undefined
-  if (!fundRegistryAddr) throw new Error('FUND_REGISTRY_ADDRESS not set')
   if (!proposalRegistryAddr) throw new Error('PROPOSAL_REGISTRY_ADDRESS not set')
 
   const decidedAt = input.decidedAt ?? new Date().toISOString()
@@ -106,23 +97,34 @@ export async function closeRound(input: CloseRoundInput): Promise<CloseRoundResu
     : input.roundId
   const fullRoundId = `urn:smart-agent:round:${roundIdSlug}`
   const awardsRoot = computeAwardsRoot(input.awards)
-  const disputeUntilSec = BigInt(Math.floor(Date.parse(disputeUntil) / 1000))
+  const disputeUntilSec = Math.floor(Date.parse(disputeUntil) / 1000)
 
-  const fund = new FundRegistryClient({
-    registryAddress: fundRegistryAddr,
-    walletClient: getWalletClient(),
-    publicClient: getPublicClient(),
-  })
+  // 1. AwardsRoot + dispute window via MCP.
+  const awardsRootRes = await callMcp<{ ok: true; txHash: Hex }>(
+    'org',
+    'round:set_awards_root',
+    {
+      roundId: roundIdSlug,
+      awardsRoot,
+      disputeUntil: disputeUntilSec,
+    },
+  )
+  const awardsRootTxHash = awardsRootRes.txHash
 
-  // 1. AwardsRoot + dispute window (single tx).
-  const awardsRootTxHash = await fund.setRoundAwardsRoot(roundIdSlug, awardsRoot, disputeUntilSec)
-  // 2. Status → 'decided'
-  const statusTxHash = await fund.setRoundStatus(roundIdSlug, 'decided')
-
-  // Round closure (awardsRoot + status + dispute window) lives ON CHAIN now.
-  // No SQL mirror; the on-chain → GraphDB sync surfaces the closure.
+  // 2. Status → 'decided' via MCP.
+  const statusRes = await callMcp<{ ok: true; txHash: Hex; newStatus: string }>(
+    'org',
+    'round:set_status',
+    {
+      roundId: roundIdSlug,
+      newStatus: 'decided',
+    },
+  )
+  const statusTxHash = statusRes.txHash
 
   // 4. Per-proposal: announce on chain (public facet) + flip MCP row.
+  // ProposalRegistry writes are not yet on the org-mcp tool surface — these
+  // remain signed via the deployer EOA on the web side. (Tier-1.x follow-up.)
   const proposalAnnouncements: Array<{ proposalIRI: string; txHash: Hex }> = []
   const wallet = getWalletClient()
   const account = wallet.account!

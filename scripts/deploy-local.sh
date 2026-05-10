@@ -39,6 +39,16 @@ VALUE=$(echo "$OUTPUT" | grep "VALUE_ENFORCER_ADDRESS=" | sed 's/.*=//')
 TARGETS=$(echo "$OUTPUT" | grep "ALLOWED_TARGETS_ENFORCER_ADDRESS=" | sed 's/.*=//')
 METHODS=$(echo "$OUTPUT" | grep "ALLOWED_METHODS_ENFORCER_ADDRESS=" | sed 's/.*=//')
 DATA_SCOPE=$(echo "$OUTPUT" | grep "DATA_SCOPE_ENFORCER_ADDRESS=" | sed 's/.*=//')
+# Phase 2 — sub-delegated path enforcers
+TASK_BINDING_ENFORCER=$(echo "$OUTPUT" | grep "TASK_BINDING_ENFORCER_ADDRESS=" | sed 's/.*=//')
+CALLDATA_HASH_ENFORCER=$(echo "$OUTPUT" | grep "CALLDATA_HASH_ENFORCER_ADDRESS=" | sed 's/.*=//')
+# Phase 3 — session-account path
+SESSION_AGENT_ACCOUNT_FACTORY=$(echo "$OUTPUT" | grep "SESSION_AGENT_ACCOUNT_FACTORY_ADDRESS=" | sed 's/.*=//')
+ECDSA_SESSION_VALIDATOR=$(echo "$OUTPUT" | grep "ECDSA_SESSION_VALIDATOR_ADDRESS=" | sed 's/.*=//')
+SPEND_CAP_HOOK=$(echo "$OUTPUT" | grep "SPEND_CAP_HOOK_ADDRESS=" | sed 's/.*=//')
+RATE_LIMIT_HOOK=$(echo "$OUTPUT" | grep "RATE_LIMIT_HOOK_ADDRESS=" | sed 's/.*=//')
+TARGET_SELECTOR_ALLOWLIST_HOOK=$(echo "$OUTPUT" | grep "TARGET_SELECTOR_ALLOWLIST_HOOK_ADDRESS=" | sed 's/.*=//')
+REVOCATION_MODULE=$(echo "$OUTPUT" | grep "REVOCATION_MODULE_ADDRESS=" | sed 's/.*=//')
 RELATIONSHIP=$(echo "$OUTPUT" | grep "AGENT_RELATIONSHIP_ADDRESS=" | sed 's/.*=//')
 ASSERTION_ADDR=$(echo "$OUTPUT" | grep "AGENT_ASSERTION_ADDRESS=" | sed 's/.*=//')
 CLASS_ASSERTION_ADDR=$(echo "$OUTPUT" | grep "CLASS_ASSERTION_ADDRESS=" | sed 's/.*=//')
@@ -147,6 +157,15 @@ sed -i '/^VALUE_ENFORCER_ADDRESS=/d' "$WEB_ENV"
 sed -i '/^ALLOWED_TARGETS_ENFORCER_ADDRESS=/d' "$WEB_ENV"
 sed -i '/^ALLOWED_METHODS_ENFORCER_ADDRESS=/d' "$WEB_ENV"
 sed -i '/^DATA_SCOPE_ENFORCER_ADDRESS=/d' "$WEB_ENV"
+sed -i '/^TASK_BINDING_ENFORCER_ADDRESS=/d' "$WEB_ENV"
+sed -i '/^CALLDATA_HASH_ENFORCER_ADDRESS=/d' "$WEB_ENV"
+# Phase 3 — drop stale session-account addresses before re-writing
+sed -i '/^SESSION_AGENT_ACCOUNT_FACTORY_ADDRESS=/d' "$WEB_ENV"
+sed -i '/^ECDSA_SESSION_VALIDATOR_ADDRESS=/d' "$WEB_ENV"
+sed -i '/^SPEND_CAP_HOOK_ADDRESS=/d' "$WEB_ENV"
+sed -i '/^RATE_LIMIT_HOOK_ADDRESS=/d' "$WEB_ENV"
+sed -i '/^TARGET_SELECTOR_ALLOWLIST_HOOK_ADDRESS=/d' "$WEB_ENV"
+sed -i '/^REVOCATION_MODULE_ADDRESS=/d' "$WEB_ENV"
 sed -i '/^MOCK_TEE_VERIFIER_ADDRESS=/d' "$WEB_ENV"
 sed -i '/^ONTOLOGY_REGISTRY_ADDRESS=/d' "$WEB_ENV"
 sed -i '/^AGENT_ACCOUNT_RESOLVER_ADDRESS=/d' "$WEB_ENV"
@@ -186,6 +205,22 @@ sed -i '/^PROPOSAL_REGISTRY_ADDRESS=/d' "$WEB_ENV"
 sed -i '/^AGENT_NAME_ATTRIBUTE_RESOLVER_ADDRESS=/d' "$WEB_ENV"
 sed -i '/^RPC_URL=/d' "$WEB_ENV"
 sed -i '/^DEPLOYER_PRIVATE_KEY=/d' "$WEB_ENV"
+# Phase 1 (delegation refactor) — ORG_MCP_EOA / D_onchain retired. No EOA
+# is held by org-mcp anymore. On-chain redeems flow through a2a-agent's
+# session EOA, which redeems the user's signed root delegation directly.
+# Keep the cleanup of legacy keys so re-running this script on an old env
+# clears them.
+sed -i '/^ORG_MCP_EOA_ADDRESS=/d' "$WEB_ENV"
+sed -i '/^ORG_MCP_EOA_PRIVATE_KEY=/d' "$WEB_ENV"
+sed -i '/^A2A_INTERSERVICE_HMAC_KEY_ORG=/d' "$WEB_ENV"
+sed -i '/^A2A_SESSION_SECRET=/d' "$WEB_ENV"
+
+# Phase 1 — shared HMAC secret between a2a-agent and org-mcp. Same value
+# goes to both apps so HMAC verification works. Hardcoded for dev.
+A2A_INTERSERVICE_HMAC_KEY_ORG="0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+# A2A session encryption secret (required by a2a-agent for session-package
+# encryption). Hardcoded for dev so fresh-start always has a valid value.
+A2A_SESSION_SECRET="0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
 
 # Append new addresses
 cat >> "$WEB_ENV" << EOF
@@ -193,6 +228,8 @@ cat >> "$WEB_ENV" << EOF
 # ─── Deployed Contract Addresses (local Anvil) ──────────────────────
 RPC_URL=$ANVIL_RPC
 DEPLOYER_PRIVATE_KEY=$ANVIL_KEY
+A2A_INTERSERVICE_HMAC_KEY_ORG=$A2A_INTERSERVICE_HMAC_KEY_ORG
+A2A_SESSION_SECRET=$A2A_SESSION_SECRET
 ENTRYPOINT_ADDRESS=$ENTRYPOINT
 AGENT_FACTORY_ADDRESS=$FACTORY
 DELEGATION_MANAGER_ADDRESS=$DELEGATION
@@ -212,6 +249,14 @@ VALUE_ENFORCER_ADDRESS=$VALUE
 ALLOWED_TARGETS_ENFORCER_ADDRESS=$TARGETS
 ALLOWED_METHODS_ENFORCER_ADDRESS=$METHODS
 DATA_SCOPE_ENFORCER_ADDRESS=$DATA_SCOPE
+TASK_BINDING_ENFORCER_ADDRESS=$TASK_BINDING_ENFORCER
+CALLDATA_HASH_ENFORCER_ADDRESS=$CALLDATA_HASH_ENFORCER
+SESSION_AGENT_ACCOUNT_FACTORY_ADDRESS=$SESSION_AGENT_ACCOUNT_FACTORY
+ECDSA_SESSION_VALIDATOR_ADDRESS=$ECDSA_SESSION_VALIDATOR
+SPEND_CAP_HOOK_ADDRESS=$SPEND_CAP_HOOK
+RATE_LIMIT_HOOK_ADDRESS=$RATE_LIMIT_HOOK
+TARGET_SELECTOR_ALLOWLIST_HOOK_ADDRESS=$TARGET_SELECTOR_ALLOWLIST_HOOK
+REVOCATION_MODULE_ADDRESS=$REVOCATION_MODULE
 MOCK_TEE_VERIFIER_ADDRESS=$MOCK_TEE_VERIFIER
 ONTOLOGY_REGISTRY_ADDRESS=$ONTOLOGY_REGISTRY
 AGENT_ACCOUNT_RESOLVER_ADDRESS=$AGENT_ACCT_RESOLVER
@@ -281,10 +326,113 @@ for svc in org-mcp family-mcp person-mcp geo-mcp verifier-mcp people-group-mcp; 
   update_env_var "$ENV_FILE" AGENT_RELATIONSHIP_ADDRESS "$RELATIONSHIP"
   update_env_var "$ENV_FILE" AGENT_ACCOUNT_RESOLVER_ADDRESS "$AGENT_ACCT_RESOLVER"
   update_env_var "$ENV_FILE" TIMESTAMP_ENFORCER_ADDRESS "$TIMESTAMP"
+  # Tier 2 — pool/round registry + factory addresses, plus the ORG_MCP_EOA
+  # private key so org-mcp can sign DelegationManager.redeemDelegation as the
+  # delegate of D_onchain. For v1 / fresh-start this is anvil account 0; the
+  # web app's mint of D_onchain reads ORG_MCP_EOA_ADDRESS to set delegate.
+  update_env_var "$ENV_FILE" POOL_REGISTRY_ADDRESS "$POOL_REGISTRY"
+  update_env_var "$ENV_FILE" FUND_REGISTRY_ADDRESS "$FUND_REGISTRY"
+  update_env_var "$ENV_FILE" AGENT_FACTORY_ADDRESS "$FACTORY"
+  # Phase 1 — Inter-service HMAC secret + a2a-agent endpoint URL for the
+  # MCPs that talk back to a2a-agent's redeem endpoints. The same secret
+  # is also published to apps/web/.env (a2a-agent reads it server-side).
+  update_env_var "$ENV_FILE" A2A_INTERSERVICE_HMAC_KEY_ORG "$A2A_INTERSERVICE_HMAC_KEY_ORG"
+  update_env_var "$ENV_FILE" A2A_AGENT_URL "http://127.0.0.1:3100"
+  # Phase 1 cleanup — the org-mcp wallet was retired. Strip leftover keys.
+  sed -i '/^ORG_MCP_EOA_PRIVATE_KEY=/d' "$ENV_FILE"
   # Clear the obsolete off-chain-registry path. Harmless if absent.
   sed -i '/^CREDENTIAL_REGISTRY_PATH=/d' "$ENV_FILE"
   echo "Updated $ENV_FILE"
 done
+
+# ─── Propagate inter-service secret + session secret to a2a-agent ─────
+# a2a-agent's privileged session endpoints (/session/:id/redeem-tx etc.)
+# verify HMAC signatures with this secret. The session secret is used to
+# encrypt session packages.
+A2A_ENV_FILE="$ROOT_DIR/apps/a2a-agent/.env"
+if [ ! -f "$A2A_ENV_FILE" ]; then : > "$A2A_ENV_FILE"; fi
+update_env_var "$A2A_ENV_FILE" RPC_URL "$ANVIL_RPC"
+update_env_var "$A2A_ENV_FILE" CHAIN_ID "31337"
+update_env_var "$A2A_ENV_FILE" DELEGATION_MANAGER_ADDRESS "$DELEGATION"
+update_env_var "$A2A_ENV_FILE" AGENT_FACTORY_ADDRESS "$FACTORY"
+update_env_var "$A2A_ENV_FILE" POOL_REGISTRY_ADDRESS "$POOL_REGISTRY"
+update_env_var "$A2A_ENV_FILE" FUND_REGISTRY_ADDRESS "$FUND_REGISTRY"
+update_env_var "$A2A_ENV_FILE" AGENT_ACCOUNT_RESOLVER_ADDRESS "$AGENT_ACCT_RESOLVER"
+update_env_var "$A2A_ENV_FILE" AGENT_RELATIONSHIP_ADDRESS "$RELATIONSHIP"
+update_env_var "$A2A_ENV_FILE" TIMESTAMP_ENFORCER_ADDRESS "$TIMESTAMP"
+# Phase 2 — caveat enforcer addresses needed when a2a-agent mints D_sub.
+update_env_var "$A2A_ENV_FILE" ALLOWED_TARGETS_ENFORCER_ADDRESS "$TARGETS"
+update_env_var "$A2A_ENV_FILE" ALLOWED_METHODS_ENFORCER_ADDRESS "$METHODS"
+update_env_var "$A2A_ENV_FILE" VALUE_ENFORCER_ADDRESS "$VALUE"
+update_env_var "$A2A_ENV_FILE" TASK_BINDING_ENFORCER_ADDRESS "$TASK_BINDING_ENFORCER"
+update_env_var "$A2A_ENV_FILE" CALLDATA_HASH_ENFORCER_ADDRESS "$CALLDATA_HASH_ENFORCER"
+# Phase 3 — session-account path: factory + first-party modules
+update_env_var "$A2A_ENV_FILE" SESSION_AGENT_ACCOUNT_FACTORY_ADDRESS "$SESSION_AGENT_ACCOUNT_FACTORY"
+update_env_var "$A2A_ENV_FILE" ECDSA_SESSION_VALIDATOR_ADDRESS "$ECDSA_SESSION_VALIDATOR"
+update_env_var "$A2A_ENV_FILE" SPEND_CAP_HOOK_ADDRESS "$SPEND_CAP_HOOK"
+update_env_var "$A2A_ENV_FILE" RATE_LIMIT_HOOK_ADDRESS "$RATE_LIMIT_HOOK"
+update_env_var "$A2A_ENV_FILE" TARGET_SELECTOR_ALLOWLIST_HOOK_ADDRESS "$TARGET_SELECTOR_ALLOWLIST_HOOK"
+update_env_var "$A2A_ENV_FILE" REVOCATION_MODULE_ADDRESS "$REVOCATION_MODULE"
+# Phase 3 — a2a-agent's master EOA. This wallet is the owner of all
+# SessionAgentAccounts deployed by this a2a-agent instance (it signs the
+# initial setup tx via SessionAgentAccountFactory.deploySession). For local
+# dev, use anvil account #1 (deterministic, well-known dev key). For
+# production this should be a per-instance hot wallet.
+A2A_MASTER_EOA_PRIVATE_KEY="0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"
+update_env_var "$A2A_ENV_FILE" A2A_MASTER_EOA_PRIVATE_KEY "$A2A_MASTER_EOA_PRIVATE_KEY"
+update_env_var "$A2A_ENV_FILE" ENTRYPOINT_ADDRESS "$ENTRYPOINT"
+update_env_var "$A2A_ENV_FILE" A2A_INTERSERVICE_HMAC_KEY_ORG "$A2A_INTERSERVICE_HMAC_KEY_ORG"
+update_env_var "$A2A_ENV_FILE" A2A_SESSION_SECRET "$A2A_SESSION_SECRET"
+# Phase 2 — per-tool executor private keys. anvil accounts #5-#8 (deterministic,
+# unfunded by default — we anvil_setBalance them below). Each family has a
+# distinct address so a compromised key blast-radius is bounded by its policy
+# envelope (ToolPolicy.allowedTargets + allowedSelectors).
+TOOL_EXECUTOR_ROUND_AWARDS_PRIVATE_KEY="0x8b3a350cf5c34c9194ca85829a2df0ec3153be0318b5e2d3348e872092edffba"
+TOOL_EXECUTOR_DISBURSEMENT_PRIVATE_KEY="0x92db14e403b83dfe3df233f83dfa3a0d7096f21ca9b0d6d6b8d88b2b341e916b"
+TOOL_EXECUTOR_POOL_LIFECYCLE_PRIVATE_KEY="0x4bbbf85ce3377467afe5d46f804f221813b2bb87f24d81f60f1fcdbf7cbb4ccf"
+TOOL_EXECUTOR_GRANT_AWARDS_PRIVATE_KEY="0xdbda1821b80551c9d65939329250298aa3472ba22feea921c0cf5d620ea67b97"
+update_env_var "$A2A_ENV_FILE" TOOL_EXECUTOR_ROUND_AWARDS_PRIVATE_KEY "$TOOL_EXECUTOR_ROUND_AWARDS_PRIVATE_KEY"
+update_env_var "$A2A_ENV_FILE" TOOL_EXECUTOR_DISBURSEMENT_PRIVATE_KEY "$TOOL_EXECUTOR_DISBURSEMENT_PRIVATE_KEY"
+update_env_var "$A2A_ENV_FILE" TOOL_EXECUTOR_POOL_LIFECYCLE_PRIVATE_KEY "$TOOL_EXECUTOR_POOL_LIFECYCLE_PRIVATE_KEY"
+update_env_var "$A2A_ENV_FILE" TOOL_EXECUTOR_GRANT_AWARDS_PRIVATE_KEY "$TOOL_EXECUTOR_GRANT_AWARDS_PRIVATE_KEY"
+echo "Updated $A2A_ENV_FILE"
+
+# ─── Fund tool-executor EOAs ──────────────────────────────────────────
+# Each sub-delegated redeem is submitted FROM the executor EOA, so the
+# address must have ETH to pay gas. anvil_setBalance is free.
+TOOL_EXEC_ROUND_AWARDS_ADDR=$(cast wallet address "$TOOL_EXECUTOR_ROUND_AWARDS_PRIVATE_KEY")
+TOOL_EXEC_DISBURSEMENT_ADDR=$(cast wallet address "$TOOL_EXECUTOR_DISBURSEMENT_PRIVATE_KEY")
+TOOL_EXEC_POOL_LIFECYCLE_ADDR=$(cast wallet address "$TOOL_EXECUTOR_POOL_LIFECYCLE_PRIVATE_KEY")
+TOOL_EXEC_GRANT_AWARDS_ADDR=$(cast wallet address "$TOOL_EXECUTOR_GRANT_AWARDS_PRIVATE_KEY")
+ONE_ETH_HEX="0xde0b6b3a7640000"   # 1 ETH
+cast rpc --rpc-url "$ANVIL_RPC" anvil_setBalance "$TOOL_EXEC_ROUND_AWARDS_ADDR" "$ONE_ETH_HEX" > /dev/null
+cast rpc --rpc-url "$ANVIL_RPC" anvil_setBalance "$TOOL_EXEC_DISBURSEMENT_ADDR" "$ONE_ETH_HEX" > /dev/null
+cast rpc --rpc-url "$ANVIL_RPC" anvil_setBalance "$TOOL_EXEC_POOL_LIFECYCLE_ADDR" "$ONE_ETH_HEX" > /dev/null
+cast rpc --rpc-url "$ANVIL_RPC" anvil_setBalance "$TOOL_EXEC_GRANT_AWARDS_ADDR" "$ONE_ETH_HEX" > /dev/null
+echo "Funded tool-executor EOAs (1 ETH each):"
+echo "  ROUND_AWARDS:    $TOOL_EXEC_ROUND_AWARDS_ADDR"
+echo "  DISBURSEMENT:    $TOOL_EXEC_DISBURSEMENT_ADDR"
+echo "  POOL_LIFECYCLE:  $TOOL_EXEC_POOL_LIFECYCLE_ADDR"
+echo "  GRANT_AWARDS:    $TOOL_EXEC_GRANT_AWARDS_ADDR"
+
+# Phase 3 — fund the a2a-agent master EOA so it can deploy SessionAgentAccounts
+# and submit UserOps as the self-bundler.
+A2A_MASTER_EOA_ADDR=$(cast wallet address "$A2A_MASTER_EOA_PRIVATE_KEY")
+TEN_ETH_HEX="0x8ac7230489e80000" # 10 ETH
+cast rpc --rpc-url "$ANVIL_RPC" anvil_setBalance "$A2A_MASTER_EOA_ADDR" "$TEN_ETH_HEX" > /dev/null
+echo "Funded a2a-master EOA (10 ETH): $A2A_MASTER_EOA_ADDR"
+
+# Tier 2 — surface the additional caveat enforcer addresses to apps/web so
+# bootstrapA2ASessionForUser can build D_onchain. (POOL_REGISTRY /
+# FUND_REGISTRY are already in the cat-EOF block above.)
+ensure_web_var() {
+  local key="$1" value="$2"
+  if grep -q "^${key}=" "$WEB_ENV"; then
+    sed -i "s|^${key}=.*|${key}=${value}|" "$WEB_ENV"
+  fi
+}
+ensure_web_var "ALLOWED_TARGETS_ENFORCER_ADDRESS" "$TARGETS"
+ensure_web_var "ALLOWED_METHODS_ENFORCER_ADDRESS" "$METHODS"
 
 # ─── Fund issuer EOAs so they can publish on-chain ─────────────────────────
 # The org and family issuers each derive an EOA from a deterministic private

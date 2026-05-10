@@ -23,6 +23,7 @@ This folder is the **authoritative map of where data lives** across Smart Agent'
 | 12 | [12-person-data-management.md](12-person-data-management.md) | Person-agent data split across minimal on-chain identity, semantic names, person-mcp private storage, credentials, and trust signals |
 | 13 | [13-agent-service-data-management.md](13-agent-service-data-management.md) | Service-agent data split across on-chain capabilities, semantic service names, private service operations, delegation, and trust signals |
 | 14 | [14-pool-creation-access-architecture.md](14-pool-creation-access-architecture.md) | Pool creation/access object interactions across web app, A2A, MCPs, PoolRegistry, GraphDB sync, and Discovery |
+| 15 | [15-delegation-design-architecture.md](15-delegation-design-architecture.md) | Hybrid delegation architecture using native ERC-7710-style authority, caveats, per-call sub-delegations, and ERC-7579-compatible session accounts |
 
 ## Companion Docs
 

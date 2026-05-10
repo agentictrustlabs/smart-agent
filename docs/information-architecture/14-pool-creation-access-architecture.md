@@ -6,12 +6,14 @@ This document shows the object interactions between the web app, A2A agent,
 org-mcp, on-chain `PoolRegistry`, and GraphDB when a pool is created and later
 accessed.
 
-The key rule:
+The current implementation rule:
 
 ```text
+Web app is a thin proxy for pool writes.
+org-mcp executes pool writes through the user's D_onchain delegation.
 Pool body lives on-chain in PoolRegistry.
 GraphDB mirrors on-chain public pool facts.
-MCPs hold private pledge/access state, not the pool body.
+MCPs hold pledge/access state, not the canonical pool body.
 The web app reads public pool data through Discovery/GraphDB.
 ```
 
@@ -20,12 +22,14 @@ The web app reads public pool data through Discovery/GraphDB.
 ```mermaid
 flowchart LR
     User["User / Steward"]
-    Web["Web App<br/>Next.js server actions"]
+    Web["Web App<br/>thin server actions"]
     A2A["A2A Agent<br/>session + MCP proxy"]
-    OrgMcp["org-mcp<br/>org pledges, counters, private grants"]
+    OrgMcp["org-mcp<br/>pool tools + org pledges"]
     PersonMcp["person-mcp<br/>person pledges, private grants"]
     Chain["On-chain"]
     Factory["AgentAccountFactory"]
+    DelegationManager["DelegationManager<br/>redeem D_onchain"]
+    UserAccount["User / Org AgentAccount<br/>root delegator"]
     PoolAccount["Pool AgentAccount<br/>treasury / identity"]
     PoolRegistry["PoolRegistry<br/>typed pool attributes"]
     Ontology["OntologyTermRegistry"]
@@ -39,9 +43,11 @@ flowchart LR
     A2A --> OrgMcp
     A2A --> PersonMcp
 
-    Web --> Factory
+    OrgMcp --> Factory
     Factory --> PoolAccount
-    Web --> PoolRegistry
+    OrgMcp --> DelegationManager
+    DelegationManager --> UserAccount
+    UserAccount --> PoolRegistry
     PoolRegistry --> Ontology
     PoolRegistry --> Shapes
 
@@ -56,10 +62,12 @@ flowchart LR
 
 | Object | Responsibility |
 | --- | --- |
-| Web app | Orchestrates user actions, calls chain, calls A2A/MCP, renders pool pages |
+| Web app | Collects form input, attaches `D_onchain`, calls A2A/MCP, triggers GraphDB sync, renders pool pages |
 | A2A agent | Converts web session grants into MCP calls and routes to the right MCP |
-| org-mcp | Stores org-owned pledge rows, cross-delegation grants, and derived pool counters for org donors |
+| org-mcp | Owns Tier 2 pool tools, deploys pool accounts, redeems `D_onchain` for `PoolRegistry` writes, stores org-owned pledge rows |
 | person-mcp | Stores person-owned pledge rows, cross-delegation grants, and private donor state |
+| `DelegationManager` | Validates the user's signed on-chain delegation and executes through the user/org `AgentAccount` |
+| User/org `AgentAccount` | Root delegator for pool writes; must be the owner of the pool account |
 | `AgentAccountFactory` | Deploys deterministic pool smart accounts |
 | Pool `AgentAccount` | Pool treasury/identity account; owner set controls pool authority |
 | `PoolRegistry` | On-chain source of truth for pool body attributes |
@@ -75,7 +83,11 @@ flowchart LR
 sequenceDiagram
     actor Steward
     participant Web as Web App
+    participant A2A as A2A Agent
+    participant OrgMcp as org-mcp pool:create
     participant Factory as AgentAccountFactory
+    participant DM as DelegationManager
+    participant UserAcct as User / Org AgentAccount
     participant PoolAcct as Pool AgentAccount
     participant PoolReg as PoolRegistry
     participant Ont as OntologyTermRegistry
@@ -84,16 +96,24 @@ sequenceDiagram
     participant GDB as GraphDB
 
     Steward->>Web: Submit pool creation form
-    Web->>Web: Build canonical mandate JSON
-    Web->>Web: mandateHash = keccak256(mandate JSON)
-    Web->>Factory: createAccount(owner, salt = keccak256("pool:<slug>"))
-    Factory-->>Web: pool treasury / AgentAccount address
-    Web->>PoolReg: open(OpenParams)
+    Web->>Web: Load user-signed D_onchain delegation
+    Web->>A2A: POST /mcp/org/pool:create
+    A2A->>OrgMcp: Forward args + MCP delegation token
+    OrgMcp->>OrgMcp: Verify MCP token and D_onchain shape
+    OrgMcp->>OrgMcp: Build mandateHash + OpenParams
+    OrgMcp->>Factory: createAccount(owner = D_onchain.delegator, salt = keccak256("pool:<slug>"))
+    Factory-->>OrgMcp: pool treasury / AgentAccount address
+    OrgMcp->>DM: redeemDelegation([D_onchain], PoolRegistry, 0, open(OpenParams))
+    DM->>DM: Validate signature + caveats
+    DM->>UserAcct: execute(PoolRegistry, 0, open(OpenParams))
+    UserAcct->>PoolReg: open(OpenParams)
     PoolReg->>Ont: validate every predicate is active
     PoolReg->>PoolReg: write typed attributes
     PoolReg->>Shapes: validateSubject(sa:Pool, poolSubject, PoolRegistry)
     Shapes-->>PoolReg: valid or revert
-    PoolReg-->>Web: PoolOpened event + tx hash
+    PoolReg-->>OrgMcp: PoolOpened event
+    OrgMcp-->>A2A: poolAgentId + treasuryAddress + txHash
+    A2A-->>Web: poolAgentId + treasuryAddress + txHash
     Web->>Sync: scheduleKbSyncEager()
     Sync->>PoolReg: read allSubjects + pool getters
     Sync->>PoolAcct: read public agent metadata if available
@@ -106,15 +126,17 @@ sequenceDiagram
 | Field | Source | Stored in |
 | --- | --- | --- |
 | Pool slug | web form | `PoolRegistry` as `sa:poolSlug` |
-| Pool agent address | `AgentAccountFactory` | chain |
+| Pool display name | pool agent metadata if set; otherwise slug fallback | `AgentAccountResolver` / GraphDB mirror fallback |
+| Pool agent address | org-mcp calls `AgentAccountFactory` | chain |
 | Domain | web form | `PoolRegistry` |
 | Governance model | web form, normalized by SDK | `PoolRegistry` |
-| Mandate hash | web action | `PoolRegistry` |
+| Mandate hash | org-mcp `pool:create` tool | `PoolRegistry` |
 | Accepted units/kinds | web form | `PoolRegistry` |
 | Ceiling policy/capacity | web form | `PoolRegistry` |
 | Stewards | web form | `PoolRegistry` |
 | Visibility | web form | `PoolRegistry` |
-| Addressed members for private pools | private/access layer | MCP-side access data, not public GraphDB |
+| `D_onchain` delegation | web auth/session layer | forwarded to org-mcp, redeemed on-chain |
+| Addressed members for private pools | web form | reserved/private access input; not canonical pool body |
 
 ## On-Chain Pool Object
 
@@ -125,6 +147,12 @@ classDiagram
       owner set
       delegationManager
       treasury identity
+    }
+
+    class UserAgentAccount {
+      address userOrOrgAgent
+      owner of pool account
+      executes delegated call
     }
 
     class PoolRegistry {
@@ -154,7 +182,25 @@ classDiagram
       datatype checks
     }
 
-    PoolAgentAccount "1" --> "1" PoolRegistry : pool subject
+    class DelegationManager {
+      redeemDelegation()
+      caveat checks
+      execute through delegator
+    }
+
+    class OrgMcpPoolTools {
+      pool:create
+      pool:update_mandate
+      pool:rotate_stewards
+      pool:close
+      pool:set_accepted_restrictions
+    }
+
+    OrgMcpPoolTools --> DelegationManager
+    DelegationManager --> UserAgentAccount : execute through root delegator
+    UserAgentAccount --> PoolRegistry : msg.sender for registry write
+    PoolAgentAccount --> UserAgentAccount : owner includes
+    PoolAgentAccount "1" --> "1" PoolRegistry : pool subject argument
     PoolRegistry --|> AttributeStorage
     AttributeStorage --> OntologyTermRegistry : predicate validation
     PoolRegistry --> ShapeRegistry : class validation
@@ -188,7 +234,11 @@ sequenceDiagram
 ## Private Pool / Addressed Access Sequence
 
 Private pool access needs public coarse data plus a private authorization check.
-GraphDB must not expose the full addressed-member list as a public fact.
+GraphDB must not expose private membership or donor data as public facts.
+
+Current code note: public page reads go through `DiscoveryService`. The intended
+private-pool access check is A2A -> org-mcp. If addressed-member data is not in
+the public mirror, private pool detail must be resolved through that MCP path.
 
 ```mermaid
 sequenceDiagram
@@ -203,7 +253,7 @@ sequenceDiagram
     Web->>Discovery: getPoolDetail(poolId, viewerAgentId)
     Discovery->>GDB: Query public/coarse pool mirror
     GDB-->>Discovery: private pool coarse anchor
-    Discovery-->>Web: pool is private / needs addressed check
+    Discovery-->>Web: null or private/coarse pool
     Web->>A2A: mcp/org private access check
     A2A->>OrgMcp: verify viewer is addressed or delegated
     OrgMcp-->>A2A: allowed or denied
@@ -250,7 +300,9 @@ Counter rule:
 ```text
 pledgedTotal, allocatedTotal, availableTotal are derived from pool_pledges.
 They are not the pool body source of truth.
-Public aggregate assertions may be published later as coarse on-chain facts.
+GraphDB sync currently reads org-mcp pool_pledges directly in dev mode to
+materialize public counters.
+Public aggregate assertions may later replace this with coarse on-chain facts.
 ```
 
 ## Read Model Shape in GraphDB
@@ -259,7 +311,7 @@ GraphDB should contain only public mirror triples derived from on-chain data:
 
 ```text
 <urn:smart-agent:pool:demo-trauma-care-pool> a sa:Pool ;
-  sa:displayName "Trauma Care Pool" ;
+  sa:displayName "demo-trauma-care-pool" ;
   sa:treasuryAgent <https://agentictrust.io/ontology/sa#agent/0x...> ;
   sa:domain "faith-network" ;
   sa:governanceModel "giving-circle" ;
@@ -282,11 +334,19 @@ internal allocation notes
 org financial contacts
 ```
 
+`sa:displayName` is currently read from the pool agent's
+`AgentAccountResolver` core record when present. If that record is not set,
+GraphDB sync falls back to the pool slug.
+
 ## Access Paths
 
 | User action | Primary path | Source of truth |
 | --- | --- | --- |
-| Create pool | Web app -> `AgentAccountFactory` -> `PoolRegistry` | chain |
+| Create pool | Web app -> A2A -> org-mcp `pool:create` -> `DelegationManager` -> `PoolRegistry` | chain |
+| Deploy pool account | org-mcp -> `AgentAccountFactory.createAccount(owner = D_onchain.delegator)` | chain |
+| Update pool mandate | Web app -> A2A -> org-mcp `pool:update_mandate` -> `DelegationManager` -> `PoolRegistry` | chain |
+| Rotate stewards | Web app -> A2A -> org-mcp `pool:rotate_stewards` -> `DelegationManager` -> `PoolRegistry` | chain |
+| Close pool | Web app -> A2A -> org-mcp `pool:close` -> `DelegationManager` -> `PoolRegistry` | chain |
 | Browse public pools | Web app -> Discovery -> GraphDB | GraphDB mirror of chain |
 | View public pool detail | Web app -> Discovery -> GraphDB | GraphDB mirror of chain |
 | View private pool | Web app -> Discovery + A2A -> org-mcp access check | chain for body, MCP for access |
@@ -299,7 +359,10 @@ org financial contacts
 
 | Area | File |
 | --- | --- |
-| Pool creation action | `apps/web/src/lib/actions/poolCreate.action.ts` |
+| Web pool creation proxy | `apps/web/src/lib/actions/poolCreate.action.ts` |
+| org-mcp pool write tools | `apps/org-mcp/src/tools/pools.ts` |
+| Delegation redemption helper | `apps/org-mcp/src/lib/redeem.ts` |
+| A2A MCP proxy | `apps/a2a-agent/src/routes/mcp-proxy.ts` |
 | Pool page reads | `apps/web/src/lib/actions/pools.action.ts` |
 | GraphDB pool emission | `apps/web/src/lib/ontology/graphdb-sync.ts` |
 | Pool SPARQL builders | `packages/discovery/src/queries/pools.ts` |
@@ -309,11 +372,14 @@ org financial contacts
 | Shape validation | `packages/contracts/src/ShapeRegistry.sol` |
 | Person pledge storage | `apps/person-mcp/src/tools/poolPledges.ts` |
 | Org pledge storage | `apps/org-mcp/src/tools/poolPledges.ts` |
-| A2A MCP proxy | `apps/a2a-agent/src/routes/mcp-proxy.ts` |
 
 ## Design Invariants
 
 - `PoolRegistry` is the canonical pool body store.
+- Web actions do not perform privileged pool writes directly; they proxy to org-mcp.
+- org-mcp redeems the user's `D_onchain` delegation for every pool mutation.
+- org-mcp's EOA is the redeemer, not the authority; the user's `AgentAccount` is the root delegator.
+- Pool accounts are deployed with `owner = D_onchain.delegator`.
 - `org-mcp` and `person-mcp` store pledge rows and private access state, not canonical pool body.
 - GraphDB is a read model, never a write authority.
 - A2A is the session/delegation bridge from web to MCPs.

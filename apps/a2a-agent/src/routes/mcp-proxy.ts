@@ -57,6 +57,8 @@ async function callMcpTool(
   if (!active) return { ok: false, status: 401, error: 'No active agent session' }
   if (new Date(active.expiresAt) < new Date()) return { ok: false, status: 401, error: 'Session expired' }
 
+  const a2aSessionId = active.id
+
   const pkg = await decryptPayload<StoredSessionPackage>(
     { ciphertext: active.encryptedPackage!, iv: active.iv! },
     config.A2A_SESSION_SECRET,
@@ -92,10 +94,15 @@ async function callMcpTool(
     async (msg) => sessionAccount.signMessage({ message: msg }),
   )
 
+  // Phase 1: forward the a2a-agent session id so the MCP tool can call back
+  // into /session/:id/redeem-tx for on-chain redemption. The MCP must NOT
+  // treat _a2aSessionId as user-controlled — it's injected here and the
+  // inbound bearer token is already verified above (the rows lookup is
+  // keyed by the principal smart-account address derived from the cookie).
   const mcpRes = await fetch(`${server.url}/tools/${toolName}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ tool: toolName, args: { ...args, token } }),
+    body: JSON.stringify({ tool: toolName, args: { ...args, token, _a2aSessionId: a2aSessionId } }),
   })
 
   if (!mcpRes.ok) {

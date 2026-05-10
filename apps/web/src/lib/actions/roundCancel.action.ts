@@ -1,20 +1,16 @@
 'use server'
 
 /**
- * Round cancellation guardian (OZ Governor pattern). Pool root key (or
- * designated lead steward) cancels a Round between AllocationDecided and
- * the first Disbursement — the adversarial-path defense that activates
- * within the 72h dispute window.
+ * Round cancellation guardian (OZ Governor pattern) — Tier 1 thin proxy.
  *
- * Phase 0.4 — calls FundRegistry.setRoundStatus(roundSubject, 'canceled')
- * directly. Drops the legacy sa:RoundCanceledAssertion emit; the registry's
- * RoundStatusChanged event + on-chain attribute write are the new public
- * mirror.
+ * On-chain logic (FundRegistry.setRoundStatus(roundSubject, 'canceled'))
+ * lives in org-mcp's `round:cancel` tool. The MCP-side delegation gate
+ * replaces the web's old `canManageAgent` pre-flight + direct deployer-key
+ * signing.
  */
 
-import { type Address, type Hex } from 'viem'
-import { getWalletClient, getPublicClient } from '@/lib/contracts'
-import { FundRegistryClient } from '@smart-agent/sdk'
+import { type Hex } from 'viem'
+import { callMcp } from '@/lib/clients/mcp-client'
 
 export type RoundCancelReason =
   | 'dispute'
@@ -42,28 +38,19 @@ export interface CancelRoundResult {
 }
 
 export async function cancelRound(input: CancelRoundInput): Promise<CancelRoundResult> {
-  const fundRegistryAddr = process.env.FUND_REGISTRY_ADDRESS as Address | undefined
-  if (!fundRegistryAddr) throw new Error('FUND_REGISTRY_ADDRESS not set')
-
   const roundIdSlug = input.roundId.startsWith('urn:smart-agent:round:')
     ? input.roundId.replace('urn:smart-agent:round:', '')
     : input.roundId
   const fullRoundId = `urn:smart-agent:round:${roundIdSlug}`
   const canceledAt = new Date().toISOString()
 
-  const fund = new FundRegistryClient({
-    registryAddress: fundRegistryAddr,
-    walletClient: getWalletClient(),
-    publicClient: getPublicClient(),
+  const res = await callMcp<{ ok: true; txHash: Hex }>('org', 'round:cancel', {
+    roundId: roundIdSlug,
   })
-  const txHash = await fund.setRoundStatus(roundIdSlug, 'canceled')
 
   // TODO(phase-3): revoke the SESSION_DELEGATION via DelegationManager when
-  // input.revokedSessionHash is provided.
-
-  // Cancellation lives on chain (status='canceled' set above). The reason
-  // metadata is published via sa:RoundCanceledAssertion in the assertion
-  // emit pipeline, not in SQL. The on-chain → GraphDB sync mirrors status.
+  // input.revokedSessionHash is provided. The reason metadata is published
+  // via sa:RoundCanceledAssertion in the assertion emit pipeline.
   void input.reasonURI; void input.revokedSessionHash
 
   const { scheduleKbSyncEager } = await import('@/lib/ontology/kb-write-through')
@@ -73,6 +60,6 @@ export async function cancelRound(input: CancelRoundInput): Promise<CancelRoundR
     roundId: fullRoundId,
     reasonKind: input.reasonKind,
     canceledAt,
-    txHash,
+    txHash: res.txHash,
   }
 }

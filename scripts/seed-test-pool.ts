@@ -275,7 +275,7 @@ async function main(): Promise<void> {
         acceptedKinds: pool.acceptedKinds,
         ceilingPolicy: pool.ceilingPolicy,
         capacityCeiling: 0n,
-        stewards: [treasuryAddress],
+        stewards: [CATALYST_NETWORK],
         visibility: 'public',
         acceptedRestrictions: JSON.stringify(pool.acceptedRestrictions ?? {}),
         slug: pool.id.replace(/^urn:smart-agent:pool:/, ''),

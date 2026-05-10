@@ -219,8 +219,11 @@ async function seedSqlCache(fundAgent: Address): Promise<void> {
     `)
     for (const r of ROUNDS) {
       const iri = `urn:smart-agent:round:${r.id}`
-      // Default voting window: opens at submission deadline, closes 7 days later.
-      const windowStart = r.deadline
+      // Demo seed: voting window opens IMMEDIATELY (so e2e tests + manual
+      // walkthroughs can vote without waiting for the deadline). Closes
+      // 7 days after the submission deadline. Production round:create flow
+      // sets a realistic window via round:update_voting_config.
+      const windowStart = NOW
       const windowEnd = new Date(Date.parse(r.deadline) + 7 * 24 * 60 * 60 * 1000).toISOString()
       stmt.run({
         id: iri,

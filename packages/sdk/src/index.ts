@@ -2,6 +2,7 @@
 export {
   agentAccountAbi,
   agentAccountFactoryAbi,
+  sessionAgentAccountFactoryAbi,
   delegationManagerAbi,
   agentRelationshipAbi,
   agentAssertionAbi,
@@ -48,6 +49,8 @@ export {
   encodeValueTerms,
   encodeAllowedTargetsTerms,
   encodeAllowedMethodsTerms,
+  encodeTaskBindingTerms,
+  encodeCallDataHashTerms,
   encodeRateLimitTerms,
   encodeRecoveryTerms,
   encodeRecoveryArgs,
@@ -62,6 +65,8 @@ export {
   decodeValueTerms,
   decodeAllowedTargetsTerms,
   decodeAllowedMethodsTerms,
+  decodeTaskBindingTerms,
+  decodeCallDataHashTerms,
   // MCP tool scope caveat
   MCP_TOOL_SCOPE_ENFORCER,
   encodeMcpToolScopeTerms,
@@ -476,3 +481,39 @@ export type {
   RoundStatus,
   RoundVisibility,
 } from './onchain/attributes/fundRegistry'
+
+// ─── ToolPolicyRegistry (Phase 0 — delegation architecture) ──────────
+export {
+  TOOL_POLICIES,
+  POOL_REGISTRY_SELECTORS_BY_TOOL,
+  FUND_REGISTRY_SELECTORS_BY_TOOL,
+  getToolPolicy,
+  isOnchainTool,
+  isSensitiveTool,
+  listOnchainToolIds,
+  listAllowedTargetSymbols,
+  listAllowedFunctionNames,
+  resolveTargetAddress,
+} from './policy/tool-policies'
+export type {
+  ToolPolicy,
+  RiskTier,
+  ExecutionPath,
+} from './policy/tool-policies'
+
+// ─── Audit (Phase 0 — delegation architecture) ───────────────────────
+export type {
+  ExecutionReceipt,
+  ExecutionReceiptSummary,
+  ExecutionPathKind,
+  ExecutionStatus,
+} from './audit/types'
+
+// ─── Permissions (Phase 4 — wallet permission interop) ───────────────
+export type {
+  SessionPermissionRequest,
+  PermissionPreview,
+} from './permissions/types'
+export { previewSessionRequest } from './permissions/types'
+export { buildSessionPermissionRequest } from './permissions/build'
+export type { BuildSessionPermissionRequestInput } from './permissions/build'

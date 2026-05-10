@@ -1,27 +1,19 @@
 'use server'
 
 /**
- * Round opening orchestration (Phase 0.4 — on-chain attribute store).
+ * Round opening orchestration — Tier 1 thin proxy.
  *
- * Flow:
- *   1. Open the round on chain via FundRegistry.openRound(...) — body lives
- *      in FundRegistry's own typed-attribute storage. ShapeRegistry validates.
- *   2. Cache body in org-mcp via the `round:open` MCP tool — used by the
- *      proposal-flow hot path (validation, addressed-applicants check).
- *   3. Trigger debounced kb-sync.
+ * On-chain logic (FundRegistry.openRound) lives in org-mcp's `round:open`
+ * tool. The web action:
  *
- * Drops the legacy `sa:RoundOpenedAssertion` emit — registry's RoundOpened
- * event + on-chain attribute writes are the new public mirror source.
+ *   1. Forwards form input to `callMcp('org', 'round:open', input)`.
+ *   2. Initializes the slim off-chain voting config row in org-mcp via
+ *      `round:update_voting_config`.
+ *   3. Triggers debounced kb-sync.
  */
 
 import { type Address } from 'viem'
 import { callMcp } from '@/lib/clients/mcp-client'
-import { getWalletClient, getPublicClient } from '@/lib/contracts'
-import { FundRegistryClient } from '@smart-agent/sdk'
-
-// FundRegistry.openRound writes the round body to chain. Voting config
-// (off-chain DAO settings) is initialized in org-mcp via
-// `round:update_voting_config` (auto-creates the row).
 
 export interface OpenRoundInput {
   /** Canonical round id slug (e.g. 'demo-trauma-care-q2'). */
@@ -57,37 +49,40 @@ export interface OpenRoundResult {
   txHash: `0x${string}`
 }
 
-const CADENCE_CONCEPT: Record<OpenRoundInput['reportingCadence'], string> = {
-  monthly: 'sa:CadenceMonthly',
-  quarterly: 'sa:CadenceQuarterly',
-  annual: 'sa:CadenceAnnual',
-  milestone: 'sa:CadenceMilestone',
-  none: 'sa:CadenceNone',
-}
-
 export async function openRound(input: OpenRoundInput): Promise<OpenRoundResult> {
-  const registryAddr = process.env.FUND_REGISTRY_ADDRESS as Address | undefined
-  if (!registryAddr) throw new Error('FUND_REGISTRY_ADDRESS not set')
-
   const fullId = `urn:smart-agent:round:${input.id}`
-  const deadlineSec = BigInt(Math.floor(Date.parse(input.deadline) / 1000))
-  const decisionSec = BigInt(Math.floor(Date.parse(input.decisionDate) / 1000))
+  const deadlineSec = Math.floor(Date.parse(input.deadline) / 1000)
+  const decisionSec = Math.floor(Date.parse(input.decisionDate) / 1000)
 
-  const client = new FundRegistryClient({
-    registryAddress: registryAddr,
-    walletClient: getWalletClient(),
-    publicClient: getPublicClient(),
+  // The MCP tool persists the body fields as JSON on chain (the registry's
+  // typed-attribute store has dedicated string columns for them). Stringify
+  // here so the wire payload is already canonical.
+  const mandateJson = JSON.stringify({
+    acceptedKinds: input.mandate.acceptedKinds,
+    acceptedGeo: input.mandate.acceptedGeo,
+    budgetCeiling: input.mandate.budgetCeiling,
+    expectedAwards: input.mandate.expectedAwards,
+    addressedApplicants: input.addressedApplicants ?? [],
   })
+  const milestoneTemplateJson = input.milestoneTemplate
+    ? JSON.stringify(input.milestoneTemplate)
+    : ''
+  const validatorRequirementsJson = input.validatorRequirements
+    ? JSON.stringify(input.validatorRequirements)
+    : ''
 
-  const { txHash } = await client.openRound({
+  const { txHash } = await callMcp<{ txHash: `0x${string}` }>('org', 'round:open', {
     roundId: input.id,
     fundAgent: input.fundAgentId,
     deadline: deadlineSec,
     decisionDate: decisionSec,
-    reportingCadence: CADENCE_CONCEPT[input.reportingCadence],
-    requiredCredentials: input.requiredCredentials,
+    reportingCadence: input.reportingCadence,
+    requiredCredentials: input.requiredCredentials ?? [],
     visibility: input.visibility,
     initialStatus: 'open',
+    mandate: mandateJson,
+    milestoneTemplate: milestoneTemplateJson,
+    validatorRequirements: validatorRequirementsJson,
   })
 
   // Voting window defaults (per output/voting-and-admin-plan.md):
@@ -102,8 +97,6 @@ export async function openRound(input: OpenRoundInput): Promise<OpenRoundResult>
   const votingStrategy = input.votingStrategy ?? 'steward-quorum'
   const votingThreshold = input.votingThreshold ?? 2
 
-  // Body lives ON CHAIN via the FundRegistry.openRound call above. Initialize
-  // the slim off-chain voting config row in org-mcp.
   await callMcp('org', 'round:update_voting_config', {
     roundId: fullId,
     votingStrategy,

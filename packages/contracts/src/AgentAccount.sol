@@ -129,18 +129,254 @@ contract AgentAccount is BaseAccount, Initializable, UUPSUpgradeable, IAgentAcco
         return _delegationManager;
     }
 
-    // ─── ERC-7579 introspection (compatibility-only) ──────────────────
+    // ─── ERC-7579 module config (install/uninstall + introspection) ───
+    //
+    // Phase 3 of the delegation refactor adds first-party module support
+    // for stateful policy (spend caps, rate limits, target allowlists,
+    // session validators). Modules are isolated in ERC-7201 namespaced
+    // storage so future upgrades can extend the layout without clobbering
+    // existing state (owners, passkeys, delegationManager).
+    //
+    // First-party only at v1 — no third-party module registry. Install
+    // and uninstall are owner-gated (or self-gated via UserOp). The
+    // DelegationManager cannot install modules; module changes are too
+    // sensitive to delegate.
+
+    /// @dev ERC-7579 module type IDs (canonical).
+    uint256 internal constant MODULE_TYPE_VALIDATOR = 1;
+    uint256 internal constant MODULE_TYPE_EXECUTOR  = 2;
+    uint256 internal constant MODULE_TYPE_FALLBACK  = 3;
+    uint256 internal constant MODULE_TYPE_HOOK      = 4;
+
+    /// @dev Gas-protection cap: a single account can carry at most this many
+    ///      hook modules before installModule reverts. Hooks loop per call so
+    ///      an unbounded list would let a malicious owner brick their account.
+    uint256 internal constant MAX_HOOKS = 8;
+
+    /// @dev ERC-7201 namespaced storage slot for module state.
+    ///      slot = keccak256(abi.encode(uint256(keccak256("smart-agent.account.modules.v1")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant MODULES_STORAGE_SLOT =
+        0x1f14a6accceab237b8ab0463623403008b2dec742c79d1d0e63a7729f8c11c00;
+
+    struct ModulesStorage {
+        // moduleTypeId => module address => installed flag
+        mapping(uint256 => mapping(address => bool)) installed;
+        // moduleTypeId => ordered list of installed module addresses (for enumeration + hook iteration)
+        mapping(uint256 => address[]) installedList;
+    }
+
+    function _modulesStorage() private pure returns (ModulesStorage storage $) {
+        bytes32 slot = MODULES_STORAGE_SLOT;
+        assembly { $.slot := slot }
+    }
+
+    // ─── Events ───────────────────────────────────────────────────────
+
+    /// @notice ERC-7579 ModuleInstalled.
+    event ModuleInstalled(uint256 moduleTypeId, address module);
+    /// @notice ERC-7579 ModuleUninstalled.
+    event ModuleUninstalled(uint256 moduleTypeId, address module);
+
+    // ─── Errors ───────────────────────────────────────────────────────
+
+    error UnsupportedModuleType(uint256 moduleTypeId);
+    error ModuleAlreadyInstalled(uint256 moduleTypeId, address module);
+    error ModuleNotInstalled(uint256 moduleTypeId, address module);
+    error TooManyHooks();
+    error ModuleOnInstallFailed(bytes reason);
+    error ModuleOnUninstallFailed(bytes reason);
+
+    // ─── Auth modifier ────────────────────────────────────────────────
+
+    modifier onlyOwnerOrSelf() {
+        if (msg.sender != address(this) && !_owners[msg.sender]) {
+            revert NotOwnerOrSelf();
+        }
+        _;
+    }
+
+    /**
+     * @notice Install an ERC-7579 module of the given type.
+     * @dev Owner-gated (or self via UserOp). Calls `onInstall(initData)` on
+     *      the module after marking it installed; if the module reverts in
+     *      `onInstall`, the install is aborted — but failure is wrapped in
+     *      a typed error so the caller can distinguish from auth failures.
+     */
+    function installModule(
+        uint256 moduleTypeId,
+        address module,
+        bytes calldata initData
+    ) external onlyOwnerOrSelf {
+        if (module == address(0)) revert ZeroAddress();
+        if (!_isSupportedModuleType(moduleTypeId)) revert UnsupportedModuleType(moduleTypeId);
+
+        ModulesStorage storage $ = _modulesStorage();
+        if ($.installed[moduleTypeId][module]) {
+            revert ModuleAlreadyInstalled(moduleTypeId, module);
+        }
+        if (moduleTypeId == MODULE_TYPE_HOOK && $.installedList[moduleTypeId].length >= MAX_HOOKS) {
+            revert TooManyHooks();
+        }
+
+        $.installed[moduleTypeId][module] = true;
+        $.installedList[moduleTypeId].push(module);
+
+        // Notify the module — best-effort wrapped so a misbehaving module
+        // produces a typed error instead of bubbling raw bytes. We still
+        // revert the install on failure (leaving the storage flag set would
+        // create an inconsistent module/`onInstall` state).
+        try IERC7579ModuleLike(module).onInstall(initData) {
+            // ok
+        } catch (bytes memory reason) {
+            // Roll back the storage write before reverting.
+            $.installed[moduleTypeId][module] = false;
+            address[] storage list = $.installedList[moduleTypeId];
+            list.pop();
+            revert ModuleOnInstallFailed(reason);
+        }
+
+        emit ModuleInstalled(moduleTypeId, module);
+    }
+
+    /**
+     * @notice Uninstall a previously installed ERC-7579 module.
+     * @dev Owner-gated. `onUninstall` failure is loud — it reverts. Loud
+     *      failure is better than orphan state for security-sensitive
+     *      modules (e.g., a spend-cap hook with budget state shouldn't
+     *      be removed silently if it can't clean up).
+     */
+    function uninstallModule(
+        uint256 moduleTypeId,
+        address module,
+        bytes calldata deInitData
+    ) external onlyOwnerOrSelf {
+        if (!_isSupportedModuleType(moduleTypeId)) revert UnsupportedModuleType(moduleTypeId);
+
+        ModulesStorage storage $ = _modulesStorage();
+        if (!$.installed[moduleTypeId][module]) {
+            revert ModuleNotInstalled(moduleTypeId, module);
+        }
+
+        // Loud uninstall — if the module reverts in onUninstall, we revert
+        // too so the caller sees the failure. (Owner can force-uninstall
+        // by passing deInitData the module can handle, or by re-deploying
+        // the account proxy — UUPS is available.)
+        try IERC7579ModuleLike(module).onUninstall(deInitData) {
+            // ok
+        } catch (bytes memory reason) {
+            revert ModuleOnUninstallFailed(reason);
+        }
+
+        $.installed[moduleTypeId][module] = false;
+        _removeFromList($.installedList[moduleTypeId], module);
+
+        emit ModuleUninstalled(moduleTypeId, module);
+    }
+
+    /// @notice Returns true iff the given module is installed for the given type.
+    /// @dev `additionalContext` accepted for ERC-7579 conformance; unused here.
+    function isModuleInstalled(
+        uint256 moduleTypeId,
+        address module,
+        bytes calldata /* additionalContext */
+    ) external view returns (bool) {
+        return _modulesStorage().installed[moduleTypeId][module];
+    }
+
+    /// @notice ERC-7579 supportsModule (introspection).
+    function supportsModule(uint256 moduleTypeId) external pure returns (bool) {
+        return _isSupportedModuleType(moduleTypeId);
+    }
+
+    /// @notice ERC-7579 supportsExecutionMode (introspection).
+    /// @dev We support the canonical single-call mode (CALLTYPE_SINGLE, EXECTYPE_DEFAULT).
+    ///      We don't expose `execute(bytes32 mode, bytes execData)` (the new ERC-7579
+    ///      execution surface) — BaseAccount.execute is the canonical entry. We return
+    ///      true here for the encoded form of CALLTYPE_SINGLE so 7579-aware tooling
+    ///      can introspect the account before routing through our existing path.
+    function supportsExecutionMode(bytes32 /* mode */) external pure returns (bool) {
+        // Phase 3 surface — we don't support the multiplexed ERC-7579 execute()
+        // entry yet; routing remains via BaseAccount.execute. Return false for
+        // any encoded mode to avoid misadvertising capability.
+        return false;
+    }
+
+    /// @notice Enumerate the installed modules for a given type.
+    function getInstalledModules(uint256 moduleTypeId) external view returns (address[] memory) {
+        return _modulesStorage().installedList[moduleTypeId];
+    }
 
     /**
      * @notice Stable account-implementation identifier.
-     * @dev We do NOT implement the full ERC-7579 install/uninstall module API
-     *      — AgentAccount uses a delegation-manager model with caveat-enforcer
-     *      modules rather than per-account module slots. This accessor exists
-     *      so 7579-aware wallets can identify the implementation without
-     *      false-positively assuming install/uninstall support.
+     * @dev Bumped to `.2` to signal ERC-7579 install/uninstall support.
      */
     function accountId() external pure returns (string memory) {
-        return "smart-agent.agent-account.1";
+        return "smart-agent.agent-account.2";
+    }
+
+    function _isSupportedModuleType(uint256 moduleTypeId) internal pure returns (bool) {
+        return moduleTypeId == MODULE_TYPE_VALIDATOR
+            || moduleTypeId == MODULE_TYPE_EXECUTOR
+            || moduleTypeId == MODULE_TYPE_HOOK;
+        // Fallback (type 3) intentionally unsupported in v1 — would require
+        // a fallback dispatcher we don't ship yet.
+    }
+
+    function _removeFromList(address[] storage list, address module) private {
+        uint256 len = list.length;
+        for (uint256 i = 0; i < len; i++) {
+            if (list[i] == module) {
+                if (i != len - 1) list[i] = list[len - 1];
+                list.pop();
+                return;
+            }
+        }
+        // unreachable — installed flag guarantees presence
+    }
+
+    // ─── Hook execution wrapper ───────────────────────────────────────
+    //
+    // Override BaseAccount.execute to run pre/postCheck on installed hook
+    // modules. Authorization (entryPoint / self / delegationManager) is
+    // enforced by `_requireForExecute` from BaseAccount unchanged.
+    //
+    // Hook semantics:
+    //   - preCheck runs in install order; each receives (msg.sender, value, msgData).
+    //   - The hookData returned by preCheck is fed into postCheck after the call.
+    //   - If preCheck reverts the whole execute reverts.
+    //   - postCheck only runs on success (the call already reverts on failure).
+
+    /// @inheritdoc BaseAccount
+    function execute(address target, uint256 value, bytes calldata data) external override {
+        _requireForExecute();
+
+        ModulesStorage storage $ = _modulesStorage();
+        address[] memory hooks = $.installedList[MODULE_TYPE_HOOK];
+        bytes[] memory hookData = new bytes[](hooks.length);
+
+        // Compose msgData = abi.encodeWithSignature("execute(address,uint256,bytes)", ...)
+        // so hook policy can decode the inner call. Easier and cheaper than
+        // forwarding msg.data which includes the selector + ABI tail; we
+        // rebuild the encoded inner call directly here.
+        bytes memory hookMsgData = abi.encode(target, value, data);
+
+        for (uint256 i = 0; i < hooks.length; i++) {
+            hookData[i] = IERC7579HookLike(hooks[i]).preCheck(msg.sender, value, hookMsgData);
+        }
+
+        // Perform the actual call (mirrors BaseAccount.execute body).
+        (bool ok, bytes memory ret) = target.call{value: value}(data);
+        if (!ok) {
+            // bubble the revert reason
+            assembly {
+                let len := mload(ret)
+                revert(add(ret, 0x20), len)
+            }
+        }
+
+        for (uint256 i = 0; i < hooks.length; i++) {
+            IERC7579HookLike(hooks[i]).postCheck(hookData[i]);
+        }
     }
 
     // ─── ERC-4337 ───────────────────────────────────────────────────
@@ -351,4 +587,18 @@ contract AgentAccount is BaseAccount, Initializable, UUPSUpgradeable, IAgentAcco
     // ─── Receive ETH ────────────────────────────────────────────────
 
     receive() external payable {}
+}
+
+/// @dev Minimal subset of the ERC-7579 module interface we call into.
+///      We import the OpenZeppelin draft-IERC7579 only when needed; an inline
+///      type-erased shape here avoids pulling the full file at this layer.
+interface IERC7579ModuleLike {
+    function onInstall(bytes calldata data) external;
+    function onUninstall(bytes calldata data) external;
+}
+
+interface IERC7579HookLike {
+    function preCheck(address msgSender, uint256 value, bytes calldata msgData)
+        external returns (bytes memory);
+    function postCheck(bytes calldata hookData) external;
 }

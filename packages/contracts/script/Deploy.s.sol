@@ -3,13 +3,21 @@ pragma solidity ^0.8.28;
 
 import "forge-std/Script.sol";
 import "../src/AgentAccountFactory.sol";
+import "../src/SessionAgentAccountFactory.sol";
+import "../src/modules/ECDSASessionValidator.sol";
+import "../src/modules/SpendCapHookModule.sol";
+import "../src/modules/RateLimitHookModule.sol";
+import "../src/modules/TargetSelectorAllowlistHookModule.sol";
+import "../src/modules/RevocationModule.sol";
 import "../src/DelegationManager.sol";
 import "../src/enforcers/TimestampEnforcer.sol";
 import "../src/enforcers/ValueEnforcer.sol";
 import "../src/enforcers/AllowedTargetsEnforcer.sol";
 import "../src/enforcers/AllowedMethodsEnforcer.sol";
+import "../src/enforcers/CallDataHashEnforcer.sol";
 import "../src/enforcers/DataScopeEnforcer.sol";
 import "../src/enforcers/RateLimitEnforcer.sol";
+import "../src/enforcers/TaskBindingEnforcer.sol";
 import "../src/enforcers/RecoveryEnforcer.sol";
 import "../src/enforcers/PoolMandateEnforcer.sol";
 import "../src/enforcers/RoundDecisionWindowEnforcer.sol";
@@ -117,6 +125,33 @@ contract Deploy is Script {
         console.log("AllowedMethodsEnforcer:", address(allowedMethodsEnforcer));
         DataScopeEnforcer dataScopeEnforcer = new DataScopeEnforcer();
         console.log("DataScopeEnforcer:", address(dataScopeEnforcer));
+
+        // Phase 2 (delegation refactor) — sub-delegated path enforcers.
+        // TaskBindingEnforcer records the A2A taskId in the caveat terms;
+        // CallDataHashEnforcer locks the redeem to one exact callData hash.
+        TaskBindingEnforcer taskBindingEnforcer = new TaskBindingEnforcer();
+        console.log("TaskBindingEnforcer:", address(taskBindingEnforcer));
+
+        CallDataHashEnforcer callDataHashEnforcer = new CallDataHashEnforcer();
+        console.log("CallDataHashEnforcer:", address(callDataHashEnforcer));
+
+        // Phase 3 (delegation refactor) — first-party ERC-7579 modules and the
+        // SessionAgentAccountFactory. Used by a2a-agent when a session is
+        // bootstrapped with stateful=true.
+        ECDSASessionValidator ecdsaSessionValidator = new ECDSASessionValidator();
+        console.log("ECDSASessionValidator:", address(ecdsaSessionValidator));
+        SpendCapHookModule spendCapHook = new SpendCapHookModule();
+        console.log("SpendCapHookModule:", address(spendCapHook));
+        RateLimitHookModule rateLimitHook = new RateLimitHookModule();
+        console.log("RateLimitHookModule:", address(rateLimitHook));
+        TargetSelectorAllowlistHookModule targetSelectorAllowlistHook =
+            new TargetSelectorAllowlistHookModule();
+        console.log("TargetSelectorAllowlistHookModule:", address(targetSelectorAllowlistHook));
+        RevocationModule revocationModule = new RevocationModule();
+        console.log("RevocationModule:", address(revocationModule));
+        SessionAgentAccountFactory sessionAgentAccountFactory =
+            new SessionAgentAccountFactory(factory);
+        console.log("SessionAgentAccountFactory:", address(sessionAgentAccountFactory));
 
         // 4b. Treasury Phase 2 — pool/round/quorum policy primitives.
         // Registries first (they're referenced by enforcers' terms encoding).
@@ -358,6 +393,16 @@ contract Deploy is Script {
         _logEnv("ALLOWED_TARGETS_ENFORCER_ADDRESS", address(allowedTargetsEnforcer));
         _logEnv("ALLOWED_METHODS_ENFORCER_ADDRESS", address(allowedMethodsEnforcer));
         _logEnv("DATA_SCOPE_ENFORCER_ADDRESS", address(dataScopeEnforcer));
+        // Phase 2 — sub-delegated path enforcers
+        _logEnv("TASK_BINDING_ENFORCER_ADDRESS", address(taskBindingEnforcer));
+        _logEnv("CALLDATA_HASH_ENFORCER_ADDRESS", address(callDataHashEnforcer));
+        // Phase 3 — session-account path: factory + first-party modules
+        _logEnv("SESSION_AGENT_ACCOUNT_FACTORY_ADDRESS", address(sessionAgentAccountFactory));
+        _logEnv("ECDSA_SESSION_VALIDATOR_ADDRESS", address(ecdsaSessionValidator));
+        _logEnv("SPEND_CAP_HOOK_ADDRESS", address(spendCapHook));
+        _logEnv("RATE_LIMIT_HOOK_ADDRESS", address(rateLimitHook));
+        _logEnv("TARGET_SELECTOR_ALLOWLIST_HOOK_ADDRESS", address(targetSelectorAllowlistHook));
+        _logEnv("REVOCATION_MODULE_ADDRESS", address(revocationModule));
         _logEnv("AGENT_TEMPLATE_ADDRESS", address(agentTemplate));
         _logEnv("AGENT_ISSUER_ADDRESS", address(issuerProfile));
         _logEnv("AGENT_VALIDATION_ADDRESS", address(validationProfile));

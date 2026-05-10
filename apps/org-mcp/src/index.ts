@@ -20,6 +20,7 @@ import { orgIntentsTools } from './tools/intents.js'
 import { orgNotificationsTools, orgBeliefsTools } from './tools/notifications-beliefs.js'
 import { orgWorkItemsTools, engagementTools } from './tools/work-items-engagement.js'
 import { grantProposalsTools } from './tools/grantProposals.js'
+import { poolsTools } from './tools/pools.js'
 import { roundsTools } from './tools/rounds.js'
 import { matchInitiationsTools } from './tools/matchInitiations.js'
 import { poolPledgesTools } from './tools/poolPledges.js'
@@ -37,6 +38,7 @@ const allTools = {
   ...orgWorkItemsTools,
   ...engagementTools,
   ...grantProposalsTools,
+  ...poolsTools,
   ...roundsTools,
   ...matchInitiationsTools,
   ...poolPledgesTools,

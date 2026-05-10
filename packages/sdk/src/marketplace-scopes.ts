@@ -132,6 +132,46 @@ export const SPEC_002_SCOPES = {
     kind: 'cross',
     spec: '002',
   },
+  // ─── Tier 1: pool admin (user delegation; web → org-mcp) ──────────────
+  /**
+   * User delegation: org-mcp deploys the pool's AgentAccount and opens the
+   * pool on chain via PoolRegistry.open. Tier 1 signs with the deployer EOA;
+   * Tier 2 will redeem a chained delegation against the registry.
+   */
+  pool_create: {
+    scope: 'pool:create',
+    description: "Deploy a pool's AgentAccount and open the pool on chain via PoolRegistry.open.",
+    kind: 'user',
+    spec: '002',
+  },
+  /** User delegation: update a pool's mandate hash (and optional URI) on chain. */
+  pool_update_mandate: {
+    scope: 'pool:update_mandate',
+    description: "Update a pool's mandate hash + URI on chain (PoolRegistry.updateMandate).",
+    kind: 'user',
+    spec: '002',
+  },
+  /** User delegation: rotate the pool's steward set on chain. */
+  pool_rotate_stewards: {
+    scope: 'pool:rotate_stewards',
+    description: "Rotate the pool's steward set on chain (PoolRegistry.rotateStewards).",
+    kind: 'user',
+    spec: '002',
+  },
+  /** User delegation: close the pool on chain (sets sa:poolClosedAt). */
+  pool_close: {
+    scope: 'pool:close',
+    description: 'Close a pool on chain (PoolRegistry.close).',
+    kind: 'user',
+    spec: '002',
+  },
+  /** User delegation: persist the pool's accepted-restrictions JSON on chain. */
+  pool_set_accepted_restrictions: {
+    scope: 'pool:set_accepted_restrictions',
+    description: "Persist the pool's accepted-restrictions JSON on chain (PoolRegistry.setAcceptedRestrictions).",
+    kind: 'user',
+    spec: '002',
+  },
 } as const satisfies Record<string, ScopeDescriptor>
 
 /**
@@ -216,6 +256,49 @@ export const SPEC_003_SCOPES = {
     scope: 'round:read_addressed_list',
     description: "Read a private round's addressed-applicants list.",
     kind: 'cross',
+    spec: '003',
+  },
+  // ─── Tier 1: round admin (user delegation; web → org-mcp) ─────────────
+  /**
+   * User delegation: org-mcp opens a round on chain via FundRegistry.openRound.
+   * Tier 1 signs with the deployer EOA; Tier 2 will redeem a chained
+   * delegation against the registry.
+   */
+  round_open: {
+    scope: 'round:open',
+    description: 'Open a round on chain (FundRegistry.openRound).',
+    kind: 'user',
+    spec: '003',
+  },
+  /** User delegation: flip a round's status on chain. */
+  round_set_status: {
+    scope: 'round:set_status',
+    description: "Flip a round's status on chain (FundRegistry.setRoundStatus).",
+    kind: 'user',
+    spec: '003',
+  },
+  /** User delegation: close a round on chain (sets status='closed'). */
+  round_close: {
+    scope: 'round:close',
+    description: "Close a round on chain (status → 'closed').",
+    kind: 'user',
+    spec: '003',
+  },
+  /** User delegation: cancel a round on chain (sets status='canceled'). */
+  round_cancel: {
+    scope: 'round:cancel',
+    description: "Cancel a round on chain (status → 'canceled').",
+    kind: 'user',
+    spec: '003',
+  },
+  /**
+   * User delegation: commit the round's awards Merkle root + dispute-window
+   * deadline on chain (FundRegistry.setRoundAwardsRoot).
+   */
+  round_set_awards_root: {
+    scope: 'round:set_awards_root',
+    description: "Commit the round's awards Merkle root + dispute-window deadline on chain.",
+    kind: 'user',
     spec: '003',
   },
 } as const satisfies Record<string, ScopeDescriptor>

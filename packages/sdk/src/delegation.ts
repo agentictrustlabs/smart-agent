@@ -125,6 +125,36 @@ export function encodeAllowedMethodsTerms(selectors: `0x${string}`[]): `0x${stri
 }
 
 /**
+ * Encode task-binding enforcer terms — record an A2A task identifier in the
+ * delegation. Combined with `CallDataHashEnforcer` at mint time, this gives
+ * sub-delegations a (calldata-hash, taskId) tuple that the audit layer
+ * correlates back to a specific A2A task.
+ *
+ * Layout: abi.encode(bytes32 taskId). The taskId is conventionally
+ * `keccak256(toBytes(a2aTaskId))`.
+ */
+export function encodeTaskBindingTerms(taskId: `0x${string}`): `0x${string}` {
+  if (!/^0x[0-9a-fA-F]{64}$/.test(taskId)) {
+    throw new Error('taskId must be a 0x-prefixed 32-byte value (e.g. keccak256 of an A2A task id)')
+  }
+  return encodeAbiParameters([{ type: 'bytes32' }], [taskId])
+}
+
+/**
+ * Encode call-data-hash enforcer terms — lock a sub-delegation to one exact call.
+ *
+ * Layout: abi.encode(bytes32 expectedHash) where
+ *   expectedHash = keccak256(callData)
+ * for the unique call this delegation authorizes.
+ */
+export function encodeCallDataHashTerms(expectedHash: `0x${string}`): `0x${string}` {
+  if (!/^0x[0-9a-fA-F]{64}$/.test(expectedHash)) {
+    throw new Error('expectedHash must be a 0x-prefixed 32-byte value (keccak256 of callData)')
+  }
+  return encodeAbiParameters([{ type: 'bytes32' }], [expectedHash])
+}
+
+/**
  * Encode recovery enforcer terms.
  *
  *   guardians      — set of EOAs whose signatures count toward the threshold.
@@ -333,6 +363,18 @@ export function decodeAllowedTargetsTerms(terms: `0x${string}`): { targets: `0x$
 export function decodeAllowedMethodsTerms(terms: `0x${string}`): { selectors: `0x${string}`[] } {
   const [selectors] = decodeAbiParameters([{ type: 'bytes4[]' }], terms)
   return { selectors: selectors as `0x${string}`[] }
+}
+
+/** Decode task-binding enforcer terms → { taskId } */
+export function decodeTaskBindingTerms(terms: `0x${string}`): { taskId: `0x${string}` } {
+  const [taskId] = decodeAbiParameters([{ type: 'bytes32' }], terms)
+  return { taskId: taskId as `0x${string}` }
+}
+
+/** Decode call-data-hash enforcer terms → { expectedHash } */
+export function decodeCallDataHashTerms(terms: `0x${string}`): { expectedHash: `0x${string}` } {
+  const [expectedHash] = decodeAbiParameters([{ type: 'bytes32' }], terms)
+  return { expectedHash: expectedHash as `0x${string}` }
 }
 
 // ─── MCP Tool Scope Caveat (off-chain enforcer) ────────────────────
