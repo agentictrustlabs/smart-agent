@@ -2479,3 +2479,590 @@
 [deployer-lock] #555 fn done in 6ms
 [deployer-lock] #555 released (held 6ms)
  GET /api/system-readiness 200 in 36ms
+ ○ Compiling /api/ontology-sync ...
+ ✓ Compiled /api/ontology-sync in 622ms (2278 modules)
+[ontology-sync] Starting on-chain → GraphDB sync...
+[deployer-lock] #556 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #556 acquired after 0ms
+[deployer-lock] #556 fn done in 5ms
+[deployer-lock] #556 released (held 5ms)
+[ontology-sync] Emitted 53 agents. Building combined data-graph turtle...
+[ontology-sync] Data graph uploaded: 53 agents + 0 class assertions + 0 rounds + 0 pools
+ POST /api/ontology-sync 200 in 3258ms
+[deployer-lock] #557 writeContract(createEdge) queued (depth=0)
+[deployer-lock] #557 acquired after 0ms
+[deployer-lock] #557 fn done in 7ms
+[deployer-lock] #557 released (held 7ms)
+[deployer-lock] #558 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #558 acquired after 0ms
+[deployer-lock] #558 fn done in 6ms
+[deployer-lock] #558 released (held 6ms)
+[deployer-lock] #559 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #559 acquired after 0ms
+[deployer-lock] #559 fn done in 7ms
+[deployer-lock] #559 released (held 7ms)
+[deployer-lock] #560 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #560 acquired after 0ms
+[deployer-lock] #560 fn done in 5ms
+[deployer-lock] #560 released (held 6ms)
+[deployer-lock] #561 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #561 acquired after 0ms
+[deployer-lock] #561 fn done in 6ms
+[deployer-lock] #561 released (held 6ms)
+[deployer-lock] #562 writeContract(createEdge) queued (depth=0)
+[deployer-lock] #562 acquired after 0ms
+[deployer-lock] #562 fn done in 7ms
+[deployer-lock] #562 released (held 7ms)
+[deployer-lock] #563 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #563 acquired after 0ms
+[deployer-lock] nonce desync detected; retrying once with fresh nonce
+[deployer-lock] #563 fn done in 28ms
+[deployer-lock] #563 released (held 29ms)
+[deployer-lock] #564 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #564 acquired after 0ms
+[deployer-lock] #564 fn done in 8ms
+[deployer-lock] #564 released (held 8ms)
+[deployer-lock] #565 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #565 acquired after 0ms
+[deployer-lock] #565 fn done in 6ms
+[deployer-lock] #565 released (held 6ms)
+[deployer-lock] #566 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #566 acquired after 0ms
+[deployer-lock] #566 fn done in 7ms
+[deployer-lock] #566 released (held 7ms)
+[deployer-lock] #567 writeContract(createEdge) queued (depth=0)
+[deployer-lock] #567 acquired after 0ms
+[deployer-lock] nonce desync detected; retrying once with fresh nonce
+[deployer-lock] #567 fn done in 18ms
+[deployer-lock] #567 released (held 18ms)
+[deployer-lock] #568 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #568 acquired after 0ms
+[deployer-lock] nonce desync detected; retrying once with fresh nonce
+[deployer-lock] #568 fn done in 23ms
+[deployer-lock] #568 released (held 23ms)
+[deployer-lock] #569 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #569 acquired after 0ms
+[deployer-lock] #569 fn done in 8ms
+[deployer-lock] #569 released (held 8ms)
+[deployer-lock] #570 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #570 acquired after 0ms
+[deployer-lock] #570 fn done in 6ms
+[deployer-lock] #570 released (held 6ms)
+[deployer-lock] #571 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #571 acquired after 0ms
+[deployer-lock] #571 fn done in 7ms
+[deployer-lock] #571 released (held 7ms)
+[deployer-lock] #572 writeContract(createEdge) queued (depth=0)
+[deployer-lock] #572 acquired after 0ms
+[deployer-lock] nonce desync detected; retrying once with fresh nonce
+[deployer-lock] #572 fn done in 14ms
+[deployer-lock] #572 released (held 14ms)
+[deployer-lock] #573 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #573 acquired after 0ms
+[deployer-lock] #573 fn done in 7ms
+[deployer-lock] #573 released (held 7ms)
+[deployer-lock] #574 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #574 acquired after 1ms
+[deployer-lock] #574 fn done in 7ms
+[deployer-lock] #574 released (held 8ms)
+[deployer-lock] #575 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #575 acquired after 0ms
+[deployer-lock] #575 fn done in 5ms
+[deployer-lock] #575 released (held 5ms)
+[deployer-lock] #576 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #576 acquired after 0ms
+[deployer-lock] nonce desync detected; retrying once with fresh nonce
+[deployer-lock] #576 fn done in 14ms
+[deployer-lock] #576 released (held 14ms)
+[deployer-lock] #577 writeContract(createEdge) queued (depth=0)
+[deployer-lock] #577 acquired after 0ms
+[deployer-lock] #577 fn done in 9ms
+[deployer-lock] #577 released (held 9ms)
+[ontology-sync] Starting on-chain → GraphDB sync...
+[ontology-sync] Emitted 53 agents. Building combined data-graph turtle...
+[ontology-sync] Data graph uploaded: 53 agents + 0 class assertions + 0 rounds + 3 pools
+ POST /api/ontology-sync 200 in 1649ms
+[deployer-lock] #578 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #578 acquired after 0ms
+[deployer-lock] #578 fn done in 10ms
+[deployer-lock] #578 released (held 10ms)
+[deployer-lock] #579 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #579 acquired after 0ms
+[deployer-lock] #579 fn done in 7ms
+[deployer-lock] #579 released (held 7ms)
+[deployer-lock] #580 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #580 acquired after 0ms
+[deployer-lock] #580 fn done in 5ms
+[deployer-lock] #580 released (held 5ms)
+[deployer-lock] #581 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #581 acquired after 0ms
+[deployer-lock] #581 fn done in 5ms
+[deployer-lock] #581 released (held 5ms)
+[deployer-lock] #582 writeContract(createEdge) queued (depth=0)
+[deployer-lock] #582 acquired after 0ms
+[deployer-lock] #582 fn done in 7ms
+[deployer-lock] #582 released (held 8ms)
+[deployer-lock] #583 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #583 acquired after 0ms
+[deployer-lock] #583 fn done in 6ms
+[deployer-lock] #583 released (held 6ms)
+[deployer-lock] #584 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #584 acquired after 0ms
+[deployer-lock] #584 fn done in 7ms
+[deployer-lock] #584 released (held 7ms)
+[deployer-lock] #585 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #585 acquired after 0ms
+[deployer-lock] #585 fn done in 6ms
+[deployer-lock] #585 released (held 6ms)
+[deployer-lock] #586 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #586 acquired after 0ms
+[deployer-lock] #586 fn done in 6ms
+[deployer-lock] #586 released (held 6ms)
+[deployer-lock] #587 writeContract(createEdge) queued (depth=0)
+[deployer-lock] #587 acquired after 0ms
+[deployer-lock] #587 fn done in 9ms
+[deployer-lock] #587 released (held 9ms)
+[deployer-lock] #588 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #588 acquired after 0ms
+[deployer-lock] #588 fn done in 5ms
+[deployer-lock] #588 released (held 5ms)
+[deployer-lock] #589 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #589 acquired after 0ms
+[deployer-lock] #589 fn done in 5ms
+[deployer-lock] #589 released (held 5ms)
+[deployer-lock] #590 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #590 acquired after 0ms
+[deployer-lock] #590 fn done in 10ms
+[deployer-lock] #590 released (held 11ms)
+[deployer-lock] #591 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #591 acquired after 0ms
+[deployer-lock] #591 fn done in 11ms
+[deployer-lock] #591 released (held 11ms)
+[deployer-lock] #592 writeContract(createEdge) queued (depth=0)
+[deployer-lock] #592 acquired after 0ms
+[deployer-lock] #592 fn done in 10ms
+[deployer-lock] #592 released (held 10ms)
+[deployer-lock] #593 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #593 acquired after 0ms
+[deployer-lock] #593 fn done in 5ms
+[deployer-lock] #593 released (held 5ms)
+[deployer-lock] #594 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #594 acquired after 0ms
+[deployer-lock] #594 fn done in 7ms
+[deployer-lock] #594 released (held 7ms)
+[deployer-lock] #595 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #595 acquired after 0ms
+[deployer-lock] #595 fn done in 7ms
+[deployer-lock] #595 released (held 7ms)
+[deployer-lock] #596 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #596 acquired after 0ms
+[deployer-lock] #596 fn done in 8ms
+[deployer-lock] #596 released (held 8ms)
+[deployer-lock] #597 writeContract(createEdge) queued (depth=0)
+[deployer-lock] #597 acquired after 0ms
+[deployer-lock] #597 fn done in 8ms
+[deployer-lock] #597 released (held 8ms)
+[deployer-lock] #598 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #598 acquired after 1ms
+[deployer-lock] #598 fn done in 7ms
+[deployer-lock] #598 released (held 8ms)
+[deployer-lock] #599 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #599 acquired after 0ms
+[deployer-lock] #599 fn done in 5ms
+[deployer-lock] #599 released (held 5ms)
+[deployer-lock] #600 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #600 acquired after 0ms
+[deployer-lock] #600 fn done in 6ms
+[deployer-lock] #600 released (held 6ms)
+[deployer-lock] #601 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #601 acquired after 0ms
+[deployer-lock] #601 fn done in 6ms
+[deployer-lock] #601 released (held 6ms)
+[gc-seed] Registering .agent names...
+[deployer-lock] #602 writeContract(register) queued (depth=0)
+[deployer-lock] #602 acquired after 0ms
+[deployer-lock] #602 fn done in 8ms
+[deployer-lock] #602 released (held 8ms)
+[deployer-lock] #603 writeContract(setAddr) queued (depth=0)
+[deployer-lock] #603 acquired after 0ms
+[deployer-lock] #603 fn done in 5ms
+[deployer-lock] #603 released (held 5ms)
+[deployer-lock] #604 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #604 acquired after 0ms
+[deployer-lock] #604 released (held 8ms)
+[deployer-lock] #605 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #605 acquired after 0ms
+[deployer-lock] #605 released (held 6ms)
+[deployer-lock] #606 writeContract(register) queued (depth=0)
+[deployer-lock] #606 acquired after 0ms
+[deployer-lock] #606 fn done in 7ms
+[deployer-lock] #606 released (held 7ms)
+[deployer-lock] #607 writeContract(setAddr) queued (depth=0)
+[deployer-lock] #607 acquired after 0ms
+[deployer-lock] #607 fn done in 8ms
+[deployer-lock] #607 released (held 8ms)
+[deployer-lock] #608 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #608 acquired after 0ms
+[deployer-lock] #608 fn done in 6ms
+[deployer-lock] #608 released (held 6ms)
+[deployer-lock] #609 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #609 acquired after 0ms
+[deployer-lock] #609 fn done in 6ms
+[deployer-lock] #609 released (held 6ms)
+[deployer-lock] #610 writeContract(register) queued (depth=0)
+[deployer-lock] #610 acquired after 0ms
+[deployer-lock] #610 fn done in 6ms
+[deployer-lock] #610 released (held 6ms)
+[deployer-lock] #611 writeContract(setAddr) queued (depth=0)
+[deployer-lock] #611 acquired after 0ms
+[deployer-lock] #611 fn done in 4ms
+[deployer-lock] #611 released (held 4ms)
+[deployer-lock] #612 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #612 acquired after 0ms
+[deployer-lock] #612 fn done in 8ms
+[deployer-lock] #612 released (held 9ms)
+[deployer-lock] #613 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #613 acquired after 0ms
+[deployer-lock] #613 fn done in 4ms
+[deployer-lock] #613 released (held 4ms)
+[deployer-lock] #614 writeContract(register) queued (depth=0)
+[deployer-lock] #614 acquired after 1ms
+[deployer-lock] #614 fn done in 5ms
+[deployer-lock] #614 released (held 6ms)
+[deployer-lock] #615 writeContract(setAddr) queued (depth=0)
+[deployer-lock] #615 acquired after 0ms
+[deployer-lock] #615 fn done in 6ms
+[deployer-lock] #615 released (held 6ms)
+[deployer-lock] #616 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #616 acquired after 0ms
+[deployer-lock] #616 fn done in 7ms
+[deployer-lock] #616 released (held 7ms)
+[deployer-lock] #617 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #617 acquired after 0ms
+[deployer-lock] #617 fn done in 7ms
+[deployer-lock] #617 released (held 7ms)
+[deployer-lock] #618 writeContract(register) queued (depth=0)
+[deployer-lock] #618 acquired after 0ms
+[deployer-lock] #618 fn done in 5ms
+[deployer-lock] #618 released (held 5ms)
+[deployer-lock] #619 writeContract(setAddr) queued (depth=0)
+[deployer-lock] #619 acquired after 0ms
+[deployer-lock] #619 fn done in 6ms
+[deployer-lock] #619 released (held 6ms)
+[deployer-lock] #620 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #620 acquired after 0ms
+[deployer-lock] #620 fn done in 8ms
+[deployer-lock] #620 released (held 9ms)
+[deployer-lock] #621 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #621 acquired after 0ms
+[deployer-lock] #621 fn done in 7ms
+[deployer-lock] #621 released (held 7ms)
+[deployer-lock] #622 writeContract(register) queued (depth=0)
+[deployer-lock] #622 acquired after 0ms
+[deployer-lock] #622 fn done in 5ms
+[deployer-lock] #622 released (held 5ms)
+[deployer-lock] #623 writeContract(setAddr) queued (depth=0)
+[deployer-lock] #623 acquired after 0ms
+[deployer-lock] #623 fn done in 4ms
+[deployer-lock] #623 released (held 4ms)
+[deployer-lock] #624 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #624 acquired after 0ms
+[deployer-lock] #624 fn done in 7ms
+[deployer-lock] #624 released (held 7ms)
+[deployer-lock] #625 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #625 acquired after 0ms
+[deployer-lock] #625 fn done in 9ms
+[deployer-lock] #625 released (held 9ms)
+[deployer-lock] #626 writeContract(register) queued (depth=0)
+[deployer-lock] #626 acquired after 0ms
+[deployer-lock] #626 fn done in 4ms
+[deployer-lock] #626 released (held 5ms)
+[deployer-lock] #627 writeContract(setAddr) queued (depth=0)
+[deployer-lock] #627 acquired after 0ms
+[deployer-lock] #627 fn done in 7ms
+[deployer-lock] #627 released (held 7ms)
+[deployer-lock] #628 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #628 acquired after 0ms
+[deployer-lock] #628 fn done in 6ms
+[deployer-lock] #628 released (held 6ms)
+[deployer-lock] #629 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #629 acquired after 0ms
+[deployer-lock] #629 fn done in 9ms
+[deployer-lock] #629 released (held 10ms)
+[deployer-lock] #630 writeContract(register) queued (depth=0)
+[deployer-lock] #630 acquired after 0ms
+[deployer-lock] #630 fn done in 5ms
+[deployer-lock] #630 released (held 5ms)
+[deployer-lock] #631 writeContract(setAddr) queued (depth=0)
+[deployer-lock] #631 acquired after 1ms
+[deployer-lock] #631 fn done in 4ms
+[deployer-lock] #631 released (held 5ms)
+[deployer-lock] #632 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #632 acquired after 0ms
+[deployer-lock] #632 fn done in 8ms
+[deployer-lock] #632 released (held 8ms)
+[deployer-lock] #633 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #633 acquired after 0ms
+[deployer-lock] #633 fn done in 11ms
+[deployer-lock] #633 released (held 11ms)
+[deployer-lock] #634 writeContract(register) queued (depth=0)
+[deployer-lock] #634 acquired after 0ms
+[deployer-lock] #634 fn done in 6ms
+[deployer-lock] #634 released (held 6ms)
+[deployer-lock] #635 writeContract(setAddr) queued (depth=0)
+[deployer-lock] #635 acquired after 0ms
+[deployer-lock] #635 fn done in 4ms
+[deployer-lock] #635 released (held 4ms)
+[deployer-lock] #636 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #636 acquired after 0ms
+[deployer-lock] #636 fn done in 8ms
+[deployer-lock] #636 released (held 8ms)
+[deployer-lock] #637 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #637 acquired after 0ms
+[deployer-lock] #637 fn done in 8ms
+[deployer-lock] #637 released (held 8ms)
+[deployer-lock] #638 writeContract(register) queued (depth=0)
+[deployer-lock] #638 acquired after 0ms
+[deployer-lock] #638 fn done in 7ms
+[deployer-lock] #638 released (held 7ms)
+[deployer-lock] #639 writeContract(setAddr) queued (depth=0)
+[deployer-lock] #639 acquired after 0ms
+[deployer-lock] #639 fn done in 6ms
+[deployer-lock] #639 released (held 6ms)
+[deployer-lock] #640 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #640 acquired after 0ms
+[deployer-lock] #640 fn done in 7ms
+[deployer-lock] #640 released (held 7ms)
+[deployer-lock] #641 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #641 acquired after 0ms
+[deployer-lock] #641 fn done in 7ms
+[deployer-lock] #641 released (held 7ms)
+[deployer-lock] #642 writeContract(register) queued (depth=0)
+[deployer-lock] #642 acquired after 0ms
+[deployer-lock] #642 fn done in 6ms
+[deployer-lock] #642 released (held 6ms)
+[deployer-lock] #643 writeContract(setAddr) queued (depth=0)
+[deployer-lock] #643 acquired after 0ms
+[deployer-lock] #643 fn done in 6ms
+[deployer-lock] #643 released (held 6ms)
+[deployer-lock] #644 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #644 acquired after 0ms
+[deployer-lock] #644 fn done in 7ms
+[deployer-lock] #644 released (held 7ms)
+[deployer-lock] #645 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #645 acquired after 0ms
+[deployer-lock] #645 fn done in 7ms
+[deployer-lock] #645 released (held 7ms)
+[deployer-lock] #646 writeContract(register) queued (depth=0)
+[deployer-lock] #646 acquired after 0ms
+[deployer-lock] #646 fn done in 5ms
+[deployer-lock] #646 released (held 5ms)
+[deployer-lock] #647 writeContract(setAddr) queued (depth=0)
+[deployer-lock] #647 acquired after 0ms
+[deployer-lock] #647 fn done in 6ms
+[deployer-lock] #647 released (held 6ms)
+[deployer-lock] #648 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #648 acquired after 0ms
+[deployer-lock] #648 fn done in 9ms
+[deployer-lock] #648 released (held 9ms)
+[deployer-lock] #649 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #649 acquired after 0ms
+[deployer-lock] #649 fn done in 8ms
+[deployer-lock] #649 released (held 8ms)
+[deployer-lock] #650 writeContract(register) queued (depth=0)
+[deployer-lock] #650 acquired after 1ms
+[deployer-lock] #650 fn done in 6ms
+[deployer-lock] #650 released (held 7ms)
+[deployer-lock] #651 writeContract(setAddr) queued (depth=0)
+[deployer-lock] #651 acquired after 0ms
+[deployer-lock] #651 fn done in 6ms
+[deployer-lock] #651 released (held 6ms)
+[deployer-lock] #652 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #652 acquired after 0ms
+[deployer-lock] #652 fn done in 10ms
+[deployer-lock] #652 released (held 10ms)
+[deployer-lock] #653 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #653 acquired after 0ms
+[deployer-lock] #653 fn done in 7ms
+[deployer-lock] #653 released (held 7ms)
+[deployer-lock] #654 writeContract(register) queued (depth=0)
+[deployer-lock] #654 acquired after 0ms
+[deployer-lock] #654 fn done in 6ms
+[deployer-lock] #654 released (held 6ms)
+[deployer-lock] #655 writeContract(setAddr) queued (depth=0)
+[deployer-lock] #655 acquired after 0ms
+[deployer-lock] #655 fn done in 6ms
+[deployer-lock] #655 released (held 6ms)
+[deployer-lock] #656 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #656 acquired after 0ms
+[deployer-lock] #656 fn done in 8ms
+[deployer-lock] #656 released (held 8ms)
+[deployer-lock] #657 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #657 acquired after 0ms
+[deployer-lock] #657 fn done in 7ms
+[deployer-lock] #657 released (held 7ms)
+[deployer-lock] #658 writeContract(register) queued (depth=0)
+[deployer-lock] #658 acquired after 0ms
+[deployer-lock] #658 fn done in 5ms
+[deployer-lock] #658 released (held 5ms)
+[deployer-lock] #659 writeContract(setAddr) queued (depth=0)
+[deployer-lock] #659 acquired after 0ms
+[deployer-lock] #659 fn done in 5ms
+[deployer-lock] #659 released (held 5ms)
+[deployer-lock] #660 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #660 acquired after 0ms
+[deployer-lock] #660 fn done in 8ms
+[deployer-lock] #660 released (held 8ms)
+[deployer-lock] #661 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #661 acquired after 0ms
+[deployer-lock] #661 fn done in 9ms
+[deployer-lock] #661 released (held 9ms)
+[deployer-lock] #662 writeContract(register) queued (depth=0)
+[deployer-lock] #662 acquired after 0ms
+[deployer-lock] #662 fn done in 5ms
+[deployer-lock] #662 released (held 5ms)
+[deployer-lock] #663 writeContract(setAddr) queued (depth=0)
+[deployer-lock] #663 acquired after 0ms
+[deployer-lock] #663 fn done in 5ms
+[deployer-lock] #663 released (held 5ms)
+[deployer-lock] #664 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #664 acquired after 0ms
+[deployer-lock] #664 fn done in 7ms
+[deployer-lock] #664 released (held 7ms)
+[deployer-lock] #665 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #665 acquired after 0ms
+[deployer-lock] #665 fn done in 8ms
+[deployer-lock] #665 released (held 8ms)
+[deployer-lock] #666 writeContract(register) queued (depth=0)
+[deployer-lock] #666 acquired after 0ms
+[deployer-lock] #666 fn done in 7ms
+[deployer-lock] #666 released (held 7ms)
+[deployer-lock] #667 writeContract(setAddr) queued (depth=0)
+[deployer-lock] #667 acquired after 0ms
+[deployer-lock] #667 fn done in 6ms
+[deployer-lock] #667 released (held 6ms)
+[deployer-lock] #668 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #668 acquired after 0ms
+[deployer-lock] #668 fn done in 7ms
+[deployer-lock] #668 released (held 7ms)
+[deployer-lock] #669 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #669 acquired after 0ms
+[deployer-lock] #669 fn done in 7ms
+[deployer-lock] #669 released (held 7ms)
+[deployer-lock] #670 writeContract(register) queued (depth=0)
+[deployer-lock] #670 acquired after 0ms
+[deployer-lock] #670 fn done in 5ms
+[deployer-lock] #670 released (held 5ms)
+[deployer-lock] #671 writeContract(setAddr) queued (depth=0)
+[deployer-lock] #671 acquired after 0ms
+[deployer-lock] #671 fn done in 6ms
+[deployer-lock] #671 released (held 6ms)
+[deployer-lock] #672 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #672 acquired after 0ms
+[deployer-lock] #672 fn done in 8ms
+[deployer-lock] #672 released (held 8ms)
+[deployer-lock] #673 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #673 acquired after 0ms
+[deployer-lock] #673 fn done in 7ms
+[deployer-lock] #673 released (held 8ms)
+[gc-seed] Names registered under globalchurch.agent
+[gc-seed] Global.Church community deployed: 15 agents, 32+ on-chain edges
+[catalyst-seed:minimal] Seeding catalyst essentials only (CATALYST_SEED_MODE=minimal)...
+[deployer-lock] #674 writeContract(createAccount) queued (depth=0)
+[deployer-lock] #674 acquired after 0ms
+[deployer-lock] #674 fn done in 9ms
+[deployer-lock] #674 released (held 9ms)
+[deployer-lock] #675 writeContract(createAccount) queued (depth=0)
+[deployer-lock] #675 acquired after 0ms
+[deployer-lock] #675 fn done in 7ms
+[deployer-lock] #675 released (held 7ms)
+[deployer-lock] #676 writeContract(createAccount) queued (depth=0)
+[deployer-lock] #676 acquired after 0ms
+[deployer-lock] #676 fn done in 7ms
+[deployer-lock] #676 released (held 7ms)
+[catalyst-seed:minimal] Deployed: network=0x0F669E6851A15FD0E5904EB197c369C2ab578D9b hub=0xD763eea2Ae49a131a814db64259Ab6fbE423E27b catalystHub=0x96a91e929a5c451060e000F7AB545beA2b3D0465
+[deployer-lock] #677 writeContract(register) queued (depth=0)
+[deployer-lock] #677 acquired after 0ms
+[deployer-lock] #677 fn done in 7ms
+[deployer-lock] #677 released (held 7ms)
+[deployer-lock] #678 writeContract(register) queued (depth=0)
+[deployer-lock] #678 acquired after 0ms
+[deployer-lock] #678 fn done in 7ms
+[deployer-lock] #678 released (held 7ms)
+[deployer-lock] #679 writeContract(register) queued (depth=0)
+[deployer-lock] #679 acquired after 0ms
+[deployer-lock] #679 fn done in 9ms
+[deployer-lock] #679 released (held 9ms)
+[deployer-lock] #680 writeContract(addMultiAddressProperty) queued (depth=0)
+[deployer-lock] #680 acquired after 0ms
+[deployer-lock] #680 fn done in 7ms
+[deployer-lock] #680 released (held 7ms)
+[deployer-lock] #681 writeContract(addMultiAddressProperty) queued (depth=0)
+[deployer-lock] #681 acquired after 0ms
+[deployer-lock] #681 fn done in 6ms
+[deployer-lock] #681 released (held 6ms)
+[deployer-lock] #682 writeContract(addMultiAddressProperty) queued (depth=0)
+[deployer-lock] #682 acquired after 0ms
+[deployer-lock] #682 fn done in 6ms
+[deployer-lock] #682 released (held 6ms)
+[catalyst-seed:minimal] Linked issuer EOA → Network: 0xe8acf143AFbF8B1371A20ea934D334180190Eac1
+[deployer-lock] #683 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #683 acquired after 0ms
+[deployer-lock] #683 fn done in 8ms
+[deployer-lock] #683 released (held 8ms)
+[deployer-lock] #684 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #684 acquired after 0ms
+[deployer-lock] #684 fn done in 8ms
+[deployer-lock] #684 released (held 8ms)
+[deployer-lock] #685 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #685 acquired after 0ms
+[deployer-lock] #685 fn done in 7ms
+[deployer-lock] #685 released (held 7ms)
+[deployer-lock] #686 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #686 acquired after 0ms
+[deployer-lock] #686 fn done in 7ms
+[deployer-lock] #686 released (held 7ms)
+[deployer-lock] #687 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #687 acquired after 0ms
+[deployer-lock] #687 fn done in 7ms
+[deployer-lock] #687 released (held 7ms)
+[deployer-lock] #688 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #688 acquired after 0ms
+[deployer-lock] #688 fn done in 8ms
+[deployer-lock] #688 released (held 8ms)
+[deployer-lock] #689 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #689 acquired after 0ms
+[deployer-lock] #689 fn done in 7ms
+[deployer-lock] #689 released (held 7ms)
+[deployer-lock] #690 writeContract(setStringProperty) queued (depth=0)
+[deployer-lock] #690 acquired after 0ms
+[deployer-lock] #690 fn done in 7ms
+[deployer-lock] #690 released (held 7ms)
+[deployer-lock] #691 writeContract(mint) queued (depth=0)
+[deployer-lock] #691 acquired after 0ms
+[deployer-lock] #691 fn done in 7ms
+[deployer-lock] #691 released (held 7ms)
+[deployer-lock] #692 writeContract(mint) queued (depth=0)
+[deployer-lock] #692 acquired after 0ms
+[deployer-lock] #692 fn done in 8ms
+[deployer-lock] #692 released (held 8ms)
+[deployer-lock] #693 writeContract(mint) queued (depth=0)
+[deployer-lock] #693 acquired after 0ms
+[deployer-lock] #693 fn done in 15ms
+[deployer-lock] #693 released (held 15ms)
+[deployer-lock] #694 writeContract(mint) queued (depth=0)
+[deployer-lock] #694 acquired after 0ms
+[deployer-lock] #694 fn done in 11ms
+[deployer-lock] #694 released (held 11ms)
+[deployer-lock] #695 writeContract(createEdge) queued (depth=0)
+[deployer-lock] #695 acquired after 0ms
+[deployer-lock] #695 fn done in 11ms
+[deployer-lock] #695 released (held 11ms)
+[deployer-lock] #696 writeContract(makeAssertion) queued (depth=0)
+[deployer-lock] #696 acquired after 0ms
+[deployer-lock] #696 fn done in 8ms
+[deployer-lock] #696 released (held 8ms)
+[deployer-lock] #697 writeContract(setEdgeStatus) queued (depth=0)
+[deployer-lock] #697 acquired after 1ms
+[deployer-lock] #697 fn done in 9ms
+[deployer-lock] #697 released (held 10ms)

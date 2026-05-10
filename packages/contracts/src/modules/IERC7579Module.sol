@@ -36,6 +36,19 @@ interface IERC7579Module {
     function moduleId() external view returns (string memory);
 }
 
+/**
+ * @title IERC7579ModuleLifecycle
+ * @notice Optional extension to IERC7579Module — adds the install/uninstall
+ *         lifecycle hooks. Phase 3 modules that participate in
+ *         AgentAccount.installModule must implement this. The base interface
+ *         (`IERC7579Module`) is left lifecycle-free so existing introspect-only
+ *         modules (e.g. caveat enforcers) keep their shape unchanged.
+ */
+interface IERC7579ModuleLifecycle is IERC7579Module {
+    function onInstall(bytes calldata data) external;
+    function onUninstall(bytes calldata data) external;
+}
+
 library SmartAgentModuleTypes {
     uint256 internal constant TYPE_VALIDATOR = 1;
     uint256 internal constant TYPE_EXECUTOR  = 2;

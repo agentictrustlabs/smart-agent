@@ -152,6 +152,17 @@ export function UserDropdown() {
 
           <div data-component="dropdown-divider" />
 
+          <a
+            data-component="dropdown-session-permissions"
+            href="/sessions/permissions"
+            onClick={() => setOpen(false)}
+            style={{ display: 'block', textDecoration: 'none' }}
+          >
+            View session permissions
+          </a>
+
+          <div data-component="dropdown-divider" />
+
           <button data-component="dropdown-disconnect" onClick={handleDisconnect} disabled={disconnecting}>
             {disconnecting ? 'Disconnecting...' : 'Disconnect'}
           </button>

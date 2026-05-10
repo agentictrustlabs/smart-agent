@@ -38,6 +38,46 @@ export const agentAccountFactoryAbi = [
   { type: 'event', name: 'AgentAccountCreated', inputs: [{ name: 'account', type: 'address', indexed: true }, { name: 'owner', type: 'address', indexed: true }, { name: 'salt', type: 'uint256', indexed: false }] },
 ] as const
 
+// ─── SessionAgentAccountFactory ABI (Phase 3) ────────────────────────
+
+export const sessionAgentAccountFactoryAbi = [
+  {
+    type: 'function',
+    name: 'deploySession',
+    inputs: [
+      { name: 'owner', type: 'address' },
+      { name: 'salt', type: 'bytes32' },
+      { name: 'validators', type: 'address[]' },
+      { name: 'validatorInits', type: 'bytes[]' },
+      { name: 'hooks', type: 'address[]' },
+      { name: 'hookInits', type: 'bytes[]' },
+    ],
+    outputs: [{ name: 'account', type: 'address' }],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'getAddress',
+    inputs: [
+      { name: 'owner', type: 'address' },
+      { name: 'salt', type: 'bytes32' },
+    ],
+    outputs: [{ name: '', type: 'address' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'event',
+    name: 'SessionAgentAccountDeployed',
+    inputs: [
+      { name: 'account', type: 'address', indexed: true },
+      { name: 'owner', type: 'address', indexed: true },
+      { name: 'salt', type: 'bytes32', indexed: true },
+      { name: 'validatorCount', type: 'uint256', indexed: false },
+      { name: 'hookCount', type: 'uint256', indexed: false },
+    ],
+  },
+] as const
+
 // ─── DelegationManager ABI ───────────────────────────────────────────
 
 export const delegationManagerAbi = [
