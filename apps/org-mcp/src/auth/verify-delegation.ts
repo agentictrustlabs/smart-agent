@@ -112,16 +112,26 @@ export async function verifyDelegationAndExtractOrgPrincipal(
     }
   }
 
+  const timestampEnforcerAddr = (process.env.TIMESTAMP_ENFORCER_ADDRESS ?? '').toLowerCase()
   for (const caveat of claims.delegation.caveats) {
-    try {
-      const { validAfter, validUntil } = decodeTimestampTerms(caveat.terms)
-      const now = Math.floor(Date.now() / 1000)
-      if (now < validAfter) return { error: `Delegation not yet valid (validAfter: ${validAfter})` }
-      if (now >= validUntil) return { error: `Delegation expired (validUntil: ${validUntil})` }
+    // Only decode timestamp terms when the caveat IS the TimestampEnforcer.
+    // Other caveats (AllowedTargets, AllowedMethods, etc.) ABI-decode into
+    // garbage values when treated as (uint256, uint256) — historical bug
+    // that only surfaced once richer caveats were composed in Phase 1.
+    if (timestampEnforcerAddr && caveat.enforcer.toLowerCase() === timestampEnforcerAddr) {
+      try {
+        const { validAfter, validUntil } = decodeTimestampTerms(caveat.terms)
+        const now = Math.floor(Date.now() / 1000)
+        if (now < validAfter) return { error: `Delegation not yet valid (validAfter: ${validAfter})` }
+        if (now >= validUntil) return { error: `Delegation expired (validUntil: ${validUntil})` }
+      } catch {
+        return { error: 'Failed to decode timestamp caveat' }
+      }
       continue
-    } catch { /* not a timestamp caveat */ }
+    }
 
-    if (caveat.enforcer.toLowerCase() === MCP_TOOL_SCOPE_ENFORCER.toLowerCase()) {
+    const mcpScopeEnforcerAddr = (process.env.MCP_TOOL_SCOPE_ENFORCER_ADDRESS ?? MCP_TOOL_SCOPE_ENFORCER).toLowerCase()
+    if (caveat.enforcer.toLowerCase() === mcpScopeEnforcerAddr) {
       try {
         const { allowedTools } = decodeMcpToolScopeTerms(caveat.terms)
         if (toolName && !allowedTools.includes(toolName)) {

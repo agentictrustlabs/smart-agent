@@ -107,6 +107,50 @@ export async function POST(request: Request) {
     console.warn('[demo-login] Holder-wallet provision threw:', err)
   }
 
+  // Grant ERC-4337 ownership of (a) the user's own personAgent and (b)
+  // any org this user governs. Boot-seed deploys personAgents and org
+  // AgentAccounts with the deployer as the sole initial owner — the
+  // ORGANIZATION_GOVERNANCE + ROLE_OWNER relationship edges are metadata
+  // only, and the personAgent has no relationship edge at all. Without
+  // this step the unified delegation flow's redeem path fails
+  // `onlyFundOwner` / `onlyPoolOwner` checks when the user backs a
+  // round/pool by either their personAgent or an org they manage.
+  if (user.smartAccountAddress && user.personAgentAddress) {
+    try {
+      const { grantOrgOwnershipBatch } = await import('@/lib/demo-seed/grant-org-ownership')
+      const { getOrgsForPersonAgent, getPersonAgentForUser } = await import('@/lib/agent-registry')
+
+      // (a) Always: user owns their own personAgent.
+      const pairs: Array<{ orgAddress: `0x${string}`; userSmartAccount: `0x${string}`; label: string }> = [
+        {
+          orgAddress: user.personAgentAddress as `0x${string}`,
+          userSmartAccount: user.smartAccountAddress as `0x${string}`,
+          label: `${meta.name} → self (personAgent)`,
+        },
+      ]
+
+      // (b) Also: any org with ROLE_OWNER in the relationship graph.
+      const personAgent = await getPersonAgentForUser(userId)
+      if (personAgent) {
+        const orgs = await getOrgsForPersonAgent(personAgent)
+        // `roles` is a string list of human-readable role names
+        // ('owner', 'data-grantor', etc.), not bytes32 role hashes. Match
+        // against the literal token to find orgs this user owns.
+        for (const o of orgs.filter(x => x.roles.some(r => r.toLowerCase() === 'owner'))) {
+          pairs.push({
+            orgAddress: o.address as `0x${string}`,
+            userSmartAccount: user.smartAccountAddress as `0x${string}`,
+            label: `${meta.name} → ${o.address}`,
+          })
+        }
+      }
+
+      await grantOrgOwnershipBatch(pairs)
+    } catch (err) {
+      console.warn('[demo-login] org-ownership grant threw:', err)
+    }
+  }
+
   // KB write-through — the new person agent (and any community-seed
   // edges that just landed on chain) need to be mirrored into GraphDB
   // so /agents and other DiscoveryService-backed views see this user

@@ -124,6 +124,7 @@ export function listRoundsQuery(
 PREFIX p-plan: <http://purl.org/net/p-plan#>
 
 SELECT ?round ?roundId ?roundName ?fundAgentId ?fundName
+       ?poolAgentId ?poolName
        ?mandate ?milestoneTemplate ?validatorRequirements
        ?reportingCadence ?deadline ?decisionDate
        ?requiredCredentials ?visibility ?addressedApplicants
@@ -140,10 +141,33 @@ WHERE {
     BIND(STR(?subjectId) AS ?roundId)
 
     OPTIONAL { ?round sa:displayName ?roundName }
-    OPTIONAL { ?round sa:operatedByFund ?fundAgentId }
+    # Fund/pool linkage. sa:operatedByFund and sa:operatedByPool are
+    # emitted as URIs of the form <core#agent/0xLOWERCASE>. We resolve
+    # the display name by two paths in order of preference:
+    #   1. The Pool entity owning the on-chain agent as sa:treasuryAgent
+    #      (covers pools created via PoolRegistry; their displayName lives
+    #      on the urn:smart-agent:pool:<slug> subject).
+    #   2. The agent record itself (covers fully-registered orgs whose
+    #      agent record carries sa:displayName + sa:onChainAddress).
+    # The lowercase hex slug is extracted from the URI for cross-page
+    # consistency and to enable the address-form join with sa:onChainAddress.
     OPTIONAL {
-      ?fund sa:onChainAddress ?fundAgentId .
-      ?fund sa:displayName ?fundName .
+      ?round sa:operatedByFund ?fundAgentUri .
+      BIND(STRAFTER(STR(?fundAgentUri), "core#agent/") AS ?fundAgentId)
+      OPTIONAL {
+        ?fundEntity sa:treasuryAgent ?fundAgentUri ;
+                    sa:displayName ?fundName .
+      }
+      OPTIONAL { ?fundAgentUri sa:displayName ?fundName }
+    }
+    OPTIONAL {
+      ?round sa:operatedByPool ?poolAgentUri .
+      BIND(STRAFTER(STR(?poolAgentUri), "core#agent/") AS ?poolAgentId)
+      OPTIONAL {
+        ?poolEntity sa:treasuryAgent ?poolAgentUri ;
+                    sa:displayName ?poolName .
+      }
+      OPTIONAL { ?poolAgentUri sa:displayName ?poolName }
     }
     OPTIONAL { ?round sa:roundMandate ?mandate }
     OPTIONAL { ?round sa:milestoneTemplate ?milestoneTemplate }
@@ -180,6 +204,7 @@ export function roundDetailQuery(roundId: string): string {
 PREFIX p-plan: <http://purl.org/net/p-plan#>
 
 SELECT ?round ?roundName ?fundAgentId ?fundName
+       ?poolAgentId ?poolName
        ?mandate ?milestoneTemplate ?validatorRequirements
        ?reportingCadence ?deadline ?decisionDate
        ?requiredCredentials ?visibility ?addressedApplicants
@@ -196,10 +221,24 @@ WHERE {
     }
 
     OPTIONAL { ?round sa:displayName ?roundName }
-    OPTIONAL { ?round sa:operatedByFund ?fundAgentId }
+    # See listRoundsQuery for the URI→literal extraction rationale.
     OPTIONAL {
-      ?fund sa:onChainAddress ?fundAgentId .
-      ?fund sa:displayName ?fundName .
+      ?round sa:operatedByFund ?fundAgentUri .
+      BIND(STRAFTER(STR(?fundAgentUri), "core#agent/") AS ?fundAgentId)
+      OPTIONAL {
+        ?fundEntity sa:treasuryAgent ?fundAgentUri ;
+                    sa:displayName ?fundName .
+      }
+      OPTIONAL { ?fundAgentUri sa:displayName ?fundName }
+    }
+    OPTIONAL {
+      ?round sa:operatedByPool ?poolAgentUri .
+      BIND(STRAFTER(STR(?poolAgentUri), "core#agent/") AS ?poolAgentId)
+      OPTIONAL {
+        ?poolEntity sa:treasuryAgent ?poolAgentUri ;
+                    sa:displayName ?poolName .
+      }
+      OPTIONAL { ?poolAgentUri sa:displayName ?poolName }
     }
     OPTIONAL { ?round sa:roundMandate ?mandate }
     OPTIONAL { ?round sa:milestoneTemplate ?milestoneTemplate }

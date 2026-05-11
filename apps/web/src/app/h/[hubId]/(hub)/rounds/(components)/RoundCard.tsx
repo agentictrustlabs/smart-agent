@@ -73,6 +73,14 @@ export function RoundCard({
   const fundLabel = round.fundAgentId
     ? `${round.fundAgentId.slice(0, 6)}…${round.fundAgentId.slice(-4)}`
     : 'Unknown fund'
+  // Pool linkage — when sa:operatedByPool is set the card surfaces "in
+  // pool <name>" so the user sees the round↔pool relationship at a
+  // glance instead of guessing from the fund hex.
+  const poolLabel = round.poolName
+    ? round.poolName
+    : round.poolAgentId
+      ? `${round.poolAgentId.slice(0, 6)}…${round.poolAgentId.slice(-4)}`
+      : null
 
   const mandateNarrative = (round.mandate.acceptedKinds ?? []).slice(0, 3).join(', ') || 'Open mandate'
 
@@ -168,6 +176,7 @@ export function RoundCard({
 
       <div style={{ fontSize: '0.72rem', color: C.textMuted, marginBottom: '0.4rem' }}>
         {round.displayName ? <>Accepts {mandateNarrative} · </> : null}
+        {poolLabel ? <>in pool <strong style={{ color: C.text }}>{poolLabel}</strong> · </> : null}
         {fundLabel}
         {round.mandate.acceptedGeo?.length > 0 && <> · {round.mandate.acceptedGeo.slice(0, 2).join(', ')}</>}
       </div>

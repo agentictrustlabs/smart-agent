@@ -1,23 +1,29 @@
 
-[1;36m=== 1/8  Stopping anvil + every dev service[0m  (16:37:05)
-  killing pid(s) 123214 on :8545
-  killing pid(s) 127281 on :3000
-  killing pid(s) 127031 on :3400
-  killing pid(s) 127014 on :3500
-  killing pid(s) 127037 on :3200
-  killing pid(s) 167449 on :3100
-  killing pid(s) 127015 on :3600
-  killing pid(s) 127026 on :3700
-  killing pid(s) 127063 on :3300
+[1;36m=== 1/8  Stopping anvil + every dev service[0m  (19:58:16)
+  killing pid(s) 251442 on :8545
+  killing pid(s) 255965 on :3000
+  killing pid(s) 255631 on :3400
+  killing pid(s) 255636 on :3500
+  killing pid(s) 255646 on :3200
+  killing pid(s) 255707 on :3100
+  killing pid(s) 255661 on :3600
+  killing pid(s) 255664 on :3700
+  killing pid(s) 255674 on :3300
+Terminated
+Terminated
+Terminated
+Terminated
+Terminated
+Terminated
 
-[1;36m=== 2/8  Wiping DB + Askar state[0m  (16:37:06)
+[1;36m=== 2/8  Wiping DB + Askar state[0m  (19:58:17)
   removed: 35 path globs
 
-[1;36m=== 3/8  Starting fresh anvil (chain id 31337)[0m  (16:37:06)
-  anvil → pid=175862 log=/home/barb/smart-agent/tmp/logs/anvil.log
+[1;36m=== 3/8  Starting fresh anvil (chain id 31337)[0m  (19:58:17)
+  anvil → pid=269526 log=/home/barb/smart-agent/tmp/logs/anvil.log
   ✓ anvil up
 
-[1;36m=== 4/8  Deploying contracts + seeding ontology[0m  (16:37:07)
+[1;36m=== 4/8  Deploying contracts + seeding ontology[0m  (19:58:18)
 === Deploying contracts to local Anvil ===
 === Extracted addresses ===
 === Updated /home/barb/smart-agent/apps/web/.env ===
@@ -28,19 +34,19 @@
 === Seeding Relationship Type Registry ===
 === Type Registry seeded: 17 relationship types ===
 
-[1;36m=== 5/8  Post-deploy seeds[0m  (16:37:21)
+[1;36m=== 5/8  Post-deploy seeds[0m  (19:59:05)
   (ontology + relationship-type-registry seeded inline by deploy-local.sh)
   (per-hub on-chain seed runs in-process via /api/boot-seed)
 
-[1;36m=== 6/8  Starting backend services[0m  (16:37:21)
-  org-mcp → pid=179802 log=/home/barb/smart-agent/tmp/logs/org-mcp.log
-  family-mcp → pid=179806 log=/home/barb/smart-agent/tmp/logs/family-mcp.log
-  person-mcp → pid=179810 log=/home/barb/smart-agent/tmp/logs/person-mcp.log
-  a2a-agent → pid=179814 log=/home/barb/smart-agent/tmp/logs/a2a-agent.log
-  geo-mcp → pid=179828 log=/home/barb/smart-agent/tmp/logs/geo-mcp.log
-  verifier-mcp → pid=179837 log=/home/barb/smart-agent/tmp/logs/verifier-mcp.log
-  skill-mcp → pid=179847 log=/home/barb/smart-agent/tmp/logs/skill-mcp.log
-  people-group-mcp → pid=179859 log=/home/barb/smart-agent/tmp/logs/people-group-mcp.log
+[1;36m=== 6/8  Starting backend services[0m  (19:59:05)
+  org-mcp → pid=273484 log=/home/barb/smart-agent/tmp/logs/org-mcp.log
+  family-mcp → pid=273488 log=/home/barb/smart-agent/tmp/logs/family-mcp.log
+  person-mcp → pid=273492 log=/home/barb/smart-agent/tmp/logs/person-mcp.log
+  a2a-agent → pid=273496 log=/home/barb/smart-agent/tmp/logs/a2a-agent.log
+  geo-mcp → pid=273510 log=/home/barb/smart-agent/tmp/logs/geo-mcp.log
+  verifier-mcp → pid=273519 log=/home/barb/smart-agent/tmp/logs/verifier-mcp.log
+  skill-mcp → pid=273530 log=/home/barb/smart-agent/tmp/logs/skill-mcp.log
+  people-group-mcp → pid=273539 log=/home/barb/smart-agent/tmp/logs/people-group-mcp.log
   ✓ org-mcp up
   ✓ family-mcp up
   ✓ person-mcp up
@@ -51,16 +57,16 @@
   ⚠ skill-mcp not responding at http://127.0.0.1:3800/.well-known/agent.json after 5s
   ✓ people-group-mcp up
 
-[1;36m=== 7/8  Starting web (Next.js)[0m  (16:38:03)
-  web → pid=180428 log=/home/barb/smart-agent/tmp/logs/web.log
+[1;36m=== 7/8  Starting web (Next.js)[0m  (19:59:49)
+  web → pid=273942 log=/home/barb/smart-agent/tmp/logs/web.log
   ✓ web up
 
-[1;36m=== 8/8  Triggering /api/boot-seed (also runs final on-chain → KB sync)[0m  (16:38:11)
+[1;36m=== 8/8  Triggering /api/boot-seed (also runs final on-chain → KB sync)[0m  (19:59:58)
   polling /api/system-readiness …
   ⚠ readiness still false after 240s — see tmp/logs/web.log
   forcing on-chain → GraphDB sync …
 
-[1;36m=== 9/9  Seeding intent-marketplace lanes (specs 001/002/003)[0m  (16:42:32)
+[1;36m=== 9/9  Seeding intent-marketplace lanes (specs 001/002/003)[0m  (20:04:22)
   ✓ sync-ontology
   ✓ seed-test-round
   ✓ seed-test-pool
@@ -70,12 +76,9 @@
   forcing follow-up on-chain → GraphDB sync …
   ✓ post-anchor sync
 
-[1;36m=== Done — fresh stack at http://localhost:3000[0m  (16:43:02)
+[1;36m=== Done — fresh stack at http://localhost:3000[0m  (20:04:49)
 Tail logs:   tail -f /home/barb/smart-agent/tmp/logs/<service>.log
 Stop later:  for f in /home/barb/smart-agent/tmp/pids/*.pid; do kill "$(cat "$f")" 2>/dev/null || true; done
-Terminated
-Terminated
-Terminated
 Terminated
 Terminated
 Terminated

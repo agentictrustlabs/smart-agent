@@ -8,81 +8,9 @@ Smart Agent A2A server starting on port 3100
   Agent card: http://localhost:3100/.well-known/agent.json
 Smart Agent A2A server listening on http://localhost:3100
 <-- GET /health
---> GET /health [32m200[0m 1ms
+--> GET /health [32m200[0m 0ms
 <-- GET /.well-known/agent.json
 --> GET /.well-known/agent.json [32m200[0m 1ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 1ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
 <-- GET /.well-known/agent.json
 --> GET /.well-known/agent.json [32m200[0m 0ms
 <-- GET /.well-known/agent.json
@@ -178,15 +106,7 @@ Smart Agent A2A server listening on http://localhost:3100
 <-- GET /.well-known/agent.json
 --> GET /.well-known/agent.json [32m200[0m 0ms
 <-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
-<-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 0ms
+--> GET /.well-known/agent.json [32m200[0m 1ms
 <-- GET /.well-known/agent.json
 --> GET /.well-known/agent.json [32m200[0m 0ms
 <-- GET /.well-known/agent.json
@@ -228,6 +148,88 @@ Smart Agent A2A server listening on http://localhost:3100
 <-- GET /.well-known/agent.json
 --> GET /.well-known/agent.json [32m200[0m 0ms
 <-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
 --> GET /.well-known/agent.json [32m200[0m 1ms
 <-- GET /.well-known/agent.json
 --> GET /.well-known/agent.json [32m200[0m 0ms
@@ -251,3 +253,2009 @@ Smart Agent A2A server listening on http://localhost:3100
 --> GET /.well-known/agent.json [32m200[0m 0ms
 <-- GET /.well-known/agent.json
 --> GET /.well-known/agent.json [32m200[0m 0ms
+<-- POST /session/init
+--> POST /session/init [32m200[0m 36ms
+<-- POST /session/package
+--> POST /session/package [32m200[0m 16ms
+<-- POST /mcp/person/list_oikos_contacts
+--> POST /mcp/person/list_oikos_contacts [32m200[0m 59ms
+<-- POST /mcp/person/add_oikos_contact
+--> POST /mcp/person/add_oikos_contact [32m200[0m 18ms
+<-- POST /mcp/person/add_oikos_contact
+--> POST /mcp/person/add_oikos_contact [32m200[0m 13ms
+<-- POST /mcp/person/add_oikos_contact
+--> POST /mcp/person/add_oikos_contact [32m200[0m 12ms
+<-- POST /mcp/person/add_oikos_contact
+--> POST /mcp/person/add_oikos_contact [32m200[0m 13ms
+<-- POST /mcp/person/add_oikos_contact
+--> POST /mcp/person/add_oikos_contact [32m200[0m 11ms
+<-- POST /mcp/person/add_oikos_contact
+--> POST /mcp/person/add_oikos_contact [32m200[0m 9ms
+<-- POST /mcp/person/list_prayers
+--> POST /mcp/person/list_prayers [32m200[0m 11ms
+<-- POST /mcp/person/upsert_prayer
+--> POST /mcp/person/upsert_prayer [32m200[0m 11ms
+<-- POST /mcp/person/upsert_prayer
+--> POST /mcp/person/upsert_prayer [32m200[0m 11ms
+<-- POST /mcp/person/upsert_prayer
+--> POST /mcp/person/upsert_prayer [32m200[0m 11ms
+<-- POST /mcp/person/upsert_prayer
+--> POST /mcp/person/upsert_prayer [32m200[0m 12ms
+<-- POST /mcp/person/upsert_prayer
+--> POST /mcp/person/upsert_prayer [32m200[0m 12ms
+<-- POST /mcp/person/upsert_prayer
+--> POST /mcp/person/upsert_prayer [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 11ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 11ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 11ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 11ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 11ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 11ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 11ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/update_user_preferences
+--> POST /mcp/person/update_user_preferences [32m200[0m 10ms
+<-- POST /mcp/person/list_notifications
+--> POST /mcp/person/list_notifications [32m200[0m 11ms
+<-- POST /mcp/person/create_notification
+--> POST /mcp/person/create_notification [32m200[0m 10ms
+<-- POST /mcp/person/create_notification
+--> POST /mcp/person/create_notification [32m200[0m 11ms
+<-- POST /mcp/person/create_notification
+--> POST /mcp/person/create_notification [32m200[0m 10ms
+<-- POST /session/init
+--> POST /session/init [32m200[0m 3ms
+<-- POST /session/package
+--> POST /session/package [32m200[0m 5ms
+<-- POST /mcp/person/list_oikos_contacts
+--> POST /mcp/person/list_oikos_contacts [32m200[0m 11ms
+<-- POST /mcp/person/add_oikos_contact
+--> POST /mcp/person/add_oikos_contact [32m200[0m 10ms
+<-- POST /mcp/person/add_oikos_contact
+--> POST /mcp/person/add_oikos_contact [32m200[0m 9ms
+<-- POST /mcp/person/add_oikos_contact
+--> POST /mcp/person/add_oikos_contact [32m200[0m 9ms
+<-- POST /mcp/person/add_oikos_contact
+--> POST /mcp/person/add_oikos_contact [32m200[0m 9ms
+<-- POST /mcp/person/add_oikos_contact
+--> POST /mcp/person/add_oikos_contact [32m200[0m 10ms
+<-- POST /mcp/person/list_prayers
+--> POST /mcp/person/list_prayers [32m200[0m 9ms
+<-- POST /mcp/person/upsert_prayer
+--> POST /mcp/person/upsert_prayer [32m200[0m 10ms
+<-- POST /mcp/person/upsert_prayer
+--> POST /mcp/person/upsert_prayer [32m200[0m 10ms
+<-- POST /mcp/person/upsert_prayer
+--> POST /mcp/person/upsert_prayer [32m200[0m 9ms
+<-- POST /mcp/person/upsert_prayer
+--> POST /mcp/person/upsert_prayer [32m200[0m 10ms
+<-- POST /mcp/person/upsert_prayer
+--> POST /mcp/person/upsert_prayer [32m200[0m 11ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 11ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 11ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/update_user_preferences
+--> POST /mcp/person/update_user_preferences [32m200[0m 10ms
+<-- POST /mcp/person/list_notifications
+--> POST /mcp/person/list_notifications [32m200[0m 9ms
+<-- POST /mcp/person/create_notification
+--> POST /mcp/person/create_notification [32m200[0m 9ms
+<-- POST /mcp/person/create_notification
+--> POST /mcp/person/create_notification [32m200[0m 9ms
+<-- POST /mcp/person/create_notification
+--> POST /mcp/person/create_notification [32m200[0m 9ms
+<-- POST /session/init
+--> POST /session/init [32m200[0m 2ms
+<-- POST /session/package
+--> POST /session/package [32m200[0m 4ms
+<-- POST /mcp/person/list_oikos_contacts
+--> POST /mcp/person/list_oikos_contacts [32m200[0m 9ms
+<-- POST /mcp/person/add_oikos_contact
+--> POST /mcp/person/add_oikos_contact [32m200[0m 10ms
+<-- POST /mcp/person/add_oikos_contact
+--> POST /mcp/person/add_oikos_contact [32m200[0m 8ms
+<-- POST /mcp/person/add_oikos_contact
+--> POST /mcp/person/add_oikos_contact [32m200[0m 10ms
+<-- POST /mcp/person/add_oikos_contact
+--> POST /mcp/person/add_oikos_contact [32m200[0m 9ms
+<-- POST /mcp/person/list_prayers
+--> POST /mcp/person/list_prayers [32m200[0m 10ms
+<-- POST /mcp/person/upsert_prayer
+--> POST /mcp/person/upsert_prayer [32m200[0m 9ms
+<-- POST /mcp/person/upsert_prayer
+--> POST /mcp/person/upsert_prayer [32m200[0m 9ms
+<-- POST /mcp/person/upsert_prayer
+--> POST /mcp/person/upsert_prayer [32m200[0m 10ms
+<-- POST /mcp/person/upsert_prayer
+--> POST /mcp/person/upsert_prayer [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 12ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 14ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/update_user_preferences
+--> POST /mcp/person/update_user_preferences [32m200[0m 10ms
+<-- POST /session/init
+--> POST /session/init [32m200[0m 1ms
+<-- POST /session/package
+--> POST /session/package [32m200[0m 4ms
+<-- POST /mcp/person/list_oikos_contacts
+--> POST /mcp/person/list_oikos_contacts [32m200[0m 9ms
+<-- POST /mcp/person/add_oikos_contact
+--> POST /mcp/person/add_oikos_contact [32m200[0m 9ms
+<-- POST /mcp/person/add_oikos_contact
+--> POST /mcp/person/add_oikos_contact [32m200[0m 8ms
+<-- POST /mcp/person/add_oikos_contact
+--> POST /mcp/person/add_oikos_contact [32m200[0m 11ms
+<-- POST /mcp/person/add_oikos_contact
+--> POST /mcp/person/add_oikos_contact [32m200[0m 12ms
+<-- POST /mcp/person/add_oikos_contact
+--> POST /mcp/person/add_oikos_contact [32m200[0m 12ms
+<-- POST /mcp/person/list_prayers
+--> POST /mcp/person/list_prayers [32m200[0m 10ms
+<-- POST /mcp/person/upsert_prayer
+--> POST /mcp/person/upsert_prayer [32m200[0m 16ms
+<-- POST /mcp/person/upsert_prayer
+--> POST /mcp/person/upsert_prayer [32m200[0m 10ms
+<-- POST /mcp/person/upsert_prayer
+--> POST /mcp/person/upsert_prayer [32m200[0m 9ms
+<-- POST /mcp/person/upsert_prayer
+--> POST /mcp/person/upsert_prayer [32m200[0m 9ms
+<-- POST /mcp/person/upsert_prayer
+--> POST /mcp/person/upsert_prayer [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/update_user_preferences
+--> POST /mcp/person/update_user_preferences [32m200[0m 9ms
+<-- POST /session/init
+--> POST /session/init [32m200[0m 2ms
+<-- POST /session/package
+--> POST /session/package [32m200[0m 5ms
+<-- POST /mcp/person/list_oikos_contacts
+--> POST /mcp/person/list_oikos_contacts [32m200[0m 8ms
+<-- POST /mcp/person/add_oikos_contact
+--> POST /mcp/person/add_oikos_contact [32m200[0m 8ms
+<-- POST /mcp/person/add_oikos_contact
+--> POST /mcp/person/add_oikos_contact [32m200[0m 8ms
+<-- POST /mcp/person/add_oikos_contact
+--> POST /mcp/person/add_oikos_contact [32m200[0m 9ms
+<-- POST /mcp/person/add_oikos_contact
+--> POST /mcp/person/add_oikos_contact [32m200[0m 9ms
+<-- POST /mcp/person/list_prayers
+--> POST /mcp/person/list_prayers [32m200[0m 10ms
+<-- POST /mcp/person/upsert_prayer
+--> POST /mcp/person/upsert_prayer [32m200[0m 8ms
+<-- POST /mcp/person/upsert_prayer
+--> POST /mcp/person/upsert_prayer [32m200[0m 9ms
+<-- POST /mcp/person/upsert_prayer
+--> POST /mcp/person/upsert_prayer [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/update_user_preferences
+--> POST /mcp/person/update_user_preferences [32m200[0m 10ms
+<-- POST /session/init
+--> POST /session/init [32m200[0m 2ms
+<-- POST /session/package
+--> POST /session/package [32m200[0m 4ms
+<-- POST /mcp/person/list_oikos_contacts
+--> POST /mcp/person/list_oikos_contacts [32m200[0m 9ms
+<-- POST /mcp/person/add_oikos_contact
+--> POST /mcp/person/add_oikos_contact [32m200[0m 8ms
+<-- POST /mcp/person/add_oikos_contact
+--> POST /mcp/person/add_oikos_contact [32m200[0m 10ms
+<-- POST /mcp/person/add_oikos_contact
+--> POST /mcp/person/add_oikos_contact [32m200[0m 8ms
+<-- POST /mcp/person/add_oikos_contact
+--> POST /mcp/person/add_oikos_contact [32m200[0m 8ms
+<-- POST /mcp/person/list_prayers
+--> POST /mcp/person/list_prayers [32m200[0m 10ms
+<-- POST /mcp/person/upsert_prayer
+--> POST /mcp/person/upsert_prayer [32m200[0m 9ms
+<-- POST /mcp/person/upsert_prayer
+--> POST /mcp/person/upsert_prayer [32m200[0m 9ms
+<-- POST /mcp/person/upsert_prayer
+--> POST /mcp/person/upsert_prayer [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/update_user_preferences
+--> POST /mcp/person/update_user_preferences [32m200[0m 8ms
+<-- POST /session/init
+--> POST /session/init [32m200[0m 1ms
+<-- POST /session/package
+--> POST /session/package [32m200[0m 3ms
+<-- POST /mcp/person/list_oikos_contacts
+--> POST /mcp/person/list_oikos_contacts [32m200[0m 8ms
+<-- POST /mcp/person/add_oikos_contact
+--> POST /mcp/person/add_oikos_contact [32m200[0m 7ms
+<-- POST /mcp/person/add_oikos_contact
+--> POST /mcp/person/add_oikos_contact [32m200[0m 8ms
+<-- POST /mcp/person/add_oikos_contact
+--> POST /mcp/person/add_oikos_contact [32m200[0m 8ms
+<-- POST /mcp/person/list_prayers
+--> POST /mcp/person/list_prayers [32m200[0m 8ms
+<-- POST /mcp/person/upsert_prayer
+--> POST /mcp/person/upsert_prayer [32m200[0m 9ms
+<-- POST /mcp/person/upsert_prayer
+--> POST /mcp/person/upsert_prayer [32m200[0m 8ms
+<-- POST /mcp/person/upsert_prayer
+--> POST /mcp/person/upsert_prayer [32m200[0m 7ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 12ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/update_user_preferences
+--> POST /mcp/person/update_user_preferences [32m200[0m 10ms
+<-- POST /session/init
+--> POST /session/init [32m200[0m 2ms
+<-- POST /session/package
+--> POST /session/package [32m200[0m 3ms
+<-- POST /mcp/person/list_oikos_contacts
+--> POST /mcp/person/list_oikos_contacts [32m200[0m 11ms
+<-- POST /mcp/person/add_oikos_contact
+--> POST /mcp/person/add_oikos_contact [32m200[0m 10ms
+<-- POST /mcp/person/add_oikos_contact
+--> POST /mcp/person/add_oikos_contact [32m200[0m 9ms
+<-- POST /mcp/person/add_oikos_contact
+--> POST /mcp/person/add_oikos_contact [32m200[0m 8ms
+<-- POST /mcp/person/list_prayers
+--> POST /mcp/person/list_prayers [32m200[0m 10ms
+<-- POST /mcp/person/upsert_prayer
+--> POST /mcp/person/upsert_prayer [32m200[0m 10ms
+<-- POST /mcp/person/upsert_prayer
+--> POST /mcp/person/upsert_prayer [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 11ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/update_user_preferences
+--> POST /mcp/person/update_user_preferences [32m200[0m 9ms
+<-- POST /session/init
+--> POST /session/init [32m200[0m 2ms
+<-- POST /session/package
+--> POST /session/package [32m200[0m 5ms
+<-- POST /mcp/person/get_profile
+--> POST /mcp/person/get_profile [32m200[0m 10ms
+<-- POST /mcp/person/update_profile
+--> POST /mcp/person/update_profile [32m200[0m 10ms
+<-- POST /mcp/person/get_profile
+--> POST /mcp/person/get_profile [32m200[0m 9ms
+<-- POST /mcp/person/update_profile
+--> POST /mcp/person/update_profile [32m200[0m 9ms
+<-- POST /session/init
+--> POST /session/init [32m200[0m 2ms
+<-- POST /session/package
+--> POST /session/package [32m200[0m 4ms
+<-- POST /mcp/person/get_profile
+--> POST /mcp/person/get_profile [32m200[0m 9ms
+<-- POST /mcp/person/update_profile
+--> POST /mcp/person/update_profile [32m200[0m 8ms
+<-- POST /mcp/person/list_coaching_notes
+--> POST /mcp/person/list_coaching_notes [32m200[0m 10ms
+<-- POST /mcp/person/upsert_coaching_note
+--> POST /mcp/person/upsert_coaching_note [32m200[0m 8ms
+<-- POST /mcp/person/list_coaching_notes
+--> POST /mcp/person/list_coaching_notes [32m200[0m 8ms
+<-- POST /mcp/person/upsert_coaching_note
+--> POST /mcp/person/upsert_coaching_note [32m200[0m 9ms
+<-- POST /mcp/person/list_coaching_notes
+--> POST /mcp/person/list_coaching_notes [32m200[0m 8ms
+<-- POST /mcp/person/upsert_coaching_note
+--> POST /mcp/person/upsert_coaching_note [32m200[0m 8ms
+<-- POST /mcp/person/list_coaching_notes
+--> POST /mcp/person/list_coaching_notes [32m200[0m 8ms
+<-- POST /mcp/person/upsert_coaching_note
+--> POST /mcp/person/upsert_coaching_note [32m200[0m 9ms
+<-- POST /mcp/person/register_received_delegation
+--> POST /mcp/person/register_received_delegation [32m200[0m 14ms
+<-- POST /mcp/person/list_intents
+--> POST /mcp/person/list_intents [32m200[0m 9ms
+<-- POST /mcp/person/express_intent
+--> POST /mcp/person/express_intent [32m200[0m 9ms
+<-- POST /mcp/person/list_intents
+--> POST /mcp/person/list_intents [32m200[0m 9ms
+<-- POST /mcp/person/express_intent
+--> POST /mcp/person/express_intent [32m200[0m 9ms
+<-- POST /mcp/person/list_intents
+--> POST /mcp/person/list_intents [32m200[0m 8ms
+<-- POST /mcp/person/express_intent
+--> POST /mcp/person/express_intent [32m200[0m 9ms
+<-- POST /mcp/person/list_intents
+--> POST /mcp/person/list_intents [32m200[0m 9ms
+<-- POST /mcp/person/express_intent
+--> POST /mcp/person/express_intent [32m200[0m 8ms
+<-- POST /mcp/person/list_intents
+--> POST /mcp/person/list_intents [32m200[0m 8ms
+<-- POST /mcp/person/express_intent
+--> POST /mcp/person/express_intent [32m200[0m 8ms
+<-- POST /mcp/person/list_intents
+--> POST /mcp/person/list_intents [32m200[0m 7ms
+<-- POST /mcp/person/express_intent
+--> POST /mcp/person/express_intent [32m200[0m 8ms
+<-- POST /session/init
+--> POST /session/init [32m200[0m 2ms
+<-- POST /session/package
+--> POST /session/package [32m200[0m 3ms
+<-- POST /mcp/org/list_revenue_reports
+--> POST /mcp/org/list_revenue_reports [32m200[0m 18ms
+<-- POST /mcp/org/submit_revenue_report
+--> POST /mcp/org/submit_revenue_report [32m200[0m 11ms
+<-- POST /mcp/org/approve_revenue_report
+--> POST /mcp/org/approve_revenue_report [32m200[0m 12ms
+<-- POST /mcp/org/list_revenue_reports
+--> POST /mcp/org/list_revenue_reports [32m200[0m 12ms
+<-- POST /mcp/org/submit_revenue_report
+--> POST /mcp/org/submit_revenue_report [32m200[0m 11ms
+<-- POST /mcp/org/approve_revenue_report
+--> POST /mcp/org/approve_revenue_report [32m200[0m 10ms
+<-- POST /mcp/org/list_revenue_reports
+--> POST /mcp/org/list_revenue_reports [32m200[0m 10ms
+<-- POST /mcp/org/submit_revenue_report
+--> POST /mcp/org/submit_revenue_report [32m200[0m 10ms
+<-- POST /session/init
+--> POST /session/init [32m200[0m 2ms
+<-- POST /session/package
+--> POST /session/package [32m200[0m 4ms
+<-- POST /mcp/org/list_revenue_reports
+--> POST /mcp/org/list_revenue_reports [32m200[0m 10ms
+<-- POST /mcp/org/submit_revenue_report
+--> POST /mcp/org/submit_revenue_report [32m200[0m 10ms
+<-- POST /mcp/org/approve_revenue_report
+--> POST /mcp/org/approve_revenue_report [32m200[0m 8ms
+<-- POST /mcp/org/list_revenue_reports
+--> POST /mcp/org/list_revenue_reports [32m200[0m 9ms
+<-- POST /mcp/org/submit_revenue_report
+--> POST /mcp/org/submit_revenue_report [32m200[0m 9ms
+<-- POST /mcp/org/approve_revenue_report
+--> POST /mcp/org/approve_revenue_report [32m200[0m 9ms
+<-- POST /mcp/org/list_revenue_reports
+--> POST /mcp/org/list_revenue_reports [32m200[0m 9ms
+<-- POST /mcp/org/submit_revenue_report
+--> POST /mcp/org/submit_revenue_report [32m200[0m 9ms
+<-- POST /session/init
+--> POST /session/init [32m200[0m 2ms
+<-- POST /session/package
+--> POST /session/package [32m200[0m 3ms
+<-- POST /session/init
+--> POST /session/init [32m200[0m 3ms
+<-- POST /session/package
+--> POST /session/package [32m200[0m 5ms
+<-- POST /session/init
+--> POST /session/init [32m200[0m 5ms
+<-- POST /session/package
+--> POST /session/package [32m200[0m 4ms
+<-- POST /mcp/org/round:open
+<-- POST /session/sa_2e14f57e9ae447bd9910f9d3da490cf9/redeem-tx
+--> POST /session/sa_2e14f57e9ae447bd9910f9d3da490cf9/redeem-tx [32m200[0m 4s
+--> POST /mcp/org/round:open [32m200[0m 4s
+<-- POST /mcp/org/round:update_voting_config
+--> POST /mcp/org/round:update_voting_config [32m200[0m 12ms
+<-- POST /mcp/org/pool:create
+--> POST /mcp/org/pool:create [33m401[0m 2ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- POST /session/init
+--> POST /session/init [32m200[0m 3ms
+<-- POST /session/package
+--> POST /session/package [32m200[0m 4ms
+<-- POST /mcp/person/list_oikos_contacts
+--> POST /mcp/person/list_oikos_contacts [32m200[0m 17ms
+<-- POST /mcp/person/list_prayers
+--> POST /mcp/person/list_prayers [32m200[0m 11ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 11ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 11ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 12ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/update_user_preferences
+--> POST /mcp/person/update_user_preferences [32m200[0m 9ms
+<-- POST /mcp/person/list_notifications
+--> POST /mcp/person/list_notifications [32m200[0m 9ms
+<-- POST /session/init
+--> POST /session/init [32m200[0m 2ms
+<-- POST /session/package
+--> POST /session/package [32m200[0m 4ms
+<-- POST /mcp/person/list_oikos_contacts
+--> POST /mcp/person/list_oikos_contacts [32m200[0m 9ms
+<-- POST /mcp/person/list_prayers
+--> POST /mcp/person/list_prayers [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 11ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/update_user_preferences
+--> POST /mcp/person/update_user_preferences [32m200[0m 9ms
+<-- POST /mcp/person/list_notifications
+--> POST /mcp/person/list_notifications [32m200[0m 10ms
+<-- POST /session/init
+--> POST /session/init [32m200[0m 2ms
+<-- POST /session/package
+--> POST /session/package [32m200[0m 3ms
+<-- POST /mcp/person/list_oikos_contacts
+--> POST /mcp/person/list_oikos_contacts [32m200[0m 11ms
+<-- POST /mcp/person/list_prayers
+--> POST /mcp/person/list_prayers [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 11ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 11ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 11ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/update_user_preferences
+--> POST /mcp/person/update_user_preferences [32m200[0m 10ms
+<-- POST /session/init
+--> POST /session/init [32m200[0m 1ms
+<-- POST /session/package
+--> POST /session/package [32m200[0m 4ms
+<-- POST /mcp/person/list_oikos_contacts
+--> POST /mcp/person/list_oikos_contacts [32m200[0m 8ms
+<-- POST /mcp/person/list_prayers
+--> POST /mcp/person/list_prayers [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 15ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/update_user_preferences
+--> POST /mcp/person/update_user_preferences [32m200[0m 7ms
+<-- POST /session/init
+--> POST /session/init [32m200[0m 2ms
+<-- POST /session/package
+--> POST /session/package [32m200[0m 4ms
+<-- POST /mcp/person/list_oikos_contacts
+--> POST /mcp/person/list_oikos_contacts [32m200[0m 9ms
+<-- POST /mcp/person/list_prayers
+--> POST /mcp/person/list_prayers [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/update_user_preferences
+--> POST /mcp/person/update_user_preferences [32m200[0m 9ms
+<-- POST /session/init
+--> POST /session/init [32m200[0m 2ms
+<-- POST /session/package
+--> POST /session/package [32m200[0m 3ms
+<-- POST /mcp/person/list_oikos_contacts
+--> POST /mcp/person/list_oikos_contacts [32m200[0m 9ms
+<-- POST /mcp/person/list_prayers
+--> POST /mcp/person/list_prayers [32m200[0m 7ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 7ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 7ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/update_user_preferences
+--> POST /mcp/person/update_user_preferences [32m200[0m 9ms
+<-- POST /session/init
+--> POST /session/init [32m200[0m 2ms
+<-- POST /session/package
+--> POST /session/package [32m200[0m 3ms
+<-- POST /mcp/person/list_oikos_contacts
+--> POST /mcp/person/list_oikos_contacts [32m200[0m 9ms
+<-- POST /mcp/person/list_prayers
+--> POST /mcp/person/list_prayers [32m200[0m 7ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 7ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/update_user_preferences
+--> POST /mcp/person/update_user_preferences [32m200[0m 8ms
+<-- POST /session/init
+--> POST /session/init [32m200[0m 2ms
+<-- POST /session/package
+--> POST /session/package [32m200[0m 4ms
+<-- POST /mcp/person/list_oikos_contacts
+--> POST /mcp/person/list_oikos_contacts [32m200[0m 10ms
+<-- POST /mcp/person/list_prayers
+--> POST /mcp/person/list_prayers [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 7ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/update_user_preferences
+--> POST /mcp/person/update_user_preferences [32m200[0m 8ms
+<-- POST /session/init
+--> POST /session/init [32m200[0m 1ms
+<-- POST /session/package
+--> POST /session/package [32m200[0m 4ms
+<-- POST /mcp/person/get_profile
+--> POST /mcp/person/get_profile [32m200[0m 9ms
+<-- POST /mcp/person/get_profile
+--> POST /mcp/person/get_profile [32m200[0m 2s
+<-- POST /session/init
+--> POST /session/init [32m200[0m 2ms
+<-- POST /session/package
+--> POST /session/package [32m200[0m 3ms
+<-- POST /mcp/person/get_profile
+--> POST /mcp/person/get_profile [32m200[0m 8ms
+<-- POST /mcp/person/list_coaching_notes
+--> POST /mcp/person/list_coaching_notes [32m200[0m 10ms
+<-- POST /mcp/person/list_coaching_notes
+--> POST /mcp/person/list_coaching_notes [32m200[0m 8ms
+<-- POST /mcp/person/list_coaching_notes
+--> POST /mcp/person/list_coaching_notes [32m200[0m 9ms
+<-- POST /mcp/person/list_coaching_notes
+--> POST /mcp/person/list_coaching_notes [32m200[0m 8ms
+<-- POST /mcp/person/register_received_delegation
+--> POST /mcp/person/register_received_delegation [32m200[0m 12ms
+<-- POST /mcp/person/list_intents
+--> POST /mcp/person/list_intents [32m200[0m 7ms
+<-- POST /mcp/person/list_intents
+--> POST /mcp/person/list_intents [32m200[0m 12ms
+<-- POST /mcp/person/list_intents
+--> POST /mcp/person/list_intents [32m200[0m 11ms
+<-- POST /mcp/person/list_intents
+--> POST /mcp/person/list_intents [32m200[0m 9ms
+<-- POST /mcp/person/list_intents
+--> POST /mcp/person/list_intents [32m200[0m 9ms
+<-- POST /mcp/person/list_intents
+--> POST /mcp/person/list_intents [32m200[0m 10ms
+<-- POST /session/init
+--> POST /session/init [32m200[0m 2ms
+<-- POST /session/package
+--> POST /session/package [32m200[0m 5ms
+<-- POST /mcp/org/list_revenue_reports
+--> POST /mcp/org/list_revenue_reports [32m200[0m 12ms
+<-- POST /mcp/org/list_revenue_reports
+--> POST /mcp/org/list_revenue_reports [32m200[0m 9ms
+<-- POST /mcp/org/list_revenue_reports
+--> POST /mcp/org/list_revenue_reports [32m200[0m 10ms
+<-- POST /session/init
+--> POST /session/init [32m200[0m 2ms
+<-- POST /session/package
+--> POST /session/package [32m200[0m 4ms
+<-- POST /mcp/org/list_revenue_reports
+--> POST /mcp/org/list_revenue_reports [32m200[0m 9ms
+<-- POST /mcp/org/list_revenue_reports
+--> POST /mcp/org/list_revenue_reports [32m200[0m 8ms
+<-- POST /mcp/org/list_revenue_reports
+--> POST /mcp/org/list_revenue_reports [32m200[0m 8ms
+<-- POST /session/init
+--> POST /session/init [32m200[0m 3ms
+<-- POST /session/package
+--> POST /session/package [32m200[0m 4ms
+<-- POST /mcp/org/list_proposals
+--> POST /mcp/org/list_proposals [33m404[0m 4ms
+<-- POST /mcp/org/create_proposal
+--> POST /mcp/org/create_proposal [33m404[0m 5ms
+<-- POST /mcp/org/list_proposals
+--> POST /mcp/org/list_proposals [33m404[0m 4ms
+<-- POST /mcp/org/create_proposal
+--> POST /mcp/org/create_proposal [33m404[0m 4ms
+<-- POST /session/init
+--> POST /session/init [32m200[0m 2ms
+<-- POST /session/package
+--> POST /session/package [32m200[0m 4ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- POST /session/init
+--> POST /session/init [32m200[0m 2ms
+<-- POST /session/package
+--> POST /session/package [32m200[0m 5ms
+<-- POST /mcp/person/list_oikos_contacts
+<-- POST /mcp/person/list_prayers
+<-- POST /mcp/person/list_training_progress
+--> POST /mcp/person/list_prayers [32m200[0m 23ms
+--> POST /mcp/person/list_oikos_contacts [32m200[0m 24ms
+--> POST /mcp/person/list_training_progress [32m200[0m 23ms
+<-- POST /mcp/person/list_prayers
+<-- POST /mcp/org/pool_pledge:read_self
+<-- POST /mcp/org/grant_proposal:list_for_member
+--> POST /mcp/person/list_prayers [32m200[0m 11ms
+--> POST /mcp/org/grant_proposal:list_for_member [32m200[0m 26ms
+--> POST /mcp/org/pool_pledge:read_self [32m200[0m 27ms
+<-- POST /mcp/person/pool_pledge:read_self
+--> POST /mcp/person/pool_pledge:read_self [32m200[0m 10ms
+<-- POST /mcp/person/list_notifications
+<-- POST /mcp/person/list_oikos_contacts
+<-- POST /mcp/person/list_prayers
+<-- POST /mcp/person/list_training_progress
+--> POST /mcp/person/list_prayers [32m200[0m 26ms
+--> POST /mcp/person/list_notifications [32m200[0m 27ms
+--> POST /mcp/person/list_oikos_contacts [32m200[0m 28ms
+--> POST /mcp/person/list_training_progress [32m200[0m 28ms
+<-- POST /mcp/person/list_notifications
+<-- POST /mcp/person/list_oikos_contacts
+<-- POST /mcp/person/list_prayers
+<-- POST /mcp/person/list_training_progress
+--> POST /mcp/person/list_notifications [32m200[0m 20ms
+--> POST /mcp/person/list_oikos_contacts [32m200[0m 20ms
+--> POST /mcp/person/list_prayers [32m200[0m 20ms
+--> POST /mcp/person/list_training_progress [32m200[0m 21ms
+<-- POST /mcp/org/pool:create
+<-- POST /session/sa_2e14f57e9ae447bd9910f9d3da490cf9/deploy-agent
+--> POST /session/sa_2e14f57e9ae447bd9910f9d3da490cf9/deploy-agent [32m200[0m 4s
+<-- POST /session/sa_2e14f57e9ae447bd9910f9d3da490cf9/redeem-tx
+--> POST /session/sa_2e14f57e9ae447bd9910f9d3da490cf9/redeem-tx [32m200[0m 6s
+--> POST /mcp/org/pool:create [32m200[0m 10s
+<-- POST /mcp/org/pool:create
+<-- POST /session/sa_2e14f57e9ae447bd9910f9d3da490cf9/deploy-agent
+--> POST /session/sa_2e14f57e9ae447bd9910f9d3da490cf9/deploy-agent [32m200[0m 4s
+<-- POST /session/sa_2e14f57e9ae447bd9910f9d3da490cf9/redeem-tx
+--> POST /session/sa_2e14f57e9ae447bd9910f9d3da490cf9/redeem-tx [32m200[0m 4s
+--> POST /mcp/org/pool:create [32m200[0m 8s
+<-- POST /mcp/org/pool_pledge:submit
+--> POST /mcp/org/pool_pledge:submit [32m200[0m 13ms
+<-- POST /mcp/org/pool_pledge:read_self
+--> POST /mcp/org/pool_pledge:read_self [32m200[0m 13ms
+<-- POST /mcp/org/pool_pledge:read_self
+--> POST /mcp/org/pool_pledge:read_self [32m200[0m 11ms
+<-- POST /mcp/org/round:open
+<-- POST /session/sa_2e14f57e9ae447bd9910f9d3da490cf9/redeem-tx
+--> POST /session/sa_2e14f57e9ae447bd9910f9d3da490cf9/redeem-tx [32m200[0m 4s
+--> POST /mcp/org/round:open [32m200[0m 4s
+<-- POST /mcp/org/round:update_voting_config
+--> POST /mcp/org/round:update_voting_config [32m200[0m 12ms
+<-- POST /mcp/org/round:open
+<-- POST /session/sa_2e14f57e9ae447bd9910f9d3da490cf9/redeem-tx
+--> POST /session/sa_2e14f57e9ae447bd9910f9d3da490cf9/redeem-tx [32m200[0m 4s
+--> POST /mcp/org/round:open [32m200[0m 4s
+<-- POST /mcp/org/round:update_voting_config
+--> POST /mcp/org/round:update_voting_config [32m200[0m 12ms
+<-- POST /mcp/org/vote:tally_for_round
+--> POST /mcp/org/vote:tally_for_round [32m200[0m 23ms
+<-- POST /mcp/org/round:open
+<-- POST /session/sa_2e14f57e9ae447bd9910f9d3da490cf9/redeem-tx
+--> POST /session/sa_2e14f57e9ae447bd9910f9d3da490cf9/redeem-tx [32m200[0m 4s
+--> POST /mcp/org/round:open [32m200[0m 4s
+<-- POST /mcp/org/round:update_voting_config
+--> POST /mcp/org/round:update_voting_config [32m200[0m 12ms
+<-- POST /session/init
+--> POST /session/init [32m200[0m 2ms
+<-- POST /session/package
+--> POST /session/package [32m200[0m 3ms
+<-- POST /mcp/person/list_oikos_contacts
+--> POST /mcp/person/list_oikos_contacts [32m200[0m 14ms
+<-- POST /mcp/person/list_prayers
+--> POST /mcp/person/list_prayers [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 19ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 12ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 12ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 12ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 14ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 11ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 11ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 11ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 11ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 12ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 11ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 11ms
+<-- POST /session/init
+--> POST /session/init [32m200[0m 2ms
+<-- POST /session/package
+<-- POST /mcp/person/toggle_training_module
+--> POST /session/package [32m200[0m 7ms
+<-- POST /mcp/person/list_oikos_contacts
+--> POST /mcp/person/toggle_training_module [32m200[0m 12ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 12ms
+--> POST /mcp/person/list_oikos_contacts [32m200[0m 20ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 12ms
+<-- POST /mcp/person/update_user_preferences
+--> POST /mcp/person/update_user_preferences [32m200[0m 11ms
+<-- POST /mcp/person/list_notifications
+<-- POST /mcp/person/list_prayers
+--> POST /mcp/person/list_notifications [32m200[0m 13ms
+<-- POST /session/init
+--> POST /session/init [32m200[0m 2ms
+--> POST /mcp/person/list_prayers [32m200[0m 13ms
+<-- POST /session/package
+<-- POST /mcp/person/toggle_training_module
+--> POST /session/package [32m200[0m 6ms
+<-- POST /mcp/person/list_oikos_contacts
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/list_oikos_contacts [32m200[0m 14ms
+<-- POST /mcp/person/list_prayers
+--> POST /mcp/person/toggle_training_module [32m200[0m 16ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/list_prayers [32m200[0m 12ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 15ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 14ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 13ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 13ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 12ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 13ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 12ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 11ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 11ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 12ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 18ms
+--> POST /mcp/person/toggle_training_module [32m200[0m 11ms
+<-- POST /mcp/person/toggle_training_module
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 13ms
+--> POST /mcp/person/toggle_training_module [32m200[0m 13ms
+<-- POST /mcp/person/toggle_training_module
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 12ms
+--> POST /mcp/person/toggle_training_module [32m200[0m 12ms
+<-- POST /mcp/person/toggle_training_module
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 12ms
+--> POST /mcp/person/toggle_training_module [32m200[0m 11ms
+<-- POST /mcp/person/toggle_training_module
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 11ms
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 12ms
+--> POST /mcp/person/toggle_training_module [32m200[0m 12ms
+<-- POST /mcp/person/toggle_training_module
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 11ms
+--> POST /mcp/person/toggle_training_module [32m200[0m 11ms
+<-- POST /mcp/person/toggle_training_module
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 12ms
+--> POST /mcp/person/toggle_training_module [32m200[0m 12ms
+<-- POST /mcp/person/toggle_training_module
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 12ms
+--> POST /mcp/person/toggle_training_module [32m200[0m 11ms
+<-- POST /mcp/person/update_user_preferences
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/update_user_preferences [32m200[0m 12ms
+--> POST /mcp/person/toggle_training_module [32m200[0m 13ms
+<-- POST /mcp/person/list_notifications
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/list_notifications [32m200[0m 14ms
+--> POST /mcp/person/toggle_training_module [32m200[0m 13ms
+<-- POST /session/init
+<-- POST /mcp/person/toggle_training_module
+--> POST /session/init [32m200[0m 2ms
+<-- POST /session/package
+--> POST /session/package [32m200[0m 3ms
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/list_oikos_contacts
+<-- POST /mcp/person/update_user_preferences
+--> POST /mcp/person/list_oikos_contacts [32m200[0m 15ms
+--> POST /mcp/person/update_user_preferences [32m200[0m 13ms
+<-- POST /mcp/person/list_prayers
+<-- POST /mcp/person/list_notifications
+--> POST /mcp/person/list_prayers [32m200[0m 12ms
+--> POST /mcp/person/list_notifications [32m200[0m 12ms
+<-- POST /mcp/person/toggle_training_module
+<-- POST /session/init
+--> POST /session/init [32m200[0m 2ms
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /session/package
+<-- POST /mcp/person/toggle_training_module
+--> POST /session/package [32m200[0m 6ms
+<-- POST /mcp/person/list_oikos_contacts
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/list_oikos_contacts [32m200[0m 10ms
+<-- POST /mcp/person/list_prayers
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/list_prayers [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 11ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 11ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 12ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 12ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 11ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 12ms
+--> POST /mcp/person/toggle_training_module [32m200[0m 11ms
+<-- POST /mcp/person/toggle_training_module
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 11ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 13ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 11ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 16ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 14ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 11ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 12ms
+--> POST /mcp/person/toggle_training_module [32m200[0m 15ms
+<-- POST /mcp/person/toggle_training_module
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 15ms
+--> POST /mcp/person/toggle_training_module [32m200[0m 15ms
+<-- POST /mcp/person/toggle_training_module
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 12ms
+--> POST /mcp/person/toggle_training_module [32m200[0m 13ms
+<-- POST /mcp/person/update_user_preferences
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/update_user_preferences [32m200[0m 13ms
+--> POST /mcp/person/toggle_training_module [32m200[0m 13ms
+<-- POST /session/init
+<-- POST /mcp/person/update_user_preferences
+--> POST /session/init [32m200[0m 2ms
+<-- POST /session/package
+--> POST /session/package [32m200[0m 3ms
+--> POST /mcp/person/update_user_preferences [32m200[0m 11ms
+<-- POST /mcp/person/list_oikos_contacts
+<-- POST /mcp/person/list_notifications
+--> POST /mcp/person/list_oikos_contacts [32m200[0m 15ms
+--> POST /mcp/person/list_notifications [32m200[0m 14ms
+<-- POST /mcp/person/list_prayers
+<-- POST /session/init
+--> POST /session/init [32m200[0m 1ms
+--> POST /mcp/person/list_prayers [32m200[0m 10ms
+<-- POST /session/package
+--> POST /session/package [32m200[0m 4ms
+<-- POST /mcp/person/toggle_training_module
+<-- POST /mcp/person/list_oikos_contacts
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+--> POST /mcp/person/list_oikos_contacts [32m200[0m 17ms
+<-- POST /mcp/person/toggle_training_module
+<-- POST /mcp/person/list_prayers
+--> POST /mcp/person/toggle_training_module [32m200[0m 13ms
+--> POST /mcp/person/list_prayers [32m200[0m 15ms
+<-- POST /mcp/person/toggle_training_module
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 13ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 13ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 12ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 12ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/update_user_preferences
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/update_user_preferences [32m200[0m 16ms
+<-- POST /session/init
+--> POST /mcp/person/toggle_training_module [32m200[0m 11ms
+--> POST /session/init [32m200[0m 1ms
+<-- POST /mcp/person/toggle_training_module
+<-- POST /session/package
+--> POST /session/package [32m200[0m 4ms
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/list_oikos_contacts
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/list_oikos_contacts [32m200[0m 12ms
+--> POST /mcp/person/toggle_training_module [32m200[0m 11ms
+<-- POST /mcp/person/list_prayers
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/list_prayers [32m200[0m 15ms
+--> POST /mcp/person/toggle_training_module [32m200[0m 16ms
+<-- POST /mcp/person/toggle_training_module
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 11ms
+--> POST /mcp/person/toggle_training_module [32m200[0m 11ms
+<-- POST /mcp/person/toggle_training_module
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 14ms
+--> POST /mcp/person/toggle_training_module [32m200[0m 15ms
+<-- POST /mcp/person/toggle_training_module
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 13ms
+--> POST /mcp/person/toggle_training_module [32m200[0m 14ms
+<-- POST /mcp/person/toggle_training_module
+<-- POST /mcp/person/update_user_preferences
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/update_user_preferences [32m200[0m 8ms
+<-- POST /session/init
+--> POST /session/init [32m200[0m 2ms
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /session/package
+<-- POST /mcp/person/toggle_training_module
+--> POST /session/package [32m200[0m 5ms
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/list_oikos_contacts
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/list_oikos_contacts [32m200[0m 13ms
+--> POST /mcp/person/toggle_training_module [32m200[0m 14ms
+<-- POST /mcp/person/list_prayers
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/list_prayers [32m200[0m 12ms
+--> POST /mcp/person/toggle_training_module [32m200[0m 12ms
+<-- POST /mcp/person/toggle_training_module
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 14ms
+--> POST /mcp/person/toggle_training_module [32m200[0m 13ms
+<-- POST /mcp/person/toggle_training_module
+<-- POST /mcp/person/update_user_preferences
+--> POST /mcp/person/toggle_training_module [32m200[0m 13ms
+--> POST /mcp/person/update_user_preferences [32m200[0m 14ms
+<-- POST /mcp/person/toggle_training_module
+<-- POST /session/init
+--> POST /session/init [32m200[0m 2ms
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /session/package
+<-- POST /mcp/person/toggle_training_module
+--> POST /session/package [32m200[0m 8ms
+<-- POST /mcp/person/list_oikos_contacts
+--> POST /mcp/person/toggle_training_module [32m200[0m 25ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/list_oikos_contacts [32m200[0m 26ms
+<-- POST /mcp/person/list_prayers
+--> POST /mcp/person/toggle_training_module [32m200[0m 15ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/list_prayers [32m200[0m 12ms
+--> POST /mcp/person/toggle_training_module [32m200[0m 14ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 13ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 13ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 12ms
+<-- POST /mcp/person/update_user_preferences
+--> POST /mcp/person/update_user_preferences [32m200[0m 12ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 16ms
+<-- POST /session/init
+<-- POST /mcp/person/toggle_training_module
+--> POST /session/init [32m200[0m 2ms
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /session/package
+<-- POST /mcp/person/toggle_training_module
+--> POST /session/package [32m200[0m 6ms
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/list_oikos_contacts
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/list_oikos_contacts [32m200[0m 12ms
+--> POST /mcp/person/toggle_training_module [32m200[0m 11ms
+<-- POST /mcp/person/list_prayers
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/list_prayers [32m200[0m 15ms
+--> POST /mcp/person/toggle_training_module [32m200[0m 13ms
+<-- POST /mcp/person/toggle_training_module
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 15ms
+--> POST /mcp/person/toggle_training_module [32m200[0m 14ms
+<-- POST /mcp/person/toggle_training_module
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 14ms
+--> POST /mcp/person/toggle_training_module [32m200[0m 12ms
+<-- POST /mcp/person/toggle_training_module
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 14ms
+--> POST /mcp/person/toggle_training_module [32m200[0m 14ms
+<-- POST /mcp/person/toggle_training_module
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 11ms
+--> POST /mcp/person/toggle_training_module [32m200[0m 14ms
+<-- POST /mcp/person/toggle_training_module
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 14ms
+--> POST /mcp/person/toggle_training_module [32m200[0m 14ms
+<-- POST /mcp/person/toggle_training_module
+<-- POST /mcp/person/update_user_preferences
+--> POST /mcp/person/toggle_training_module [32m200[0m 17ms
+--> POST /mcp/person/update_user_preferences [32m200[0m 16ms
+<-- POST /mcp/person/toggle_training_module
+<-- POST /session/init
+--> POST /session/init [32m200[0m 3ms
+--> POST /mcp/person/toggle_training_module [32m200[0m 12ms
+<-- POST /session/package
+<-- POST /mcp/person/toggle_training_module
+--> POST /session/package [32m200[0m 4ms
+<-- POST /mcp/person/list_oikos_contacts
+--> POST /mcp/person/toggle_training_module [32m200[0m 11ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/list_oikos_contacts [32m200[0m 13ms
+<-- POST /mcp/person/list_prayers
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/update_user_preferences
+--> POST /mcp/person/list_prayers [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/update_user_preferences [32m200[0m 10ms
+<-- POST /session/init
+--> POST /session/init [32m200[0m 2ms
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /session/package
+<-- POST /mcp/person/toggle_training_module
+--> POST /session/package [32m200[0m 6ms
+<-- POST /mcp/person/list_oikos_contacts
+--> POST /mcp/person/toggle_training_module [32m200[0m 11ms
+--> POST /mcp/person/list_oikos_contacts [32m200[0m 11ms
+<-- POST /mcp/person/toggle_training_module
+<-- POST /mcp/person/list_prayers
+--> POST /mcp/person/toggle_training_module [32m200[0m 14ms
+--> POST /mcp/person/list_prayers [32m200[0m 15ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 11ms
+<-- POST /mcp/person/toggle_training_module
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+--> POST /mcp/person/toggle_training_module [32m200[0m 11ms
+<-- POST /mcp/person/toggle_training_module
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 14ms
+--> POST /mcp/person/toggle_training_module [32m200[0m 14ms
+<-- POST /mcp/person/toggle_training_module
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 12ms
+--> POST /mcp/person/toggle_training_module [32m200[0m 12ms
+<-- POST /mcp/person/toggle_training_module
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 12ms
+--> POST /mcp/person/toggle_training_module [32m200[0m 13ms
+<-- POST /mcp/person/toggle_training_module
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 13ms
+--> POST /mcp/person/toggle_training_module [32m200[0m 13ms
+<-- POST /mcp/person/update_user_preferences
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/update_user_preferences [32m200[0m 13ms
+--> POST /mcp/person/toggle_training_module [32m200[0m 14ms
+<-- POST /session/init
+<-- POST /mcp/person/toggle_training_module
+--> POST /session/init [32m200[0m 1ms
+<-- POST /session/package
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+--> POST /session/package [32m200[0m 4ms
+<-- POST /mcp/person/toggle_training_module
+<-- POST /mcp/person/list_oikos_contacts
+--> POST /mcp/person/toggle_training_module [32m200[0m 12ms
+--> POST /mcp/person/list_oikos_contacts [32m200[0m 12ms
+<-- POST /mcp/person/toggle_training_module
+<-- POST /mcp/person/list_prayers
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/list_prayers [32m200[0m 14ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+--> POST /mcp/person/toggle_training_module [32m200[0m 11ms
+<-- POST /mcp/person/toggle_training_module
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 13ms
+--> POST /mcp/person/toggle_training_module [32m200[0m 12ms
+<-- POST /mcp/person/update_user_preferences
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/update_user_preferences [32m200[0m 13ms
+--> POST /mcp/person/toggle_training_module [32m200[0m 13ms
+<-- POST /session/init
+<-- POST /mcp/person/toggle_training_module
+--> POST /session/init [32m200[0m 3ms
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /session/package
+--> POST /session/package [32m200[0m 3ms
+<-- POST /mcp/person/toggle_training_module
+<-- POST /mcp/person/list_oikos_contacts
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+--> POST /mcp/person/list_oikos_contacts [32m200[0m 12ms
+<-- POST /mcp/person/update_user_preferences
+<-- POST /mcp/person/list_prayers
+--> POST /mcp/person/update_user_preferences [32m200[0m 13ms
+--> POST /mcp/person/list_prayers [32m200[0m 13ms
+<-- POST /session/init
+--> POST /session/init [32m200[0m 2ms
+<-- POST /mcp/person/toggle_training_module
+<-- POST /session/package
+--> POST /session/package [32m200[0m 3ms
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/get_profile
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/get_profile [32m200[0m 11ms
+--> POST /mcp/person/toggle_training_module [32m200[0m 11ms
+<-- POST /mcp/person/get_profile
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/get_profile [32m200[0m 12ms
+--> POST /mcp/person/toggle_training_module [32m200[0m 11ms
+<-- POST /session/init
+<-- POST /mcp/person/toggle_training_module
+--> POST /session/init [32m200[0m 2ms
+<-- POST /session/package
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+--> POST /session/package [32m200[0m 3ms
+<-- POST /mcp/person/toggle_training_module
+<-- POST /mcp/person/get_profile
+--> POST /mcp/person/toggle_training_module [32m200[0m 19ms
+--> POST /mcp/person/get_profile [32m200[0m 18ms
+<-- POST /mcp/person/toggle_training_module
+<-- POST /mcp/person/list_coaching_notes
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+--> POST /mcp/person/list_coaching_notes [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+<-- POST /mcp/person/list_coaching_notes
+--> POST /mcp/person/toggle_training_module [32m200[0m 13ms
+--> POST /mcp/person/list_coaching_notes [32m200[0m 11ms
+<-- POST /mcp/person/toggle_training_module
+<-- POST /mcp/person/list_coaching_notes
+--> POST /mcp/person/toggle_training_module [32m200[0m 12ms
+--> POST /mcp/person/list_coaching_notes [32m200[0m 11ms
+<-- POST /mcp/person/toggle_training_module
+<-- POST /mcp/person/list_coaching_notes
+--> POST /mcp/person/toggle_training_module [32m200[0m 11ms
+--> POST /mcp/person/list_coaching_notes [32m200[0m 10ms
+<-- POST /mcp/person/update_user_preferences
+--> POST /mcp/person/update_user_preferences [32m200[0m 9ms
+<-- POST /mcp/person/register_received_delegation
+--> POST /mcp/person/register_received_delegation [32m200[0m 18ms
+<-- POST /session/init
+<-- POST /mcp/person/list_intents
+--> POST /session/init [32m200[0m 3ms
+<-- POST /session/package
+--> POST /session/package [32m200[0m 3ms
+--> POST /mcp/person/list_intents [32m200[0m 9ms
+<-- POST /mcp/person/list_oikos_contacts
+<-- POST /mcp/person/list_intents
+--> POST /mcp/person/list_oikos_contacts [32m200[0m 12ms
+--> POST /mcp/person/list_intents [32m200[0m 10ms
+<-- POST /mcp/person/list_prayers
+<-- POST /mcp/person/list_intents
+--> POST /mcp/person/list_prayers [32m200[0m 12ms
+--> POST /mcp/person/list_intents [32m200[0m 12ms
+<-- POST /mcp/person/toggle_training_module
+<-- POST /mcp/person/list_intents
+--> POST /mcp/person/toggle_training_module [32m200[0m 14ms
+--> POST /mcp/person/list_intents [32m200[0m 14ms
+<-- POST /mcp/person/toggle_training_module
+<-- POST /mcp/person/list_intents
+--> POST /mcp/person/toggle_training_module [32m200[0m 14ms
+--> POST /mcp/person/list_intents [32m200[0m 14ms
+<-- POST /mcp/person/toggle_training_module
+<-- POST /mcp/person/list_intents
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/list_intents [32m200[0m 14ms
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/update_user_preferences
+--> POST /mcp/person/update_user_preferences [32m200[0m 10ms
+<-- POST /session/init
+--> POST /session/init [32m200[0m 2ms
+<-- POST /session/package
+--> POST /session/package [32m200[0m 3ms
+<-- POST /session/init
+--> POST /session/init [32m200[0m 1ms
+<-- POST /mcp/person/get_profile
+<-- POST /session/package
+--> POST /session/package [32m200[0m 3ms
+--> POST /mcp/person/get_profile [32m200[0m 8ms
+<-- POST /mcp/person/get_profile
+--> POST /mcp/person/get_profile [32m200[0m 8ms
+<-- POST /mcp/org/list_revenue_reports
+<-- POST /session/init
+--> POST /session/init [32m200[0m 3ms
+--> POST /mcp/org/list_revenue_reports [32m200[0m 12ms
+<-- POST /session/package
+<-- POST /mcp/org/list_revenue_reports
+--> POST /session/package [32m200[0m 4ms
+<-- POST /mcp/person/get_profile
+--> POST /mcp/org/list_revenue_reports [32m200[0m 9ms
+--> POST /mcp/person/get_profile [32m200[0m 8ms
+<-- POST /mcp/org/list_revenue_reports
+<-- POST /mcp/person/list_coaching_notes
+--> POST /mcp/org/list_revenue_reports [32m200[0m 9ms
+--> POST /mcp/person/list_coaching_notes [32m200[0m 10ms
+<-- POST /mcp/person/list_coaching_notes
+--> POST /mcp/person/list_coaching_notes [32m200[0m 10ms
+<-- POST /mcp/person/list_coaching_notes
+--> POST /mcp/person/list_coaching_notes [32m200[0m 10ms
+<-- POST /mcp/person/list_coaching_notes
+--> POST /mcp/person/list_coaching_notes [32m200[0m 11ms
+<-- POST /mcp/person/register_received_delegation
+--> POST /mcp/person/register_received_delegation [32m200[0m 14ms
+<-- POST /session/init
+--> POST /session/init [32m200[0m 2ms
+<-- POST /mcp/person/list_intents
+<-- POST /session/package
+--> POST /session/package [32m200[0m 3ms
+--> POST /mcp/person/list_intents [32m200[0m 8ms
+<-- POST /mcp/person/list_intents
+--> POST /mcp/person/list_intents [32m200[0m 8ms
+<-- POST /mcp/person/list_intents
+<-- POST /mcp/org/list_revenue_reports
+--> POST /mcp/person/list_intents [32m200[0m 8ms
+--> POST /mcp/org/list_revenue_reports [32m200[0m 12ms
+<-- POST /mcp/person/list_intents
+<-- POST /mcp/org/list_revenue_reports
+--> POST /mcp/person/list_intents [32m200[0m 9ms
+--> POST /mcp/org/list_revenue_reports [32m200[0m 8ms
+<-- POST /mcp/person/list_intents
+<-- POST /mcp/org/list_revenue_reports
+--> POST /mcp/person/list_intents [32m200[0m 9ms
+--> POST /mcp/org/list_revenue_reports [32m200[0m 10ms
+<-- POST /mcp/person/list_intents
+--> POST /mcp/person/list_intents [32m200[0m 10ms
+<-- POST /session/init
+--> POST /session/init [32m200[0m 2ms
+<-- POST /session/package
+--> POST /session/package [32m200[0m 4ms
+<-- POST /session/init
+--> POST /session/init [32m200[0m 2ms
+<-- POST /session/package
+--> POST /session/package [32m200[0m 4ms
+<-- POST /mcp/org/list_proposals
+--> POST /mcp/org/list_proposals [33m404[0m 4ms
+<-- POST /mcp/org/list_revenue_reports
+<-- POST /mcp/org/create_proposal
+--> POST /mcp/org/create_proposal [33m404[0m 7ms
+--> POST /mcp/org/list_revenue_reports [32m200[0m 9ms
+<-- POST /mcp/org/list_revenue_reports
+--> POST /mcp/org/list_revenue_reports [32m200[0m 10ms
+<-- POST /mcp/org/list_revenue_reports
+--> POST /mcp/org/list_revenue_reports [32m200[0m 9ms
+<-- POST /session/init
+--> POST /session/init [32m200[0m 1ms
+<-- POST /session/package
+--> POST /session/package [32m200[0m 3ms
+<-- POST /mcp/org/list_proposals
+--> POST /mcp/org/list_proposals [33m404[0m 4ms
+<-- POST /mcp/org/create_proposal
+--> POST /mcp/org/create_proposal [33m404[0m 3ms
+<-- POST /mcp/org/list_revenue_reports
+--> POST /mcp/org/list_revenue_reports [32m200[0m 7ms
+<-- POST /mcp/org/list_revenue_reports
+--> POST /mcp/org/list_revenue_reports [32m200[0m 9ms
+<-- POST /mcp/org/list_revenue_reports
+--> POST /mcp/org/list_revenue_reports [32m200[0m 8ms
+<-- POST /session/init
+--> POST /session/init [32m200[0m 2ms
+<-- POST /session/package
+--> POST /session/package [32m200[0m 4ms
+<-- POST /mcp/org/list_proposals
+--> POST /mcp/org/list_proposals [33m404[0m 3ms
+<-- POST /mcp/org/create_proposal
+--> POST /mcp/org/create_proposal [33m404[0m 4ms
+<-- POST /mcp/org/list_proposals
+--> POST /mcp/org/list_proposals [33m404[0m 4ms
+<-- POST /mcp/org/create_proposal
+--> POST /mcp/org/create_proposal [33m404[0m 4ms
+<-- POST /session/init
+--> POST /session/init [32m200[0m 2ms
+<-- POST /session/package
+--> POST /session/package [32m200[0m 4ms
+<-- POST /session/init
+--> POST /session/init [32m200[0m 3ms
+<-- POST /session/package
+--> POST /session/package [32m200[0m 6ms
+<-- POST /mcp/person/list_oikos_contacts
+--> POST /mcp/person/list_oikos_contacts [32m200[0m 14ms
+<-- POST /mcp/person/list_prayers
+--> POST /mcp/person/list_prayers [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 11ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 11ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 13ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 11ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/update_user_preferences
+--> POST /mcp/person/update_user_preferences [32m200[0m 10ms
+<-- POST /mcp/person/list_notifications
+--> POST /mcp/person/list_notifications [32m200[0m 10ms
+<-- POST /session/init
+--> POST /session/init [32m200[0m 3ms
+<-- POST /session/package
+--> POST /session/package [32m200[0m 5ms
+<-- POST /mcp/person/list_oikos_contacts
+--> POST /mcp/person/list_oikos_contacts [32m200[0m 10ms
+<-- POST /mcp/person/list_prayers
+--> POST /mcp/person/list_prayers [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 12ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/update_user_preferences
+--> POST /mcp/person/update_user_preferences [32m200[0m 8ms
+<-- POST /mcp/person/list_notifications
+--> POST /mcp/person/list_notifications [32m200[0m 8ms
+<-- POST /session/init
+--> POST /session/init [32m200[0m 2ms
+<-- POST /session/package
+--> POST /session/package [32m200[0m 3ms
+<-- POST /mcp/person/list_oikos_contacts
+--> POST /mcp/person/list_oikos_contacts [32m200[0m 9ms
+<-- POST /mcp/person/list_prayers
+--> POST /mcp/person/list_prayers [32m200[0m 7ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 10ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 7ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/update_user_preferences
+--> POST /mcp/person/update_user_preferences [32m200[0m 7ms
+<-- POST /session/init
+--> POST /session/init [32m200[0m 1ms
+<-- POST /session/package
+--> POST /session/package [32m200[0m 3ms
+<-- POST /mcp/person/list_oikos_contacts
+--> POST /mcp/person/list_oikos_contacts [32m200[0m 9ms
+<-- POST /mcp/person/list_prayers
+--> POST /mcp/person/list_prayers [32m200[0m 7ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 13ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/update_user_preferences
+--> POST /mcp/person/update_user_preferences [32m200[0m 9ms
+<-- POST /session/init
+--> POST /session/init [32m200[0m 2ms
+<-- POST /session/package
+--> POST /session/package [32m200[0m 5ms
+<-- POST /mcp/person/list_oikos_contacts
+--> POST /mcp/person/list_oikos_contacts [32m200[0m 8ms
+<-- POST /mcp/person/list_prayers
+--> POST /mcp/person/list_prayers [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/update_user_preferences
+--> POST /mcp/person/update_user_preferences [32m200[0m 11ms
+<-- POST /session/init
+--> POST /session/init [32m200[0m 2ms
+<-- POST /session/package
+--> POST /session/package [32m200[0m 3ms
+<-- POST /mcp/person/list_oikos_contacts
+--> POST /mcp/person/list_oikos_contacts [32m200[0m 8ms
+<-- POST /mcp/person/list_prayers
+--> POST /mcp/person/list_prayers [32m200[0m 7ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 7ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 7ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 7ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/update_user_preferences
+--> POST /mcp/person/update_user_preferences [32m200[0m 8ms
+<-- POST /session/init
+--> POST /session/init [32m200[0m 2ms
+<-- POST /session/package
+--> POST /session/package [32m200[0m 10ms
+<-- POST /mcp/person/list_oikos_contacts
+--> POST /mcp/person/list_oikos_contacts [32m200[0m 8ms
+<-- POST /mcp/person/list_prayers
+--> POST /mcp/person/list_prayers [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 7ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 7ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 7ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 11ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/update_user_preferences
+--> POST /mcp/person/update_user_preferences [32m200[0m 7ms
+<-- POST /session/init
+--> POST /session/init [32m200[0m 4ms
+<-- POST /session/package
+--> POST /session/package [32m200[0m 3ms
+<-- POST /mcp/person/list_oikos_contacts
+--> POST /mcp/person/list_oikos_contacts [32m200[0m 9ms
+<-- POST /mcp/person/list_prayers
+--> POST /mcp/person/list_prayers [32m200[0m 9ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 8ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [32m200[0m 13ms
+<-- POST /mcp/person/update_user_preferences
+--> POST /mcp/person/update_user_preferences [32m200[0m 8ms
+<-- POST /session/init
+--> POST /session/init [32m200[0m 1ms
+<-- POST /session/package
+--> POST /session/package [32m200[0m 4ms
+<-- POST /mcp/person/get_profile
+--> POST /mcp/person/get_profile [32m200[0m 9ms
+<-- POST /mcp/person/get_profile
+--> POST /mcp/person/get_profile [32m200[0m 8ms
+<-- POST /session/init
+--> POST /session/init [32m200[0m 1ms
+<-- POST /session/package
+--> POST /session/package [32m200[0m 3ms
+<-- POST /mcp/person/get_profile
+--> POST /mcp/person/get_profile [32m200[0m 7ms
+<-- POST /mcp/person/list_coaching_notes
+--> POST /mcp/person/list_coaching_notes [32m200[0m 10ms
+<-- POST /mcp/person/list_coaching_notes
+--> POST /mcp/person/list_coaching_notes [32m200[0m 8ms
+<-- POST /mcp/person/list_coaching_notes
+--> POST /mcp/person/list_coaching_notes [32m200[0m 6ms
+<-- POST /mcp/person/list_coaching_notes
+--> POST /mcp/person/list_coaching_notes [32m200[0m 7ms
+<-- POST /mcp/person/register_received_delegation
+--> POST /mcp/person/register_received_delegation [32m200[0m 10ms
+<-- POST /mcp/person/list_intents
+--> POST /mcp/person/list_intents [32m200[0m 9ms
+<-- POST /mcp/person/list_intents
+--> POST /mcp/person/list_intents [32m200[0m 7ms
+<-- POST /mcp/person/list_intents
+--> POST /mcp/person/list_intents [32m200[0m 7ms
+<-- POST /mcp/person/list_intents
+--> POST /mcp/person/list_intents [32m200[0m 8ms
+<-- POST /mcp/person/list_intents
+--> POST /mcp/person/list_intents [32m200[0m 8ms
+<-- POST /mcp/person/list_intents
+--> POST /mcp/person/list_intents [32m200[0m 7ms
+<-- POST /session/init
+--> POST /session/init [32m200[0m 3ms
+<-- POST /session/package
+--> POST /session/package [32m200[0m 3ms
+<-- POST /mcp/org/list_revenue_reports
+--> POST /mcp/org/list_revenue_reports [32m200[0m 13ms
+<-- POST /mcp/org/list_revenue_reports
+--> POST /mcp/org/list_revenue_reports [32m200[0m 9ms
+<-- POST /mcp/org/list_revenue_reports
+--> POST /mcp/org/list_revenue_reports [32m200[0m 9ms
+<-- POST /session/init
+--> POST /session/init [32m200[0m 2ms
+<-- POST /session/package
+--> POST /session/package [32m200[0m 4ms
+<-- POST /mcp/org/list_revenue_reports
+--> POST /mcp/org/list_revenue_reports [32m200[0m 10ms
+<-- POST /mcp/org/list_revenue_reports
+--> POST /mcp/org/list_revenue_reports [32m200[0m 8ms
+<-- POST /mcp/org/list_revenue_reports
+--> POST /mcp/org/list_revenue_reports [32m200[0m 9ms
+<-- POST /session/init
+--> POST /session/init [32m200[0m 2ms
+<-- POST /session/package
+--> POST /session/package [32m200[0m 3ms
+<-- POST /mcp/org/list_proposals
+--> POST /mcp/org/list_proposals [33m404[0m 5ms
+<-- POST /mcp/org/create_proposal
+--> POST /mcp/org/create_proposal [33m404[0m 4ms
+<-- POST /mcp/org/list_proposals
+--> POST /mcp/org/list_proposals [33m404[0m 5ms
+<-- POST /mcp/org/create_proposal
+--> POST /mcp/org/create_proposal [33m404[0m 4ms
+<-- POST /session/init
+--> POST /session/init [32m200[0m 2ms
+<-- POST /session/package
+--> POST /session/package [32m200[0m 3ms
+<-- POST /mcp/org/round:open
+<-- POST /session/sa_2e14f57e9ae447bd9910f9d3da490cf9/redeem-tx
+--> POST /session/sa_2e14f57e9ae447bd9910f9d3da490cf9/redeem-tx [32m200[0m 4s
+--> POST /mcp/org/round:open [32m200[0m 4s
+<-- POST /mcp/org/round:update_voting_config
+--> POST /mcp/org/round:update_voting_config [32m200[0m 12ms
+<-- POST /mcp/org/round:open
+<-- POST /session/sa_2e14f57e9ae447bd9910f9d3da490cf9/redeem-tx
+--> POST /session/sa_2e14f57e9ae447bd9910f9d3da490cf9/redeem-tx [32m200[0m 4s
+--> POST /mcp/org/round:open [32m200[0m 4s
+<-- POST /mcp/org/round:update_voting_config
+--> POST /mcp/org/round:update_voting_config [32m200[0m 10ms
+<-- POST /mcp/org/grant_proposal:submit
+--> POST /mcp/org/grant_proposal:submit [32m200[0m 14ms
+<-- POST /mcp/org/grant_proposal:read_self
+--> POST /mcp/org/grant_proposal:read_self [32m200[0m 12ms
+<-- POST /mcp/org/grant_proposal:read_self
+--> POST /mcp/org/grant_proposal:read_self [32m200[0m 12ms
+<-- POST /mcp/org/vote:list_for_proposal
+<-- POST /mcp/org/vote:tally_for_round
+--> POST /mcp/org/vote:list_for_proposal [32m200[0m 18ms
+--> POST /mcp/org/vote:tally_for_round [32m200[0m 18ms
+<-- POST /mcp/org/vote:list_for_proposal
+--> POST /mcp/org/vote:list_for_proposal [32m200[0m 11ms
+<-- POST /mcp/org/vote:tally_for_round
+--> POST /mcp/org/vote:tally_for_round [32m200[0m 12ms
+<-- POST /mcp/org/vote:tally_for_round
+<-- POST /mcp/org/vote:list_for_proposal
+--> POST /mcp/org/vote:tally_for_round [32m200[0m 14ms
+--> POST /mcp/org/vote:list_for_proposal [32m200[0m 13ms
+<-- POST /mcp/org/vote:tally_for_round
+<-- POST /mcp/org/vote:list_for_proposal
+--> POST /mcp/org/vote:list_for_proposal [32m200[0m 18ms
+--> POST /mcp/org/vote:tally_for_round [32m200[0m 19ms
+<-- POST /mcp/org/vote:tally_for_round
+<-- POST /mcp/org/vote:list_for_proposal
+--> POST /mcp/org/vote:list_for_proposal [32m200[0m 16ms
+--> POST /mcp/org/vote:tally_for_round [32m200[0m 17ms
+<-- POST /mcp/org/vote:tally_for_round
+<-- POST /mcp/org/vote:list_for_proposal
+--> POST /mcp/org/vote:tally_for_round [32m200[0m 17ms
+--> POST /mcp/org/vote:list_for_proposal [32m200[0m 17ms
+<-- POST /mcp/org/grant_proposal:list_for_round
+--> POST /mcp/org/grant_proposal:list_for_round [32m200[0m 19ms
+<-- POST /mcp/org/vote:tally_for_round
+--> POST /mcp/org/vote:tally_for_round [32m200[0m 12ms
+<-- POST /mcp/org/vote:tally_for_round
+--> POST /mcp/org/vote:tally_for_round [32m200[0m 11ms
+<-- POST /mcp/org/vote:tally_for_round
+--> POST /mcp/org/vote:tally_for_round [32m200[0m 11ms
+<-- POST /mcp/org/vote:tally_for_round
+--> POST /mcp/org/vote:tally_for_round [32m200[0m 11ms
+<-- POST /mcp/org/vote:tally_for_round
+--> POST /mcp/org/vote:tally_for_round [32m200[0m 13ms
+<-- POST /mcp/org/vote:tally_for_round
+--> POST /mcp/org/vote:tally_for_round [32m200[0m 13ms
+<-- POST /mcp/org/vote:tally_for_round
+--> POST /mcp/org/vote:tally_for_round [32m200[0m 13ms
+<-- POST /mcp/org/grant_proposal:list_for_round
+--> POST /mcp/org/grant_proposal:list_for_round [32m200[0m 13ms
+<-- POST /mcp/org/vote:tally_for_round
+--> POST /mcp/org/vote:tally_for_round [32m200[0m 12ms
+<-- POST /mcp/org/vote:tally_for_round
+--> POST /mcp/org/vote:tally_for_round [32m200[0m 11ms
+<-- POST /mcp/org/vote:tally_for_round
+--> POST /mcp/org/vote:tally_for_round [32m200[0m 12ms
+<-- POST /mcp/org/vote:tally_for_round
+--> POST /mcp/org/vote:tally_for_round [32m200[0m 13ms
+<-- POST /mcp/org/vote:tally_for_round
+--> POST /mcp/org/vote:tally_for_round [32m200[0m 12ms
+<-- POST /mcp/org/vote:tally_for_round
+--> POST /mcp/org/vote:tally_for_round [32m200[0m 11ms
+<-- POST /mcp/org/vote:tally_for_round
+--> POST /mcp/org/vote:tally_for_round [32m200[0m 11ms
+<-- POST /mcp/org/vote:tally_for_round
+--> POST /mcp/org/vote:tally_for_round [32m200[0m 13ms
+<-- POST /mcp/org/vote:tally_for_round
+--> POST /mcp/org/vote:tally_for_round [32m200[0m 11ms
+<-- POST /mcp/org/vote:tally_for_round
+--> POST /mcp/org/vote:tally_for_round [32m200[0m 12ms
+<-- POST /mcp/org/vote:tally_for_round
+--> POST /mcp/org/vote:tally_for_round [32m200[0m 11ms
+<-- POST /mcp/org/vote:tally_for_round
+--> POST /mcp/org/vote:tally_for_round [32m200[0m 13ms
+<-- POST /mcp/org/vote:tally_for_round
+--> POST /mcp/org/vote:tally_for_round [32m200[0m 11ms
+<-- POST /mcp/org/vote:tally_for_round
+--> POST /mcp/org/vote:tally_for_round [32m200[0m 13ms
+<-- POST /mcp/org/vote:tally_for_round
+--> POST /mcp/org/vote:tally_for_round [32m200[0m 13ms
+<-- POST /mcp/org/vote:tally_for_round
+--> POST /mcp/org/vote:tally_for_round [32m200[0m 12ms

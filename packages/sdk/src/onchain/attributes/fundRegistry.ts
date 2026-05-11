@@ -45,6 +45,8 @@ export interface OpenRoundInput {
   roundId: string
   /** Fund's agent address. */
   fundAgent: Address
+  /** Optional pool that operates this round. Zero-address ≡ not pool-backed. */
+  poolAgent?: Address
   /** Unix seconds; the registry shape requires REQUIRED_ONE uint256. */
   deadline: bigint
   decisionDate: bigint
@@ -78,6 +80,7 @@ export class FundRegistryClient {
     return {
       roundSubject: roundSubjectFor(input.roundId),
       fundAgent: input.fundAgent,
+      poolAgent: (input.poolAgent ?? '0x0000000000000000000000000000000000000000') as Address,
       deadline: input.deadline,
       decisionDate: input.decisionDate,
       reportingCadence: concept(input.reportingCadence),

@@ -62,8 +62,16 @@ export async function createPool(input: CreatePoolInput): Promise<CreatePoolResu
     addressedMembers: input.addressedMembers,
   })
 
-  const { scheduleKbSyncEager } = await import('@/lib/ontology/kb-write-through')
-  scheduleKbSyncEager()
+  // Run the sync INLINE (await) so the page we redirect to actually finds
+  // the new pool in GraphDB. scheduleKbSyncEager() is fire-and-forget and
+  // rate-limited, so the immediate redirect would race and land on the
+  // "Pool not available" empty state.
+  try {
+    const { syncOnChainToGraphDB } = await import('@/lib/ontology/graphdb-sync')
+    await syncOnChainToGraphDB()
+  } catch (err) {
+    console.warn('[poolCreate] inline kb-sync failed:', err instanceof Error ? err.message : err)
+  }
 
   return result
 }

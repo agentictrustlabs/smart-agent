@@ -27,6 +27,12 @@ contract FundRegistry is AttributeStorage {
     bytes32 public constant SA_FUND_OPEN_FOR_CALLS  = keccak256("sa:fundOpenForCalls");
 
     bytes32 public constant SA_ROUND_FUND_AGENT     = keccak256("sa:roundFundAgent");
+    /** Optional: pool that operates this round. Lets the on-chain → GraphDB
+     *  sync emit `sa:operatedByPool` so the UI can render the round↔pool
+     *  link without relying on the fragile `fundAgent == pool.stewardshipAgent`
+     *  inference. Legacy rounds opened before this field existed simply
+     *  omit it. */
+    bytes32 public constant SA_ROUND_POOL_AGENT     = keccak256("sa:roundPoolAgent");
     bytes32 public constant SA_ROUND_DEADLINE       = keccak256("sa:roundDeadline");
     bytes32 public constant SA_ROUND_DECISION_DATE  = keccak256("sa:roundDecisionDate");
     bytes32 public constant SA_ROUND_REPORTING_CADENCE = keccak256("sa:roundReportingCadence");
@@ -50,13 +56,14 @@ contract FundRegistry is AttributeStorage {
     error MissingFundAgent();
 
     event FundRegistered(address indexed fundAgent, bytes32 subject);
-    event RoundOpened(bytes32 indexed roundSubject, address indexed fundAgent);
+    event RoundOpened(bytes32 indexed roundSubject, address indexed fundAgent, address indexed poolAgent);
     event RoundStatusChanged(bytes32 indexed roundSubject, bytes32 newStatus);
     event RoundAwardsRootSet(bytes32 indexed roundSubject, bytes32 awardsRoot, uint256 disputeUntil);
 
     struct OpenRoundParams {
         bytes32 roundSubject;
         address fundAgent;
+        address poolAgent;             // 0x0 if not pool-backed
         uint256 deadline;
         uint256 decisionDate;
         bytes32 reportingCadence;
@@ -128,6 +135,9 @@ contract FundRegistry is AttributeStorage {
         if (p.fundAgent == address(0)) revert MissingFundAgent();
 
         _setAddress(p.roundSubject, SA_ROUND_FUND_AGENT, p.fundAgent);
+        if (p.poolAgent != address(0)) {
+            _setAddress(p.roundSubject, SA_ROUND_POOL_AGENT, p.poolAgent);
+        }
         _setUint(p.roundSubject, SA_ROUND_DEADLINE, p.deadline);
         _setUint(p.roundSubject, SA_ROUND_DECISION_DATE, p.decisionDate);
         _setBytes32(p.roundSubject, SA_ROUND_REPORTING_CADENCE, p.reportingCadence);
@@ -152,7 +162,13 @@ contract FundRegistry is AttributeStorage {
 
         SHAPES.validateSubject(CLASS_ROUND, p.roundSubject, address(this));
 
-        emit RoundOpened(p.roundSubject, p.fundAgent);
+        emit RoundOpened(p.roundSubject, p.fundAgent, p.poolAgent);
+    }
+
+    /** Retro-assign or change the pool that operates a round. Useful for
+     *  legacy rounds that predate the `poolAgent` field. */
+    function setRoundPoolAgent(bytes32 round, address poolAgent) external onlyRoundFundOwner(round) {
+        _setAddress(round, SA_ROUND_POOL_AGENT, poolAgent);
     }
 
     function setRoundStatus(bytes32 round, bytes32 newStatus) external onlyRoundFundOwner(round) {
@@ -193,6 +209,9 @@ contract FundRegistry is AttributeStorage {
     }
     function getRoundFundAgent(bytes32 round) external view returns (address) {
         return this.getAddress(round, SA_ROUND_FUND_AGENT);
+    }
+    function getRoundPoolAgent(bytes32 round) external view returns (address) {
+        return this.getAddress(round, SA_ROUND_POOL_AGENT);
     }
     function getRoundStatus(bytes32 round) external view returns (bytes32) {
         return this.getBytes32(round, SA_ROUND_STATUS);

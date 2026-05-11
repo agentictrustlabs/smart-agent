@@ -157,6 +157,8 @@ function parseRoundRow(row: Record<string, { value: string }>): Round {
     displayName: row.roundName?.value || undefined,
     fundName: row.fundName?.value || undefined,
     fundAgentId: row.fundAgentId?.value ?? '',
+    poolAgentId: row.poolAgentId?.value || undefined,
+    poolName: row.poolName?.value || undefined,
     mandate,
     milestoneTemplate,
     validatorRequirements,
@@ -450,7 +452,13 @@ export class DiscoveryService {
     const sparql = listRoundsQuery(filters, [])
     const results = await this.client.query(sparql)
     const viewer = filters.viewerAgentId.toLowerCase()
-    const items: RoundListItem[] = []
+    // The SPARQL has multiple OPTIONAL joins (fund/pool name lookups by
+    // sa:onChainAddress). When a single address matches multiple agent
+    // records (e.g. catalyst is both a Fund and a Pool, or both an
+    // OrganizationAgent and a Pool subclass), the OPTIONAL cross-product
+    // emits one row per combination. Dedupe by round id, preferring the
+    // first row that has a non-empty poolName / fundName.
+    const byId = new Map<string, Round>()
     for (const row of results.results.bindings) {
       const r = row as unknown as Record<string, { value: string }>
       const round = parseRoundRow(r)
@@ -472,13 +480,26 @@ export class DiscoveryService {
         round.mandate.budgetCeiling > filters.budgetMax
       ) continue
 
-      items.push({
-        ...round,
-        matchedIntentIds: [],
-        warnings: [],
-      })
+      const existing = byId.get(round.id)
+      if (!existing) {
+        byId.set(round.id, round)
+      } else {
+        // Merge: prefer non-empty values from either row so a partial
+        // join (e.g. pool name resolves but fund name doesn't) doesn't
+        // lose the resolved field.
+        byId.set(round.id, {
+          ...existing,
+          poolAgentId: existing.poolAgentId || round.poolAgentId,
+          poolName:    existing.poolName    || round.poolName,
+          fundName:    existing.fundName    || round.fundName,
+        })
+      }
     }
-    return items
+    return Array.from(byId.values()).map(round => ({
+      ...round,
+      matchedIntentIds: [],
+      warnings: [],
+    }))
   }
 
   /**

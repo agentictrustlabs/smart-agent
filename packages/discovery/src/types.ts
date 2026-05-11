@@ -139,6 +139,11 @@ export interface Round {
   fundName?: string
   /** → sa:operatedByFund (range sa:Fund — Pool with governanceModel='fund'). */
   fundAgentId: string
+  /** → sa:operatedByPool. Hex address of the pool that operates this round.
+   *  Undefined for legacy rounds opened before the field existed. */
+  poolAgentId?: string
+  /** Display name of the pool, when resolvable. */
+  poolName?: string
   mandate: RoundMandate
   milestoneTemplate: RoundMilestoneTemplate
   validatorRequirements: RoundValidatorRequirements

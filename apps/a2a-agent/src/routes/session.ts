@@ -72,6 +72,23 @@ session.post('/init', async (c) => {
   const sessionId = `sa_${crypto.randomUUID().replace(/-/g, '')}`
   const expiresAt = new Date(Date.now() + durationSeconds * 1000)
 
+  // Dev-only: fund the ephemeral session key with anvil ETH so it can pay
+  // gas when redeeming user delegations on-chain (pool/round create, etc.).
+  // Production: replace with a paymaster (ERC-4337) or session funding flow.
+  if (config.CHAIN_ID === 31337) {
+    try {
+      await fetch(config.RPC_URL, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0', id: 1,
+          method: 'anvil_setBalance',
+          params: [sessionAccount.address, '0xDE0B6B3A7640000'], // 1 ETH
+        }),
+      })
+    } catch { /* best-effort; if it fails, the deploy-agent call will surface OOG */ }
+  }
+
   // ─── Optionally deploy a stateful SessionAgentAccount ───────────────
   let sessionAgentAccount: Address | null = null
   if (body.stateful) {

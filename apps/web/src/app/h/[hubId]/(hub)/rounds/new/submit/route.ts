@@ -58,6 +58,7 @@ export async function POST(req: NextRequest) {
     const result = await openRound({
       id: body.id,
       fundAgentId: body.fundAgentId as `0x${string}`,
+      poolAgentId: body.poolAgentId ? (body.poolAgentId as `0x${string}`) : undefined,
       mandate: mandateWithDisplay,
       reportingCadence: body.reportingCadence,
       deadline: body.deadline,

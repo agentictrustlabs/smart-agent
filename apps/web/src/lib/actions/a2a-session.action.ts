@@ -164,7 +164,15 @@ export async function bootstrapA2ASessionForUser(user: {
       // McpToolScope uses a sentinel enforcer address — verified off-chain by
       // each MCP server's `verify-delegation.ts`. Not enforced on-chain (the
       // on-chain caveat path stops at the AllowedMethods/AllowedTargets check).
-      buildCaveat(MCP_TOOL_SCOPE_ENFORCER, encodeMcpToolScopeTerms(allowedToolNames)),
+      // Use the deployed McpToolScopeEnforcer (Phase 1 fix): the same
+      // delegation is now ALSO redeemed on-chain, so DelegationManager
+      // invokes every caveat's enforcer — calling the previous sentinel
+      // (non-contract) address reverted. The deployed enforcer is a no-op;
+      // the real tool-scope policy stays off-chain in the MCP verifier.
+      buildCaveat(
+        (process.env.MCP_TOOL_SCOPE_ENFORCER_ADDRESS ?? MCP_TOOL_SCOPE_ENFORCER) as `0x${string}`,
+        encodeMcpToolScopeTerms(allowedToolNames),
+      ),
       // NOTE: a per-session-key RateLimit caveat is deliberately deferred. The
       // RateLimitEnforcer in @smart-agent/sdk is keyed by (delegator,
       // delegationHash, scopeKey); wiring scopeKey choice + window/cap defaults

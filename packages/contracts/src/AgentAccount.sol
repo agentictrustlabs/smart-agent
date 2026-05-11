@@ -486,7 +486,14 @@ contract AgentAccount is BaseAccount, Initializable, UUPSUpgradeable, IAgentAcco
     // ─── Owner Management ───────────────────────────────────────────
 
     /// @inheritdoc IAgentAccount
+    /// @dev An account is implicitly an owner of itself: when a delegation
+    ///      chain bottoms out at this AgentAccount as the rootDelegator,
+    ///      DelegationManager calls `this.execute(...)` and the resulting
+    ///      external call has `msg.sender == address(this)`. Downstream
+    ///      `isOwner(msg.sender)` checks (e.g. FundRegistry.onlyFundOwner)
+    ///      should pass — the account IS the actor making the call.
     function isOwner(address account) external view override returns (bool) {
+        if (account == address(this)) return true;
         return _owners[account];
     }
 

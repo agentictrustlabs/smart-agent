@@ -142,6 +142,7 @@ async function loadSdk() {
       openRound: (input: {
         roundId: string
         fundAgent: Address
+        poolAgent?: Address
         deadline: bigint
         decisionDate: bigint
         reportingCadence: string

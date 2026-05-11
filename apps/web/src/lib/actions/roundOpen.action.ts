@@ -20,11 +20,20 @@ export interface OpenRoundInput {
   id: string
   /** The fund / pool agent operating the round (address). */
   fundAgentId: Address
+  /** Optional: pool that operates this round. Stored on-chain so the
+   *  round↔pool link doesn't depend on the fragile
+   *  `fundAgent === pool.stewardshipAgent` inference. */
+  poolAgentId?: Address
   mandate: {
     acceptedKinds: string[]
     acceptedGeo: string[]
     budgetCeiling: number
     expectedAwards: number
+    /** Optional display name carried through the mandate JSON. The kb-sync
+     *  hoists this back out as `sa:displayName` on the round subject so
+     *  the UI shows the round's human-readable title instead of falling
+     *  back to the mandate's accepted-kinds. */
+    displayName?: string
   }
   milestoneTemplate?: { minMilestones: number; maxMilestones: number; trancheHints?: { atKickoff: number; midpoint: number; completion: number } }
   validatorRequirements?: { minValidators: number }
@@ -63,6 +72,10 @@ export async function openRound(input: OpenRoundInput): Promise<OpenRoundResult>
     budgetCeiling: input.mandate.budgetCeiling,
     expectedAwards: input.mandate.expectedAwards,
     addressedApplicants: input.addressedApplicants ?? [],
+    // Carry displayName through the mandate JSON; emitRoundsTurtle hoists
+    // it back as `sa:displayName` so the round detail page shows the
+    // user-entered title.
+    ...(input.mandate.displayName ? { displayName: input.mandate.displayName } : {}),
   })
   const milestoneTemplateJson = input.milestoneTemplate
     ? JSON.stringify(input.milestoneTemplate)
@@ -74,6 +87,7 @@ export async function openRound(input: OpenRoundInput): Promise<OpenRoundResult>
   const { txHash } = await callMcp<{ txHash: `0x${string}` }>('org', 'round:open', {
     roundId: input.id,
     fundAgent: input.fundAgentId,
+    poolAgent: input.poolAgentId,
     deadline: deadlineSec,
     decisionDate: decisionSec,
     reportingCadence: input.reportingCadence,

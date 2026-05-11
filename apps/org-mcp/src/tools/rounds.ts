@@ -225,6 +225,8 @@ interface RoundOpenArgs {
   token: string
   roundId: string
   fundAgent: Address
+  /** Optional pool agent that operates this round. */
+  poolAgent?: Address
   /** Unix seconds. */
   deadline: number
   /** Unix seconds. */
@@ -250,6 +252,7 @@ const openRoundTool = {
       token: { type: 'string' },
       roundId: { type: 'string' },
       fundAgent: { type: 'string' },
+      poolAgent: { type: 'string' },
       deadline: { type: 'number' },
       decisionDate: { type: 'number' },
       reportingCadence: { type: 'string', enum: ['monthly', 'quarterly', 'annual', 'milestone', 'none'] },
@@ -272,6 +275,7 @@ const openRoundTool = {
     const params = FundRegistryClient.buildOpenParams({
       roundId: slug,
       fundAgent: args.fundAgent,
+      poolAgent: args.poolAgent,
       deadline: BigInt(args.deadline),
       decisionDate: BigInt(args.decisionDate),
       reportingCadence: CADENCE_CONCEPT[args.reportingCadence] ?? 'sa:CadenceNone',

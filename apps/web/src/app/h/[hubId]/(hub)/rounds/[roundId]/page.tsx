@@ -104,6 +104,18 @@ export default async function RoundDetailPage({
   const fundLabel = round.fundAgentId
     ? `${round.fundAgentId.slice(0, 6)}…${round.fundAgentId.slice(-4)}`
     : 'Unknown fund'
+  // Pool reference — when sa:operatedByPool is set, show "in pool <name>"
+  // so the user can navigate from a round back to the pool that operates
+  // it. Falls back to the hex slice when no display name is mirrored.
+  const AGENT_IRI_PREFIX = 'https://smartagent.io/ontology/core#agent/'
+  const stripAgentIri = (s: string | undefined): string =>
+    !s ? '' : s.startsWith(AGENT_IRI_PREFIX) ? s.slice(AGENT_IRI_PREFIX.length) : s
+  const poolAddress = stripAgentIri(round.poolAgentId)
+  const poolLabel = round.poolName
+    ? round.poolName
+    : poolAddress
+      ? `${poolAddress.slice(0, 6)}…${poolAddress.slice(-4)}`
+      : null
   const mandateNarrative = (round.mandate.acceptedKinds ?? []).slice(0, 3).join(', ') || 'Open mandate'
   const tranches = round.milestoneTemplate.trancheHints
   const canApply = !deadline.isPast
@@ -111,9 +123,7 @@ export default async function RoundDetailPage({
   // button. The discovery query returns fundAgentId as a full IRI
   // (https://smartagent.io/ontology/core#agent/0x...); canManageAgent
   // expects the bare address. Strip the prefix.
-  const fundAddress = round.fundAgentId.startsWith('https://smartagent.io/ontology/core#agent/')
-    ? round.fundAgentId.slice('https://smartagent.io/ontology/core#agent/'.length)
-    : round.fundAgentId
+  const fundAddress = stripAgentIri(round.fundAgentId)
   const canCancel = await canManageAgent(myAgent, fundAddress)
 
   // v1 placeholder for credential ownership. The AnonCreds verifier
@@ -138,6 +148,21 @@ export default async function RoundDetailPage({
         )}
         <div style={{ fontSize: '0.78rem', color: C.textMuted, display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
           <span>Operated by {fundLabel}</span>
+          {poolLabel && (
+            <span>
+              · in pool{' '}
+              {poolAddress ? (
+                <Link href={`/h/${slug}/pools/${encodeURIComponent(poolAddress)}`} style={{ color: C.accent, fontWeight: 600, textDecoration: 'none' }}>
+                  {poolLabel}
+                </Link>
+              ) : (
+                <strong style={{ color: C.text }}>{poolLabel}</strong>
+              )}
+            </span>
+          )}
+          {round.proposalsReceived > 0 && (
+            <span>· {round.proposalsReceived} proposal{round.proposalsReceived === 1 ? '' : 's'}</span>
+          )}
           {round.visibility === 'private' && (
             <span style={{ fontSize: '0.6rem', fontWeight: 700, color: C.privateFg, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               Private
@@ -237,14 +262,20 @@ export default async function RoundDetailPage({
       {/* Apply CTA + steward actions */}
       <div style={{ marginTop: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          {/* Everyone with access can browse the proposals list. Stewards
+              additionally see Admin + Cancel controls. The link shows
+              unconditionally so users always have a way into the
+              proposals view, including the empty state. */}
+          <Link
+            href={`/h/${slug}/rounds/${roundId}/proposals`}
+            style={{ padding: '0.55rem 0.95rem', background: C.card, color: C.text, border: `1px solid ${C.border}`, borderRadius: 8, fontSize: '0.82rem', fontWeight: 600, textDecoration: 'none' }}
+          >
+            {round.proposalsReceived > 0
+              ? `${canCancel ? 'Review' : 'View'} ${round.proposalsReceived} proposal${round.proposalsReceived === 1 ? '' : 's'} →`
+              : 'View proposals (none yet) →'}
+          </Link>
           {canCancel && (
             <>
-              <Link
-                href={`/h/${slug}/rounds/${roundId}/proposals`}
-                style={{ padding: '0.55rem 0.95rem', background: C.card, color: C.text, border: `1px solid ${C.border}`, borderRadius: 8, fontSize: '0.82rem', fontWeight: 600, textDecoration: 'none' }}
-              >
-                Review proposals →
-              </Link>
               <Link
                 href={`/h/${slug}/rounds/${roundId}/admin`}
                 style={{ padding: '0.55rem 0.95rem', background: C.card, color: C.text, border: `1px solid ${C.border}`, borderRadius: 8, fontSize: '0.82rem', fontWeight: 600, textDecoration: 'none' }}

@@ -116,23 +116,30 @@ export async function verifyDelegationAndExtractPrincipal(
   }
 
   // ─── Layer 7: Caveat enforcement ──────────────────────────────
+  const timestampEnforcerAddr = (process.env.TIMESTAMP_ENFORCER_ADDRESS ?? '').toLowerCase()
   for (const caveat of claims.delegation.caveats) {
-    // Timestamp enforcer — validate time window
-    try {
-      const { validAfter, validUntil } = decodeTimestampTerms(caveat.terms)
-      const now = Math.floor(Date.now() / 1000)
-
-      if (now < validAfter) {
-        return { error: `Delegation not yet valid (validAfter: ${validAfter}, now: ${now})` }
-      }
-      if (now >= validUntil) {
-        return { error: `Delegation expired (validUntil: ${validUntil}, now: ${now})` }
+    // Timestamp enforcer — validate time window. ONLY decode if this caveat
+    // IS the TimestampEnforcer; otherwise (AllowedTargets / AllowedMethods /
+    // Value / McpToolScope) decodeTimestampTerms returns garbage values.
+    if (timestampEnforcerAddr && caveat.enforcer.toLowerCase() === timestampEnforcerAddr) {
+      try {
+        const { validAfter, validUntil } = decodeTimestampTerms(caveat.terms)
+        const now = Math.floor(Date.now() / 1000)
+        if (now < validAfter) {
+          return { error: `Delegation not yet valid (validAfter: ${validAfter}, now: ${now})` }
+        }
+        if (now >= validUntil) {
+          return { error: `Delegation expired (validUntil: ${validUntil}, now: ${now})` }
+        }
+      } catch {
+        return { error: 'Failed to decode timestamp caveat' }
       }
       continue
-    } catch { /* not a timestamp caveat */ }
+    }
 
     // MCP tool scope enforcer — validate tool name against allowed list
-    if (caveat.enforcer.toLowerCase() === MCP_TOOL_SCOPE_ENFORCER.toLowerCase()) {
+    const mcpScopeEnforcerAddr = (process.env.MCP_TOOL_SCOPE_ENFORCER_ADDRESS ?? MCP_TOOL_SCOPE_ENFORCER).toLowerCase()
+    if (caveat.enforcer.toLowerCase() === mcpScopeEnforcerAddr) {
       try {
         const { allowedTools } = decodeMcpToolScopeTerms(caveat.terms)
         if (toolName && !allowedTools.includes(toolName)) {

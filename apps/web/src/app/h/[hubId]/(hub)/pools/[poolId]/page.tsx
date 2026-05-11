@@ -82,7 +82,7 @@ export default async function PoolDetailPage({
   // Wrapped in try/catch — a slow / 524-ing GraphDB shouldn't block the
   // whole pool detail page render. The "no rounds yet" empty state is
   // friendlier than a 500.
-  let roundsForPool: Array<{ id: string; displayName?: string; fundAgentId: string; deadline: string; mandate: { acceptedKinds: string[] } }> = []
+  let roundsForPool: Array<{ id: string; displayName?: string; fundAgentId: string; poolAgentId?: string; deadline: string; mandate: { acceptedKinds: string[] } }> = []
   try {
     const discovery = DiscoveryService.fromEnv()
     const allHubRounds = await discovery.listRounds({
@@ -90,9 +90,17 @@ export default async function PoolDetailPage({
       viewerAgentId: myAgent,
       includeClosed: true,
     })
-    roundsForPool = allHubRounds.filter(r =>
-      (r.fundAgentId ?? '').toLowerCase() === (pool.stewardshipAgent ?? '').toLowerCase()
-    )
+    const poolAddr = (pool.treasuryAddress ?? '').toLowerCase()
+    const stewardshipAddr = (pool.stewardshipAgent ?? '').toLowerCase()
+    // Prefer the canonical sa:operatedByPool link (set on rounds opened
+    // after the field existed). Fall back to the legacy inference
+    // (round.fundAgentId === pool.stewardshipAgent) for rounds opened
+    // before the field landed.
+    roundsForPool = allHubRounds.filter(r => {
+      const rPool = (r.poolAgentId ?? '').toLowerCase()
+      if (rPool) return rPool === poolAddr
+      return (r.fundAgentId ?? '').toLowerCase() === stewardshipAddr
+    })
   } catch (err) {
     console.warn('[pool-detail] listRounds failed (showing empty state):', err instanceof Error ? err.message : err)
   }

@@ -15,6 +15,7 @@ import "../src/enforcers/ValueEnforcer.sol";
 import "../src/enforcers/AllowedTargetsEnforcer.sol";
 import "../src/enforcers/AllowedMethodsEnforcer.sol";
 import "../src/enforcers/CallDataHashEnforcer.sol";
+import "../src/enforcers/McpToolScopeEnforcer.sol";
 import "../src/enforcers/DataScopeEnforcer.sol";
 import "../src/enforcers/RateLimitEnforcer.sol";
 import "../src/enforcers/TaskBindingEnforcer.sol";
@@ -134,6 +135,13 @@ contract Deploy is Script {
 
         CallDataHashEnforcer callDataHashEnforcer = new CallDataHashEnforcer();
         console.log("CallDataHashEnforcer:", address(callDataHashEnforcer));
+
+        // MCP tool-scope: on-chain no-op landing pad so DelegationManager
+        // can call beforeHook() during redeem without reverting. Real policy
+        // (which MCP tool names are allowed) is enforced off-chain by the
+        // MCP server's verify-delegation.ts.
+        McpToolScopeEnforcer mcpToolScopeEnforcer = new McpToolScopeEnforcer();
+        console.log("McpToolScopeEnforcer:", address(mcpToolScopeEnforcer));
 
         // Phase 3 (delegation refactor) — first-party ERC-7579 modules and the
         // SessionAgentAccountFactory. Used by a2a-agent when a session is
@@ -396,6 +404,7 @@ contract Deploy is Script {
         // Phase 2 — sub-delegated path enforcers
         _logEnv("TASK_BINDING_ENFORCER_ADDRESS", address(taskBindingEnforcer));
         _logEnv("CALLDATA_HASH_ENFORCER_ADDRESS", address(callDataHashEnforcer));
+        _logEnv("MCP_TOOL_SCOPE_ENFORCER_ADDRESS", address(mcpToolScopeEnforcer));
         // Phase 3 — session-account path: factory + first-party modules
         _logEnv("SESSION_AGENT_ACCOUNT_FACTORY_ADDRESS", address(sessionAgentAccountFactory));
         _logEnv("ECDSA_SESSION_VALIDATOR_ADDRESS", address(ecdsaSessionValidator));
@@ -599,7 +608,7 @@ contract Deploy is Script {
 
     function _seedFundOntologyAndShape(OntologyTermRegistry ont, ShapeRegistry shapes, FundRegistry fund) internal {
         // ─── Fund + Round predicates ────────────────────────────────
-        string[15] memory curies = [
+        string[16] memory curies = [
             "sa:fundAcceptedKinds",
             "sa:fundOpenForCalls",
             "sa:roundFundAgent",
@@ -614,9 +623,10 @@ contract Deploy is Script {
             "sa:roundMandate",
             "sa:roundMilestoneTemplate",
             "sa:roundValidatorRequirements",
-            "sa:roundSlug"
+            "sa:roundSlug",
+            "sa:roundPoolAgent"
         ];
-        string[15] memory dtypes = [
+        string[16] memory dtypes = [
             "bytes32[]",
             "bool",
             "address",
@@ -631,14 +641,15 @@ contract Deploy is Script {
             "string",
             "string",
             "string",
-            "string"
+            "string",
+            "address"
         ];
-        bytes32[] memory ids = new bytes32[](16);
-        string[] memory cd = new string[](16);
-        string[] memory ud = new string[](16);
-        string[] memory ld = new string[](16);
-        string[] memory dd = new string[](16);
-        for (uint256 i = 0; i < 15; i++) {
+        bytes32[] memory ids = new bytes32[](17);
+        string[] memory cd = new string[](17);
+        string[] memory ud = new string[](17);
+        string[] memory ld = new string[](17);
+        string[] memory dd = new string[](17);
+        for (uint256 i = 0; i < 16; i++) {
             ids[i] = keccak256(bytes(curies[i]));
             cd[i] = curies[i];
             ud[i] = string.concat("https://agentictrust.io/ontology/sa#", curies[i]);
@@ -646,11 +657,11 @@ contract Deploy is Script {
             dd[i] = dtypes[i];
         }
         // sa:roundOpenedAt — written by openRound; required uint256
-        ids[15] = keccak256("sa:roundOpenedAt");
-        cd[15] = "sa:roundOpenedAt";
-        ud[15] = "https://agentictrust.io/ontology/sa#roundOpenedAt";
-        ld[15] = "sa:roundOpenedAt";
-        dd[15] = "uint256";
+        ids[16] = keccak256("sa:roundOpenedAt");
+        cd[16] = "sa:roundOpenedAt";
+        ud[16] = "https://agentictrust.io/ontology/sa#roundOpenedAt";
+        ld[16] = "sa:roundOpenedAt";
+        dd[16] = "uint256";
         ont.registerTermBatch(ids, cd, ud, ld, dd);
 
         // ─── Round status enum ──────────────────────────────────────

@@ -21,7 +21,12 @@ const C = {
 const CADENCE_OPTIONS = ['monthly', 'quarterly', 'annual', 'milestone', 'none'] as const
 
 export interface EligiblePool {
+  /** URN identifier for this pool (urn:smart-agent:pool:<slug>) — used to
+   *  key the dropdown / select state. */
   poolAgentId: string
+  /** Hex address of the pool's on-chain agent (treasury). Written to the
+   *  round's SA_ROUND_POOL_AGENT field so the round↔pool link is canonical. */
+  poolAgentAddress: string
   fundAgentId: string
   name: string
   acceptedKinds: string[]
@@ -90,7 +95,9 @@ export function RoundCreateForm({ hubSlug, pools }: Props) {
             id: slug,
             displayName,
             fundAgentId: pool.fundAgentId,
-            poolAgentId: pool.poolAgentId,
+            // Send the pool's on-chain address (not URN) — the submit route
+            // forwards it directly to the contract's SA_ROUND_POOL_AGENT field.
+            poolAgentId: pool.poolAgentAddress,
             mandate: {
               acceptedKinds: kinds,
               acceptedGeo: geo,

@@ -68,6 +68,7 @@ export default async function NewRoundPage({ params }: { params: Promise<{ hubId
     if (canMng) {
       eligiblePools.push({
         poolAgentId: p.id,
+        poolAgentAddress: p.treasuryAddress || '',
         fundAgentId: fundAddr,
         name: p.name || p.id.split(':').pop() || 'Pool',
         acceptedKinds: p.acceptedRestrictions?.kinds ?? [],

@@ -6,28 +6,6 @@
 [org-mcp] tools: 77
 [org-mcp] listening on http://localhost:3400
 <-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
 --> GET /health [32m200[0m 1ms
 <-- GET /health
 --> GET /health [32m200[0m 0ms
@@ -38,55 +16,7 @@
 <-- GET /health
 --> GET /health [32m200[0m 0ms
 <-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
 --> GET /health [32m200[0m 1ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
 <-- GET /health
 --> GET /health [32m200[0m 0ms
 <-- GET /health
@@ -158,25 +88,13 @@
 <-- GET /health
 --> GET /health [32m200[0m 0ms
 <-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
 --> GET /health [32m200[0m 1ms
 <-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
+--> GET /health [32m200[0m 1ms
 <-- GET /health
 --> GET /health [32m200[0m 0ms
 <-- GET /health
@@ -188,23 +106,9 @@
 <-- GET /health
 --> GET /health [32m200[0m 0ms
 <-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
 --> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
 <-- GET /health
 --> GET /health [32m200[0m 0ms
 <-- GET /health
@@ -249,3 +153,339 @@
 --> GET /health [32m200[0m 0ms
 <-- GET /health
 --> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- POST /tools/list_revenue_reports
+--> POST /tools/list_revenue_reports [32m200[0m 12ms
+<-- POST /tools/submit_revenue_report
+--> POST /tools/submit_revenue_report [32m200[0m 7ms
+<-- POST /tools/approve_revenue_report
+--> POST /tools/approve_revenue_report [32m200[0m 7ms
+<-- POST /tools/list_revenue_reports
+--> POST /tools/list_revenue_reports [32m200[0m 6ms
+<-- POST /tools/submit_revenue_report
+--> POST /tools/submit_revenue_report [32m200[0m 6ms
+<-- POST /tools/approve_revenue_report
+--> POST /tools/approve_revenue_report [32m200[0m 6ms
+<-- POST /tools/list_revenue_reports
+--> POST /tools/list_revenue_reports [32m200[0m 5ms
+<-- POST /tools/submit_revenue_report
+--> POST /tools/submit_revenue_report [32m200[0m 5ms
+<-- POST /tools/list_revenue_reports
+--> POST /tools/list_revenue_reports [32m200[0m 6ms
+<-- POST /tools/submit_revenue_report
+--> POST /tools/submit_revenue_report [32m200[0m 5ms
+<-- POST /tools/approve_revenue_report
+--> POST /tools/approve_revenue_report [32m200[0m 5ms
+<-- POST /tools/list_revenue_reports
+--> POST /tools/list_revenue_reports [32m200[0m 5ms
+<-- POST /tools/submit_revenue_report
+--> POST /tools/submit_revenue_report [32m200[0m 5ms
+<-- POST /tools/approve_revenue_report
+--> POST /tools/approve_revenue_report [32m200[0m 6ms
+<-- POST /tools/list_revenue_reports
+--> POST /tools/list_revenue_reports [32m200[0m 5ms
+<-- POST /tools/submit_revenue_report
+--> POST /tools/submit_revenue_report [32m200[0m 6ms
+<-- POST /tools/round:open
+--> POST /tools/round:open [32m200[0m 4s
+<-- POST /tools/round:update_voting_config
+--> POST /tools/round:update_voting_config [32m200[0m 7ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- POST /tools/list_revenue_reports
+--> POST /tools/list_revenue_reports [32m200[0m 7ms
+<-- POST /tools/list_revenue_reports
+--> POST /tools/list_revenue_reports [32m200[0m 6ms
+<-- POST /tools/list_revenue_reports
+--> POST /tools/list_revenue_reports [32m200[0m 6ms
+<-- POST /tools/list_revenue_reports
+--> POST /tools/list_revenue_reports [32m200[0m 4ms
+<-- POST /tools/list_revenue_reports
+--> POST /tools/list_revenue_reports [32m200[0m 5ms
+<-- POST /tools/list_revenue_reports
+--> POST /tools/list_revenue_reports [32m200[0m 4ms
+<-- POST /tools/list_proposals
+--> POST /tools/list_proposals [33m404[0m 1ms
+<-- POST /tools/create_proposal
+--> POST /tools/create_proposal [33m404[0m 0ms
+<-- POST /tools/list_proposals
+--> POST /tools/list_proposals [33m404[0m 1ms
+<-- POST /tools/create_proposal
+--> POST /tools/create_proposal [33m404[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- POST /tools/pool_pledge:read_self
+<-- POST /tools/grant_proposal:list_for_member
+--> POST /tools/grant_proposal:list_for_member [32m200[0m 8ms
+--> POST /tools/pool_pledge:read_self [32m200[0m 18ms
+<-- POST /tools/pool:create
+--> POST /tools/pool:create [32m200[0m 10s
+<-- POST /tools/pool:create
+--> POST /tools/pool:create [32m200[0m 8s
+<-- POST /tools/pool_pledge:submit
+--> POST /tools/pool_pledge:submit [32m200[0m 7ms
+<-- POST /tools/pool_pledge:read_self
+--> POST /tools/pool_pledge:read_self [32m200[0m 7ms
+<-- POST /tools/pool_pledge:read_self
+--> POST /tools/pool_pledge:read_self [32m200[0m 8ms
+<-- POST /tools/round:open
+--> POST /tools/round:open [32m200[0m 4s
+<-- POST /tools/round:update_voting_config
+--> POST /tools/round:update_voting_config [32m200[0m 7ms
+<-- POST /tools/round:open
+--> POST /tools/round:open [32m200[0m 4s
+<-- POST /tools/round:update_voting_config
+--> POST /tools/round:update_voting_config [32m200[0m 7ms
+<-- POST /tools/vote:tally_for_round
+--> POST /tools/vote:tally_for_round [32m200[0m 16ms
+<-- POST /tools/round:open
+--> POST /tools/round:open [32m200[0m 4s
+<-- POST /tools/round:update_voting_config
+--> POST /tools/round:update_voting_config [32m200[0m 7ms
+<-- POST /tools/list_revenue_reports
+--> POST /tools/list_revenue_reports [32m200[0m 7ms
+<-- POST /tools/list_revenue_reports
+--> POST /tools/list_revenue_reports [32m200[0m 5ms
+<-- POST /tools/list_revenue_reports
+--> POST /tools/list_revenue_reports [32m200[0m 5ms
+<-- POST /tools/list_revenue_reports
+--> POST /tools/list_revenue_reports [32m200[0m 5ms
+<-- POST /tools/list_revenue_reports
+--> POST /tools/list_revenue_reports [32m200[0m 5ms
+<-- POST /tools/list_revenue_reports
+--> POST /tools/list_revenue_reports [32m200[0m 6ms
+<-- POST /tools/list_proposals
+--> POST /tools/list_proposals [33m404[0m 0ms
+<-- POST /tools/list_revenue_reports
+<-- POST /tools/create_proposal
+--> POST /tools/create_proposal [33m404[0m 0ms
+--> POST /tools/list_revenue_reports [32m200[0m 4ms
+<-- POST /tools/list_revenue_reports
+--> POST /tools/list_revenue_reports [32m200[0m 5ms
+<-- POST /tools/list_revenue_reports
+--> POST /tools/list_revenue_reports [32m200[0m 5ms
+<-- POST /tools/list_proposals
+--> POST /tools/list_proposals [33m404[0m 1ms
+<-- POST /tools/create_proposal
+--> POST /tools/create_proposal [33m404[0m 0ms
+<-- POST /tools/list_revenue_reports
+--> POST /tools/list_revenue_reports [32m200[0m 4ms
+<-- POST /tools/list_revenue_reports
+--> POST /tools/list_revenue_reports [32m200[0m 5ms
+<-- POST /tools/list_revenue_reports
+--> POST /tools/list_revenue_reports [32m200[0m 4ms
+<-- POST /tools/list_proposals
+--> POST /tools/list_proposals [33m404[0m 1ms
+<-- POST /tools/create_proposal
+--> POST /tools/create_proposal [33m404[0m 0ms
+<-- POST /tools/list_proposals
+--> POST /tools/list_proposals [33m404[0m 0ms
+<-- POST /tools/create_proposal
+--> POST /tools/create_proposal [33m404[0m 1ms
+<-- POST /tools/list_revenue_reports
+--> POST /tools/list_revenue_reports [32m200[0m 7ms
+<-- POST /tools/list_revenue_reports
+--> POST /tools/list_revenue_reports [32m200[0m 5ms
+<-- POST /tools/list_revenue_reports
+--> POST /tools/list_revenue_reports [32m200[0m 6ms
+<-- POST /tools/list_revenue_reports
+--> POST /tools/list_revenue_reports [32m200[0m 5ms
+<-- POST /tools/list_revenue_reports
+--> POST /tools/list_revenue_reports [32m200[0m 4ms
+<-- POST /tools/list_revenue_reports
+--> POST /tools/list_revenue_reports [32m200[0m 5ms
+<-- POST /tools/list_proposals
+--> POST /tools/list_proposals [33m404[0m 0ms
+<-- POST /tools/create_proposal
+--> POST /tools/create_proposal [33m404[0m 1ms
+<-- POST /tools/list_proposals
+--> POST /tools/list_proposals [33m404[0m 1ms
+<-- POST /tools/create_proposal
+--> POST /tools/create_proposal [33m404[0m 0ms
+<-- POST /tools/round:open
+--> POST /tools/round:open [32m200[0m 4s
+<-- POST /tools/round:update_voting_config
+--> POST /tools/round:update_voting_config [32m200[0m 8ms
+<-- POST /tools/round:open
+--> POST /tools/round:open [32m200[0m 4s
+<-- POST /tools/round:update_voting_config
+--> POST /tools/round:update_voting_config [32m200[0m 7ms
+<-- POST /tools/grant_proposal:submit
+[org-mcp/grantProposals] ack-count bump skipped — intent demo-maria-need-spanish-bible-leader not local to 0x77c1ce7dbbcb25d8b2d9c0523ae6315696ad34d1. // TODO(cross-mcp)
+[org-mcp/grantProposals] no steward agent resolvable for proposal eedf8da4-9648-463e-a5fa-95dbc3788bf8; cross-delegation grant skipped. Pass stewardAgentHint when calling submit.
+--> POST /tools/grant_proposal:submit [32m200[0m 7ms
+<-- POST /tools/grant_proposal:read_self
+--> POST /tools/grant_proposal:read_self [32m200[0m 6ms
+<-- POST /tools/grant_proposal:read_self
+--> POST /tools/grant_proposal:read_self [32m200[0m 6ms
+<-- POST /tools/vote:list_for_proposal
+<-- POST /tools/vote:tally_for_round
+--> POST /tools/vote:list_for_proposal [32m200[0m 11ms
+--> POST /tools/vote:tally_for_round [32m200[0m 7ms
+<-- POST /tools/vote:list_for_proposal
+--> POST /tools/vote:list_for_proposal [32m200[0m 5ms
+<-- POST /tools/vote:tally_for_round
+--> POST /tools/vote:tally_for_round [32m200[0m 7ms
+<-- POST /tools/vote:tally_for_round
+<-- POST /tools/vote:list_for_proposal
+--> POST /tools/vote:tally_for_round [32m200[0m 8ms
+--> POST /tools/vote:list_for_proposal [32m200[0m 6ms
+<-- POST /tools/vote:tally_for_round
+<-- POST /tools/vote:list_for_proposal
+--> POST /tools/vote:list_for_proposal [32m200[0m 5ms
+--> POST /tools/vote:tally_for_round [32m200[0m 11ms
+<-- POST /tools/vote:tally_for_round
+<-- POST /tools/vote:list_for_proposal
+--> POST /tools/vote:list_for_proposal [32m200[0m 6ms
+--> POST /tools/vote:tally_for_round [32m200[0m 10ms
+<-- POST /tools/vote:tally_for_round
+<-- POST /tools/vote:list_for_proposal
+--> POST /tools/vote:tally_for_round [32m200[0m 9ms
+--> POST /tools/vote:list_for_proposal [32m200[0m 7ms
+<-- POST /tools/grant_proposal:list_for_round
+--> POST /tools/grant_proposal:list_for_round [32m200[0m 9ms
+<-- POST /tools/vote:tally_for_round
+--> POST /tools/vote:tally_for_round [32m200[0m 5ms
+<-- POST /tools/vote:tally_for_round
+--> POST /tools/vote:tally_for_round [32m200[0m 6ms
+<-- POST /tools/vote:tally_for_round
+--> POST /tools/vote:tally_for_round [32m200[0m 6ms
+<-- POST /tools/vote:tally_for_round
+--> POST /tools/vote:tally_for_round [32m200[0m 6ms
+<-- POST /tools/vote:tally_for_round
+--> POST /tools/vote:tally_for_round [32m200[0m 7ms
+<-- POST /tools/vote:tally_for_round
+--> POST /tools/vote:tally_for_round [32m200[0m 7ms
+<-- POST /tools/vote:tally_for_round
+--> POST /tools/vote:tally_for_round [32m200[0m 7ms
+<-- POST /tools/grant_proposal:list_for_round
+--> POST /tools/grant_proposal:list_for_round [32m200[0m 7ms
+<-- POST /tools/vote:tally_for_round
+--> POST /tools/vote:tally_for_round [32m200[0m 7ms
+<-- POST /tools/vote:tally_for_round
+--> POST /tools/vote:tally_for_round [32m200[0m 6ms
+<-- POST /tools/vote:tally_for_round
+--> POST /tools/vote:tally_for_round [32m200[0m 7ms
+<-- POST /tools/vote:tally_for_round
+--> POST /tools/vote:tally_for_round [32m200[0m 6ms
+<-- POST /tools/vote:tally_for_round
+--> POST /tools/vote:tally_for_round [32m200[0m 6ms
+<-- POST /tools/vote:tally_for_round
+--> POST /tools/vote:tally_for_round [32m200[0m 6ms
+<-- POST /tools/vote:tally_for_round
+--> POST /tools/vote:tally_for_round [32m200[0m 5ms
+<-- POST /tools/vote:tally_for_round
+--> POST /tools/vote:tally_for_round [32m200[0m 6ms
+<-- POST /tools/vote:tally_for_round
+--> POST /tools/vote:tally_for_round [32m200[0m 7ms
+<-- POST /tools/vote:tally_for_round
+--> POST /tools/vote:tally_for_round [32m200[0m 6ms
+<-- POST /tools/vote:tally_for_round
+--> POST /tools/vote:tally_for_round [32m200[0m 6ms
+<-- POST /tools/vote:tally_for_round
+--> POST /tools/vote:tally_for_round [32m200[0m 7ms
+<-- POST /tools/vote:tally_for_round
+--> POST /tools/vote:tally_for_round [32m200[0m 6ms
+<-- POST /tools/vote:tally_for_round
+--> POST /tools/vote:tally_for_round [32m200[0m 6ms
+<-- POST /tools/vote:tally_for_round
+--> POST /tools/vote:tally_for_round [32m200[0m 7ms
+<-- POST /tools/vote:tally_for_round
+--> POST /tools/vote:tally_for_round [32m200[0m 5ms

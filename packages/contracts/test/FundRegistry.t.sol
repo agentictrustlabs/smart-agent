@@ -111,6 +111,7 @@ contract FundRegistryTest is Test {
         return FundRegistry.OpenRoundParams({
             roundSubject: roundSubject,
             fundAgent: fa,
+            poolAgent: address(0),
             deadline: block.timestamp + 30 days,
             decisionDate: block.timestamp + 45 days,
             reportingCadence: CADENCE_QUARTERLY,

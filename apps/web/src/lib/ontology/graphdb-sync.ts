@@ -629,6 +629,8 @@ const ZERO_BYTES32 = `0x${'0'.repeat(64)}` as `0x${string}`
 
 // FundRegistry predicate hashes (matches the contract's bytes32 constants).
 const SA_ROUND_FUND_AGENT_HASH = HASH('sa:roundFundAgent')
+const SA_ROUND_POOL_AGENT_HASH = HASH('sa:roundPoolAgent')
+const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 
 export async function emitRoundsTurtle(): Promise<string> {
   const fundRegistryAddr = process.env.FUND_REGISTRY_ADDRESS as `0x${string}` | undefined
@@ -680,6 +682,7 @@ export async function emitRoundsTurtle(): Promise<string> {
       fundAgent, deadline, decisionDate, reportingCadenceHash,
       requiredCredentialsHashes, visibilityHash, statusHash,
       mandate, milestoneTemplate, validatorRequirements, openedAt,
+      hasPoolAgent,
     ] = await Promise.all([
       client.readContract({ address: fundRegistryAddr, abi: fundRegistryAbi, functionName: 'getRoundFundAgent', args: [s] }) as Promise<`0x${string}`>,
       client.readContract({ address: fundRegistryAddr, abi: fundRegistryAbi, functionName: 'getRoundDeadline', args: [s] }) as Promise<bigint>,
@@ -692,7 +695,18 @@ export async function emitRoundsTurtle(): Promise<string> {
       client.readContract({ address: fundRegistryAddr, abi: fundRegistryAbi, functionName: 'getRoundMilestoneTemplate', args: [s] }) as Promise<string>,
       client.readContract({ address: fundRegistryAddr, abi: fundRegistryAbi, functionName: 'getRoundValidatorRequirements', args: [s] }) as Promise<string>,
       client.readContract({ address: fundRegistryAddr, abi: fundRegistryAbi, functionName: 'getRoundOpenedAt', args: [s] }) as Promise<bigint>,
+      client.readContract({ address: fundRegistryAddr, abi: fundRegistryAbi, functionName: 'isSet', args: [s, SA_ROUND_POOL_AGENT_HASH] }) as Promise<boolean>,
     ])
+
+    let poolAgent: `0x${string}` = ZERO_ADDRESS as `0x${string}`
+    if (hasPoolAgent) {
+      try {
+        poolAgent = await client.readContract({
+          address: fundRegistryAddr, abi: fundRegistryAbi,
+          functionName: 'getRoundPoolAgent', args: [s],
+        }) as `0x${string}`
+      } catch { /* skip */ }
+    }
 
     const roundIri = `urn:smart-agent:round:${slug}`
     const fundIri = `${SA}agent/${fundAgent.toLowerCase()}`
@@ -705,6 +719,10 @@ export async function emitRoundsTurtle(): Promise<string> {
 
     lines.push(`<${roundIri}> a sa:Round ;`)
     lines.push(`  sa:operatedByFund <${fundIri}> ;`)
+    if (poolAgent && poolAgent.toLowerCase() !== ZERO_ADDRESS) {
+      const poolIri = `${SA}agent/${poolAgent.toLowerCase()}`
+      lines.push(`  sa:operatedByPool <${poolIri}> ;`)
+    }
     if (mandate) {
       try {
         const m = JSON.parse(mandate) as { displayName?: string }
