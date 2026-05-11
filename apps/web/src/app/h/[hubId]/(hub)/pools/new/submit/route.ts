@@ -52,9 +52,29 @@ export async function POST(req: NextRequest) {
     })
     return NextResponse.json({ ok: true, result })
   } catch (err) {
-    return NextResponse.json(
-      { ok: false, error: err instanceof Error ? err.message : String(err) },
-      { status: 500 },
-    )
+    const message = err instanceof Error ? err.message : String(err)
+    // The MCP layer returns "No active agent session" / "Session expired"
+    // when the user hasn't bootstrapped their A2A delegation yet (common
+    // for freshly-connected non-demo users who skipped the /h/<hub>
+    // onboarding wizard, OR for users whose a2a-session cookie is stale
+    // after a service restart). Map to a clean 401 + redirect hint so
+    // the form can surface "complete onboarding to continue" instead of
+    // a generic 500.
+    const sessionMissing =
+      message.includes('No active agent session') ||
+      message.includes('Session expired') ||
+      message.includes('Invalid or expired session token') ||
+      message.includes('No A2A session')
+    if (sessionMissing) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: 'Your agent session isn\'t set up yet. Finish onboarding at /h/' + (req.nextUrl?.pathname?.split('/')[2] ?? 'catalyst') + ' to bootstrap your agent, then try again.',
+          redirectTo: '/h/' + (req.nextUrl?.pathname?.split('/')[2] ?? 'catalyst'),
+        },
+        { status: 401 },
+      )
+    }
+    return NextResponse.json({ ok: false, error: message }, { status: 500 })
   }
 }

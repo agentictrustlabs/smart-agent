@@ -1,7 +1,7 @@
 'use server'
 
 import { cookies } from 'next/headers'
-import { toFunctionSelector, type Address, type AbiFunction } from 'viem'
+import { type Address } from 'viem'
 import { requireSession } from '@/lib/auth/session'
 import {
   hashDelegation,
@@ -12,79 +12,19 @@ import {
   encodeMcpToolScopeTerms,
   buildCaveat,
   ROOT_AUTHORITY,
-  poolRegistryAbi,
-  fundRegistryAbi,
-  agentAccountFactoryAbi,
   MCP_TOOL_SCOPE_ENFORCER,
   TOOL_POLICIES,
-  listAllowedFunctionNames,
-  listAllowedTargetSymbols,
-  resolveTargetAddress,
 } from '@smart-agent/sdk'
 import { db, schema } from '@/db'
 import { eq } from 'drizzle-orm'
 import { A2A_SESSION_COOKIE_NAME } from './a2a-session-constants'
+import {
+  computeAllowedSelectors,
+  computeAllowedTargetAddresses,
+} from './a2a-session-caveats'
 
 const A2A_AGENT_URL = process.env.A2A_AGENT_URL ?? 'http://localhost:3100'
 const A2A_SESSION_COOKIE = A2A_SESSION_COOKIE_NAME
-
-// ─── Selector resolution ─────────────────────────────────────────────
-// Phase 1: the root delegation carries the union of every selector any
-// MCP tool (in TOOL_POLICIES) may invoke. The a2a-agent's redeem path
-// then narrows on a per-call basis via its policy lookup.
-
-interface AbiByTarget {
-  PoolRegistry: readonly unknown[]
-  FundRegistry: readonly unknown[]
-  AgentAccountFactory: readonly unknown[]
-}
-
-const ABIS: AbiByTarget = {
-  PoolRegistry: poolRegistryAbi as readonly unknown[],
-  FundRegistry: fundRegistryAbi as readonly unknown[],
-  AgentAccountFactory: agentAccountFactoryAbi as readonly unknown[],
-}
-
-function selectorOf(targetSymbol: keyof AbiByTarget, functionName: string): `0x${string}` {
-  const abi = ABIS[targetSymbol]
-  if (!abi) throw new Error(`No ABI registered for target ${targetSymbol}`)
-  const fn = (abi as readonly AbiFunction[]).find(
-    (it) => it && (it as AbiFunction).type === 'function' && (it as AbiFunction).name === functionName,
-  )
-  if (!fn) throw new Error(`a2a-session.bootstrap: ABI for ${targetSymbol} is missing function "${functionName}"`)
-  return toFunctionSelector(fn)
-}
-
-function computeAllowedSelectors(): `0x${string}`[] {
-  const out = new Set<`0x${string}`>()
-  for (const { target, functionName } of listAllowedFunctionNames()) {
-    if (!(target in ABIS)) continue
-    out.add(selectorOf(target as keyof AbiByTarget, functionName))
-  }
-  // Phase 1 also covers the pool-agent factory deploy path via /session/deploy-agent.
-  // The on-chain redeem will go through AgentAccountFactory.createAccount; include
-  // that selector so the AllowedMethods caveat doesn't reject it.
-  try {
-    out.add(selectorOf('AgentAccountFactory', 'createAccount'))
-  } catch {
-    /* factory ABI may not expose createAccount in some builds — non-fatal */
-  }
-  return Array.from(out)
-}
-
-function computeAllowedTargetAddresses(): `0x${string}`[] {
-  const env = process.env as Record<string, string | undefined>
-  const symbols = listAllowedTargetSymbols()
-  const out: `0x${string}`[] = []
-  for (const sym of symbols) {
-    const addr = resolveTargetAddress(sym, env)
-    if (addr) out.push(addr)
-  }
-  // Include AgentAccountFactory if the registry didn't already (deploy-agent path).
-  const factoryAddr = env.AGENT_FACTORY_ADDRESS as `0x${string}` | undefined
-  if (factoryAddr && !out.includes(factoryAddr)) out.push(factoryAddr)
-  return out
-}
 
 /**
  * Bootstrap an A2A session by signing a delegation on behalf of the user's
@@ -117,13 +57,27 @@ export async function bootstrapA2ASessionForUser(user: {
   if (!user.smartAccountAddress) {
     return { success: false, error: 'No smart account deployed' }
   }
-  if (!user.privateKey) {
-    return { success: false, error: 'Client-side signing required (use passkey or wallet bootstrap)' }
-  }
-
+  // Passkey users have no private key — fall through to deployer-signed
+  // delegations. The deployer is an initial owner of every freshly-
+  // created AgentAccount (set at factory.createAccount time), so the
+  // account's ERC-1271 isValidSignature accepts the deployer's ECDSA
+  // signature on the delegation hash. The user retains their passkey
+  // as the primary signer; the deployer-as-relayer signature is only
+  // used to bootstrap the session — every actual on-chain redeem still
+  // goes through DelegationManager's caveat enforcement.
   const chainId = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? '31337')
   const { privateKeyToAccount } = await import('viem/accounts')
-  const userAccount = privateKeyToAccount(user.privateKey as `0x${string}`)
+  let signer: ReturnType<typeof privateKeyToAccount>
+  if (user.privateKey) {
+    signer = privateKeyToAccount(user.privateKey as `0x${string}`)
+  } else {
+    const deployerKey = process.env.DEPLOYER_PRIVATE_KEY as `0x${string}` | undefined
+    if (!deployerKey) {
+      return { success: false, error: 'No user private key + no DEPLOYER_PRIVATE_KEY for deployer-signed fallback' }
+    }
+    signer = privateKeyToAccount(deployerKey)
+  }
+  const userAccount = signer
 
   try {
     const initRes = await fetch(`${A2A_AGENT_URL}/session/init`, {
@@ -251,11 +205,18 @@ export async function bootstrapA2ASession(options?: { durationSeconds?: number }
 
 export async function getA2ASessionToken(): Promise<string | null> {
   const cookieStore = await cookies()
-  // Prefer the unified session-grant cookie (M4); a2a-agent's middleware
-  // accepts both grant and legacy session-table tokens via Bearer auth.
+  // Prefer the legacy `a2a-session` (write-capable) cookie. The
+  // SessionGrant.v1 grant cookie is scoped read-only (credential ops,
+  // wallet provisioning, trust matching) — its session id won't resolve
+  // in a2a-agent's `sessions` table, so the mcp-proxy's redeem path
+  // returns "No active agent session" when the grant cookie is the
+  // chosen bearer. Fall back to the grant cookie when no legacy session
+  // exists (e.g. read-only / credential-only flows). The middleware
+  // accepts either form, but only the legacy one carries the delegation
+  // bytes needed to redeem on-chain via DelegationManager.
   const { grantCookieName } = await import('@/lib/auth/session-cookie')
-  return cookieStore.get(grantCookieName())?.value
-    ?? cookieStore.get(A2A_SESSION_COOKIE)?.value
+  return cookieStore.get(A2A_SESSION_COOKIE)?.value
+    ?? cookieStore.get(grantCookieName())?.value
     ?? null
 }
 

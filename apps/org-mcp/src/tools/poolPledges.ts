@@ -23,7 +23,8 @@
  * `pool_pledges` rows at read time via `pool_pledge:read_pool_counters`.
  */
 import { randomUUID } from 'node:crypto'
-import { and, eq, sql } from 'drizzle-orm'
+import { and, eq, inArray, sql } from 'drizzle-orm'
+import { keccak256, toHex } from 'viem'
 import { db } from '../db/index.js'
 import { poolPledges, orgCrossDelegationGrants } from '../db/schema.js'
 import { requireOrgPrincipalAny as requireOrgPrincipal } from '../auth/principal-context.js'
@@ -434,8 +435,92 @@ const readPoolCountersTool = {
 // strict TS doesn't flag the import as unused while we keep it documented.
 void sql
 
+// ───────────────────────────────────────────────────────────────────────
+// Tool: pool_pledge:list_for_pool
+// ───────────────────────────────────────────────────────────────────────
+//
+// Public-ish read: returns the visible pledges for a pool so the pool
+// detail page can render "Recent pledges". Individual pledger identity
+// is gated by each pledge's `story_permissions` — pledges that opted to
+// anonymize the donor name expose only the principal-hash prefix instead
+// of the raw principal. Amount is always exposed (matches the aggregate
+// totals shown elsewhere on the same page).
+//
+// Auth: any authenticated org-principal. Use the result only to render
+// the pool's public surface; don't fan out per-pledge actions from this
+// list — for those, the pledger themselves uses `pool_pledge:read_self`.
+const listForPoolTool = {
+  name: 'pool_pledge:list_for_pool',
+  description:
+    "Return pledges for a pool with story_permissions applied. Used by the pool detail page to render the Recent pledges section.",
+  inputSchema: {
+    type: 'object' as const,
+    properties: {
+      token: { type: 'string' },
+      poolAgentId: { type: 'string' },
+      limit: { type: 'number' },
+    },
+    required: ['token', 'poolAgentId'],
+  },
+  handler: async (args: { token: string; poolAgentId: string; limit?: number }) => {
+    await requireOrgPrincipal(args.token, args, 'pool_pledge:list_for_pool')
+    // Match either form the row may have been stored as: URN
+    // (urn:smart-agent:pool:<slug>) or treasury hex address. Some legacy
+    // rows used one, others the other; both refer to the same pool.
+    const candidates = [args.poolAgentId, args.poolAgentId.toLowerCase()]
+    const rows = db.select().from(poolPledges)
+      .where(inArray(poolPledges.poolAgentId, Array.from(new Set(candidates))))
+      .all()
+    const visible = rows
+      .filter(r => r.status === 'active')
+      .sort((a, b) => (b.pledgedAt ?? '').localeCompare(a.pledgedAt ?? ''))
+      .slice(0, args.limit && args.limit > 0 ? args.limit : 20)
+      .map(r => {
+        // Honor story_permissions when stored as JSON.
+        let showName = true
+        try {
+          const sp = JSON.parse(r.storyPermissions ?? '{}') as { showName?: boolean }
+          if (sp.showName === false) showName = false
+        } catch { /* malformed; default to safe */ showName = false }
+        const principalDisplay = showName
+          ? r.principal
+          : `anon:${r.principal.slice(0, 8)}…`
+        return {
+          id: r.id,
+          poolAgentId: r.poolAgentId,
+          principalDisplay,
+          amount: r.amount,
+          // Convert unit concept hash (keccak256(label)) back to the
+          // human label. Legacy rows stored the hash from the pool's
+          // acceptedUnits list; new ones may store the label directly.
+          unit: unitHashToLabel(r.unit),
+          cadence: r.cadence,
+          pledgedAt: r.pledgedAt,
+          status: r.status,
+        }
+      })
+    return mcpText({ pledges: visible })
+  },
+}
+
+// Reverse-map of common unit concept hashes → labels. Keep in sync with
+// the same set in `apps/web/src/lib/ontology/graphdb-sync.ts` CONCEPT_LABEL.
+const UNIT_LABELS: Record<string, string> = (() => {
+  const m: Record<string, string> = {}
+  for (const u of ['USD', 'EUR', 'prayer-minutes', 'loaves', 'hours', 'minutes', 'meals', 'coaching-hours']) {
+    m[keccak256(toHex(u)).toLowerCase()] = u
+  }
+  return m
+})()
+function unitHashToLabel(unit: string): string {
+  if (!unit) return unit
+  const lc = unit.toLowerCase()
+  return UNIT_LABELS[lc] ?? unit
+}
+
 export const poolPledgesTools = {
   'pool_pledge:submit': submitTool,
+  'pool_pledge:list_for_pool': listForPoolTool,
   'pool_pledge:amend': amendTool,
   'pool_pledge:stop': stopTool,
   'pool_pledge:auto_stop': autoStopTool,

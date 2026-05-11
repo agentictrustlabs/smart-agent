@@ -148,6 +148,7 @@ interface RawProposalRow {
   principal: string
   roundId: string | null
   fundMandateId: string | null
+  displayName?: string
   basedOnIntentId: string
   budget: string | object
   plan: string | object
@@ -179,6 +180,7 @@ function rowToProposal(row: RawProposalRow): GrantProposal {
   return {
     id: row.id,
     proposerAgentId: row.principal,
+    displayName: row.displayName ?? '',
     roundId: row.roundId,
     fundMandateId: row.fundMandateId,
     basedOnIntentId: row.basedOnIntentId,
@@ -208,6 +210,26 @@ function rowToProposal(row: RawProposalRow): GrantProposal {
 // ───────────────────────────────────────────────────────────────────────
 // US5 — manage actions (edit / withdraw / clone / listForMember / getById)
 // ───────────────────────────────────────────────────────────────────────
+
+/**
+ * Cheap count of submitted proposals for a round. Used by the round detail
+ * page to render "View N proposals →" without paying the cost of fetching
+ * every proposal body via `listProposalsForRoundSteward`. Returns 0 on
+ * any failure so the page renders the empty-state link.
+ */
+export async function getRoundProposalCount(roundId: string): Promise<number> {
+  try {
+    const result = await callMcp<{ count: number }>(
+      'org',
+      'grant_proposal:count_for_round',
+      { roundId },
+    )
+    return result.count ?? 0
+  } catch (err) {
+    console.warn('[getRoundProposalCount] failed:', err instanceof Error ? err.message : err)
+    return 0
+  }
+}
 
 export interface ListMemberProposalsResult {
   proposals: GrantProposal[]

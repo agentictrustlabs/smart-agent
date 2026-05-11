@@ -181,6 +181,7 @@ export function HubOnboardClient({ hubSlug, hubId, initialState, accent }: HubOn
   if (state.step === 'org') {
     return (
       <Card title={`Pick your organization in ${state.hub.displayName || 'this hub'}`}>
+        <SignedInAs state={state} />
         <OrgStep
           hub={state.hub}
           hubId={hubId}
@@ -215,7 +216,20 @@ function ConnectStep({ hub, accent, hubSlug, error, setError }: {
     valid: boolean; exists: boolean; reason?: string; fullName?: string
   } | null>(null)
   const [signinChecking, setSigninChecking] = useState(false)
+  // Default mode is 'signup' on first render (matches SSR). After mount
+  // we check localStorage for a recorded passkey and switch to 'signin'
+  // for returning users. Doing this in useState's initializer would
+  // cause a hydration mismatch — SSR can't see the browser's
+  // localStorage, so the server's HTML and the client's first render
+  // would disagree on which tab is active.
   const [mode, setMode] = useState<'signup' | 'signin'>('signup')
+  useEffect(() => {
+    try {
+      const known = JSON.parse(localStorage.getItem('smart-agent.passkeys.local') ?? '[]') as Array<{ id: string }>
+      if (known.length > 0) setMode('signin')
+    } catch { /* corrupt storage — leave default */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   // Conditional-UI passkey-get runs in the background on mount; keep a ref
   // so an explicit button-click ceremony can abort it before invoking
   // navigator.credentials.get itself (browsers reject overlapping calls
@@ -466,6 +480,77 @@ function ConnectStep({ hub, accent, hubSlug, error, setError }: {
           setSignupProgress({ fullName, predictedAddress, step: 'error', errorMessage: msg })
           setError(msg)
           return
+        }
+
+        // ─── 3rd passkey challenge: write-capable A2A delegation ────
+        // SessionGrant.v1 (just minted) covers credential operations
+        // only (wallet.provision, credentials.accept, etc.). For
+        // on-chain writes (pool:create, round:open, propose-match,
+        // pledge, etc.) we need the legacy A2A delegation with the
+        // full caveat set (AllowedTargets + AllowedMethods +
+        // McpToolScope + Value + Timestamp). This requires the user
+        // to sign the delegation hash with their passkey so they (not
+        // the deployer) are the authoriser. One more passkey prompt
+        // at signup; afterwards every write op is silent.
+        try {
+          const prepRes = await fetch('/api/a2a/bootstrap/client', { method: 'POST' })
+          if (!prepRes.ok) {
+            const e = await prepRes.json().catch(() => ({})) as { error?: string }
+            throw new Error(e.error ?? `bootstrap prepare HTTP ${prepRes.status}`)
+          }
+          const prep = await prepRes.json() as {
+            delegationHash: `0x${string}`
+            sessionId: string
+            delegation: Record<string, unknown>
+          }
+          const dHashBytes = hexToBytes(prep.delegationHash)
+          const dHashAb = new ArrayBuffer(dHashBytes.length)
+          new Uint8Array(dHashAb).set(dHashBytes)
+
+          const credIdBytes2 = base64UrlDecode(parsed.credentialIdBase64Url)
+          const credIdAb2 = new ArrayBuffer(credIdBytes2.length)
+          new Uint8Array(credIdAb2).set(credIdBytes2)
+
+          const cred3 = await navigator.credentials.get({
+            publicKey: {
+              challenge: dHashAb,
+              rpId: window.location.hostname,
+              userVerification: 'preferred',
+              timeout: 60_000,
+              allowCredentials: [{ type: 'public-key', id: credIdAb2 }],
+            },
+          }) as PublicKeyCredential | null
+          if (!cred3) throw new Error('Passkey prompt cancelled — write-session not established')
+
+          const ares3 = cred3.response as AuthenticatorAssertionResponse
+          const packed3 = packWebAuthnSignature({
+            credentialIdBytes: new Uint8Array(cred3.rawId),
+            authenticatorData: new Uint8Array(ares3.authenticatorData),
+            clientDataJSON: new Uint8Array(ares3.clientDataJSON),
+            derSignature: new Uint8Array(ares3.signature),
+          })
+          // Wrap with SIG_TYPE_WEBAUTHN (0x01) prefix so AgentAccount's
+          // _validateSig dispatcher routes to the WebAuthn verifier.
+          const delegationSignature = ('0x01' + packed3.slice(2)) as `0x${string}`
+
+          const completeRes = await fetch('/api/a2a/bootstrap/complete', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({
+              sessionId: prep.sessionId,
+              delegationSignature,
+              delegation: prep.delegation,
+            }),
+          })
+          if (!completeRes.ok) {
+            const e = await completeRes.json().catch(() => ({})) as { error?: string }
+            throw new Error(e.error ?? `bootstrap complete HTTP ${completeRes.status}`)
+          }
+        } catch (e) {
+          // Non-fatal: user can retry from /sessions/permissions later.
+          // The wizard still completes; pool/round/match ops will show
+          // a "Bootstrap write session" CTA when needed.
+          console.warn('[onboard] write-session bootstrap failed (non-fatal):', (e as Error).message)
         }
 
         // ─── Provision the AnonCreds holder wallet ──────────────────
@@ -805,6 +890,67 @@ function ConnectStep({ hub, accent, hubSlug, error, setError }: {
         >
           {pending ? 'Connecting…' : 'Continue with MetaMask'}
         </button>
+
+        {/* Tab strip — surface Sign in / Sign up at the same level so a
+            returning user with a passkey doesn't have to hunt for the
+            "Already have a passkey? Sign in" link. */}
+        <div
+          role="tablist"
+          aria-label="Account mode"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: 4,
+            padding: 3,
+            background: '#f1f5f9',
+            border: '1px solid #e2e8f0',
+            borderRadius: 8,
+            marginBottom: 4,
+          }}
+        >
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mode === 'signin'}
+            onClick={() => setMode('signin')}
+            disabled={pending}
+            style={{
+              padding: '0.45rem 0.75rem',
+              borderRadius: 6,
+              border: 0,
+              cursor: pending ? 'not-allowed' : 'pointer',
+              background: mode === 'signin' ? '#fff' : 'transparent',
+              color: mode === 'signin' ? '#171c28' : '#475569',
+              fontSize: 13,
+              fontWeight: mode === 'signin' ? 700 : 500,
+              boxShadow: mode === 'signin' ? '0 1px 2px rgba(15,23,42,0.06)' : 'none',
+            }}
+            data-testid="hub-onboard-tab-signin"
+          >
+            Sign in with passkey
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mode === 'signup'}
+            onClick={() => setMode('signup')}
+            disabled={pending}
+            style={{
+              padding: '0.45rem 0.75rem',
+              borderRadius: 6,
+              border: 0,
+              cursor: pending ? 'not-allowed' : 'pointer',
+              background: mode === 'signup' ? '#fff' : 'transparent',
+              color: mode === 'signup' ? '#171c28' : '#475569',
+              fontSize: 13,
+              fontWeight: mode === 'signup' ? 700 : 500,
+              boxShadow: mode === 'signup' ? '0 1px 2px rgba(15,23,42,0.06)' : 'none',
+            }}
+            data-testid="hub-onboard-tab-signup"
+          >
+            Create new agent
+          </button>
+        </div>
 
         {mode === 'signup' ? (
           <>
@@ -1176,17 +1322,20 @@ function SignupProgressModal({
     return () => clearInterval(id)
   }, [step, chainSubsteps.length])
 
-  // Two passkey ceremonies during signup — registration (WebAuthn-create
-  // returns an attestation; can't be reused) plus the unified session-
-  // grant signature (WebAuthn-get with grant-bound challenge). Wallet
-  // provisioning rides through the session-EOA, no third prompt.
+  // Three passkey ceremonies during signup:
+  //   1. registration (WebAuthn-create returns an attestation),
+  //   2. unified session-grant signature (covers credential ops),
+  //   3. write-delegation signature (covers pool / round / match /
+  //      pledge / proposal — every on-chain-writing MCP tool).
+  // Holder-wallet provisioning rides through the derived session-EOA
+  // with no additional prompt.
   type StepRow = { label: string; status: 'ok' | 'pending' | 'fail' | 'idle'; hint?: string; badge?: string }
   const steps: StepRow[] = [
     {
       label: 'Create passkey on this device',
       status: step === 'passkey' ? 'pending' : step === 'error' && !errorMessage?.includes('chain') ? 'fail' : 'ok',
       hint: 'First prompt — your authenticator generates a fresh P-256 key bound to your .agent name.',
-      badge: '🔑 1 / 2',
+      badge: '🔑 1 / 3',
     },
     ...chainSubsteps.map((label, i): StepRow => {
       let status: 'ok' | 'pending' | 'fail' | 'idle' = 'idle'
@@ -1197,10 +1346,16 @@ function SignupProgressModal({
       return { label, status }
     }),
     {
-      label: 'Authorise session grant',
+      label: 'Authorise read session (credentials, agent ops)',
       status: step === 'done' || step === 'wallet' ? 'ok' : step === 'agent' ? 'pending' : 'idle',
-      hint: 'Second prompt — signs a session-grant challenge bound to the just-registered passkey. Covers all downstream agents (a2a, person-mcp, verifier-mcp). No further prompts after this.',
-      badge: '🔑 2 / 2',
+      hint: 'Second prompt — signs a session-grant challenge bound to the just-registered passkey. Covers credential operations (wallet provisioning, accepting / presenting credentials, trust-set matching) across a2a-agent, person-mcp, and verifier-mcp.',
+      badge: '🔑 2 / 3',
+    },
+    {
+      label: 'Authorise write session (pools, rounds, matches, proposals)',
+      status: step === 'done' || step === 'wallet' ? 'ok' : step === 'agent' ? 'pending' : 'idle',
+      hint: 'Third prompt — signs the write-delegation hash so YOU (not the deployer) are the authoriser for every on-chain write. Without this prompt, pool-create / round-open / propose-match / pledge / submit-proposal return "No active agent session". Runs inside the same step as the read session.',
+      badge: '🔑 3 / 3',
     },
     {
       label: 'Provision AnonCreds holder wallet',
@@ -1237,10 +1392,13 @@ function SignupProgressModal({
           background: '#eff6ff', border: '1px solid #bfdbfe',
           borderRadius: 8, fontSize: 12, color: '#1e40af', lineHeight: 1.5,
         }}>
-          You&apos;ll see <b>2 passkey prompts</b> — registration creates the
-          credential on this device, then a single session-grant signature
-          authorises every downstream agent at once. Wallet provisioning
-          runs through the session-EOA after that, with no further prompts.
+          You&apos;ll see <b>3 passkey prompts</b>:
+          <ol style={{ margin: '6px 0 0 16px', padding: 0 }}>
+            <li>Registration — creates a passkey credential on this device.</li>
+            <li>Read session — signs a session-grant for credentials, holder wallet, and agent ops.</li>
+            <li>Write session — signs the delegation that authorises pool / round / match / pledge / proposal writes.</li>
+          </ol>
+          Wallet provisioning rides through the session-EOA after that, with no further prompts.
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
@@ -1609,6 +1767,64 @@ function OrgStep({ hub, hubId, onJoined, setError }: {
 }
 
 // ─── Shared atoms ────────────────────────────────────────────────────
+
+/**
+ * Surfaces who the user is currently signed in as on the wizard's mid-
+ * flow steps (org, name, profile). Without this, a returning user who
+ * lands on `/h/catalyst` mid-onboarding can't tell their session is
+ * still active and may think they need to sign in again.
+ */
+function SignedInAs({ state }: { state: HubOnboardingState }) {
+  const displayName = state.primaryName || state.currentName || 'unknown'
+  const addr = state.smartAccountAddress
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 8,
+        padding: '0.45rem 0.7rem',
+        background: '#f8fafc',
+        border: '1px solid #e2e8f0',
+        borderRadius: 6,
+        marginBottom: 12,
+        fontSize: 12,
+        color: '#475569',
+      }}
+    >
+      <span>
+        Signed in as <strong style={{ color: '#171c28' }}>{displayName}</strong>
+        {addr && (
+          <code style={{ marginLeft: 6, fontSize: 11, color: '#94a3b8' }}>
+            {addr.slice(0, 6)}…{addr.slice(-4)}
+          </code>
+        )}
+      </span>
+      <button
+        type="button"
+        onClick={async () => {
+          try {
+            await fetch('/api/auth/logout', { method: 'POST' })
+          } catch { /* best-effort */ }
+          window.location.href = '/h/catalyst'
+        }}
+        style={{
+          background: 'transparent',
+          border: 0,
+          padding: 0,
+          color: '#3f6ee8',
+          fontWeight: 600,
+          fontSize: 12,
+          cursor: 'pointer',
+        }}
+        data-testid="onboard-switch-account"
+      >
+        Switch account
+      </button>
+    </div>
+  )
+}
 
 function Card({ title, accent, children }: { title: string; accent?: string; children: React.ReactNode }) {
   return (

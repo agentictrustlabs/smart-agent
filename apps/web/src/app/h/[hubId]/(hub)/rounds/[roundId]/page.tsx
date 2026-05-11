@@ -99,6 +99,17 @@ export default async function RoundDetailPage({
     return <NotAuthorizedSurface hubSlug={slug} reason="not-found-or-private" />
   }
 
+  // proposalsReceived comes from a SPARQL binding that's never
+  // written (the `sa:proposalsReceived` triple isn't emitted by the
+  // kb-sync — proposals are private and never reach GraphDB). Read the
+  // count directly from org-mcp so the "View N proposals" CTA is
+  // accurate. Returns 0 silently on failure.
+  const { getRoundProposalCount } = await import('@/lib/actions/grantProposals.action')
+  const fullRoundId = roundId.startsWith('urn:smart-agent:round:')
+    ? roundId
+    : `urn:smart-agent:round:${roundId}`
+  const proposalsReceived = await getRoundProposalCount(fullRoundId)
+
   const deadline = formatDate(round.deadline)
   const decision = formatDate(round.decisionDate)
   const fundLabel = round.fundAgentId
@@ -160,8 +171,8 @@ export default async function RoundDetailPage({
               )}
             </span>
           )}
-          {round.proposalsReceived > 0 && (
-            <span>· {round.proposalsReceived} proposal{round.proposalsReceived === 1 ? '' : 's'}</span>
+          {proposalsReceived > 0 && (
+            <span>· {proposalsReceived} proposal{proposalsReceived === 1 ? '' : 's'}</span>
           )}
           {round.visibility === 'private' && (
             <span style={{ fontSize: '0.6rem', fontWeight: 700, color: C.privateFg, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
@@ -177,7 +188,7 @@ export default async function RoundDetailPage({
       </div>
 
       {/* Mandate */}
-      <Section title="Mandate">
+      <Section title="Round criteria">
         <div style={{ fontSize: '0.85rem', color: C.text, lineHeight: 1.5 }}>
           Accepts <strong>{(round.mandate.acceptedKinds ?? []).join(', ') || 'any kind'}</strong>
           {round.mandate.acceptedGeo?.length > 0 && (
@@ -270,8 +281,8 @@ export default async function RoundDetailPage({
             href={`/h/${slug}/rounds/${roundId}/proposals`}
             style={{ padding: '0.55rem 0.95rem', background: C.card, color: C.text, border: `1px solid ${C.border}`, borderRadius: 8, fontSize: '0.82rem', fontWeight: 600, textDecoration: 'none' }}
           >
-            {round.proposalsReceived > 0
-              ? `${canCancel ? 'Review' : 'View'} ${round.proposalsReceived} proposal${round.proposalsReceived === 1 ? '' : 's'} →`
+            {proposalsReceived > 0
+              ? `${canCancel ? 'Review' : 'View'} ${proposalsReceived} proposal${proposalsReceived === 1 ? '' : 's'} →`
               : 'View proposals (none yet) →'}
           </Link>
           {canCancel && (

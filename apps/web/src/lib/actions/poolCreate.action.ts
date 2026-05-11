@@ -62,15 +62,16 @@ export async function createPool(input: CreatePoolInput): Promise<CreatePoolResu
     addressedMembers: input.addressedMembers,
   })
 
-  // Run the sync INLINE (await) so the page we redirect to actually finds
-  // the new pool in GraphDB. scheduleKbSyncEager() is fire-and-forget and
-  // rate-limited, so the immediate redirect would race and land on the
-  // "Pool not available" empty state.
+  // Targeted per-pool sync (replaces full-graph PUT). Splices just this
+  // pool's triples into the data graph via SPARQL DELETE+INSERT, so the
+  // page we redirect to finds the new pool without the multi-MB rebuild
+  // that crashed the GraphDB instance under seed load.
   try {
-    const { syncOnChainToGraphDB } = await import('@/lib/ontology/graphdb-sync')
-    await syncOnChainToGraphDB()
+    const { syncPoolToGraphDB } = await import('@/lib/ontology/graphdb-sync')
+    const r = await syncPoolToGraphDB(result.treasuryAddress, input.id)
+    if (!r.ok) console.warn('[poolCreate] per-pool sync failed:', r.message)
   } catch (err) {
-    console.warn('[poolCreate] inline kb-sync failed:', err instanceof Error ? err.message : err)
+    console.warn('[poolCreate] per-pool sync threw:', err instanceof Error ? err.message : err)
   }
 
   return result

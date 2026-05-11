@@ -120,8 +120,17 @@ export async function openRound(input: OpenRoundInput): Promise<OpenRoundResult>
     eligibleVoters: { kind: 'stewards' },
   })
 
-  const { scheduleKbSyncEager } = await import('@/lib/ontology/kb-write-through')
-  scheduleKbSyncEager()
+  // Targeted per-round sync — splices just this round's triples (plus
+  // its RoundOpenedAssertion anchor) into the data graph. Replaces the
+  // prior scheduleKbSyncEager() full-graph rebuild that crashed GraphDB
+  // under seed load.
+  try {
+    const { syncRoundToGraphDB } = await import('@/lib/ontology/graphdb-sync')
+    const r = await syncRoundToGraphDB(input.id)
+    if (!r.ok) console.warn('[roundOpen] per-round sync failed:', r.message)
+  } catch (err) {
+    console.warn('[roundOpen] per-round sync threw:', err instanceof Error ? err.message : err)
+  }
 
   return {
     roundId: fullId,

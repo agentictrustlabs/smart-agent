@@ -317,12 +317,19 @@ export async function listHubsForOnboarding(): Promise<HubChoice[]> {
         address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'getStringProperty',
         args: [addrs[i], ATL_PRIMARY_NAME as `0x${string}`],
       }) as string
-      if (!primaryName) continue
+      // Don't drop hubs that haven't had their primaryName set yet — the
+      // hub landing page also matches by displayName via slugMatches, and
+      // an unnamed hub shouldn't render as "not on chain". Fall back to
+      // the displayName so `parentNode` is still a stable namehash (the
+      // onboarding wizard re-derives the canonical name when it issues
+      // a sub-name on join).
+      const effectiveName = primaryName || (c.displayName || '').toLowerCase().replace(/\s+/g, '-')
+      if (!effectiveName) continue
       hubs.push({
         address: addrs[i],
-        primaryName,
-        displayName: c.displayName || primaryName,
-        parentNode: namehash(primaryName),
+        primaryName: primaryName || effectiveName,
+        displayName: c.displayName || effectiveName,
+        parentNode: namehash(effectiveName),
       })
     }
     hubs.sort((a, b) => a.primaryName.localeCompare(b.primaryName))

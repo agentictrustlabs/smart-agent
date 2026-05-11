@@ -260,6 +260,13 @@ function ProposalRow({
         </span>
       </div>
 
+      <Link
+        href={`/h/${hubSlug}/proposals/${proposal.id}`}
+        style={{ fontSize: '1rem', fontWeight: 700, color: C.text, marginBottom: '0.3rem', display: 'block', textDecoration: 'none' }}
+      >
+        {proposal.displayName || <em style={{ color: C.textMuted, fontWeight: 400 }}>(untitled proposal)</em>}
+      </Link>
+
       <div style={{ fontSize: '0.85rem', color: C.text, marginBottom: '0.4rem' }}>
         Based on intent <code style={{ fontSize: '0.78rem', color: C.textMuted }}>{intentLabel}</code>
         {proposal.budget?.total ? (

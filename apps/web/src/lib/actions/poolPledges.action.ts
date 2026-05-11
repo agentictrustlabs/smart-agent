@@ -149,14 +149,20 @@ export async function submitPledge(
   }
 
   // Pool aggregates (`pledgedTotal`, `availableTotal`) live in org-mcp; the
-  // detail/index pages read them through GraphDB per IA P4. The runtime
-  // kb-sync only re-runs when an on-chain edge is created — pledges don't
-  // create edges, so without an explicit nudge here the new aggregate
-  // never propagates and the UI shows the pre-pledge total. Use the
-  // debounced scheduler (60s quiet + 30s cooldown) to coalesce
-  // burst-y user activity and protect GraphDB from Cloudflare 524s.
-  const { scheduleKbSyncEager } = await import('@/lib/ontology/kb-write-through')
-  scheduleKbSyncEager()
+  // detail/index pages read them through GraphDB. After a pledge we
+  // resync ALL pools (small — 5 pools × ~30 triples) via a single
+  // SPARQL DELETE+INSERT instead of the multi-MB full-graph PUT that
+  // crashed GraphDB under seed load. We resync all pools rather than
+  // one because `result.pledge.poolAgentId` may be URN or hex address
+  // depending on caller (data hygiene gap), and a bulk pool sync sidesteps
+  // the resolution.
+  try {
+    const { syncAllPoolsToGraphDB } = await import('@/lib/ontology/graphdb-sync')
+    const r = await syncAllPoolsToGraphDB()
+    if (!r.ok) console.warn('[submitPledge] pool aggregates sync failed:', r.message)
+  } catch (err) {
+    console.warn('[submitPledge] pool aggregates sync threw:', err instanceof Error ? err.message : err)
+  }
 
   return result
 }
@@ -192,6 +198,41 @@ export async function listMemberPledges(): Promise<ListMemberPledgesResult> {
     }
   }
   return { pledges }
+}
+
+export interface PoolPledgeSummary {
+  id: string
+  poolAgentId: string
+  /** Pledger label honoring story_permissions (`anon:<prefix>…` when anonymized). */
+  principalDisplay: string
+  amount: number
+  unit: string
+  cadence: string
+  pledgedAt: string
+  status: string
+}
+
+/**
+ * Public-facing pledges list for a pool's detail page. Calls org-mcp's
+ * `pool_pledge:list_for_pool` (which applies story_permissions before
+ * returning). Returns an empty array on failure so the page can render
+ * the empty-state instead of erroring.
+ */
+export async function listPoolPledges(
+  poolAgentId: string,
+  limit = 10,
+): Promise<PoolPledgeSummary[]> {
+  try {
+    const result = await callMcp<{ pledges: PoolPledgeSummary[] }>(
+      'org',
+      'pool_pledge:list_for_pool',
+      { poolAgentId, limit },
+    )
+    return result.pledges ?? []
+  } catch (err) {
+    console.warn('[listPoolPledges] failed:', err instanceof Error ? err.message : err)
+    return []
+  }
 }
 
 export async function getMemberPledge(pledgeId: string): Promise<PoolPledge | null> {

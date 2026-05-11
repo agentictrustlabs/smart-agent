@@ -48,6 +48,7 @@ export function PoolCreateForm({ hubSlug }: Props) {
   const [acceptedGeo, setAcceptedGeo] = useState('us/colorado')
   const [acceptedUnits, setAcceptedUnits] = useState('USD')
   const [error, setError] = useState<string | null>(null)
+  const [onboardCta, setOnboardCta] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
   function onSubmit(e: React.FormEvent) {
@@ -87,7 +88,16 @@ export function PoolCreateForm({ hubSlug }: Props) {
           }),
         })
         if (!res.ok) {
-          const j = await res.json().catch(() => ({}))
+          const j = await res.json().catch(() => ({})) as { error?: string; redirectTo?: string }
+          // 401 + redirectTo = user hasn't bootstrapped their A2A
+          // session. Surface a CTA banner with a link to the wizard
+          // instead of silently navigating away (which is jarring when
+          // the user just filled out a form).
+          if (res.status === 401 && j.redirectTo) {
+            setOnboardCta(j.redirectTo)
+            setError(j.error ?? 'Your agent session isn\'t set up yet.')
+            return
+          }
           setError(j.error ?? `Create failed: ${res.status}`)
           return
         }
@@ -157,6 +167,28 @@ export function PoolCreateForm({ hubSlug }: Props) {
       {error && (
         <div style={{ marginBottom: '0.7rem', padding: '0.5rem 0.7rem', background: C.errorBg, color: C.errorFg, borderRadius: 6, fontSize: '0.78rem' }}>
           {error}
+          {onboardCta && (
+            <div style={{ marginTop: '0.5rem' }}>
+              <a
+                href={onboardCta}
+                style={{
+                  display: 'inline-block',
+                  padding: '0.4rem 0.85rem',
+                  background: '#8b5e3c',
+                  color: '#fff',
+                  borderRadius: 6,
+                  fontWeight: 600,
+                  fontSize: '0.82rem',
+                  textDecoration: 'none',
+                }}
+              >
+                Complete agent onboarding →
+              </a>
+              <div style={{ marginTop: '0.4rem', color: C.text, fontSize: '0.72rem' }}>
+                After onboarding, come back to this page and submit again.
+              </div>
+            </div>
+          )}
         </div>
       )}
 

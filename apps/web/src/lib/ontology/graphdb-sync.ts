@@ -617,6 +617,17 @@ const CONCEPT_LABEL: Record<string, string> = {
   [HASH('sa:CeilingBlock')]: 'block',
   [HASH('sa:CeilingWaitlist')]: 'waitlist',
   [HASH('sa:CeilingAccept')]: 'accept',
+  // Common units. The poolRegistry hashes the user-entered unit string
+  // directly (e.g. `USD` → keccak256("USD")), so reverse the lookup
+  // here to render the original label. Add new units as the demo grows.
+  [HASH('USD')]: 'USD',
+  [HASH('EUR')]: 'EUR',
+  [HASH('prayer-minutes')]: 'prayer-minutes',
+  [HASH('loaves')]: 'loaves',
+  [HASH('hours')]: 'hours',
+  [HASH('minutes')]: 'minutes',
+  [HASH('meals')]: 'meals',
+  [HASH('coaching-hours')]: 'coaching-hours',
 }
 
 function conceptToLabel(hash: `0x${string}` | string): string {
@@ -632,7 +643,7 @@ const SA_ROUND_FUND_AGENT_HASH = HASH('sa:roundFundAgent')
 const SA_ROUND_POOL_AGENT_HASH = HASH('sa:roundPoolAgent')
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 
-export async function emitRoundsTurtle(): Promise<string> {
+export async function emitRoundsTurtle(opts: { slugFilter?: string } = {}): Promise<string> {
   const fundRegistryAddr = process.env.FUND_REGISTRY_ADDRESS as `0x${string}` | undefined
   if (!fundRegistryAddr) return ''
 
@@ -643,7 +654,14 @@ export async function emitRoundsTurtle(): Promise<string> {
   // subjects (= keccak256("sa:round:" + roundId)). We filter by checking
   // whether SA_ROUND_FUND_AGENT is set; only round subjects have that.
   let allSubjects: readonly `0x${string}`[]
-  try {
+  if (opts.slugFilter) {
+    // Targeted emit: only the requested round (and its anchor).
+    const oneSubject = await client.readContract({
+      address: fundRegistryAddr, abi: fundRegistryAbi,
+      functionName: 'roundSubject', args: [opts.slugFilter],
+    }) as `0x${string}`
+    allSubjects = [oneSubject]
+  } else try {
     allSubjects = await client.readContract({
       address: fundRegistryAddr, abi: fundRegistryAbi,
       functionName: 'allSubjects',
@@ -828,7 +846,7 @@ async function loadPoolCounters(): Promise<Map<string, { pledged: number; alloca
   return out
 }
 
-export async function emitPoolsTurtle(): Promise<string> {
+export async function emitPoolsTurtle(opts: { poolAgentFilter?: `0x${string}` } = {}): Promise<string> {
   const poolRegistryAddr = process.env.POOL_REGISTRY_ADDRESS as `0x${string}` | undefined
   if (!poolRegistryAddr) return ''
 
@@ -836,7 +854,11 @@ export async function emitPoolsTurtle(): Promise<string> {
   const resolverAddr = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}` | undefined
 
   let allSubjects: readonly `0x${string}`[]
-  try {
+  if (opts.poolAgentFilter) {
+    // Targeted emit: pool subject = bytes32(uint160(poolAgent)).
+    const padded = `0x${'0'.repeat(24)}${opts.poolAgentFilter.slice(2).toLowerCase()}` as `0x${string}`
+    allSubjects = [padded]
+  } else try {
     allSubjects = await client.readContract({
       address: poolRegistryAddr, abi: poolRegistryAbi,
       functionName: 'allSubjects',
@@ -945,10 +967,18 @@ export async function emitPoolsTurtle(): Promise<string> {
       }
     }
     // Counters derived at sync time from pool_pledges sums (Phase 7).
-    const c = counters.get(poolIri) ?? { pledged: 0, allocated: 0, available: 0 }
-    lines.push(`  sa:pledgedTotal ${c.pledged} ;`)
-    lines.push(`  sa:allocatedTotal ${c.allocated} ;`)
-    lines.push(`  sa:availableTotal ${c.available} .`)
+    // Historical data hygiene: some rows store pool_agent_id as the pool's
+    // URN (urn:smart-agent:pool:<slug>) while others store it as the
+    // treasury hex address. We sum BOTH keys so totals on the pool detail
+    // page reflect every pledge regardless of how it was filed.
+    const cUrn = counters.get(poolIri) ?? { pledged: 0, allocated: 0, available: 0 }
+    const cHex = counters.get(poolAgentAddr) ?? { pledged: 0, allocated: 0, available: 0 }
+    const pledged   = cUrn.pledged   + cHex.pledged
+    const allocated = cUrn.allocated + cHex.allocated
+    const available = Math.max(0, pledged - allocated)
+    lines.push(`  sa:pledgedTotal ${pledged} ;`)
+    lines.push(`  sa:allocatedTotal ${allocated} ;`)
+    lines.push(`  sa:availableTotal ${available} .`)
     lines.push('')
     emitted++
   }
@@ -978,4 +1008,128 @@ function stripPrefixBlock(turtle: string): string {
   return turtle
     .replace(/^(?:@prefix\s+\S+:\s+<[^>]+>\s*\.\s*\n?)+/gm, '')
     .replace(/^\s*\n+/, '')
+}
+
+// ---------------------------------------------------------------------------
+// Per-entity incremental sync
+//
+// Each function emits turtle for a SINGLE subject (round, pool, agent) and
+// applies it to GraphDB via a SPARQL DELETE+INSERT against the data graph.
+// This replaces the per-action `scheduleKbSyncEager()` full-graph PUT,
+// which was the root cause of GraphDB crashing under demo-seed load (every
+// edge mutation triggered a multi-MB PUT that re-serialized the entire
+// data graph). The full-graph rebuild path is still available via
+// `syncOnChainToGraphDB()` for admin/initial sync.
+//
+// SPARQL pattern per subject:
+//   DELETE WHERE { GRAPH <data> { <subject> ?p ?o } } ;
+//   INSERT DATA  { GRAPH <data> { <new turtle> } }
+// The DELETE drops every triple whose subject is the target IRI; the
+// INSERT replaces them with the freshly-emitted ones. Anchor assertions
+// (RoundOpenedAssertion, etc.) live on separate IRIs and need their own
+// DELETE+INSERT — handled inline per entity.
+// ---------------------------------------------------------------------------
+
+const SHARED_PREFIXES = `PREFIX sa: <${SA}>
+PREFIX sai: <${SAI}>
+PREFIX sar: <${SAR}>
+PREFIX eth: <${ETH}>
+PREFIX prov: <http://www.w3.org/ns/prov#>
+PREFIX p-plan: <http://purl.org/net/p-plan#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>`
+
+/**
+ * Replace all triples for `subjectIri` in the data graph with the body of
+ * `turtle` (which must declare those triples on the given subject).
+ * Pass `extraSubjects` to also clear ancillary subjects (anchor assertions,
+ * for example) in the same transaction.
+ */
+async function syncSubjectToGraphDB(
+  subjectIri: string,
+  turtle: string,
+  opts: { extraSubjects?: string[] } = {},
+): Promise<{ ok: boolean; message: string }> {
+  if (!turtle) return { ok: false, message: 'empty turtle' }
+  const { DiscoveryService } = await import('@smart-agent/discovery')
+  const discovery = DiscoveryService.fromEnv()
+  const client = discovery.getClient()
+  const body = stripPrefixBlock(turtle)
+
+  // SPARQL `IN` list must be comma-separated: `IN (<a>, <b>)`. Without
+  // the commas GraphDB rejects the entire UPDATE with a "MALFORMED QUERY".
+  const subjects = [subjectIri, ...(opts.extraSubjects ?? [])]
+    .map(s => `<${s}>`)
+    .join(', ')
+
+  const sparql = `${SHARED_PREFIXES}
+DELETE { GRAPH <${DATA_GRAPH}> { ?s ?p ?o } }
+WHERE  { GRAPH <${DATA_GRAPH}> { ?s ?p ?o . FILTER(?s IN (${subjects})) } };
+INSERT DATA { GRAPH <${DATA_GRAPH}> {
+${body}
+} }`
+  try {
+    await client.update(sparql)
+    return { ok: true, message: `synced ${subjectIri}` }
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : String(err) }
+  }
+}
+
+/** Incrementally sync one round (and its RoundOpenedAssertion anchor) to GraphDB. */
+export async function syncRoundToGraphDB(slug: string): Promise<{ ok: boolean; message: string }> {
+  const turtle = await emitRoundsTurtle({ slugFilter: slug })
+  if (!turtle) return { ok: false, message: `no turtle for round ${slug}` }
+  return syncSubjectToGraphDB(
+    `urn:smart-agent:round:${slug}`,
+    turtle,
+    { extraSubjects: [`urn:smart-agent:assertion:${slug}-opened`] },
+  )
+}
+
+/** Incrementally sync one pool (and its PoolOpenedAssertion anchor) to GraphDB. */
+export async function syncPoolToGraphDB(
+  poolAgentAddress: `0x${string}`,
+  slug?: string,
+): Promise<{ ok: boolean; message: string }> {
+  const turtle = await emitPoolsTurtle({ poolAgentFilter: poolAgentAddress })
+  if (!turtle) return { ok: false, message: `no turtle for pool ${poolAgentAddress}` }
+  const subjectIri = slug
+    ? `urn:smart-agent:pool:${slug}`
+    : `urn:smart-agent:pool:${poolAgentAddress.toLowerCase()}`
+  const extras = slug ? [`urn:smart-agent:assertion:${slug}-pool-opened`] : []
+  return syncSubjectToGraphDB(subjectIri, turtle, { extraSubjects: extras })
+}
+
+/**
+ * Resync ALL pools' aggregates (pledgedTotal / allocatedTotal / availableTotal
+ * etc.) to GraphDB. Use when a write affects a pool we can't trivially
+ * resolve back to its on-chain treasury address (e.g. pledge submission
+ * where the pool reference may be URN or address depending on caller).
+ * The full pool set is small (~5 pools × ~30 triples), so this update
+ * is still tiny relative to the multi-MB full-graph PUT we replaced.
+ *
+ * DELETE pattern: every subject whose IRI starts with `urn:smart-agent:pool:`
+ * is wiped before INSERT. Anchor assertions (`*-pool-opened`) are not
+ * mirrored as a separate subject prefix in the emit, so the per-pool
+ * mirror's freshness depends on this single DELETE+INSERT.
+ */
+export async function syncAllPoolsToGraphDB(): Promise<{ ok: boolean; message: string }> {
+  const turtle = await emitPoolsTurtle()
+  if (!turtle) return { ok: false, message: 'no pool turtle (no pools on chain?)' }
+  const { DiscoveryService } = await import('@smart-agent/discovery')
+  const discovery = DiscoveryService.fromEnv()
+  const client = discovery.getClient()
+  const body = stripPrefixBlock(turtle)
+  const sparql = `${SHARED_PREFIXES}
+DELETE { GRAPH <${DATA_GRAPH}> { ?s ?p ?o } }
+WHERE  { GRAPH <${DATA_GRAPH}> { ?s ?p ?o . FILTER(STRSTARTS(STR(?s), "urn:smart-agent:pool:")) } };
+INSERT DATA { GRAPH <${DATA_GRAPH}> {
+${body}
+} }`
+  try {
+    await client.update(sparql)
+    return { ok: true, message: 'synced all pools' }
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : String(err) }
+  }
 }

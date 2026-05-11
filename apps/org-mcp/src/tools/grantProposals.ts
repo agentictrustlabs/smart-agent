@@ -79,6 +79,9 @@ interface SubmitArgs {
   // The full draft body. roundId XOR fundMandateId per Q3.
   roundId?: string | null
   fundMandateId?: string | null
+  /** Required short human-readable title (Q-display). Surfaced on lists,
+   *  cards, and the proposal detail page. */
+  displayName: string
   basedOnIntentId: string
   budget: Budget
   plan: PlanShape
@@ -246,6 +249,7 @@ const submitTool = {
       token: { type: 'string' },
       roundId: { type: 'string' },
       fundMandateId: { type: 'string' },
+      displayName: { type: 'string' },
       basedOnIntentId: { type: 'string' },
       budget: { type: 'object' },
       plan: { type: 'object' },
@@ -256,10 +260,13 @@ const submitTool = {
       basis: { type: 'object' },
       draftId: { type: 'string' },
     },
-    required: ['token', 'basedOnIntentId', 'budget', 'plan', 'milestones', 'desiredOutcomes', 'reportingObligations', 'organisationalBackground'],
+    required: ['token', 'displayName', 'basedOnIntentId', 'budget', 'plan', 'milestones', 'desiredOutcomes', 'reportingObligations', 'organisationalBackground'],
   },
   handler: async (args: SubmitArgs) => {
     const orgPrincipal = await requireOrgPrincipal(args.token, args, 'grant_proposal:submit')
+    if (!args.displayName || !args.displayName.trim()) {
+      return err({ kind: 'missing-required-fields', fields: ['displayName'] })
+    }
 
     // ─── Q3: roundId XOR fundMandateId ────────────────────────────────
     const hasRound = !!args.roundId
@@ -314,6 +321,7 @@ const submitTool = {
       principal: orgPrincipal,
       roundId: args.roundId ?? null,
       fundMandateId: args.fundMandateId ?? null,
+      displayName: args.displayName.trim(),
       basedOnIntentId: args.basedOnIntentId,
       budget: JSON.stringify(args.budget),
       plan: JSON.stringify(args.plan),
@@ -337,6 +345,7 @@ const submitTool = {
         .set({
           roundId: row.roundId,
           fundMandateId: row.fundMandateId,
+          displayName: row.displayName,
           basedOnIntentId: row.basedOnIntentId,
           budget: row.budget,
           plan: row.plan,
@@ -404,6 +413,7 @@ const draftTool = {
       proposalId: { type: 'string' },
       roundId: { type: 'string' },
       fundMandateId: { type: 'string' },
+      displayName: { type: 'string' },
       basedOnIntentId: { type: 'string' },
       budget: { type: 'object' },
       plan: { type: 'object' },
@@ -419,6 +429,7 @@ const draftTool = {
     proposalId?: string
     roundId?: string | null
     fundMandateId?: string | null
+    displayName?: string
     basedOnIntentId?: string
     budget?: Budget
     plan?: PlanShape
@@ -447,6 +458,7 @@ const draftTool = {
       const patch: Record<string, unknown> = { lastEditedAt: now }
       if (args.roundId !== undefined) patch.roundId = args.roundId
       if (args.fundMandateId !== undefined) patch.fundMandateId = args.fundMandateId
+      if (args.displayName !== undefined) patch.displayName = args.displayName.trim()
       if (args.basedOnIntentId !== undefined) patch.basedOnIntentId = args.basedOnIntentId
       if (args.budget !== undefined) patch.budget = JSON.stringify(args.budget)
       if (args.plan !== undefined) patch.plan = JSON.stringify(args.plan)
@@ -473,6 +485,7 @@ const draftTool = {
       principal: orgPrincipal,
       roundId: args.roundId ?? null,
       fundMandateId: args.fundMandateId ?? null,
+      displayName: (args.displayName ?? '').trim(),
       basedOnIntentId: args.basedOnIntentId ?? '',
       budget: JSON.stringify(args.budget ?? { lineItems: [], total: 0 }),
       plan: JSON.stringify(args.plan ?? { narrative: '' }),
@@ -593,6 +606,38 @@ const listForRoundTool = {
     // Drop drafts — stewards never see draft rows.
     const visible = rows.filter((r) => r.status !== 'draft')
     return mcpText({ proposals: visible })
+  },
+}
+
+// ───────────────────────────────────────────────────────────────────────
+// Tool: grant_proposal:count_for_round
+// ───────────────────────────────────────────────────────────────────────
+//
+// Cheap count of submitted (non-draft) proposals on a round. The round
+// detail page shows this in the "View N proposals" CTA without paying
+// the cost of fetching every proposal body. Counterpart to the round
+// counter that USED to live in graphdb-sync but was never written (the
+// `sa:proposalsReceived` triple isn't emitted), so the page would show
+// `(0)` even when proposals existed.
+const countForRoundTool = {
+  name: 'grant_proposal:count_for_round',
+  description:
+    "Return the count of submitted GrantProposals on a round. Drafts excluded. Used to render the proposal count on the round detail page.",
+  inputSchema: {
+    type: 'object' as const,
+    properties: {
+      token: { type: 'string' },
+      roundId: { type: 'string' },
+    },
+    required: ['token', 'roundId'],
+  },
+  handler: async (args: { token: string; roundId: string }) => {
+    await requireOrgPrincipal(args.token, args, 'grant_proposal:count_for_round')
+    const rows = db.select().from(proposalSubmissions)
+      .where(eq(proposalSubmissions.roundId, args.roundId))
+      .all()
+    const count = rows.filter((r) => r.status !== 'draft').length
+    return mcpText({ count })
   },
 }
 
@@ -1012,6 +1057,7 @@ export const grantProposalsTools = {
   'grant_proposal:read_self': readSelfTool,
   'grant_proposal:list_for_member': listForMemberTool,
   'grant_proposal:list_for_round': listForRoundTool,
+  'grant_proposal:count_for_round': countForRoundTool,
   'grant_proposal:edit_pre_deadline': editPreDeadlineTool,
   'grant_proposal:withdraw': withdrawTool,
   'grant_proposal:clone': cloneTool,

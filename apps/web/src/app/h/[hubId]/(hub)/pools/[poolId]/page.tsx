@@ -21,6 +21,7 @@ import { HUB_SLUG_MAP } from '@/lib/hub-routes'
 import { getHubProfile } from '@/lib/hub-profiles'
 import { getPersonAgentForUser } from '@/lib/agent-registry'
 import { getPoolForViewer, getPoolRecentAllocations } from '@/lib/actions/pools.action'
+import { listPoolPledges } from '@/lib/actions/poolPledges.action'
 import { DiscoveryService } from '@smart-agent/discovery'
 
 export const dynamic = 'force-dynamic'
@@ -71,6 +72,18 @@ export default async function PoolDetailPage({
 
   const allocations = await getPoolRecentAllocations(poolId, myAgent, 5)
   const primaryUnit = pool.acceptedUnits[0] ?? 'USD'
+  // Recent pledges — read from org-mcp via `pool_pledge:list_for_pool` (the
+  // tool applies story_permissions before returning, so it's safe to
+  // render on the public detail surface). The pledger field stored by
+  // `pool_pledge:submit` is sometimes the pool's URN and sometimes its
+  // treasury hex — try both forms so existing rows from either path
+  // surface. Limit 10 keeps the section compact.
+  const recentPledges = [
+    ...await listPoolPledges(pool.id, 10),
+    ...await listPoolPledges((pool.treasuryAddress ?? '').toLowerCase(), 10),
+  ]
+    .filter((p, i, arr) => arr.findIndex(x => x.id === p.id) === i)
+    .slice(0, 10)
 
   // Rounds operated by this pool's stewardship agent. We hit
   // DiscoveryService.listRounds directly instead of going through the
@@ -138,7 +151,7 @@ export default async function PoolDetailPage({
       </div>
 
       {/* Mandate */}
-      <Section title="Mandate">
+      <Section title="What this pool funds">
         <div style={{ fontSize: '0.85rem', color: C.text, lineHeight: 1.5 }}>
           {pool.mandate || 'Open mandate'}
         </div>
@@ -222,6 +235,36 @@ export default async function PoolDetailPage({
           }}>
             Ceiling reached. New pledges are blocked by the pool&rsquo;s policy.
           </div>
+        )}
+      </Section>
+
+      {/* Recent pledges — surfaces individual pledges that backed the pool's
+          capacity. Story-permissions are applied server-side, so the
+          principal label may be `anon:<prefix>…` for donors who opted to
+          anonymize. */}
+      <Section title={`Recent pledges (${recentPledges.length})`}>
+        {recentPledges.length === 0 ? (
+          <div style={{ fontSize: '0.85rem', color: C.textMuted, fontStyle: 'italic' }}>
+            No pledges yet — be the first to back this pool.
+          </div>
+        ) : (
+          <ul style={{ margin: 0, paddingLeft: '1rem', fontSize: '0.85rem', color: C.text }}>
+            {recentPledges.map(p => {
+              const principalShort = p.principalDisplay.startsWith('0x')
+                ? `${p.principalDisplay.slice(0, 8)}…${p.principalDisplay.slice(-4)}`
+                : p.principalDisplay
+              return (
+                <li key={p.id} style={{ marginBottom: '0.35rem' }}>
+                  {formatAmount(p.amount, p.unit)} —{' '}
+                  <span style={{ fontWeight: 600 }}>{principalShort}</span>
+                  <span style={{ color: C.textMuted, marginLeft: '0.4rem' }}>· {p.cadence}</span>
+                  {p.pledgedAt && (
+                    <span style={{ color: C.textMuted, marginLeft: '0.4rem' }}>· {p.pledgedAt.slice(0, 10)}</span>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
         )}
       </Section>
 

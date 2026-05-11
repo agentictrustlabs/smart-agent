@@ -241,6 +241,12 @@ function ProposalListRow({ proposal, hubSlug }: { proposal: GrantProposal; hubSl
             : `submitted ${formatDate(proposal.submittedAt)}`}
         </span>
       </div>
+      <Link
+        href={`/h/${hubSlug}/proposals/${proposal.id}`}
+        style={{ fontSize: '0.98rem', fontWeight: 700, color: C.text, display: 'block', marginBottom: '0.3rem', textDecoration: 'none' }}
+      >
+        {proposal.displayName || <em style={{ color: C.textMuted, fontWeight: 400 }}>(untitled proposal)</em>}
+      </Link>
       <div style={{ fontSize: '0.85rem', color: C.text, marginBottom: '0.3rem' }}>
         Round: <code style={{ fontSize: '0.78rem', color: C.textMuted }}>{roundLabel}</code>
         <span style={{ marginLeft: '0.85rem' }}>

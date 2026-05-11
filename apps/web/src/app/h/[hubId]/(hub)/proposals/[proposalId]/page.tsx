@@ -128,9 +128,10 @@ export default async function ProposalDetailPage({
           {profile.name} · Proposal
         </div>
         <h1 style={{ fontSize: '1.45rem', fontWeight: 700, color: C.text, margin: '0.1rem 0' }}>
-          {proposal.plan?.narrative
-            ? proposal.plan.narrative.slice(0, 80) + (proposal.plan.narrative.length > 80 ? '…' : '')
-            : 'Untitled proposal'}
+          {proposal.displayName
+            || (proposal.plan?.narrative
+              ? proposal.plan.narrative.slice(0, 80) + (proposal.plan.narrative.length > 80 ? '…' : '')
+              : 'Untitled proposal')}
         </h1>
         <div style={{ fontSize: '0.78rem', color: C.textMuted, display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
           <span style={{ fontWeight: 700, color: statusColor(status), textTransform: 'uppercase', letterSpacing: '0.04em' }}>

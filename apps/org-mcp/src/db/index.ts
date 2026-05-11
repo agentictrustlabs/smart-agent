@@ -210,6 +210,11 @@ sqliteHandle.exec(`
     round_id TEXT,
     fund_mandate_id TEXT,
     based_on_intent_id TEXT NOT NULL,
+    -- Required short title surfaced on lists, cards, round detail pages,
+    -- and the proposal detail page. Stewards rely on it to triage in the
+    -- review queue. Defaulted empty for legacy rows; submit tool requires
+    -- a non-empty value going forward.
+    display_name TEXT NOT NULL DEFAULT '',
     budget TEXT NOT NULL,
     plan TEXT NOT NULL,
     milestones TEXT NOT NULL,
@@ -229,6 +234,13 @@ sqliteHandle.exec(`
   CREATE INDEX IF NOT EXISTS idx_proposal_submissions_principal ON proposal_submissions(principal);
   CREATE INDEX IF NOT EXISTS idx_proposal_submissions_round ON proposal_submissions(round_id);
   CREATE INDEX IF NOT EXISTS idx_proposal_submissions_status ON proposal_submissions(status);
+  -- Migration: add display_name to legacy DBs that pre-date the column.
+  -- SQLite IF NOT EXISTS on ADD COLUMN is unsupported, so guard via a try.
+`)
+try {
+  sqliteHandle.exec(`ALTER TABLE proposal_submissions ADD COLUMN display_name TEXT NOT NULL DEFAULT ''`)
+} catch { /* already present */ }
+sqliteHandle.exec(`
 
   -- Round body lives on chain in FundRegistry; mirrored to GraphDB by sync.
   -- This slim table holds only the off-chain DAO voting config keyed by round id.

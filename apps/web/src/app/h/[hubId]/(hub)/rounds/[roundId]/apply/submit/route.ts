@@ -24,6 +24,7 @@ interface IncomingBody {
   proposerAgentId?: string
   roundId?: string | null
   fundMandateId?: string | null
+  displayName?: string
   basedOnIntentId?: string
   budget?: SubmitGrantProposalRequest['budget']
   plan?: SubmitGrantProposalRequest['plan']
@@ -66,6 +67,7 @@ export async function POST(
     : `urn:smart-agent:round:${rawRound}`
   const request: SubmitGrantProposalRequest = {
     proposerAgentId: body.proposerAgentId ?? myAgent,
+    displayName: (body.displayName ?? '').trim(),
     roundId: fullRoundId,
     fundMandateId: body.fundMandateId ?? null,
     basedOnIntentId: body.basedOnIntentId ?? '',
@@ -79,12 +81,12 @@ export async function POST(
 
   // Quick required-field gate — surfaces a friendlier error than the MCP
   // when the form sends an empty draft.
-  if (!request.basedOnIntentId) {
+  const missing: string[] = []
+  if (!request.displayName) missing.push('displayName')
+  if (!request.basedOnIntentId) missing.push('basedOnIntentId')
+  if (missing.length > 0) {
     return NextResponse.json(
-      {
-        ok: false,
-        error: { kind: 'missing-required-fields', fields: ['basedOnIntentId'] },
-      },
+      { ok: false, error: { kind: 'missing-required-fields', fields: missing } },
       { status: 400 },
     )
   }

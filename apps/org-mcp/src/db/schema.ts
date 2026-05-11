@@ -209,6 +209,9 @@ export const proposalSubmissions = sqliteTable('proposal_submissions', {
   roundId: text('round_id'),                                    // null for open-call (Q5)
   fundMandateId: text('fund_mandate_id'),                       // required when roundId is null
   basedOnIntentId: text('based_on_intent_id').notNull(),
+  /** Short human-readable title. Required at submit time; empty default
+   *  applies only to legacy rows. */
+  displayName: text('display_name').notNull().default(''),
   budget: text('budget').notNull(),                             // JSON: { lineItems[], total }
   plan: text('plan').notNull(),                                 // JSON: { narrative, planArtifactRef? }
   milestones: text('milestones').notNull(),                     // JSON array

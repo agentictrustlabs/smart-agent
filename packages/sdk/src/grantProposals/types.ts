@@ -75,6 +75,10 @@ export type GrantProposalStatus =
 export interface GrantProposal {
   id: string
   proposerAgentId: string
+  /** Short human-readable title surfaced on lists, cards, and the
+   *  proposal detail page. Required at submit time; legacy rows may
+   *  have an empty string. */
+  displayName: string
   /** null for open-call (Q5). */
   roundId: string | null
   /** Required when `roundId === null`; references a sa:Fund directly. */

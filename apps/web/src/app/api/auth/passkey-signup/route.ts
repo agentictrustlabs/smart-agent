@@ -329,6 +329,14 @@ export async function POST(request: Request) {
     path: '/', maxAge: 60 * 60 * 24 * 30, httpOnly: true, sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
   })
+
+  // NOTE: the write-capable A2A delegation is NOT minted here. The
+  // wizard's post-signup phase prompts the user's passkey one more time
+  // to sign the delegation hash — making the user (not the deployer) the
+  // authoriser. This is the production-correct path. The fallback
+  // deployer-signed mode in `bootstrapA2ASessionForUser` is kept only
+  // for legacy callers / repair flows.
+
   void cookieStore
   return response
   } catch (err) {

@@ -92,6 +92,11 @@ export function ProposalComposer(props: ProposalComposerProps) {
     props.viewerIntents[0]?.id ?? '',
   )
 
+  // Required short title — surfaced on proposal cards, the round-detail
+  // proposals listing, and the proposal detail page. Submit blocks if
+  // left blank.
+  const [displayName, setDisplayName] = useState('')
+
   const [lineItems, setLineItems] = useState<BudgetLineItemState[]>([
     { name: '', amount: 0, unit: 'USD', justification: '' },
   ])
@@ -119,10 +124,15 @@ export function ProposalComposer(props: ProposalComposerProps) {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setSubmitError(null)
+    if (!displayName.trim()) {
+      setSubmitError('Please give your proposal a short title.')
+      return
+    }
     const payload = {
       proposerAgentId: props.proposerAgentId,
       roundId: props.roundId,
       fundMandateId: null,
+      displayName: displayName.trim(),
       basedOnIntentId,
       budget: {
         lineItems: lineItems.map((li) => ({
@@ -238,6 +248,22 @@ export function ProposalComposer(props: ProposalComposerProps) {
           {submitError}
         </div>
       )}
+
+      {/* Title — required short summary surfaced on lists / detail pages */}
+      <Section title="Title">
+        <input
+          type="text"
+          value={displayName}
+          onChange={(e) => setDisplayName(e.target.value)}
+          placeholder="A short name for this proposal (e.g. Trauma-care coaching cohort, Q3 2026)"
+          required
+          maxLength={120}
+          style={{ ...inputStyle, width: '100%' }}
+        />
+        <div style={{ fontSize: '0.72rem', color: C.textMuted, marginTop: '0.3rem' }}>
+          Shown on the round&rsquo;s proposals list and on your &ldquo;My proposals&rdquo; view.
+        </div>
+      </Section>
 
       {/* Intent picker */}
       <Section title="Underlying intent">

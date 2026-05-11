@@ -44,7 +44,7 @@ type ServerKey = keyof typeof SERVERS
  * minting code. The route registers as /mcp/:server/:tool — see below.
  */
 async function callMcpTool(
-  accountAddress: string,
+  sessionId: string,
   serverKey: ServerKey,
   toolName: string,
   args: Record<string, unknown>,
@@ -52,9 +52,17 @@ async function callMcpTool(
   const server = SERVERS[serverKey]
   if (!server) return { ok: false, error: `Unknown MCP server: ${serverKey}` }
 
-  const rows = await db.select().from(sessions).where(eq(sessions.accountAddress, accountAddress))
-  const active = rows.find(r => r.encryptedPackage && r.iv && r.status === 'active')
-  if (!active) return { ok: false, status: 401, error: 'No active agent session' }
+  // Look up the SPECIFIC session referenced by the bearer token, not any
+  // session for the account. Picking the first session by account was the
+  // source of "Tool not permitted by delegation scope" after tool-policy
+  // updates — the user's old sessions (with stale tool lists) shadowed
+  // the freshly-bootstrapped one. Cookie session id is the authoritative
+  // identifier; respect it.
+  const rows = await db.select().from(sessions).where(eq(sessions.id, sessionId))
+  const active = rows[0]
+  if (!active || active.status !== 'active' || !active.encryptedPackage || !active.iv) {
+    return { ok: false, status: 401, error: 'No active agent session' }
+  }
   if (new Date(active.expiresAt) < new Date()) return { ok: false, status: 401, error: 'Session expired' }
 
   const a2aSessionId = active.id
@@ -144,7 +152,7 @@ mcpProxy.post('/:server/:tool', requireSession, async (c) => {
 
   const args = await c.req.json().catch(() => ({}))
 
-  const result = await callMcpTool(sess.accountAddress, serverKey, toolName, args ?? {})
+  const result = await callMcpTool(sess.id, serverKey, toolName, args ?? {})
   if (!result.ok) return c.json({ error: result.error }, (result.status ?? 502) as 400 | 401 | 403 | 404 | 500 | 502)
   return c.json(result.data)
 })
