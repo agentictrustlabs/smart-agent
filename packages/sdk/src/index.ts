@@ -34,6 +34,11 @@ export {
   poolRegistryAbi,
   fundRegistryAbi,
   proposalRegistryAbi,
+  // Spec 004 marketplace registries
+  voteRegistryAbi,
+  grantProposalRegistryAbi,
+  pledgeRegistryAbi,
+  matchInitiationRegistryAbi,
   agentNameAttributeResolverAbi,
 } from './abi'
 

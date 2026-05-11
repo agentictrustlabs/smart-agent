@@ -51,6 +51,17 @@ contract FundRegistry is AttributeStorage {
      *  IRIs without consulting any off-chain index. */
     bytes32 public constant SA_ROUND_SLUG                   = keccak256("sa:roundSlug");
 
+    /// Spec 004 R10 — DAO voting config moved on chain. Replaces the
+    /// org-mcp `rounds` SQL table (now dropped). Set lazily via
+    /// `setRoundVotingConfig`; the openRound flow continues to write the
+    /// canonical body without requiring a voting config (default applies
+    /// when unset: strategy = sa:VotingStewardQuorum, threshold = 2,
+    /// no window).
+    bytes32 public constant SA_ROUND_VOTING_STRATEGY         = keccak256("sa:roundVotingStrategy");
+    bytes32 public constant SA_ROUND_VOTING_THRESHOLD        = keccak256("sa:roundVotingThreshold");
+    bytes32 public constant SA_ROUND_VOTING_WINDOW_STARTS_AT = keccak256("sa:roundVotingWindowStartsAt");
+    bytes32 public constant SA_ROUND_VOTING_WINDOW_ENDS_AT   = keccak256("sa:roundVotingWindowEndsAt");
+
     error NotFundOwner();
     error RoundNotInitialized();
     error MissingFundAgent();
@@ -199,6 +210,22 @@ contract FundRegistry is AttributeStorage {
         _setString(round, SA_ROUND_VALIDATOR_REQUIREMENTS, requirements);
     }
 
+    /// Spec 004 R10 — DAO voting config. `strategy` is a keccak256 concept
+    /// hash (e.g. keccak256("sa:VotingStewardQuorum")). `windowStartsAt` and
+    /// `windowEndsAt` are unix seconds; pass 0 to mean "no window".
+    function setRoundVotingConfig(
+        bytes32 round,
+        bytes32 strategy,
+        uint256 threshold,
+        uint256 windowStartsAt,
+        uint256 windowEndsAt
+    ) external onlyRoundFundOwner(round) {
+        _setBytes32(round, SA_ROUND_VOTING_STRATEGY, strategy);
+        _setUint(round, SA_ROUND_VOTING_THRESHOLD, threshold);
+        if (windowStartsAt > 0) _setUint(round, SA_ROUND_VOTING_WINDOW_STARTS_AT, windowStartsAt);
+        if (windowEndsAt > 0)   _setUint(round, SA_ROUND_VOTING_WINDOW_ENDS_AT,   windowEndsAt);
+    }
+
     // ─── Read helpers ──────────────────────────────────────────────
 
     function getFundAcceptedKinds(address fundAgent) external view returns (bytes32[] memory) {
@@ -245,6 +272,22 @@ contract FundRegistry is AttributeStorage {
     }
     function getRoundMilestoneTemplate(bytes32 round) external view returns (string memory) {
         return this.getString(round, SA_ROUND_MILESTONE_TEMPLATE);
+    }
+
+    /// Spec 004 R10 — read voting config. Returns zero values when unset
+    /// (callers default: strategy = sa:VotingStewardQuorum, threshold = 2,
+    /// no window). The org-mcp `vote:tally_for_round` tool falls back to
+    /// these defaults when any field is zero.
+    function getRoundVotingConfig(bytes32 round) external view returns (
+        bytes32 strategy,
+        uint256 threshold,
+        uint256 windowStartsAt,
+        uint256 windowEndsAt
+    ) {
+        strategy = this.getBytes32(round, SA_ROUND_VOTING_STRATEGY);
+        threshold = this.getUint(round, SA_ROUND_VOTING_THRESHOLD);
+        windowStartsAt = this.getUint(round, SA_ROUND_VOTING_WINDOW_STARTS_AT);
+        windowEndsAt = this.getUint(round, SA_ROUND_VOTING_WINDOW_ENDS_AT);
     }
     function getRoundValidatorRequirements(bytes32 round) external view returns (string memory) {
         return this.getString(round, SA_ROUND_VALIDATOR_REQUIREMENTS);

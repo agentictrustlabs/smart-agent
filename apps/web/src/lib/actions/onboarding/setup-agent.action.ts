@@ -139,9 +139,14 @@ export async function getOnboardingStatus(): Promise<OnboardingStatus> {
 export async function markOnboardingComplete(): Promise<{ success: boolean; error?: string }> {
   try {
     const session = await requireSession()
-    await db.update(schema.users)
-      .set({ onboardedAt: new Date().toISOString() })
-      .where(eq(schema.users.did, session.userId))
+    // For demo/google users, stamp onboardedAt. Passkey/SIWE users have no
+    // row — "onboarded" for them is implied by the chain state (registered
+    // agent + primary name set). The update is a no-op when no row matches.
+    if (session.via !== 'passkey' && session.via !== 'siwe') {
+      await db.update(schema.users)
+        .set({ onboardedAt: new Date().toISOString() })
+        .where(eq(schema.users.did, session.userId))
+    }
     // Clear the hub-of-origin cookie so subsequent visits don't replay it.
     try {
       const jar = await cookies()
@@ -228,12 +233,17 @@ export async function ensurePersonAgentRegistered(): Promise<{ success: boolean;
     const session = await requireSession()
     if (session.via === 'demo') return { success: true } // demo agents are seeded.
 
-    const user = await db.select().from(schema.users)
-      .where(eq(schema.users.did, session.userId)).limit(1).then(r => r[0])
-    if (!user) return { success: false, error: 'user row missing' }
-    if (!user.smartAccountAddress) return { success: false, error: 'no smart account on user row' }
+    // Passkey/SIWE: pull smart account from session. Demo/google: from users row.
+    const stateless = session.via === 'passkey' || session.via === 'siwe'
+    const user = stateless
+      ? null
+      : await db.select().from(schema.users)
+          .where(eq(schema.users.did, session.userId)).limit(1).then(r => r[0])
+    if (!stateless && !user) return { success: false, error: 'user row missing' }
 
-    const smartAcct = getAddress(user.smartAccountAddress as `0x${string}`)
+    const smartAcctRaw = user?.smartAccountAddress ?? session.smartAccountAddress
+    if (!smartAcctRaw) return { success: false, error: 'no smart account on session' }
+    const smartAcct = getAddress(smartAcctRaw as `0x${string}`)
 
     const resolverAddr = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}` | undefined
     if (!resolverAddr) return { success: false, error: 'AGENT_ACCOUNT_RESOLVER_ADDRESS not set' }
@@ -246,9 +256,10 @@ export async function ensurePersonAgentRegistered(): Promise<{ success: boolean;
     }) as boolean
 
     if (!alreadyRegistered) {
-      const displayName = user.name && user.name !== 'Agent User'
+      const fallbackDisplayName = session.name ?? 'New User'
+      const displayName = user?.name && user.name !== 'Agent User'
         ? user.name
-        : (user.email ?? 'New User')
+        : (user?.email ?? fallbackDisplayName)
       await registerAgentMetadata({
         agentAddress: smartAcct,
         displayName,
@@ -260,12 +271,13 @@ export async function ensurePersonAgentRegistered(): Promise<{ success: boolean;
     // For OAuth users, walletAddress === smartAccountAddress (no separate EOA);
     // adding the agent as its own controller reverts with NotAgentOwner and
     // adds no useful signal anyway. Skip it.
+    const walletForController = user?.walletAddress ?? session.walletAddress
     if (
-      user.walletAddress &&
-      user.walletAddress.toLowerCase().startsWith('0x') &&
-      user.walletAddress.toLowerCase() !== smartAcct.toLowerCase()
+      walletForController &&
+      walletForController.toLowerCase().startsWith('0x') &&
+      walletForController.toLowerCase() !== smartAcct.toLowerCase()
     ) {
-      const ownerAddr = getAddress(user.walletAddress as `0x${string}`)
+      const ownerAddr = getAddress(walletForController as `0x${string}`)
       try {
         await addAgentController(smartAcct, ownerAddr)
       } catch (e) {
@@ -355,10 +367,16 @@ export async function listHubsForOnboarding(): Promise<HubChoice[]> {
 export async function joinHubAsPerson(hubAddress: string): Promise<{ success: boolean; error?: string }> {
   try {
     const session = await requireSession()
-    const user = await db.select().from(schema.users)
-      .where(eq(schema.users.did, session.userId)).limit(1).then(r => r[0])
-    if (!user?.smartAccountAddress) return { success: false, error: 'no smart account on user row' }
-    const personAgent = getAddress(user.smartAccountAddress as `0x${string}`)
+    // Passkey/SIWE: smart account is on the session JWT, no users row.
+    // Demo/google: look it up from the users row.
+    const stateless = session.via === 'passkey' || session.via === 'siwe'
+    const smartAcctRaw = stateless
+      ? session.smartAccountAddress
+      : await db.select().from(schema.users)
+          .where(eq(schema.users.did, session.userId)).limit(1)
+          .then(r => r[0]?.smartAccountAddress ?? null)
+    if (!smartAcctRaw) return { success: false, error: 'no smart account on session' }
+    const personAgent = getAddress(smartAcctRaw as `0x${string}`)
 
     const resolverAddr = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}` | undefined
     if (!resolverAddr) return { success: false, error: 'AGENT_ACCOUNT_RESOLVER_ADDRESS not configured' }

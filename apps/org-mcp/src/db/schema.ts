@@ -216,16 +216,12 @@ export const orgCrossDelegationGrants = sqliteTable('org_cross_delegation_grants
 // mirrored). proposals_received is derived as
 // COUNT(proposal_submissions WHERE round_id = round) at read time.
 //
-// What stays here: voting config (off-chain DAO governance), keyed by round id.
-export const rounds = sqliteTable('rounds', {
-  id: text('id').primaryKey(),
-  votingStrategy: text('voting_strategy').notNull().default('steward-quorum'),
-  votingThreshold: integer('voting_threshold').notNull().default(2),
-  votingWindowStartsAt: text('voting_window_starts_at'),
-  votingWindowEndsAt: text('voting_window_ends_at'),
-  eligibleVoters: text('eligible_voters').notNull().default('{"kind":"stewards"}'),
-  updatedAt: text('updated_at').notNull(),
-})
+// Spec 004 R10 — `rounds` SQL table DROPPED. Voting config moved to
+// FundRegistry attrs (sa:roundVotingStrategy / Threshold /
+// WindowStartsAt / WindowEndsAt). The `eligibleVoters` field is also
+// gone — eligibility now flows through the RoundVoterCredential
+// issuance set (round admin issues to whoever can vote; non-holders
+// are rejected at presentation time).
 
 // ─── Disbursements (Sprint C) ─────────────────────────────────────────
 // Per-tranche records of grant disbursements. Created when a round is

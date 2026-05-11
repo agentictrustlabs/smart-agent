@@ -114,6 +114,11 @@ const TERMS: Array<{ curie: string; datatype: string }> = [
   { curie: 'sa:pledgePledgedAt',     datatype: 'uint256' },
   { curie: 'sa:pledgeStoppedAt',     datatype: 'uint256' },
   { curie: 'sa:pledgeStatus',        datatype: 'bytes32' },
+  // FundRegistry R10 — voting config attrs moved on chain.
+  { curie: 'sa:roundVotingStrategy',         datatype: 'bytes32' },
+  { curie: 'sa:roundVotingThreshold',        datatype: 'uint256' },
+  { curie: 'sa:roundVotingWindowStartsAt',   datatype: 'uint256' },
+  { curie: 'sa:roundVotingWindowEndsAt',     datatype: 'uint256' },
   // MatchInitiationRegistry
   { curie: 'sa:miViewedIntent',         datatype: 'string' },
   { curie: 'sa:miCandidateIntent',      datatype: 'string' },

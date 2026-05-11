@@ -20,6 +20,13 @@ import { randomUUID } from 'crypto'
 import { db, schema } from '@/db'
 import { and, eq, desc, isNull } from 'drizzle-orm'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
+import {
+  listIntentsViaMcp,
+  getIntentViaMcp,
+  expressIntentViaMcp,
+  withdrawIntentViaMcp,
+  type IntentRowFromMcp,
+} from '@/lib/intents/router'
 
 export type IntentDirection = 'receive' | 'give'
 export type IntentStatus = 'drafted' | 'expressed' | 'acknowledged' | 'in-progress' | 'fulfilled' | 'withdrawn' | 'abandoned'
@@ -85,6 +92,36 @@ export interface IntentRow {
 function safeJsonParse<T = unknown>(s: string | null): T | null {
   if (!s) return null
   try { return JSON.parse(s) as T } catch { return null }
+}
+
+/** Map the MCP federation helper's row into the web's IntentRow shape.
+ *  The two shapes are nearly identical; this is mostly a type cast plus
+ *  filling in fields the MCP doesn't carry (hubId defaults to the
+ *  caller's filter or empty string). */
+function mcpRowToWebIntent(r: IntentRowFromMcp, hubIdFallback?: string): IntentRow {
+  return {
+    id: r.id,
+    direction: r.direction,
+    object: r.object,
+    topic: r.topic,
+    intentType: r.intentType,
+    intentTypeLabel: r.intentTypeLabel,
+    expressedByAgent: r.expressedByAgent,
+    expressedByUserId: r.expressedByUserId,
+    addressedTo: r.addressedTo,
+    hubId: r.hubId || hubIdFallback || '',
+    title: r.title,
+    detail: r.detail,
+    payload: r.payload as IntentRow['payload'],
+    status: r.status,
+    priority: r.priority,
+    visibility: r.visibility,
+    expectedOutcome: r.expectedOutcome as IntentRow['expectedOutcome'],
+    projectionRef: r.projectionRef,
+    validUntil: r.validUntil,
+    createdAt: r.createdAt,
+    updatedAt: r.updatedAt,
+  }
 }
 
 function rowToIntent(r: typeof schema.intents.$inferSelect): IntentRow {
@@ -223,6 +260,37 @@ export async function expressIntent(input: ExpressIntentInput): Promise<{ id: st
     updatedAt: now,
   }).run() } catch { /* intents table dropped */ }
 
+  // Spec 004 — also write to the owner's MCP so the eventual
+  // schema.intents drop doesn't break this flow. Determine which MCP
+  // owns this intent: person-mcp when the expressing agent IS the
+  // user's person agent; org-mcp otherwise (org-as-expresser).
+  try {
+    const myPersonAgent = await resolvePersonAgentForUser(me.id)
+    const source: 'person' | 'org' =
+      myPersonAgent && input.expressedByAgent.toLowerCase() === myPersonAgent.toLowerCase()
+        ? 'person'
+        : 'org'
+    await expressIntentViaMcp({
+      direction: input.direction,
+      object: input.object,
+      title: input.title,
+      detail: input.detail ?? null,
+      intentType: input.intentType,
+      intentTypeLabel: input.intentTypeLabel,
+      topic: input.topic ?? null,
+      hubId: input.hubId,
+      payload: incomingPayload,
+      expectedOutcome: input.expectedOutcome,
+      priority: input.priority ?? 'normal',
+      visibility: input.visibility ?? 'public',
+      addressedTo: input.addressedTo,
+      validUntil: input.validUntil ?? null,
+      source,
+    })
+  } catch (err) {
+    console.warn('[intents] MCP mirror failed (non-fatal):', err instanceof Error ? err.message : err)
+  }
+
   // If we have a structured outcome, mint an outcomes row too so the
   // observation pipeline (Activity.achievesOutcomeId) has a target.
   if (input.expectedOutcome) {
@@ -259,12 +327,23 @@ export async function withdrawIntent(intentId: string): Promise<{ ok: true } | {
   // Withdrawer must be the expresser.
   let row: any = undefined
   try { row = db.select().from(schema.intents).where(eq(schema.intents.id, intentId)).get() } catch { /* intents table dropped */ }
-  if (!row) return { error: 'intent-not-found' }
-  if (row.expressedByUserId !== me.id) return { error: 'not-authorized' }
+  // Post-drop authorization happens at the MCP — the owner MCP only
+  // exposes withdraw to a token bound to the principal. So when SQL
+  // has no row, defer the auth check to the MCP withdraw call.
+  if (row && row.expressedByUserId !== me.id) return { error: 'not-authorized' }
   try { db.update(schema.intents)
     .set({ status: 'withdrawn', updatedAt: new Date().toISOString() })
     .where(eq(schema.intents.id, intentId))
     .run() } catch { /* intents table dropped */ }
+
+  // Spec 004 — also withdraw at the owner MCP. Try person-mcp first;
+  // if no person-side row, fall through to org-mcp.
+  try {
+    const personRes = await withdrawIntentViaMcp(intentId, 'person')
+    if (!personRes.ok) await withdrawIntentViaMcp(intentId, 'org')
+  } catch (err) {
+    console.warn('[intents] MCP withdraw mirror failed (non-fatal):', err instanceof Error ? err.message : err)
+  }
   // Cascade: close the legacy projection too.
   if (row.projectionRef) {
     if (row.direction === 'receive') {
@@ -324,7 +403,31 @@ export async function listIntents(opts: ListIntentsOptions = {}): Promise<Intent
       ? await db.select().from(schema.intents).where(where).orderBy(desc(schema.intents.updatedAt)).limit(opts.limit ?? 100)
       : await db.select().from(schema.intents).orderBy(desc(schema.intents.updatedAt)).limit(opts.limit ?? 100)
   } catch { /* intents table dropped */ }
-  let intents = rows.map(rowToIntent)
+  let intents: IntentRow[] = rows.map(rowToIntent)
+
+  // Spec 004 fallback — when the SQL table is empty (or dropped), pull
+  // the viewer's intents from their owner MCP. Both person-mcp and
+  // org-mcp are queried; results are merged + de-duped by id.
+  if (intents.length === 0) {
+    const fromPerson = await listIntentsViaMcp({
+      direction: opts.direction,
+      status: opts.status,
+      source: 'person',
+    })
+    const fromOrg = await listIntentsViaMcp({
+      direction: opts.direction,
+      status: opts.status,
+      source: 'org',
+    })
+    const seen = new Set<string>()
+    const merged: IntentRow[] = []
+    for (const r of [...fromPerson, ...fromOrg]) {
+      if (seen.has(r.id)) continue
+      seen.add(r.id)
+      merged.push(mcpRowToWebIntent(r, opts.hubId))
+    }
+    intents = merged
+  }
 
   // Post-filter: scope toggle (FR-022/FR-023). When 'hub', drop network-only
   // intents; when 'network', allow both.
@@ -371,8 +474,19 @@ export interface IntentDetail extends IntentRow {
 export async function getIntent(id: string): Promise<IntentDetail | null> {
   let row: any = undefined
   try { row = db.select().from(schema.intents).where(eq(schema.intents.id, id)).get() } catch { /* intents table dropped */ }
-  if (!row) return null
-  const intent = rowToIntent(row)
+
+  let intent: IntentRow | null = row ? rowToIntent(row) : null
+
+  // Spec 004 fallback — when the SQL table is empty (or dropped), look
+  // the intent up in the viewer's MCPs.
+  if (!intent) {
+    const fromPerson = await getIntentViaMcp(id, 'person')
+    const fromOrg = fromPerson ? null : await getIntentViaMcp(id, 'org')
+    const mcp = fromPerson ?? fromOrg
+    if (!mcp) return null
+    intent = mcpRowToWebIntent(mcp)
+  }
+
   let outcomeRow: any = undefined
   try { outcomeRow = db.select().from(schema.outcomes).where(eq(schema.outcomes.intentId, id)).get() } catch { /* outcomes table dropped */ }
   const outcome = outcomeRow
@@ -407,7 +521,14 @@ export async function getIntentForLegacyOffering(offeringId: string): Promise<In
 // Promotes every existing needs / resource_offerings row into intents.
 // Idempotent — keyed on `(projectionRef, direction)` uniqueness.
 
+/** @deprecated Spec 004 — schema.intents is dropped; needs/offerings
+ *  no longer back-fill into a web SQL `intents` table. Kept as a
+ *  no-op for back-compat with any caller that imports it. */
 export async function backfillIntentsFromLegacy(): Promise<{ needsBackfilled: number; offeringsBackfilled: number }> {
+  return { needsBackfilled: 0, offeringsBackfilled: 0 }
+}
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+async function _deprecatedBackfillImpl(): Promise<{ needsBackfilled: number; offeringsBackfilled: number }> {
   let needsBackfilled = 0
   let offeringsBackfilled = 0
   const now = new Date().toISOString()

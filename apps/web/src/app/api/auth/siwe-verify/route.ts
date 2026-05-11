@@ -17,8 +17,6 @@ import { verifyMessage, getAddress, createPublicClient, createWalletClient, http
 import { localhost } from 'viem/chains'
 import { privateKeyToAccount } from 'viem/accounts'
 import { agentAccountFactoryAbi } from '@smart-agent/sdk'
-import { db, schema } from '@/db'
-import { eq } from 'drizzle-orm'
 import { mintSession, SESSION_COOKIE } from '@/lib/auth/native-session'
 import { verifySiweChallengeToken } from '@/lib/auth/passkey-challenge'
 
@@ -67,61 +65,46 @@ export async function POST(request: Request) {
   const eoa = getAddress(body.address)
   const eoaLower = eoa.toLowerCase() as `0x${string}`
 
-  // Look up existing user by walletAddress.
-  let row = await db.select().from(schema.users).where(eq(schema.users.walletAddress, eoaLower)).limit(1).then(r => r[0])
+  // SIWE auth is stateless: deploy the AgentAccount counter-factually on
+  // first sign-in if needed, then mint a session entirely from on-chain
+  // state. No `users` row is written — the session JWT carries display
+  // name + smartAccount, and the user's person-mcp owns their profile.
+  const publicClient = createPublicClient({ chain: { ...localhost, id: CHAIN_ID }, transport: http(RPC_URL) })
+  const smartAcct = (await publicClient.readContract({
+    address: FACTORY, abi: agentAccountFactoryAbi, functionName: 'getAddress', args: [eoa, 0n],
+  })) as `0x${string}`
+  const smartAcctLower = smartAcct.toLowerCase() as `0x${string}`
 
-  // First-time SIWE user: deploy a smart account against their EOA.
-  if (!row) {
-    const publicClient = createPublicClient({ chain: { ...localhost, id: CHAIN_ID }, transport: http(RPC_URL) })
+  const code = await publicClient.getCode({ address: smartAcct })
+  if (!code || code === '0x') {
     const deployer = privateKeyToAccount(DEPLOYER_KEY)
     const wallet = createWalletClient({ account: deployer, chain: { ...localhost, id: CHAIN_ID }, transport: http(RPC_URL) })
-
-    const smartAcct = (await publicClient.readContract({
-      address: FACTORY, abi: agentAccountFactoryAbi, functionName: 'getAddress', args: [eoa, 0n],
-    })) as `0x${string}`
-
-    // Top-up so subsequent UserOps work.
     await fetch(RPC_URL, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'anvil_setBalance', params: [smartAcct, '0xde0b6b3a7640000'] }),
     })
-
-    const code = await publicClient.getCode({ address: smartAcct })
-    if (!code || code === '0x') {
-      const hash = await wallet.writeContract({
-        address: FACTORY, abi: agentAccountFactoryAbi, functionName: 'createAccount', args: [eoa, 0n],
-      })
-      await publicClient.waitForTransactionReceipt({ hash })
-    }
-
-    const did = `did:ethr:${CHAIN_ID}:${eoaLower}`
-    const id = eoaLower  // simple, stable, unique
-    const name = `Wallet ${eoaLower.slice(0, 6)}…${eoaLower.slice(-4)}`
-    await db.insert(schema.users).values({
-      id, email: null, name, walletAddress: eoaLower, did: did,
-      privateKey: null, smartAccountAddress: smartAcct.toLowerCase() as `0x${string}`,
-      personAgentAddress: null,
+    const hash = await wallet.writeContract({
+      address: FACTORY, abi: agentAccountFactoryAbi, functionName: 'createAccount', args: [eoa, 0n],
     })
-    row = await db.select().from(schema.users).where(eq(schema.users.id, id)).limit(1).then(r => r[0])!
+    await publicClient.waitForTransactionReceipt({ hash })
   }
 
-  if (!row) return NextResponse.json({ error: 'user lookup failed after upsert' }, { status: 500 })
-
   const cookieStore = await cookies()
-  const did = row.did ?? `did:ethr:${CHAIN_ID}:${eoaLower}`
+  const did = `did:ethr:${CHAIN_ID}:${eoaLower}`
+  const name = `Wallet ${eoaLower.slice(0, 6)}…${eoaLower.slice(-4)}`
   const jwt = mintSession({
     sub: did,
-    walletAddress: row.walletAddress,
-    smartAccountAddress: row.smartAccountAddress,
-    name: row.name,
-    email: row.email ?? null,
+    walletAddress: eoaLower,
+    smartAccountAddress: smartAcctLower,
+    name,
+    email: null,
     via: 'siwe',
     kind: 'session',
   })
   const response = NextResponse.json({
     success: true,
-    user: { id: row.id, did, name: row.name, walletAddress: row.walletAddress, smartAccountAddress: row.smartAccountAddress },
+    user: { id: smartAcctLower, did, name, walletAddress: eoaLower, smartAccountAddress: smartAcctLower },
   })
   response.cookies.set(SESSION_COOKIE, jwt, {
     path: '/', maxAge: 60 * 60 * 24 * 30, httpOnly: true, sameSite: 'lax',

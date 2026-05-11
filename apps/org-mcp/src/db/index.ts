@@ -205,17 +205,10 @@ sqliteHandle.exec(`
   -- live on chain in GrantProposalRegistry. Person-mcp keeps its own
   -- proposal_submissions for drafts (pre-submission state).
 
-  -- Round body lives on chain in FundRegistry; mirrored to GraphDB by sync.
-  -- This slim table holds only the off-chain DAO voting config keyed by round id.
-  CREATE TABLE IF NOT EXISTS rounds (
-    id TEXT PRIMARY KEY,
-    voting_strategy TEXT NOT NULL DEFAULT 'steward-quorum',
-    voting_threshold INTEGER NOT NULL DEFAULT 2,
-    voting_window_starts_at TEXT,
-    voting_window_ends_at TEXT,
-    eligible_voters TEXT NOT NULL DEFAULT '{"kind":"stewards"}',
-    updated_at TEXT NOT NULL
-  );
+  -- Spec 004 R10 -- rounds SQL table DROPPED. Voting config moved
+  -- to FundRegistry attributes (sa:roundVotingStrategy / Threshold /
+  -- WindowStartsAt / WindowEndsAt). Eligibility is enforced via the
+  -- RoundVoterCredential AnonCreds presentation at vote:cast time.
 
   -- Disbursements (Sprint C) — off-chain ledger for the funding stage.
   -- Real USDC custody in Treasury Phase 3 (deferred); this mirrors what

@@ -225,14 +225,11 @@ export function triggerBootSeed(): Promise<void> {
       //     exist; without this backfill, accepting a match silently fails
       //     the mint step and the user lands on an "accepted" match with
       //     no engagement workspace. Idempotent.
-      state.phase = 'discover seed: backfilling intents from legacy'
-      try {
-        const { backfillIntentsFromLegacy } = await import('@/lib/actions/intents.action')
-        const r = await backfillIntentsFromLegacy()
-        console.log(`[boot-seed] intents backfill: ${r.needsBackfilled} needs, ${r.offeringsBackfilled} offerings`)
-      } catch (e) {
-        console.warn('[boot-seed] intent backfill error (non-fatal):', (e as Error).message)
-      }
+      // Spec 004 — `intents` SQL table dropped. The legacy
+      // backfillIntentsFromLegacy(needs/offerings → intents) is
+      // obsolete; intent bodies now live in person-mcp / org-mcp and
+      // are seeded by the regular MCP-data seed below.
+      state.phase = 'discover seed: intents-backfill skipped (table dropped)'
 
       // 2f. Seed person-mcp + org-mcp domain tables (oikos, prayers, training,
       //     preferences, notifications, revenue reports, proposals). Direct

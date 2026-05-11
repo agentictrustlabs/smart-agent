@@ -44,6 +44,11 @@ export interface AuthSession {
   email: string | null
   /** Auth method used to obtain this session — null for legacy demo cookies. */
   via?: 'demo' | 'passkey' | 'siwe' | 'google' | null
+  /** Smart-account address resolved at signin (passkey/SIWE). Demo + Google
+   *  paths still leave this null; the row in `users` is the source there. */
+  smartAccountAddress?: string | null
+  /** Display name carried in the JWT (passkey/SIWE only). */
+  name?: string | null
 }
 
 /**
@@ -161,6 +166,8 @@ export async function getSession(): Promise<AuthSession | null> {
       walletAddress: claims.walletAddress ?? null,
       email: claims.email ?? null,
       via: claims.via ?? null,
+      smartAccountAddress: claims.smartAccountAddress ?? null,
+      name: claims.name ?? null,
     }
   }
   // Legacy demo cookie path.

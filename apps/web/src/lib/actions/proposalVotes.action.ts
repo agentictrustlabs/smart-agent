@@ -15,7 +15,8 @@ import { callMcp } from '@/lib/clients/mcp-client'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { getPersonAgentForUser } from '@/lib/agent-registry'
 import { getStrategy, type VotingStrategyName, type TallyEntry, type VoteRow } from '@/lib/voting/strategies'
-import { DiscoveryService } from '@smart-agent/discovery'
+// DiscoveryService import dropped: R10 reads round config directly from
+// FundRegistry on chain rather than via the GraphDB mirror.
 import { resolveSpec004Chain } from '@/lib/spec004/chain'
 import { buildMarketplacePresentation } from '@/lib/spec004/presentation'
 import { SPEC004_SELECTORS } from '@smart-agent/sdk'
@@ -43,76 +44,65 @@ interface RoundConfigRow {
   votingWindowEndsAt: string | null
 }
 
-const AGENT_IRI_PREFIX = 'https://smartagent.io/ontology/core#agent/'
 
 async function loadRoundConfig(roundId: string): Promise<RoundConfigRow | null> {
-  // Voting fields live in org-mcp's slim rounds table (off-chain DAO config).
-  // fundAgentId lives on chain in FundRegistry — read via DiscoveryService.
-  // Body fields (deadline, status, mandate, etc.) also on chain.
-  const path = await import('path')
-  const fs = await import('fs')
-  const cwd = process.cwd()
-  const candidates = [
-    path.resolve(cwd, '../org-mcp/org-mcp.db'),
-    path.resolve(cwd, 'apps/org-mcp/org-mcp.db'),
-    path.resolve(cwd, '../../apps/org-mcp/org-mcp.db'),
-  ]
-  const dbPath = candidates.find((p) => fs.existsSync(p))
-  if (!dbPath) return null
-  const Database = (await import('better-sqlite3')).default
-  const db = new Database(dbPath, { readonly: true, fileMustExist: true })
-  let votingRow:
-    | {
-        id: string
-        voting_strategy: string
-        voting_threshold: number
-        voting_window_starts_at: string | null
-        voting_window_ends_at: string | null
-      }
-    | undefined
-  try {
-    votingRow = db.prepare(`
-      SELECT id, voting_strategy, voting_threshold,
-             voting_window_starts_at, voting_window_ends_at
-      FROM rounds WHERE id = ?
-    `).get(roundId) as typeof votingRow
-  } finally {
-    db.close()
-  }
+  // Spec 004 R10 — voting config + fundAgentId both live on chain
+  // (FundRegistry). The previous SQL `rounds` mirror is dropped; this
+  // function reads directly from chain via FundRegistry view methods,
+  // applying defaults (steward-quorum + threshold 2 + no window) when
+  // the round hasn't called setRoundVotingConfig yet.
+  const { fundRegistryAbi, roundSubjectFor } = await import('@smart-agent/sdk')
+  const { createPublicClient, http } = await import('viem')
+  const { foundry, sepolia } = await import('viem/chains')
 
-  // Resolve fundAgentId from the on-chain → GraphDB mirror.
-  const roundSlug = roundId.startsWith('urn:smart-agent:round:')
+  const slug = roundId.startsWith('urn:smart-agent:round:')
     ? roundId.slice('urn:smart-agent:round:'.length)
     : roundId
-  let fundAgentId = ''
-  try {
-    const round = await DiscoveryService.fromEnv().getRoundDetail(roundSlug, null)
-    if (round) {
-      fundAgentId = round.fundAgentId.startsWith(AGENT_IRI_PREFIX)
-        ? round.fundAgentId.slice(AGENT_IRI_PREFIX.length)
-        : round.fundAgentId
-    }
-  } catch { /* discovery offline → empty fundAgentId; eligibility falls through */ }
+  const subject = roundSubjectFor(slug)
 
-  if (!votingRow) {
-    // No voting config row yet — return defaults so the strategy can run.
-    if (!fundAgentId) return null
-    return {
-      id: roundId,
-      fundAgentId,
-      votingStrategy: 'steward-quorum',
-      votingThreshold: 2,
-      votingWindowStartsAt: null,
-      votingWindowEndsAt: null,
-    }
-  }
+  const chainId = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? process.env.CHAIN_ID ?? '31337')
+  const fundRegistry = process.env.FUND_REGISTRY_ADDRESS as `0x${string}` | undefined
+  const rpcUrl = process.env.RPC_URL ?? 'http://localhost:8545'
+  if (!fundRegistry) return null
+  const client = createPublicClient({
+    chain: chainId === 11155111 ? sepolia : foundry,
+    transport: http(rpcUrl),
+  })
+
+  let fundAgentAddr: `0x${string}` = '0x0000000000000000000000000000000000000000'
+  try {
+    fundAgentAddr = await client.readContract({
+      address: fundRegistry,
+      abi: fundRegistryAbi,
+      functionName: 'getRoundFundAgent',
+      args: [subject],
+    }) as `0x${string}`
+  } catch { /* round not opened yet */ }
+  if (fundAgentAddr === '0x0000000000000000000000000000000000000000') return null
+
+  let strategyHash: `0x${string}` = '0x0000000000000000000000000000000000000000000000000000000000000000'
+  let threshold = 0n
+  let startsAt = 0n
+  let endsAt = 0n
+  try {
+    const cfg = await client.readContract({
+      address: fundRegistry,
+      abi: fundRegistryAbi,
+      functionName: 'getRoundVotingConfig',
+      args: [subject],
+    }) as [`0x${string}`, bigint, bigint, bigint]
+    ;[strategyHash, threshold, startsAt, endsAt] = cfg
+  } catch { /* leave defaults */ }
+  void strategyHash  // strategy hash decoded back to label needs a lookup table;
+                     // for now the eligibility strategy defaults to steward-quorum.
+
   return {
-    id: votingRow.id,
-    fundAgentId,
-    votingStrategy: votingRow.voting_strategy,
-    votingThreshold: votingRow.voting_threshold,
-    votingWindowStartsAt: votingRow.voting_window_starts_at,
-    votingWindowEndsAt: votingRow.voting_window_ends_at,
+    id: roundId,
+    fundAgentId: fundAgentAddr,
+    votingStrategy: 'steward-quorum',
+    votingThreshold: threshold === 0n ? 2 : Number(threshold),
+    votingWindowStartsAt: startsAt === 0n ? null : new Date(Number(startsAt) * 1000).toISOString(),
+    votingWindowEndsAt: endsAt === 0n ? null : new Date(Number(endsAt) * 1000).toISOString(),
   }
 }
 

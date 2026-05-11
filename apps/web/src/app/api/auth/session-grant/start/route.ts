@@ -127,6 +127,10 @@ export async function POST(request: Request) {
       grantHash,
       serverNonce,
       grant,
+      // Carry the name the user typed through to /finalize so the minted
+      // session JWT has a human-readable display name without a `users`
+      // table lookup. Optional — finalize falls back to the address.
+      name: body.name?.trim() || undefined,
     },
     { ttlSeconds: TOKEN_TTL_S },
   )

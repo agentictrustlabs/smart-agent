@@ -132,33 +132,18 @@ try {
 // can mask a follow-on failure that leaves the `intents` CREATE never
 // firing. This guarantees the table exists on every startup. Schema
 // matches docs/ontology/tbox/intents.ttl + apps/web/src/db/schema.ts.
+// Spec 004 — `intents` SQL table dropped. Intent body lives in the
+// owner's MCP (person-mcp for solo human intents, org-mcp for org
+// intents) and public assertions on chain via `sa:IntentAssertion`.
+// The web action layer routes through `@/lib/intents/router` instead
+// of touching SQL. Existing try/catch guards in
+// apps/web/src/lib/actions/intents.action.ts handle the legacy SQL
+// pathways gracefully — they no-op since the table is gone.
 try {
-  sqlite.prepare(`CREATE TABLE IF NOT EXISTS intents (
-    id TEXT PRIMARY KEY NOT NULL,
-    direction TEXT NOT NULL,
-    object TEXT NOT NULL,
-    topic TEXT,
-    intent_type TEXT NOT NULL,
-    intent_type_label TEXT NOT NULL,
-    expressed_by_agent TEXT NOT NULL,
-    expressed_by_user_id TEXT,
-    addressed_to TEXT NOT NULL,
-    hub_id TEXT NOT NULL,
-    title TEXT NOT NULL,
-    detail TEXT,
-    payload TEXT,
-    status TEXT DEFAULT 'expressed' NOT NULL,
-    priority TEXT DEFAULT 'normal' NOT NULL,
-    visibility TEXT DEFAULT 'public' NOT NULL,
-    expected_outcome TEXT,
-    projection_ref TEXT,
-    valid_until TEXT,
-    created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL
-  )`).run()
-  sqlite.prepare(`CREATE INDEX IF NOT EXISTS intents_hub_status_idx ON intents (hub_id, status)`).run()
-  sqlite.prepare(`CREATE INDEX IF NOT EXISTS intents_direction_object_idx ON intents (direction, object)`).run()
-} catch { /* already exists */ }
+  // Best-effort: also nuke any pre-existing rows so a stale
+  // `data.db` from before the drop doesn't carry private bodies.
+  sqlite.prepare(`DROP TABLE IF EXISTS intents`).run()
+} catch { /* */ }
 
 export const db = drizzle(sqlite, { schema })
 export { schema }

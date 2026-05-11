@@ -17,10 +17,8 @@
  *   - vote:tally_for_round    computed: per-proposal {approve, reject, abstain} counts
  *   - vote:list_for_voter     ballots a voter has cast (for "Votes I cast" view)
  */
-import { eq } from 'drizzle-orm'
 import { randomUUID } from 'node:crypto'
-import { db } from '../db/index.js'
-import { rounds } from '../db/schema.js'
+import { readVotingConfigFromChain } from './rounds.js'
 import { requireOrgPrincipalAny as requireOrgPrincipal } from '../auth/principal-context.js'
 import { VoteRegistryClient, type Ballot } from '@smart-agent/sdk'
 import { callA2aRedeemWithChain, type SignedDelegation } from '../lib/a2a-client.js'
@@ -250,15 +248,13 @@ const tallyForRoundTool = {
   // "tally not yet synced" from "no votes cast".
   handler: async (args: { token: string; roundId: string }) => {
     await requireOrgPrincipal(args.token, args, 'vote:tally_for_round')
-    const round = db.select().from(rounds)
-      .where(eq(rounds.id, args.roundId)).all()[0]
-    if (!round) return mcpText({ tally: [], threshold: 0, strategy: null })
+    const cfg = await readVotingConfigFromChain(args.roundId)
     return mcpText({
       tally: [] as TallyEntry[],
-      threshold: round.votingThreshold,
-      strategy: round.votingStrategy,
-      windowStartsAt: round.votingWindowStartsAt,
-      windowEndsAt: round.votingWindowEndsAt,
+      threshold: cfg.votingThreshold,
+      strategy: cfg.votingStrategy,
+      windowStartsAt: cfg.votingWindowStartsAt,
+      windowEndsAt: cfg.votingWindowEndsAt,
     })
   },
 }

@@ -29,6 +29,10 @@ import {
   classAssertionAbi,
   fundRegistryAbi,
   poolRegistryAbi,
+  voteRegistryAbi,
+  grantProposalRegistryAbi,
+  pledgeRegistryAbi,
+  matchInitiationRegistryAbi,
   iriToBytes32,
   ATL_CONTROLLER, ATL_CAPABILITY, ATL_SUPPORTED_TRUST,
   ATL_A2A_ENDPOINT, ATL_MCP_SERVER,
@@ -418,6 +422,22 @@ export async function syncOnChainToGraphDB(): Promise<{ success: boolean; messag
       console.warn('[ontology-sync] Pool mirror failed (non-fatal):', pErr instanceof Error ? pErr.message : pErr)
     }
 
+    // Spec 004 marketplace registries — Vote / GrantProposal / Pledge /
+    // MatchInitiation bodies, mirrored from the on-chain registries so
+    // the public-read surfaces have a queryable source after the SQL
+    // mirrors were dropped (R9).
+    let spec004Counts: Record<string, number> = {}
+    try {
+      const { turtle, counts } = await emitSpec004RegistriesTurtle()
+      spec004Counts = counts
+      if (turtle) {
+        const body = stripPrefixBlock(turtle)
+        dataTurtle += '\n# ─── Spec 004 registries (Vote/GP/Pledge/MI) ──────\n' + body
+      }
+    } catch (sErr) {
+      console.warn('[ontology-sync] Spec 004 mirror failed (non-fatal):', sErr instanceof Error ? sErr.message : sErr)
+    }
+
     // SINGLE PUT — replaces DATA_GRAPH with our combined turtle.
     //
     // Schema (T-Box, SHACL, C-Box) is INTENTIONALLY NOT uploaded here. The
@@ -432,9 +452,13 @@ export async function syncOnChainToGraphDB(): Promise<{ success: boolean; messag
     // ONLY mirrors authoritative-state data (agents, class assertions,
     // round/pool bodies).
     await client.uploadTurtle(dataTurtle, DATA_GRAPH)
-    console.log(`[ontology-sync] Data graph uploaded: ${agentCount} agents + ${assertionCount} class assertions + ${roundCount} rounds + ${poolCount} pools`)
+    const spec004Summary = Object.entries(spec004Counts)
+      .filter(([, n]) => n > 0)
+      .map(([k, n]) => `${n} ${k.replace(/^sa:/, '')}`)
+      .join(' + ')
+    console.log(`[ontology-sync] Data graph uploaded: ${agentCount} agents + ${assertionCount} class assertions + ${roundCount} rounds + ${poolCount} pools${spec004Summary ? ' + ' + spec004Summary : ''}`)
 
-    return { success: true, message: `Uploaded ${agentCount} agents + ${assertionCount} assertions + ${roundCount} rounds + ${poolCount} pools to GraphDB data graph`, agentCount }
+    return { success: true, message: `Uploaded ${agentCount} agents + ${assertionCount} assertions + ${roundCount} rounds + ${poolCount} pools${spec004Summary ? ' + ' + spec004Summary : ''} to GraphDB data graph`, agentCount }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'GraphDB upload failed'
     console.error(`[ontology-sync] Upload failed: ${message}`)
@@ -1132,4 +1156,282 @@ ${body}
   } catch (err) {
     return { ok: false, message: err instanceof Error ? err.message : String(err) }
   }
+}
+
+// ---------------------------------------------------------------------------
+// Spec 004 v2 — emitters for the on-chain marketplace registries.
+//
+// The four spec-004 registries (VoteRegistry / GrantProposalRegistry /
+// PledgeRegistry / MatchInitiationRegistry) store nullifier-keyed
+// marketplace state. This emitter walks each registry's subjects via
+// `allSubjects()`, reads the relevant predicates via the generic
+// attribute-storage getters, and emits Turtle that the public-read
+// surfaces (proposal list, vote tally, pledge list, match initiation
+// feed) can consume from GraphDB.
+//
+// Privacy: only revealed-by-construction attributes are emitted. The
+// nullifier is emitted as-is — it's a one-way commitment that doesn't
+// reveal the holder. Pledge `storyPermissions=anonymous` rows skip the
+// donor display field (the chain never had it).
+// ---------------------------------------------------------------------------
+
+const VOTE_PREDICATES = {
+  round:      HASH('sa:voteRound'),
+  proposal:   HASH('sa:voteProposal'),
+  ballot:     HASH('sa:voteBallot'),
+  nullifier:  HASH('sa:voteNullifier'),
+  weight:     HASH('sa:voteWeight'),
+  castAt:     HASH('sa:voteCastAt'),
+  updatedAt:  HASH('sa:voteUpdatedAt'),
+  rationale:  HASH('sa:voteRationale'),
+} as const
+
+const GP_PREDICATES = {
+  round:           HASH('sa:gpRound'),
+  nullifier:       HASH('sa:gpNullifier'),
+  displayName:     HASH('sa:gpDisplayName'),
+  basedOnIntent:   HASH('sa:gpBasedOnIntent'),
+  budget:          HASH('sa:gpBudget'),
+  plan:            HASH('sa:gpPlan'),
+  milestones:      HASH('sa:gpMilestones'),
+  outcomes:        HASH('sa:gpOutcomes'),
+  reporting:       HASH('sa:gpReporting'),
+  orgBackground:   HASH('sa:gpOrgBackground'),
+  basis:           HASH('sa:gpBasis'),
+  status:          HASH('sa:gpStatus'),
+  version:         HASH('sa:gpVersion'),
+  submittedAt:     HASH('sa:gpSubmittedAt'),
+  updatedAt:       HASH('sa:gpUpdatedAt'),
+  withdrawnAt:     HASH('sa:gpWithdrawnAt'),
+} as const
+
+const PLEDGE_PREDICATES = {
+  pool:               HASH('sa:pledgePool'),
+  nullifier:          HASH('sa:pledgeNullifier'),
+  amount:             HASH('sa:pledgeAmount'),
+  unit:               HASH('sa:pledgeUnit'),
+  cadence:            HASH('sa:pledgeCadence'),
+  duration:           HASH('sa:pledgeDuration'),
+  restrictions:       HASH('sa:pledgeRestrictions'),
+  storyPermissions:   HASH('sa:pledgeStoryPermissions'),
+  pledgedAt:          HASH('sa:pledgePledgedAt'),
+  stoppedAt:          HASH('sa:pledgeStoppedAt'),
+  status:             HASH('sa:pledgeStatus'),
+} as const
+
+const MI_PREDICATES = {
+  viewedIntent:        HASH('sa:miViewedIntent'),
+  candidateIntent:     HASH('sa:miCandidateIntent'),
+  initiatorNullifier:  HASH('sa:miInitiatorNullifier'),
+  initiationKind:      HASH('sa:miInitiationKind'),
+  visibility:          HASH('sa:miVisibility'),
+  status:              HASH('sa:miStatus'),
+  basis:               HASH('sa:miBasis'),
+  proposedAt:          HASH('sa:miProposedAt'),
+  updatedAt:           HASH('sa:miUpdatedAt'),
+} as const
+
+interface RegistryEmitConfig {
+  envKey: string
+  abi: readonly unknown[]
+  classCurie: string                // e.g. "sa:Vote"
+  iriPrefix: string                 // e.g. "urn:smart-agent:vote:"
+  /** Discriminator predicate — a subject only counts as "this class" when
+   *  the predicate is set. For VoteRegistry that's `voteBallot`; the
+   *  generic AttributeStorage events are mirrored under the same
+   *  registry contract so we'd otherwise emit them as votes. */
+  discriminator: `0x${string}`
+  predicates: Record<string, `0x${string}`>
+}
+
+const SPEC004_REGISTRIES: RegistryEmitConfig[] = [
+  {
+    envKey: 'VOTE_REGISTRY_ADDRESS',
+    abi: voteRegistryAbi,
+    classCurie: 'sa:Vote',
+    iriPrefix: 'urn:smart-agent:vote:',
+    discriminator: VOTE_PREDICATES.ballot,
+    predicates: VOTE_PREDICATES,
+  },
+  {
+    envKey: 'GRANT_PROPOSAL_REGISTRY_ADDRESS',
+    abi: grantProposalRegistryAbi,
+    classCurie: 'sa:GrantProposal',
+    iriPrefix: 'urn:smart-agent:grant-proposal:',
+    discriminator: GP_PREDICATES.round,
+    predicates: GP_PREDICATES,
+  },
+  {
+    envKey: 'PLEDGE_REGISTRY_ADDRESS',
+    abi: pledgeRegistryAbi,
+    classCurie: 'sa:Pledge',
+    iriPrefix: 'urn:smart-agent:pledge:',
+    discriminator: PLEDGE_PREDICATES.pool,
+    predicates: PLEDGE_PREDICATES,
+  },
+  {
+    envKey: 'MATCH_INITIATION_REGISTRY_ADDRESS',
+    abi: matchInitiationRegistryAbi,
+    classCurie: 'sa:MatchInitiation',
+    iriPrefix: 'urn:smart-agent:match-initiation:',
+    discriminator: MI_PREDICATES.viewedIntent,
+    predicates: MI_PREDICATES,
+  },
+]
+
+function escapeTtlString(s: string): string {
+  return s.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n')
+}
+
+/**
+ * Walk a single registry's subjects and emit Turtle for each one that
+ * has the discriminator predicate set. The IRI form is
+ * `${iriPrefix}<subjectHex>` — opaque but stable, since the chain-derived
+ * subject is the only identifier available without a human slug.
+ */
+async function emitOneSpec004Registry(cfg: RegistryEmitConfig): Promise<{ turtle: string; count: number }> {
+  const addr = process.env[cfg.envKey] as `0x${string}` | undefined
+  if (!addr) return { turtle: '', count: 0 }
+  const client = getPublicClient()
+
+  let subjects: readonly `0x${string}`[]
+  try {
+    subjects = await client.readContract({
+      address: addr, abi: cfg.abi as never,
+      functionName: 'allSubjects',
+    }) as readonly `0x${string}`[]
+  } catch {
+    return { turtle: '', count: 0 }
+  }
+
+  const lines: string[] = []
+  let count = 0
+  for (const subj of subjects) {
+    let isSet = false
+    try {
+      isSet = await client.readContract({
+        address: addr, abi: cfg.abi as never,
+        functionName: 'isSet',
+        args: [subj, cfg.discriminator],
+      }) as boolean
+    } catch { /* */ }
+    if (!isSet) continue
+
+    const iri = `<${cfg.iriPrefix}${subj.slice(2)}>`
+    lines.push(`${iri} a ${cfg.classCurie} ;`)
+
+    // Read every predicate generically; emit only the ones that are set.
+    const entries = Object.entries(cfg.predicates) as Array<[string, `0x${string}`]>
+    const pairs: string[] = []
+    for (const [field, predHash] of entries) {
+      let present = false
+      try {
+        present = await client.readContract({
+          address: addr, abi: cfg.abi as never,
+          functionName: 'isSet',
+          args: [subj, predHash],
+        }) as boolean
+      } catch { /* */ }
+      if (!present) continue
+
+      // Type discovery via the same predicate's datatype isn't on the
+      // attribute-storage interface; we know each predicate's expected
+      // type from the contract definitions and emit accordingly.
+      const curie = `sa:${field}`
+      try {
+        if (
+          field === 'amount' || field === 'duration' || field === 'weight' ||
+          field === 'castAt' || field === 'updatedAt' || field === 'proposedAt' ||
+          field === 'pledgedAt' || field === 'stoppedAt' || field === 'submittedAt' ||
+          field === 'withdrawnAt' || field === 'version'
+        ) {
+          const v = await client.readContract({
+            address: addr, abi: cfg.abi as never,
+            functionName: 'getUint',
+            args: [subj, predHash],
+          }) as bigint
+          if (v > 0n) pairs.push(`  ${curie} ${v.toString()}`)
+        } else if (field === 'pool') {
+          const v = await client.readContract({
+            address: addr, abi: cfg.abi as never,
+            functionName: 'getAddress',
+            args: [subj, predHash],
+          }) as `0x${string}`
+          if (v && v !== ZERO_ADDRESS) {
+            pairs.push(`  ${curie} <eth:${v.toLowerCase()}>`)
+          }
+        } else if (
+          field === 'round' || field === 'proposal' || field === 'ballot' ||
+          field === 'nullifier' || field === 'unit' || field === 'cadence' ||
+          field === 'status' || field === 'initiationKind' || field === 'visibility' ||
+          field === 'initiatorNullifier'
+        ) {
+          const v = await client.readContract({
+            address: addr, abi: cfg.abi as never,
+            functionName: 'getBytes32',
+            args: [subj, predHash],
+          }) as `0x${string}`
+          if (v && v !== ZERO_BYTES32) {
+            // Try to humanize concept hashes (ballot, status, etc.) via the
+            // existing CONCEPT_LABEL table; fall back to the raw hash IRI.
+            const label = conceptToLabel(v)
+            if (label) pairs.push(`  ${curie} "${escapeTtlString(label)}"`)
+            else pairs.push(`  ${curie} "${v}"`)
+          }
+        } else {
+          // displayName, basedOnIntent, viewedIntent, candidateIntent,
+          // budget/plan/milestones/outcomes/reporting/orgBackground/basis
+          // (JSON strings), rationale, restrictions, storyPermissions.
+          const v = await client.readContract({
+            address: addr, abi: cfg.abi as never,
+            functionName: 'getString',
+            args: [subj, predHash],
+          }) as string
+          if (v) pairs.push(`  ${curie} "${escapeTtlString(v)}"`)
+        }
+      } catch { /* skip on read error */ }
+    }
+
+    if (pairs.length === 0) {
+      // Subject had only the discriminator — emit just the type triple.
+      // Replace the trailing ';' with '.' so the Turtle parses.
+      lines[lines.length - 1] = lines[lines.length - 1].replace(/ ;$/, ' .')
+    } else {
+      lines.push(pairs.join(' ;\n'))
+      lines[lines.length - 1] += ' .'
+    }
+    lines.push('')
+    count++
+  }
+
+  if (count === 0) return { turtle: '', count: 0 }
+  const turtle = [
+    `@prefix sa:  <${SA}> .`,
+    `@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .`,
+    '',
+    ...lines,
+  ].join('\n')
+  return { turtle, count }
+}
+
+/**
+ * Emit Turtle for all four spec-004 registries (Vote / GrantProposal /
+ * Pledge / MatchInitiation). The result is appended to the combined
+ * data-graph turtle in `syncOnChainToGraphDB`.
+ */
+export async function emitSpec004RegistriesTurtle(): Promise<{ turtle: string; counts: Record<string, number> }> {
+  const counts: Record<string, number> = {}
+  let combined = ''
+  for (const cfg of SPEC004_REGISTRIES) {
+    const { turtle, count } = await emitOneSpec004Registry(cfg)
+    counts[cfg.classCurie] = count
+    if (turtle) {
+      if (!combined) {
+        combined = turtle
+      } else {
+        combined += '\n' + stripPrefixBlock(turtle)
+      }
+    }
+  }
+  return { turtle: combined, counts }
 }

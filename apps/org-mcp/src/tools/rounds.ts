@@ -11,11 +11,8 @@
  * retired in this phase; the user's signed root delegation is redeemed by
  * a2a-agent's session EOA. See `callA2aRedeem` for the wire format.
  */
-import { eq } from 'drizzle-orm'
 import { encodeFunctionData, keccak256, toHex, type Address, type Hex } from 'viem'
 import { randomUUID } from 'node:crypto'
-import { db } from '../db/index.js'
-import { rounds } from '../db/schema.js'
 import { requireOrgPrincipalAny as requireOrgPrincipal } from '../auth/principal-context.js'
 import {
   FundRegistryClient,
@@ -23,7 +20,7 @@ import {
   roundSubjectFor,
   type RoundStatus,
 } from '@smart-agent/sdk'
-import { requireFundRegistryAddress } from '../lib/contracts.js'
+import { requireFundRegistryAddress, getPublicClient } from '../lib/contracts.js'
 import { callA2aRedeem, callA2aRedeemSubDelegated } from '../lib/a2a-client.js'
 
 const mcpText = <T>(v: T) => ({ content: [{ type: 'text' as const, text: JSON.stringify(v) }] })
@@ -34,15 +31,6 @@ const mcpText = <T>(v: T) => ({ content: [{ type: 'text' as const, text: JSON.st
 // so each call still gets a unique task hash for the audit trail.
 function generateTaskId(mcpCallId: string): string {
   return `a2a-task:${mcpCallId}:${Date.now()}`
-}
-
-function nowIso(): string {
-  return new Date().toISOString()
-}
-
-function safeJson<T>(raw: string | null | undefined, fb: T): T {
-  if (!raw) return fb
-  try { return JSON.parse(raw) as T } catch { return fb }
 }
 
 function requireA2aSessionId(args: { _a2aSessionId?: string }): string {
@@ -66,6 +54,27 @@ const STATUS_CONCEPT: Record<RoundStatus, string> = {
   canceled: 'sa:RoundCanceled',
 }
 
+/** Spec 004 R10 — voting strategy concept hashes. The on-chain attr
+ *  stores keccak256(curie); decode back to the human label for the API. */
+const VOTING_STRATEGY_CONCEPT: Record<string, string> = {
+  'steward-quorum':   'sa:VotingStewardQuorum',
+  'member-approval':  'sa:VotingMemberApproval',
+  quadratic:          'sa:VotingQuadratic',
+  'ranked-choice':    'sa:VotingRankedChoice',
+}
+const VOTING_STRATEGY_BY_HASH: Map<string, string> = new Map(
+  Object.entries(VOTING_STRATEGY_CONCEPT).map(([label, curie]) => [
+    keccak256(toHex(curie)).toLowerCase(),
+    label,
+  ]),
+)
+function votingStrategyLabel(hash: `0x${string}`): string {
+  return VOTING_STRATEGY_BY_HASH.get(hash.toLowerCase()) ?? 'steward-quorum'
+}
+
+const DEFAULT_VOTING_STRATEGY = 'steward-quorum'
+const DEFAULT_VOTING_THRESHOLD = 2
+
 /**
  * Spec 004 — `proposal_submissions` SQL table dropped; submitted proposals
  * live on chain in `GrantProposalRegistry`. Returns 0 until the on-chain
@@ -83,7 +92,7 @@ export function getProposalsReceived(roundId: string): number {
 const getVotingConfigTool = {
   name: 'round:get_voting_config',
   description:
-    "Read the off-chain voting config (strategy / threshold / window / eligible voters) for a round. Body fields (mandate, deadline, status, etc.) live ON CHAIN — read those via FundRegistry or DiscoveryService.getRoundDetail.",
+    "Read the voting config (strategy / threshold / window) for a round. Spec 004 R10 — config now lives on chain in FundRegistry attrs; eligibility is enforced by the RoundVoterCredential AnonCreds check at vote:cast time (not a separate field).",
   inputSchema: {
     type: 'object' as const,
     properties: {
@@ -94,20 +103,51 @@ const getVotingConfigTool = {
   },
   handler: async (args: { token: string; roundId: string }) => {
     await requireOrgPrincipal(args.token, args, 'round:get_voting_config')
-    const r = db.select().from(rounds).where(eq(rounds.id, args.roundId)).all()[0]
-    if (!r) return mcpText({ config: null })
+    const cfg = await readVotingConfigFromChain(args.roundId)
     return mcpText({
       config: {
-        id: r.id,
-        votingStrategy: r.votingStrategy,
-        votingThreshold: r.votingThreshold,
-        votingWindowStartsAt: r.votingWindowStartsAt,
-        votingWindowEndsAt: r.votingWindowEndsAt,
-        eligibleVoters: safeJson<Record<string, unknown>>(r.eligibleVoters, { kind: 'stewards' }),
-        proposalsReceived: getProposalsReceived(r.id),
+        id: args.roundId,
+        votingStrategy: cfg.votingStrategy,
+        votingThreshold: cfg.votingThreshold,
+        votingWindowStartsAt: cfg.votingWindowStartsAt,
+        votingWindowEndsAt: cfg.votingWindowEndsAt,
+        // R10 — `eligible_voters` field dropped; eligibility flows through
+        // the RoundVoterCredential issuance set (the round admin chooses
+        // who gets a cred). Surfacing a kind=`anoncreds-credential` for
+        // back-compat with the existing UI shape.
+        eligibleVoters: { kind: 'anoncreds-credential' as const },
+        proposalsReceived: getProposalsReceived(args.roundId),
       },
     })
   },
+}
+
+/** Read voting config from FundRegistry, applying defaults when unset. */
+export async function readVotingConfigFromChain(roundIdOrSubject: string): Promise<{
+  votingStrategy: string
+  votingThreshold: number
+  votingWindowStartsAt: string | null
+  votingWindowEndsAt: string | null
+}> {
+  const slug = roundSlug(roundIdOrSubject)
+  const subject = roundSubjectFor(slug)
+  const client = getPublicClient()
+  const [strategyHash, threshold, startsAt, endsAt] = await client.readContract({
+    address: requireFundRegistryAddress(),
+    abi: fundRegistryAbi,
+    functionName: 'getRoundVotingConfig',
+    args: [subject],
+  }) as [`0x${string}`, bigint, bigint, bigint]
+  const strategy =
+    strategyHash === '0x0000000000000000000000000000000000000000000000000000000000000000'
+      ? DEFAULT_VOTING_STRATEGY
+      : votingStrategyLabel(strategyHash)
+  return {
+    votingStrategy: strategy,
+    votingThreshold: threshold === 0n ? DEFAULT_VOTING_THRESHOLD : Number(threshold),
+    votingWindowStartsAt: startsAt === 0n ? null : new Date(Number(startsAt) * 1000).toISOString(),
+    votingWindowEndsAt:   endsAt === 0n ? null : new Date(Number(endsAt) * 1000).toISOString(),
+  }
 }
 
 // ───────────────────────────────────────────────────────────────────────
@@ -146,7 +186,11 @@ interface UpdateVotingArgs {
   votingThreshold?: number
   votingWindowStartsAt?: string
   votingWindowEndsAt?: string
+  /** Deprecated — R10 drops the dedicated eligibility field; the round
+   *  admin issues RoundVoterCredentials to whoever can vote. Kept for
+   *  ABI back-compat but ignored. */
   eligibleVoters?: Record<string, unknown>
+  _a2aSessionId?: string
 }
 
 const updateVotingConfigTool = {
@@ -168,30 +212,41 @@ const updateVotingConfigTool = {
   },
   handler: async (args: UpdateVotingArgs) => {
     await requireOrgPrincipal(args.token, args, 'round:update_voting_config')
-    const now = nowIso()
-    const r = db.select().from(rounds).where(eq(rounds.id, args.roundId)).all()[0]
-    if (!r) {
-      // Auto-create on first set. Round body lives on chain; this row is
-      // pure off-chain voting config.
-      db.insert(rounds).values({
-        id: args.roundId,
-        votingStrategy: args.votingStrategy ?? 'steward-quorum',
-        votingThreshold: args.votingThreshold ?? 2,
-        votingWindowStartsAt: args.votingWindowStartsAt ?? null,
-        votingWindowEndsAt: args.votingWindowEndsAt ?? null,
-        eligibleVoters: JSON.stringify(args.eligibleVoters ?? { kind: 'stewards' }),
-        updatedAt: now,
-      }).run()
-      return mcpText({ roundId: args.roundId, ok: true, created: true })
-    }
-    const update: Record<string, unknown> = { updatedAt: now }
-    if (args.votingStrategy !== undefined)        update.votingStrategy = args.votingStrategy
-    if (args.votingThreshold !== undefined)       update.votingThreshold = args.votingThreshold
-    if (args.votingWindowStartsAt !== undefined)  update.votingWindowStartsAt = args.votingWindowStartsAt
-    if (args.votingWindowEndsAt !== undefined)    update.votingWindowEndsAt = args.votingWindowEndsAt
-    if (args.eligibleVoters !== undefined)        update.eligibleVoters = JSON.stringify(args.eligibleVoters)
-    db.update(rounds).set(update).where(eq(rounds.id, args.roundId)).run()
-    return mcpText({ roundId: args.roundId, ok: true })
+    const sessionId = requireA2aSessionId(args)
+    const subject = roundSubjectFor(roundSlug(args.roundId))
+
+    // Read current config so we can fall back to the on-chain defaults
+    // for any field the caller didn't pass.
+    const current = await readVotingConfigFromChain(args.roundId)
+    const strategyLabel = args.votingStrategy ?? current.votingStrategy
+    const strategyCurie = VOTING_STRATEGY_CONCEPT[strategyLabel] ?? VOTING_STRATEGY_CONCEPT[DEFAULT_VOTING_STRATEGY]
+    const strategyHash = keccak256(toHex(strategyCurie))
+    const threshold = BigInt(args.votingThreshold ?? current.votingThreshold)
+    const startsAt = args.votingWindowStartsAt
+      ? BigInt(Math.floor(Date.parse(args.votingWindowStartsAt) / 1000))
+      : current.votingWindowStartsAt
+        ? BigInt(Math.floor(Date.parse(current.votingWindowStartsAt) / 1000))
+        : 0n
+    const endsAt = args.votingWindowEndsAt
+      ? BigInt(Math.floor(Date.parse(args.votingWindowEndsAt) / 1000))
+      : current.votingWindowEndsAt
+        ? BigInt(Math.floor(Date.parse(current.votingWindowEndsAt) / 1000))
+        : 0n
+    void args.eligibleVoters  // R10 dropped — eligibility flows via RoundVoterCredential
+
+    const data = encodeFunctionData({
+      abi: fundRegistryAbi,
+      functionName: 'setRoundVotingConfig',
+      args: [subject, strategyHash, threshold, startsAt, endsAt],
+    })
+    const r = await callA2aRedeem(sessionId, {
+      mcpTool: 'round:update_voting_config',
+      mcpCallId: randomUUID(),
+      target: requireFundRegistryAddress(),
+      value: 0n,
+      callData: data,
+    })
+    return mcpText({ roundId: args.roundId, ok: true, txHash: r.txHash })
   },
 }
 

@@ -41,8 +41,6 @@ import {
   parseDerSignature,
   normaliseLowS,
 } from '@smart-agent/sdk'
-import { db, schema } from '@/db'
-import { eq } from 'drizzle-orm'
 import { mintSession, SESSION_COOKIE } from '@/lib/auth/native-session'
 import { verifyJwt } from '@/lib/auth/jwt'
 import {
@@ -253,22 +251,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: `session persist failed: ${(err as Error).message}` }, { status: 502 })
   }
 
-  // 7. Look up user row for the legacy session JWT.
+  // 7. Mint the legacy session JWT. Passkey auth is stateless — no `users`
+  // row lookup. The grant body carries everything we need (smart account,
+  // session id, expiresAt); name + profile data come from person-mcp post-auth.
   const accountLower = accountAddr.toLowerCase()
-  const row = await db.select().from(schema.users)
-    .where(eq(schema.users.smartAccountAddress, accountLower))
-    .limit(1).then(r => r[0])
-  if (!row) {
-    return NextResponse.json({ error: 'no user record for this account' }, { status: 404 })
-  }
-
-  const did = row.did ?? `did:passkey:${CHAIN_ID}:${accountLower}`
+  const did = `did:passkey:${CHAIN_ID}:${accountLower}`
+  const displayName = (claims.name as string | undefined) ?? accountLower
   const jwt = mintSession({
     sub: did,
-    walletAddress: row.walletAddress,
-    smartAccountAddress: row.smartAccountAddress,
-    name: row.name,
-    email: row.email ?? null,
+    walletAddress: accountLower,
+    smartAccountAddress: accountLower,
+    name: displayName,
+    email: null,
     via: 'passkey',
     kind: 'session',
   })
@@ -276,10 +270,10 @@ export async function POST(request: Request) {
   const response = NextResponse.json({
     success: true,
     user: {
-      id: row.id,
+      id: accountLower,
       did,
-      name: row.name,
-      smartAccountAddress: row.smartAccountAddress,
+      name: displayName,
+      smartAccountAddress: accountLower,
     },
     grant: {
       sessionId,

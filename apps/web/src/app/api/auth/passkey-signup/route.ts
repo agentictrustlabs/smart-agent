@@ -31,10 +31,8 @@ import {
 } from '@smart-agent/sdk'
 
 const ZERO_HASH = '0x0000000000000000000000000000000000000000000000000000000000000000' as `0x${string}`
-import { db, schema } from '@/db'
 import { mintSession, SESSION_COOKIE } from '@/lib/auth/native-session'
 import { getWalletClient } from '@/lib/contracts'
-import { eq } from 'drizzle-orm'
 
 const RPC_URL = process.env.RPC_URL ?? 'http://127.0.0.1:8545'
 const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? '31337')
@@ -130,11 +128,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: `${fullName} is taken` }, { status: 409 })
   }
 
-  // Block re-signup against the same credential.
-  const existing = await db.select().from(schema.users).where(eq(schema.users.id, credIdHex)).limit(1).then(r => r[0])
-  if (existing) {
-    return NextResponse.json({ error: 'credential already registered' }, { status: 409 })
-  }
+  // Re-signup protection is enforced on chain — the AgentNameRegistry
+  // `recordExists` check above rejects a duplicate name, and the
+  // AgentAccount factory deploys deterministically from
+  // (deployer, namehash-salt), so the same `<label>.agent` always lands
+  // on the same address. No local table needed.
 
   const deployer = privateKeyToAccount(DEPLOYER_KEY)
   const relayer = privateKeyToAccount(RELAYER_KEY)
@@ -281,21 +279,10 @@ export async function POST(request: Request) {
     console.warn('[passkey-signup] resolver props failed (non-fatal):', (e as Error).message)
   }
 
-  // 5. Insert user row. id = credentialIdDigest (kept for legacy lookups),
-  //    did = did:passkey:<chainId>:<accountAddr>, agentName = full name so
-  //    the user's identity in the app matches their on-chain name.
+  // No `users` row insert — passkey auth is fully stateless. The session
+  // token carries everything (smartAccount, name, did); profile data lives
+  // in the user's person-mcp and is fetched via delegation after sign-in.
   const did = `did:passkey:${CHAIN_ID}:${accountAddrLower}`
-  await db.insert(schema.users).values({
-    id: credIdHex,
-    email: null,
-    name: fullName,
-    walletAddress: accountAddrLower,
-    did: did,
-    privateKey: null,
-    smartAccountAddress: accountAddrLower,
-    personAgentAddress: null,
-    agentName: fullName,
-  })
 
   // No server-side passkey mirror anymore — login resolves the smart
   // account by .agent name and verifies via on-chain isValidSignature.

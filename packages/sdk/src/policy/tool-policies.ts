@@ -93,8 +93,8 @@ export const FUND_REGISTRY_SELECTORS_BY_TOOL: Record<string, string[]> = {
   'round:close':          ['setRoundStatus'],   // close = transition status to closed
   'round:cancel':         ['setRoundStatus'],   // cancel = transition status to canceled
   'round:set_awards_root': ['setRoundAwardsRoot'],
-  // round:update_voting_config / round:increment_proposals_received are MCP-only
-  // (voting config is off-chain DAO state per the design).
+  // Spec 004 R10 — voting config moved on chain.
+  'round:update_voting_config': ['setRoundVotingConfig'],
 }
 
 // ─── Default-mcp-only policy template ────────────────────────────────
@@ -206,7 +206,9 @@ export const TOOL_POLICIES: Record<string, ToolPolicy> = {
   'grant_proposal:count_for_round': mcpOnly('grant_proposal:count_for_round', 'org-mcp'),
   'grant_proposal:rescind':        mcpOnly('grant_proposal:rescind', 'org-mcp'),
   'round:get_voting_config':       mcpOnly('round:get_voting_config', 'org-mcp'),
-  'round:update_voting_config':    mcpOnly('round:update_voting_config', 'org-mcp'),
+  // Spec 004 R10 — voting config moved to FundRegistry attrs;
+  // round:update_voting_config now writes on chain.
+  'round:update_voting_config':    statelessRedeem('round:update_voting_config', 'org-mcp', 'FundRegistry'),
   'round:increment_proposals_received': mcpOnly('round:increment_proposals_received', 'org-mcp'),
   // Spec 004 — vote:cast writes on chain via VoteRegistry, gated by the
   // AnonCreds presentation + admin→voter→session chain.

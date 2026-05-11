@@ -71,32 +71,43 @@ export async function getHubOnboardingState(hubAddressInput: string): Promise<Hu
     return baseState('connect', { hub: hubMeta })
   }
 
-  const user = await db.select().from(schema.users)
-    .where(eq(schema.users.did, session.userId)).limit(1).then(r => r[0])
+  // Passkey + SIWE users have no `users` row (stateless auth). For those
+  // flows the session token IS the source of truth — we synthesise a
+  // minimal user-equivalent and skip the local email-collection step
+  // entirely (profile data lives in person-mcp post-auth).
+  const isStatelessAuth = session.via === 'passkey' || session.via === 'siwe'
 
-  if (!user) {
+  const user = isStatelessAuth
+    ? null
+    : await db.select().from(schema.users)
+        .where(eq(schema.users.did, session.userId)).limit(1).then(r => r[0])
+
+  if (!isStatelessAuth && !user) {
     return baseState('connect', { hub: hubMeta, authenticated: true, via: session.via })
   }
 
-  // 1. Profile complete? (Same logic as setup-agent.action.ts: reject the
-  // placeholder names that auth flows seed.)
-  const placeholderName =
-    !user.name || user.name === 'Agent User' || user.name.startsWith('Wallet ')
-  const profileComplete = !placeholderName && !!user.email
-
-  if (!profileComplete) {
-    return {
-      step: 'profile',
-      authenticated: true,
-      via: session.via,
-      currentName: placeholderName ? '' : (user.name ?? ''),
-      currentEmail: user.email ?? '',
-      profileComplete: false,
-      agentRegistered: false,
-      hasAgentName: false,
-      isMember: false,
-      smartAccountAddress: user.smartAccountAddress ?? null,
-      hub: hubMeta,
+  // 1. Profile complete check — only relevant for demo + google users (who
+  // have a `users` row with name+email). Passkey + SIWE users skip this
+  // step; their display name comes from the session JWT (= the `.agent`
+  // name typed at signup), and any richer profile data is in person-mcp.
+  if (user) {
+    const placeholderName =
+      !user.name || user.name === 'Agent User' || user.name.startsWith('Wallet ')
+    const profileComplete = !placeholderName && !!user.email
+    if (!profileComplete) {
+      return {
+        step: 'profile',
+        authenticated: true,
+        via: session.via,
+        currentName: placeholderName ? '' : (user.name ?? ''),
+        currentEmail: user.email ?? '',
+        profileComplete: false,
+        agentRegistered: false,
+        hasAgentName: false,
+        isMember: false,
+        smartAccountAddress: user.smartAccountAddress ?? null,
+        hub: hubMeta,
+      }
     }
   }
 
@@ -114,8 +125,16 @@ export async function getHubOnboardingState(hubAddressInput: string): Promise<Hu
   // forever. Now we check person-agent first and fall back to smart
   // account for legacy accounts that still register the wallet itself.
   const resolverAddr = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}` | undefined
-  const personAgent = user.personAgentAddress as `0x${string}` | null
-  const smartAcct = user.smartAccountAddress as `0x${string}` | null
+  // For passkey/SIWE: smart account IS the person agent (single-account
+  // model — no separate person-agent deploy). For demo/google: read the
+  // pair stored on the user row.
+  const personAgent = (user?.personAgentAddress ?? null) as `0x${string}` | null
+  const smartAcct = (user?.smartAccountAddress
+    ?? session.smartAccountAddress
+    ?? null) as `0x${string}` | null
+  const fallbackName = user?.name ?? session.name ?? ''
+  const fallbackEmail = user?.email ?? session.email ?? ''
+  const fallbackAgentName = user?.agentName ?? session.name ?? ''
   let agentRegistered = false
   let onChainPrimaryName = ''
   if (resolverAddr && (personAgent || smartAcct)) {
@@ -145,8 +164,8 @@ export async function getHubOnboardingState(hubAddressInput: string): Promise<Hu
       step: 'register',
       authenticated: true,
       via: session.via,
-      currentName: user.name ?? '',
-      currentEmail: user.email ?? '',
+      currentName: fallbackName,
+      currentEmail: fallbackEmail,
       profileComplete: true,
       agentRegistered: false,
       hasAgentName: false,
@@ -156,8 +175,8 @@ export async function getHubOnboardingState(hubAddressInput: string): Promise<Hu
     }
   }
 
-  // 3. .agent name set? Prefer on-chain, fall back to DB mirror.
-  const primaryName = onChainPrimaryName || user.agentName || ''
+  // 3. .agent name set? Prefer on-chain, fall back to DB mirror or session.
+  const primaryName = onChainPrimaryName || fallbackAgentName
   const hasAgentName = !!primaryName
 
   if (!hasAgentName) {
@@ -165,8 +184,8 @@ export async function getHubOnboardingState(hubAddressInput: string): Promise<Hu
       step: 'name',
       authenticated: true,
       via: session.via,
-      currentName: user.name ?? '',
-      currentEmail: user.email ?? '',
+      currentName: fallbackName,
+      currentEmail: fallbackEmail,
       profileComplete: true,
       agentRegistered: true,
       hasAgentName: false,
@@ -191,8 +210,8 @@ export async function getHubOnboardingState(hubAddressInput: string): Promise<Hu
       step: 'join',
       authenticated: true,
       via: session.via,
-      currentName: user.name ?? '',
-      currentEmail: user.email ?? '',
+      currentName: fallbackName,
+      currentEmail: fallbackEmail,
       profileComplete: true,
       agentRegistered: true,
       hasAgentName: true,
@@ -212,8 +231,8 @@ export async function getHubOnboardingState(hubAddressInput: string): Promise<Hu
       step: 'org',
       authenticated: true,
       via: session.via,
-      currentName: user.name ?? '',
-      currentEmail: user.email ?? '',
+      currentName: fallbackName,
+      currentEmail: fallbackEmail,
       profileComplete: true,
       agentRegistered: true,
       hasAgentName: true,
@@ -228,8 +247,8 @@ export async function getHubOnboardingState(hubAddressInput: string): Promise<Hu
     step: 'done',
     authenticated: true,
     via: session.via,
-    currentName: user.name ?? '',
-    currentEmail: user.email ?? '',
+    currentName: fallbackName,
+    currentEmail: fallbackEmail,
     profileComplete: true,
     agentRegistered: true,
     hasAgentName: true,

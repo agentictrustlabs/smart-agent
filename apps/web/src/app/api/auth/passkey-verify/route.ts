@@ -51,8 +51,6 @@ import {
   normaliseLowS,
   namehash,
 } from '@smart-agent/sdk'
-import { db, schema } from '@/db'
-import { eq } from 'drizzle-orm'
 import { mintSession, SESSION_COOKIE } from '@/lib/auth/native-session'
 import { verifyPasskeyChallenge as verifyChallenge } from '@/lib/auth/passkey-challenge'
 
@@ -186,36 +184,32 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'invalid passkey signature' }, { status: 401 })
   }
 
-  // Look up the user row by smartAccountAddress so we can mint a session
-  // with the right did / name / email. Match case-insensitively because
-  // user.smartAccountAddress is stored lowercased.
-  const accountLower = accountAddr.toLowerCase()
-  const row = await db.select().from(schema.users)
-    .where(eq(schema.users.smartAccountAddress, accountLower))
-    .limit(1).then(r => r[0])
-  if (!row) {
-    return NextResponse.json({ error: 'no user record for this account' }, { status: 404 })
-  }
+  // Auth is now stateless: name + on-chain resolution + ERC-1271 verify is
+  // sufficient. No `users` table lookup — the session JWT carries
+  // everything downstream callers need (smartAccountAddress, name, did).
+  // Profile data (avatar / email / preferences) is fetched from the user's
+  // person-mcp via delegation after auth.
+  const accountLower = accountAddr.toLowerCase() as `0x${string}`
+  const displayName = body.name?.trim() || accountLower
+  const did = `did:passkey:${CHAIN_ID}:${accountLower}`
 
-  // Mint session.
   const cookieStore = await cookies()
-  const did = row.did ?? `did:passkey:${CHAIN_ID}:${accountLower}`
   const jwt = mintSession({
     sub: did,
-    walletAddress: row.walletAddress,
-    smartAccountAddress: row.smartAccountAddress,
-    name: row.name,
-    email: row.email ?? null,
+    walletAddress: accountLower,        // passkey owners control the AA; no separate EOA
+    smartAccountAddress: accountLower,
+    name: displayName,
+    email: null,
     via: 'passkey',
     kind: 'session',
   })
   const response = NextResponse.json({
     success: true,
     user: {
-      id: row.id,
+      id: accountLower,
       did,
-      name: row.name,
-      smartAccountAddress: row.smartAccountAddress,
+      name: displayName,
+      smartAccountAddress: accountLower,
     },
   })
   // Set the cookie on the response object directly — most reliable in Next 15

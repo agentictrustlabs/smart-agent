@@ -8,10 +8,185 @@
 <-- GET /health
 --> GET /health [32m200[0m 0ms
 <-- POST /credential/offer
---> POST /credential/offer [32m200[0m 12ms
+--> POST /credential/offer [32m200[0m 11ms
 <-- POST /credential/issue
---> POST /credential/issue [32m200[0m 23ms
+--> POST /credential/issue [32m200[0m 20ms
 <-- POST /credential/offer
---> POST /credential/offer [32m200[0m 5ms
+--> POST /credential/offer [32m200[0m 6ms
 <-- POST /credential/issue
---> POST /credential/issue [32m200[0m 23ms
+--> POST /credential/issue [32m200[0m 22ms
+<-- POST /tools/vote:cast
+[on-chain-resolver] env probe: CREDENTIAL_REGISTRY_ADDRESS=undefined CREDENTIAL_REGISTRY_CONTRACT_ADDRESS=0x2bdCC0de6bE1f7D2ee689a0342D76F52E8EFABa3
+--> POST /tools/vote:cast [32m200[0m 4s
+<-- POST /tools/round:update_voting_config
+--> POST /tools/round:update_voting_config [31m500[0m 13ms
+<-- POST /tools/round:update_voting_config
+--> POST /tools/round:update_voting_config [31m500[0m 36ms
+<-- POST /tools/list_org_intents
+<-- POST /tools/list_org_intents
+<-- POST /tools/list_org_intents
+--> POST /tools/list_org_intents [31m500[0m 18ms
+--> POST /tools/list_org_intents [31m500[0m 12ms
+--> POST /tools/list_org_intents [31m500[0m 9ms
+<-- POST /tools/pool_pledge:read_self
+<-- POST /tools/grant_proposal:list_for_member
+--> POST /tools/grant_proposal:list_for_member [32m200[0m 8ms
+--> POST /tools/pool_pledge:read_self [32m200[0m 16ms
+<-- POST /tools/list_org_intents
+--> POST /tools/list_org_intents [31m500[0m 7ms
+<-- POST /tools/list_org_intents
+--> POST /tools/list_org_intents [31m500[0m 8ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- POST /tools/list_revenue_reports
+--> POST /tools/list_revenue_reports [32m200[0m 48ms
+<-- POST /tools/submit_revenue_report
+--> POST /tools/submit_revenue_report [32m200[0m 12ms
+<-- POST /tools/approve_revenue_report
+--> POST /tools/approve_revenue_report [32m200[0m 8ms
+<-- POST /tools/list_revenue_reports
+--> POST /tools/list_revenue_reports [32m200[0m 6ms
+<-- POST /tools/submit_revenue_report
+--> POST /tools/submit_revenue_report [32m200[0m 8ms
+<-- POST /tools/approve_revenue_report
+--> POST /tools/approve_revenue_report [32m200[0m 7ms
+<-- POST /tools/list_revenue_reports
+--> POST /tools/list_revenue_reports [32m200[0m 6ms
+<-- POST /tools/submit_revenue_report
+--> POST /tools/submit_revenue_report [32m200[0m 6ms
+<-- POST /tools/list_revenue_reports
+--> POST /tools/list_revenue_reports [32m200[0m 6ms
+<-- POST /tools/submit_revenue_report
+--> POST /tools/submit_revenue_report [32m200[0m 6ms
+<-- POST /tools/approve_revenue_report
+--> POST /tools/approve_revenue_report [32m200[0m 6ms
+<-- POST /tools/list_revenue_reports
+--> POST /tools/list_revenue_reports [32m200[0m 19ms
+<-- POST /tools/submit_revenue_report
+--> POST /tools/submit_revenue_report [32m200[0m 7ms
+<-- POST /tools/approve_revenue_report
+--> POST /tools/approve_revenue_report [32m200[0m 5ms
+<-- POST /tools/list_revenue_reports
+--> POST /tools/list_revenue_reports [32m200[0m 6ms
+<-- POST /tools/submit_revenue_report
+--> POST /tools/submit_revenue_report [32m200[0m 5ms
+<-- POST /tools/list_proposals
+--> POST /tools/list_proposals [33m404[0m 0ms
+<-- POST /tools/create_proposal
+--> POST /tools/create_proposal [33m404[0m 0ms
+<-- POST /tools/list_proposals
+--> POST /tools/list_proposals [33m404[0m 1ms
+<-- POST /tools/create_proposal
+--> POST /tools/create_proposal [33m404[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms

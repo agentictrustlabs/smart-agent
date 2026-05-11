@@ -197,46 +197,13 @@ async function seedSqlCache(fundAgent: Address): Promise<void> {
   // rows when `round:update_voting_config` is first called — no SQL seed
   // needed for the body. Keep the function as a no-op for callsite stability.
   void fundAgent
-  const dbPath = path.join(repoRoot, 'apps/org-mcp/org-mcp.db')
-  if (!fs.existsSync(dbPath)) {
-    console.warn(`[seed-test-round] ${dbPath} does not exist — skipping SQL seed`)
-    return
-  }
-  const db = await openSqlite(dbPath)
-  try {
-    // Insert default voting config rows (steward-quorum, threshold=2) for
-    // each demo round so the admin / vote pages work without an explicit
-    // round:update_voting_config call.
-    const stmt = db.prepare(`
-      INSERT OR REPLACE INTO rounds (
-        id, voting_strategy, voting_threshold,
-        voting_window_starts_at, voting_window_ends_at,
-        eligible_voters, updated_at
-      ) VALUES (
-        @id, 'steward-quorum', 2,
-        @voting_window_starts_at, @voting_window_ends_at,
-        '{"kind":"stewards"}', @updated_at
-      )
-    `)
-    for (const r of ROUNDS) {
-      const iri = `urn:smart-agent:round:${r.id}`
-      // Demo seed: voting window opens IMMEDIATELY (so e2e tests + manual
-      // walkthroughs can vote without waiting for the deadline). Closes
-      // 7 days after the submission deadline. Production round:create flow
-      // sets a realistic window via round:update_voting_config.
-      const windowStart = NOW
-      const windowEnd = new Date(Date.parse(r.deadline) + 7 * 24 * 60 * 60 * 1000).toISOString()
-      stmt.run({
-        id: iri,
-        voting_window_starts_at: windowStart,
-        voting_window_ends_at: windowEnd,
-        updated_at: NOW,
-      })
-      console.log(`[seed-test-round] SQL voting config ok — ${r.id} (${r.displayName})`)
-    }
-  } finally {
-    db.close()
-  }
+  // Spec 004 R10 — `rounds` SQL table dropped; voting config lives on
+  // chain in FundRegistry attrs. The demo voting config (strategy
+  // steward-quorum, threshold 2, no window) matches what the contract
+  // returns when no setRoundVotingConfig is called, so this seed is a
+  // no-op. Set a custom config via `round:update_voting_config` (which
+  // calls FundRegistry.setRoundVotingConfig on chain).
+  console.log('[seed-test-round] voting-config SQL seed skipped — defaults read from FundRegistry attrs (R10)')
 }
 
 async function seedGraphDB(fundAgent: Address): Promise<void> {

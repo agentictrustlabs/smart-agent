@@ -114,9 +114,15 @@ export const invites = sqliteTable('invites', {
   agentAddress: text('agent_address').notNull(),
   agentName: text('agent_name').notNull(),
   role: text('role', { enum: ['owner', 'admin', 'member'] }).notNull().default('owner'),
-  createdBy: text('created_by').notNull().references(() => users.id),
+  /** Identifier of the creator. For demo/google users this is users.id;
+   *  for passkey/SIWE users (no users row) this is their smart-account
+   *  address. No FK constraint — sessionless auth means there's no row
+   *  to point at. */
+  createdBy: text('created_by').notNull(),
   expiresAt: text('expires_at').notNull(),
-  acceptedBy: text('accepted_by').references(() => users.id),
+  /** Same as createdBy: users.id for demo/google, smart-account address
+   *  for passkey/SIWE. No FK constraint. */
+  acceptedBy: text('accepted_by'),
   acceptedAt: text('accepted_at'),
   status: text('status', { enum: ['pending', 'accepted', 'expired', 'revoked'] }).notNull().default('pending'),
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
@@ -353,13 +359,19 @@ export const needResourceMatches = sqliteTable('need_resource_matches', {
 // SHACL: docs/ontology/cbox/intent-shapes.shacl.ttl
 
 /**
- * Intent — the unifying record above Need and Offering.
+ * @deprecated Spec 004 — `intents` SQL table is DROPPED. Intent bodies
+ * live in the owner's MCP (person-mcp / org-mcp) and public assertions
+ * on chain via `sa:IntentAssertion`. The web app routes through
+ * `@/lib/intents/router` instead. This drizzle entry is kept so the
+ * existing `schema.intents.<col>` references in legacy action code
+ * still typecheck; the runtime CREATE TABLE has been removed and the
+ * `DROP TABLE IF EXISTS intents` in `apps/web/src/db/index.ts` purges
+ * pre-existing rows on startup. Existing try/catch guards in the
+ * actions handle the SQLITE_ERROR when the table is missing.
  *
- * direction = 'receive' → projects to a `needs` row (when payload fits).
- * direction = 'give'    → projects to a `resource_offerings` row.
- *
- * Free-form intents (e.g. WantToContribute with no concrete offering
- * shape yet) live in `intents` only — `projectionRef` is null.
+ * Migration owner: the federation helper at apps/web/src/lib/intents/router.ts
+ * (calls person-mcp `list_intents` / `get_intent` / `express_intent` and
+ * org-mcp `list_org_intents` / `get_org_intent` / `express_org_intent`).
  */
 export const intents = sqliteTable('intents', {
   id: text('id').primaryKey(),
@@ -403,7 +415,10 @@ export const intents = sqliteTable('intents', {
 /** Outcome — the success criterion an intent commits to. */
 export const outcomes = sqliteTable('outcomes', {
   id: text('id').primaryKey(),
-  intentId: text('intent_id').notNull().references(() => intents.id),
+  /** Soft reference to an intent id. Spec 004 — the `intents` SQL table
+   *  is dropped; this is now a string id pointing at an MCP-owned
+   *  intent (person-mcp / org-mcp). No FK constraint. */
+  intentId: text('intent_id').notNull(),
   description: text('description').notNull(),
   /** JSON: { kind: 'count'|'boolean'|'date'|'narrative', target: any, observed?: any }. */
   metric: text('metric').notNull(),
