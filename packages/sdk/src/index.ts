@@ -517,3 +517,43 @@ export type {
 export { previewSessionRequest } from './permissions/types'
 export { buildSessionPermissionRequest } from './permissions/build'
 export type { BuildSessionPermissionRequestInput } from './permissions/build'
+
+// Spec 004 — AnonCreds-gated marketplace auth nullifier helpers.
+export {
+  computeNullifier,
+  voteContext,
+  proposalContext,
+} from './anoncreds/nullifier'
+export type { NullifierContext } from './anoncreds/nullifier'
+
+// Spec 004 — On-chain marketplace registry clients.
+export {
+  VoteRegistryClient,
+  GrantProposalRegistryClient,
+  PledgeRegistryClient,
+  MatchInitiationRegistryClient,
+} from './onchain/marketplace'
+export type {
+  Ballot,
+  Cadence,
+  InitiationKind,
+  MatchVisibility,
+  CastVoteInput,
+  SubmitGrantProposalInput,
+  EditGrantProposalInput,
+  SubmitPledgeInput,
+  CreateMatchInitiationInput,
+} from './onchain/marketplace'
+
+// Spec 004 (b2) — Admin → holder → session delegation chain helpers.
+export {
+  SPEC004_SELECTORS,
+  buildAdminDelegationCaveats,
+  signRootDelegation,
+  signChildDelegation,
+  delegationHash,
+} from './onchain/marketplace/admin-delegation'
+export type {
+  AdminDelegationScope,
+  SignedDelegation as Spec004SignedDelegation,
+} from './onchain/marketplace/admin-delegation'

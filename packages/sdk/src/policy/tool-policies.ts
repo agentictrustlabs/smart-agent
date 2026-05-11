@@ -52,7 +52,7 @@ export interface ToolPolicy {
   executionPath: ExecutionPath
 
   /** On-chain targets this tool may invoke. Empty array for mcp-only paths. */
-  allowedTargets: Array<'PoolRegistry' | 'FundRegistry' | 'AgentAccountFactory' | 'GrantRegistry' | 'ClassAssertionContract' | 'AgentRelationship' | 'AgentAccountResolver'>
+  allowedTargets: Array<'PoolRegistry' | 'FundRegistry' | 'AgentAccountFactory' | 'GrantRegistry' | 'ClassAssertionContract' | 'AgentRelationship' | 'AgentAccountResolver' | 'VoteRegistry' | 'GrantProposalRegistry' | 'PledgeRegistry' | 'MatchInitiationRegistry'>
 
   /** 4-byte function selectors callable on the targets. Empty for mcp-only. */
   allowedSelectors: Hex[]
@@ -183,18 +183,22 @@ export const TOOL_POLICIES: Record<string, ToolPolicy> = {
   'pool_pledge:read_self':         mcpOnly('pool_pledge:read_self', 'org-mcp'),
   'pool_pledge:read_pool_counters': mcpOnly('pool_pledge:read_pool_counters', 'org-mcp'),
   'pool_pledge:list_for_pool':     mcpOnly('pool_pledge:list_for_pool', 'org-mcp'),
-  'pool_pledge:submit':            mcpOnly('pool_pledge:submit', 'org-mcp'),
-  'pool_pledge:amend':             mcpOnly('pool_pledge:amend', 'org-mcp'),
-  'pool_pledge:stop':              mcpOnly('pool_pledge:stop', 'org-mcp'),
-  'pool_pledge:auto_stop':         mcpOnly('pool_pledge:auto_stop', 'org-mcp'),
-  'match_initiation:create':       mcpOnly('match_initiation:create', 'org-mcp'),
+  // Spec 004 — pool pledges write on chain via PledgeRegistry, gated by
+  // the admin→donor→session chain. Stateless-redeem path applies.
+  'pool_pledge:submit':            statelessRedeem('pool_pledge:submit', 'org-mcp', 'PledgeRegistry'),
+  'pool_pledge:amend':             statelessRedeem('pool_pledge:amend', 'org-mcp', 'PledgeRegistry'),
+  'pool_pledge:stop':              statelessRedeem('pool_pledge:stop', 'org-mcp', 'PledgeRegistry'),
+  'pool_pledge:auto_stop':         statelessRedeem('pool_pledge:auto_stop', 'org-mcp', 'PledgeRegistry'),
+  'match_initiation:create':       statelessRedeem('match_initiation:create', 'org-mcp', 'MatchInitiationRegistry'),
   'match_initiation:read':         mcpOnly('match_initiation:read', 'org-mcp'),
-  'match_initiation:consume':      mcpOnly('match_initiation:consume', 'org-mcp'),
-  'match_initiation:supersede':    mcpOnly('match_initiation:supersede', 'org-mcp'),
+  'match_initiation:consume':      statelessRedeem('match_initiation:consume', 'org-mcp', 'MatchInitiationRegistry'),
+  'match_initiation:supersede':    statelessRedeem('match_initiation:supersede', 'org-mcp', 'MatchInitiationRegistry'),
   'grant_proposal:draft':          mcpOnly('grant_proposal:draft', 'org-mcp'),
-  'grant_proposal:edit_pre_deadline': mcpOnly('grant_proposal:edit_pre_deadline', 'org-mcp'),
-  'grant_proposal:submit':         mcpOnly('grant_proposal:submit', 'org-mcp'),
-  'grant_proposal:withdraw':       mcpOnly('grant_proposal:withdraw', 'org-mcp'),
+  // Spec 004 — grant proposal submit/edit/withdraw write on chain via
+  // GrantProposalRegistry, gated by the AnonCreds presentation + chain.
+  'grant_proposal:edit_pre_deadline': statelessRedeem('grant_proposal:edit_pre_deadline', 'org-mcp', 'GrantProposalRegistry'),
+  'grant_proposal:submit':         statelessRedeem('grant_proposal:submit', 'org-mcp', 'GrantProposalRegistry'),
+  'grant_proposal:withdraw':       statelessRedeem('grant_proposal:withdraw', 'org-mcp', 'GrantProposalRegistry'),
   'grant_proposal:clone':          mcpOnly('grant_proposal:clone', 'org-mcp'),
   'grant_proposal:read_self':      mcpOnly('grant_proposal:read_self', 'org-mcp'),
   'grant_proposal:list_for_member': mcpOnly('grant_proposal:list_for_member', 'org-mcp'),
@@ -204,7 +208,9 @@ export const TOOL_POLICIES: Record<string, ToolPolicy> = {
   'round:get_voting_config':       mcpOnly('round:get_voting_config', 'org-mcp'),
   'round:update_voting_config':    mcpOnly('round:update_voting_config', 'org-mcp'),
   'round:increment_proposals_received': mcpOnly('round:increment_proposals_received', 'org-mcp'),
-  'vote:cast':                     mcpOnly('vote:cast', 'org-mcp'),
+  // Spec 004 — vote:cast writes on chain via VoteRegistry, gated by the
+  // AnonCreds presentation + admin→voter→session chain.
+  'vote:cast':                     statelessRedeem('vote:cast', 'org-mcp', 'VoteRegistry'),
   'vote:list_for_proposal':        mcpOnly('vote:list_for_proposal', 'org-mcp'),
   'vote:list_for_round':           mcpOnly('vote:list_for_round', 'org-mcp'),
   'vote:list_for_voter':           mcpOnly('vote:list_for_voter', 'org-mcp'),
@@ -363,5 +369,9 @@ export function resolveTargetAddress(
     case 'ClassAssertionContract': return env.CLASS_ASSERTION_ADDRESS as Address | undefined
     case 'AgentRelationship':    return env.AGENT_RELATIONSHIP_ADDRESS as Address | undefined
     case 'AgentAccountResolver': return env.AGENT_ACCOUNT_RESOLVER_ADDRESS as Address | undefined
+    case 'VoteRegistry':           return env.VOTE_REGISTRY_ADDRESS as Address | undefined
+    case 'GrantProposalRegistry':  return env.GRANT_PROPOSAL_REGISTRY_ADDRESS as Address | undefined
+    case 'PledgeRegistry':         return env.PLEDGE_REGISTRY_ADDRESS as Address | undefined
+    case 'MatchInitiationRegistry': return env.MATCH_INITIATION_REGISTRY_ADDRESS as Address | undefined
   }
 }

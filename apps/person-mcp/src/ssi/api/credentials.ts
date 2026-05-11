@@ -107,6 +107,12 @@ credentialRoutes.post('/credentials/store', async (c) => {
      *  the Red Feather Circle agent for an OrgMembership in that circle.
      *  Optional for older callers that don't yet set it. */
     targetOrgAddress?: string
+    /** Spec 004 (b2) — admin→holder on-chain delegation signed at
+     *  credential-issuance time. Carried alongside the AnonCred so the
+     *  action layer can rebuild the redeem chain. Both fields are
+     *  optional for non-marketplace credentials. */
+    adminDelegationJson?: string
+    adminDelegationTarget?: string
   }>()
 
   const { getHolderWalletById } = await import('../storage/wallets.js')
@@ -149,6 +155,8 @@ credentialRoutes.post('/credentials/store', async (c) => {
     credentialType: body.credentialType,
     linkSecretId: hw.linkSecretId,
     targetOrgAddress: body.targetOrgAddress?.toLowerCase() ?? null,
+    adminDelegationJson: body.adminDelegationJson ?? null,
+    adminDelegationTarget: body.adminDelegationTarget?.toLowerCase() ?? null,
   })
 
   return c.json({ credentialId: credId, metadata: metaRow })

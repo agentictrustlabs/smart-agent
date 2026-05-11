@@ -1,21 +1,15 @@
 /**
  * Spec 003 — Intent Marketplace (Proposal Lane). Withdraw route (T061).
  *
- * POST handler. Calls `withdrawMemberProposal` (which routes through
- * `GrantProposalClient.withdraw` → MCP `grant_proposal:withdraw`).
+ * Spec 004 update: the withdraw call is now an on-chain `withdraw(subject)`
+ * gated by an AnonCreds `ProposalSubmitterCredential` presentation + an
+ * admin→holder→session redeem chain. The `proposalId` URL slug is no
+ * longer enough on its own — we also need the proposal's round and the
+ * round's pool, which the action layer uses to derive the on-chain
+ * subject and to build the AnonCreds proof. The proposal-detail page
+ * supplies them via hidden form fields.
  *
- * Surfaces `WithdrawGrantProposalResult.intentRevertedToExpressed` to the
- * user — this is the cross-spec touch-point with spec 001's
- * `MatchInitiation` count (FR-023):
- *
- *   - true  → intent has reverted to `expressed` (count was 0 after our -1).
- *             Conditional message tells the proposer they may submit a new
- *             proposal targeting a different round.
- *   - false → intent stays `acknowledged` because another live
- *             acknowledgement exists (e.g., a still-pending spec 001
- *             MatchInitiation on the same intent).
- *
- * On success, redirects to the proposals list with the conditional flash.
+ * On success, redirects to the proposals list with a status flash.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -42,7 +36,20 @@ export async function POST(
     )
   }
 
-  const result = await withdrawMemberProposal(proposalId)
+  // Read roundId + poolAgentId from the form body or query string. The
+  // proposal-detail page wires hidden form fields; missing inputs surface
+  // a clear error rather than a runtime crash inside the action.
+  const form = await req.formData().catch(() => null)
+  const roundId = (form?.get('roundId') as string | null) ?? new URL(req.url).searchParams.get('roundId')
+  const poolAgentId = (form?.get('poolAgentId') as string | null) ?? new URL(req.url).searchParams.get('poolAgentId')
+  if (!roundId || !poolAgentId) {
+    return NextResponse.redirect(
+      new URL(`/h/${slug}/proposals/${proposalId}?err=missing-round-or-pool`, req.url),
+      { status: 303 },
+    )
+  }
+
+  const result = await withdrawMemberProposal({ roundId, poolAgentId })
   if (!result.ok) {
     const encoded = encodeURIComponent(result.error ?? 'withdraw-failed')
     return NextResponse.redirect(
@@ -51,13 +58,12 @@ export async function POST(
     )
   }
 
-  // Cross-spec touch-point — FR-023.
-  const msg = result.intentRevertedToExpressed
-    ? 'Proposal withdrawn. Your underlying intent has reverted to `expressed` — you can submit a new proposal to a different round.'
-    : 'Proposal withdrawn. Your underlying intent remains `acknowledged` because another live acknowledgement exists (e.g., a pending Match Initiation).'
+  // FR-023 intentRevertedToExpressed cascade is on the spec-001 cross-MCP
+  // refactor queue; the on-chain withdraw doesn't surface it directly today.
+  const msg = 'Proposal withdrawn on chain.'
 
   return NextResponse.redirect(
-    new URL(`/h/${slug}/proposals?msg=${encodeURIComponent(msg)}`, req.url),
+    new URL(`/h/${slug}/proposals?msg=${encodeURIComponent(msg)}&tx=${result.txHash}`, req.url),
     { status: 303 },
   )
 }

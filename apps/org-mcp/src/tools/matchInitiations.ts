@@ -18,14 +18,17 @@
  * Cross-MCP federation: v1 same-DB shortcut. // TODO(cross-mcp).
  */
 import { randomUUID } from 'node:crypto'
-import { and, eq } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
+import { keccak256, encodePacked, getAddress, isAddress, type Address } from 'viem'
 import { db } from '../db/index.js'
 import {
-  matchInitiations,
   orgIntents,
   orgNotifications,
 } from '../db/schema.js'
 import { requireOrgPrincipalAny as requireOrgPrincipal } from '../auth/principal-context.js'
+import { MatchInitiationRegistryClient } from '@smart-agent/sdk'
+import { callA2aRedeem } from '../lib/a2a-client.js'
+import { requireMatchInitiationRegistryAddress } from '../lib/contracts.js'
 
 const mcpText = <T>(v: T) => ({ content: [{ type: 'text' as const, text: JSON.stringify(v) }] })
 
@@ -51,6 +54,14 @@ interface CreateArgs {
   candidateIntentId: string
   basis: RankBasis
   visibility?: MatchInitiationVisibility
+  /** Publisher AgentAccount address — REQUIRED. For org-initiated MIs,
+   *  this is the org admin's AgentAccount (the same account that the
+   *  user signs delegations from). The on-chain `create` call enforces
+   *  `_isAccountOwner(publisher, msg.sender)`; self-ownership of the
+   *  AgentAccount lets the dispatched call (`account.execute(target, ...)`)
+   *  pass when publisher == msg.sender. */
+  publisher?: string
+  _a2aSessionId?: string
 }
 
 type CreateErrorKind =
@@ -132,10 +143,20 @@ function strictestVisibility(a: string, b: string): MatchInitiationVisibility {
   return order[Math.min(ai, bi)]
 }
 
+/** Derive the initiator's pseudonym nullifier from their authenticated
+ *  principal. Spec 004 MIs are NOT AnonCreds-gated (cred-gated flows are
+ *  voting + grant proposals); initiator anonymity is handled via the
+ *  visibility cascade. The nullifier is used solely as the on-chain
+ *  subject key so the same initiator can re-derive the subject for
+ *  status mutations (supersede/consume) without re-publishing identity. */
+function initiatorNullifierForPrincipal(principal: string): `0x${string}` {
+  return keccak256(encodePacked(['string', 'string'], ['sa:miInitiator:', principal.toLowerCase()]))
+}
+
 const createTool = {
   name: 'match_initiation:create',
   description:
-    "Create a MatchInitiation row pairing two intents (org-mcp initiator-owned per IA § 2.1). Cascades intent:bump_ack_count +1 to both intent owners, dispatches connector-mode notifications, and conditionally anchors on chain.",
+    "Write a MatchInitiation to the on-chain MatchInitiationRegistry pairing two intents (org-initiator side per IA § 2.1). Cascades intent:bump_ack_count +1 to both intent owners and dispatches connector-mode notifications.",
   inputSchema: {
     type: 'object' as const,
     properties: {
@@ -144,6 +165,7 @@ const createTool = {
       candidateIntentId: { type: 'string' },
       basis: { type: 'object' },
       visibility: { type: 'string' },
+      publisher: { type: 'string' },
     },
     required: ['token', 'viewedIntentId', 'candidateIntentId', 'basis'],
   },
@@ -188,18 +210,6 @@ const createTool = {
       })
     }
 
-    const existing = db.select().from(matchInitiations)
-      .where(and(
-        eq(matchInitiations.principal, orgPrincipal),
-        eq(matchInitiations.viewedIntentId, args.viewedIntentId),
-        eq(matchInitiations.candidateIntentId, args.candidateIntentId),
-        eq(matchInitiations.status, 'pending'),
-      ))
-      .all()
-    if (existing.length > 0) {
-      return err({ kind: 'duplicate-pending', existingInitiationId: existing[0].id })
-    }
-
     let visibility: MatchInitiationVisibility = args.visibility ?? 'private'
     if (!args.visibility && viewed && candidate) {
       visibility = strictestVisibility(viewed.visibility, candidate.visibility)
@@ -212,24 +222,40 @@ const createTool = {
       }
     }
 
-    const id = `urn:smart-agent:match-initiation:${randomUUID()}`
-    const now = nowIso()
-    const row = {
-      id,
-      principal: orgPrincipal,
+    const sessionId = args._a2aSessionId
+    if (!sessionId) {
+      return mcpText({ ok: false as const, error: { kind: 'auth', message: '_a2aSessionId missing — match_initiation:create requires the a2a-agent session id' } })
+    }
+    const publisherRaw = args.publisher ?? orgPrincipal
+    if (!isAddress(publisherRaw)) {
+      return err({ kind: 'validation', messages: ['publisher must be an EVM address'] })
+    }
+    const publisher: Address = getAddress(publisherRaw)
+
+    const initiatorNullifier = initiatorNullifierForPrincipal(orgPrincipal)
+    const miSubject = keccak256(encodePacked(
+      ['string', 'string', 'string', 'string', 'bytes32'],
+      ['sa:matchInitiation:', args.viewedIntentId, ':', args.candidateIntentId, initiatorNullifier],
+    ))
+    const visibilityForChain: 'public' | 'public-coarse' | 'private' =
+      visibility === 'off-chain' ? 'private' : visibility
+
+    const callData = MatchInitiationRegistryClient.encodeCreate({
       viewedIntentId: args.viewedIntentId,
       candidateIntentId: args.candidateIntentId,
-      initiatorAgentId: orgPrincipal,
+      initiatorNullifier,
       initiationKind,
-      proposedAt: now,
-      basis: JSON.stringify(args.basis),
-      status: 'pending' as const,
-      visibility,
-      onChainAssertionId: null as string | null,
-      createdAt: now,
-      updatedAt: now,
-    }
-    db.insert(matchInitiations).values(row).run()
+      visibility: visibilityForChain,
+      basisJson: JSON.stringify(args.basis),
+      publisher,
+    })
+    const tx = await callA2aRedeem(sessionId, {
+      mcpTool: 'match_initiation:create',
+      mcpCallId: randomUUID(),
+      target: requireMatchInitiationRegistryAddress(),
+      value: 0n,
+      callData,
+    })
 
     if (viewed) bumpAckCountLocal(args.viewedIntentId, 1)
     if (candidate) bumpAckCountLocal(args.candidateIntentId, 1)
@@ -241,7 +267,7 @@ const createTool = {
           initiatorAgentId: orgPrincipal,
           viewedIntentId: args.viewedIntentId,
           candidateIntentId: args.candidateIntentId,
-          initiationId: id,
+          initiationId: miSubject,
         })
       } catch (e) {
         console.warn(`[org-mcp/matchInitiations] viewed-side notif dispatch failed: ${(e as Error).message}`)
@@ -252,32 +278,27 @@ const createTool = {
           initiatorAgentId: orgPrincipal,
           viewedIntentId: args.viewedIntentId,
           candidateIntentId: args.candidateIntentId,
-          initiationId: id,
+          initiationId: miSubject,
         })
       } catch (e) {
         console.warn(`[org-mcp/matchInitiations] candidate-side notif dispatch failed: ${(e as Error).message}`)
       }
     }
 
-    if (visibility === 'public' || visibility === 'public-coarse') {
-      console.warn(
-        `[org-mcp/matchInitiations] on-chain emit deferred to action layer for ${id} (visibility=${visibility}).`,
-      )
-    }
-
     return mcpText({
       ok: true as const,
       initiation: {
-        id,
-        viewedIntentId: row.viewedIntentId,
-        candidateIntentId: row.candidateIntentId,
-        initiatorAgentId: row.initiatorAgentId,
-        initiationKind: row.initiationKind,
-        proposedAt: row.proposedAt,
+        id: miSubject,
+        miSubject,
+        txHash: tx.txHash,
+        viewedIntentId: args.viewedIntentId,
+        candidateIntentId: args.candidateIntentId,
+        initiatorAgentId: orgPrincipal,
+        initiationKind,
+        proposedAt: nowIso(),
         basis: args.basis,
-        status: row.status,
-        visibility: row.visibility,
-        onChainAssertionId: row.onChainAssertionId ?? undefined,
+        status: 'pending' as const,
+        visibility,
       },
     })
   },
@@ -285,7 +306,7 @@ const createTool = {
 
 const readTool = {
   name: 'match_initiation:read',
-  description: "List the caller's own MatchInitiations (org-mcp). Optional intentId narrows to rows referencing the given intent on either side.",
+  description: "STUB — SQL match_initiations table is dropped; reads now flow from GraphDB (mirror of MatchInitiationRegistry). Returns an empty list until the on-chain→GraphDB sync is wired (spec 004 cleanup queue).",
   inputSchema: {
     type: 'object' as const,
     properties: {
@@ -296,63 +317,84 @@ const readTool = {
     required: ['token'],
   },
   handler: async (args: { token: string; intentId?: string; status?: string }) => {
-    const orgPrincipal = await requireOrgPrincipal(args.token, args, 'match_initiation:read')
-    const rows = db.select().from(matchInitiations)
-      .where(eq(matchInitiations.principal, orgPrincipal))
-      .all()
-    const filtered = rows.filter((r) => {
-      if (args.status && r.status !== args.status) return false
-      if (args.intentId && r.viewedIntentId !== args.intentId && r.candidateIntentId !== args.intentId) return false
-      return true
-    })
-    const initiations = filtered.map((r) => ({
-      id: r.id,
-      viewedIntentId: r.viewedIntentId,
-      candidateIntentId: r.candidateIntentId,
-      initiatorAgentId: r.initiatorAgentId,
-      initiationKind: r.initiationKind as MatchInitiationKind,
-      proposedAt: r.proposedAt,
-      basis: (() => { try { return JSON.parse(r.basis) as RankBasis } catch { return null as unknown as RankBasis } })(),
-      status: r.status as 'pending' | 'superseded' | 'consumed',
-      visibility: r.visibility as MatchInitiationVisibility,
-      onChainAssertionId: r.onChainAssertionId ?? undefined,
-    }))
-    return mcpText({ initiations })
+    await requireOrgPrincipal(args.token, args, 'match_initiation:read')
+    void args
+    console.warn(
+      '[org-mcp/matchInitiations] read invoked but SQL table dropped — returning empty list until GraphDB sync ships.',
+    )
+    return mcpText({ initiations: [] as Array<unknown> })
   },
+}
+
+const STATUS_SUPERSEDED = keccak256(encodePacked(['string'], ['sa:MatchInitiationSuperseded'] as const))
+const STATUS_CONSUMED = keccak256(encodePacked(['string'], ['sa:MatchInitiationConsumed'] as const))
+
+async function setMatchStatus(args: {
+  token: string
+  miSubject: `0x${string}`
+  newStatus: `0x${string}`
+  publisher?: string
+  _a2aSessionId?: string
+  toolName: string
+}): Promise<ReturnType<typeof mcpText>> {
+  const orgPrincipal = await requireOrgPrincipal(args.token, args, args.toolName)
+  if (!args.miSubject || !args.miSubject.startsWith('0x')) {
+    throw new Error('miSubject must be a bytes32 hex')
+  }
+  const sessionId = args._a2aSessionId
+  if (!sessionId) {
+    throw new Error(`_a2aSessionId missing — ${args.toolName} requires the a2a-agent session id`)
+  }
+  const publisherRaw = args.publisher ?? orgPrincipal
+  if (!isAddress(publisherRaw)) {
+    throw new Error('publisher must be an EVM address')
+  }
+  const publisher: Address = getAddress(publisherRaw)
+  const callData = MatchInitiationRegistryClient.encodeSetStatus({
+    miSubject: args.miSubject,
+    newStatus: args.newStatus,
+    publisher,
+  })
+  const tx = await callA2aRedeem(sessionId, {
+    mcpTool: args.toolName,
+    mcpCallId: randomUUID(),
+    target: requireMatchInitiationRegistryAddress(),
+    value: 0n,
+    callData,
+  })
+  return mcpText({ ok: true as const, txHash: tx.txHash, miSubject: args.miSubject })
 }
 
 const supersedeTool = {
   name: 'match_initiation:supersede',
-  description: "STUB — downstream specs advance MatchInitiation.status to 'superseded'.",
+  description: "Set the on-chain status of a MatchInitiation to 'superseded'. The miSubject is the bytes32 returned by `match_initiation:create`.",
   inputSchema: {
     type: 'object' as const,
-    properties: { token: { type: 'string' }, initiationId: { type: 'string' } },
-    required: ['token', 'initiationId'],
+    properties: {
+      token: { type: 'string' },
+      miSubject: { type: 'string' },
+      publisher: { type: 'string' },
+    },
+    required: ['token', 'miSubject'],
   },
-  handler: async (args: { token: string; initiationId: string }) => {
-    await requireOrgPrincipal(args.token, args, 'match_initiation:supersede')
-    console.warn(
-      `[org-mcp/matchInitiations] supersede STUB invoked for ${args.initiationId} — body lives downstream.`,
-    )
-    return mcpText({ ok: false as const, error: { kind: 'not-implemented', message: 'supersede is owned by downstream specs' } })
-  },
+  handler: async (args: { token: string; miSubject: `0x${string}`; publisher?: string; _a2aSessionId?: string }) =>
+    setMatchStatus({ ...args, newStatus: STATUS_SUPERSEDED, toolName: 'match_initiation:supersede' }),
 }
 
 const consumeTool = {
   name: 'match_initiation:consume',
-  description: "STUB — downstream commitment spec advances MatchInitiation.status to 'consumed'.",
+  description: "Set the on-chain status of a MatchInitiation to 'consumed'. The miSubject is the bytes32 returned by `match_initiation:create`.",
   inputSchema: {
     type: 'object' as const,
-    properties: { token: { type: 'string' }, initiationId: { type: 'string' } },
-    required: ['token', 'initiationId'],
+    properties: {
+      token: { type: 'string' },
+      miSubject: { type: 'string' },
+      publisher: { type: 'string' },
+    },
+    required: ['token', 'miSubject'],
   },
-  handler: async (args: { token: string; initiationId: string }) => {
-    await requireOrgPrincipal(args.token, args, 'match_initiation:consume')
-    console.warn(
-      `[org-mcp/matchInitiations] consume STUB invoked for ${args.initiationId} — body lives downstream.`,
-    )
-    return mcpText({ ok: false as const, error: { kind: 'not-implemented', message: 'consume is owned by downstream commitment spec' } })
-  },
+  handler: async (args: { token: string; miSubject: `0x${string}`; publisher?: string; _a2aSessionId?: string }) =>
+    setMatchStatus({ ...args, newStatus: STATUS_CONSUMED, toolName: 'match_initiation:consume' }),
 }
 
 export const matchInitiationsTools = {

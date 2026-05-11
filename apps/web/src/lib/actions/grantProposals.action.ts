@@ -68,6 +68,11 @@ export interface SubmitProposalActionInput {
   proposerIntentDomains?: string[]
   /** target agent type for the proposer's MCP. */
   proposerKind?: 'org' | 'person'
+  /** Pool the proposal is targeting (must equal round.poolAgentId).
+   *  Required for the AnonCreds expectedAttributes check at the org-mcp
+   *  verifier. The action layer resolves it via DiscoveryService
+   *  (round → pool); if you have it handy, pass it directly. */
+  poolAgentId?: string
 }
 
 /**
@@ -105,15 +110,59 @@ export async function submitProposal(
     // a placeholder.
   }
 
-  // 2. Invoke the MCP submit tool. We fan-out the typed request plus the
-  //    extra `basis` field via a structural cast — the MCP tool's input
-  //    schema accepts `basis` even though the SDK contract Omits it.
+  // 2. Spec 004 (b2) — build the AnonCreds presentation + admin→holder→session
+  //    delegation chain. These are required by the MCP tool; the SDK
+  //    contract Omits them so we pass them via the same structural
+  //    cast as `basis`.
+  const { buildMarketplacePresentation } = await import('@/lib/spec004/presentation')
+  const { resolveSpec004Chain } = await import('@/lib/spec004/chain')
+  const grantProposalRegistry = process.env.GRANT_PROPOSAL_REGISTRY_ADDRESS as `0x${string}` | undefined
+  if (!grantProposalRegistry) {
+    return {
+      success: false as const,
+      error: { code: 'configuration' as const, message: 'GRANT_PROPOSAL_REGISTRY_ADDRESS not set' },
+    } as unknown as SubmitGrantProposalResult
+  }
+  const pres = await buildMarketplacePresentation({
+    credentialType: 'ProposalSubmitterCredential',
+    expectedAttributes: input.poolAgentId ? { poolAgentId: input.poolAgentId } : {},
+  })
+  if (!pres.ok) {
+    return {
+      success: false as const,
+      error: { code: 'unauthorized' as const, message: `presentation: ${pres.error}` },
+    } as unknown as SubmitGrantProposalResult
+  }
+  const { SPEC004_SELECTORS } = await import('@smart-agent/sdk')
+  const chain = await resolveSpec004Chain({
+    targetRegistry: grantProposalRegistry,
+    credentialType: 'ProposalSubmitterCredential',
+    methodSelectors: [SPEC004_SELECTORS.grantProposalSubmit],
+  })
+  if (!chain.ok) {
+    return {
+      success: false as const,
+      error: { code: 'unauthorized' as const, message: `chain: ${chain.error} — ${chain.message}` },
+    } as unknown as SubmitGrantProposalResult
+  }
+
+  // 3. Invoke the MCP submit tool. We fan-out the typed request plus the
+  //    extra `basis`, `presentation`, and `chain` fields via a structural
+  //    cast — the MCP tool's input schema accepts these even though the
+  //    SDK contract Omits them.
   const target: McpTarget = input.proposerKind === 'person' ? 'intent' : 'self'
   const invoker = makeMcpInvoker(target)
   const client = new GrantProposalClient(invoker)
-  const augmented = basis
-    ? ({ ...input.request, basis } as unknown as SubmitGrantProposalRequest)
-    : input.request
+  const augmented = {
+    ...input.request,
+    ...(basis ? { basis } : {}),
+    presentation: {
+      presentationJson: pres.presentationJson,
+      presentationRequest: pres.presentationRequest,
+      poolAgentId: input.poolAgentId ?? '',
+    },
+    chain: chain.chain,
+  } as unknown as SubmitGrantProposalRequest
   const result = await client.submit(augmented)
 
   // 3. Cross-MCP mirror to the fund's org-mcp tenant. The proposer's MCP
@@ -263,44 +312,106 @@ export async function getMemberProposal(proposalId: string): Promise<GrantPropos
 }
 
 export interface EditProposalActionInput {
-  proposalId: string
+  /** URN form (urn:smart-agent:round:<slug>) or bare slug. The MCP tool
+   *  computes the on-chain roundSubject + proposalSubject from this +
+   *  the AnonCreds nullifier the holder re-derives at edit time. */
+  roundId: string
+  /** Pool the round belongs to — required for the AnonCreds
+   *  expectedAttributes.poolAgentId match (action layer resolves via
+   *  DiscoveryService.getRoundDetail; pass through if you have it). */
+  poolAgentId: string
   patch: EditGrantProposalRequest['patch']
 }
 
 /** Edit a submitted proposal pre-deadline. */
 export async function editMemberProposal(
   input: EditProposalActionInput,
-): Promise<{ ok: true; proposal: GrantProposal } | { ok: false; error: string }> {
-  const invoker = makeMcpInvoker('self')
-  const client = new GrantProposalClient(invoker)
+): Promise<{ ok: true; proposalSubject: `0x${string}`; txHash: `0x${string}` } | { ok: false; error: string }> {
+  const grantProposalRegistry = process.env.GRANT_PROPOSAL_REGISTRY_ADDRESS as `0x${string}` | undefined
+  if (!grantProposalRegistry) {
+    return { ok: false, error: 'GRANT_PROPOSAL_REGISTRY_ADDRESS not set' }
+  }
+  const { buildMarketplacePresentation } = await import('@/lib/spec004/presentation')
+  const { resolveSpec004Chain } = await import('@/lib/spec004/chain')
+  const pres = await buildMarketplacePresentation({
+    credentialType: 'ProposalSubmitterCredential',
+    expectedAttributes: { poolAgentId: input.poolAgentId },
+  })
+  if (!pres.ok) return { ok: false, error: `presentation: ${pres.error}` }
+  const { SPEC004_SELECTORS } = await import('@smart-agent/sdk')
+  const chain = await resolveSpec004Chain({
+    targetRegistry: grantProposalRegistry,
+    credentialType: 'ProposalSubmitterCredential',
+    methodSelectors: [SPEC004_SELECTORS.grantProposalEdit],
+  })
+  if (!chain.ok) return { ok: false, error: `chain: ${chain.error} — ${chain.message}` }
   try {
-    const raw = await client.edit({ proposalId: input.proposalId, patch: input.patch }) as unknown as RawProposalRow
-    return { ok: true, proposal: rowToProposal(raw) }
+    const result = await callMcp<{ ok: true; txHash: `0x${string}`; proposalSubject: `0x${string}` }>(
+      'org',
+      'grant_proposal:edit_pre_deadline',
+      {
+        roundId: input.roundId,
+        patch: input.patch,
+        presentation: {
+          presentationJson: pres.presentationJson,
+          presentationRequest: pres.presentationRequest,
+          poolAgentId: input.poolAgentId,
+        },
+        chain: chain.chain,
+      },
+    )
+    return { ok: true, proposalSubject: result.proposalSubject, txHash: result.txHash }
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : String(err) }
   }
 }
 
-/** Withdraw a draft / submitted proposal. */
+export interface WithdrawProposalActionInput {
+  /** URN form or bare slug — same as edit. */
+  roundId: string
+  /** Pool the round belongs to (AnonCreds gate). */
+  poolAgentId: string
+}
+
+/** Withdraw a submitted proposal. */
 export async function withdrawMemberProposal(
-  proposalId: string,
-): Promise<WithdrawGrantProposalResult & { ok: boolean; error?: string }> {
-  const invoker = makeMcpInvoker('self')
-  const client = new GrantProposalClient(invoker)
+  input: WithdrawProposalActionInput,
+): Promise<{ ok: true; proposalSubject: `0x${string}`; txHash: `0x${string}` } | { ok: false; error: string }> {
+  const grantProposalRegistry = process.env.GRANT_PROPOSAL_REGISTRY_ADDRESS as `0x${string}` | undefined
+  if (!grantProposalRegistry) {
+    return { ok: false, error: 'GRANT_PROPOSAL_REGISTRY_ADDRESS not set' }
+  }
+  const { buildMarketplacePresentation } = await import('@/lib/spec004/presentation')
+  const { resolveSpec004Chain } = await import('@/lib/spec004/chain')
+  const pres = await buildMarketplacePresentation({
+    credentialType: 'ProposalSubmitterCredential',
+    expectedAttributes: { poolAgentId: input.poolAgentId },
+  })
+  if (!pres.ok) return { ok: false, error: `presentation: ${pres.error}` }
+  const { SPEC004_SELECTORS } = await import('@smart-agent/sdk')
+  const chain = await resolveSpec004Chain({
+    targetRegistry: grantProposalRegistry,
+    credentialType: 'ProposalSubmitterCredential',
+    methodSelectors: [SPEC004_SELECTORS.grantProposalWithdraw],
+  })
+  if (!chain.ok) return { ok: false, error: `chain: ${chain.error} — ${chain.message}` }
   try {
-    const result = await client.withdraw(proposalId)
-    return {
-      ok: true,
-      proposal: rowToProposal(result.proposal as unknown as RawProposalRow),
-      intentRevertedToExpressed: result.intentRevertedToExpressed,
-    }
+    const result = await callMcp<{ ok: true; txHash: `0x${string}`; proposalSubject: `0x${string}` }>(
+      'org',
+      'grant_proposal:withdraw',
+      {
+        roundId: input.roundId,
+        presentation: {
+          presentationJson: pres.presentationJson,
+          presentationRequest: pres.presentationRequest,
+          poolAgentId: input.poolAgentId,
+        },
+        chain: chain.chain,
+      },
+    )
+    return { ok: true, proposalSubject: result.proposalSubject, txHash: result.txHash }
   } catch (err) {
-    return {
-      ok: false,
-      proposal: null as unknown as GrantProposal,
-      intentRevertedToExpressed: false,
-      error: err instanceof Error ? err.message : String(err),
-    }
+    return { ok: false, error: err instanceof Error ? err.message : String(err) }
   }
 }
 

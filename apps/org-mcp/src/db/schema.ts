@@ -194,40 +194,12 @@ export const orgCrossDelegationGrants = sqliteTable('org_cross_delegation_grants
   revokedAt: text('revoked_at'),
 })
 
-// ─── Spec 003: Intent Marketplace — Proposal Lane ─────────────────────────
-// Body of `sa:GrantProposal` (per IA § 2.3) — always private, never anchored
-// on chain in v1, never mirrored to GraphDB. SHACL
-// `sa:GrantProposalAlwaysPrivateShape` enforces the no-anchor invariant.
-// Steward read access flows through a `proposal:read_for_review`
-// cross-delegation issued at submit time (see packages/sdk/src/marketplace-scopes.ts).
-export const proposalSubmissions = sqliteTable('proposal_submissions', {
-  id: text('id').primaryKey(),
-  // = proposerAgentId (org-mcp tenancy column; per IA § 2.3 "principal").
-  // Org proposers are the common case; tenancy column kept as `principal`
-  // (NOT `org_principal`) per the IA classification doc's column naming.
-  principal: text('principal').notNull(),
-  roundId: text('round_id'),                                    // null for open-call (Q5)
-  fundMandateId: text('fund_mandate_id'),                       // required when roundId is null
-  basedOnIntentId: text('based_on_intent_id').notNull(),
-  /** Short human-readable title. Required at submit time; empty default
-   *  applies only to legacy rows. */
-  displayName: text('display_name').notNull().default(''),
-  budget: text('budget').notNull(),                             // JSON: { lineItems[], total }
-  plan: text('plan').notNull(),                                 // JSON: { narrative, planArtifactRef? }
-  milestones: text('milestones').notNull(),                     // JSON array
-  desiredOutcomes: text('desired_outcomes').notNull(),          // JSON array
-  reportingObligations: text('reporting_obligations').notNull(),// JSON: { cadence, format }
-  organisationalBackground: text('organisational_background').notNull(), // JSON
-  submittedAt: text('submitted_at'),                            // ISO-8601; null while draft
-  version: integer('version').notNull().default(0),
-  lastEditedAt: text('last_edited_at').notNull(),
-  status: text('status').notNull().default('draft'),            // draft|submitted|withdrawn|awarded|declined
-  withdrawnAt: text('withdrawn_at'),
-  clonedFromProposalId: text('cloned_from_proposal_id'),
-  basis: text('basis'),                                         // JSON: RankBasis snapshot at submit time
-  visibility: text('visibility').notNull().default('private'),  // ALWAYS 'private' (SHACL backstop)
-  createdAt: text('created_at').notNull(),
-})
+// ─── Spec 004 v2: proposal_submissions DROPPED ────────────────────────────
+// Submitted proposals are authoritative on chain in `GrantProposalRegistry`.
+// Drafts (status='draft') stay in person-mcp's own proposal_submissions
+// table; org-mcp doesn't carry draft state. Readers that previously joined
+// against this table (rounds.ts counter, proposalVotes.ts tally filter)
+// now stub-return until the on-chain → GraphDB sync (R8) lands.
 
 // Round body lives in the FUND'S org-mcp tenant (per IA § 2.4). Rounds are
 // pre-seeded for spec 003 (round authoring is out of scope); this is the
@@ -297,47 +269,18 @@ export const outcomeAttestations = sqliteTable('outcome_attestations', {
   createdAt: text('created_at').notNull(),
 })
 
-// ─── Voting (Sprint A) ──────────────────────────────────────────────
-// One ballot per (round, proposal, voter). Vote changes are UPSERTs —
-// stewards may revise pre-finalize per the user's decision.
-// Bodies are off-chain (IA P5 — votes never reach GraphDB); the on-chain
-// commit is the awards Merkle root that the close-round flow produces
-// from the final tally.
-export const proposalVotes = sqliteTable('proposal_votes', {
-  id: text('id').primaryKey(),                                  // random uuid
-  roundId: text('round_id').notNull(),                          // URN form
-  proposalId: text('proposal_id').notNull(),
-  voterAgentId: text('voter_agent_id').notNull(),               // person OR org agent
-  vote: text('vote', { enum: ['approve', 'reject', 'abstain'] }).notNull(),
-  weight: integer('weight').notNull().default(1),               // 1 for steward-quorum
-  rationale: text('rationale'),                                 // optional 1-2 line reason
-  signature: text('signature'),                                 // EIP-712 sig; nullable for v1 demo
-  castAt: text('cast_at').notNull(),
-  updatedAt: text('updated_at').notNull(),
-})
+// ─── Spec 004 v2: proposal_votes DROPPED ──────────────────────────────────
+// Ballots are authoritative on chain in `VoteRegistry`. Vote uniqueness =
+// (roundSubject, proposalSubject, nullifier); the same voter can cast on
+// many proposals in a round, one ballot per proposal. Read tools
+// (`vote:list_for_*`, `vote:tally_for_round`) stub to empty until the
+// on-chain → GraphDB sync (R8) lands.
 
-// ─── Spec 001: Intent Marketplace — Direct Lane ────────────────────────────
-// match_initiations — body of `sa:MatchInitiation` (initiator-owned per IA § 2.1).
-// org-mcp twin of person-mcp's `match_initiations` table; tenancy column kept
-// as `principal` (NOT `org_principal`) to match the IA classification doc and
-// the contract's `principal === initiatorAgentId` invariant. The `principal`
-// here is the initiator's on-chain agent address (lowercased) when the
-// initiator is an org.
-export const matchInitiations = sqliteTable('match_initiations', {
-  id: text('id').primaryKey(),
-  principal: text('principal').notNull(),                   // = initiatorAgentId
-  viewedIntentId: text('viewed_intent_id').notNull(),
-  candidateIntentId: text('candidate_intent_id').notNull(),
-  initiatorAgentId: text('initiator_agent_id').notNull(),   // redundant mirror of principal
-  initiationKind: text('initiation_kind').notNull(),        // 'self' | 'connector'
-  proposedAt: text('proposed_at').notNull(),
-  basis: text('basis').notNull(),                           // JSON: RankBasis snapshot
-  status: text('status').notNull().default('pending'),
-  visibility: text('visibility').notNull().default('private'),
-  onChainAssertionId: text('on_chain_assertion_id'),
-  createdAt: text('created_at').notNull(),
-  updatedAt: text('updated_at').notNull(),
-})
+// ─── Spec 004 v2: match_initiations DROPPED ───────────────────────────────
+// MatchInitiation bodies are authoritative on chain in
+// `MatchInitiationRegistry`. The org-mcp `match_initiation:read` tool
+// stubs to empty until R8 (GraphDB sync); web/Discovery readers should
+// scan the registry's events for the viewed/candidate intents.
 
 // ─── Spec 002: Intent Marketplace — Pool Lane (Phase 0.3 — counters + cache) ─
 // Pool *body* (mandate, governance model, etc.) is the source-of-truth on
@@ -357,27 +300,11 @@ export const matchInitiations = sqliteTable('match_initiations', {
 // reader of this column existed when audited; reintroduce a slim table only
 // if a real product need surfaces.
 
-// pool_pledges — org-mcp twin of person-mcp's pool_pledges (orgs can also
-// donate). principal = pledgerAgentId.
-export const poolPledges = sqliteTable('pool_pledges', {
-  id: text('id').primaryKey(),
-  principal: text('principal').notNull(),                       // = pledgerAgentId
-  poolAgentId: text('pool_agent_id').notNull(),
-  cadence: text('cadence').notNull(),
-  unit: text('unit').notNull(),
-  amount: integer('amount').notNull(),
-  duration: integer('duration'),
-  restrictions: text('restrictions'),
-  storyPermissions: text('story_permissions').notNull(),
-  pledgedAt: text('pledged_at').notNull(),
-  stoppedAt: text('stopped_at'),
-  status: text('status').notNull().default('active'),
-  history: text('history').notNull().default('[]'),
-  visibility: text('visibility').notNull().default('private'),
-  onChainAssertionId: text('on_chain_assertion_id'),
-  createdAt: text('created_at').notNull(),
-  updatedAt: text('updated_at').notNull(),
-})
+// ─── Spec 004 v2: pool_pledges DROPPED ────────────────────────────────────
+// Pledges are authoritative on chain in `PledgeRegistry`. Pool counters
+// (pledgedTotal/allocatedTotal/availableTotal) become event-scan derivations
+// once R8 (on-chain → GraphDB sync) lands; until then `getPoolCounters`
+// returns zeros so the pool detail page can render without crashing.
 
 // ─── Engagement provider-side state ────────────────────────────────────────
 

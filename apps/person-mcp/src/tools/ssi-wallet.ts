@@ -25,7 +25,7 @@ import {
 import { db } from '../db/index.js'
 import { ssiProofAudit } from '../db/schema.js'
 import { listHolderWalletsForPrincipal, getHolderWalletById } from '../ssi/storage/wallets.js'
-import { listCredentialMetadata, getCredentialMetadataById } from '../ssi/storage/cred-metadata.js'
+import { listCredentialMetadata, getCredentialMetadataById, findMarketplaceCredentialForRegistry } from '../ssi/storage/cred-metadata.js'
 import { getCredential } from '../ssi/storage/askar.js'
 import { listProofAuditByPrincipal } from '../ssi/storage/proof-audit.js'
 
@@ -223,6 +223,11 @@ interface FinishExchangeArgs {
   schemaId: string
   /** Optional — smart-account address of the org this credential references. */
   targetOrgAddress?: string
+  /** Spec 004 (b2) — admin→holder on-chain delegation JSON to persist
+   *  alongside the AnonCred. */
+  adminDelegationJson?: string
+  /** Spec 004 (b2) — registry address the admin delegation gates. */
+  adminDelegationTarget?: string
 }
 const finishCredentialExchange = {
   name: 'ssi_finish_credential_exchange',
@@ -237,6 +242,8 @@ const finishCredentialExchange = {
       credentialType: { type: 'string' },
       issuerId: { type: 'string' },
       schemaId: { type: 'string' },
+      adminDelegationJson: { type: 'string' },
+      adminDelegationTarget: { type: 'string' },
     },
     required: ['principal', 'holderWalletId', 'requestId', 'credentialJson', 'credentialType', 'issuerId', 'schemaId'],
   },
@@ -244,6 +251,8 @@ const finishCredentialExchange = {
     // /credentials/store persists the canonical credential_metadata row
     // (keyed on holderWalletId). The previous mirror table in person-mcp's
     // drizzle DB is gone post-merge.
+    console.log('[ssi_finish_credential_exchange] adminDelegationJson present=%s target=%s',
+      !!args.adminDelegationJson, args.adminDelegationTarget)
     const res = await forward('/credentials/store', {
       holderWalletId: args.holderWalletId,
       requestId: args.requestId,
@@ -252,6 +261,8 @@ const finishCredentialExchange = {
       issuerId: args.issuerId,
       schemaId: args.schemaId,
       ...(args.targetOrgAddress ? { targetOrgAddress: args.targetOrgAddress } : {}),
+      ...(args.adminDelegationJson ? { adminDelegationJson: args.adminDelegationJson } : {}),
+      ...(args.adminDelegationTarget ? { adminDelegationTarget: args.adminDelegationTarget } : {}),
     })
     return mcpText(res)
   },
@@ -597,6 +608,61 @@ const getCredentialDetails = {
   },
 }
 
+// ─── Spec 004 (b2) — marketplace admin-delegation lookup ────────────────────
+//
+// Returns the most-recent active marketplace credential row that's
+// bound to a given target registry (= AllowedTargets caveat of the
+// admin→holder delegation). The action layer calls this before
+// invoking a marketplace MCP tool so it can rebuild the redeem chain.
+const getMarketplaceDelegation = {
+  name: 'ssi_get_marketplace_delegation',
+  description:
+    "Find a marketplace credential's stored admin→holder delegation for a target registry. Returns { adminDelegation, credentialType, ... } or { found: false }.",
+  inputSchema: {
+    type: 'object' as const,
+    properties: {
+      principal: { type: 'string' },
+      walletContext: { type: 'string' },
+      targetRegistry: { type: 'string' },
+      credentialType: { type: 'string' },
+    },
+    required: ['principal', 'targetRegistry'],
+  },
+  handler: async (args: {
+    principal: string
+    walletContext?: string
+    targetRegistry: string
+    credentialType?: string
+  }) => {
+    const wallets = listHolderWalletsForPrincipal(args.principal)
+      .filter((w) => !args.walletContext || w.walletContext === args.walletContext)
+    for (const w of wallets) {
+      const row = findMarketplaceCredentialForRegistry(
+        w.id,
+        args.targetRegistry,
+        args.credentialType,
+      )
+      if (row?.adminDelegationJson) {
+        let parsed: unknown
+        try {
+          parsed = JSON.parse(row.adminDelegationJson)
+        } catch {
+          return mcpText({ found: false as const, error: 'malformed adminDelegationJson' })
+        }
+        return mcpText({
+          found: true as const,
+          credentialId: row.id,
+          credentialType: row.credentialType,
+          adminDelegation: parsed,
+          adminDelegationTarget: row.adminDelegationTarget,
+          holderWalletRef: w.id,
+        })
+      }
+    }
+    return mcpText({ found: false as const })
+  },
+}
+
 export const ssiWalletTools = {
   ssi_create_wallet_action:        createWalletAction,
   ssi_provision_wallet:            provisionWallet,
@@ -609,4 +675,5 @@ export const ssiWalletTools = {
   ssi_rotate_link_secret:          rotateLinkSecret,
   ssi_match_against_public_set:    matchAgainstPublicSet,
   ssi_get_credential_details:      getCredentialDetails,
+  ssi_get_marketplace_delegation:  getMarketplaceDelegation,
 }

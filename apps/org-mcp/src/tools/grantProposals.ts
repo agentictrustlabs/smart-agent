@@ -25,13 +25,44 @@
  */
 import { randomUUID } from 'node:crypto'
 import { and, eq } from 'drizzle-orm'
+import { keccak256, encodePacked } from 'viem'
 import { db } from '../db/index.js'
 import {
-  proposalSubmissions,
   orgIntents,
   orgCrossDelegationGrants,
 } from '../db/schema.js'
 import { requireOrgPrincipalAny as requireOrgPrincipal } from '../auth/principal-context.js'
+import { GrantProposalRegistryClient, fundRegistryAbi } from '@smart-agent/sdk'
+import { callA2aRedeemWithChain, type SignedDelegation } from '../lib/a2a-client.js'
+import {
+  requireGrantProposalRegistryAddress,
+  requireFundRegistryAddress,
+  getPublicClient,
+} from '../lib/contracts.js'
+
+/** Spec 004 v2 — resolve a round's pool agent from on-chain truth
+ *  (FundRegistry.getRoundPoolAgent) rather than trusting the caller's
+ *  claim. Used to lock the AnonCreds expectedAttribute so a cred for
+ *  pool A can't submit/edit/withdraw against a round operated by pool B. */
+async function resolveRoundPoolAgent(roundSubject: `0x${string}`): Promise<`0x${string}` | null> {
+  const client = getPublicClient()
+  const addr = await client.readContract({
+    address: requireFundRegistryAddress(),
+    abi: fundRegistryAbi,
+    functionName: 'getRoundPoolAgent',
+    args: [roundSubject],
+  }) as `0x${string}`
+  if (!addr || addr === '0x0000000000000000000000000000000000000000') return null
+  return addr.toLowerCase() as `0x${string}`
+}
+
+/** Reverse of FundRegistry.roundSubject(slug). */
+function roundSubjectFromUrn(roundIdUrn: string): `0x${string}` {
+  const slug = roundIdUrn.startsWith('urn:smart-agent:round:')
+    ? roundIdUrn.slice('urn:smart-agent:round:'.length)
+    : roundIdUrn
+  return keccak256(encodePacked(['string', 'string'], ['sa:round:', slug]))
+}
 
 const mcpText = <T>(v: T) => ({ content: [{ type: 'text' as const, text: JSON.stringify(v) }] })
 
@@ -83,6 +114,20 @@ interface SubmitArgs {
    *  cards, and the proposal detail page. */
   displayName: string
   basedOnIntentId: string
+  /** Spec 004 — when present, gate the submit on AnonCreds verification
+   *  of a ProposalSubmitterCredential rather than principal-from-token.
+   *  The credential must bind `poolAgentId` matching the round's pool.
+   *  Mutually exclusive with the principal path: when set, the row's
+   *  `principal` column is left empty and a `nullifier_hash` is stored
+   *  in its place. */
+  presentation?: {
+    presentationJson: string
+    presentationRequest: Record<string, unknown>
+    /** poolAgentId the credential must be bound to (matched against the
+     *  credential's `poolAgentId` attribute). The submit handler will
+     *  verify this matches the round's pool. */
+    poolAgentId: string
+  }
   budget: Budget
   plan: PlanShape
   milestones: Milestone[]
@@ -105,6 +150,16 @@ interface SubmitArgs {
    *  resolves it via `DiscoveryService.getRoundDetail`; required because the
    *  MCP layer no longer reads the round body. */
   stewardAgentHint?: string
+  /** Spec 004 — a2a-agent session id; injected by the gateway so the
+   *  submit handler can call `/session/:id/redeem-with-chain` to write
+   *  the proposal row on chain. */
+  _a2aSessionId?: string
+  /** Spec 004 (b2) — chained-delegation redeem. Root first, leaf last.
+   *  Root is the admin→holder delegation signed at credential issuance;
+   *  leaf is the holder→session leaf freshly minted by the web client
+   *  (authority = hash(admin→holder)). The chain leaf's delegate must
+   *  equal the a2a session key. */
+  chain: SignedDelegation[]
 }
 
 type SubmitErrorKind =
@@ -242,13 +297,12 @@ function issueReadForReviewGrant(opts: {
 const submitTool = {
   name: 'grant_proposal:submit',
   description:
-    "Validate a proposal against the target round/fund and persist as 'submitted'. Cascades counter +1, ack-count +1, and cross-delegation grant. Always private — never anchored on chain.",
+    "Submit a GrantProposal to GrantProposalRegistry on chain. Nullifier-keyed (no submitter identity stored). REQUIRES a ProposalSubmitterCredential presentation — no principal-gated fallback (spec 004 no-fallback decision).",
   inputSchema: {
     type: 'object' as const,
     properties: {
       token: { type: 'string' },
-      roundId: { type: 'string' },
-      fundMandateId: { type: 'string' },
+      roundId: { type: 'string' },                 // URN or slug; converted to subject
       displayName: { type: 'string' },
       basedOnIntentId: { type: 'string' },
       budget: { type: 'object' },
@@ -258,31 +312,28 @@ const submitTool = {
       reportingObligations: { type: 'object' },
       organisationalBackground: { type: 'object' },
       basis: { type: 'object' },
-      draftId: { type: 'string' },
+      presentation: {
+        type: 'object',
+        properties: {
+          presentationJson: { type: 'string' },
+          presentationRequest: { type: 'object' },
+          poolAgentId: { type: 'string' },
+        },
+        required: ['presentationJson', 'presentationRequest', 'poolAgentId'],
+      },
+      chain: { type: 'array', items: { type: 'object' } },
     },
-    required: ['token', 'displayName', 'basedOnIntentId', 'budget', 'plan', 'milestones', 'desiredOutcomes', 'reportingObligations', 'organisationalBackground'],
+    required: ['token', 'roundId', 'displayName', 'basedOnIntentId', 'budget', 'plan', 'milestones', 'desiredOutcomes', 'reportingObligations', 'organisationalBackground', 'presentation', 'chain'],
   },
   handler: async (args: SubmitArgs) => {
-    const orgPrincipal = await requireOrgPrincipal(args.token, args, 'grant_proposal:submit')
+    await requireOrgPrincipal(args.token, args, 'grant_proposal:submit')
     if (!args.displayName || !args.displayName.trim()) {
       return err({ kind: 'missing-required-fields', fields: ['displayName'] })
     }
 
-    // ─── Q3: roundId XOR fundMandateId ────────────────────────────────
-    const hasRound = !!args.roundId
-    const hasFund = !!args.fundMandateId
-    if (hasRound === hasFund) {
-      return err({
-        kind: 'validation',
-        messages: ['exactly one of roundId / fundMandateId must be set (Q3)'],
-      })
-    }
-
-    // ─── Required-fields presence check ────────────────────────────────
+    // ─── Required-fields gate ──────────────────────────────────────────
     const missing: string[] = []
-    if (!args.budget || !Array.isArray(args.budget.lineItems) || args.budget.lineItems.length === 0) {
-      missing.push('budget')
-    }
+    if (!args.budget || !Array.isArray(args.budget.lineItems) || args.budget.lineItems.length === 0) missing.push('budget')
     if (!args.plan || !args.plan.narrative) missing.push('plan')
     if (!Array.isArray(args.milestones) || args.milestones.length === 0) missing.push('milestones')
     if (!Array.isArray(args.desiredOutcomes) || args.desiredOutcomes.length === 0) missing.push('desiredOutcomes')
@@ -291,23 +342,41 @@ const submitTool = {
     if (missing.length > 0) {
       return err({ kind: 'missing-required-fields', fields: missing })
     }
+    if (!args.presentation) {
+      return err({ kind: 'validation', messages: ['ProposalSubmitterCredential presentation required (no fallback)'] })
+    }
+    if (!args.roundId) {
+      return err({ kind: 'validation', messages: ['roundId required'] })
+    }
 
-    // ─── Round / fund body validation ─────────────────────────────────
-    // POST-PHASE-7: round body lives on chain in FundRegistry. Body
-    // validation (budget ceiling, required credentials, private-round
-    // addressee, open-call eligibility) is the action-layer's responsibility
-    // — it pre-validates against DiscoveryService.getRoundDetail BEFORE
-    // calling this tool. The MCP layer trusts the action-layer gate; SHACL
-    // still enforces the always-private invariant on the row.
-    void checkCredentialsHeld  // referenced indirectly; kept for forward-compat
-    void hasFund
+    // ─── Verify AnonCreds presentation ─────────────────────────────────
+    // Spec 004 v2 — poolAgentId is sourced from FundRegistry's on-chain
+    // round → pool mapping, NOT from the caller. Otherwise a caller
+    // could pass `args.presentation.poolAgentId = <their-cred's-pool>`
+    // and the verifier would happily confirm the cred matches the
+    // *claim* — even if the round belongs to a different pool.
+    const { verifyPresentation } = await import('../auth/verify-presentation.js')
+    const { resolveOnChainResolver } = await import('../auth/on-chain-resolver.js')
+    const roundSubject = roundSubjectFromUrn(args.roundId)
+    const roundPoolAgent = await resolveRoundPoolAgent(roundSubject)
+    if (!roundPoolAgent) {
+      return err({ kind: 'validation', messages: [`round ${args.roundId} not bound to a pool on chain`] })
+    }
+    const result = await verifyPresentation({
+      resolver: resolveOnChainResolver(),
+      credentialType: 'ProposalSubmitterCredential',
+      presentationJson: args.presentation.presentationJson,
+      presentationRequest: args.presentation.presentationRequest,
+      expectedAttributes: { poolAgentId: roundPoolAgent },
+      nullifierContext: `proposal:${roundSubject}`,
+    })
+    if (!result.ok) {
+      return err({ kind: 'validation', messages: [`presentation rejected: ${result.error}`] })
+    }
+    const nullifier = result.nullifierHash as `0x${string}`
 
-    // ─── Insert the row ───────────────────────────────────────────────
-    const now = nowIso()
-    const proposalId = args.draftId ?? randomUUID()
+    // ─── Build basis JSON (cold-start placeholder if action layer didn't supply) ─
     const basisJson = JSON.stringify(args.basis ?? {
-      // Placeholder basis when the action layer didn't supply one. The SDK
-      // proposerSideSignals helper is the canonical computation.
       proximityHops: 0,
       proximityScore: 1,
       priorOutcomes: { fulfilled: 0, abandoned: 0 },
@@ -316,85 +385,55 @@ const submitTool = {
       isColdStart: true,
     })
 
-    const row = {
-      id: proposalId,
-      principal: orgPrincipal,
-      roundId: args.roundId ?? null,
-      fundMandateId: args.fundMandateId ?? null,
+    // ─── Redeem GrantProposalRegistry.submit on chain (spec 004 b2) ────
+    const sessionId = args._a2aSessionId
+    if (!sessionId) {
+      return err({ kind: 'validation', messages: ['_a2aSessionId missing'] })
+    }
+    if (!Array.isArray(args.chain) || args.chain.length === 0) {
+      return err({ kind: 'validation', messages: ['chain missing — grant_proposal:submit requires the admin→holder→session delegation chain (spec 004 b2)'] })
+    }
+    const callData = GrantProposalRegistryClient.encodeSubmit({
+      roundSubject,
+      nullifier,
       displayName: args.displayName.trim(),
       basedOnIntentId: args.basedOnIntentId,
-      budget: JSON.stringify(args.budget),
-      plan: JSON.stringify(args.plan),
-      milestones: JSON.stringify(args.milestones),
-      desiredOutcomes: JSON.stringify(args.desiredOutcomes),
-      reportingObligations: JSON.stringify(args.reportingObligations),
-      organisationalBackground: JSON.stringify(args.organisationalBackground),
-      submittedAt: now,
-      version: 0,
-      lastEditedAt: now,
-      status: 'submitted' as const,
-      withdrawnAt: null,
-      clonedFromProposalId: null,
-      basis: basisJson,
-      visibility: 'private' as const,
-      createdAt: now,
-    }
-    if (args.draftId) {
-      // Transition existing draft → submitted (UPDATE).
-      db.update(proposalSubmissions)
-        .set({
-          roundId: row.roundId,
-          fundMandateId: row.fundMandateId,
-          displayName: row.displayName,
-          basedOnIntentId: row.basedOnIntentId,
-          budget: row.budget,
-          plan: row.plan,
-          milestones: row.milestones,
-          desiredOutcomes: row.desiredOutcomes,
-          reportingObligations: row.reportingObligations,
-          organisationalBackground: row.organisationalBackground,
-          submittedAt: now,
-          lastEditedAt: now,
-          status: 'submitted',
-          basis: basisJson,
-        })
-        .where(and(
-          eq(proposalSubmissions.id, args.draftId),
-          eq(proposalSubmissions.principal, orgPrincipal),
-        ))
-        .run()
-    } else {
-      db.insert(proposalSubmissions).values(row).run()
-    }
+      budgetJson: JSON.stringify(args.budget),
+      planJson: JSON.stringify(args.plan),
+      milestonesJson: JSON.stringify(args.milestones),
+      outcomesJson: JSON.stringify(args.desiredOutcomes),
+      reportingJson: JSON.stringify(args.reportingObligations),
+      orgBackgroundJson: JSON.stringify(args.organisationalBackground),
+      basisJson,
+    })
+    const tx = await callA2aRedeemWithChain(sessionId, {
+      mcpTool: 'grant_proposal:submit',
+      mcpCallId: randomUUID(),
+      target: requireGrantProposalRegistryAddress(),
+      value: 0n,
+      callData,
+      chain: args.chain,
+    })
 
-    // ─── Side effect 1: round counter +1 (FR-013) ─────────────────────
-    if (hasRound && args.roundId) bumpRoundCounter(args.roundId, 1)
+    // Compute the same subject the contract will derive for the response.
+    const gpSubject = keccak256(encodePacked(
+      ['string', 'bytes32', 'bytes32'],
+      ['sa:grantProposal:', roundSubject, nullifier],
+    ))
 
-    // ─── Side effect 2: ack-count +1 on the basedOnIntent owner ───────
-    bumpAckCount(args.basedOnIntentId, 1, orgPrincipal)
+    // Side effects (round counter, ack-count, cross-delegation) are
+    // retired in the on-chain model:
+    // - counter is now derived from GrantProposalRegistry event scans
+    // - ack-count is queued for spec-001 cross-MCP refactor
+    // - cross-delegation is obsolete (body is public on chain)
 
-    // ─── Side effect 3: proposal:read_for_review cross-delegation ─────
-    // Fund/round steward = the round's fundAgent (lives on chain in
-    // FundRegistry). The action layer resolves it via DiscoveryService and
-    // passes it in `stewardAgentHint`; for open-call we fall back to
-    // fundMandateId.
-    const stewardAgent: string | null = args.stewardAgentHint
-      ?? (hasFund ? (args.fundMandateId ?? null) : null)
-    if (stewardAgent) {
-      issueReadForReviewGrant({
-        proposerPrincipal: orgPrincipal,
-        fundAgentId: stewardAgent,
-        roundId: args.roundId ?? null,
-        fundMandateId: args.fundMandateId ?? null,
-        proposalId,
-      })
-    } else {
-      console.warn(
-        `[org-mcp/grantProposals] no steward agent resolvable for proposal ${proposalId}; cross-delegation grant skipped. Pass stewardAgentHint when calling submit.`,
-      )
-    }
-
-    return mcpText({ ok: true as const, proposal: row })
+    return mcpText({
+      ok: true as const,
+      txHash: tx.txHash,
+      proposalSubject: gpSubject,
+      nullifier,
+      anonymous: true as const,
+    })
   },
 }
 
@@ -424,87 +463,16 @@ const draftTool = {
     },
     required: ['token'],
   },
-  handler: async (args: {
-    token: string
-    proposalId?: string
-    roundId?: string | null
-    fundMandateId?: string | null
-    displayName?: string
-    basedOnIntentId?: string
-    budget?: Budget
-    plan?: PlanShape
-    milestones?: Milestone[]
-    desiredOutcomes?: DesiredOutcome[]
-    reportingObligations?: ReportingObligations
-    organisationalBackground?: OrganisationalBackground
-  }) => {
-    const orgPrincipal = await requireOrgPrincipal(args.token, args, 'grant_proposal:draft')
-    const now = nowIso()
-
-    if (args.proposalId) {
-      // Update an existing draft.
-      const existing = db.select().from(proposalSubmissions)
-        .where(and(
-          eq(proposalSubmissions.id, args.proposalId),
-          eq(proposalSubmissions.principal, orgPrincipal),
-        ))
-        .all()
-      if (existing.length === 0) {
-        throw new Error(`draft ${args.proposalId} not found for principal`)
-      }
-      if (existing[0].status !== 'draft') {
-        throw new Error(`proposal ${args.proposalId} is not in 'draft' state (status=${existing[0].status})`)
-      }
-      const patch: Record<string, unknown> = { lastEditedAt: now }
-      if (args.roundId !== undefined) patch.roundId = args.roundId
-      if (args.fundMandateId !== undefined) patch.fundMandateId = args.fundMandateId
-      if (args.displayName !== undefined) patch.displayName = args.displayName.trim()
-      if (args.basedOnIntentId !== undefined) patch.basedOnIntentId = args.basedOnIntentId
-      if (args.budget !== undefined) patch.budget = JSON.stringify(args.budget)
-      if (args.plan !== undefined) patch.plan = JSON.stringify(args.plan)
-      if (args.milestones !== undefined) patch.milestones = JSON.stringify(args.milestones)
-      if (args.desiredOutcomes !== undefined) patch.desiredOutcomes = JSON.stringify(args.desiredOutcomes)
-      if (args.reportingObligations !== undefined) patch.reportingObligations = JSON.stringify(args.reportingObligations)
-      if (args.organisationalBackground !== undefined) patch.organisationalBackground = JSON.stringify(args.organisationalBackground)
-      db.update(proposalSubmissions).set(patch)
-        .where(and(
-          eq(proposalSubmissions.id, args.proposalId),
-          eq(proposalSubmissions.principal, orgPrincipal),
-        ))
-        .run()
-      const updated = db.select().from(proposalSubmissions)
-        .where(eq(proposalSubmissions.id, args.proposalId))
-        .all()[0]
-      return mcpText({ proposal: updated })
-    }
-
-    // Create a fresh draft.
-    const id = randomUUID()
-    const row = {
-      id,
-      principal: orgPrincipal,
-      roundId: args.roundId ?? null,
-      fundMandateId: args.fundMandateId ?? null,
-      displayName: (args.displayName ?? '').trim(),
-      basedOnIntentId: args.basedOnIntentId ?? '',
-      budget: JSON.stringify(args.budget ?? { lineItems: [], total: 0 }),
-      plan: JSON.stringify(args.plan ?? { narrative: '' }),
-      milestones: JSON.stringify(args.milestones ?? []),
-      desiredOutcomes: JSON.stringify(args.desiredOutcomes ?? []),
-      reportingObligations: JSON.stringify(args.reportingObligations ?? { cadence: 'none', format: 'written' }),
-      organisationalBackground: JSON.stringify(args.organisationalBackground ?? { narrative: '' }),
-      submittedAt: null,
-      version: 0,
-      lastEditedAt: now,
-      status: 'draft' as const,
-      withdrawnAt: null,
-      clonedFromProposalId: null,
-      basis: null,
-      visibility: 'private' as const,
-      createdAt: now,
-    }
-    db.insert(proposalSubmissions).values(row).run()
-    return mcpText({ proposal: row })
+  // Spec 004 v2 — `proposal_submissions` dropped from org-mcp; drafts
+  // live in person-mcp (the proposer's MCP). Org-mcp no longer carries
+  // proposer-side draft state — clients should call person-mcp's
+  // `grant_proposal:draft` instead. Stubbed to error so callers fail
+  // fast rather than silently writing nowhere.
+  handler: async (args: { token: string }) => {
+    await requireOrgPrincipal(args.token, args, 'grant_proposal:draft')
+    return mcpText({
+      error: 'grant_proposal:draft moved to person-mcp; org-mcp no longer carries proposer-side draft state (spec 004 v2)',
+    })
   },
 }
 
@@ -523,13 +491,13 @@ const readSelfTool = {
     },
     required: ['token'],
   },
+  // Spec 004 v2 — submitted rows live on chain (GrantProposalRegistry);
+  // drafts live in person-mcp. Org-mcp returns empty until the
+  // on-chain → GraphDB sync (R8) wires up a per-principal index.
   handler: async (args: { token: string; status?: string }) => {
-    const orgPrincipal = await requireOrgPrincipal(args.token, args, 'grant_proposal:read_self')
-    let rows = db.select().from(proposalSubmissions)
-      .where(eq(proposalSubmissions.principal, orgPrincipal))
-      .all()
-    if (args.status) rows = rows.filter((r) => r.status === args.status)
-    return mcpText({ proposals: rows })
+    await requireOrgPrincipal(args.token, args, 'grant_proposal:read_self')
+    void args
+    return mcpText({ proposals: [] })
   },
 }
 
@@ -554,17 +522,11 @@ const listForMemberTool = {
     },
     required: ['token'],
   },
+  // Spec 004 v2 — same shape as read_self; queued behind R8.
   handler: async (args: { token: string; agentId?: string }) => {
-    const orgPrincipal = await requireOrgPrincipal(args.token, args, 'grant_proposal:list_for_member')
-    const rows = db.select().from(proposalSubmissions)
-      .where(eq(proposalSubmissions.principal, orgPrincipal))
-      .all()
-    const sorted = [...rows].sort((a, b) => {
-      const ta = Date.parse(a.lastEditedAt ?? '') || 0
-      const tb = Date.parse(b.lastEditedAt ?? '') || 0
-      return tb - ta
-    })
-    return mcpText({ proposals: sorted })
+    await requireOrgPrincipal(args.token, args, 'grant_proposal:list_for_member')
+    void args
+    return mcpText({ proposals: [] })
   },
 }
 
@@ -598,14 +560,13 @@ const listForRoundTool = {
     },
     required: ['token', 'roundId'],
   },
+  // Spec 004 v2 — submitted proposals on chain. Steward list query
+  // requires a GrantProposalRegistry event scan grouped by
+  // roundSubject; queued behind R8.
   handler: async (args: { token: string; roundId: string }) => {
     await requireOrgPrincipal(args.token, args, 'grant_proposal:list_for_round')
-    const rows = db.select().from(proposalSubmissions)
-      .where(eq(proposalSubmissions.roundId, args.roundId))
-      .all()
-    // Drop drafts — stewards never see draft rows.
-    const visible = rows.filter((r) => r.status !== 'draft')
-    return mcpText({ proposals: visible })
+    void args
+    return mcpText({ proposals: [] })
   },
 }
 
@@ -631,13 +592,11 @@ const countForRoundTool = {
     },
     required: ['token', 'roundId'],
   },
+  // Spec 004 v2 — derived from GrantProposalRegistry events (R8 dependency).
   handler: async (args: { token: string; roundId: string }) => {
     await requireOrgPrincipal(args.token, args, 'grant_proposal:count_for_round')
-    const rows = db.select().from(proposalSubmissions)
-      .where(eq(proposalSubmissions.roundId, args.roundId))
-      .all()
-    const count = rows.filter((r) => r.status !== 'draft').length
-    return mcpText({ count })
+    void args
+    return mcpText({ count: 0 })
   },
 }
 
@@ -668,51 +627,95 @@ const editPreDeadlineTool = {
     type: 'object' as const,
     properties: {
       token: { type: 'string' },
-      proposalId: { type: 'string' },
+      roundId: { type: 'string' },
       patch: { type: 'object' },
+      presentation: {
+        type: 'object',
+        properties: {
+          presentationJson: { type: 'string' },
+          presentationRequest: { type: 'object' },
+          poolAgentId: { type: 'string' },
+        },
+        required: ['presentationJson', 'presentationRequest', 'poolAgentId'],
+      },
+      chain: { type: 'array', items: { type: 'object' } },
     },
-    required: ['token', 'proposalId', 'patch'],
+    required: ['token', 'roundId', 'patch', 'presentation', 'chain'],
   },
   handler: async (args: {
     token: string
-    proposalId: string
+    roundId: string
     patch: EditableFields
+    presentation: {
+      presentationJson: string
+      presentationRequest: Record<string, unknown>
+      poolAgentId: string
+    }
+    chain: SignedDelegation[]
+    _a2aSessionId?: string
   }) => {
-    const orgPrincipal = await requireOrgPrincipal(args.token, args, 'grant_proposal:edit_pre_deadline')
-    const existing = db.select().from(proposalSubmissions)
-      .where(and(
-        eq(proposalSubmissions.id, args.proposalId),
-        eq(proposalSubmissions.principal, orgPrincipal),
-      ))
-      .all()[0]
-    if (!existing) {
-      throw new Error(`proposal ${args.proposalId} not found for principal`)
+    await requireOrgPrincipal(args.token, args, 'grant_proposal:edit_pre_deadline')
+
+    // Verify the presentation. The nullifier derives the on-chain
+    // proposalSubject the same way submit did — only the original
+    // submitter (same credential) can produce a matching nullifier,
+    // so the registry's onlyRoundOperator check + nullifier match is
+    // a sufficient ownership proof.
+    // Spec 004 v2 — poolAgentId from on-chain truth (see resolveRoundPoolAgent).
+    const { verifyPresentation } = await import('../auth/verify-presentation.js')
+    const { resolveOnChainResolver } = await import('../auth/on-chain-resolver.js')
+    const roundSubject = roundSubjectFromUrn(args.roundId)
+    const roundPoolAgent = await resolveRoundPoolAgent(roundSubject)
+    if (!roundPoolAgent) {
+      return err({ kind: 'validation', messages: [`round ${args.roundId} not bound to a pool on chain`] })
     }
-    if (existing.status !== 'submitted') {
-      throw new Error(`proposal ${args.proposalId} is not in 'submitted' state (status=${existing.status})`)
+    const result = await verifyPresentation({
+      resolver: resolveOnChainResolver(),
+      credentialType: 'ProposalSubmitterCredential',
+      presentationJson: args.presentation.presentationJson,
+      presentationRequest: args.presentation.presentationRequest,
+      expectedAttributes: { poolAgentId: roundPoolAgent },
+      nullifierContext: `proposal:${roundSubject}`,
+    })
+    if (!result.ok) {
+      return err({ kind: 'validation', messages: [`presentation rejected: ${result.error}`] })
     }
-    // POST-PHASE-7: deadline check moved to the action layer (round body
-    // lives on chain in FundRegistry; the action layer reads it via
-    // DiscoveryService.getRoundDetail and gates this call before invoking it).
-    const now = nowIso()
-    const nextVersion = (existing.version ?? 0) + 1
-    const patchSet: Record<string, unknown> = { lastEditedAt: now, version: nextVersion }
-    if (args.patch.budget !== undefined) patchSet.budget = JSON.stringify(args.patch.budget)
-    if (args.patch.plan !== undefined) patchSet.plan = JSON.stringify(args.patch.plan)
-    if (args.patch.milestones !== undefined) patchSet.milestones = JSON.stringify(args.patch.milestones)
-    if (args.patch.desiredOutcomes !== undefined) patchSet.desiredOutcomes = JSON.stringify(args.patch.desiredOutcomes)
-    if (args.patch.reportingObligations !== undefined) patchSet.reportingObligations = JSON.stringify(args.patch.reportingObligations)
-    if (args.patch.organisationalBackground !== undefined) patchSet.organisationalBackground = JSON.stringify(args.patch.organisationalBackground)
-    db.update(proposalSubmissions).set(patchSet)
-      .where(and(
-        eq(proposalSubmissions.id, args.proposalId),
-        eq(proposalSubmissions.principal, orgPrincipal),
-      ))
-      .run()
-    const updated = db.select().from(proposalSubmissions)
-      .where(eq(proposalSubmissions.id, args.proposalId))
-      .all()[0]
-    return mcpText({ ok: true as const, proposal: updated })
+    const nullifier = result.nullifierHash as `0x${string}`
+    const gpSubject = keccak256(encodePacked(
+      ['string', 'bytes32', 'bytes32'],
+      ['sa:grantProposal:', roundSubject, nullifier],
+    ))
+
+    // POST-PHASE-7 deadline check belongs to the action layer
+    // (DiscoveryService.getRoundDetail + compare against now).
+
+    const sessionId = args._a2aSessionId
+    if (!sessionId) {
+      return err({ kind: 'validation', messages: ['_a2aSessionId missing'] })
+    }
+    if (!Array.isArray(args.chain) || args.chain.length === 0) {
+      return err({ kind: 'validation', messages: ['chain missing — grant_proposal:edit_pre_deadline requires the admin→holder→session delegation chain (spec 004 b2)'] })
+    }
+    const callData = GrantProposalRegistryClient.encodeEdit({
+      proposalSubject: gpSubject,
+      patch: {
+        budgetJson:        args.patch.budget !== undefined ? JSON.stringify(args.patch.budget) : undefined,
+        planJson:          args.patch.plan !== undefined ? JSON.stringify(args.patch.plan) : undefined,
+        milestonesJson:    args.patch.milestones !== undefined ? JSON.stringify(args.patch.milestones) : undefined,
+        outcomesJson:      args.patch.desiredOutcomes !== undefined ? JSON.stringify(args.patch.desiredOutcomes) : undefined,
+        reportingJson:     args.patch.reportingObligations !== undefined ? JSON.stringify(args.patch.reportingObligations) : undefined,
+        orgBackgroundJson: args.patch.organisationalBackground !== undefined ? JSON.stringify(args.patch.organisationalBackground) : undefined,
+      },
+    })
+    const tx = await callA2aRedeemWithChain(sessionId, {
+      mcpTool: 'grant_proposal:edit_pre_deadline',
+      mcpCallId: randomUUID(),
+      target: requireGrantProposalRegistryAddress(),
+      value: 0n,
+      callData,
+      chain: args.chain,
+    })
+    return mcpText({ ok: true as const, txHash: tx.txHash, proposalSubject: gpSubject })
   },
 }
 
@@ -737,60 +740,81 @@ const withdrawTool = {
     type: 'object' as const,
     properties: {
       token: { type: 'string' },
-      proposalId: { type: 'string' },
+      roundId: { type: 'string' },
+      presentation: {
+        type: 'object',
+        properties: {
+          presentationJson: { type: 'string' },
+          presentationRequest: { type: 'object' },
+          poolAgentId: { type: 'string' },
+        },
+        required: ['presentationJson', 'presentationRequest', 'poolAgentId'],
+      },
+      chain: { type: 'array', items: { type: 'object' } },
     },
-    required: ['token', 'proposalId'],
+    required: ['token', 'roundId', 'presentation', 'chain'],
   },
-  handler: async (args: { token: string; proposalId: string }) => {
-    const orgPrincipal = await requireOrgPrincipal(args.token, args, 'grant_proposal:withdraw')
-    const existing = db.select().from(proposalSubmissions)
-      .where(and(
-        eq(proposalSubmissions.id, args.proposalId),
-        eq(proposalSubmissions.principal, orgPrincipal),
-      ))
-      .all()[0]
-    if (!existing) {
-      throw new Error(`proposal ${args.proposalId} not found for principal`)
+  handler: async (args: {
+    token: string
+    roundId: string
+    presentation: {
+      presentationJson: string
+      presentationRequest: Record<string, unknown>
+      poolAgentId: string
     }
-    if (existing.status !== 'draft' && existing.status !== 'submitted') {
-      throw new Error(`proposal ${args.proposalId} cannot be withdrawn (status=${existing.status})`)
-    }
-    const wasSubmitted = existing.status === 'submitted'
-    const now = nowIso()
-    db.update(proposalSubmissions)
-      .set({ status: 'withdrawn', withdrawnAt: now, lastEditedAt: now })
-      .where(and(
-        eq(proposalSubmissions.id, args.proposalId),
-        eq(proposalSubmissions.principal, orgPrincipal),
-      ))
-      .run()
+    chain: SignedDelegation[]
+    _a2aSessionId?: string
+  }) => {
+    await requireOrgPrincipal(args.token, args, 'grant_proposal:withdraw')
 
-    let intentRevertedToExpressed = false
-    if (wasSubmitted) {
-      // Round counter -1.
-      if (existing.roundId) bumpRoundCounter(existing.roundId, -1)
-      // Ack-count -1 on basedOnIntent.
-      const before = findIntentRow(existing.basedOnIntentId)
-      bumpAckCount(existing.basedOnIntentId, -1, orgPrincipal)
-      const after = findIntentRow(existing.basedOnIntentId)
-      // Reverted-to-expressed iff the local intent existed AND its status
-      // moved from 'acknowledged' → 'expressed' (count 1 → 0).
-      if (
-        before &&
-        after &&
-        before.status === 'acknowledged' &&
-        after.status === 'expressed'
-      ) {
-        intentRevertedToExpressed = true
-      }
+    // Spec 004 v2 — poolAgentId from on-chain truth (see resolveRoundPoolAgent).
+    const { verifyPresentation } = await import('../auth/verify-presentation.js')
+    const { resolveOnChainResolver } = await import('../auth/on-chain-resolver.js')
+    const roundSubject = roundSubjectFromUrn(args.roundId)
+    const roundPoolAgent = await resolveRoundPoolAgent(roundSubject)
+    if (!roundPoolAgent) {
+      return err({ kind: 'validation', messages: [`round ${args.roundId} not bound to a pool on chain`] })
     }
+    const result = await verifyPresentation({
+      resolver: resolveOnChainResolver(),
+      credentialType: 'ProposalSubmitterCredential',
+      presentationJson: args.presentation.presentationJson,
+      presentationRequest: args.presentation.presentationRequest,
+      expectedAttributes: { poolAgentId: roundPoolAgent },
+      nullifierContext: `proposal:${roundSubject}`,
+    })
+    if (!result.ok) {
+      return err({ kind: 'validation', messages: [`presentation rejected: ${result.error}`] })
+    }
+    const nullifier = result.nullifierHash as `0x${string}`
+    const gpSubject = keccak256(encodePacked(
+      ['string', 'bytes32', 'bytes32'],
+      ['sa:grantProposal:', roundSubject, nullifier],
+    ))
 
-    const updated = db.select().from(proposalSubmissions)
-      .where(eq(proposalSubmissions.id, args.proposalId))
-      .all()[0]
+    const sessionId = args._a2aSessionId
+    if (!sessionId) {
+      return err({ kind: 'validation', messages: ['_a2aSessionId missing'] })
+    }
+    if (!Array.isArray(args.chain) || args.chain.length === 0) {
+      return err({ kind: 'validation', messages: ['chain missing — grant_proposal:withdraw requires the admin→holder→session delegation chain (spec 004 b2)'] })
+    }
+    const callData = GrantProposalRegistryClient.encodeWithdraw(gpSubject)
+    const tx = await callA2aRedeemWithChain(sessionId, {
+      mcpTool: 'grant_proposal:withdraw',
+      mcpCallId: randomUUID(),
+      target: requireGrantProposalRegistryAddress(),
+      value: 0n,
+      callData,
+      chain: args.chain,
+    })
+    // intentRevertedToExpressed (FR-023 ack-count cascade) is queued
+    // for the cross-MCP intent registry refactor.
     return mcpText({
-      proposal: updated,
-      intentRevertedToExpressed,
+      ok: true as const,
+      txHash: tx.txHash,
+      proposalSubject: gpSubject,
+      intentRevertedToExpressed: false,
     })
   },
 }
@@ -818,43 +842,15 @@ const cloneTool = {
     },
     required: ['token', 'sourceProposalId'],
   },
+  // Spec 004 v2 — clone targets person-mcp's draft store (org-mcp no
+  // longer carries proposer-side drafts).
   handler: async (args: { token: string; sourceProposalId: string }) => {
-    const orgPrincipal = await requireOrgPrincipal(args.token, args, 'grant_proposal:clone')
-    const source = db.select().from(proposalSubmissions)
-      .where(and(
-        eq(proposalSubmissions.id, args.sourceProposalId),
-        eq(proposalSubmissions.principal, orgPrincipal),
-      ))
-      .all()[0]
-    if (!source) {
-      throw new Error(`source proposal ${args.sourceProposalId} not found for principal`)
-    }
-    const now = nowIso()
-    const newId = randomUUID()
-    const row = {
-      id: newId,
-      principal: orgPrincipal,
-      roundId: null,
-      fundMandateId: null,
-      basedOnIntentId: source.basedOnIntentId,
-      budget: source.budget,
-      plan: source.plan,
-      milestones: source.milestones,
-      desiredOutcomes: source.desiredOutcomes,
-      reportingObligations: source.reportingObligations,
-      organisationalBackground: source.organisationalBackground,
-      submittedAt: null,
-      version: 0,
-      lastEditedAt: now,
-      status: 'draft' as const,
-      withdrawnAt: null,
-      clonedFromProposalId: source.id,
-      basis: null,
-      visibility: 'private' as const,
-      createdAt: now,
-    }
-    db.insert(proposalSubmissions).values(row).run()
-    return mcpText({ proposal: row })
+    await requireOrgPrincipal(args.token, args, 'grant_proposal:clone')
+    void args
+    void randomUUID
+    return mcpText({
+      error: 'grant_proposal:clone moved to person-mcp (spec 004 v2)',
+    })
   },
 }
 
@@ -890,37 +886,13 @@ const awardTool = {
     },
     required: ['token', 'proposalId', 'totalAwarded', 'unit'],
   },
+  // Spec 004 v2 — award/revoke/rescind state transitions move on chain
+  // (status flag on GrantProposalRegistry subject). Wiring queued.
   handler: async (args: AwardArgs) => {
     await requireOrgPrincipal(args.token, args, 'grant_proposal:award')
-    const existing = db.select().from(proposalSubmissions)
-      .where(eq(proposalSubmissions.id, args.proposalId))
-      .all()[0]
-    if (!existing) throw new Error(`proposal ${args.proposalId} not found`)
-    if (existing.status !== 'submitted') {
-      throw new Error(`proposal ${args.proposalId} cannot be awarded (status=${existing.status})`)
-    }
-    const awardedAt = args.awardedAt ?? nowIso()
-    // Award metadata is stitched into existing fields without a schema
-    // migration: status = 'awarded', and the fund-mandate slot carries
-    // (totalAwarded, unit, awardedAt) JSON for downstream queries.
-    const awardPayload = JSON.stringify({
-      totalAwarded: args.totalAwarded,
-      unit: args.unit,
-      awardedAt,
-    })
-    db.update(proposalSubmissions)
-      .set({
-        status: 'awarded',
-        fundMandateId: awardPayload,
-        lastEditedAt: awardedAt,
-      })
-      .where(eq(proposalSubmissions.id, args.proposalId))
-      .run()
     return mcpText({
+      error: 'grant_proposal:award not yet wired to GrantProposalRegistry.setStatus (spec 004 v2)',
       proposalId: args.proposalId,
-      totalAwarded: args.totalAwarded,
-      unit: args.unit,
-      awardedAt,
     })
   },
 }
@@ -956,34 +928,12 @@ const revokeAwardTool = {
     },
     required: ['token', 'proposalId', 'reasonKind'],
   },
+  // Spec 004 v2 — queued (see grant_proposal:award).
   handler: async (args: RevokeAwardArgs) => {
     await requireOrgPrincipal(args.token, args, 'grant_proposal:revoke_award')
-    const existing = db.select().from(proposalSubmissions)
-      .where(eq(proposalSubmissions.id, args.proposalId))
-      .all()[0]
-    if (!existing) throw new Error(`proposal ${args.proposalId} not found`)
-    if (existing.status !== 'awarded') {
-      throw new Error(`proposal ${args.proposalId} cannot be revoked (status=${existing.status})`)
-    }
-    const now = nowIso()
-    const revokePayload = JSON.stringify({
-      kind: 'revoke',
-      reasonKind: args.reasonKind,
-      reasonURI: args.reasonURI ?? null,
-      revokedAt: now,
-    })
-    db.update(proposalSubmissions)
-      .set({
-        status: 'revoked',
-        fundMandateId: revokePayload,
-        lastEditedAt: now,
-      })
-      .where(eq(proposalSubmissions.id, args.proposalId))
-      .run()
     return mcpText({
+      error: 'grant_proposal:revoke_award not yet wired to GrantProposalRegistry.setStatus (spec 004 v2)',
       proposalId: args.proposalId,
-      reasonKind: args.reasonKind,
-      revokedAt: now,
     })
   },
 }
@@ -1018,35 +968,12 @@ const rescindTool = {
     },
     required: ['token', 'proposalId', 'reasonURI'],
   },
+  // Spec 004 v2 — queued (see grant_proposal:award).
   handler: async (args: RescindArgs) => {
     await requireOrgPrincipal(args.token, args, 'grant_proposal:rescind')
-    const existing = db.select().from(proposalSubmissions)
-      .where(eq(proposalSubmissions.id, args.proposalId))
-      .all()[0]
-    if (!existing) throw new Error(`proposal ${args.proposalId} not found`)
-    if (existing.status !== 'awarded' && existing.status !== 'rescinded') {
-      throw new Error(`proposal ${args.proposalId} cannot be rescinded (status=${existing.status})`)
-    }
-    const now = nowIso()
-    const rescindPayload = JSON.stringify({
-      kind: 'rescind',
-      reasonURI: args.reasonURI,
-      fileDispute: args.fileDispute === true,
-      rescindedAt: now,
-    })
-    db.update(proposalSubmissions)
-      .set({
-        status: 'rescinded',
-        fundMandateId: rescindPayload,
-        lastEditedAt: now,
-      })
-      .where(eq(proposalSubmissions.id, args.proposalId))
-      .run()
     return mcpText({
+      error: 'grant_proposal:rescind not yet wired to GrantProposalRegistry.setStatus (spec 004 v2)',
       proposalId: args.proposalId,
-      reasonURI: args.reasonURI,
-      fileDispute: args.fileDispute === true,
-      rescindedAt: now,
     })
   },
 }

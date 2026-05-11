@@ -23,11 +23,13 @@
  * `pool_pledges` rows at read time via `pool_pledge:read_pool_counters`.
  */
 import { randomUUID } from 'node:crypto'
-import { and, eq, inArray, sql } from 'drizzle-orm'
-import { keccak256, toHex } from 'viem'
+import { keccak256, encodePacked, getAddress, isAddress } from 'viem'
 import { db } from '../db/index.js'
-import { poolPledges, orgCrossDelegationGrants } from '../db/schema.js'
+import { orgCrossDelegationGrants } from '../db/schema.js'
 import { requireOrgPrincipalAny as requireOrgPrincipal } from '../auth/principal-context.js'
+import { PledgeRegistryClient } from '@smart-agent/sdk'
+import { callA2aRedeemWithChain, type SignedDelegation } from '../lib/a2a-client.js'
+import { requirePledgeRegistryAddress } from '../lib/contracts.js'
 
 const mcpText = <T>(v: T) => ({ content: [{ type: 'text' as const, text: JSON.stringify(v) }] })
 
@@ -83,35 +85,18 @@ function cadenceAwareTotal(p: { cadence: Cadence; amount: number; duration?: num
  *
  * No source-of-truth columns exist anymore; this is the only counter read.
  */
+/** Spec 004 — `pool_pledges` SQL mirror dropped; pledges live on chain
+ *  in `PledgeRegistry`. Counters now require a registry event-scan,
+ *  queued behind R8 (on-chain → GraphDB sync). Returns zeros so the
+ *  pool detail page renders without crashing while sync ships. */
 export function getPoolCounters(poolAgentId: string): {
   pledgedTotal: number
   allocatedTotal: number
   availableTotal: number
 } {
-  const rows = db.select({
-    cadence: poolPledges.cadence,
-    amount: poolPledges.amount,
-    duration: poolPledges.duration,
-  }).from(poolPledges)
-    .where(and(
-      eq(poolPledges.poolAgentId, poolAgentId),
-      eq(poolPledges.status, 'active'),
-    ))
-    .all()
-  let pledgedTotal = 0
-  for (const r of rows) {
-    pledgedTotal += cadenceAwareTotal({
-      cadence: r.cadence as Cadence,
-      amount: r.amount,
-      duration: r.duration,
-    })
-  }
-  const allocatedTotal = 0
-  return {
-    pledgedTotal,
-    allocatedTotal,
-    availableTotal: Math.max(0, pledgedTotal - allocatedTotal),
-  }
+  void poolAgentId
+  void cadenceAwareTotal  // keep helper available for the post-R8 reader
+  return { pledgedTotal: 0, allocatedTotal: 0, availableTotal: 0 }
 }
 
 function deriveVisibility(
@@ -145,28 +130,47 @@ function issueReadPledgeGrant(opts: {
 
 interface SubmitArgs {
   token: string
-  poolAgentId: string
+  /** Pool's treasury (AgentAccount) address — REQUIRED.
+   *  The action layer resolves the pool URN via DiscoveryService.getPoolDetail
+   *  before calling this tool. The on-chain `PledgeRegistry.submit` requires
+   *  an address (not a URN) so onlyPoolOperator can resolve fund-account owners. */
+  poolAgent: string
+  /** Optional human-friendly identifier — kept for logging/observability only. */
+  poolAgentId?: string
   cadence: Cadence
   unit: string
   amount: number
   duration?: number | null
   restrictions?: PledgeRestrictions
   storyPermissions: StoryPermission
-  /** Pool visibility ('public' | 'private') passed by the action layer
-   *  (it has already validated against DiscoveryService.getPoolDetail).
-   *  Used here only to derive the row's `visibility` cascade. Defaults to
-   *  'public' when omitted. */
   poolVisibility?: 'public' | 'private'
+  _a2aSessionId?: string
+  /** Spec 004 (b2) — admin→donor→session chain. Pool admin pre-signs
+   *  `admin → donor` at credential-issuance / membership-add time;
+   *  donor's web client freshly mints `donor → session` (authority =
+   *  hash(admin → donor)) at action time. Leaf delegate = session key. */
+  chain: SignedDelegation[]
+}
+
+/** Derive the donor's pseudonym nullifier from their authenticated principal.
+ *  Spec 004 pledges are NOT AnonCreds-gated (the cred-gated flows are
+ *  voting + grant proposals); pledger anonymity is handled via the existing
+ *  `story_permissions` cascade. The nullifier is used solely as the
+ *  on-chain subject key so the same donor can amend/stop their pledge
+ *  without re-publishing identity to the chain. */
+function donorNullifier(principal: string): `0x${string}` {
+  return keccak256(encodePacked(['string', 'string'], ['sa:pledger:', principal.toLowerCase()]))
 }
 
 const submitTool = {
   name: 'pool_pledge:submit',
   description:
-    "Persist a PoolPledge row. Pool body validation (acceptedUnits, restrictions, capacityCeiling, visibility) is the action layer's responsibility — it pre-validates against DiscoveryService.getPoolDetail before calling this tool. Cascades pool:read_pledge cross-delegation (when non-anonymous).",
+    "Submit a PoolPledge to the on-chain PledgeRegistry. Pool body validation (acceptedUnits, restrictions, capacityCeiling, visibility) is the action layer's responsibility — it pre-validates against DiscoveryService.getPoolDetail before calling this tool.",
   inputSchema: {
     type: 'object' as const,
     properties: {
       token: { type: 'string' },
+      poolAgent: { type: 'string' },
       poolAgentId: { type: 'string' },
       cadence: { type: 'string', enum: ['one-time', 'monthly', 'annual'] },
       unit: { type: 'string' },
@@ -175,13 +179,17 @@ const submitTool = {
       restrictions: { type: 'object' },
       storyPermissions: { type: 'string', enum: ['public', 'shareWithSupportTeam', 'anonymous'] },
       poolVisibility: { type: 'string', enum: ['public', 'private'] },
+      chain: { type: 'array', items: { type: 'object' } },
     },
-    required: ['token', 'poolAgentId', 'cadence', 'unit', 'amount', 'storyPermissions'],
+    required: ['token', 'poolAgent', 'cadence', 'unit', 'amount', 'storyPermissions', 'chain'],
   },
   handler: async (args: SubmitArgs) => {
     const principal = await requireOrgPrincipal(args.token, args, 'pool_pledge:submit')
 
-    if (!args.poolAgentId || !args.cadence || !args.unit || typeof args.amount !== 'number' || !args.storyPermissions) {
+    if (!args.poolAgent || !isAddress(args.poolAgent)) {
+      return err({ kind: 'validation', messages: ['poolAgent must be an EVM address'] })
+    }
+    if (!args.cadence || !args.unit || typeof args.amount !== 'number' || !args.storyPermissions) {
       return err({ kind: 'validation', messages: ['missing required fields'] })
     }
     if (args.amount <= 0) {
@@ -191,35 +199,42 @@ const submitTool = {
       return err({ kind: 'validation', messages: ['recurring pledges require duration > 0'] })
     }
 
-    const poolVisibility: 'public' | 'private' = args.poolVisibility ?? 'public'
-    const visibility: Visibility = deriveVisibility(poolVisibility, args.storyPermissions)
-
-    const id = randomUUID()
-    const now = nowIso()
-    const row = {
-      id,
-      principal,
-      poolAgentId: args.poolAgentId,
-      cadence: args.cadence,
-      unit: args.unit,
-      amount: args.amount,
-      duration: args.duration ?? null,
-      restrictions: args.restrictions ? JSON.stringify(args.restrictions) : null,
-      storyPermissions: args.storyPermissions,
-      pledgedAt: now,
-      stoppedAt: null,
-      status: 'active' as PledgeStatus,
-      history: '[]',
-      visibility,
-      onChainAssertionId: null,
-      createdAt: now,
-      updatedAt: now,
+    const sessionId = args._a2aSessionId
+    if (!sessionId) {
+      return mcpText({ ok: false as const, error: '_a2aSessionId missing — pool_pledge:submit requires the a2a-agent session id' })
     }
-    db.insert(poolPledges).values(row).run()
+    if (!Array.isArray(args.chain) || args.chain.length === 0) {
+      return mcpText({ ok: false as const, error: 'chain missing — pool_pledge:submit requires the admin→donor→session delegation chain (spec 004 b2)' })
+    }
 
-    if (args.storyPermissions !== 'anonymous') {
+    const poolAgent = getAddress(args.poolAgent)
+    const nullifier = donorNullifier(principal)
+    const salt = 0n
+    const pledgeSubject = PledgeRegistryClient.pledgeSubject(poolAgent, nullifier, salt)
+
+    const callData = PledgeRegistryClient.encodeSubmit({
+      poolAgent,
+      nullifier,
+      salt,
+      amount: BigInt(args.amount),
+      unit: args.unit,
+      cadence: args.cadence,
+      duration: args.duration ? BigInt(args.duration) : 0n,
+      restrictionsJson: args.restrictions ? JSON.stringify(args.restrictions) : '',
+      storyPermissionsJson: args.storyPermissions,
+    })
+    const tx = await callA2aRedeemWithChain(sessionId, {
+      mcpTool: 'pool_pledge:submit',
+      mcpCallId: randomUUID(),
+      target: requirePledgeRegistryAddress(),
+      value: 0n,
+      callData,
+      chain: args.chain,
+    })
+
+    if (args.storyPermissions !== 'anonymous' && args.poolAgentId) {
       try {
-        issueReadPledgeGrant({ donorPrincipal: principal, poolAgentId: args.poolAgentId, pledgeId: id })
+        issueReadPledgeGrant({ donorPrincipal: principal, poolAgentId: args.poolAgentId, pledgeId: pledgeSubject })
       } catch (e) {
         console.warn(
           `[org-mcp/poolPledges] read_pledge grant failed: ${e instanceof Error ? e.message : e}`,
@@ -227,158 +242,159 @@ const submitTool = {
       }
     }
 
-    return mcpText({ ok: true as const, pledge: row, status: row.status })
+    return mcpText({
+      ok: true as const,
+      txHash: tx.txHash,
+      pledgeSubject,
+      poolAgent,
+      status: 'active' as PledgeStatus,
+    })
   },
 }
 
 interface AmendArgs {
   token: string
-  pledgeId: string
-  change:
-    | { kind: 'amount'; newValue: number }
-    | { kind: 'cadence'; newValue: Cadence }
-    | { kind: 'duration'; newValue: number }
+  /** Pool's treasury (AgentAccount) address — used together with the
+   *  donor's nullifier to derive the canonical pledgeSubject. */
+  poolAgent: string
+  newAmount: number
+  newDuration?: number
+  _a2aSessionId?: string
+  chain: SignedDelegation[]
 }
 
 const amendTool = {
   name: 'pool_pledge:amend',
   description:
-    "Amend a recurring PoolPledge (amount/cadence/duration). Appends to history; window-reset semantics per spec.md Q4. Pool counters are derived — no separate counter write.",
+    "Amend the active pledge for the calling donor on a pool. The on-chain pledgeSubject is re-derived from (poolAgent, donorNullifier, salt=0); only the donor of that pledge can amend it because the gateway is the only writer and binds the principal at the auth boundary.",
   inputSchema: {
     type: 'object' as const,
     properties: {
       token: { type: 'string' },
-      pledgeId: { type: 'string' },
-      change: { type: 'object' },
+      poolAgent: { type: 'string' },
+      newAmount: { type: 'number' },
+      newDuration: { type: 'number' },
+      chain: { type: 'array', items: { type: 'object' } },
     },
-    required: ['token', 'pledgeId', 'change'],
+    required: ['token', 'poolAgent', 'newAmount', 'chain'],
   },
   handler: async (args: AmendArgs) => {
     const principal = await requireOrgPrincipal(args.token, args, 'pool_pledge:amend')
-    const existing = db.select().from(poolPledges)
-      .where(and(
-        eq(poolPledges.id, args.pledgeId),
-        eq(poolPledges.principal, principal),
-      ))
-      .all()[0]
-    if (!existing) {
-      throw new Error(`pledge ${args.pledgeId} not found for principal`)
+    if (!args.poolAgent || !isAddress(args.poolAgent)) {
+      throw new Error('poolAgent must be an EVM address')
     }
-    if (existing.status !== 'active' && existing.status !== 'waitlisted') {
-      throw new Error(`pledge ${args.pledgeId} is not amendable (status=${existing.status})`)
+    if (typeof args.newAmount !== 'number' || args.newAmount <= 0) {
+      throw new Error('newAmount must be > 0')
     }
-
-    const now = nowIso()
-    const history = safeJson<PledgeAmendment[]>(existing.history, [])
-
-    let nextAmount = existing.amount
-    let nextCadence = existing.cadence as Cadence
-    let nextDuration = existing.duration
-
-    const amendment: PledgeAmendment = {
-      kind: args.change.kind,
-      prevValue: 0,
-      newValue: 0,
-      amendedAt: now,
+    const sessionId = args._a2aSessionId
+    if (!sessionId) {
+      throw new Error('_a2aSessionId missing — pool_pledge:amend requires the a2a-agent session id')
+    }
+    if (!Array.isArray(args.chain) || args.chain.length === 0) {
+      throw new Error('chain missing — pool_pledge:amend requires the admin→donor→session delegation chain (spec 004 b2)')
     }
 
-    if (args.change.kind === 'amount') {
-      amendment.prevValue = existing.amount
-      amendment.newValue = args.change.newValue
-      nextAmount = args.change.newValue
-    } else if (args.change.kind === 'cadence') {
-      amendment.prevValue = existing.cadence as Cadence
-      amendment.newValue = args.change.newValue
-      amendment.windowResetAt = now
-      nextCadence = args.change.newValue
-    } else if (args.change.kind === 'duration') {
-      amendment.prevValue = existing.duration ?? 0
-      amendment.newValue = args.change.newValue
-      amendment.windowResetAt = now
-      nextDuration = args.change.newValue
-    }
-    history.push(amendment)
+    const poolAgent = getAddress(args.poolAgent)
+    const nullifier = donorNullifier(principal)
+    const pledgeSubject = PledgeRegistryClient.pledgeSubject(poolAgent, nullifier, 0n)
 
-    db.update(poolPledges)
-      .set({
-        amount: nextAmount,
-        cadence: nextCadence,
-        duration: nextDuration,
-        history: JSON.stringify(history),
-        updatedAt: now,
-      })
-      .where(eq(poolPledges.id, args.pledgeId))
-      .run()
+    const callData = PledgeRegistryClient.encodeAmend({
+      pledgeSubject,
+      newAmount: BigInt(args.newAmount),
+      newDuration: args.newDuration ? BigInt(args.newDuration) : 0n,
+    })
+    const tx = await callA2aRedeemWithChain(sessionId, {
+      mcpTool: 'pool_pledge:amend',
+      mcpCallId: randomUUID(),
+      target: requirePledgeRegistryAddress(),
+      value: 0n,
+      callData,
+      chain: args.chain,
+    })
 
-    const updated = db.select().from(poolPledges).where(eq(poolPledges.id, args.pledgeId)).all()[0]
-    return mcpText({ ok: true as const, pledge: updated })
+    return mcpText({ ok: true as const, txHash: tx.txHash, pledgeSubject })
   },
 }
 
 const stopTool = {
   name: 'pool_pledge:stop',
   description:
-    "Stop a PoolPledge (sets stoppedAt, status='stopped'). Bright line for downstream allocation/disbursement decisions per spec.md Q5.",
+    "Stop the active pledge for the calling donor on a pool. The on-chain pledgeSubject is re-derived from (poolAgent, donorNullifier, salt=0); only the donor of that pledge can stop it because the gateway is the only writer and binds the principal at the auth boundary.",
   inputSchema: {
     type: 'object' as const,
     properties: {
       token: { type: 'string' },
-      pledgeId: { type: 'string' },
+      poolAgent: { type: 'string' },
+      chain: { type: 'array', items: { type: 'object' } },
     },
-    required: ['token', 'pledgeId'],
+    required: ['token', 'poolAgent', 'chain'],
   },
-  handler: async (args: { token: string; pledgeId: string }) => {
+  handler: async (args: { token: string; poolAgent: string; _a2aSessionId?: string; chain: SignedDelegation[] }) => {
     const principal = await requireOrgPrincipal(args.token, args, 'pool_pledge:stop')
-    const existing = db.select().from(poolPledges)
-      .where(and(
-        eq(poolPledges.id, args.pledgeId),
-        eq(poolPledges.principal, principal),
-      ))
-      .all()[0]
-    if (!existing) {
-      throw new Error(`pledge ${args.pledgeId} not found for principal`)
+    if (!args.poolAgent || !isAddress(args.poolAgent)) {
+      throw new Error('poolAgent must be an EVM address')
     }
-    if (existing.status === 'stopped' || existing.status === 'auto-stopped' || existing.status === 'fulfilled') {
-      throw new Error(`pledge ${args.pledgeId} is already terminal (status=${existing.status})`)
+    const sessionId = args._a2aSessionId
+    if (!sessionId) {
+      throw new Error('_a2aSessionId missing — pool_pledge:stop requires the a2a-agent session id')
     }
-    const now = nowIso()
-    db.update(poolPledges)
-      .set({ status: 'stopped', stoppedAt: now, updatedAt: now })
-      .where(eq(poolPledges.id, args.pledgeId))
-      .run()
-    const updated = db.select().from(poolPledges).where(eq(poolPledges.id, args.pledgeId)).all()[0]
-    return mcpText({ ok: true as const, pledge: updated })
+    if (!Array.isArray(args.chain) || args.chain.length === 0) {
+      throw new Error('chain missing — pool_pledge:stop requires the admin→donor→session delegation chain (spec 004 b2)')
+    }
+
+    const poolAgent = getAddress(args.poolAgent)
+    const nullifier = donorNullifier(principal)
+    const pledgeSubject = PledgeRegistryClient.pledgeSubject(poolAgent, nullifier, 0n)
+
+    const callData = PledgeRegistryClient.encodeStop(pledgeSubject)
+    const tx = await callA2aRedeemWithChain(sessionId, {
+      mcpTool: 'pool_pledge:stop',
+      mcpCallId: randomUUID(),
+      target: requirePledgeRegistryAddress(),
+      value: 0n,
+      callData,
+      chain: args.chain,
+    })
+
+    return mcpText({ ok: true as const, txHash: tx.txHash, pledgeSubject })
   },
 }
 
 const autoStopTool = {
   name: 'pool_pledge:auto_stop',
   description:
-    "System-delegation: mark pledges on a (now closed/withdrawn) pool as auto-stopped. Issued by the pool steward's MCP.",
+    "System-delegation: stop a pledge identified by its on-chain subject (used when a pool is closed/withdrawn and downstream code wants to mark a specific donor's pledge as auto-stopped). Currently writes the same `stop` call on chain; a separate auto-stop status is not yet codified at the registry layer.",
   inputSchema: {
     type: 'object' as const,
     properties: {
       token: { type: 'string' },
-      pledgeId: { type: 'string' },
+      pledgeSubject: { type: 'string' },
+      chain: { type: 'array', items: { type: 'object' } },
     },
-    required: ['token', 'pledgeId'],
+    required: ['token', 'pledgeSubject', 'chain'],
   },
-  handler: async (args: { token: string; pledgeId: string }) => {
+  handler: async (args: { token: string; pledgeSubject: `0x${string}`; _a2aSessionId?: string; chain: SignedDelegation[] }) => {
     await requireOrgPrincipal(args.token, args, 'pool_pledge:auto_stop')
-    const existing = db.select().from(poolPledges).where(eq(poolPledges.id, args.pledgeId)).all()[0]
-    if (!existing) {
-      throw new Error(`pledge ${args.pledgeId} not found`)
+    if (!args.pledgeSubject || !args.pledgeSubject.startsWith('0x')) {
+      throw new Error('pledgeSubject must be a bytes32 hex')
     }
-    if (existing.status !== 'active' && existing.status !== 'waitlisted') {
-      return mcpText({ ok: true as const, pledge: existing, noOp: true })
+    const sessionId = args._a2aSessionId
+    if (!sessionId) {
+      throw new Error('_a2aSessionId missing — pool_pledge:auto_stop requires the a2a-agent session id')
     }
-    const now = nowIso()
-    db.update(poolPledges)
-      .set({ status: 'auto-stopped', stoppedAt: now, updatedAt: now })
-      .where(eq(poolPledges.id, args.pledgeId))
-      .run()
-    const updated = db.select().from(poolPledges).where(eq(poolPledges.id, args.pledgeId)).all()[0]
-    return mcpText({ ok: true as const, pledge: updated })
+    if (!Array.isArray(args.chain) || args.chain.length === 0) {
+      throw new Error('chain missing — pool_pledge:auto_stop requires the steward→pool→session delegation chain (spec 004 b2)')
+    }
+    const callData = PledgeRegistryClient.encodeStop(args.pledgeSubject)
+    const tx = await callA2aRedeemWithChain(sessionId, {
+      mcpTool: 'pool_pledge:auto_stop',
+      mcpCallId: randomUUID(),
+      target: requirePledgeRegistryAddress(),
+      value: 0n,
+      callData,
+      chain: args.chain,
+    })
+    return mcpText({ ok: true as const, txHash: tx.txHash, pledgeSubject: args.pledgeSubject })
   },
 }
 
@@ -394,14 +410,14 @@ const readSelfTool = {
     },
     required: ['token'],
   },
+  // Spec 004 — pool_pledges SQL mirror dropped; pledges are on chain
+  // in PledgeRegistry. The reader requires an event scan + nullifier
+  // resolution back to the caller's principal (the chain doesn't store
+  // principal, only a per-issuance nullifier). Queued behind R8.
   handler: async (args: { token: string; status?: string; poolAgentId?: string }) => {
-    const principal = await requireOrgPrincipal(args.token, args, 'pool_pledge:read_self')
-    let rows = db.select().from(poolPledges)
-      .where(eq(poolPledges.principal, principal))
-      .all()
-    if (args.status) rows = rows.filter(r => r.status === args.status)
-    if (args.poolAgentId) rows = rows.filter(r => r.poolAgentId === args.poolAgentId)
-    return mcpText({ pledges: rows })
+    await requireOrgPrincipal(args.token, args, 'pool_pledge:read_self')
+    void args
+    return mcpText({ pledges: [] })
   },
 }
 
@@ -431,10 +447,6 @@ const readPoolCountersTool = {
   },
 }
 
-// `sql` is imported above for future raw-aggregate use; reference here so
-// strict TS doesn't flag the import as unused while we keep it documented.
-void sql
-
 // ───────────────────────────────────────────────────────────────────────
 // Tool: pool_pledge:list_for_pool
 // ───────────────────────────────────────────────────────────────────────
@@ -462,44 +474,15 @@ const listForPoolTool = {
     },
     required: ['token', 'poolAgentId'],
   },
+  // Spec 004 — pool_pledges SQL mirror dropped. The pool detail page
+  // reads pledges from GraphDB once the R8 sync ships; pledge bodies
+  // come from PledgeRegistry, with story_permissions applied at
+  // emit time so non-public pledges never reach the public graph.
   handler: async (args: { token: string; poolAgentId: string; limit?: number }) => {
     await requireOrgPrincipal(args.token, args, 'pool_pledge:list_for_pool')
-    // Match either form the row may have been stored as: URN
-    // (urn:smart-agent:pool:<slug>) or treasury hex address. Some legacy
-    // rows used one, others the other; both refer to the same pool.
-    const candidates = [args.poolAgentId, args.poolAgentId.toLowerCase()]
-    const rows = db.select().from(poolPledges)
-      .where(inArray(poolPledges.poolAgentId, Array.from(new Set(candidates))))
-      .all()
-    const visible = rows
-      .filter(r => r.status === 'active')
-      .sort((a, b) => (b.pledgedAt ?? '').localeCompare(a.pledgedAt ?? ''))
-      .slice(0, args.limit && args.limit > 0 ? args.limit : 20)
-      .map(r => {
-        // Honor story_permissions when stored as JSON.
-        let showName = true
-        try {
-          const sp = JSON.parse(r.storyPermissions ?? '{}') as { showName?: boolean }
-          if (sp.showName === false) showName = false
-        } catch { /* malformed; default to safe */ showName = false }
-        const principalDisplay = showName
-          ? r.principal
-          : `anon:${r.principal.slice(0, 8)}…`
-        return {
-          id: r.id,
-          poolAgentId: r.poolAgentId,
-          principalDisplay,
-          amount: r.amount,
-          // Convert unit concept hash (keccak256(label)) back to the
-          // human label. Legacy rows stored the hash from the pool's
-          // acceptedUnits list; new ones may store the label directly.
-          unit: unitHashToLabel(r.unit),
-          cadence: r.cadence,
-          pledgedAt: r.pledgedAt,
-          status: r.status,
-        }
-      })
-    return mcpText({ pledges: visible })
+    void args
+    void unitHashToLabel
+    return mcpText({ pledges: [] })
   },
 }
 
@@ -508,7 +491,7 @@ const listForPoolTool = {
 const UNIT_LABELS: Record<string, string> = (() => {
   const m: Record<string, string> = {}
   for (const u of ['USD', 'EUR', 'prayer-minutes', 'loaves', 'hours', 'minutes', 'meals', 'coaching-hours']) {
-    m[keccak256(toHex(u)).toLowerCase()] = u
+    m[keccak256(new TextEncoder().encode(u)).toLowerCase()] = u
   }
   return m
 })()

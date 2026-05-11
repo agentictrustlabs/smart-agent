@@ -415,27 +415,10 @@ export const proposalSubmissions = sqliteTable('proposal_submissions', {
 //   - `principal` = initiatorAgentId (tenancy column).
 //   - `initiatorAgentId` is a redundant mirror kept for symmetry with org-mcp.
 //   - status starts at 'pending'; downstream specs advance to 'superseded' /
-//     'consumed'. Discovery never advances past 'pending'.
-//   - Visibility is the strictest of the two source intents (cascade per IA § 3.1).
-//     Public/public-coarse rows are anchored on chain via `sa:MatchInitiationAssertion`
-//     and `onChainAssertionId` is captured here. Private/off-chain rows stay
-//     MCP-only (no GraphDB mirror).
-// ---------------------------------------------------------------------------
-export const matchInitiations = sqliteTable('match_initiations', {
-  id: text('id').primaryKey(),
-  principal: text('principal').notNull(),                   // = initiatorAgentId
-  viewedIntentId: text('viewed_intent_id').notNull(),
-  candidateIntentId: text('candidate_intent_id').notNull(),
-  initiatorAgentId: text('initiator_agent_id').notNull(),   // redundant mirror of principal
-  initiationKind: text('initiation_kind').notNull(),        // 'self' | 'connector'
-  proposedAt: text('proposed_at').notNull(),
-  basis: text('basis').notNull(),                           // JSON: RankBasis snapshot
-  status: text('status').notNull().default('pending'),      // 'pending' | 'superseded' | 'consumed'
-  visibility: text('visibility').notNull().default('private'), // public | public-coarse | private | off-chain
-  onChainAssertionId: text('on_chain_assertion_id'),
-  createdAt: text('created_at').notNull(),
-  updatedAt: text('updated_at').notNull(),
-})
+// Spec 004 v2 — match_initiations DROPPED (person-mcp). MatchInitiation
+// bodies are authoritative on chain in MatchInitiationRegistry; the
+// person-mcp tool surface stays for ABI back-compat but every handler
+// stubs to "moved on chain" (see apps/person-mcp/src/tools/matchInitiations.ts).
 
 // ---------------------------------------------------------------------------
 // engagementHolderState — holder-side per-entitlement metadata
@@ -449,36 +432,8 @@ export const engagementHolderState = sqliteTable('engagement_holder_state', {
   updatedAt: text('updated_at').notNull(),
 })
 
-// ---------------------------------------------------------------------------
-// Spec 002 — Intent Marketplace (Pool Lane).
-// poolPledges — body of `sa:PoolPledge` (donor-owned per IA § 2.2).
-// Mirrors the org-mcp twin so org donors and solo human donors can both pledge.
-//   - principal = pledgerAgentId (tenancy column).
-//   - Visibility cascades from pool's visibility + donor's storyPermissions:
-//       pool public + storyPermissions=public               → 'public'
-//       pool public + storyPermissions=shareWithSupportTeam → 'public-coarse'
-//       pool public + storyPermissions=anonymous            → 'private'
-//       pool private (any storyPermissions)                 → 'private'
-//   - Public/public-coarse rows anchor sa:PledgeAssertion on chain.
-//     SHACL `sa:AnonymousPledgeNoAnchorShape` and
-//     `sa:PrivatePoolPledgeNoAnchorShape` enforce no-anchor for the rest.
-// ---------------------------------------------------------------------------
-export const poolPledges = sqliteTable('pool_pledges', {
-  id: text('id').primaryKey(),
-  principal: text('principal').notNull(),                       // = pledgerAgentId
-  poolAgentId: text('pool_agent_id').notNull(),
-  cadence: text('cadence').notNull(),                           // one-time | monthly | annual
-  unit: text('unit').notNull(),
-  amount: integer('amount').notNull(),
-  duration: integer('duration'),                                // months / years; null for one-time
-  restrictions: text('restrictions'),                           // JSON: PledgeRestrictions
-  storyPermissions: text('story_permissions').notNull(),        // public | shareWithSupportTeam | anonymous
-  pledgedAt: text('pledged_at').notNull(),
-  stoppedAt: text('stopped_at'),
-  status: text('status').notNull().default('active'),           // active | waitlisted | stopped | auto-stopped | fulfilled
-  history: text('history').notNull().default('[]'),             // JSON array: PledgeAmendment[]
-  visibility: text('visibility').notNull().default('private'),  // public | public-coarse | private
-  onChainAssertionId: text('on_chain_assertion_id'),
-  createdAt: text('created_at').notNull(),
-  updatedAt: text('updated_at').notNull(),
-})
+// Spec 004 v2 — pool_pledges DROPPED (person-mcp). Pledges are
+// authoritative on chain in PledgeRegistry. Solo human donors use
+// org-mcp's pool_pledge:* tools (with the chained delegation) just like
+// org donors; person-mcp's tool surface stubs to "moved on chain"
+// (see apps/person-mcp/src/tools/poolPledges.ts).

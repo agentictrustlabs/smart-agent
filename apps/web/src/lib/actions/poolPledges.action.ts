@@ -108,6 +108,11 @@ export interface SubmitPledgeActionInput {
   poolVisibility: 'public' | 'private'
   /** Donor's MCP target. v1 routes to 'org' for org donors, 'intent' for solo humans. */
   donorKind?: 'org' | 'person'
+  /** Pool's treasury (AgentAccount) address. Spec 004 — pool_pledge:submit
+   *  now requires this so the on-chain `PledgeRegistry.submit` can derive
+   *  the pledge subject. The action layer resolves it via DiscoveryService
+   *  (pool URN → treasury) or accepts it from the caller. */
+  poolAgent?: `0x${string}`
 }
 
 export async function submitPledge(
@@ -117,8 +122,48 @@ export async function submitPledge(
   const invoker = makeMcpInvoker(target)
   const client = new PoolPledgeClient(invoker, target)
 
-  // 1. Submit via MCP.
-  const result = await client.submit(input.request)
+  // Spec 004 (b2) — pool_pledge:submit requires `poolAgent` (hex) + `chain`.
+  // Pledges are NOT cred-gated (no presentation needed); only the chain
+  // is required so msg.sender at the registry = pool admin.
+  if (!input.poolAgent) {
+    return {
+      ok: false,
+      error: { kind: 'validation' as const, messages: ['poolAgent required for spec-004 redeem'] },
+    } as unknown as SubmitPledgeResult
+  }
+  const { resolveSpec004Chain } = await import('@/lib/spec004/chain')
+  const pledgeRegistry = process.env.PLEDGE_REGISTRY_ADDRESS as `0x${string}` | undefined
+  if (!pledgeRegistry) {
+    return {
+      ok: false,
+      error: { kind: 'validation' as const, messages: ['PLEDGE_REGISTRY_ADDRESS not set'] },
+    } as unknown as SubmitPledgeResult
+  }
+  // The donor's admin→holder delegation for pledging is bound to
+  // PledgeRegistry. Pledges don't use AnonCreds creds today; the
+  // `findMarketplaceCredentialForRegistry` lookup returns whatever
+  // delegation the admin pre-signed for the donor — credentialType is
+  // intentionally left open.
+  const { SPEC004_SELECTORS } = await import('@smart-agent/sdk')
+  const chain = await resolveSpec004Chain({
+    targetRegistry: pledgeRegistry,
+    methodSelectors: [SPEC004_SELECTORS.pledgeSubmit],
+  })
+  if (!chain.ok) {
+    return {
+      ok: false,
+      error: { kind: 'validation' as const, messages: [`chain: ${chain.error} — ${chain.message}`] },
+    } as unknown as SubmitPledgeResult
+  }
+
+  // 1. Submit via MCP. We extend the SDK request with `poolAgent` + `chain`
+  //    via a structural cast since the SDK contract doesn't yet model them.
+  const augmented = {
+    ...input.request,
+    poolAgent: input.poolAgent,
+    chain: chain.chain,
+  } as unknown as SubmitPledgeRequest
+  const result = await client.submit(augmented)
   if (!result.ok) return result
 
   // 2. On-chain anchor when visibility allows.

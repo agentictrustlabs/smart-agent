@@ -5,7 +5,10 @@ export const dynamic = 'force-dynamic'
 
 interface CastBody {
   roundId?: string
-  proposalId?: string
+  /** Pre-derived proposal subject (bytes32 hex). Spec 004 — vote:cast now
+   *  takes the on-chain subject directly; the SQL `proposal_submissions`
+   *  table is being retired. */
+  proposalSubject?: `0x${string}`
   vote?: 'approve' | 'reject' | 'abstain'
   rationale?: string
 }
@@ -15,7 +18,7 @@ export async function POST(req: NextRequest) {
   try { body = await req.json() } catch {
     return NextResponse.json({ ok: false, error: 'invalid-json' }, { status: 400 })
   }
-  if (!body.roundId || !body.proposalId || !body.vote) {
+  if (!body.roundId || !body.proposalSubject || !body.vote) {
     return NextResponse.json({ ok: false, error: 'missing-required-fields' }, { status: 400 })
   }
   if (!['approve', 'reject', 'abstain'].includes(body.vote)) {
@@ -23,7 +26,7 @@ export async function POST(req: NextRequest) {
   }
   const result = await castVote({
     roundId: body.roundId,
-    proposalId: body.proposalId,
+    proposalSubject: body.proposalSubject,
     vote: body.vote,
     rationale: body.rationale,
   })

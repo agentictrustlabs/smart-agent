@@ -118,6 +118,63 @@ const GEO_LOCATION: CredentialKindDescriptor = {
   issuerKey: 'geo',
 }
 
+// ─── Spec 004 — AnonCreds-gated marketplace auth ───────────────────────
+// Two new credential kinds gate proposal submission/management + voting.
+// Issuer: the pool/round operator's org-mcp. Holder: the member who
+// receives it into their wallet. The actual `poolAgentId` / `roundId`
+// is bound as an attribute at issuance time; the verifier checks that
+// attribute matches the action's target.
+
+// Spec 004 — v2 anonymity model.
+//
+// `holderPseudoId` was a stable cross-context pseudonym revealed on every
+// presentation, which gave the verifier the ability to correlate the
+// holder's activity across rounds. v2 drops it and introduces a
+// per-issuance `nullifierSecret` (issuer-generated random) that's bound
+// to a single (issuer, holder, round-or-pool) tuple. The credential also
+// carries `roundSubject` / `poolAgentId` as a revealed attribute so the
+// verifier can confirm the cred is targeted at the action's context.
+// The nullifier at action time is then `keccak256(nullifierSecret ‖ ctx)`.
+//
+// Trade-off: AnonCreds v1 can't prove `nullifier = H(secret, ctx)` over
+// a hidden attribute, so `nullifierSecret` is still revealed inside the
+// round. This eliminates cross-round linkability (each cred has its own
+// secret) but keeps within-round linkability. A future v3 will move to a
+// Semaphore/MACI-style ZK proof keeping the secret hidden — see the spec
+// 004 plan's "Open Questions" entry.
+const PROPOSAL_SUBMITTER: CredentialKindDescriptor = {
+  credentialType: 'ProposalSubmitterCredential',
+  schemaId:       'https://smartagent.io/schemas/ProposalSubmitter/2.0',
+  credDefId:      'https://smartagent.io/creddefs/ProposalSubmitter/2.0/v1',
+  attributeNames: ['poolAgentId', 'nullifierSecret', 'issuedYear'],
+  displayName:    'Proposal submitter',
+  noun:           'submitter',
+  description:
+    'Receive an AnonCreds credential that lets you anonymously submit and ' +
+    'manage proposals against rounds operated by the issuing pool. The ' +
+    'pool never learns your wallet identity — only that you hold a valid, ' +
+    'unrevoked submitter credential. v2 — replaces the stable holderPseudoId ' +
+    'with a per-issuance nullifierSecret to eliminate cross-pool linkability.',
+  issuerKey: 'org',
+  requiresActiveHub: true,
+}
+
+const ROUND_VOTER: CredentialKindDescriptor = {
+  credentialType: 'RoundVoterCredential',
+  schemaId:       'https://smartagent.io/schemas/RoundVoter/2.0',
+  credDefId:      'https://smartagent.io/creddefs/RoundVoter/2.0/v1',
+  attributeNames: ['roundSubject', 'nullifierSecret', 'issuedYear'],
+  displayName:    'Round voter',
+  noun:           'voter',
+  description:
+    'Receive an AnonCreds credential that lets you anonymously cast a ballot ' +
+    'on each proposal in a specific round (one vote per proposal per voter, ' +
+    'unlinkable across rounds). The round operator never learns who voted ' +
+    'â€" only the tally, derived from per-proposal cryptographic nullifiers.',
+  issuerKey: 'org',
+  requiresActiveHub: true,
+}
+
 const SKILLS_CREDENTIAL: CredentialKindDescriptor = {
   credentialType: 'SkillsCredential',
   schemaId:       'https://smartagent.io/schemas/Skills/1.0',
@@ -145,6 +202,8 @@ export const CREDENTIAL_KINDS: readonly CredentialKindDescriptor[] = [
   GUARDIAN_OF_MINOR,
   GEO_LOCATION,
   SKILLS_CREDENTIAL,
+  PROPOSAL_SUBMITTER,
+  ROUND_VOTER,
 ]
 
 /** Lookup helper — returns null if `credentialType` is unknown. */

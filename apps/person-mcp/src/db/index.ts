@@ -440,29 +440,8 @@ sqliteHandle.exec(`
 
   -- ─── Spec 001: Intent Marketplace — Direct Lane ────────────────────────
   -- match_initiations — body of sa:MatchInitiation (initiator-owned, IA § 2.1).
-  -- principal = initiatorAgentId. status starts 'pending'; visibility cascades
-  -- from the two source intents (strictest wins). Public/public-coarse rows
-  -- anchor sa:MatchInitiationAssertion on chain (set onChainAssertionId).
-  CREATE TABLE IF NOT EXISTS match_initiations (
-    id TEXT PRIMARY KEY,
-    principal TEXT NOT NULL,
-    viewed_intent_id TEXT NOT NULL,
-    candidate_intent_id TEXT NOT NULL,
-    initiator_agent_id TEXT NOT NULL,
-    initiation_kind TEXT NOT NULL,
-    proposed_at TEXT NOT NULL,
-    basis TEXT NOT NULL,
-    status TEXT NOT NULL DEFAULT 'pending',
-    visibility TEXT NOT NULL DEFAULT 'private',
-    on_chain_assertion_id TEXT,
-    created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL
-  );
-  CREATE INDEX IF NOT EXISTS idx_match_initiations_principal ON match_initiations(principal);
-  CREATE INDEX IF NOT EXISTS idx_match_initiations_pair ON match_initiations(viewed_intent_id, candidate_intent_id);
-  CREATE INDEX IF NOT EXISTS idx_match_initiations_status ON match_initiations(status);
-  CREATE INDEX IF NOT EXISTS idx_match_initiations_viewed ON match_initiations(viewed_intent_id);
-  CREATE INDEX IF NOT EXISTS idx_match_initiations_candidate ON match_initiations(candidate_intent_id);
+  -- Spec 004 v2 -- match_initiations DROPPED (person-mcp). Authoritative
+  -- on chain in MatchInitiationRegistry.
 
   CREATE TABLE IF NOT EXISTS engagement_holder_state (
     entitlement_id TEXT PRIMARY KEY,
@@ -474,33 +453,8 @@ sqliteHandle.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_holder_state_principal ON engagement_holder_state(principal);
 
-  -- ─── Spec 002: Intent Marketplace — Pool Lane ─────────────────────────
-  -- pool_pledges — body of sa:PoolPledge (donor-owned, IA § 2.2).
-  -- principal = pledgerAgentId. visibility cascades from pool visibility +
-  -- donor's storyPermissions; public + non-anonymous rows anchor
-  -- sa:PledgeAssertion on chain.
-  CREATE TABLE IF NOT EXISTS pool_pledges (
-    id TEXT PRIMARY KEY,
-    principal TEXT NOT NULL,
-    pool_agent_id TEXT NOT NULL,
-    cadence TEXT NOT NULL,
-    unit TEXT NOT NULL,
-    amount INTEGER NOT NULL,
-    duration INTEGER,
-    restrictions TEXT,
-    story_permissions TEXT NOT NULL,
-    pledged_at TEXT NOT NULL,
-    stopped_at TEXT,
-    status TEXT NOT NULL DEFAULT 'active',
-    history TEXT NOT NULL DEFAULT '[]',
-    visibility TEXT NOT NULL DEFAULT 'private',
-    on_chain_assertion_id TEXT,
-    created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL
-  );
-  CREATE INDEX IF NOT EXISTS idx_pool_pledges_principal ON pool_pledges(principal);
-  CREATE INDEX IF NOT EXISTS idx_pool_pledges_pool ON pool_pledges(pool_agent_id);
-  CREATE INDEX IF NOT EXISTS idx_pool_pledges_status ON pool_pledges(status);
+  -- Spec 004 v2 -- pool_pledges DROPPED (person-mcp). Authoritative on
+  -- chain in PledgeRegistry. Solo human donors use org-mcp pool_pledge:*.
 `)
 
 /** Raw better-sqlite3 handle. Used by the absorbed ssi storage modules. */

@@ -4,6 +4,7 @@ import { Hono } from 'hono'
 import { logger } from 'hono/logger'
 import { config } from './config.js'
 import { CATALYST_DID, ensureMembershipRegistered } from './issuers/membership.js'
+import { ensureMarketplaceCredsRegistered } from './issuers/marketplaceCreds.js'
 import { credentialRoutes } from './api/credential.js'
 import { oid4vciRoutes } from './api/oid4vci.js'
 
@@ -26,6 +27,7 @@ import { matchInitiationsTools } from './tools/matchInitiations.js'
 import { poolPledgesTools } from './tools/poolPledges.js'
 import { proposalVotesTools } from './tools/proposalVotes.js'
 import { fundingTools } from './tools/disbursements.js'
+import { marketplaceCredIssuanceTools } from './tools/marketplaceCredIssuance.js'
 
 const allTools = {
   ...orgProfileTools,
@@ -44,6 +46,7 @@ const allTools = {
   ...poolPledgesTools,
   ...proposalVotesTools,
   ...fundingTools,
+  ...marketplaceCredIssuanceTools,
 } as const
 
 const toolDefinitions = Object.values(allTools).map(
@@ -107,6 +110,7 @@ app.route('/', oid4vciRoutes)
 
 async function main() {
   await ensureMembershipRegistered()
+  await ensureMarketplaceCredsRegistered()
   serve({ fetch: app.fetch, port: config.port })
   console.log(`[org-mcp] ${config.displayName} @ ${CATALYST_DID}`)
   console.log(`[org-mcp] tools: ${Object.keys(toolHandlers).length}`)

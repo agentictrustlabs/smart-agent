@@ -227,13 +227,14 @@ async function seedSql(): Promise<void> {
     )
   `
 
-  // Dual-write to person-mcp (proposer's view) AND org-mcp (steward's
-  // view via grant_proposal:list_for_round which has a v1 same-DB
-  // shortcut). Production federates via cross-delegation; the seed
-  // writes both so the steward UI lights up in dev.
+  // Spec 004 v2 — org-mcp's proposal_submissions is gone (submitted
+  // proposals live on chain in GrantProposalRegistry). Only person-mcp
+  // keeps a `proposal_submissions` table — for DRAFTS (pre-submission
+  // state). Demo proposals seeded here populate person-mcp drafts; the
+  // submitted on-chain rows come from real user flow through
+  // grant_proposal:submit.
   const targets = [
     { dbPath: path.join(repoRoot, 'apps/person-mcp/person-mcp.db'), label: 'person-mcp' },
-    { dbPath: path.join(repoRoot, 'apps/org-mcp/org-mcp.db'),       label: 'org-mcp' },
   ]
   for (const { dbPath, label } of targets) {
     if (!fs.existsSync(dbPath)) {

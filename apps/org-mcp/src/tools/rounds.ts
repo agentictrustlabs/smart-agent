@@ -15,7 +15,7 @@ import { eq } from 'drizzle-orm'
 import { encodeFunctionData, keccak256, toHex, type Address, type Hex } from 'viem'
 import { randomUUID } from 'node:crypto'
 import { db } from '../db/index.js'
-import { rounds, proposalSubmissions } from '../db/schema.js'
+import { rounds } from '../db/schema.js'
 import { requireOrgPrincipalAny as requireOrgPrincipal } from '../auth/principal-context.js'
 import {
   FundRegistryClient,
@@ -67,16 +67,13 @@ const STATUS_CONCEPT: Record<RoundStatus, string> = {
 }
 
 /**
- * Derive the proposalsReceived counter at read time. Always counts the
- * submitted/withdrawn/awarded/declined statuses — drafts are excluded.
- * (Per IA, drafts never carry a roundId.)
+ * Spec 004 — `proposal_submissions` SQL table dropped; submitted proposals
+ * live on chain in `GrantProposalRegistry`. Returns 0 until the on-chain
+ * → GraphDB sync (R8) lands so this can scan the registry's events.
  */
 export function getProposalsReceived(roundId: string): number {
-  const rows = db.select({ id: proposalSubmissions.id })
-    .from(proposalSubmissions)
-    .where(eq(proposalSubmissions.roundId, roundId))
-    .all()
-  return rows.length
+  void roundId
+  return 0
 }
 
 // ───────────────────────────────────────────────────────────────────────

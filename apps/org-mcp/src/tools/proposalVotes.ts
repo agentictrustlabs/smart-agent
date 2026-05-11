@@ -17,11 +17,14 @@
  *   - vote:tally_for_round    computed: per-proposal {approve, reject, abstain} counts
  *   - vote:list_for_voter     ballots a voter has cast (for "Votes I cast" view)
  */
-import { eq, and } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { randomUUID } from 'node:crypto'
 import { db } from '../db/index.js'
-import { proposalVotes, rounds, proposalSubmissions } from '../db/schema.js'
+import { rounds } from '../db/schema.js'
 import { requireOrgPrincipalAny as requireOrgPrincipal } from '../auth/principal-context.js'
+import { VoteRegistryClient, type Ballot } from '@smart-agent/sdk'
+import { callA2aRedeemWithChain, type SignedDelegation } from '../lib/a2a-client.js'
+import { requireVoteRegistryAddress } from '../lib/contracts.js'
 
 const mcpText = <T>(v: T) => ({ content: [{ type: 'text' as const, text: JSON.stringify(v) }] })
 
@@ -31,77 +34,140 @@ function nowIso(): string {
 
 interface CastVoteArgs {
   token: string
-  roundId: string                       // URN form
-  proposalId: string
-  voterAgentId: string
-  vote: 'approve' | 'reject' | 'abstain'
-  weight?: number                       // defaults to 1
-  rationale?: string | null
-  signature?: string | null
+  /** Round subject (bytes32 hex) — computed by the action layer from
+   *  the round's URN via FundRegistry.roundSubject. */
+  roundSubject: `0x${string}`
+  /** Proposal subject (bytes32 hex) — computed from
+   *  GrantProposalRegistry.gpSubject(roundSubject, proposalNullifier).
+   *  The action layer resolves the chosen proposal to its subject when
+   *  the voter picks it from the list. */
+  proposalSubject: `0x${string}`
+  vote: Ballot
+  weight?: number
+  rationale?: string
+  /** REQUIRED — RoundVoterCredential presentation. There is no
+   *  principal-gated fallback (spec 004 no-fallback decision). */
+  presentation: {
+    presentationJson: string
+    presentationRequest: Record<string, unknown>
+  }
+  /** REQUIRED for spec 004 (b2) chained-delegation auth. The voter
+   *  has the admin's signed `admin → voter` delegation in their wallet
+   *  from credential-issuance time; the web client mints a fresh
+   *  short-lived `voter → session` leaf and stacks both here. Root
+   *  first, leaf last. Leaf delegate MUST equal the a2a session key. */
+  chain: SignedDelegation[]
+  _a2aSessionId?: string
 }
 
 const castVoteTool = {
   name: 'vote:cast',
   description:
-    "Cast or update a ballot on a proposal. UPSERT semantics — voters may change their vote pre-finalize. Eligibility (steward-quorum: voter must be canManageAgent of round.fundAgent) is enforced at the action layer.",
+    "Cast or update a ballot on a proposal. Writes the row to VoteRegistry on chain (nullifier-keyed; no voter identity stored). REQUIRES a RoundVoterCredential presentation — no principal-gated fallback (spec 004).",
   inputSchema: {
     type: 'object' as const,
     properties: {
       token: { type: 'string' },
-      roundId: { type: 'string' },
-      proposalId: { type: 'string' },
-      voterAgentId: { type: 'string' },
+      roundSubject: { type: 'string' },
+      proposalSubject: { type: 'string' },
       vote: { type: 'string', enum: ['approve', 'reject', 'abstain'] },
       weight: { type: 'integer' },
       rationale: { type: 'string' },
-      signature: { type: 'string' },
+      presentation: {
+        type: 'object',
+        properties: {
+          presentationJson: { type: 'string' },
+          presentationRequest: { type: 'object' },
+        },
+        required: ['presentationJson', 'presentationRequest'],
+      },
+      chain: {
+        type: 'array',
+        items: { type: 'object' },
+      },
     },
-    required: ['token', 'roundId', 'proposalId', 'voterAgentId', 'vote'],
+    required: ['token', 'roundSubject', 'proposalSubject', 'vote', 'presentation', 'chain'],
   },
   handler: async (args: CastVoteArgs) => {
     await requireOrgPrincipal(args.token, args, 'vote:cast')
-    const now = nowIso()
-    const voter = args.voterAgentId.toLowerCase()
-    const existing = db.select().from(proposalVotes)
-      .where(and(
-        eq(proposalVotes.roundId, args.roundId),
-        eq(proposalVotes.proposalId, args.proposalId),
-        eq(proposalVotes.voterAgentId, voter),
-      )).all()[0]
-    if (existing) {
-      db.update(proposalVotes)
-        .set({
-          vote: args.vote,
-          weight: args.weight ?? 1,
-          rationale: args.rationale ?? null,
-          signature: args.signature ?? null,
-          updatedAt: now,
-        })
-        .where(eq(proposalVotes.id, existing.id))
-        .run()
-      return mcpText({ id: existing.id, status: 'updated' })
+
+    // ─── Verify AnonCreds presentation ────────────────────────────
+    // No fallback — every vote must be backed by a verified
+    // RoundVoterCredential. The org-mcp gateway derives the
+    // nullifier deterministically from the credential's
+    // holderPseudoId + `vote:${roundSubject}`; the chain trusts the
+    // gateway as publisher.
+    const { verifyPresentation } = await import('../auth/verify-presentation.js')
+    const { resolveOnChainResolver } = await import('../auth/on-chain-resolver.js')
+    // Spec 004 v2 — the credential MUST bind `roundSubject` to the same
+    // round this vote targets. Without this, any RoundVoterCredential
+    // for any round would satisfy the proof (high-severity gap caught
+    // in review). The verifier matches the revealed `roundSubject`
+    // attribute exactly against the action's `args.roundSubject`.
+    const result = await verifyPresentation({
+      resolver: resolveOnChainResolver(),
+      credentialType: 'RoundVoterCredential',
+      presentationJson: args.presentation.presentationJson,
+      presentationRequest: args.presentation.presentationRequest,
+      expectedAttributes: { roundSubject: args.roundSubject },
+      nullifierContext: `vote:${args.roundSubject}`,
+    })
+    if (!result.ok) {
+      return mcpText({ ok: false as const, error: `presentation rejected: ${result.error}` })
     }
-    const id = randomUUID()
-    db.insert(proposalVotes).values({
-      id,
-      roundId: args.roundId,
-      proposalId: args.proposalId,
-      voterAgentId: voter,
-      vote: args.vote,
-      weight: args.weight ?? 1,
-      rationale: args.rationale ?? null,
-      signature: args.signature ?? null,
-      castAt: now,
-      updatedAt: now,
-    }).run()
-    return mcpText({ id, status: 'cast' })
+
+    // ─── Encode the on-chain write ────────────────────────────────
+    // Spec 004 (b2) chained auth: the redeem chain is
+    //   [admin → voter, voter → session]
+    // signed at credential-issuance time (admin leg) + at action time
+    // (voter leg, freshly minted with `authority = hash(admin→voter)`
+    // so DelegationManager threads them). DelegationManager dispatches
+    // root-down ending at `admin.execute(VoteRegistry, ...)`, so
+    // msg.sender at the registry = admin's AgentAccount.
+    // `onlyRoundOperator(roundSubject)` then passes because admin IS
+    // a registered owner of the round's fund AgentAccount (standard
+    // fund:open flow).
+    const sessionId = args._a2aSessionId
+    if (!sessionId) {
+      return mcpText({ ok: false as const, error: '_a2aSessionId missing — vote:cast requires the a2a-agent session id' })
+    }
+    if (!Array.isArray(args.chain) || args.chain.length === 0) {
+      return mcpText({ ok: false as const, error: 'chain missing — vote:cast requires the admin→voter→session delegation chain (spec 004 b2)' })
+    }
+    const callData = VoteRegistryClient.encodeCastVote({
+      roundSubject: args.roundSubject,
+      nullifier: result.nullifierHash as `0x${string}`,
+      proposalSubject: args.proposalSubject,
+      ballot: args.vote,
+      weight: BigInt(args.weight ?? 1),
+      rationale: args.rationale ?? '',
+    })
+    const tx = await callA2aRedeemWithChain(sessionId, {
+      mcpTool: 'vote:cast',
+      mcpCallId: randomUUID(),
+      target: requireVoteRegistryAddress(),
+      value: 0n,
+      callData,
+      chain: args.chain,
+    })
+    return mcpText({
+      ok: true as const,
+      txHash: tx.txHash,
+      nullifier: result.nullifierHash,
+      anonymous: true as const,
+    })
   },
 }
 
+// Spec 004 — the `proposal_votes` SQL mirror is dropped. Ballots are
+// authoritative on chain in `VoteRegistry`. These read tools return
+// empty arrays until the on-chain → GraphDB sync (R8) lands; the UI
+// reads tallies directly from VoteRegistry events or the GraphDB
+// mirror once available.
 const listForRoundTool = {
   name: 'vote:list_for_round',
   description:
-    'List all ballots on a round (for tally + audit). Returns rows in cast order.',
+    'STUB — `proposal_votes` SQL mirror dropped; ballots live on chain in VoteRegistry. Returns empty until GraphDB sync (R8) ships.',
   inputSchema: {
     type: 'object' as const,
     properties: {
@@ -112,16 +178,14 @@ const listForRoundTool = {
   },
   handler: async (args: { token: string; roundId: string }) => {
     await requireOrgPrincipal(args.token, args, 'vote:list_for_round')
-    const rows = db.select().from(proposalVotes)
-      .where(eq(proposalVotes.roundId, args.roundId))
-      .all()
-    return mcpText({ votes: rows })
+    void args
+    return mcpText({ votes: [] })
   },
 }
 
 const listForProposalTool = {
   name: 'vote:list_for_proposal',
-  description: 'List all ballots on a single proposal.',
+  description: 'STUB — see `vote:list_for_round`.',
   inputSchema: {
     type: 'object' as const,
     properties: {
@@ -132,16 +196,14 @@ const listForProposalTool = {
   },
   handler: async (args: { token: string; proposalId: string }) => {
     await requireOrgPrincipal(args.token, args, 'vote:list_for_proposal')
-    const rows = db.select().from(proposalVotes)
-      .where(eq(proposalVotes.proposalId, args.proposalId))
-      .all()
-    return mcpText({ votes: rows })
+    void args
+    return mcpText({ votes: [] })
   },
 }
 
 const listForVoterTool = {
   name: 'vote:list_for_voter',
-  description: 'List ballots a single voter has cast (across all rounds/proposals).',
+  description: 'STUB — see `vote:list_for_round`.',
   inputSchema: {
     type: 'object' as const,
     properties: {
@@ -152,10 +214,8 @@ const listForVoterTool = {
   },
   handler: async (args: { token: string; voterAgentId: string }) => {
     await requireOrgPrincipal(args.token, args, 'vote:list_for_voter')
-    const rows = db.select().from(proposalVotes)
-      .where(eq(proposalVotes.voterAgentId, args.voterAgentId.toLowerCase()))
-      .all()
-    return mcpText({ votes: rows })
+    void args
+    return mcpText({ votes: [] })
   },
 }
 
@@ -180,46 +240,21 @@ const tallyForRoundTool = {
     },
     required: ['token', 'roundId'],
   },
+  // Spec 004 — Ballots are authoritative on chain in VoteRegistry +
+  // proposal bodies in GrantProposalRegistry. The full tally now
+  // requires scanning VoteCast/VoteUpdated events for the round, grouped
+  // by proposalSubject, then comparing against the round's voting
+  // threshold. That scan is queued behind R8 (on-chain → GraphDB
+  // sync); until then this tool surfaces the round's voting config
+  // alone with an empty tally array — the UI distinguishes
+  // "tally not yet synced" from "no votes cast".
   handler: async (args: { token: string; roundId: string }) => {
     await requireOrgPrincipal(args.token, args, 'vote:tally_for_round')
     const round = db.select().from(rounds)
       .where(eq(rounds.id, args.roundId)).all()[0]
     if (!round) return mcpText({ tally: [], threshold: 0, strategy: null })
-    const submitted = db.select().from(proposalSubmissions)
-      .where(eq(proposalSubmissions.roundId, args.roundId))
-      .all()
-      .filter((p) => p.status !== 'draft')
-    const ballots = db.select().from(proposalVotes)
-      .where(eq(proposalVotes.roundId, args.roundId))
-      .all()
-    const byProposal = new Map<string, TallyEntry>()
-    for (const p of submitted) {
-      byProposal.set(p.id, {
-        proposalId: p.id,
-        approves: 0,
-        rejects: 0,
-        abstains: 0,
-        totalWeight: 0,
-        passes: false,
-      })
-    }
-    for (const b of ballots) {
-      const entry = byProposal.get(b.proposalId)
-      if (!entry) continue
-      if (b.vote === 'approve') {
-        entry.approves += 1
-        entry.totalWeight += b.weight
-      } else if (b.vote === 'reject') {
-        entry.rejects += 1
-      } else if (b.vote === 'abstain') {
-        entry.abstains += 1
-      }
-    }
-    for (const e of byProposal.values()) {
-      e.passes = e.approves >= round.votingThreshold
-    }
     return mcpText({
-      tally: Array.from(byProposal.values()),
+      tally: [] as TallyEntry[],
       threshold: round.votingThreshold,
       strategy: round.votingStrategy,
       windowStartsAt: round.votingWindowStartsAt,

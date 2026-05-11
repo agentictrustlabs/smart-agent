@@ -53,6 +53,10 @@ import "../src/AgentNameResolver.sol";
 import "../src/AgentNameAttributeResolver.sol";
 import "../src/PoolRegistry.sol";
 import "../src/FundRegistry.sol";
+import "../src/VoteRegistry.sol";
+import "../src/GrantProposalRegistry.sol";
+import "../src/PledgeRegistry.sol";
+import "../src/MatchInitiationRegistry.sol";
 import "../src/ProposalRegistry.sol";
 import "../src/AgentNameUniversalResolver.sol";
 import "../src/enforcers/NameScopeEnforcer.sol";
@@ -270,6 +274,27 @@ contract Deploy is Script {
         ProposalRegistry proposalRegistry = new ProposalRegistry(address(ontologyRegistry), address(shapeRegistry));
         console.log("ProposalRegistry:", address(proposalRegistry));
 
+        // 15e–15h. Spec 004 — full marketplace state on chain. Each
+        //         registry stores nullifier-keyed rows so identity stays
+        //         off-chain (AnonCreds presentations gate writes via
+        //         org-mcp's verifier; the chain trusts the gateway).
+        VoteRegistry voteRegistry = new VoteRegistry(
+            address(ontologyRegistry), address(shapeRegistry), address(fundRegistry)
+        );
+        console.log("VoteRegistry:", address(voteRegistry));
+        GrantProposalRegistry grantProposalRegistry = new GrantProposalRegistry(
+            address(ontologyRegistry), address(shapeRegistry), address(fundRegistry)
+        );
+        console.log("GrantProposalRegistry:", address(grantProposalRegistry));
+        PledgeRegistry pledgeRegistry = new PledgeRegistry(
+            address(ontologyRegistry), address(shapeRegistry)
+        );
+        console.log("PledgeRegistry:", address(pledgeRegistry));
+        MatchInitiationRegistry matchInitiationRegistry = new MatchInitiationRegistry(
+            address(ontologyRegistry), address(shapeRegistry)
+        );
+        console.log("MatchInitiationRegistry:", address(matchInitiationRegistry));
+
         // 15. AgentAccountResolver — owns its agent metadata storage.
         AgentAccountResolver accountResolver = new AgentAccountResolver(address(ontologyRegistry));
         console.log("AgentAccountResolver:", address(accountResolver));
@@ -457,6 +482,10 @@ contract Deploy is Script {
         _logEnv("POOL_REGISTRY_ADDRESS", address(poolRegistry));
         _logEnv("FUND_REGISTRY_ADDRESS", address(fundRegistry));
         _logEnv("PROPOSAL_REGISTRY_ADDRESS", address(proposalRegistry));
+        _logEnv("VOTE_REGISTRY_ADDRESS", address(voteRegistry));
+        _logEnv("GRANT_PROPOSAL_REGISTRY_ADDRESS", address(grantProposalRegistry));
+        _logEnv("PLEDGE_REGISTRY_ADDRESS", address(pledgeRegistry));
+        _logEnv("MATCH_INITIATION_REGISTRY_ADDRESS", address(matchInitiationRegistry));
     }
 
     function _logEnv(string memory key, address addr) internal pure {

@@ -435,6 +435,205 @@ onchainRedeem.post('/:id/deploy-agent', requireInterServiceAuth(), async (c) => 
   }
 })
 
+// ─── POST /session/:id/redeem-with-chain ─────────────────────────────
+//
+// Spec 004 (auth-model b2) — chained redeem for marketplace tools.
+//
+// Where `/redeem-tx` redeems `pkg.delegation` directly (msg.sender at the
+// target = the session's account holder), `/redeem-with-chain` ignores
+// `pkg.delegation` and redeems a caller-supplied chain. The leaf of the
+// chain MUST have `delegate == sessionKeyAddress` so DelegationManager
+// accepts the redeemer.
+//
+// Typical chain at credential issuance time:
+//   chain = [
+//     {                                    // D_admin_holder (signed by admin AA)
+//       delegator: admin AgentAccount,
+//       delegate:  holder AgentAccount,
+//       authority: ROOT,
+//       caveats:   [AllowedTargets([GrantProposalRegistry]),
+//                   AllowedMethods([submit,edit,withdraw])],
+//       …
+//     },
+//     {                                    // D_holder_session (freshly minted)
+//       delegator: holder AgentAccount,
+//       delegate:  sessionKeyAddress,
+//       authority: hash(D_admin_holder),
+//       caveats:   [Timestamp(short)],
+//       …
+//     },
+//   ]
+//
+// At dispatch, DelegationManager walks the chain root-down, ending at
+// `admin.execute(target, value, callData)`. msg.sender at the registry =
+// admin AgentAccount, so `_isAccountOwner(fundAgent, msg.sender)` passes
+// (admin is registered as owner of fund/pool via the standard
+// pool:create / fund:open path).
+//
+// Auth: HMAC inter-service (same as the other endpoints).
+// Authorization: TOOL_POLICIES target/selector gate (defense in depth);
+// the rest of the chain's caveats already constrain on chain.
+interface ChainCaveat {
+  enforcer: `0x${string}`
+  terms: `0x${string}`
+  args?: `0x${string}`
+}
+interface ChainDelegationStruct {
+  delegator: `0x${string}`
+  delegate: `0x${string}`
+  authority: `0x${string}`
+  caveats: ChainCaveat[]
+  salt: string
+  signature: `0x${string}`
+}
+interface RedeemWithChainBody {
+  mcpTool: string
+  mcpCallId: string
+  a2aTaskId?: string
+  target: Address
+  value: string
+  callData: Hex
+  chain: ChainDelegationStruct[]
+}
+
+onchainRedeem.post('/:id/redeem-with-chain', requireInterServiceAuth(), async (c) => {
+  const sessionId = c.req.param('id')
+  const ctx = c.get('interService' as never) as { service: string; bodyRaw: string } | undefined
+  const bodyRaw = ctx?.bodyRaw ?? (await c.req.text())
+  let body: RedeemWithChainBody
+  try {
+    body = JSON.parse(bodyRaw) as RedeemWithChainBody
+  } catch {
+    return c.json({ error: 'invalid JSON body' }, 400)
+  }
+  const mcpServer = ctx?.service ?? 'unknown'
+
+  if (!Array.isArray(body.chain) || body.chain.length === 0) {
+    return c.json({ error: 'chain must be a non-empty array of signed delegations' }, 400)
+  }
+
+  // Policy lookup — same gate as redeem-tx (defense in depth).
+  const policy = TOOL_POLICIES[body.mcpTool]
+  if (!policy) {
+    return c.json({ error: `unknown tool: ${body.mcpTool}` }, 403)
+  }
+  if (policy.executionPath !== 'stateless-redeem') {
+    return c.json({ error: `tool ${body.mcpTool} requires path ${policy.executionPath}, not stateless-redeem` }, 403)
+  }
+
+  // Resolve session.
+  const sess = await loadActiveSessionPackage(sessionId)
+  if ('error' in sess) return c.json({ error: sess.error }, sess.status)
+  const { pkg } = sess
+
+  // Chain ordering: DelegationManager expects [leaf, …, root] — index 0
+  // is the LEAF, which must delegate to the session key (the EOA we sign
+  // the redeem tx with). The previous chain[last] check was backwards.
+  const leaf = body.chain[0]
+  if (leaf.delegate.toLowerCase() !== pkg.sessionKeyAddress.toLowerCase()) {
+    return c.json({
+      error: `chain leaf delegate (${leaf.delegate}) must equal session key (${pkg.sessionKeyAddress})`,
+    }, 400)
+  }
+
+  // Validate target / selector against policy (defense in depth — the
+  // chain's own caveats already constrain on chain).
+  const env = process.env as Record<string, string | undefined>
+  const allowedTargets = policyAllowedTargets(policy, env)
+  const targetLower = body.target.toLowerCase() as Address
+  if (!allowedTargets.includes(targetLower)) {
+    return c.json({ error: `target not allowed for ${body.mcpTool}` }, 403)
+  }
+  let selector: `0x${string}`
+  try {
+    selector = extractSelector(body.callData)
+  } catch (e) {
+    return c.json({ error: (e as Error).message }, 400)
+  }
+  const allowedSelectors = policyAllowedSelectors(body.mcpTool, policy)
+  if (allowedSelectors.size > 0 && !allowedSelectors.has(selector)) {
+    return c.json({ error: `selector ${selector} not allowed for ${body.mcpTool}` }, 403)
+  }
+
+  // Receipt.
+  const receiptId = await writeReceipt({
+    pkg,
+    sessionId,
+    mcpServer,
+    body: {
+      mcpTool: body.mcpTool,
+      mcpCallId: body.mcpCallId,
+      a2aTaskId: body.a2aTaskId ?? '',
+      target: body.target,
+      value: body.value,
+      callData: body.callData,
+    },
+    executionPath: 'stateless-redeem',
+    status: 'pending',
+  })
+
+  // Submit DelegationManager.redeemDelegation(chain, target, value, callData)
+  // — signed by the session key. The on-chain validators run for each
+  // chain element; the leaf's delegate-msg.sender check uses the session
+  // key (which we just confirmed matches above).
+  try {
+    const sessionAccount = privateKeyToAccount(pkg.sessionPrivateKey)
+    const wallet = createWalletClient({
+      account: sessionAccount,
+      chain: getChain(),
+      transport: http(config.RPC_URL),
+    })
+    const pub = createPublicClient({ chain: getChain(), transport: http(config.RPC_URL) })
+
+    const structs = body.chain.map((d) => ({
+      delegator: d.delegator,
+      delegate: d.delegate,
+      authority: d.authority,
+      caveats: d.caveats.map((cav) => ({
+        enforcer: cav.enforcer,
+        terms: cav.terms,
+        args: (cav.args ?? '0x') as Hex,
+      })),
+      salt: BigInt(d.salt),
+      signature: d.signature,
+    }))
+    const valueWei = BigInt(body.value)
+
+    const txHash = await wallet.writeContract({
+      address: config.DELEGATION_MANAGER_ADDRESS,
+      abi: delegationManagerAbi,
+      functionName: 'redeemDelegation',
+      args: [structs, body.target, valueWei, body.callData],
+      account: sessionAccount,
+      chain: wallet.chain ?? null,
+    })
+    const receipt = await pub.waitForTransactionReceipt({ hash: txHash })
+    const ok = receipt.status === 'success'
+
+    await db.update(executionAudit)
+      .set({
+        status: ok ? 'completed' : 'reverted',
+        txHash,
+        finalizedAt: new Date().toISOString(),
+        errorReason: ok ? '' : 'transaction reverted',
+      })
+      .where(eq(executionAudit.id, receiptId))
+
+    if (!ok) return c.json({ error: 'tx reverted', txHash, executionReceiptId: receiptId }, 502)
+    return c.json({ txHash, executionReceiptId: receiptId })
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    await db.update(executionAudit)
+      .set({
+        status: 'reverted',
+        errorReason: msg.slice(0, 1000),
+        finalizedAt: new Date().toISOString(),
+      })
+      .where(eq(executionAudit.id, receiptId))
+    return c.json({ error: `redeem-with-chain failed: ${msg}` }, 500)
+  }
+})
+
 // ─── POST /session/:id/redeem-subdelegated ───────────────────────────
 //
 // Phase 2 — sub-delegated execution path for sensitive-tier tools.

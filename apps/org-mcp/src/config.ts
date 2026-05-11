@@ -38,4 +38,9 @@ export const config = {
   // which independently validate target/selector against TOOL_POLICIES.
   poolRegistryAddress: process.env.POOL_REGISTRY_ADDRESS as `0x${string}` | undefined,
   fundRegistryAddress: process.env.FUND_REGISTRY_ADDRESS as `0x${string}` | undefined,
+  // Spec 004 — on-chain marketplace registries.
+  voteRegistryAddress: process.env.VOTE_REGISTRY_ADDRESS as `0x${string}` | undefined,
+  grantProposalRegistryAddress: process.env.GRANT_PROPOSAL_REGISTRY_ADDRESS as `0x${string}` | undefined,
+  pledgeRegistryAddress: process.env.PLEDGE_REGISTRY_ADDRESS as `0x${string}` | undefined,
+  matchInitiationRegistryAddress: process.env.MATCH_INITIATION_REGISTRY_ADDRESS as `0x${string}` | undefined,
 }

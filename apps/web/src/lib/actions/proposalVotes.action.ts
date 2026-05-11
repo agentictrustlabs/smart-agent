@@ -16,6 +16,23 @@ import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { getPersonAgentForUser } from '@/lib/agent-registry'
 import { getStrategy, type VotingStrategyName, type TallyEntry, type VoteRow } from '@/lib/voting/strategies'
 import { DiscoveryService } from '@smart-agent/discovery'
+import { resolveSpec004Chain } from '@/lib/spec004/chain'
+import { buildMarketplacePresentation } from '@/lib/spec004/presentation'
+import { SPEC004_SELECTORS } from '@smart-agent/sdk'
+import { keccak256, encodePacked, type Address } from 'viem'
+
+function roundSubjectFromUrn(roundIdUrn: string): `0x${string}` {
+  const slug = roundIdUrn.startsWith('urn:smart-agent:round:')
+    ? roundIdUrn.slice('urn:smart-agent:round:'.length)
+    : roundIdUrn
+  return keccak256(encodePacked(['string', 'string'], ['sa:round:', slug]))
+}
+
+function requireVoteRegistryAddress(): Address {
+  const v = process.env.VOTE_REGISTRY_ADDRESS as Address | undefined
+  if (!v) throw new Error('VOTE_REGISTRY_ADDRESS not set')
+  return v
+}
 
 interface RoundConfigRow {
   id: string
@@ -136,33 +153,85 @@ export async function getVoteEligibility(roundId: string): Promise<VoteEligibili
 
 export interface CastVoteInput {
   roundId: string
-  proposalId: string
+  /** Pre-derived proposal subject (bytes32 hex). The proposal-list UI
+   *  receives this from GrantProposalRegistry events / GraphDB sync;
+   *  the vote action just forwards it. */
+  proposalSubject: `0x${string}`
   vote: 'approve' | 'reject' | 'abstain'
   rationale?: string
 }
 
-export async function castVote(input: CastVoteInput): Promise<{ ok: true; status: 'cast' | 'updated' } | { ok: false; error: string }> {
+export async function castVote(input: CastVoteInput): Promise<
+  | { ok: true; txHash: `0x${string}`; nullifier: string; anonymous: true }
+  | { ok: false; error: string }
+> {
   const me = await getCurrentUser()
   if (!me) return { ok: false, error: 'not-authenticated' }
   const myAgent = await getPersonAgentForUser(me.id)
   if (!myAgent) return { ok: false, error: 'no-person-agent' }
+  // Eligibility used to be enforced here against the round's voter set;
+  // spec 004 moves authorization to the credential layer. If the holder
+  // has a RoundVoterCredential + admin→holder delegation, they're eligible.
+  // We still consult the strategy for `weight` (default 1).
   const elig = await getVoteEligibility(input.roundId)
-  if ('error' in elig) return { ok: false, error: elig.error }
-  if (!elig.canVote) return { ok: false, error: elig.reason ?? 'not-eligible' }
+  const weight =
+    'error' in elig
+      ? 1
+      : elig.canVote
+        ? elig.weight
+        : 1
+
+  let voteRegistry: Address
   try {
-    const result = await callMcp<{ id: string; status: 'cast' | 'updated' }>(
-      'org',
-      'vote:cast',
-      {
-        roundId: input.roundId,
-        proposalId: input.proposalId,
-        voterAgentId: myAgent,
-        vote: input.vote,
-        weight: elig.weight,
-        rationale: input.rationale ?? null,
+    voteRegistry = requireVoteRegistryAddress()
+  } catch (e) {
+    return { ok: false, error: (e as Error).message }
+  }
+
+  // 1. Build the RoundVoterCredential presentation. The cred binds
+  //    `roundSubject` to a specific round; the verifier matches it
+  //    against this vote's roundSubject so a cred for round A can't
+  //    vote in round B.
+  const roundSubject = roundSubjectFromUrn(input.roundId)
+  const pres = await buildMarketplacePresentation({
+    credentialType: 'RoundVoterCredential',
+    expectedAttributes: { roundSubject },
+  })
+  if (!pres.ok) return { ok: false, error: `presentation: ${pres.error}` }
+
+  // 2. Resolve the admin→holder→session chain.
+  const chain = await resolveSpec004Chain({
+    targetRegistry: voteRegistry,
+    credentialType: 'RoundVoterCredential',
+    methodSelectors: [SPEC004_SELECTORS.voteCast],
+  })
+  if (!chain.ok) return { ok: false, error: `chain: ${chain.error} — ${chain.message}` }
+
+  // 3. Fire vote:cast on org-mcp. The MCP tool returns
+  //    `{ ok: true, txHash, nullifier, anonymous }` on success or
+  //    `{ ok: false, error }` on auth/verify failure — propagate either.
+  try {
+    const result = await callMcp<
+      | { ok: true; txHash: `0x${string}`; nullifier: string; anonymous: true }
+      | { ok: false; error: string | { kind?: string; message?: string } }
+    >('org', 'vote:cast', {
+      roundSubject,
+      proposalSubject: input.proposalSubject,
+      vote: input.vote,
+      weight,
+      rationale: input.rationale ?? null,
+      presentation: {
+        presentationJson: pres.presentationJson,
+        presentationRequest: pres.presentationRequest,
       },
-    )
-    return { ok: true, status: result.status }
+      chain: chain.chain,
+    })
+    if (!result.ok) {
+      const e = result.error
+      const msg = typeof e === 'string' ? e : (e?.message ?? e?.kind ?? 'vote:cast failed')
+      return { ok: false, error: msg }
+    }
+    return { ok: true, txHash: result.txHash, nullifier: result.nullifier, anonymous: true }
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : String(err) }
   }

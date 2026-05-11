@@ -8,4 +8,4 @@
 [people-group-mcp] curator allowlist: EMPTY
 [people-group-mcp] listening on http://localhost:3300
 <-- GET /health
---> GET /health [32m200[0m 1ms
+--> GET /health [32m200[0m 0ms

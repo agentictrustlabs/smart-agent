@@ -44,6 +44,17 @@ export async function POST(
   const form = await req.formData()
   const planNarrative = (form.get('planNarrative') as string | null) ?? null
   const organisationalBackground = (form.get('organisationalBackground') as string | null) ?? null
+  // Spec 004 — edit_pre_deadline is now on-chain and requires the round +
+  // pool the proposal lives under. The proposal-edit page wires these
+  // as hidden form fields.
+  const roundId = (form.get('roundId') as string | null) ?? null
+  const poolAgentId = (form.get('poolAgentId') as string | null) ?? null
+  if (!roundId || !poolAgentId) {
+    return NextResponse.redirect(
+      new URL(`/h/${slug}/proposals/${proposalId}?err=missing-round-or-pool`, req.url),
+      { status: 303 },
+    )
+  }
 
   // Build patch — only include fields the user actually edited.
   const patch: EditGrantProposalRequest['patch'] = {}
@@ -72,7 +83,7 @@ export async function POST(
     )
   }
 
-  const result = await editMemberProposal({ proposalId, patch })
+  const result = await editMemberProposal({ roundId, poolAgentId, patch })
   if (!result.ok) {
     const encoded = encodeURIComponent(result.error)
     return NextResponse.redirect(
@@ -81,7 +92,7 @@ export async function POST(
     )
   }
   return NextResponse.redirect(
-    new URL(`/h/${slug}/proposals/${proposalId}?msg=Saved+%E2%80%94+version+bumped+to+${result.proposal.version}`, req.url),
+    new URL(`/h/${slug}/proposals/${proposalId}?msg=Saved+on+chain&tx=${result.txHash}`, req.url),
     { status: 303 },
   )
 }

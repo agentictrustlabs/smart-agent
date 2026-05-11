@@ -53,3 +53,31 @@ export function requireFundRegistryAddress(): Address {
   }
   return config.fundRegistryAddress
 }
+
+export function requireVoteRegistryAddress(): Address {
+  if (!config.voteRegistryAddress) {
+    throw new Error('org-mcp: VOTE_REGISTRY_ADDRESS not set')
+  }
+  return config.voteRegistryAddress
+}
+
+export function requireGrantProposalRegistryAddress(): Address {
+  if (!config.grantProposalRegistryAddress) {
+    throw new Error('org-mcp: GRANT_PROPOSAL_REGISTRY_ADDRESS not set')
+  }
+  return config.grantProposalRegistryAddress
+}
+
+export function requirePledgeRegistryAddress(): Address {
+  if (!config.pledgeRegistryAddress) {
+    throw new Error('org-mcp: PLEDGE_REGISTRY_ADDRESS not set')
+  }
+  return config.pledgeRegistryAddress
+}
+
+export function requireMatchInitiationRegistryAddress(): Address {
+  if (!config.matchInitiationRegistryAddress) {
+    throw new Error('org-mcp: MATCH_INITIATION_REGISTRY_ADDRESS not set')
+  }
+  return config.matchInitiationRegistryAddress
+}

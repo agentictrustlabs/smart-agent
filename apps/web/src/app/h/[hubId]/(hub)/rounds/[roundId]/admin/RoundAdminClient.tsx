@@ -186,8 +186,37 @@ export function RoundAdminClient({ hubSlug, round: initial }: Props) {
               <input type="datetime-local" value={windowEnd ? toLocalInput(windowEnd) : ''} onChange={(e) => setWindowEnd(fromLocalInput(e.target.value))} style={fieldStyle} />
             </div>
           </div>
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginTop: '0.4rem' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginTop: '0.4rem', flexWrap: 'wrap' }}>
             <button type="button" disabled={pending} onClick={saveConfig} style={btnPrimary(pending)}>{pending ? 'Saving…' : 'Save config'}</button>
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => {
+                // Set voting window to start NOW and close 7 days later.
+                // Shortcut for testing or stewards who want to skip ahead
+                // of the original deadline. Doesn't touch the on-chain
+                // submission deadline — that's immutable. Saves through
+                // the same `round:update_voting_config` MCP path.
+                const now = new Date()
+                const end = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
+                setWindowStart(now.toISOString())
+                setWindowEnd(end.toISOString())
+                setTimeout(saveConfig, 0)
+              }}
+              style={{
+                padding: '0.5rem 0.85rem',
+                background: '#fff',
+                color: '#8b5e3c',
+                border: '1px solid #8b5e3c',
+                borderRadius: 6,
+                fontSize: '0.82rem',
+                fontWeight: 600,
+                cursor: pending ? 'not-allowed' : 'pointer',
+              }}
+              title="Sets voting window to start now and close 7 days from now. Useful for testing or to skip ahead of the original deadline."
+            >
+              Open voting now (next 7d)
+            </button>
             {msg && <span style={{ fontSize: '0.8rem', color: C.textMuted }}>{msg}</span>}
           </div>
         </div>

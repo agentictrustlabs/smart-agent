@@ -1,152 +1,18 @@
 /**
- * Spec 002 — Pledge seed for Maria + Pastor David across multiple pools.
+ * Spec 004 v2 — `pool_pledges` SQL table dropped. Pledges are
+ * authoritative on chain in PledgeRegistry. This seed script used to
+ * INSERT canonical demo pledges into person-mcp's `pool_pledges`; with
+ * the table gone it has no SQL surface to write to.
  *
- * Three pledges that exercise pool-lane variety:
- *   - Maria: $100 monthly × 12 → trauma-care pool ($1200 total)
- *   - David: $50 monthly × 12 → spanish-bibles pool ($600 total)
- *   - Maria: 10 prayer-minutes daily × 365 → prayer-chain pool (3650 min)
+ * Real demo pledges should now flow through the gateway redeem path:
+ *   1. Issue a ProposalSubmitterCredential (or PledgerCredential when
+ *      that ships) to each demo donor via seed-spec004-creds.ts.
+ *   2. Web demo flow: donor signs a pool_pledge:submit via the
+ *      `apps/web/src/lib/actions/poolPledges.action.ts` action, which
+ *      mints the chain redeem.
  *
- *   pnpm exec tsx scripts/seed-test-pledge.ts
- *
- * Idempotent: INSERT OR REPLACE on stable ids; org-mcp aggregates are
- * recomputed instead of additively bumped so re-runs don't double count.
+ * Until that pipeline lands, this script is a no-op.
  */
 
-import path from 'node:path'
-import fs from 'node:fs'
-import { fileURLToPath } from 'node:url'
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const repoRoot = path.resolve(__dirname, '..')
-
-const NOW = new Date().toISOString()
-
-interface PledgeSeed {
-  id: string
-  /** person-mcp principal that owns the pledge body. */
-  principal: string
-  poolId: string
-  cadence: 'one-time' | 'monthly' | 'annual'
-  unit: string
-  amount: number
-  duration: number
-  restrictions: { kinds?: string[]; geoRoots?: string[] } | null
-  storyPermissions: 'public' | 'shareWithSupportTeam' | 'anonymous'
-}
-
-const PLEDGES: PledgeSeed[] = [
-  {
-    id: 'demo-maria-trauma-care-pledge',
-    principal: 'person_cat-user-001',
-    poolId: 'demo-trauma-care-pool',
-    cadence: 'monthly',
-    unit: 'USD',
-    amount: 100,
-    duration: 12,
-    restrictions: { kinds: ['trauma-care', 'CompassionMinistry'] },
-    storyPermissions: 'shareWithSupportTeam',
-  },
-  {
-    id: 'demo-david-spanish-bibles-pledge',
-    principal: 'person_cat-user-002',
-    poolId: 'demo-spanish-bibles-pool',
-    cadence: 'monthly',
-    unit: 'USD',
-    amount: 50,
-    duration: 12,
-    restrictions: { kinds: ['HeartLanguageScripture', 'BibleStudy'] },
-    storyPermissions: 'public',
-  },
-  {
-    id: 'demo-maria-prayer-chain-pledge',
-    principal: 'person_cat-user-001',
-    poolId: 'demo-prayer-chain-pool',
-    cadence: 'monthly',
-    unit: 'prayer-minutes',
-    amount: 300, // 10 minutes × 30 days/mo
-    duration: 12,
-    restrictions: { kinds: ['DailyPrayer', 'Intercession'] },
-    storyPermissions: 'anonymous',
-  },
-]
-
-interface SqliteStmt {
-  run: (params: Record<string, unknown>) => void
-  all?: (params?: Record<string, unknown>) => unknown[]
-}
-interface SqliteHandle {
-  prepare: (sql: string) => SqliteStmt
-  close: () => void
-}
-
-async function openSqlite(dbPath: string): Promise<SqliteHandle> {
-  const Database = (await import(
-    path.join(repoRoot, 'node_modules/.pnpm/better-sqlite3@11.10.0/node_modules/better-sqlite3/lib/index.js')
-  ) as { default: new (path: string) => SqliteHandle }).default
-  return new Database(dbPath)
-}
-
-async function seedSql(): Promise<void> {
-  const dbPath = path.join(repoRoot, 'apps/person-mcp/person-mcp.db')
-  if (!fs.existsSync(dbPath)) {
-    console.warn(`[seed-test-pledge] ${dbPath} does not exist — skipping`)
-    return
-  }
-  const db = await openSqlite(dbPath)
-  try {
-    const stmt = db.prepare(`
-      INSERT OR REPLACE INTO pool_pledges (
-        id, principal, pool_agent_id, cadence, unit, amount, duration,
-        restrictions, story_permissions, pledged_at, stopped_at, status,
-        history, visibility, on_chain_assertion_id, created_at, updated_at
-      ) VALUES (
-        @id, @principal, @pool_agent_id, @cadence, @unit, @amount, @duration,
-        @restrictions, @story_permissions, @pledged_at, @stopped_at, @status,
-        @history, @visibility, @on_chain_assertion_id, @created_at, @updated_at
-      )
-    `)
-    for (const p of PLEDGES) {
-      stmt.run({
-        id: p.id,
-        principal: p.principal,
-        pool_agent_id: `urn:smart-agent:pool:${p.poolId}`,
-        cadence: p.cadence,
-        unit: p.unit,
-        amount: p.amount,
-        duration: p.duration,
-        restrictions: p.restrictions ? JSON.stringify(p.restrictions) : null,
-        story_permissions: p.storyPermissions,
-        pledged_at: NOW,
-        stopped_at: null,
-        status: 'active',
-        history: '[]',
-        visibility: p.storyPermissions === 'anonymous' ? 'public-coarse' : 'public',
-        on_chain_assertion_id: null,
-        created_at: NOW,
-        updated_at: NOW,
-      })
-      console.log(`[seed-test-pledge] SQL ok — ${p.id} (${p.principal} → ${p.poolId})`)
-    }
-  } finally {
-    db.close()
-  }
-
-  // Pool counters (pledged_total / allocated_total / available_total) are
-  // DERIVED at read time from pool_pledges row sums (post-Phase-7). The
-  // legacy `pools` table has been dropped — no aggregate write needed.
-}
-
-async function main(): Promise<void> {
-  await seedSql()
-  console.log(`\n✓ Seeded ${PLEDGES.length} pledges across the catalyst pools:`)
-  for (const p of PLEDGES) {
-    const total = p.amount * p.duration
-    console.log(`    · ${p.id} — ${p.principal}: ${total} ${p.unit} via ${p.poolId}`)
-  }
-  console.log(`  Visit: http://localhost:3000/h/catalyst/pledges (after Maria signs in)`)
-}
-
-main().catch((e) => {
-  console.error(e instanceof Error ? e.message : e)
-  process.exit(1)
-})
+console.log('[seed-test-pledge] no-op (spec 004 v2 — pool_pledges dropped; chain-side seeding TODO)')
+process.exit(0)

@@ -110,6 +110,68 @@ export async function callA2aDeployAgent(
   return await res.json() as DeployAgentResult
 }
 
+// ─── Spec 004 (b2) — chained redeem ────────────────────────────────────
+//
+// `callA2aRedeemWithChain` ignores the session's own pkg.delegation and
+// instead redeems the caller-supplied chain. Used by AnonCreds-gated
+// marketplace tools where the admin (round/pool owner) has pre-signed
+// an `admin → holder` delegation at credential issuance time, and the
+// holder's web client has freshly minted `holder → session` with
+// `authority = hash(admin → holder)` at action time.
+export interface SignedDelegation {
+  delegator: Address
+  delegate: Address
+  authority: `0x${string}`
+  caveats: Array<{ enforcer: Address; terms: Hex; args?: Hex }>
+  /** Decimal or hex string. */
+  salt: string
+  signature: Hex
+}
+
+export interface RedeemWithChainRequest {
+  mcpTool: string
+  mcpCallId: string
+  a2aTaskId?: string
+  target: Address
+  value: bigint
+  callData: Hex
+  /** Root first, leaf last. The leaf's `delegate` must equal the
+   *  session-key address (validated server-side). */
+  chain: SignedDelegation[]
+}
+
+export async function callA2aRedeemWithChain(
+  sessionId: string,
+  req: RedeemWithChainRequest,
+): Promise<RedeemTxResult> {
+  const body = {
+    mcpTool: req.mcpTool,
+    mcpCallId: req.mcpCallId,
+    a2aTaskId: req.a2aTaskId ?? '',
+    target: req.target,
+    value: req.value.toString(),
+    callData: req.callData,
+    chain: req.chain.map((d) => ({
+      delegator: d.delegator,
+      delegate: d.delegate,
+      authority: d.authority,
+      caveats: d.caveats.map((c) => ({
+        enforcer: c.enforcer,
+        terms: c.terms,
+        args: c.args ?? '0x',
+      })),
+      salt: d.salt,
+      signature: d.signature,
+    })),
+  }
+  const res = await signedFetch(`/session/${sessionId}/redeem-with-chain`, sessionId, body)
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(`a2a redeem-with-chain failed (${res.status}): ${(err as { error?: string }).error ?? res.statusText}`)
+  }
+  return await res.json() as RedeemTxResult
+}
+
 export interface RedeemSubDelegatedRequest {
   mcpTool: string
   mcpCallId: string

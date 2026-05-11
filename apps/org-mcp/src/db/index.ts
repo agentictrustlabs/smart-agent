@@ -201,46 +201,9 @@ sqliteHandle.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_org_cdg_org ON org_cross_delegation_grants(org_principal);
 
-  -- ─── Spec 003: Intent Marketplace — Proposal Lane ──────────────────
-  -- GrantProposal body (sa:GrantProposal). Always private; never anchored
-  -- on chain in v1. SHACL sa:GrantProposalAlwaysPrivateShape enforces.
-  CREATE TABLE IF NOT EXISTS proposal_submissions (
-    id TEXT PRIMARY KEY,
-    principal TEXT NOT NULL,
-    round_id TEXT,
-    fund_mandate_id TEXT,
-    based_on_intent_id TEXT NOT NULL,
-    -- Required short title surfaced on lists, cards, round detail pages,
-    -- and the proposal detail page. Stewards rely on it to triage in the
-    -- review queue. Defaulted empty for legacy rows; submit tool requires
-    -- a non-empty value going forward.
-    display_name TEXT NOT NULL DEFAULT '',
-    budget TEXT NOT NULL,
-    plan TEXT NOT NULL,
-    milestones TEXT NOT NULL,
-    desired_outcomes TEXT NOT NULL,
-    reporting_obligations TEXT NOT NULL,
-    organisational_background TEXT NOT NULL,
-    submitted_at TEXT,
-    version INTEGER NOT NULL DEFAULT 0,
-    last_edited_at TEXT NOT NULL,
-    status TEXT NOT NULL DEFAULT 'draft',
-    withdrawn_at TEXT,
-    cloned_from_proposal_id TEXT,
-    basis TEXT,
-    visibility TEXT NOT NULL DEFAULT 'private',
-    created_at TEXT NOT NULL
-  );
-  CREATE INDEX IF NOT EXISTS idx_proposal_submissions_principal ON proposal_submissions(principal);
-  CREATE INDEX IF NOT EXISTS idx_proposal_submissions_round ON proposal_submissions(round_id);
-  CREATE INDEX IF NOT EXISTS idx_proposal_submissions_status ON proposal_submissions(status);
-  -- Migration: add display_name to legacy DBs that pre-date the column.
-  -- SQLite IF NOT EXISTS on ADD COLUMN is unsupported, so guard via a try.
-`)
-try {
-  sqliteHandle.exec(`ALTER TABLE proposal_submissions ADD COLUMN display_name TEXT NOT NULL DEFAULT ''`)
-} catch { /* already present */ }
-sqliteHandle.exec(`
+  -- Spec 004 v2 -- proposal_submissions DROPPED (org-mcp side). Proposals
+  -- live on chain in GrantProposalRegistry. Person-mcp keeps its own
+  -- proposal_submissions for drafts (pre-submission state).
 
   -- Round body lives on chain in FundRegistry; mirrored to GraphDB by sync.
   -- This slim table holds only the off-chain DAO voting config keyed by round id.
@@ -291,77 +254,10 @@ sqliteHandle.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_attest_proposal ON outcome_attestations(proposal_id);
 
-  -- DAO voting (Sprint A). Per output/voting-and-admin-plan.md.
-  CREATE TABLE IF NOT EXISTS proposal_votes (
-    id TEXT PRIMARY KEY,
-    round_id TEXT NOT NULL,
-    proposal_id TEXT NOT NULL,
-    voter_agent_id TEXT NOT NULL,
-    vote TEXT NOT NULL CHECK (vote IN ('approve', 'reject', 'abstain')),
-    weight INTEGER NOT NULL DEFAULT 1,
-    rationale TEXT,
-    signature TEXT,
-    cast_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL,
-    UNIQUE (round_id, proposal_id, voter_agent_id)
-  );
-  CREATE INDEX IF NOT EXISTS idx_votes_round ON proposal_votes(round_id);
-  CREATE INDEX IF NOT EXISTS idx_votes_proposal ON proposal_votes(proposal_id);
-  CREATE INDEX IF NOT EXISTS idx_votes_voter ON proposal_votes(voter_agent_id);
-
-  -- ─── Spec 001: Intent Marketplace — Direct Lane ─────────────────────
-  -- match_initiations — body of sa:MatchInitiation (initiator-owned, IA § 2.1).
-  -- principal = initiatorAgentId. status starts 'pending'; visibility cascades
-  -- from the two source intents (strictest wins). Public/public-coarse rows
-  -- anchor sa:MatchInitiationAssertion on chain (set onChainAssertionId).
-  CREATE TABLE IF NOT EXISTS match_initiations (
-    id TEXT PRIMARY KEY,
-    principal TEXT NOT NULL,
-    viewed_intent_id TEXT NOT NULL,
-    candidate_intent_id TEXT NOT NULL,
-    initiator_agent_id TEXT NOT NULL,
-    initiation_kind TEXT NOT NULL,
-    proposed_at TEXT NOT NULL,
-    basis TEXT NOT NULL,
-    status TEXT NOT NULL DEFAULT 'pending',
-    visibility TEXT NOT NULL DEFAULT 'private',
-    on_chain_assertion_id TEXT,
-    created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL
-  );
-  CREATE INDEX IF NOT EXISTS idx_match_initiations_principal ON match_initiations(principal);
-  CREATE INDEX IF NOT EXISTS idx_match_initiations_pair ON match_initiations(viewed_intent_id, candidate_intent_id);
-  CREATE INDEX IF NOT EXISTS idx_match_initiations_status ON match_initiations(status);
-  CREATE INDEX IF NOT EXISTS idx_match_initiations_viewed ON match_initiations(viewed_intent_id);
-  CREATE INDEX IF NOT EXISTS idx_match_initiations_candidate ON match_initiations(candidate_intent_id);
-
-  -- pools table removed: pool body lives on-chain in PoolRegistry; counters
-  -- are derived from pool_pledges sums at read time.
-
-  -- pool_pledges — org-mcp twin of person-mcp's pool_pledges. principal =
-  -- pledgerAgentId. SHACL invariants on storyPermissions / visibility.
-  CREATE TABLE IF NOT EXISTS pool_pledges (
-    id TEXT PRIMARY KEY,
-    principal TEXT NOT NULL,
-    pool_agent_id TEXT NOT NULL,
-    cadence TEXT NOT NULL,
-    unit TEXT NOT NULL,
-    amount INTEGER NOT NULL,
-    duration INTEGER,
-    restrictions TEXT,
-    story_permissions TEXT NOT NULL,
-    pledged_at TEXT NOT NULL,
-    stopped_at TEXT,
-    status TEXT NOT NULL DEFAULT 'active',
-    history TEXT NOT NULL DEFAULT '[]',
-    visibility TEXT NOT NULL DEFAULT 'private',
-    on_chain_assertion_id TEXT,
-    created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL
-  );
-  CREATE INDEX IF NOT EXISTS idx_pool_pledges_principal ON pool_pledges(principal);
-  CREATE INDEX IF NOT EXISTS idx_pool_pledges_pool ON pool_pledges(pool_agent_id);
-  CREATE INDEX IF NOT EXISTS idx_pool_pledges_status ON pool_pledges(status);
+  -- Spec 004 v2 -- proposal_votes, match_initiations, pool_pledges
+  -- DROPPED from org-mcp. Authoritative state lives on chain in
+  -- VoteRegistry / MatchInitiationRegistry / PledgeRegistry; reader paths
+  -- stub to empty until the on-chain to GraphDB sync (R8) lands.
 
   -- ─── Engagement provider-side state ─────────────────────────────────
   CREATE TABLE IF NOT EXISTS engagement_provider_state (
