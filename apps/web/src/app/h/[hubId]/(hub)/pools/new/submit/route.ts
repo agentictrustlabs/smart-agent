@@ -8,12 +8,15 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
-import { getPersonAgentForUser } from '@/lib/agent-registry'
+import { getPersonAgentForUser, canManageAgent } from '@/lib/agent-registry'
 import { createPool, type CreatePoolInput } from '@/lib/actions/poolCreate.action'
+import type { Address } from 'viem'
 
 export const dynamic = 'force-dynamic'
 
-interface IncomingBody extends Partial<CreatePoolInput> {}
+interface IncomingBody extends Partial<CreatePoolInput> {
+  operatingOrg?: Address
+}
 
 export async function POST(req: NextRequest) {
   const user = await getCurrentUser()
@@ -27,8 +30,19 @@ export async function POST(req: NextRequest) {
   }
   if (!body.id || !body.name || !body.domain || !body.mandate || !body.governanceModel
       || !body.acceptedRestrictions || !body.acceptedUnits || !body.ceilingPolicy
-      || !body.visibility) {
-    return NextResponse.json({ ok: false, error: 'missing required fields' }, { status: 400 })
+      || !body.visibility || !body.operatingOrg) {
+    return NextResponse.json(
+      { ok: false, error: 'missing required fields (operatingOrg required — pools are governed by an organisation)' },
+      { status: 400 },
+    )
+  }
+
+  // Caller must be an owner/steward of the operating org. The pool will
+  // inherit the org's ownership; allowing strangers to anchor a pool to
+  // an org they don't govern would let them hijack that org's funds.
+  const canManageOrg = await canManageAgent(myAgent, body.operatingOrg)
+  if (!canManageOrg) {
+    return NextResponse.json({ ok: false, error: 'not-authorized-on-operating-org' }, { status: 403 })
   }
 
   try {
@@ -44,12 +58,27 @@ export async function POST(req: NextRequest) {
       ceilingPolicy: body.ceilingPolicy,
       visibility: body.visibility,
       addressedMembers: body.addressedMembers,
-      // Stewards default to caller's person agent so the just-created pool
-      // has at least one steward who can manage it.
-      stewards: (body.stewards && body.stewards.length > 0
-        ? body.stewards
-        : [myAgent]) as `0x${string}`[],
+      // The operating org is the sole steward — the pool body field used
+      // for display + discovery. On-chain ownership is added below.
+      stewards: [body.operatingOrg],
     })
+
+    // Add the org's AgentAccount as an on-chain owner of the freshly
+    // deployed pool agent. After this, any caller who is an owner of the
+    // org (or the org itself acting as msg.sender) passes
+    // `_isAccountOwner(poolAgent, ...)` on every round-admin / pool-admin
+    // write. This is what enforces the unified governance rule.
+    try {
+      const { grantOrgOwnershipBatch } = await import('@/lib/demo-seed/grant-org-ownership')
+      await grantOrgOwnershipBatch([{
+        orgAddress: result.treasuryAddress,
+        userSmartAccount: body.operatingOrg,
+        label: `${body.name} ← anchored to org ${body.operatingOrg.slice(0, 8)}`,
+      }])
+    } catch (err) {
+      console.warn('[pools/new] failed to add org as owner (pool will still exist with deployer-only ownership):', err)
+    }
+
     return NextResponse.json({ ok: true, result })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)

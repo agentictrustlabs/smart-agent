@@ -35,8 +35,8 @@ export interface SessionSummary {
 
 async function loadCurrentSmartAccount(): Promise<`0x${string}` | null> {
   const session = await requireSession()
-  const rows = await db.select().from(schema.users)
-    .where(eq(schema.users.did, session.userId))
+  const rows = await db.select().from(schema.localUserAccounts)
+    .where(eq(schema.localUserAccounts.did, session.userId))
     .limit(1)
   const u = rows[0]
   return (u?.smartAccountAddress as `0x${string}` | undefined) ?? null

@@ -10,11 +10,10 @@ const QuickActivityModal = dynamic(
 
 const C = { accent: '#8b5e3c' }
 
-export function LogFulfillmentForEntitlementButton({ entitlementId, entitlementTitle, orgAddress, hubId }: {
+export function LogFulfillmentForEntitlementButton({ entitlementId, entitlementTitle, orgAddress }: {
   entitlementId: string
   entitlementTitle: string
   orgAddress: string
-  hubId: string
 }) {
   const [open, setOpen] = useState(false)
   return (
@@ -40,7 +39,6 @@ export function LogFulfillmentForEntitlementButton({ entitlementId, entitlementT
           orgAddress={orgAddress}
           isOpen={open}
           onClose={() => setOpen(false)}
-          hubId={hubId}
           defaultFulfillsEntitlementId={entitlementId}
           defaultTitle={`Toward: ${entitlementTitle}`}
           defaultType="meeting"

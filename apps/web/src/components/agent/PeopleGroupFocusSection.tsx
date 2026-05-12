@@ -99,7 +99,7 @@ async function loadFocusData(orgAddress: string): Promise<FocusData | null> {
     return { authMode: 'public', segments: segs, estimatesBySegment: {}, reachednessBySegment: {}, communitiesBySegment: {} }
   }
 
-  const user = await db.select().from(schema.users).where(eq(schema.users.id, me.id)).get()
+  const user = await db.select().from(schema.localUserAccounts).where(eq(schema.localUserAccounts.id, me.id)).get()
   if (!user?.smartAccountAddress || !user?.privateKey) {
     const segs = await publicSegmentsOnly(orgAddress)
     if (segs.length === 0) return null

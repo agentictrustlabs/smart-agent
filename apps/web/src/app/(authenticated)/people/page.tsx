@@ -11,8 +11,6 @@ import { NetworkChipBar } from '@/components/shell/NetworkChipBar'
  * Phase 2 — a navigator into existing surfaces:
  *   • My People → /oikos     (Oikos / contacts / mentees)
  *   • Members   → /members   (aggregate roster across orgs you steward)
- *   • Discover  → /people/discover (Phase 3 — intent-driven search +
- *                  relational-distance scoring)
  *
  * The chip bar at the top is a placeholder for cross-network
  * filtering (Catalyst NoCo / Front Range / Plains / Denver Metro).
@@ -58,13 +56,6 @@ export default async function PeoplePage() {
           tagline="Roster across your orgs"
           body="Everyone with a role in an org you steward. Filterable by role, capability, and (Phase 3) skill."
           cta="Open Members →"
-        />
-        <PeopleNavCard
-          href="/people/discover"
-          title="Discover"
-          tagline="Intent-driven search"
-          body="Find a coach, a multiplier, a treasurer, a Spanish-speaking case manager near Loveland — sorted by who's closest in the trust graph."
-          cta="Open Discover →"
         />
       </div>
     </div>

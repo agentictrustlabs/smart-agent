@@ -30,7 +30,7 @@ export async function getPersonAgentForUser(userId: string): Promise<string | nu
 
   // Fast path: read the persisted address from the user row. The on-chain
   // scan is reserved as a fallback for rows that never finished provisioning.
-  const user = await db.select().from(schema.users).where(eq(schema.users.id, userId)).limit(1)
+  const user = await db.select().from(schema.localUserAccounts).where(eq(schema.localUserAccounts.id, userId)).limit(1)
   if (!user[0]) return null
   if (user[0].personAgentAddress) return user[0].personAgentAddress
   // OAuth / passkey / SIWE users without a separate person agent: the smart
@@ -129,6 +129,47 @@ export async function getOrgsForPersonAgent(personAgentAddress: string): Promise
   return orgs
 }
 
+/**
+ * On-chain list of person agents with Membership/member edges to the org.
+ * Used by the round-create flow to batch-issue RoundVoterCredentials to
+ * every org member. Filters strictly to the (relationshipType=Membership,
+ * role=member) combo so other affiliations (owner/governance/operator/etc.)
+ * don't leak into the voter set.
+ */
+export async function listOrgMembersOnChain(orgAgentAddress: `0x${string}`): Promise<`0x${string}`[]> {
+  const resolverAddr = resolver()
+  if (!resolverAddr) return []
+  const client = getPublicClient()
+  const { relationshipTypeName } = await import('@smart-agent/sdk')
+  const { keccak256, toHex } = await import('viem')
+  const MEMBER_ROLE = keccak256(toHex('member'))
+  const members: `0x${string}`[] = []
+  try {
+    const edgeIds = await getEdgesByObject(orgAgentAddress)
+    for (const edgeId of edgeIds) {
+      try {
+        const edge = await getEdge(edgeId)
+        if (edge.status < 2) continue // not active
+        if (relationshipTypeName(edge.relationshipType) !== 'ORGANIZATION_MEMBERSHIP') continue
+        const roles = await getEdgeRoles(edgeId)
+        if (!roles.some(r => r === MEMBER_ROLE)) continue
+        // Filter to person-type subjects only.
+        const core = await client.readContract({
+          address: resolverAddr, abi: agentAccountResolverAbi,
+          functionName: 'getCore', args: [edge.subject as `0x${string}`],
+        }) as { agentType: `0x${string}` }
+        // PersonAgent type — see core ontology. We accept anything that's
+        // not the org type to be permissive (Membership rarely lands on
+        // non-persons but we don't strictly require PersonAgent).
+        if (core.agentType !== TYPE_ORGANIZATION) {
+          members.push(edge.subject as `0x${string}`)
+        }
+      } catch { /* skip edge */ }
+    }
+  } catch { /* org has no incoming edges */ }
+  return members
+}
+
 // Roles that grant write authority over an org agent. Mirrors the role
 // taxonomy in `roleName()`; we accept the canonical labels we expect
 // `getOrgsForPersonAgent` to surface.
@@ -173,15 +214,44 @@ export async function canManageAgent(
   // edges might not yet be promoted to ACTIVE.
   const addr = resolver()
   if (!addr) return false
+  const client = getPublicClient()
   try {
-    const client = getPublicClient()
     const ctrls = await client.readContract({
       address: addr, abi: agentAccountResolverAbi,
       functionName: 'getMultiAddressProperty',
       args: [target as `0x${string}`, ATL_CONTROLLER as `0x${string}`],
     }) as string[]
-    return ctrls.some(c => c.toLowerCase() === a)
-  } catch { return false }
+    if (ctrls.some(c => c.toLowerCase() === a)) return true
+  } catch { /* fall through */ }
+
+  // Path 3: transitive on-chain ownership. The target's AgentAccount may
+  // list one of the person's manage-class orgs as an owner — that's the
+  // unified-governance model (pool created under an org → org becomes
+  // pool owner). We check the on-chain `isOwner` directly because the
+  // relationship graph doesn't always mirror ERC-1271 owner state.
+  const { agentAccountAbi } = await import('@smart-agent/sdk')
+  try {
+    // Direct check: is the person agent itself an owner of target?
+    const ownsDirectly = await client.readContract({
+      address: target as `0x${string}`, abi: agentAccountAbi,
+      functionName: 'isOwner', args: [personAgent as `0x${string}`],
+    }) as boolean
+    if (ownsDirectly) return true
+  } catch { /* target might not be an AgentAccount (no code, etc) */ }
+
+  // Indirect: any org the person manages → is that org an owner of target?
+  for (const o of orgs) {
+    const lower = o.roles.map(r => r.toLowerCase())
+    if (!lower.some(r => MANAGE_ROLES.has(r))) continue
+    try {
+      const orgOwnsTarget = await client.readContract({
+        address: target as `0x${string}`, abi: agentAccountAbi,
+        functionName: 'isOwner', args: [o.address as `0x${string}`],
+      }) as boolean
+      if (orgOwnsTarget) return true
+    } catch { /* skip */ }
+  }
+  return false
 }
 
 /**

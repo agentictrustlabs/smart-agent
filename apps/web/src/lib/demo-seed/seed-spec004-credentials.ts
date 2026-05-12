@@ -144,13 +144,13 @@ export async function seedSpec004Credential(input: SeedSpec004Input): Promise<Se
   const stateless = !!input.holderPrivateKeyOverride && !!input.holderAccountOverride && !!input.holderPrincipalOverride
   const admin = stateless && input.adminSigningKey && input.adminAccountOverride
     ? null
-    : db.select().from(schema.users).where(eq(schema.users.id, input.adminUserId)).get()
+    : db.select().from(schema.localUserAccounts).where(eq(schema.localUserAccounts.id, input.adminUserId)).get()
   if (!stateless && (!admin?.privateKey || !admin?.smartAccountAddress)) {
     return { ok: false, error: `admin ${input.adminUserId} missing privateKey/smartAccountAddress` }
   }
   const holder = stateless
     ? null
-    : db.select().from(schema.users).where(eq(schema.users.id, input.holderUserId)).get()
+    : db.select().from(schema.localUserAccounts).where(eq(schema.localUserAccounts.id, input.holderUserId)).get()
   if (!stateless && (!holder?.privateKey || !holder?.smartAccountAddress)) {
     return { ok: false, error: `holder ${input.holderUserId} missing privateKey/smartAccountAddress` }
   }

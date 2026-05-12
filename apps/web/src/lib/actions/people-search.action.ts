@@ -1,8 +1,8 @@
 'use server'
 
 /**
- * People-search aggregator — the engine behind /people/discover and the
- * Cmd+K palette. Lighter-weight than the full ZK trust-overlap path
+ * People-search aggregator — the engine behind the Cmd+K palette.
+ * Lighter-weight than the full ZK trust-overlap path
  * (`trust-search.action.ts`): no proof, no held-credential intersection,
  * just catalog + on-chain edges.
  *

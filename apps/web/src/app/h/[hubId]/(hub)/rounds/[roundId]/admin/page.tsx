@@ -170,7 +170,7 @@ export default async function RoundAdminPage({
       <div style={{ padding: '2rem', background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, maxWidth: '36rem' }}>
         <h2 style={{ fontSize: '1rem', fontWeight: 700, color: C.text, margin: 0 }}>Not authorized</h2>
         <p style={{ fontSize: '0.85rem', color: C.textMuted, marginTop: '0.4rem' }}>
-          Only stewards of the operating fund can administer this round.
+          Only the round&apos;s operator (this round&apos;s registered AgentAccount owner) can administer it.
         </p>
       </div>
     )

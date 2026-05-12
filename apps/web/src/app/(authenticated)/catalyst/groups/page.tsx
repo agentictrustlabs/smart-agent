@@ -43,7 +43,7 @@ export default async function CatalystGroupsPage() {
     }> = []
 
     // Get all users for name lookup
-    const allUsers = await db.select().from(schema.users)
+    const allUsers = await db.select().from(schema.localUserAccounts)
     const userNames: Record<string, string> = {}
     for (const u of allUsers) userNames[u.id] = u.name
 

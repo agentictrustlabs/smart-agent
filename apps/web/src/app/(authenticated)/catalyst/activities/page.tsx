@@ -42,7 +42,7 @@ export default async function CatalystActivitiesPage() {
     void role
 
     // User names
-    const allUsers = await db.select().from(schema.users)
+    const allUsers = await db.select().from(schema.localUserAccounts)
     const userNames: Record<string, string> = {}
     for (const u of allUsers) userNames[u.id] = u.name
 
@@ -158,7 +158,7 @@ export default async function CatalystActivitiesPage() {
     .flat()
     .sort((a, b) => b.activityDate.localeCompare(a.activityDate))
 
-  const allUsers = await db.select().from(schema.users)
+  const allUsers = await db.select().from(schema.localUserAccounts)
   const userNames: Record<string, string> = {}
   for (const u of allUsers) userNames[u.id] = u.name
 

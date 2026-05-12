@@ -21,12 +21,16 @@ interface IRoundFundLookup {
  * (vote-change pre-finalize) UPDATEs the row in place instead of inserting
  * a duplicate.
  *
- * Auth: only the round's fund-owner AgentAccount can cast or mutate a
- * vote (delegated, in practice, to the org-mcp gateway via its session
- * delegation). The gateway verifies the AnonCreds presentation off-chain
- * BEFORE making the call; the chain doesn't re-verify the proof, it
- * trusts the gateway as the publisher. This matches the architecture
- * decision in spec 004 (verifier-mcp / org-mcp split).
+ * Auth: voter eligibility lives off chain. The org-mcp verifies the
+ * AnonCreds RoundVoterCredential presentation BEFORE issuing the redeem;
+ * the contract itself is permissionless. One-ballot-per-(cred, proposal)
+ * is enforced via the (round, proposal, nullifier) subject key — a real
+ * nullifier can only be derived by the cred holder, so fabricated rows
+ * are simply ignored by tally readers (which filter to nullifiers that
+ * match issued creds). The legacy `onlyRoundOperator` gate was removed
+ * with unified governance: the round operator is the pool, not any
+ * individual member, so a stewardship gate would have prevented members
+ * from voting.
  */
 contract VoteRegistry is AttributeStorage {
     ShapeRegistry public immutable SHAPES;
@@ -94,26 +98,7 @@ contract VoteRegistry is AttributeStorage {
         return _voteSubject(roundSubject, proposalSubject, nullifier);
     }
 
-    function _isAccountOwner(address account, address actor) internal view returns (bool) {
-        if (account.code.length == 0) return false;
-        (bool ok, bytes memory data) = account.staticcall(
-            abi.encodeWithSignature("isOwner(address)", actor)
-        );
-        return ok && data.length >= 32 && abi.decode(data, (bool));
-    }
-
-    /// @dev Only the round's fund-owner (or a delegated session of it) can
-    ///      cast a ballot. The fund-owner is, in the gateway model, org-mcp's
-    ///      AgentAccount — it's the on-chain "publisher" for vote rows.
-    modifier onlyRoundOperator(bytes32 roundSubject) {
-        address fundAgent = FUND_REGISTRY.getRoundFundAgent(roundSubject);
-        if (fundAgent == address(0) || !_isAccountOwner(fundAgent, msg.sender)) {
-            revert NotRoundOperator();
-        }
-        _;
-    }
-
-    function castVote(CastVoteParams calldata p) external onlyRoundOperator(p.roundSubject) {
+    function castVote(CastVoteParams calldata p) external {
         bytes32 subj = _voteSubject(p.roundSubject, p.proposalSubject, p.nullifier);
         bool isUpdate = this.isSet(subj, SA_VOTE_BALLOT);
         _setBytes32(subj, SA_VOTE_ROUND, p.roundSubject);

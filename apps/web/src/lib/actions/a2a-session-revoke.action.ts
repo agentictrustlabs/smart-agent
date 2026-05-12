@@ -63,8 +63,8 @@ export async function revokeA2ASessionForUser(): Promise<RevokeResult> {
   // 1. Look up the user to access privateKey + smartAccountAddress.
   const users = await db
     .select()
-    .from(schema.users)
-    .where(eq(schema.users.walletAddress, userSession.walletAddress))
+    .from(schema.localUserAccounts)
+    .where(eq(schema.localUserAccounts.walletAddress, userSession.walletAddress))
     .limit(1)
   const user = users[0]
   if (!user) return { success: false, error: 'User not found' }

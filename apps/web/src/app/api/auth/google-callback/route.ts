@@ -80,8 +80,8 @@ export async function GET(request: Request) {
   // users default to rotation=0; users who pressed "Start fresh" have a
   // bumped rotation that maps to a different smart-account address.
   const did = googleDid(claims.sub)
-  const existing = await db.select().from(schema.users)
-    .where(eq(schema.users.did, did)).limit(1).then(r => r[0])
+  const existing = await db.select().from(schema.localUserAccounts)
+    .where(eq(schema.localUserAccounts.did, did)).limit(1).then(r => r[0])
   const rotation = existing?.accountSaltRotation ?? 0
 
   // Derive the smart-account address deterministically from the verified
@@ -99,16 +99,16 @@ export async function GET(request: Request) {
     userId = existing.id
     // Backfill smartAccountAddress if it was null (older row).
     if (!existing.smartAccountAddress) {
-      await db.update(schema.users)
+      await db.update(schema.localUserAccounts)
         .set({ smartAccountAddress: getAddress(smartAcct).toLowerCase() as `0x${string}` })
-        .where(eq(schema.users.id, existing.id))
+        .where(eq(schema.localUserAccounts.id, existing.id))
     }
   } else {
     // OAuth users have no EOA — store the smart account address as walletAddress
     // (the schema's NOT NULL UNIQUE constraint requires *some* unique value).
     // smartAccountAddress equals walletAddress for these users, by design.
     userId = `gsub:${claims.sub}`
-    await db.insert(schema.users).values({
+    await db.insert(schema.localUserAccounts).values({
       id: userId,
       email: claims.email,
       name: claims.name ?? claims.email.split('@')[0] ?? 'Google User',
@@ -120,7 +120,7 @@ export async function GET(request: Request) {
     })
   }
 
-  const row = await db.select().from(schema.users).where(eq(schema.users.id, userId)).limit(1).then(r => r[0])!
+  const row = await db.select().from(schema.localUserAccounts).where(eq(schema.localUserAccounts.id, userId)).limit(1).then(r => r[0])!
   if (!row) {
     return NextResponse.redirect(new URL('/sign-in?error=user_lookup_failed', url))
   }

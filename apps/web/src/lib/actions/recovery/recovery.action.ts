@@ -59,8 +59,8 @@ export async function proposeRecoveryAction(args: ProposeArgs): Promise<ProposeR
       return { success: false, error: 'Recovery is currently OAuth-only' }
     }
 
-    const userRow = await db.select().from(schema.users)
-      .where(eq(schema.users.did, session.userId)).limit(1).then(r => r[0])
+    const userRow = await db.select().from(schema.localUserAccounts)
+      .where(eq(schema.localUserAccounts.did, session.userId)).limit(1).then(r => r[0])
     if (!userRow?.smartAccountAddress) return { success: false, error: 'no smart account on user row' }
     const accountAddr = getAddress(userRow.smartAccountAddress as `0x${string}`)
 
@@ -145,8 +145,8 @@ export async function completeRecoveryAction(args: CompleteArgs): Promise<Comple
       return { success: false, error: 'Recovery is currently OAuth-only' }
     }
 
-    const userRow = await db.select().from(schema.users)
-      .where(eq(schema.users.did, session.userId)).limit(1).then(r => r[0])
+    const userRow = await db.select().from(schema.localUserAccounts)
+      .where(eq(schema.localUserAccounts.did, session.userId)).limit(1).then(r => r[0])
     if (!userRow?.smartAccountAddress) return { success: false, error: 'no smart account on user row' }
     const accountAddr = getAddress(userRow.smartAccountAddress as `0x${string}`)
 

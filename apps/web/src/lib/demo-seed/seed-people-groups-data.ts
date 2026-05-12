@@ -59,7 +59,7 @@ async function sponsorSession(orgAddress: string, ownerUserId: string): Promise<
   sessionId: string
   crossDelegation: SignedDelegation
 } | null> {
-  const u = db.select().from(schema.users).where(eq(schema.users.id, ownerUserId)).get()
+  const u = db.select().from(schema.localUserAccounts).where(eq(schema.localUserAccounts.id, ownerUserId)).get()
   if (!u?.smartAccountAddress || !u?.privateKey) return null
 
   const r = await bootstrapA2ASessionForUser({

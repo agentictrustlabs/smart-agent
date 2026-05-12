@@ -13,8 +13,8 @@ export async function GET() {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
   }
 
-  const users = await db.select().from(schema.users)
-    .where(eq(schema.users.walletAddress, session.walletAddress))
+  const users = await db.select().from(schema.localUserAccounts)
+    .where(eq(schema.localUserAccounts.walletAddress, session.walletAddress))
     .limit(1)
 
   const user = users[0]

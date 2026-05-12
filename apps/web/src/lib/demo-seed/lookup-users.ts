@@ -23,8 +23,8 @@ export async function ensureDemoUser(userKey: string): Promise<{
   if (!meta) throw new Error(`Unknown demo user: ${userKey}`)
 
   // Check if already exists with full provisioning
-  const existing = await db.select().from(schema.users)
-    .where(eq(schema.users.id, userKey)).limit(1)
+  const existing = await db.select().from(schema.localUserAccounts)
+    .where(eq(schema.localUserAccounts.id, userKey)).limit(1)
 
   if (existing[0]?.smartAccountAddress && existing[0]?.personAgentAddress) {
     return {
@@ -39,17 +39,17 @@ export async function ensureDemoUser(userKey: string): Promise<{
 
   if (existing[0]) {
     // User exists but not fully provisioned — update
-    await db.update(schema.users)
+    await db.update(schema.localUserAccounts)
       .set({
         walletAddress: wallet.address,
         privateKey: wallet.privateKey,
         smartAccountAddress: wallet.smartAccountAddress,
         personAgentAddress: wallet.personAgentAddress,
       })
-      .where(eq(schema.users.id, userKey))
+      .where(eq(schema.localUserAccounts.id, userKey))
   } else {
     // Create new user
-    await db.insert(schema.users).values({
+    await db.insert(schema.localUserAccounts).values({
       id: userKey,
       email: meta.email,
       name: meta.name,

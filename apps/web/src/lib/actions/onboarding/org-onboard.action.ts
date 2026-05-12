@@ -61,8 +61,8 @@ export async function getJoinableOrgsForHub(hubAddressInput: string): Promise<Jo
       // model). No users row.
       personAgent = getAddress(session.smartAccountAddress as `0x${string}`)
     } else {
-      const user = await db.select().from(schema.users)
-        .where(eq(schema.users.did, session.userId)).limit(1).then(r => r[0])
+      const user = await db.select().from(schema.localUserAccounts)
+        .where(eq(schema.localUserAccounts.did, session.userId)).limit(1).then(r => r[0])
       if (user) personAgent = await getPersonAgentForUser(user.id) as `0x${string}` | null
     }
   }
@@ -124,8 +124,8 @@ export async function joinOrgAsPerson(orgAddressInput: string): Promise<{ succes
     const stateless = session.via === 'passkey' || session.via === 'siwe'
     const smartAcctRaw = stateless
       ? session.smartAccountAddress
-      : await db.select().from(schema.users)
-          .where(eq(schema.users.did, session.userId)).limit(1)
+      : await db.select().from(schema.localUserAccounts)
+          .where(eq(schema.localUserAccounts.did, session.userId)).limit(1)
           .then(r => r[0]?.smartAccountAddress ?? null)
     if (!smartAcctRaw) return { success: false, error: 'no smart account on session' }
     const personAgent = getAddress(smartAcctRaw as `0x${string}`)
@@ -167,8 +167,8 @@ export async function createOrgInHub(input: {
     const stateless = session.via === 'passkey' || session.via === 'siwe'
     const smartAcctRaw = stateless
       ? session.smartAccountAddress
-      : await db.select().from(schema.users)
-          .where(eq(schema.users.did, session.userId)).limit(1)
+      : await db.select().from(schema.localUserAccounts)
+          .where(eq(schema.localUserAccounts.did, session.userId)).limit(1)
           .then(r => r[0]?.smartAccountAddress ?? null)
     if (!smartAcctRaw) return { success: false, error: 'no smart account on session' }
     if (!input.name.trim()) return { success: false, error: 'org name is required' }

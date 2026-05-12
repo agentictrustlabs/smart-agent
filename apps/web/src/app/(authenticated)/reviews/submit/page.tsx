@@ -30,7 +30,7 @@ export default async function SubmitReviewPage() {
   // Find agents where user has active reviewer relationship
   const reviewableAgents: Array<{ address: string; name: string; delegationStatus: string; delegationExpiry: string | null }> = []
   const allAgents = await listRegisteredAgents()
-  const allUsers = await db.select().from(schema.users)
+  const allUsers = await db.select().from(schema.localUserAccounts)
 
   const getName = (addr: string) => {
     const agent = allAgents.find((entry) => entry.address.toLowerCase() === addr.toLowerCase())

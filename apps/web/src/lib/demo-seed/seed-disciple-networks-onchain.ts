@@ -186,21 +186,21 @@ export async function seedDiscipleNetworksOnChain() {
 
   // Front Range
   if (paAnnika)  await createEdge(paAnnika,  frontRange, ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
-  if (paBrent)   await createEdge(paBrent,   frontRange, ORGANIZATION_MEMBERSHIP, [ROLE_OPERATOR])
-  if (paRachel)  await createEdge(paRachel,  frontRange, ORGANIZATION_MEMBERSHIP, [ROLE_OPERATOR])
-  if (paKenji)   await createEdge(paKenji,   frontRange, ORGANIZATION_MEMBERSHIP, [ROLE_OPERATOR])
+  if (paBrent)   await createEdge(paBrent,   frontRange, ORGANIZATION_MEMBERSHIP, [ROLE_MEMBER])
+  if (paRachel)  await createEdge(paRachel,  frontRange, ORGANIZATION_MEMBERSHIP, [ROLE_MEMBER])
+  if (paKenji)   await createEdge(paKenji,   frontRange, ORGANIZATION_MEMBERSHIP, [ROLE_MEMBER])
   if (paLina)    await createEdge(paLina,    frontRange, ORGANIZATION_MEMBERSHIP, [ROLE_ADVISOR])
 
   // Plains
   if (paJoseph)  await createEdge(paJoseph,  plains, ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
-  if (paSophia)  await createEdge(paSophia,  plains, ORGANIZATION_MEMBERSHIP, [ROLE_OPERATOR])
-  if (paPeter)   await createEdge(paPeter,   plains, ORGANIZATION_MEMBERSHIP, [ROLE_OPERATOR])
+  if (paSophia)  await createEdge(paSophia,  plains, ORGANIZATION_MEMBERSHIP, [ROLE_MEMBER])
+  if (paPeter)   await createEdge(paPeter,   plains, ORGANIZATION_MEMBERSHIP, [ROLE_MEMBER])
   if (paEsther)  await createEdge(paEsther,  plains, ORGANIZATION_MEMBERSHIP, [ROLE_ADVISOR])
 
   // Denver Metro
   if (paMarcus)   await createEdge(paMarcus,   denverMetro, ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
-  if (paPriya)    await createEdge(paPriya,    denverMetro, ORGANIZATION_MEMBERSHIP, [ROLE_OPERATOR])
-  if (paTerrence) await createEdge(paTerrence, denverMetro, ORGANIZATION_MEMBERSHIP, [ROLE_OPERATOR])
+  if (paPriya)    await createEdge(paPriya,    denverMetro, ORGANIZATION_MEMBERSHIP, [ROLE_MEMBER])
+  if (paTerrence) await createEdge(paTerrence, denverMetro, ORGANIZATION_MEMBERSHIP, [ROLE_MEMBER])
 
   // ─── HAS_MEMBER edges (org → person; mirrors hub seeds) ────────────
   console.log('[disciple-networks-seed] Creating HAS_MEMBER edges...')

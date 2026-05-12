@@ -97,7 +97,7 @@ export async function seedOrgCrossDelegations(pairs: OrgGovernancePair[]): Promi
     const grants = pair.grants ?? (audience === PEOPLE_GROUPS_AUDIENCE ? DEFAULT_PEOPLE_GROUPS_GRANTS : DEFAULT_ORG_GRANTS)
     const saltLabel = pair.saltLabel ?? `${audience}:v1`
 
-    const u = db.select().from(schema.users).where(eq(schema.users.id, ownerUserId)).get()
+    const u = db.select().from(schema.localUserAccounts).where(eq(schema.localUserAccounts.id, ownerUserId)).get()
     if (!u?.smartAccountAddress) {
       console.warn(`[seed-org-deleg] owner ${ownerUserId} has no smart account`)
       continue

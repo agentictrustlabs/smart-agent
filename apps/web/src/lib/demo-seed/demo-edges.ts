@@ -26,7 +26,7 @@ export async function getDemoEdgesForOrg(orgAddress: string): Promise<{ incoming
 
   try {
     const { getDemoUserOrgRoles } = await import('./demo-roles')
-    const allUsers = await db.select().from(schema.users)
+    const allUsers = await db.select().from(schema.localUserAccounts)
     const allPersonAgents = (await listRegisteredAgents()).filter(agent => agent.kind === 'person')
 
     for (const user of allUsers) {

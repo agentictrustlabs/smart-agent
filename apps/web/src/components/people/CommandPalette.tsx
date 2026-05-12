@@ -7,14 +7,14 @@
  * a centered modal with:
  *   • a search box that runs `searchPeople` on debounce, surfacing the
  *     top hits with their relational-distance badge,
- *   • the same intent shortcut chips that /people/discover offers —
- *     clicking one navigates to the Discover surface pre-filtered,
+ *   • intent shortcut chips that route to the intents surface
+ *     pre-filtered by the chip's preset query,
  *   • quick-nav links to top surfaces (Home, People, Groups, Activity).
  *
  * Keyboard:
  *   ⌘K / Ctrl+K — open
  *   Esc        — close
- *   ↵          — submit current query → /people/discover?q=…
+ *   ↵          — submit current query → /h/catalyst/intents?q=…
  *
  * The palette never fetches on first open; it waits for the user to
  * type or pick a chip.
@@ -27,8 +27,8 @@ import { INTENT_PRESETS } from './IntentPresets'
 
 const QUICK_NAV: Array<{ label: string; href: string; hint: string }> = [
   { label: 'Home',     href: '/h/catalyst/home',  hint: 'Dashboard' },
-  { label: 'People',   href: '/people',           hint: 'My People · Members · Discover' },
-  { label: 'Discover', href: '/people/discover',  hint: 'Intent-driven search' },
+  { label: 'People',   href: '/people',           hint: 'My People · Members' },
+  { label: 'Intents',  href: '/h/catalyst/intents', hint: 'Intent marketplace' },
   { label: 'Groups',   href: '/groups',           hint: 'Orgs and movements' },
   { label: 'Activity', href: '/activity',         hint: 'Recent on-chain activity' },
 ]
@@ -95,7 +95,7 @@ export function CommandPalette() {
     e.preventDefault()
     const q = query.trim()
     if (!q) return
-    navigate(`/people/discover?q=${encodeURIComponent(q)}`)
+    navigate(`/h/catalyst/intents?q=${encodeURIComponent(q)}`)
   }
 
   if (!open) return null
@@ -147,7 +147,7 @@ export function CommandPalette() {
                   key={p.id}
                   type="button"
                   data-testid={`palette-intent-${p.id}`}
-                  onClick={() => navigate(`/people/discover?intent=${p.id}`)}
+                  onClick={() => navigate(`/h/catalyst/intents?intent=${p.id}`)}
                   style={{
                     padding: '0.3rem 0.7rem', borderRadius: 999,
                     border: '1px solid #ece6db', background: '#fff',

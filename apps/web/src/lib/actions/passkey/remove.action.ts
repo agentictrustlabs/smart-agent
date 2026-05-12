@@ -73,7 +73,7 @@ export async function removePasskeyAction(args: RemovePasskeyArgs): Promise<Remo
     if (!DEPLOYER_KEY) return { success: false, error: 'DEPLOYER_PRIVATE_KEY not configured' }
 
     const { userRow } = await loadSignerForCurrentUser()
-    const rows = await db.select().from(schema.users).where(eq(schema.users.id, userRow.id)).limit(1)
+    const rows = await db.select().from(schema.localUserAccounts).where(eq(schema.localUserAccounts.id, userRow.id)).limit(1)
     const smartAcct = rows[0]?.smartAccountAddress
     if (!smartAcct) return { success: false, error: 'no smart account address on user row' }
     const accountAddr = getAddress(smartAcct as `0x${string}`)

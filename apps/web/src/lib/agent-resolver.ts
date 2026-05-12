@@ -154,7 +154,7 @@ export async function listRegisteredAgents(): Promise<RegisteredAgent[]> {
  * the controller list hasn't been updated.
  */
 export async function getControlledAgentsForUser(userId: string): Promise<RegisteredAgent[]> {
-  const user = await db.select().from(schema.users).where(eq(schema.users.id, userId)).limit(1)
+  const user = await db.select().from(schema.localUserAccounts).where(eq(schema.localUserAccounts.id, userId)).limit(1)
   if (!user[0]) return []
 
   const wallet = user[0].walletAddress.toLowerCase()
@@ -193,7 +193,7 @@ export async function getControlledAgentsForUser(userId: string): Promise<Regist
 export async function findAgentOwnerUserIds(agentAddress: string): Promise<string[]> {
   const agents = await listRegisteredAgents()
   const agent = agents.find(entry => entry.address.toLowerCase() === agentAddress.toLowerCase())
-  const users = await db.select().from(schema.users)
+  const users = await db.select().from(schema.localUserAccounts)
 
   const ownerIds = new Set<string>()
 

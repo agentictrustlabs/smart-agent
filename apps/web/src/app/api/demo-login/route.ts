@@ -23,8 +23,8 @@ export async function POST(request: Request) {
   }
 
   // Check if user already exists in DB with a real wallet
-  let user = await db.select().from(schema.users)
-    .where(eq(schema.users.id, userId)).limit(1).then(r => r[0])
+  let user = await db.select().from(schema.localUserAccounts)
+    .where(eq(schema.localUserAccounts.id, userId)).limit(1).then(r => r[0])
 
   if (!user) {
     // First login — generate real keypair and deploy AgentAccount
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
       const { generateDemoWallet } = await import('@/lib/demo-seed/generate-wallet')
       const wallet = await generateDemoWallet(meta.name)
 
-      await db.insert(schema.users).values({
+      await db.insert(schema.localUserAccounts).values({
         id: userId,
         email: meta.email,
         name: meta.name,
@@ -264,8 +264,8 @@ export async function GET() {
   }
 
   // Look up real wallet from DB
-  const user = await db.select().from(schema.users)
-    .where(eq(schema.users.id, current)).limit(1).then(r => r[0])
+  const user = await db.select().from(schema.localUserAccounts)
+    .where(eq(schema.localUserAccounts.id, current)).limit(1).then(r => r[0])
 
   return NextResponse.json({
     current,

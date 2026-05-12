@@ -88,8 +88,8 @@ export async function GET() {
     const stateless = session.via === 'passkey' || session.via === 'siwe'
     const userRow = stateless
       ? null
-      : await db.select().from(schema.users)
-          .where(eq(schema.users.did, session.userId)).limit(1).then(r => r[0])
+      : await db.select().from(schema.localUserAccounts)
+          .where(eq(schema.localUserAccounts.did, session.userId)).limit(1).then(r => r[0])
     if (!stateless && !userRow) return NextResponse.json(empty)
 
     // For stateless auth, the lookup key for getPersonAgentForUser is the

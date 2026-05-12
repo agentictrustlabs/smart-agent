@@ -18,8 +18,8 @@ async function getDemoSessionFromCookie(
   try {
     const { db, schema } = await import('@/db')
     const { eq } = await import('drizzle-orm')
-    const rows = await db.select().from(schema.users)
-      .where(eq(schema.users.id, demoUser)).limit(1)
+    const rows = await db.select().from(schema.localUserAccounts)
+      .where(eq(schema.localUserAccounts.id, demoUser)).limit(1)
 
     if (rows[0]?.walletAddress) {
       return {

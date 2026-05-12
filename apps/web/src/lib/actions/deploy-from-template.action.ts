@@ -124,8 +124,8 @@ export async function runDeployStep(
     tick(`clients ready, controlAddr=${controlAddr ? 'set' : 'unset'}, resolverAddr=${resolverAddr ? 'set' : 'unset'}`)
 
     // Get user
-    const users = await db.select().from(schema.users)
-      .where(eq(schema.users.did, session.userId)).limit(1)
+    const users = await db.select().from(schema.localUserAccounts)
+      .where(eq(schema.localUserAccounts.did, session.userId)).limit(1)
     tick(`user query done (found=${!!users[0]})`)
     if (!users[0]) return { stepId, success: false, error: 'User not found' }
     const user = users[0]

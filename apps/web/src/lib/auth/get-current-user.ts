@@ -46,8 +46,8 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
 
   const users = await db
     .select()
-    .from(schema.users)
-    .where(eq(schema.users.did, session.userId))
+    .from(schema.localUserAccounts)
+    .where(eq(schema.localUserAccounts.did, session.userId))
     .limit(1)
 
   const row = users[0]

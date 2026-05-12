@@ -67,8 +67,8 @@ export async function seedCoachingCrossDelegations(pairs: CoachingPair[]): Promi
   let created = 0
 
   for (const { discipleUserId, coachUserId } of pairs) {
-    const disciple = db.select().from(schema.users).where(eq(schema.users.id, discipleUserId)).get()
-    const coach = db.select().from(schema.users).where(eq(schema.users.id, coachUserId)).get()
+    const disciple = db.select().from(schema.localUserAccounts).where(eq(schema.localUserAccounts.id, discipleUserId)).get()
+    const coach = db.select().from(schema.localUserAccounts).where(eq(schema.localUserAccounts.id, coachUserId)).get()
     if (!disciple?.smartAccountAddress || !disciple?.privateKey) {
       console.warn(`[seed-coach-deleg] disciple ${discipleUserId} missing smart account or key`)
       continue

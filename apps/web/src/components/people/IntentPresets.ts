@@ -1,7 +1,7 @@
 /**
- * Intent presets — the pre-baked shortcut chips on /people/discover and
- * in the Cmd+K palette. Each preset maps to a `searchPeople` query +
- * (optional) capability filter.
+ * Intent presets — the pre-baked shortcut chips in the Cmd+K palette.
+ * Each preset maps to a `searchPeople` query + (optional) capability
+ * filter.
  *
  * Phase 3 keeps these hand-curated. Phase 6 will replace this list with
  * an LLM-backed parser that derives the same shape from free-form text.

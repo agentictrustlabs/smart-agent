@@ -143,9 +143,9 @@ async function setGenMapData(addr: `0x${string}`, data: string) {
 }
 
 function upsertUser(u: { id: string; name: string; email: string; wallet: string; did: string }) {
-  const existing = db.select().from(schema.users).where(eq(schema.users.id, u.id)).get()
+  const existing = db.select().from(schema.localUserAccounts).where(eq(schema.localUserAccounts.id, u.id)).get()
   if (!existing) {
-    db.insert(schema.users).values({ id: u.id, email: u.email, name: u.name, walletAddress: u.wallet, did: u.did }).run()
+    db.insert(schema.localUserAccounts).values({ id: u.id, email: u.email, name: u.name, walletAddress: u.wallet, did: u.did }).run()
   }
 }
 
@@ -335,9 +335,9 @@ async function doSeed() {
   await createEdge(paPaul,    ravah,       ORGANIZATION_GOVERNANCE,  [ROLE_OWNER])
 
   // Membership edges layered on top of the governance graph.
-  await createEdge(paCameron, ravah,       ORGANIZATION_MEMBERSHIP,  [ROLE_OPERATOR])
-  await createEdge(paNick,    ilad,        ORGANIZATION_MEMBERSHIP,  [ROLE_OPERATOR])
-  await createEdge(paYaw,     ilad,        ORGANIZATION_MEMBERSHIP,  [ROLE_OPERATOR])
+  await createEdge(paCameron, ravah,       ORGANIZATION_MEMBERSHIP, [ROLE_MEMBER])
+  await createEdge(paNick,    ilad,        ORGANIZATION_MEMBERSHIP, [ROLE_MEMBER])
+  await createEdge(paYaw,     ilad,        ORGANIZATION_MEMBERSHIP, [ROLE_MEMBER])
   await createEdge(paAfia,    wave1,       ORGANIZATION_MEMBERSHIP,  [ROLE_MEMBER])
   await createEdge(paKossi,   wave1,       ORGANIZATION_MEMBERSHIP,  [ROLE_MEMBER])
 

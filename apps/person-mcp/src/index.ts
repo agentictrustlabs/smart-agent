@@ -31,8 +31,10 @@ import { workItemsTools } from './tools/work-items.js'
 import { crossDelegationsTools } from './tools/cross-delegations.js'
 import { receivedDelegationsTools } from './tools/received-delegations.js'
 import { grantProposalsTools } from './tools/grantProposals.js'
-import { matchInitiationsTools } from './tools/matchInitiations.js'
-import { poolPledgesTools } from './tools/poolPledges.js'
+// Spec 004 v2 — person-mcp's `pool_pledge:*` and `match_initiation:*`
+// stub tools were removed. Pledges and match initiations are
+// authoritative on chain (PledgeRegistry / MatchInitiationRegistry);
+// callers route through org-mcp.
 
 // ---------------------------------------------------------------------------
 // Collect all tool definitions and handlers
@@ -57,8 +59,6 @@ const allTools = {
   ...crossDelegationsTools,
   ...receivedDelegationsTools,
   ...grantProposalsTools,
-  ...matchInitiationsTools,
-  ...poolPledgesTools,
 } as const
 
 const toolDefinitions = Object.values(allTools).map(

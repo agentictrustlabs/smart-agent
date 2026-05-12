@@ -28,11 +28,16 @@ if (fs.existsSync(migrationsDir)) {
   }
 }
 
+// Phase 4 rename — `users` → `local_user_accounts`. Migrates pre-existing
+// SQLite databases idempotently. After this runs once, the legacy `users`
+// name no longer exists; drizzle's schema reads against `local_user_accounts`.
+try { sqlite.prepare('ALTER TABLE users RENAME TO local_user_accounts').run() } catch { /* already renamed or fresh DB */ }
+
 // Add new columns not in original migrations
-try { sqlite.prepare('ALTER TABLE users ADD COLUMN person_agent_address TEXT').run() } catch { /* already exists */ }
-try { sqlite.prepare('ALTER TABLE users ADD COLUMN agent_name TEXT').run() } catch { /* already exists */ }
-try { sqlite.prepare('ALTER TABLE users ADD COLUMN onboarded_at TEXT').run() } catch { /* already exists */ }
-try { sqlite.prepare('ALTER TABLE users ADD COLUMN account_salt_rotation INTEGER NOT NULL DEFAULT 0').run() } catch { /* already exists */ }
+try { sqlite.prepare('ALTER TABLE local_user_accounts ADD COLUMN person_agent_address TEXT').run() } catch { /* already exists */ }
+try { sqlite.prepare('ALTER TABLE local_user_accounts ADD COLUMN agent_name TEXT').run() } catch { /* already exists */ }
+try { sqlite.prepare('ALTER TABLE local_user_accounts ADD COLUMN onboarded_at TEXT').run() } catch { /* already exists */ }
+try { sqlite.prepare('ALTER TABLE local_user_accounts ADD COLUMN account_salt_rotation INTEGER NOT NULL DEFAULT 0').run() } catch { /* already exists */ }
 
 // Drop legacy passkeys table — login is now name-based via the .agent
 // registry, and the OS picker is hinted by browser-side localStorage. No

@@ -19,7 +19,7 @@ export async function GET() {
   const claims = readSession(jwt)
   if (claims) {
     // Hydrate from DB. JWT `sub` matches `users.did` (set at mint time).
-    const row = await db.select().from(schema.users).where(eq(schema.users.did, claims.sub)).limit(1).then(r => r[0])
+    const row = await db.select().from(schema.localUserAccounts).where(eq(schema.localUserAccounts.did, claims.sub)).limit(1).then(r => r[0])
     return NextResponse.json({
       user: {
         id: row?.id ?? claims.sub,
@@ -38,7 +38,7 @@ export async function GET() {
   if (!userId) return NextResponse.json({ user: null })
   const meta = DEMO_USER_META[userId]
   if (!meta) return NextResponse.json({ user: null })
-  const row = await db.select().from(schema.users).where(eq(schema.users.id, userId)).limit(1).then(r => r[0])
+  const row = await db.select().from(schema.localUserAccounts).where(eq(schema.localUserAccounts.id, userId)).limit(1).then(r => r[0])
   return NextResponse.json({
     user: row ? {
       id: row.id,

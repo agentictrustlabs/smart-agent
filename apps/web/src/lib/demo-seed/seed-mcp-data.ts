@@ -43,7 +43,7 @@ function daysAgo(n: number): string {
 const sessionCache = new Map<string, string>()
 
 async function sessionForUser(userId: string): Promise<string | null> {
-  const u = db.select().from(schema.users).where(eq(schema.users.id, userId)).get()
+  const u = db.select().from(schema.localUserAccounts).where(eq(schema.localUserAccounts.id, userId)).get()
   if (!u?.smartAccountAddress) return null
   const cached = sessionCache.get(u.smartAccountAddress.toLowerCase())
   if (cached) return cached
@@ -75,7 +75,7 @@ async function sessionForOrg(adminUserId: string, orgAddress: string): Promise<O
   // shortcut — every write is gated by a real, on-chain-anchored signed
   // delegation chain that traces back to the user.
 
-  const u = db.select().from(schema.users).where(eq(schema.users.id, adminUserId)).get()
+  const u = db.select().from(schema.localUserAccounts).where(eq(schema.localUserAccounts.id, adminUserId)).get()
   if (!u?.smartAccountAddress || !u?.privateKey) {
     console.warn(`[seed-mcp] admin ${adminUserId} missing smart account or key`)
     return null
@@ -652,7 +652,7 @@ async function seedCoachingNotes(): Promise<number> {
   for (const n of COACHING_NOTES) {
     const sessionId = await sessionForUser(n.coachUserId)
     if (!sessionId) continue
-    const subjectUser = db.select().from(schema.users).where(eq(schema.users.id, n.subjectUserId)).get()
+    const subjectUser = db.select().from(schema.localUserAccounts).where(eq(schema.localUserAccounts.id, n.subjectUserId)).get()
     if (!subjectUser?.personAgentAddress) continue
 
     const list = await callMcp<{ notes: Array<{ id: string; content: string }> }>(
@@ -713,8 +713,8 @@ async function seedPrivateCoaching(): Promise<number> {
 
   let registered = 0
   for (const { discipleUserId, coachUserId } of PRIVATE_COACHING_PAIRS) {
-    const disciple = db.select().from(schema.users).where(eq(schema.users.id, discipleUserId)).get()
-    const coach = db.select().from(schema.users).where(eq(schema.users.id, coachUserId)).get()
+    const disciple = db.select().from(schema.localUserAccounts).where(eq(schema.localUserAccounts.id, discipleUserId)).get()
+    const coach = db.select().from(schema.localUserAccounts).where(eq(schema.localUserAccounts.id, coachUserId)).get()
     if (!disciple?.smartAccountAddress || !disciple?.privateKey || !disciple?.name) {
       console.warn(`[seed-mcp] private-coach: disciple ${discipleUserId} not provisioned`)
       continue
@@ -996,7 +996,7 @@ async function seedActivitiesOnChain(): Promise<number> {
 
   let total = 0
   for (const [userId, specs] of Object.entries(ACTIVITY_CATALOG)) {
-    const u = db.select().from(schema.users).where(eq(schema.users.id, userId)).get()
+    const u = db.select().from(schema.localUserAccounts).where(eq(schema.localUserAccounts.id, userId)).get()
     if (!u?.personAgentAddress) continue
 
     const targetAddrs = new Set<string>([u.personAgentAddress.toLowerCase()])

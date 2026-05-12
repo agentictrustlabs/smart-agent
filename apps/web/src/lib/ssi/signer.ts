@@ -54,8 +54,8 @@ export async function loadSignerForCurrentUser(): Promise<
     }
   }
 
-  const rows = await db.select().from(schema.users)
-    .where(eq(schema.users.did, session.userId))
+  const rows = await db.select().from(schema.localUserAccounts)
+    .where(eq(schema.localUserAccounts.did, session.userId))
     .limit(1)
   const user = rows[0]
   if (!user) throw new Error('User not found')

@@ -12,8 +12,8 @@ export async function GET() {
     const session = await getSession()
     if (!session) return NextResponse.json({ orgs: [], roles: {}, aiAgents: {}, capabilities: {} })
 
-    const users = await db.select().from(schema.users)
-      .where(eq(schema.users.did, session.userId)).limit(1)
+    const users = await db.select().from(schema.localUserAccounts)
+      .where(eq(schema.localUserAccounts.did, session.userId)).limit(1)
     if (!users[0]) return NextResponse.json({ orgs: [], roles: {}, aiAgents: {}, capabilities: {} })
 
     // Find person agent from on-chain registry

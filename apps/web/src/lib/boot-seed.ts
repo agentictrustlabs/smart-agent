@@ -25,7 +25,6 @@ import { seedSkillsOnChain } from '@/lib/demo-seed/seed-skills-onchain'
 import { seedSkillIssuersOnChain } from '@/lib/demo-seed/seed-skill-issuers-onchain'
 import { seedDemoSkillClaimsOnChain } from '@/lib/demo-seed/seed-demo-skill-claims'
 import { seedDiscipleNetworksOnChain } from '@/lib/demo-seed/seed-disciple-networks-onchain'
-import { seedCatalystNeedsAndOfferings } from '@/lib/demo-seed/seed-needs-resources'
 import { ensureDevP256Stub } from '@/lib/dev-p256-stub'
 
 export interface BootState {
@@ -210,28 +209,7 @@ export function triggerBootSeed(): Promise<void> {
         console.warn('[boot-seed] demo skill claims error (non-fatal):', (e as Error).message)
       }
 
-      // 2d. Catalyst Needs / Resources / Matches (Discover layer).
-      //     Runs after person + org agents exist + skill claims so the
-      //     match scorer has real evidence to work with.
-      state.phase = 'discover seed: needs + offerings + matches'
-      try {
-        await seedCatalystNeedsAndOfferings()
-      } catch (e) {
-        console.warn('[boot-seed] catalyst needs/resources seed error (non-fatal):', (e as Error).message)
-      }
-
-      // 2e. Project legacy needs/offerings rows into Intents. acceptMatch
-      //     mints an Engagement only when both holder + provider Intents
-      //     exist; without this backfill, accepting a match silently fails
-      //     the mint step and the user lands on an "accepted" match with
-      //     no engagement workspace. Idempotent.
-      // Spec 004 — `intents` SQL table dropped. The legacy
-      // backfillIntentsFromLegacy(needs/offerings → intents) is
-      // obsolete; intent bodies now live in person-mcp / org-mcp and
-      // are seeded by the regular MCP-data seed below.
-      state.phase = 'discover seed: intents-backfill skipped (table dropped)'
-
-      // 2f. Seed person-mcp + org-mcp domain tables (oikos, prayers, training,
+      // 2d. Seed person-mcp + org-mcp domain tables (oikos, prayers, training,
       //     preferences, notifications, revenue reports, proposals). Direct
       //     SQLite write into each MCP — bypasses delegation flow because the
       //     boot-seed runs without a user session. Idempotent.

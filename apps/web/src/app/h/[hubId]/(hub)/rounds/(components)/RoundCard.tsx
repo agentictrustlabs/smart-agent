@@ -60,7 +60,7 @@ function formatBudget(n: number): string {
   return `$${n}`
 }
 
-export function RoundCard({
+export async function RoundCard({
   round,
   hubSlug,
 }: {
@@ -70,9 +70,25 @@ export function RoundCard({
   const dl = formatDeadline(round.deadline)
   const matched = round.matchedIntentIds.length > 0
   const isClosed = dl.daysLeft !== null && dl.daysLeft < 0
-  const fundLabel = round.fundAgentId
-    ? `${round.fundAgentId.slice(0, 6)}…${round.fundAgentId.slice(-4)}`
-    : 'Unknown fund'
+  // Resolve the operator AgentAccount's display/primary name on-chain.
+  // For most pools the operator = pool's own treasury, so this often
+  // shows the same name as the pool, signalling self-operated rounds.
+  const AGENT_IRI_PREFIX = 'https://smartagent.io/ontology/core#agent/'
+  const operatorAddr = round.fundAgentId
+    ? (round.fundAgentId.startsWith(AGENT_IRI_PREFIX)
+        ? round.fundAgentId.slice(AGENT_IRI_PREFIX.length)
+        : round.fundAgentId) as `0x${string}`
+    : null
+  let operatorLabel = 'unknown operator'
+  if (operatorAddr) {
+    try {
+      const { getAgentMetadata } = await import('@/lib/agent-metadata')
+      const meta = await getAgentMetadata(operatorAddr)
+      operatorLabel = meta.primaryName || meta.displayName || `${operatorAddr.slice(0, 6)}…${operatorAddr.slice(-4)}`
+    } catch {
+      operatorLabel = `${operatorAddr.slice(0, 6)}…${operatorAddr.slice(-4)}`
+    }
+  }
   // Pool linkage — when sa:operatedByPool is set the card surfaces "in
   // pool <name>" so the user sees the round↔pool relationship at a
   // glance instead of guessing from the fund hex.
@@ -177,7 +193,7 @@ export function RoundCard({
       <div style={{ fontSize: '0.72rem', color: C.textMuted, marginBottom: '0.4rem' }}>
         {round.displayName ? <>Accepts {mandateNarrative} · </> : null}
         {poolLabel ? <>in pool <strong style={{ color: C.text }}>{poolLabel}</strong> · </> : null}
-        {fundLabel}
+        <span title="Round operator — usually the pool's owner.">operated by {operatorLabel}</span>
         {round.mandate.acceptedGeo?.length > 0 && <> · {round.mandate.acceptedGeo.slice(0, 2).join(', ')}</>}
       </div>
 

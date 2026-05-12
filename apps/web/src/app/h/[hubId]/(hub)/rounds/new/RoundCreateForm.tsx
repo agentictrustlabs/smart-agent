@@ -21,13 +21,12 @@ const C = {
 const CADENCE_OPTIONS = ['monthly', 'quarterly', 'annual', 'milestone', 'none'] as const
 
 export interface EligiblePool {
-  /** URN identifier for this pool (urn:smart-agent:pool:<slug>) — used to
-   *  key the dropdown / select state. */
+  /** URN identifier for this pool (urn:smart-agent:pool:<slug>). */
   poolAgentId: string
-  /** Hex address of the pool's on-chain agent (treasury). Written to the
-   *  round's SA_ROUND_POOL_AGENT field so the round↔pool link is canonical. */
+  /** Hex address of the pool's on-chain AgentAccount. Becomes BOTH the
+   *  round's `poolAgent` AND its `fundAgent` (operator) under the
+   *  unified-governance rule. */
   poolAgentAddress: string
-  fundAgentId: string
   name: string
   acceptedKinds: string[]
   acceptedGeo: string[]
@@ -94,9 +93,10 @@ export function RoundCreateForm({ hubSlug, pools }: Props) {
           body: JSON.stringify({
             id: slug,
             displayName,
-            fundAgentId: pool.fundAgentId,
-            // Send the pool's on-chain address (not URN) — the submit route
-            // forwards it directly to the contract's SA_ROUND_POOL_AGENT field.
+            // Unified governance: operator = pool. Both fundAgent and
+            // poolAgent point at the pool's AgentAccount. Pool owners are
+            // the round's operators by inheritance.
+            fundAgentId: pool.poolAgentAddress,
             poolAgentId: pool.poolAgentAddress,
             mandate: {
               acceptedKinds: kinds,
@@ -150,10 +150,17 @@ export function RoundCreateForm({ hubSlug, pools }: Props) {
 
   return (
     <form onSubmit={onSubmit} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: '1.1rem 1.2rem', maxWidth: '38rem' }}>
-      {field('Operating pool (the fund this round draws from)', (
-        <select value={pickedPoolId} onChange={e => pickPool(e.target.value)} style={inputStyle}>
-          {pools.map(p => <option key={p.poolAgentId} value={p.poolAgentId}>{p.name}</option>)}
-        </select>
+      {field('Pool this round draws from', (
+        <>
+          <select value={pickedPoolId} onChange={e => pickPool(e.target.value)} style={inputStyle}>
+            {pools.map(p => <option key={p.poolAgentId} value={p.poolAgentId}>{p.name}</option>)}
+          </select>
+          <div style={{ fontSize: '0.7rem', color: C.textMuted, marginTop: '0.25rem' }}>
+            The pool&apos;s owners (you + the org that anchors the pool) become this
+            round&apos;s operators — they can edit voting config, open / close voting,
+            and finalize awards.
+          </div>
+        </>
       ))}
       {field('Round slug (lowercase, dash-separated)', (
         <input type="text" value={slug} onChange={e => setSlug(e.target.value)} placeholder="demo-trauma-care-q3" style={inputStyle} required />

@@ -40,8 +40,8 @@ export async function logActivity(data: {
   usesOfferingId?: string
 }) {
   const session = await requireSession()
-  const user = await db.select().from(schema.users)
-    .where(eq(schema.users.walletAddress, session.walletAddress ?? '')).limit(1)
+  const user = await db.select().from(schema.localUserAccounts)
+    .where(eq(schema.localUserAccounts.walletAddress, session.walletAddress ?? '')).limit(1)
   if (!user[0]) throw new Error('User not found')
 
   const id = randomUUID()

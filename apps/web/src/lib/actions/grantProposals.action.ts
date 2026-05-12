@@ -311,6 +311,49 @@ export async function getRoundProposalCount(roundId: string): Promise<number> {
   }
 }
 
+/**
+ * Brief proposal entry for the inline round-detail listing. Carries only
+ * what the surface needs (name + status + submission time) so we can
+ * render the list without paying for the full body federation that
+ * `listProposalsForRoundSteward` does. Anyone who can see the round can
+ * see the list — full bodies remain gated by steward auth.
+ */
+export interface RoundProposalBrief {
+  id: string
+  displayName: string
+  status: string
+  submittedAt: string | null
+  withdrawnAt: string | null
+}
+
+export async function listRoundProposalsBrief(roundId: string): Promise<RoundProposalBrief[]> {
+  try {
+    const result = await callMcp<{ proposals: Array<RawProposalRow> }>(
+      'org',
+      'grant_proposal:list_for_round',
+      { roundId },
+    )
+    const rows = result.proposals ?? []
+    return rows
+      .filter((r) => r.status !== 'draft')
+      .map((r) => ({
+        id: r.id,
+        displayName: r.displayName || 'Untitled proposal',
+        status: r.status,
+        submittedAt: r.submittedAt,
+        withdrawnAt: r.withdrawnAt,
+      }))
+      .sort((a, b) => {
+        const ax = a.submittedAt ? Date.parse(a.submittedAt) : 0
+        const bx = b.submittedAt ? Date.parse(b.submittedAt) : 0
+        return bx - ax
+      })
+  } catch (err) {
+    console.warn('[listRoundProposalsBrief] failed:', err instanceof Error ? err.message : err)
+    return []
+  }
+}
+
 export interface ListMemberProposalsResult {
   proposals: GrantProposal[]
 }

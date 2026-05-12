@@ -153,7 +153,7 @@ export async function buildAgentNameMap(): Promise<Map<string, { name: string; t
   const nameMap = new Map<string, { name: string; type: string }>()
 
   // User EOA names
-  const allUsers = await db.select().from(schema.users)
+  const allUsers = await db.select().from(schema.localUserAccounts)
   for (const u of allUsers) nameMap.set(u.walletAddress.toLowerCase(), { name: u.name, type: 'eoa' })
 
   // On-chain resolver (source of truth for names and types). Fan out

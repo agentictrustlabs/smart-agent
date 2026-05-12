@@ -4,8 +4,6 @@ import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { HUB_SLUG_MAP } from '@/lib/hub-routes'
 import { getHubProfile } from '@/lib/hub-profiles'
 import { getIntent } from '@/lib/actions/intents.action'
-import { listMatches, runDiscoverMatch } from '@/lib/actions/discover.action'
-import { MatchRowCard } from '@/components/discover/MatchRow'
 import { getAgentMetadata } from '@/lib/agent-metadata'
 import { getPersonAgentForUser } from '@/lib/agent-registry'
 import {
@@ -35,10 +33,10 @@ const STATUS_COLORS: Record<string, { bg: string; fg: string }> = {
 
 export default async function IntentDetailPage({ params, searchParams }: {
   params: Promise<{ hubId: string; id: string }>
-  searchParams: Promise<{ run?: string; matched?: string; err?: string }>
+  searchParams: Promise<{ matched?: string; err?: string }>
 }) {
   const { hubId: slug, id } = await params
-  const { run, matched, err } = await searchParams
+  const { matched, err } = await searchParams
   const internalHubId = HUB_SLUG_MAP[slug]
   if (!internalHubId) notFound()
   const user = await getCurrentUser()
@@ -65,16 +63,6 @@ export default async function IntentDetailPage({ params, searchParams }: {
     ? await listPublicActiveInitiationsForIntent(id)
     : []
   const hasAnyActiveInitiation = publicActive.length > 0
-
-  // For receive-shaped intents we have a legacy needs row — match against it.
-  if (run === '1' && intent.direction === 'receive' && intent.projectionRef) {
-    await runDiscoverMatch(intent.projectionRef)
-  }
-  const matches = (intent.direction === 'receive' && intent.projectionRef)
-    ? await listMatches({ needId: intent.projectionRef, hydrate: true, minScore: 0, limit: 50 })
-    : []
-  const proposed = matches.filter(m => m.status === 'proposed')
-  const decided = matches.filter(m => m.status !== 'proposed')
 
   let expresserName = intent.expressedByAgent.slice(0, 6) + '…' + intent.expressedByAgent.slice(-4)
   try {
@@ -166,52 +154,13 @@ export default async function IntentDetailPage({ params, searchParams }: {
         </div>
       )}
 
-      {/* Re-run match (receive-only) */}
-      {dirIsReceive && intent.projectionRef && (
-        <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-          <Link
-            href={`/h/${slug}/intents/${id}?run=1`}
-            style={{ display: 'inline-block', padding: '0.5rem 0.9rem', background: '#fff', color: C.accent, border: `1px solid ${C.accent}`, borderRadius: 8, fontWeight: 600, fontSize: '0.8rem', textDecoration: 'none' }}
-          >
-            ↻ Re-run match
-          </Link>
-        </div>
-      )}
-
-      {/* Matches (receive-only — give-shaped intents are *targets*, not askers) */}
-      {dirIsReceive && proposed.length > 0 && (
-        <section style={{ marginBottom: '1.25rem' }}>
-          <h2 style={{ fontSize: '0.7rem', fontWeight: 700, color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.5rem' }}>
-            Proposed matches ({proposed.length})
-          </h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            {proposed.map(m => <MatchRowCard key={m.id} match={m} hubSlug={slug} />)}
-          </div>
-        </section>
-      )}
-
-      {dirIsReceive && decided.length > 0 && (
-        <section>
-          <h2 style={{ fontSize: '0.7rem', fontWeight: 700, color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.5rem' }}>
-            Decisions ({decided.length})
-          </h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            {decided.map(m => <MatchRowCard key={m.id} match={m} hubSlug={slug} />)}
-          </div>
-        </section>
-      )}
-
-      {dirIsReceive && proposed.length === 0 && decided.length === 0 && (
-        <div style={{ padding: '1.5rem', textAlign: 'center', color: C.textMuted, background: C.card, border: `1px solid ${C.border}`, borderRadius: 12 }}>
-          No matches yet. Try clicking <span style={{ color: C.accent, fontWeight: 600 }}>Re-run match</span> above.
-        </div>
-      )}
-
-      {/* Give-shaped intents: this is the offering side; show what
-          requests it could match. Lightweight teaser — full reverse-search lives later. */}
-      {!dirIsReceive && (
+      {/* Give-shaped intents: this is the offering side. The intent
+          marketplace surfaces compatible counter-intents above via
+          <CandidatesSection> when the intent is in expressed/acknowledged
+          status. */}
+      {!dirIsReceive && !showCandidates && (
         <div style={{ padding: '1.25rem', textAlign: 'center', color: C.textMuted, background: C.card, border: `1px solid ${C.border}`, borderRadius: 12 }}>
-          This is a give-shaped intent. <Link href={`/h/${slug}/discover`} style={{ color: C.accent, fontWeight: 600 }}>Browse open requests</Link> that could be a fit.
+          This is a give-shaped intent. <Link href={`/h/${slug}/intents`} style={{ color: C.accent, fontWeight: 600 }}>Browse open requests</Link> that could be a fit.
         </div>
       )}
     </div>

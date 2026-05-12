@@ -72,8 +72,8 @@ async function communityStatus(): Promise<{ usersProvisioned: Check; onChainAgen
   // Users provisioned in DB (has private key, smart account, person agent).
   const [{ count }] = await db
     .select({ count: sql<number>`count(*)` })
-    .from(schema.users)
-    .where(sql`${schema.users.privateKey} IS NOT NULL AND ${schema.users.smartAccountAddress} IS NOT NULL AND ${schema.users.personAgentAddress} IS NOT NULL`)
+    .from(schema.localUserAccounts)
+    .where(sql`${schema.localUserAccounts.privateKey} IS NOT NULL AND ${schema.localUserAccounts.smartAccountAddress} IS NOT NULL AND ${schema.localUserAccounts.personAgentAddress} IS NOT NULL`)
   const usersProvisioned: Check = {
     label: 'All demo users provisioned',
     ok: (count ?? 0) >= EXPECTED_DEMO_USER_COUNT,
@@ -130,7 +130,7 @@ async function userStatus(): Promise<{ personAgentRegistered: Check; orgsLinked:
     const user = await getCurrentUser()
     if (!user) return { personAgentRegistered: pending, orgsLinked: pending2, hubResolved: pending3 }
 
-    const rows = await db.select().from(schema.users).where(eq(schema.users.id, user.id)).limit(1)
+    const rows = await db.select().from(schema.localUserAccounts).where(eq(schema.localUserAccounts.id, user.id)).limit(1)
     const row = rows[0]
 
     // OAuth / passkey / SIWE users don't have a separate personAgentAddress —

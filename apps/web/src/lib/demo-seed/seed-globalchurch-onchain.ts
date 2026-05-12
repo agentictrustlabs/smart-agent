@@ -143,9 +143,9 @@ async function setGenMapData(addr: `0x${string}`, data: string) {
 }
 
 function upsertUser(u: { id: string; name: string; email: string; wallet: string; did: string }) {
-  const existing = db.select().from(schema.users).where(eq(schema.users.id, u.id)).get()
+  const existing = db.select().from(schema.localUserAccounts).where(eq(schema.localUserAccounts.id, u.id)).get()
   if (!existing) {
-    db.insert(schema.users).values({ id: u.id, email: u.email, name: u.name, walletAddress: u.wallet, did: u.did }).run()
+    db.insert(schema.localUserAccounts).values({ id: u.id, email: u.email, name: u.name, walletAddress: u.wallet, did: u.did }).run()
   }
 }
 
@@ -344,9 +344,9 @@ async function doSeed() {
   // Membership edges layered on top of the governance graph — sub-ministry
   // directors are members of the parent church; senior staff sit on the
   // network board.
-  await createEdge(paMikeThompson, graceChurch, ORGANIZATION_MEMBERSHIP, [ROLE_OPERATOR])
-  await createEdge(paJanetWilson,  graceChurch, ORGANIZATION_MEMBERSHIP, [ROLE_OPERATOR])
-  await createEdge(paMarcusLee,    graceChurch, ORGANIZATION_MEMBERSHIP, [ROLE_OPERATOR])
+  await createEdge(paMikeThompson, graceChurch, ORGANIZATION_MEMBERSHIP, [ROLE_MEMBER])
+  await createEdge(paJanetWilson,  graceChurch, ORGANIZATION_MEMBERSHIP, [ROLE_MEMBER])
+  await createEdge(paMarcusLee,    graceChurch, ORGANIZATION_MEMBERSHIP, [ROLE_MEMBER])
   await createEdge(paDanBusby,     gcNetwork,   ORGANIZATION_MEMBERSHIP, [ROLE_MEMBER])
   await createEdge(paJohnChesnut,  gcNetwork,   ORGANIZATION_MEMBERSHIP, [ROLE_MEMBER])
   await createEdge(paDavidWills,   gcNetwork,   ORGANIZATION_MEMBERSHIP, [ROLE_BOARD_MEMBER])

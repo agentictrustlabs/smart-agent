@@ -19,8 +19,8 @@ export async function POST(request: Request) {
   // Check if user exists by DID
   const existing = await db
     .select()
-    .from(schema.users)
-    .where(eq(schema.users.did, session.userId))
+    .from(schema.localUserAccounts)
+    .where(eq(schema.localUserAccounts.did, session.userId))
     .limit(1)
 
   if (existing[0]) {
@@ -30,21 +30,21 @@ export async function POST(request: Request) {
   // Check by wallet address
   const byWallet = await db
     .select()
-    .from(schema.users)
-    .where(eq(schema.users.walletAddress, walletAddress))
+    .from(schema.localUserAccounts)
+    .where(eq(schema.localUserAccounts.walletAddress, walletAddress))
     .limit(1)
 
   if (byWallet[0]) {
     await db
-      .update(schema.users)
+      .update(schema.localUserAccounts)
       .set({ did: session.userId })
-      .where(eq(schema.users.id, byWallet[0].id))
+      .where(eq(schema.localUserAccounts.id, byWallet[0].id))
     return NextResponse.json({ userId: byWallet[0].id, isNewUser: false })
   }
 
   // Create new user
   const userId = crypto.randomUUID()
-  await db.insert(schema.users).values({
+  await db.insert(schema.localUserAccounts).values({
     id: userId,
     email,
     name: name || 'Agent User',

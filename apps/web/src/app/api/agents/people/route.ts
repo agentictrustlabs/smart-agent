@@ -6,7 +6,7 @@ import { listRegisteredAgents } from '@/lib/agent-resolver'
 const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? '31337')
 
 export async function GET() {
-  const users = await db.select().from(schema.users)
+  const users = await db.select().from(schema.localUserAccounts)
   const personAgents = (await listRegisteredAgents()).filter(agent => agent.kind === 'person')
 
   const people = personAgents.map((p) => {

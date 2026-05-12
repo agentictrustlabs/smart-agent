@@ -187,8 +187,8 @@ export async function bootstrapA2ASession(options?: { durationSeconds?: number }
   const stateless = session.via === 'passkey' || session.via === 'siwe'
   const user = stateless
     ? { smartAccountAddress: session.smartAccountAddress, privateKey: null }
-    : await db.select().from(schema.users)
-        .where(eq(schema.users.walletAddress, session.walletAddress))
+    : await db.select().from(schema.localUserAccounts)
+        .where(eq(schema.localUserAccounts.walletAddress, session.walletAddress))
         .limit(1)
         .then(r => r[0] ?? null)
   if (!user) return { success: false, error: 'User not found' }

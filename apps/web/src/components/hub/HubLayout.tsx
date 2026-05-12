@@ -53,7 +53,6 @@ const SEGMENT_LABELS: Record<string, string> = {
   'activities': 'Activities',
   'entitlements': 'Engagements',
   'intents': 'Intents',
-  'matches': 'Matches',
   'governance': 'Governance',
   'coaching': 'Coaching',
   'revenue': 'Revenue',

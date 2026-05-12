@@ -38,6 +38,7 @@ import { PriorStatsBlock } from '../(components)/PriorStatsBlock'
 import { CancelRoundButton } from './CancelRoundButton'
 import { roundLifecycle, lifecyclePalette } from '@/lib/rounds/lifecycle'
 import type { ReportingCadence } from '@smart-agent/sdk'
+import type { RoundProposalBrief } from '@/lib/actions/grantProposals.action'
 
 export const dynamic = 'force-dynamic'
 
@@ -105,11 +106,14 @@ export default async function RoundDetailPage({
   // kb-sync — proposals are private and never reach GraphDB). Read the
   // count directly from org-mcp so the "View N proposals" CTA is
   // accurate. Returns 0 silently on failure.
-  const { getRoundProposalCount } = await import('@/lib/actions/grantProposals.action')
+  const { getRoundProposalCount, listRoundProposalsBrief } = await import('@/lib/actions/grantProposals.action')
   const fullRoundId = roundId.startsWith('urn:smart-agent:round:')
     ? roundId
     : `urn:smart-agent:round:${roundId}`
-  const proposalsReceived = await getRoundProposalCount(fullRoundId)
+  const [proposalsReceived, proposalBriefs] = await Promise.all([
+    getRoundProposalCount(fullRoundId),
+    listRoundProposalsBrief(fullRoundId),
+  ])
 
   // Read the on-chain round status + voting window so the page reflects
   // the lifecycle phase (accepting / voting / reviewing / decided / closed
@@ -154,15 +158,26 @@ export default async function RoundDetailPage({
 
   const deadline = formatDate(round.deadline)
   const decision = formatDate(round.decisionDate)
-  const fundLabel = round.fundAgentId
-    ? `${round.fundAgentId.slice(0, 6)}…${round.fundAgentId.slice(-4)}`
-    : 'Unknown fund'
   // Pool reference — when sa:operatedByPool is set, show "in pool <name>"
   // so the user can navigate from a round back to the pool that operates
   // it. Falls back to the hex slice when no display name is mirrored.
   const AGENT_IRI_PREFIX = 'https://smartagent.io/ontology/core#agent/'
   const stripAgentIri = (s: string | undefined): string =>
     !s ? '' : s.startsWith(AGENT_IRI_PREFIX) ? s.slice(AGENT_IRI_PREFIX.length) : s
+  // Resolve the operator's display/primary name from the on-chain resolver.
+  // Falls back to the hex slice (built into getAgentMetadata) when the
+  // resolver has no entry.
+  const { getAgentMetadata } = await import('@/lib/agent-metadata')
+  let operatorLabel = 'unknown operator'
+  if (round.fundAgentId) {
+    const operatorAddr = stripAgentIri(round.fundAgentId) as `0x${string}`
+    try {
+      const meta = await getAgentMetadata(operatorAddr)
+      operatorLabel = meta.primaryName || meta.displayName || `${operatorAddr.slice(0, 6)}…${operatorAddr.slice(-4)}`
+    } catch {
+      operatorLabel = `${operatorAddr.slice(0, 6)}…${operatorAddr.slice(-4)}`
+    }
+  }
   const poolAddress = stripAgentIri(round.poolAgentId)
   const poolLabel = round.poolName
     ? round.poolName
@@ -228,7 +243,9 @@ export default async function RoundDetailPage({
           </div>
         )}
         <div style={{ fontSize: '0.78rem', color: C.textMuted, display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
-          <span>Operated by {fundLabel}</span>
+          <span title="Round operator — the AgentAccount whose owners control voting config, lifecycle, and award finalisation. Usually the pool's owner; can be set to a separate operating org.">
+            Operator: <strong style={{ color: C.text }}>{operatorLabel}</strong>
+          </span>
           {poolLabel && (
             <span>
               · in pool{' '}
@@ -340,6 +357,15 @@ export default async function RoundDetailPage({
       {/* Prior stats */}
       <PriorStatsBlock stats={round.priorStats} />
 
+      {/* Inline proposal list — members navigate from here to vote. The
+          full review surface ([roundId]/proposals) remains available via
+          the Apply / Review CTA below. */}
+      {proposalBriefs.length > 0 && (
+        <Section title={`Proposals submitted (${proposalBriefs.length})`}>
+          <ProposalList hubSlug={slug} proposals={proposalBriefs} />
+        </Section>
+      )}
+
       {/* Apply CTA + steward actions */}
       <div style={{ marginTop: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -421,6 +447,69 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
         {children}
       </div>
     </div>
+  )
+}
+
+function ProposalList({
+  hubSlug,
+  proposals,
+}: {
+  hubSlug: string
+  proposals: RoundProposalBrief[]
+}) {
+  const STATUS_PALETTE: Record<string, { bg: string; fg: string; border: string }> = {
+    submitted: { bg: 'rgba(13,148,136,0.08)',  fg: '#0f766e', border: 'rgba(13,148,136,0.25)' },
+    awarded:   { bg: 'rgba(34,197,94,0.10)',   fg: '#166534', border: 'rgba(34,197,94,0.30)'  },
+    withdrawn: { bg: '#f3f4f6',                fg: '#6b7280', border: '#e5e7eb'                },
+    declined:  { bg: '#fef2f2',                fg: '#991b1b', border: '#fecaca'                },
+  }
+  return (
+    <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+      {proposals.map((p) => {
+        const palette = STATUS_PALETTE[p.status] ?? STATUS_PALETTE.submitted
+        const submittedLabel = p.submittedAt
+          ? new Date(p.submittedAt).toISOString().slice(0, 10)
+          : '—'
+        return (
+          <li key={p.id} style={{ marginBottom: '0.4rem' }}>
+            <Link
+              href={`/h/${hubSlug}/proposals/${encodeURIComponent(p.id)}`}
+              style={{
+                display: 'flex',
+                gap: '0.6rem',
+                alignItems: 'center',
+                padding: '0.55rem 0.7rem',
+                background: '#fff',
+                border: `1px solid ${C.border}`,
+                borderRadius: 8,
+                textDecoration: 'none',
+                color: C.text,
+              }}
+            >
+              <span style={{ flex: 1, minWidth: 0, fontSize: '0.85rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {p.displayName}
+              </span>
+              <span style={{
+                fontSize: '0.62rem',
+                fontWeight: 700,
+                padding: '0.18rem 0.5rem',
+                borderRadius: 999,
+                background: palette.bg,
+                color: palette.fg,
+                border: `1px solid ${palette.border}`,
+                textTransform: 'uppercase',
+                letterSpacing: '0.04em',
+              }}>
+                {p.status}
+              </span>
+              <span style={{ fontSize: '0.72rem', color: C.textMuted, minWidth: '5.5rem', textAlign: 'right' }}>
+                {submittedLabel}
+              </span>
+            </Link>
+          </li>
+        )
+      })}
+    </ul>
   )
 }
 

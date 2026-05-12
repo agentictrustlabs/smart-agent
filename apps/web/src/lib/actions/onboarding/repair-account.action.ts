@@ -119,8 +119,8 @@ export async function prepareReAuthBootstrapAction(): Promise<PrepareReAuthResul
     if (!DEPLOYER_KEY) return { success: false, error: 'DEPLOYER_PRIVATE_KEY not configured' }
 
     const session = await requireSession()
-    const user = await db.select().from(schema.users)
-      .where(eq(schema.users.did, session.userId)).limit(1).then(r => r[0])
+    const user = await db.select().from(schema.localUserAccounts)
+      .where(eq(schema.localUserAccounts.did, session.userId)).limit(1).then(r => r[0])
     if (!user?.smartAccountAddress) return { success: false, error: 'no smart account on user row' }
 
     const accountAddr = getAddress(user.smartAccountAddress as `0x${string}`)

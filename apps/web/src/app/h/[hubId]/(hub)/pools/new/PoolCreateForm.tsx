@@ -32,12 +32,19 @@ const C = {
 const GOV_OPTIONS = ['fund', 'coaching-network', 'prayer-chain', 'skills-bench', 'hospitality-network'] as const
 const CEILING_OPTIONS = ['accept', 'block', 'waitlist'] as const
 
-interface Props {
-  hubSlug: string
+export interface EligibleOrg {
+  orgAddress: `0x${string}`
+  orgName: string
 }
 
-export function PoolCreateForm({ hubSlug }: Props) {
+interface Props {
+  hubSlug: string
+  orgs: EligibleOrg[]
+}
+
+export function PoolCreateForm({ hubSlug, orgs }: Props) {
   const router = useRouter()
+  const [pickedOrg, setPickedOrg] = useState<`0x${string}`>(orgs[0]?.orgAddress ?? ('0x' as `0x${string}`))
   const [name, setName] = useState('')
   const [slug, setSlug] = useState('')
   const [domain, setDomain] = useState('funding')
@@ -84,7 +91,11 @@ export function PoolCreateForm({ hubSlug }: Props) {
             acceptedUnits: unitsList,
             ceilingPolicy,
             visibility,
-            stewards: [],
+            // The operating org becomes the pool's stewardship anchor;
+            // server adds it as an on-chain owner of the pool agent so
+            // org members govern the pool uniformly.
+            operatingOrg: pickedOrg,
+            stewards: [pickedOrg],
           }),
         })
         if (!res.ok) {
@@ -141,6 +152,17 @@ export function PoolCreateForm({ hubSlug }: Props) {
         maxWidth: '36rem',
       }}
     >
+      {field('Operating organisation', (
+        <>
+          <select value={pickedOrg} onChange={e => setPickedOrg(e.target.value as `0x${string}`)} style={inputStyle}>
+            {orgs.map(o => <option key={o.orgAddress} value={o.orgAddress}>{o.orgName}</option>)}
+          </select>
+          <div style={{ fontSize: '0.7rem', color: C.textMuted, marginTop: '0.25rem' }}>
+            Becomes a co-owner of the pool&apos;s AgentAccount. Its members govern the pool
+            and inherit operator rights on any round backed by it.
+          </div>
+        </>
+      ))}
       {field('Display name', <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Trauma-Care + Migrant Family Pool" style={inputStyle} required />)}
       {field('Slug (lowercase, dash-separated)', <input type="text" value={slug} onChange={e => setSlug(e.target.value)} placeholder="demo-trauma-care-pool" style={inputStyle} required />)}
       {field('Domain', <input type="text" value={domain} onChange={e => setDomain(e.target.value)} style={inputStyle} />)}

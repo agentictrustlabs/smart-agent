@@ -1,39 +1,28 @@
 /**
- * New Round wizard. Lets a steward of one of the hub's pools open a
- * formal grant round backed by that pool's treasury. Calls openRound()
- * server action via the sibling submit/route.ts on form submit.
+ * New Round wizard.
  *
- * Auth: viewer must have a person agent. The list of eligible operating
- * pools is filtered server-side to those the viewer can manage
- * (canManageAgent against pool.id). If none, the wizard renders an
- * empty-state pointing at /pools/new.
+ * Unified governance rule: a round is operated by the pool itself. The
+ * pool's AgentAccount owners (= the anchoring org's members, set by the
+ * pool-create flow) are the round's operators. No separate "fund agent"
+ * concept; round.fundAgent = round.poolAgent.
+ *
+ * Auth: viewer must be able to manage at least one pool's AgentAccount.
+ * `canManageAgent` walks on-chain isOwner (direct owner OR co-owner via
+ * an org that owns the pool).
  */
 
 import { redirect, notFound } from 'next/navigation'
+import Link from 'next/link'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { HUB_SLUG_MAP } from '@/lib/hub-routes'
 import { getHubProfile } from '@/lib/hub-profiles'
 import { getPersonAgentForUser, canManageAgent } from '@/lib/agent-registry'
 import { listPoolsForViewer } from '@/lib/actions/pools.action'
 import { RoundCreateForm, type EligiblePool } from './RoundCreateForm'
-import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
 
 const C = { text: '#5c4a3a', textMuted: '#9a8c7e', accent: '#8b5e3c', card: '#ffffff', border: '#ece6db' }
-
-const AGENT_IRI_PREFIX = 'https://smartagent.io/ontology/core#agent/'
-
-function poolAddressFromIri(poolAgentId: string): string {
-  // Pool IDs in the index are URNs (urn:smart-agent:pool:<slug>). To
-  // canManage them we need the on-chain agent address — discovery
-  // surfaces it on the pool's `id` (URN form) so we use that as-is for
-  // the fund linkage but we can't directly canManage on a URN. Treasury
-  // address lives in the on-chain assertion payload; until we surface
-  // that here, we fall back to checking that viewer is a steward of the
-  // hub network (manages the catalyst NoCo Network agent).
-  return poolAgentId
-}
 
 export default async function NewRoundPage({ params }: { params: Promise<{ hubId: string }> }) {
   const { hubId: slug } = await params
@@ -45,36 +34,21 @@ export default async function NewRoundPage({ params }: { params: Promise<{ hubId
   if (!myAgent) redirect(`/h/${slug}/home`)
   const profile = getHubProfile(internalHubId)
 
-  // Fetch all hub pools then narrow to those the viewer can administer.
-  // For Phase 2.5 demo: any pool whose `stewards` list contains the
-  // viewer's person agent OR whose underlying fund the viewer can
-  // manage qualifies. The catalyst seed has Maria as governance owner
-  // of the network (the fund), so all pools operated by the network
-  // are eligible for her.
+  // Eligible = pools whose AgentAccount the viewer can manage.
   const allPools = await listPoolsForViewer({ hubId: internalHubId, viewerAgentId: myAgent })
   const eligiblePools: EligiblePool[] = []
   for (const p of allPools) {
-    // The pool's "fund" address is the treasury — for our seeded pools that's
-    // the catalyst NoCo Network. Use canManageAgent against the network so
-    // the gate matches the close-round / cancel-round gate elsewhere.
-    const fundIri = p.stewardshipAgent || ''
-    const fundAddr = fundIri.startsWith(AGENT_IRI_PREFIX)
-      ? fundIri.slice(AGENT_IRI_PREFIX.length)
-      : fundIri
+    if (!p.treasuryAddress) continue
     let canMng = false
-    if (fundAddr) {
-      try { canMng = await canManageAgent(myAgent, fundAddr) } catch { canMng = false }
-    }
-    if (canMng) {
-      eligiblePools.push({
-        poolAgentId: p.id,
-        poolAgentAddress: p.treasuryAddress || '',
-        fundAgentId: fundAddr,
-        name: p.name || p.id.split(':').pop() || 'Pool',
-        acceptedKinds: p.acceptedRestrictions?.kinds ?? [],
-        acceptedGeo: p.acceptedRestrictions?.geoRoots ?? [],
-      })
-    }
+    try { canMng = await canManageAgent(myAgent, p.treasuryAddress) } catch { canMng = false }
+    if (!canMng) continue
+    eligiblePools.push({
+      poolAgentId: p.id,
+      poolAgentAddress: p.treasuryAddress,
+      name: p.name || p.id.split(':').pop() || 'Pool',
+      acceptedKinds: p.acceptedRestrictions?.kinds ?? [],
+      acceptedGeo: p.acceptedRestrictions?.geoRoots ?? [],
+    })
   }
 
   return (
@@ -87,17 +61,17 @@ export default async function NewRoundPage({ params }: { params: Promise<{ hubId
           Open a grant round
         </h1>
         <p style={{ fontSize: '0.85rem', color: C.textMuted, margin: '0.2rem 0 0' }}>
-          Pick the pool that operates the round, set the mandate + deadlines, and open. Stewards
-          can review proposals on the round and finalize awards before the dispute window closes.
+          Pick the pool this round draws from. The pool&rsquo;s owners (you, plus the
+          org that anchors the pool) become this round&rsquo;s operators.
         </p>
       </div>
 
       {eligiblePools.length === 0 ? (
         <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: '1.4rem 1.5rem', maxWidth: '36rem' }}>
-          <h2 style={{ fontSize: '1rem', fontWeight: 700, color: C.text, margin: 0 }}>No eligible pool</h2>
+          <h2 style={{ fontSize: '1rem', fontWeight: 700, color: C.text, margin: 0 }}>No pool to run this round</h2>
           <p style={{ fontSize: '0.85rem', color: C.textMuted, marginTop: '0.4rem' }}>
-            You don&rsquo;t manage any pool in this hub. Create one first, then come back here
-            to open a round backed by it.
+            You don&rsquo;t govern any pool in this hub. Create one first under an organisation
+            you manage, then come back to open a round on it.
           </p>
           <div style={{ marginTop: '0.9rem' }}>
             <Link

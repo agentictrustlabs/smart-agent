@@ -222,7 +222,6 @@ export async function CadenceWorkspace(props: EngagementWorkspaceProps) {
                 entitlementId={detail.id}
                 entitlementTitle={detail.terms.topic ?? 'this engagement'}
                 orgAddress={firstOrgAddr}
-                hubId={internalHubId}
               />
             </div>
           )}

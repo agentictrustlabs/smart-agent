@@ -255,26 +255,14 @@ export const HUB_PROFILES: HubProfile[] = [
       // circles, house churches, and metro hubs across sister networks).
       { href: '/groups', label: 'Groups', section: 'primary', activePrefixes: ['/groups', '/catalyst/groups', '/catalyst/map'] },
       { href: '/steward', label: 'Steward', section: 'primary', requiresCapability: 'governance', activePrefixes: ['/steward', '/treasury', '/reviews', '/network', '/trust'] },
-      // Spec 001 — Direct lane (intents / matches / discover) entry point.
-      // Aggregates intents, matches, hub-wide needs/offerings, and the
-      // composite Discover landing surface.
+      // Spec 001/004 — Direct lane entry point (intent marketplace).
+      // Legacy Need/Offering Discover layer was retired; only the
+      // intents surface remains in this tab.
       {
-        href: '/h/catalyst/discover',
+        href: '/h/catalyst/intents',
         label: 'Discover',
         section: 'primary',
-        activePrefixes: [
-          '/h/catalyst/discover',
-          '/h/catalyst/intents',
-          '/h/catalyst/matches',
-          '/h/catalyst/needs',
-          '/h/catalyst/offerings',
-        ],
-        subTabs: [
-          { href: '/h/catalyst/discover', label: 'Discover' },
-          { href: '/h/catalyst/intents',  label: 'Intents' },
-          { href: '/h/catalyst/matches',  label: 'My matches' },
-          { href: '/h/catalyst/offerings', label: 'Offerings' },
-        ],
+        activePrefixes: ['/h/catalyst/intents'],
       },
       // Specs 002 + 003 — Intent Marketplace (Proposal + Pool lanes).
       // Funding tab covers grant rounds + the proposer's own proposals

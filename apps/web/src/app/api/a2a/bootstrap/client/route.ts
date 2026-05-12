@@ -44,8 +44,8 @@ export async function POST() {
   const chainId = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? '31337')
 
   // Look up user
-  const users = await db.select().from(schema.users)
-    .where(eq(schema.users.walletAddress, walletAddress))
+  const users = await db.select().from(schema.localUserAccounts)
+    .where(eq(schema.localUserAccounts.walletAddress, walletAddress))
     .limit(1)
   let user = users[0]
 
@@ -55,9 +55,9 @@ export async function POST() {
       const { deploySmartAccount } = await import('@/lib/contracts')
       const salt = BigInt(Date.now() + Math.floor(Math.random() * 100000))
       const smartAcct = await deploySmartAccount(walletAddress as `0x${string}`, salt)
-      await db.update(schema.users)
+      await db.update(schema.localUserAccounts)
         .set({ smartAccountAddress: smartAcct })
-        .where(eq(schema.users.id, user.id))
+        .where(eq(schema.localUserAccounts.id, user.id))
       user = { ...user, smartAccountAddress: smartAcct }
     } catch (err) {
       return NextResponse.json({ error: `Smart account deployment failed: ${err instanceof Error ? err.message : 'unknown'}` }, { status: 500 })

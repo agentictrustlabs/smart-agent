@@ -30,8 +30,8 @@ export async function deployPersonAgent(agentName?: string): Promise<DeployPerso
 
     const users = await db
       .select()
-      .from(schema.users)
-      .where(eq(schema.users.did, session.userId))
+      .from(schema.localUserAccounts)
+      .where(eq(schema.localUserAccounts.did, session.userId))
       .limit(1)
 
     const user = users[0]

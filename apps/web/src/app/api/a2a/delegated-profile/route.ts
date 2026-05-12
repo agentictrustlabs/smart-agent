@@ -28,8 +28,8 @@ export async function GET(request: Request) {
     // Use explicit grantee from query if provided, otherwise resolve from user
     let grantee = searchParams.get('grantee')
     if (!grantee) {
-      const users = await db.select().from(schema.users)
-        .where(eq(schema.users.did, session.userId)).limit(1)
+      const users = await db.select().from(schema.localUserAccounts)
+        .where(eq(schema.localUserAccounts.did, session.userId)).limit(1)
       const user = users[0]
       grantee = user ? await getPersonAgentForUser(user.id) : null
     }

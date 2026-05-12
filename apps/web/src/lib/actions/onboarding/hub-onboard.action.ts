@@ -79,8 +79,8 @@ export async function getHubOnboardingState(hubAddressInput: string): Promise<Hu
 
   const user = isStatelessAuth
     ? null
-    : await db.select().from(schema.users)
-        .where(eq(schema.users.did, session.userId)).limit(1).then(r => r[0])
+    : await db.select().from(schema.localUserAccounts)
+        .where(eq(schema.localUserAccounts.did, session.userId)).limit(1).then(r => r[0])
 
   if (!isStatelessAuth && !user) {
     return baseState('connect', { hub: hubMeta, authenticated: true, via: session.via })

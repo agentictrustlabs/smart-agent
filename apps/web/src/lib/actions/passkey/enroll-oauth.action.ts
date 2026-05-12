@@ -115,8 +115,8 @@ export async function enrollOAuthAddPasskeyAction(args: EnrollAddPasskeyArgs): P
       return { success: false, error: `OAuth-only path (session.via=${session.via ?? 'unknown'})` }
     }
 
-    const userRow = await db.select().from(schema.users)
-      .where(eq(schema.users.did, session.userId)).limit(1).then(r => r[0])
+    const userRow = await db.select().from(schema.localUserAccounts)
+      .where(eq(schema.localUserAccounts.did, session.userId)).limit(1).then(r => r[0])
     if (!userRow?.smartAccountAddress) return { success: false, error: 'no smart account on user row' }
     const accountAddr = getAddress(userRow.smartAccountAddress as `0x${string}`)
 
@@ -231,8 +231,8 @@ export async function enrollOAuthFinalizeAction(args: EnrollFinalizeArgs): Promi
     if (session.via !== 'google') {
       return { success: false, error: `OAuth-only path (session.via=${session.via ?? 'unknown'})` }
     }
-    const userRow = await db.select().from(schema.users)
-      .where(eq(schema.users.did, session.userId)).limit(1).then(r => r[0])
+    const userRow = await db.select().from(schema.localUserAccounts)
+      .where(eq(schema.localUserAccounts.did, session.userId)).limit(1).then(r => r[0])
     if (!userRow?.smartAccountAddress) return { success: false, error: 'no smart account on user row' }
     const accountAddr = getAddress(userRow.smartAccountAddress as `0x${string}`)
 

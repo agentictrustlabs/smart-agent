@@ -9,6 +9,15 @@ const sqliteHandle: DatabaseType = new Database(DB_PATH)
 // Enable WAL mode for better concurrent read performance
 sqliteHandle.pragma('journal_mode = WAL')
 
+// Drop legacy person-mcp tables that moved to canonical sources. Runs
+// idempotently on every boot so existing local DBs get cleaned up.
+//   - match_initiations → on-chain MatchInitiationRegistry (spec 004 v2)
+//   - pool_pledges      → on-chain PledgeRegistry (spec 004 v2)
+const PERSON_MCP_DROPPED_TABLES = ['match_initiations', 'pool_pledges']
+for (const t of PERSON_MCP_DROPPED_TABLES) {
+  try { sqliteHandle.prepare(`DROP TABLE IF EXISTS ${t}`).run() } catch { /* ignore */ }
+}
+
 // Schema bootstrap — single source of truth for both the drizzle-typed tables
 // (PII, profile, chat, accounts) and the absorbed ssi-wallet tables
 // (holder_wallets, credential_metadata, action_nonces, trust_overlap_audit).

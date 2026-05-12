@@ -97,7 +97,7 @@ export async function ActiveMarketplaceStrip({ userId, hubSlug, hubId }: Props) 
           </div>
         </div>
         <Link
-          href={`/h/${hubSlug}/discover`}
+          href={`/h/${hubSlug}/intents`}
           style={{ fontSize: '0.75rem', fontWeight: 600, color: C.accent, textDecoration: 'none' }}
         >
           Discover →

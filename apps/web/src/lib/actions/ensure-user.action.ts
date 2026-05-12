@@ -19,8 +19,8 @@ export async function ensureUser(input: EnsureUserInput): Promise<EnsureUserResu
   // Check if user exists by DID
   const existing = await db
     .select()
-    .from(schema.users)
-    .where(eq(schema.users.did, input.did))
+    .from(schema.localUserAccounts)
+    .where(eq(schema.localUserAccounts.did, input.did))
     .limit(1)
 
   if (existing[0]) {
@@ -30,21 +30,21 @@ export async function ensureUser(input: EnsureUserInput): Promise<EnsureUserResu
   // Check by wallet address
   const byWallet = await db
     .select()
-    .from(schema.users)
-    .where(eq(schema.users.walletAddress, input.walletAddress))
+    .from(schema.localUserAccounts)
+    .where(eq(schema.localUserAccounts.walletAddress, input.walletAddress))
     .limit(1)
 
   if (byWallet[0]) {
     await db
-      .update(schema.users)
+      .update(schema.localUserAccounts)
       .set({ did: input.did })
-      .where(eq(schema.users.id, byWallet[0].id))
+      .where(eq(schema.localUserAccounts.id, byWallet[0].id))
     return { userId: byWallet[0].id, isNewUser: false }
   }
 
   // Create new user
   const userId = crypto.randomUUID()
-  await db.insert(schema.users).values({
+  await db.insert(schema.localUserAccounts).values({
     id: userId,
     email: input.email,
     name: input.name,

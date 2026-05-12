@@ -157,9 +157,9 @@ async function mintGeoClaim(args: {
 }
 
 function upsertUser(u: { id: string; name: string; email: string; wallet: string; did: string }) {
-  const existing = db.select().from(schema.users).where(eq(schema.users.id, u.id)).get()
+  const existing = db.select().from(schema.localUserAccounts).where(eq(schema.localUserAccounts.id, u.id)).get()
   if (!existing) {
-    db.insert(schema.users).values({ id: u.id, email: u.email, name: u.name, walletAddress: u.wallet, did: u.did }).run()
+    db.insert(schema.localUserAccounts).values({ id: u.id, email: u.email, name: u.name, walletAddress: u.wallet, did: u.did }).run()
   }
 }
 
@@ -454,9 +454,13 @@ async function doSeed() {
     await createEdge(paSione, senegalWolofOutreach, ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
   }
 
-  // Membership / advisory edges layered on top of the governance graph.
-  // Circle leaders are also members of the regional Fort Collins Network.
-  await createEdge(paDavid,  network,        ORGANIZATION_MEMBERSHIP, [ROLE_OPERATOR])
+  // Membership edges layered on top of the governance graph.
+  // Unified governance rule: Membership/member is the only descriptive
+  // affiliation role; Membership/operator was removed because it
+  // confused readers into thinking it granted admin authority (it didn't —
+  // canManageAgent gates on Governance/owner). Members of an org gain
+  // read access + vote rights on proposals in rounds anchored to that org.
+  await createEdge(paDavid,  network,        ORGANIZATION_MEMBERSHIP, [ROLE_MEMBER])
   await createEdge(paCarlos, hub,            ORGANIZATION_MEMBERSHIP, [ROLE_MEMBER])
   await createEdge(paAna,    hub,            ORGANIZATION_MEMBERSHIP, [ROLE_MEMBER])
   await createEdge(paMiguel, hub,            ORGANIZATION_MEMBERSHIP, [ROLE_MEMBER])
@@ -765,7 +769,7 @@ async function doSeed() {
     } = await import('@smart-agent/sdk')
     const { privateKeyToAccount } = await import('viem/accounts')
 
-    const grantorUser = db.select().from(schema.users).where(eq(schema.users.id, grantorUserId)).get()
+    const grantorUser = db.select().from(schema.localUserAccounts).where(eq(schema.localUserAccounts.id, grantorUserId)).get()
     if (!grantorUser?.privateKey) return null
 
     const now = Math.floor(Date.now() / 1000)
@@ -953,7 +957,7 @@ async function doMinimalSeed() {
   // Governance + membership — minimum for proposal/pledge/match flows.
   await createEdge(paMaria, network, ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
   await createEdge(paDavid, hub,     ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
-  await createEdge(paDavid, network, ORGANIZATION_MEMBERSHIP, [ROLE_OPERATOR])
+  await createEdge(paDavid, network, ORGANIZATION_MEMBERSHIP, [ROLE_MEMBER])
   await createEdge(network, hub,     ALLIANCE,                [ROLE_STRATEGIC_PARTNER])
 
   // Org→user cross-delegations so org-acting actions don't need the deployer key.

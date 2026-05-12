@@ -31,8 +31,8 @@ export async function deployAIAgent(input: DeployAIAgentInput): Promise<DeployAI
     if (!session.walletAddress) return { success: false, error: 'No wallet connected' }
     if (!input.name.trim()) return { success: false, error: 'Agent name is required' }
 
-    const users = await db.select().from(schema.users)
-      .where(eq(schema.users.did, session.userId)).limit(1)
+    const users = await db.select().from(schema.localUserAccounts)
+      .where(eq(schema.localUserAccounts.did, session.userId)).limit(1)
     const user = users[0]
     if (!user) return { success: false, error: 'User not found' }
 

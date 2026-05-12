@@ -198,8 +198,8 @@ export async function POST() {
 
   // Find the Luis row (cat-user-009) — public residentOf loveland on chain.
   const ctx = await loadSignerForCurrentUser()
-  const callerRow = await db.select().from(schema.users)
-    .where(eq(schema.users.id, ctx.userRow.id)).limit(1).then(r => r[0])
+  const callerRow = await db.select().from(schema.localUserAccounts)
+    .where(eq(schema.localUserAccounts.id, ctx.userRow.id)).limit(1).then(r => r[0])
 
   // Trust-search candidates are PERSON AGENTS, not smart-account addresses.
   // Look Luis's person agent up the same way prepareTrustSearch does.

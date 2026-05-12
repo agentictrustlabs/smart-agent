@@ -45,7 +45,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const scopeOrg = searchParams.get('org')
 
-    const allUsers = await db.select().from(schema.users)
+    const allUsers = await db.select().from(schema.localUserAccounts)
 
     // Build name + type map from on-chain resolver
     const { buildAgentNameMap, getAgentMetadata: getMetaForGraph } = await import('@/lib/agent-metadata')
@@ -256,7 +256,7 @@ export async function GET(request: Request) {
       const { getSession } = await import('@/lib/auth/session')
       const session = await getSession()
       if (session) {
-        const currentUser = await db.select().from(schema.users).where(eq(schema.users.did, session.userId)).limit(1)
+        const currentUser = await db.select().from(schema.localUserAccounts).where(eq(schema.localUserAccounts.did, session.userId)).limit(1)
         if (currentUser[0]) {
           currentUserAddresses.push(currentUser[0].walletAddress.toLowerCase())
           // Find this user's person agent from on-chain registry
