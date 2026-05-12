@@ -145,10 +145,39 @@ export async function submitPledge(
   // delegation the admin pre-signed for the donor — credentialType is
   // intentionally left open.
   const { SPEC004_SELECTORS } = await import('@smart-agent/sdk')
-  const chain = await resolveSpec004Chain({
+  let chain = await resolveSpec004Chain({
     targetRegistry: pledgeRegistry,
     methodSelectors: [SPEC004_SELECTORS.pledgeSubmit],
   })
+
+  // Stateless-auth users (passkey/SIWE) acting as their own pool admin have
+  // no admin→holder delegation pre-issued. Auto-self-issue and retry once.
+  if (!chain.ok && chain.error === 'no-marketplace-credential') {
+    const { getSession } = await import('@/lib/auth/session')
+    const session = await getSession()
+    const stateless = session?.via === 'passkey' || session?.via === 'siwe'
+    console.log('[submitPledge] auto-issue check', { stateless, via: session?.via, sa: session?.smartAccountAddress })
+    if (stateless && session?.smartAccountAddress) {
+      const { selfIssuePledgerDelegation } = await import('@/lib/spec004/self-issue')
+      const issued = await selfIssuePledgerDelegation({
+        smartAccount: session.smartAccountAddress as `0x${string}`,
+        pledgeRegistry,
+      })
+      console.log('[submitPledge] self-issue result', issued)
+      if (issued.ok) {
+        chain = await resolveSpec004Chain({
+          targetRegistry: pledgeRegistry,
+          methodSelectors: [SPEC004_SELECTORS.pledgeSubmit],
+        })
+      } else {
+        return {
+          ok: false,
+          error: { kind: 'validation' as const, messages: [`self-issue failed: ${issued.error}`] },
+        } as unknown as SubmitPledgeResult
+      }
+    }
+  }
+
   if (!chain.ok) {
     return {
       ok: false,

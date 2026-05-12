@@ -264,13 +264,20 @@ export async function expressIntent(input: ExpressIntentInput): Promise<{ id: st
   // schema.intents drop doesn't break this flow. Determine which MCP
   // owns this intent: person-mcp when the expressing agent IS the
   // user's person agent; org-mcp otherwise (org-as-expresser).
+  //
+  // The MCP assigns its own id. When the SQL `intents` table is dropped
+  // (the canonical state for stateless users), the SQL insert above is a
+  // no-op and the MCP id IS the canonical id. We swap our returned `id`
+  // to match — otherwise the caller (e.g. the intent detail page) routes
+  // to a non-existent id and 404s.
+  let canonicalId: string = id
   try {
     const myPersonAgent = await resolvePersonAgentForUser(me.id)
     const source: 'person' | 'org' =
       myPersonAgent && input.expressedByAgent.toLowerCase() === myPersonAgent.toLowerCase()
         ? 'person'
         : 'org'
-    await expressIntentViaMcp({
+    const result = await expressIntentViaMcp({
       direction: input.direction,
       object: input.object,
       title: input.title,
@@ -287,6 +294,7 @@ export async function expressIntent(input: ExpressIntentInput): Promise<{ id: st
       validUntil: input.validUntil ?? null,
       source,
     })
+    if (result.ok && result.id) canonicalId = result.id
   } catch (err) {
     console.warn('[intents] MCP mirror failed (non-fatal):', err instanceof Error ? err.message : err)
   }
@@ -306,7 +314,7 @@ export async function expressIntent(input: ExpressIntentInput): Promise<{ id: st
     }).run() } catch { /* outcomes table dropped */ }
   }
 
-  return { id, projectionRef: projectionRef ?? undefined }
+  return { id: canonicalId, projectionRef: projectionRef ?? undefined }
 }
 
 // ─── Status transitions ─────────────────────────────────────────────

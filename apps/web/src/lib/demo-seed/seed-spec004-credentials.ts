@@ -67,6 +67,18 @@ interface SeedSpec004Input {
    *  `delegator` of the admin → holder delegation. Defaults to the
    *  admin user's `smartAccountAddress`. */
   adminAccountOverride?: Address
+  /** Stateless self-issue: when set, bypass the holder users-table
+   *  lookup. Use this for passkey/SIWE users (no `users` row). The
+   *  helper provisions a holder wallet keyed on `holderPrincipalOverride`
+   *  with `holderPrivateKeyOverride` as signer, then runs the standard
+   *  AnonCreds dance using that key for all holder-side WalletActions. */
+  holderPrivateKeyOverride?: Hex
+  holderAccountOverride?: Address
+  holderPrincipalOverride?: string
+  /** Optional override: holder wallet context. Defaults to 'default'.
+   *  Stateless self-issue uses 'spec004' to avoid colliding with the
+   *  user's session-EOA wallet on the 'default' context. */
+  holderWalletContextOverride?: string
 }
 
 export interface SeedSpec004Result {
@@ -128,23 +140,35 @@ function attributesFor(input: SeedSpec004Input, nullifierSecret: string): Record
  */
 export async function seedSpec004Credential(input: SeedSpec004Input): Promise<SeedSpec004Result> {
   // ─── Lookups ──────────────────────────────────────────────────────
-  const admin = db.select().from(schema.users).where(eq(schema.users.id, input.adminUserId)).get()
-  if (!admin?.privateKey || !admin?.smartAccountAddress) {
+  // Stateless self-issue path skips users-table lookups.
+  const stateless = !!input.holderPrivateKeyOverride && !!input.holderAccountOverride && !!input.holderPrincipalOverride
+  const admin = stateless && input.adminSigningKey && input.adminAccountOverride
+    ? null
+    : db.select().from(schema.users).where(eq(schema.users.id, input.adminUserId)).get()
+  if (!stateless && (!admin?.privateKey || !admin?.smartAccountAddress)) {
     return { ok: false, error: `admin ${input.adminUserId} missing privateKey/smartAccountAddress` }
   }
-  const holder = db.select().from(schema.users).where(eq(schema.users.id, input.holderUserId)).get()
-  if (!holder?.privateKey || !holder?.smartAccountAddress) {
+  const holder = stateless
+    ? null
+    : db.select().from(schema.users).where(eq(schema.users.id, input.holderUserId)).get()
+  if (!stateless && (!holder?.privateKey || !holder?.smartAccountAddress)) {
     return { ok: false, error: `holder ${input.holderUserId} missing privateKey/smartAccountAddress` }
   }
 
   const targetRegistry = targetRegistryFor(input.credentialType)
   const methodSelectors = methodSelectorsFor(input.credentialType)
 
+  // Resolve effective holder identity.
+  const holderPrincipal = input.holderPrincipalOverride ?? `person_${holder!.id}`
+  const holderPrivateKey = (input.holderPrivateKeyOverride ?? holder!.privateKey) as Hex
+  const holderAccount = (input.holderAccountOverride ?? holder!.smartAccountAddress) as Address
+  const holderWalletContext = input.holderWalletContextOverride ?? 'default'
+
   // Holder needs a provisioned SSI wallet to receive the credential.
-  const holderPrincipal = `person_${holder.id}`
   const provisionRes = await provisionHolderWalletForDemoUser({
     principal: holderPrincipal,
-    privateKey: holder.privateKey as Hex,
+    privateKey: holderPrivateKey,
+    walletContext: holderWalletContext,
   })
   if (!provisionRes.ok) {
     return { ok: false, error: `provision wallet: ${provisionRes.error}` }
@@ -165,7 +189,7 @@ export async function seedSpec004Credential(input: SeedSpec004Input): Promise<Se
   try {
     actionPayload = await person.callTool<typeof actionPayload>('ssi_create_wallet_action', {
       principal: holderPrincipal,
-      walletContext: 'default',
+      walletContext: holderWalletContext,
       type: 'AcceptCredentialOffer',
       counterpartyId: offer.issuerId,
       purpose: `accept ${input.credentialType}`,
@@ -182,7 +206,7 @@ export async function seedSpec004Credential(input: SeedSpec004Input): Promise<Se
     return { ok: false, error: actionPayload.error ?? 'no action returned' }
   }
   const action: WalletAction = { ...actionPayload.action, expiresAt: BigInt(actionPayload.action.expiresAt) }
-  const holderEoa = privateKeyToAccount(holder.privateKey as Hex)
+  const holderEoa = privateKeyToAccount(holderPrivateKey)
   const acceptSignature = await holderEoa.signTypedData({
     domain: walletActionDomain(ssiConfig.chainId, ssiConfig.verifierContract),
     types: WalletActionTypes,
@@ -256,9 +280,13 @@ export async function seedSpec004Credential(input: SeedSpec004Input): Promise<Se
   // (self-ownership of the pool's AgentAccount lets isOwner(delegator) pass
   // when DelegationManager dispatches; the deployer is the only registered
   // owner so it must be the delegator at the top of the chain).
-  const adminSigningKey = (input.adminSigningKey ?? admin.privateKey) as Hex
+  const adminSigningKey = (input.adminSigningKey ?? admin?.privateKey) as Hex
+  if (!adminSigningKey) {
+    return { ok: false, error: 'admin signing key required (set adminSigningKey or seed admin user with privateKey)' }
+  }
   const adminAccount = (
     input.adminAccountOverride
+      ?? (admin?.smartAccountAddress as Address | undefined)
       ?? (privateKeyToAccount(adminSigningKey).address as Address)
   )
 
@@ -272,7 +300,7 @@ export async function seedSpec004Credential(input: SeedSpec004Input): Promise<Se
   try {
     adminDelegation = await signRootDelegation({
       delegator: adminAccount,
-      delegate: holder.smartAccountAddress as Address,
+      delegate: holderAccount,
       caveats,
       salt,
       chainId: CHAIN_ID,

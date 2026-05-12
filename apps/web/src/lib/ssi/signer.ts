@@ -27,6 +27,33 @@ export async function loadSignerForCurrentUser(): Promise<
     }
 > {
   const session = await requireSession()
+
+  // Passkey + SIWE: no `users` row. Use the deployer EOA as the signing
+  // identity — deployer is an initial owner of every freshly-deployed
+  // AgentAccount, so its ECDSA signature passes the smart account's
+  // ERC-1271 owner check. The principal identifies the user by smart
+  // account so person-mcp lookups (e.g. admin→holder delegation by
+  // principal) still find the right row.
+  const stateless = session.via === 'passkey' || session.via === 'siwe'
+  if (stateless) {
+    if (!session.smartAccountAddress) throw new Error('Stateless session missing smartAccountAddress')
+    const deployerKey = process.env.DEPLOYER_PRIVATE_KEY as `0x${string}` | undefined
+    if (!deployerKey) {
+      throw new Error('DEPLOYER_PRIVATE_KEY not configured — required for passkey/SIWE signing')
+    }
+    const id = session.smartAccountAddress.toLowerCase()
+    return {
+      kind: 'eoa',
+      userRow: {
+        id,
+        walletAddress: id,
+        privateKey: deployerKey,
+        name: session.name ?? id,
+      },
+      principal: `person_${id}`,
+    }
+  }
+
   const rows = await db.select().from(schema.users)
     .where(eq(schema.users.did, session.userId))
     .limit(1)

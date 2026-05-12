@@ -89,7 +89,9 @@ const TERMS: Array<{ curie: string; datatype: string }> = [
   { curie: 'sa:gpRound',          datatype: 'bytes32' },
   { curie: 'sa:gpNullifier',      datatype: 'bytes32' },
   { curie: 'sa:gpDisplayName',    datatype: 'string' },
-  { curie: 'sa:gpBasedOnIntent',  datatype: 'string' },
+  { curie: 'sa:gpBasedOn',        datatype: 'string' },
+  { curie: 'sa:gpLastEdited',     datatype: 'uint256' },
+  { curie: 'sa:gpClonedFrom',     datatype: 'bytes32' },
   { curie: 'sa:gpBudget',         datatype: 'string' },
   { curie: 'sa:gpPlan',           datatype: 'string' },
   { curie: 'sa:gpMilestones',     datatype: 'string' },
@@ -100,7 +102,6 @@ const TERMS: Array<{ curie: string; datatype: string }> = [
   { curie: 'sa:gpStatus',         datatype: 'bytes32' },
   { curie: 'sa:gpVersion',        datatype: 'uint256' },
   { curie: 'sa:gpSubmittedAt',    datatype: 'uint256' },
-  { curie: 'sa:gpUpdatedAt',      datatype: 'uint256' },
   { curie: 'sa:gpWithdrawnAt',    datatype: 'uint256' },
   // PledgeRegistry
   { curie: 'sa:pledgePool',          datatype: 'address' },

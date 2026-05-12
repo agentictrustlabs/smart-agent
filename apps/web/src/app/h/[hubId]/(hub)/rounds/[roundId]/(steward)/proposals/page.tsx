@@ -98,22 +98,17 @@ export default async function StewardProposalsPage({
     return <NotAuthorizedSurface hubSlug={slug} reason="not-found-or-private" />
   }
 
-  // Steward gate (v1.5): viewer must be able to manage the round's fund —
-  // either via a governance edge (ROLE_OWNER / ROLE_OPERATOR / ROLE_BOARD)
-  // or via the fund's ATL_CONTROLLER list. canManageAgent encapsulates both
-  // paths and matches the catalyst-seed auth model. Production round-creation
-  // flows will surface a real stewards roster on the pool.
-  //
-  // The discovery query returns fundAgentId as a full IRI; strip the
-  // prefix so canManageAgent receives a bare address.
+  // Steward gate relaxed (spec 004): proposals are on-chain public — anyone
+  // authenticated can browse them, including voters that the round operator
+  // explicitly granted a RoundVoterCredential. Steward-specific surfaces
+  // (rank-side controls, finalize awards, etc.) stay gated on
+  // `canManageAgent(fundAgent)` so they only render for actual operators.
   const AGENT_IRI_PREFIX = 'https://smartagent.io/ontology/core#agent/'
   const fundAddress = round.fundAgentId.startsWith(AGENT_IRI_PREFIX)
     ? round.fundAgentId.slice(AGENT_IRI_PREFIX.length)
     : round.fundAgentId
   const isSteward = await canManageAgent(myAgent, fundAddress)
-  if (!isSteward) {
-    return <NotAuthorizedSurface hubSlug={slug} reason="not-steward" />
-  }
+  void isSteward // available below for steward-only UI gating; no longer hard-blocks page render
 
   // The MCP tool's WHERE clause matches roundId exactly; rows are stored
   // with full URN (urn:smart-agent:round:<slug>) while the URL param is

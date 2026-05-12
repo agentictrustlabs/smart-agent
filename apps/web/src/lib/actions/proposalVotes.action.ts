@@ -23,6 +23,9 @@ import { SPEC004_SELECTORS } from '@smart-agent/sdk'
 import { keccak256, encodePacked, type Address } from 'viem'
 
 function roundSubjectFromUrn(roundIdUrn: string): `0x${string}` {
+  // Accept three input shapes: bytes32 hex (already the subject), URN, or
+  // bare slug. Only the slug case needs hashing.
+  if (/^0x[0-9a-fA-F]{64}$/.test(roundIdUrn)) return roundIdUrn as `0x${string}`
   const slug = roundIdUrn.startsWith('urn:smart-agent:round:')
     ? roundIdUrn.slice('urn:smart-agent:round:'.length)
     : roundIdUrn
@@ -55,10 +58,17 @@ async function loadRoundConfig(roundId: string): Promise<RoundConfigRow | null> 
   const { createPublicClient, http } = await import('viem')
   const { foundry, sepolia } = await import('viem/chains')
 
-  const slug = roundId.startsWith('urn:smart-agent:round:')
-    ? roundId.slice('urn:smart-agent:round:'.length)
-    : roundId
-  const subject = roundSubjectFor(slug)
+  // roundId can arrive in three shapes:
+  //  - bytes32 hex (`0x...64 chars`) — already the on-chain subject
+  //  - URN form (`urn:smart-agent:round:<slug>`) — derive subject from slug
+  //  - bare slug — derive subject from it directly
+  const isBytes32 = /^0x[0-9a-fA-F]{64}$/.test(roundId)
+  const slug = isBytes32
+    ? ''
+    : roundId.startsWith('urn:smart-agent:round:')
+      ? roundId.slice('urn:smart-agent:round:'.length)
+      : roundId
+  const subject = isBytes32 ? roundId as `0x${string}` : roundSubjectFor(slug)
 
   const chainId = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? process.env.CHAIN_ID ?? '31337')
   const fundRegistry = process.env.FUND_REGISTRY_ADDRESS as `0x${string}` | undefined
@@ -183,18 +193,61 @@ export async function castVote(input: CastVoteInput): Promise<
   //    against this vote's roundSubject so a cred for round A can't
   //    vote in round B.
   const roundSubject = roundSubjectFromUrn(input.roundId)
-  const pres = await buildMarketplacePresentation({
+  let pres = await buildMarketplacePresentation({
     credentialType: 'RoundVoterCredential',
     expectedAttributes: { roundSubject },
   })
+
+  // Stateless self-issue: passkey/SIWE users acting as their own round
+  // admin have no RoundVoterCredential. Auto-issue + retry once.
+  async function maybeSelfIssueAndRetry<T>(
+    err: string,
+    retry: () => Promise<T>,
+  ): Promise<T | null> {
+    if (!err.includes('no held credential')) return null
+    const { getSession } = await import('@/lib/auth/session')
+    const session = await getSession()
+    const stateless = session?.via === 'passkey' || session?.via === 'siwe'
+    if (!stateless || !session?.smartAccountAddress) return null
+    const { selfIssueMarketplaceCredential } = await import('@/lib/spec004/self-issue')
+    const issued = await selfIssueMarketplaceCredential({
+      smartAccount: session.smartAccountAddress as `0x${string}`,
+      credentialType: 'RoundVoterCredential',
+      roundSubject,
+    })
+    if (!issued.ok) {
+      console.warn('[castVote] self-issue failed:', issued.error)
+      return null
+    }
+    return retry()
+  }
+
+  if (!pres.ok) {
+    const retried = await maybeSelfIssueAndRetry(pres.error, () =>
+      buildMarketplacePresentation({
+        credentialType: 'RoundVoterCredential',
+        expectedAttributes: { roundSubject },
+      }),
+    )
+    if (retried) pres = retried
+  }
   if (!pres.ok) return { ok: false, error: `presentation: ${pres.error}` }
 
   // 2. Resolve the admin→holder→session chain.
-  const chain = await resolveSpec004Chain({
+  let chain = await resolveSpec004Chain({
     targetRegistry: voteRegistry,
     credentialType: 'RoundVoterCredential',
     methodSelectors: [SPEC004_SELECTORS.voteCast],
   })
+  if (!chain.ok && chain.error === 'no-marketplace-credential') {
+    // Self-issue may have created the cred but the delegation lookup
+    // by registry might still miss; retry the chain resolve directly.
+    chain = await resolveSpec004Chain({
+      targetRegistry: voteRegistry,
+      credentialType: 'RoundVoterCredential',
+      methodSelectors: [SPEC004_SELECTORS.voteCast],
+    })
+  }
   if (!chain.ok) return { ok: false, error: `chain: ${chain.error} — ${chain.message}` }
 
   // 3. Fire vote:cast on org-mcp. The MCP tool returns
@@ -263,6 +316,16 @@ export async function getMyVoteForProposal(roundId: string, proposalId: string):
   if (!myAgent) return { error: 'no-person-agent' }
   const r = await listBallotsForProposal(proposalId)
   if ('error' in r) return r
-  const mine = r.votes.find((v) => v.voterAgentId.toLowerCase() === myAgent.toLowerCase() && v.roundId === roundId)
+  // Spec 004 votes are nullifier-keyed (anonymous) — on-chain rows have no
+  // voterAgentId. Recovering "is this MY vote" requires deriving the
+  // expected nullifier from the caller's RoundVoterCredential, parallel
+  // to the proposal-side reader filter we left as v2 follow-up. For now
+  // we tolerate missing voterAgentId and return null so the UI can render
+  // "you haven't voted" — actual cast still works.
+  const mine = r.votes.find((v) => {
+    const voter = (v as VoteRow & { voterAgentId?: string }).voterAgentId
+    if (!voter) return false
+    return voter.toLowerCase() === myAgent.toLowerCase() && v.roundId === roundId
+  })
   return mine ?? null
 }

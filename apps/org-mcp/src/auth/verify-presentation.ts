@@ -101,10 +101,16 @@ export async function verifyPresentation(
   // Enforce expectedAttributes — the action layer's gate. If the
   // credential's `roundId` attribute isn't the round being voted on,
   // verification fails even though the proof itself was cryptographically
-  // valid.
+  // valid. EVM addresses are compared case-insensitively (checksum vs
+  // lowercase are equivalent identifiers); other values use strict equality.
+  const looksLikeAddress = (v: string | undefined): boolean =>
+    typeof v === 'string' && /^0x[0-9a-fA-F]{40}$/.test(v)
   for (const [name, expected] of Object.entries(input.expectedAttributes)) {
     const got = revealed[name]
-    if (got !== expected) {
+    const equal = looksLikeAddress(expected) && looksLikeAddress(got)
+      ? (got as string).toLowerCase() === (expected as string).toLowerCase()
+      : got === expected
+    if (!equal) {
       return {
         ok: false,
         error: `attribute mismatch: ${name} expected "${expected}" but got "${got ?? '(missing)'}"`,

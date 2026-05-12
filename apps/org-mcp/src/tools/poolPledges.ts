@@ -30,6 +30,7 @@ import { requireOrgPrincipalAny as requireOrgPrincipal } from '../auth/principal
 import { PledgeRegistryClient } from '@smart-agent/sdk'
 import { callA2aRedeemWithChain, type SignedDelegation } from '../lib/a2a-client.js'
 import { requirePledgeRegistryAddress } from '../lib/contracts.js'
+import { readMyPledges, readPoolPledges, readPoolCounters } from '../lib/pledge-reader.js'
 
 const mcpText = <T>(v: T) => ({ content: [{ type: 'text' as const, text: JSON.stringify(v) }] })
 
@@ -85,18 +86,21 @@ function cadenceAwareTotal(p: { cadence: Cadence; amount: number; duration?: num
  *
  * No source-of-truth columns exist anymore; this is the only counter read.
  */
-/** Spec 004 — `pool_pledges` SQL mirror dropped; pledges live on chain
- *  in `PledgeRegistry`. Counters now require a registry event-scan,
- *  queued behind R8 (on-chain → GraphDB sync). Returns zeros so the
- *  pool detail page renders without crashing while sync ships. */
-export function getPoolCounters(poolAgentId: string): {
+/** R8 — read counters directly from PledgeRegistry (no SQL mirror). */
+export async function getPoolCounters(poolAgentId: string): Promise<{
   pledgedTotal: number
   allocatedTotal: number
   availableTotal: number
-} {
-  void poolAgentId
-  void cadenceAwareTotal  // keep helper available for the post-R8 reader
-  return { pledgedTotal: 0, allocatedTotal: 0, availableTotal: 0 }
+}> {
+  void cadenceAwareTotal  // available locally for callers if needed
+  if (!isAddress(poolAgentId)) {
+    return { pledgedTotal: 0, allocatedTotal: 0, availableTotal: 0 }
+  }
+  try {
+    return await readPoolCounters(getAddress(poolAgentId))
+  } catch {
+    return { pledgedTotal: 0, allocatedTotal: 0, availableTotal: 0 }
+  }
 }
 
 function deriveVisibility(
@@ -410,14 +414,24 @@ const readSelfTool = {
     },
     required: ['token'],
   },
-  // Spec 004 — pool_pledges SQL mirror dropped; pledges are on chain
-  // in PledgeRegistry. The reader requires an event scan + nullifier
-  // resolution back to the caller's principal (the chain doesn't store
-  // principal, only a per-issuance nullifier). Queued behind R8.
+  // R8 — read pledges directly from PledgeRegistry, filtered by the
+  // caller's donor nullifier (derived from authenticated principal).
   handler: async (args: { token: string; status?: string; poolAgentId?: string }) => {
-    await requireOrgPrincipal(args.token, args, 'pool_pledge:read_self')
-    void args
-    return mcpText({ pledges: [] })
+    const principal = await requireOrgPrincipal(args.token, args, 'pool_pledge:read_self')
+    try {
+      let rows = await readMyPledges(principal)
+      if (args.status) {
+        rows = rows.filter((r) => r.status === args.status)
+      }
+      if (args.poolAgentId && isAddress(args.poolAgentId)) {
+        const target = getAddress(args.poolAgentId).toLowerCase()
+        rows = rows.filter((r) => r.poolAgentId.toLowerCase() === target)
+      }
+      return mcpText({ pledges: rows })
+    } catch (e) {
+      console.warn('[pool_pledge:read_self] reader failed:', (e as Error).message)
+      return mcpText({ pledges: [] })
+    }
   },
 }
 
@@ -442,7 +456,7 @@ const readPoolCountersTool = {
   },
   handler: async (args: { token: string; poolAgentId: string }) => {
     await requireOrgPrincipal(args.token, args, 'pool_pledge:read_pool_counters')
-    const counters = getPoolCounters(args.poolAgentId)
+    const counters = await getPoolCounters(args.poolAgentId)
     return mcpText({ poolAgentId: args.poolAgentId, ...counters })
   },
 }
@@ -474,15 +488,45 @@ const listForPoolTool = {
     },
     required: ['token', 'poolAgentId'],
   },
-  // Spec 004 — pool_pledges SQL mirror dropped. The pool detail page
-  // reads pledges from GraphDB once the R8 sync ships; pledge bodies
-  // come from PledgeRegistry, with story_permissions applied at
-  // emit time so non-public pledges never reach the public graph.
+  // R8 — read pledges from PledgeRegistry filtered by poolAgent.
+  // Story-permissions cascade: anonymous + non-public-coarse rows are
+  // dropped from the public list; the donor's `principalDisplay` shows
+  // a nullifier-derived prefix for anonymized pledges.
   handler: async (args: { token: string; poolAgentId: string; limit?: number }) => {
     await requireOrgPrincipal(args.token, args, 'pool_pledge:list_for_pool')
-    void args
     void unitHashToLabel
-    return mcpText({ pledges: [] })
+    if (!args.poolAgentId || !isAddress(args.poolAgentId)) {
+      return mcpText({ pledges: [] })
+    }
+    try {
+      const rows = await readPoolPledges(getAddress(args.poolAgentId))
+      const limit = typeof args.limit === 'number' ? Math.max(1, Math.min(args.limit, 200)) : 50
+      const filtered = rows
+        // Hide anonymous pledges entirely from the public list.
+        .filter((r) => r.storyPermissions !== 'anonymous')
+        .slice(0, limit)
+        .map((r) => {
+          const nullifierHex = r.principal.slice('nullifier:'.length)
+          const principalDisplay =
+            r.storyPermissions === 'public'
+              ? `nullifier:${nullifierHex.slice(0, 10)}…`
+              : `anon:${nullifierHex.slice(0, 8)}…`
+          return {
+            id: r.id,
+            poolAgentId: r.poolAgentId,
+            principalDisplay,
+            amount: r.amount,
+            unit: r.unit,
+            cadence: r.cadence,
+            pledgedAt: r.pledgedAt,
+            status: r.status,
+          }
+        })
+      return mcpText({ pledges: filtered })
+    } catch (e) {
+      console.warn('[pool_pledge:list_for_pool] reader failed:', (e as Error).message)
+      return mcpText({ pledges: [] })
+    }
   },
 }
 

@@ -117,7 +117,10 @@ export function ProposalVotePanel({ roundId, proposalId }: Props) {
       const r = await fetch('/api/votes/cast', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ roundId, proposalId, vote, rationale: rationale.trim() || undefined }),
+        // Spec 004 — vote:cast expects the on-chain `proposalSubject`
+        // (bytes32 hex). `proposalId` in this component IS that subject
+        // (set from the URL on the proposal detail page).
+        body: JSON.stringify({ roundId, proposalSubject: proposalId, vote, rationale: rationale.trim() || undefined }),
       })
       const j = await r.json().catch(() => ({}))
       if (!r.ok || j.ok === false) {

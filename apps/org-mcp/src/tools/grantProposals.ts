@@ -491,13 +491,28 @@ const readSelfTool = {
     },
     required: ['token'],
   },
-  // Spec 004 v2 — submitted rows live on chain (GrantProposalRegistry);
-  // drafts live in person-mcp. Org-mcp returns empty until the
-  // on-chain → GraphDB sync (R8) wires up a per-principal index.
+  // R8 — read proposals directly from GrantProposalRegistry.
+  //
+  // Note: on-chain proposal nullifiers are derived from the AnonCred's
+  // `nullifierSecret` + 'proposal:<roundSubject>', NOT from the caller's
+  // principal. To filter "mine" precisely we'd need to enumerate the
+  // caller's marketplace creds, parse nullifierSecret from each, and
+  // re-compute the expected nullifier per round — cross-MCP and
+  // out-of-scope for this pass. v1 returns ALL proposals; the SDK's
+  // getById helper filters by `p.id === id` so detail pages still work,
+  // and the "My proposals" listing intentionally shows everyone until
+  // the cred-matched filter ships.
   handler: async (args: { token: string; status?: string }) => {
     await requireOrgPrincipal(args.token, args, 'grant_proposal:read_self')
-    void args
-    return mcpText({ proposals: [] })
+    try {
+      const { readAllProposals } = await import('../lib/grant-proposal-reader.js')
+      let rows = await readAllProposals()
+      if (args.status) rows = rows.filter((r) => r.status === args.status)
+      return mcpText({ proposals: rows })
+    } catch (e) {
+      console.warn('[grant_proposal:read_self] reader failed:', (e as Error).message)
+      return mcpText({ proposals: [] })
+    }
   },
 }
 
@@ -522,11 +537,19 @@ const listForMemberTool = {
     },
     required: ['token'],
   },
-  // Spec 004 v2 — same shape as read_self; queued behind R8.
+  // R8 — same chain reader as read_self, sorted by lastEditedAt desc.
+  // See the read_self comment for the cred-matched filter follow-up.
   handler: async (args: { token: string; agentId?: string }) => {
     await requireOrgPrincipal(args.token, args, 'grant_proposal:list_for_member')
-    void args
-    return mcpText({ proposals: [] })
+    try {
+      const { readAllProposals } = await import('../lib/grant-proposal-reader.js')
+      const rows = await readAllProposals()
+      rows.sort((a, b) => (b.lastEditedAt ?? '').localeCompare(a.lastEditedAt ?? ''))
+      return mcpText({ proposals: rows })
+    } catch (e) {
+      console.warn('[grant_proposal:list_for_member] reader failed:', (e as Error).message)
+      return mcpText({ proposals: [] })
+    }
   },
 }
 
@@ -560,13 +583,17 @@ const listForRoundTool = {
     },
     required: ['token', 'roundId'],
   },
-  // Spec 004 v2 — submitted proposals on chain. Steward list query
-  // requires a GrantProposalRegistry event scan grouped by
-  // roundSubject; queued behind R8.
+  // R8 — read on-chain proposals filtered by roundSubject.
   handler: async (args: { token: string; roundId: string }) => {
     await requireOrgPrincipal(args.token, args, 'grant_proposal:list_for_round')
-    void args
-    return mcpText({ proposals: [] })
+    try {
+      const { readProposalsForRound } = await import('../lib/grant-proposal-reader.js')
+      const rows = await readProposalsForRound(args.roundId)
+      return mcpText({ proposals: rows })
+    } catch (e) {
+      console.warn('[grant_proposal:list_for_round] reader failed:', (e as Error).message)
+      return mcpText({ proposals: [] })
+    }
   },
 }
 
@@ -592,11 +619,18 @@ const countForRoundTool = {
     },
     required: ['token', 'roundId'],
   },
-  // Spec 004 v2 — derived from GrantProposalRegistry events (R8 dependency).
+  // R8 — count submitted (non-withdrawn) proposals for a round.
   handler: async (args: { token: string; roundId: string }) => {
     await requireOrgPrincipal(args.token, args, 'grant_proposal:count_for_round')
-    void args
-    return mcpText({ count: 0 })
+    try {
+      const { readProposalsForRound } = await import('../lib/grant-proposal-reader.js')
+      const rows = await readProposalsForRound(args.roundId)
+      const count = rows.filter((r) => r.status === 'submitted' || r.status === 'awarded').length
+      return mcpText({ count })
+    } catch (e) {
+      console.warn('[grant_proposal:count_for_round] reader failed:', (e as Error).message)
+      return mcpText({ count: 0 })
+    }
   },
 }
 

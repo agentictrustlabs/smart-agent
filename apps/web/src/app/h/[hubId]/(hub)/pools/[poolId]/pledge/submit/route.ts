@@ -12,9 +12,11 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { getAddress } from 'viem'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { getPersonAgentForUser } from '@/lib/agent-registry'
 import { submitPledge } from '@/lib/actions/poolPledges.action'
+import { getPoolForViewer } from '@/lib/actions/pools.action'
 import type { SubmitPledgeRequest } from '@smart-agent/sdk'
 
 export const dynamic = 'force-dynamic'
@@ -73,9 +75,30 @@ export async function POST(
 
   const poolVisibility = body.poolVisibility ?? 'public'
 
+  // Spec 004 (b2): submitPledge needs the pool's on-chain treasury address
+  // so PledgeRegistry.submit can be redeemed under the pool admin's
+  // delegation. Resolve from the pool URN via DiscoveryService.
+  const poolDetail = await getPoolForViewer(poolId, myAgent)
+  const treasuryAddress = poolDetail.pool?.treasuryAddress
+  if (!treasuryAddress) {
+    return NextResponse.json(
+      { ok: false, error: { kind: 'validation', messages: [`pool not found or no treasury address: ${poolId}`] } },
+      { status: 400 },
+    )
+  }
+  let poolAgent: `0x${string}`
+  try {
+    poolAgent = getAddress(treasuryAddress as `0x${string}`)
+  } catch {
+    return NextResponse.json(
+      { ok: false, error: { kind: 'validation', messages: [`invalid pool treasury address: ${treasuryAddress}`] } },
+      { status: 400 },
+    )
+  }
+
   let result
   try {
-    result = await submitPledge({ request, poolVisibility })
+    result = await submitPledge({ request, poolVisibility, poolAgent })
   } catch (err) {
     return NextResponse.json(
       {

@@ -180,11 +180,17 @@ export async function bootstrapA2ASession(options?: { durationSeconds?: number }
     return { success: false, error: 'No wallet address' }
   }
 
-  const users = await db.select().from(schema.users)
-    .where(eq(schema.users.walletAddress, session.walletAddress))
-    .limit(1)
-
-  const user = users[0]
+  // Passkey + SIWE: no `users` row — synthesise the minimal shape the
+  // bootstrap helper needs from the session. The deployer-fallback path
+  // signs the delegation (deployer is an initial owner of every freshly
+  // deployed AgentAccount, so ERC-1271 accepts the signature).
+  const stateless = session.via === 'passkey' || session.via === 'siwe'
+  const user = stateless
+    ? { smartAccountAddress: session.smartAccountAddress, privateKey: null }
+    : await db.select().from(schema.users)
+        .where(eq(schema.users.walletAddress, session.walletAddress))
+        .limit(1)
+        .then(r => r[0] ?? null)
   if (!user) return { success: false, error: 'User not found' }
 
   const durationSeconds = options?.durationSeconds ?? 86400

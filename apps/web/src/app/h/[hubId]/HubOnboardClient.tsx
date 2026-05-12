@@ -26,6 +26,7 @@ import {
   provisionHolderWalletViaSession,
 } from '@/lib/actions/ssi/wallet-provision.action'
 import { signWalletActionClient } from '@/lib/sign-wallet-action-client'
+import { bootstrapA2ASession } from '@/lib/actions/a2a-session.action'
 import { packWebAuthnSignature, parseAttestationObject } from '@smart-agent/sdk'
 
 type Eip1193Provider = {
@@ -713,13 +714,27 @@ function ConnectStep({ hub, accent, hubSlug, error, setError }: {
       return
     }
 
-    // A2A bootstrap. For users with a grant (just minted by /finalize) we
-    // skip the legacy delegation handshake entirely — the grant cookie
-    // already authorises 'a2a-agent' (see SessionGrant.audience). The
-    // a2a-agent's requireSession middleware accepts the grant cookie value
-    // as a Bearer token. Only users on the legacy passkey-verify path
-    // (conditional UI, SIWE, Google) still need the second passkey prompt.
-    if (signedToken === null) {
+    // A2A bootstrap. The grant cookie alone authorises read-only
+    // a2a-agent calls (credential ops, wallet provisioning, trust
+    // matching), but write paths via org-mcp / person-mcp need the
+    // legacy a2a-session cookie because the mcp-proxy redeems delegation
+    // bytes on chain via DelegationManager. For unified-ceremony users
+    // (passkey via /session-grant), we mint that delegation server-side
+    // using the deployer-fallback signer — no second passkey prompt.
+    if (signedToken !== null) {
+      setSigninProgress({ fullName: enteredName, step: 'agent' })
+      try {
+        const r = await bootstrapA2ASession()
+        if (!r.success) {
+          console.warn('[signin] server-side A2A bootstrap failed:', r.error)
+          // Non-fatal — read-only paths still work via the grant cookie.
+          // Write paths will surface the "agent session not set up" error
+          // until the user retries.
+        }
+      } catch (e) {
+        console.warn('[signin] server-side A2A bootstrap threw:', (e as Error).message)
+      }
+    } else {
       setSigninProgress({ fullName: enteredName, step: 'agent' })
       try {
         const initRes = await fetch('/api/a2a/bootstrap/client', { method: 'POST' })

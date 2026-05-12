@@ -10,7 +10,7 @@ const C = {
   bg: 'rgba(139,94,60,0.04)',
 }
 
-type Tab = 'config' | 'lifecycle' | 'tally'
+type Tab = 'config' | 'lifecycle' | 'tally' | 'voters'
 
 interface RoundView {
   id: string                       // URN form
@@ -137,7 +137,7 @@ export function RoundAdminClient({ hubSlug, round: initial }: Props) {
     <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: '1.25rem' }}>
       {/* Tab nav */}
       <div style={{ display: 'flex', gap: '0.4rem', borderBottom: `1px solid ${C.border}`, marginBottom: '1rem' }}>
-        {(['config', 'lifecycle', 'tally'] as Tab[]).map((t) => (
+        {(['config', 'lifecycle', 'tally', 'voters'] as Tab[]).map((t) => (
           <button
             key={t}
             type="button"
@@ -258,6 +258,10 @@ export function RoundAdminClient({ hubSlug, round: initial }: Props) {
         </div>
       )}
 
+      {tab === 'voters' && (
+        <VotersTab roundId={round.id} />
+      )}
+
       {tab === 'tally' && (
         <div>
           {tally === null ? (
@@ -302,6 +306,86 @@ export function RoundAdminClient({ hubSlug, round: initial }: Props) {
 
 function Link({ href, children, style }: { href: string; children: React.ReactNode; style?: React.CSSProperties }) {
   return <a href={href} style={style}>{children}</a>
+}
+
+function VotersTab({ roundId }: { roundId: string }) {
+  const [voter, setVoter] = useState('')
+  const [pending, startTransition] = useTransition()
+  const [msg, setMsg] = useState<string | null>(null)
+  const [msgKind, setMsgKind] = useState<'ok' | 'err'>('ok')
+
+  function onAdd(e: React.FormEvent) {
+    e.preventDefault()
+    setMsg(null)
+    const target = voter.trim()
+    if (!/^0x[0-9a-fA-F]{40}$/.test(target)) {
+      setMsg('Enter the voter\'s smart-account address (0x… 40 hex chars).')
+      setMsgKind('err')
+      return
+    }
+    startTransition(async () => {
+      try {
+        const res = await fetch('/api/round-admin/add-voter', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ roundId, voterSmartAccount: target }),
+        })
+        const json = await res.json().catch(() => ({}))
+        if (!res.ok || json.ok === false) {
+          setMsgKind('err')
+          setMsg(`Failed: ${json.error ?? res.statusText}`)
+          return
+        }
+        setMsgKind('ok')
+        setMsg(`Voter added (credentialId: ${(json.credentialId ?? '').slice(0, 12)}…). They can now vote in this round from their own session.`)
+        setVoter('')
+      } catch (err) {
+        setMsgKind('err')
+        setMsg(`Failed: ${(err as Error).message}`)
+      }
+    })
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', maxWidth: '36rem' }}>
+      <p style={{ fontSize: '0.85rem', color: C.text, margin: 0, lineHeight: 1.5 }}>
+        Grant another person agent permission to vote in this round. Issues a
+        <code style={{ background: C.bg, padding: '0 0.3rem', borderRadius: 4, margin: '0 0.3rem' }}>RoundVoterCredential</code>
+        to the voter's person-mcp plus an on-chain admin→holder delegation
+        scoped to <code style={{ background: C.bg, padding: '0 0.3rem', borderRadius: 4, margin: '0 0.3rem' }}>VoteRegistry.castVote</code>
+        for this round only.
+      </p>
+      <form onSubmit={onAdd} style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+        <div>
+          <label style={labelStyle}>Voter smart-account address</label>
+          <input
+            value={voter}
+            onChange={(e) => setVoter(e.target.value)}
+            placeholder="0x…40 hex chars"
+            style={fieldStyle}
+            spellCheck={false}
+          />
+        </div>
+        <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
+          <button type="submit" disabled={pending} style={btnPrimary(pending)}>
+            {pending ? 'Adding…' : 'Add voter'}
+          </button>
+          {msg && (
+            <span style={{ fontSize: '0.8rem', color: msgKind === 'err' ? C.danger : C.ok }}>
+              {msg}
+            </span>
+          )}
+        </div>
+      </form>
+      <p style={{ fontSize: '0.75rem', color: C.textMuted, margin: 0, lineHeight: 1.5 }}>
+        v1 limitation: there's no "currently approved voters" list yet —
+        ballots are nullifier-keyed on chain so we can't enumerate holders
+        without per-voter cred lookups. Adding the same voter twice issues
+        two credentials (idempotent at the cast level — only the first vote
+        per round counts).
+      </p>
+    </div>
+  )
 }
 
 function toLocalInput(iso: string): string {

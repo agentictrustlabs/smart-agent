@@ -176,14 +176,20 @@ const listForRoundTool = {
   },
   handler: async (args: { token: string; roundId: string }) => {
     await requireOrgPrincipal(args.token, args, 'vote:list_for_round')
-    void args
-    return mcpText({ votes: [] })
+    try {
+      const { readVotesForRound } = await import('../lib/vote-reader.js')
+      const votes = await readVotesForRound(args.roundId)
+      return mcpText({ votes })
+    } catch (e) {
+      console.warn('[vote:list_for_round] reader failed:', (e as Error).message)
+      return mcpText({ votes: [] })
+    }
   },
 }
 
 const listForProposalTool = {
   name: 'vote:list_for_proposal',
-  description: 'STUB — see `vote:list_for_round`.',
+  description: 'Read ballots cast for a specific proposal from VoteRegistry.',
   inputSchema: {
     type: 'object' as const,
     properties: {
@@ -194,14 +200,20 @@ const listForProposalTool = {
   },
   handler: async (args: { token: string; proposalId: string }) => {
     await requireOrgPrincipal(args.token, args, 'vote:list_for_proposal')
-    void args
-    return mcpText({ votes: [] })
+    try {
+      const { readVotesForProposal } = await import('../lib/vote-reader.js')
+      const votes = await readVotesForProposal(args.proposalId)
+      return mcpText({ votes })
+    } catch (e) {
+      console.warn('[vote:list_for_proposal] reader failed:', (e as Error).message)
+      return mcpText({ votes: [] })
+    }
   },
 }
 
 const listForVoterTool = {
   name: 'vote:list_for_voter',
-  description: 'STUB — see `vote:list_for_round`.',
+  description: 'Read ballots cast by the calling voter (matched by nullifier).',
   inputSchema: {
     type: 'object' as const,
     properties: {
@@ -210,10 +222,31 @@ const listForVoterTool = {
     },
     required: ['token', 'voterAgentId'],
   },
+  // The on-chain voter is identified only by a per-round nullifier (no
+  // principal). The caller passes their voterAgentId; we derive the
+  // expected nullifier for each round encountered and match.
   handler: async (args: { token: string; voterAgentId: string }) => {
-    await requireOrgPrincipal(args.token, args, 'vote:list_for_voter')
-    void args
-    return mcpText({ votes: [] })
+    const principal = await requireOrgPrincipal(args.token, args, 'vote:list_for_voter')
+    try {
+      const { readAllVotes } = await import('../lib/vote-reader.js')
+      const { keccak256, encodePacked } = await import('viem')
+      const all = await readAllVotes()
+      // Per-round nullifier for the calling principal — cached.
+      const cache = new Map<string, string>()
+      const filtered = all.filter((v) => {
+        const key = v.roundSubject.toLowerCase()
+        let n = cache.get(key)
+        if (!n) {
+          n = keccak256(encodePacked(['string', 'string', 'bytes32'], ['sa:voter:', principal.toLowerCase(), v.roundSubject])).toLowerCase()
+          cache.set(key, n)
+        }
+        return v.nullifier.toLowerCase() === n
+      })
+      return mcpText({ votes: filtered })
+    } catch (e) {
+      console.warn('[vote:list_for_voter] reader failed:', (e as Error).message)
+      return mcpText({ votes: [] })
+    }
   },
 }
 
@@ -238,19 +271,19 @@ const tallyForRoundTool = {
     },
     required: ['token', 'roundId'],
   },
-  // Spec 004 — Ballots are authoritative on chain in VoteRegistry +
-  // proposal bodies in GrantProposalRegistry. The full tally now
-  // requires scanning VoteCast/VoteUpdated events for the round, grouped
-  // by proposalSubject, then comparing against the round's voting
-  // threshold. That scan is queued behind R8 (on-chain → GraphDB
-  // sync); until then this tool surfaces the round's voting config
-  // alone with an empty tally array — the UI distinguishes
-  // "tally not yet synced" from "no votes cast".
+  // R8 — compute the per-proposal tally directly from VoteRegistry.
   handler: async (args: { token: string; roundId: string }) => {
     await requireOrgPrincipal(args.token, args, 'vote:tally_for_round')
     const cfg = await readVotingConfigFromChain(args.roundId)
+    let tally: TallyEntry[] = []
+    try {
+      const { tallyForRound } = await import('../lib/vote-reader.js')
+      tally = await tallyForRound(args.roundId, cfg.votingThreshold)
+    } catch (e) {
+      console.warn('[vote:tally_for_round] reader failed:', (e as Error).message)
+    }
     return mcpText({
-      tally: [] as TallyEntry[],
+      tally,
       threshold: cfg.votingThreshold,
       strategy: cfg.votingStrategy,
       windowStartsAt: cfg.votingWindowStartsAt,

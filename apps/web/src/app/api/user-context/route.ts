@@ -82,20 +82,38 @@ export async function GET() {
     const session = await getSession()
     if (!session) return NextResponse.json(empty)
 
-    const users = await db.select().from(schema.users)
-      .where(eq(schema.users.did, session.userId)).limit(1)
-    if (!users[0]) return NextResponse.json(empty)
+    // Passkey/SIWE: no `users` row — use session.smartAccountAddress as the
+    // person-agent id and session.name as the display fallback. Demo/google:
+    // look up the row as before.
+    const stateless = session.via === 'passkey' || session.via === 'siwe'
+    const userRow = stateless
+      ? null
+      : await db.select().from(schema.users)
+          .where(eq(schema.users.did, session.userId)).limit(1).then(r => r[0])
+    if (!stateless && !userRow) return NextResponse.json(empty)
 
-    // Person agent from on-chain — must be deployed (no fallback)
-    const personAddr = await getPersonAgentForUser(users[0].id)
+    // For stateless auth, the lookup key for getPersonAgentForUser is the
+    // smart-account address (also matches the synthetic `id` in
+    // getCurrentUser). For demo/google it's the row id.
+    const lookupId = stateless
+      ? (session.smartAccountAddress ?? '').toLowerCase()
+      : userRow!.id
+    const personAddr = await getPersonAgentForUser(lookupId)
     let personAgent: UserContextResponse['personAgent'] = null
     if (personAddr) {
       const meta = await getAgentMetadata(personAddr)
-      // Fall back to the DB mirror when the on-chain ATL_PRIMARY_NAME is
-      // empty (legacy accounts where the resolver write was skipped). The
+      // Fall back to the DB mirror or session name when on-chain
+      // ATL_PRIMARY_NAME is empty (legacy / not-yet-written). The
       // upper-right surface keys off this primaryName.
-      const primaryName = meta.primaryName || users[0].agentName || ''
-      personAgent = { address: personAddr, name: meta.displayName, primaryName }
+      const primaryName = meta.primaryName
+        || userRow?.agentName
+        || session.name
+        || ''
+      personAgent = {
+        address: personAddr,
+        name: meta.displayName || session.name || primaryName || '',
+        primaryName,
+      }
     }
 
     // All orgs via on-chain edges

@@ -23,6 +23,11 @@ function queryContract() { return process.env.AGENT_RELATIONSHIP_QUERY_ADDRESS a
  * Iterates registered person agents and checks ATL_CONTROLLER for the user's wallet.
  */
 export async function getPersonAgentForUser(userId: string): Promise<string | null> {
+  // Passkey/SIWE users have no `users` row — for them, getCurrentUser sets
+  // `id` to the lowercased smart-account address, which IS the person
+  // agent (single-account model). Detect by shape and return directly.
+  if (/^0x[0-9a-fA-F]{40}$/.test(userId)) return userId
+
   // Fast path: read the persisted address from the user row. The on-chain
   // scan is reserved as a fallback for rows that never finished provisioning.
   const user = await db.select().from(schema.users).where(eq(schema.users.id, userId)).limit(1)

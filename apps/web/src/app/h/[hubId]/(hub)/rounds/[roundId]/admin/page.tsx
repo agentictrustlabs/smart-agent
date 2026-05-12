@@ -39,9 +39,10 @@ interface RoundRow {
 }
 
 async function loadRound(fullRoundId: string): Promise<RoundRow | null> {
-  // Body fields (fundAgentId, deadline, decisionDate, status) live on chain;
-  // read via DiscoveryService. Voting fields live in org-mcp's slim rounds
-  // table.
+  // R8 — round body lives on chain. Body fields (fundAgent, deadline,
+  // decisionDate) come from DiscoveryService; voting config comes from
+  // FundRegistry.getRoundVotingConfig. The org-mcp `rounds` SQL mirror is
+  // dropped — there is no per-round SQL row to read from anymore.
   const slug = fullRoundId.startsWith('urn:smart-agent:round:')
     ? fullRoundId.slice('urn:smart-agent:round:'.length)
     : fullRoundId
@@ -54,42 +55,88 @@ async function loadRound(fullRoundId: string): Promise<RoundRow | null> {
     ? body.fundAgentId.slice(AGENT_IRI_PREFIX.length)
     : body.fundAgentId
 
-  const path = await import('path')
-  const fs = await import('fs')
-  const candidates = [
-    path.resolve(process.cwd(), '../org-mcp/org-mcp.db'),
-    path.resolve(process.cwd(), 'apps/org-mcp/org-mcp.db'),
-  ]
-  const dbPath = candidates.find((p) => fs.existsSync(p))
-  let voting: {
-    voting_strategy: string
-    voting_threshold: number
-    voting_window_starts_at: string | null
-    voting_window_ends_at: string | null
-    eligible_voters: string
-  } | undefined
-  if (dbPath) {
-    const Database = (await import('better-sqlite3')).default
-    const db = new Database(dbPath, { readonly: true })
-    try {
-      voting = db.prepare(`
-        SELECT voting_strategy, voting_threshold, voting_window_starts_at,
-               voting_window_ends_at, eligible_voters
-        FROM rounds WHERE id = ?
-      `).get(fullRoundId) as typeof voting
-    } finally { db.close() }
+  let votingStrategy = 'steward-quorum'
+  let votingThreshold = 2
+  let votingWindowStartsAt: string | null = null
+  let votingWindowEndsAt: string | null = null
+  try {
+    const { createPublicClient, http, keccak256, toHex } = await import('viem')
+    const { foundry } = await import('viem/chains')
+    const { fundRegistryAbi } = await import('@smart-agent/sdk')
+    const fundRegistry = process.env.FUND_REGISTRY_ADDRESS as `0x${string}` | undefined
+    if (fundRegistry) {
+      const client = createPublicClient({
+        chain: foundry,
+        transport: http(process.env.RPC_URL ?? 'http://127.0.0.1:8545'),
+      })
+      const roundSubject = keccak256(toHex(`sa:round:${slug}`))
+      const cfg = await client.readContract({
+        address: fundRegistry,
+        abi: fundRegistryAbi,
+        functionName: 'getRoundVotingConfig',
+        args: [roundSubject],
+      }) as readonly [`0x${string}`, bigint, bigint, bigint]
+      const [strategyHash, threshold, startsAt, endsAt] = cfg
+      // Reverse-map common voting strategy concept hashes.
+      const STRATEGIES: Record<string, string> = {
+        [keccak256(toHex('sa:VotingStrategyStewardQuorum')).toLowerCase()]: 'steward-quorum',
+        [keccak256(toHex('sa:VotingStrategyFlatMember')).toLowerCase()]:    'flat-member',
+        [keccak256(toHex('sa:VotingStrategyRoleWeighted')).toLowerCase()]:  'role-weighted',
+      }
+      votingStrategy = STRATEGIES[strategyHash.toLowerCase()] ?? votingStrategy
+      votingThreshold = Number(threshold) || votingThreshold
+      votingWindowStartsAt = startsAt > 0n ? new Date(Number(startsAt) * 1000).toISOString() : null
+      votingWindowEndsAt = endsAt > 0n ? new Date(Number(endsAt) * 1000).toISOString() : null
+    }
+  } catch (e) {
+    console.warn('[round-admin] voting config read failed (using defaults):', (e as Error).message)
   }
+
+  // Read the round's lifecycle status from FundRegistry. The status is
+  // a bytes32 concept hash; reverse-map the common ones back to lowercase
+  // labels that the lifecycle UI keys off (open/review/decided/closed/canceled).
+  let status = 'open'
+  try {
+    const { createPublicClient, http, keccak256, toHex } = await import('viem')
+    const { foundry } = await import('viem/chains')
+    const { fundRegistryAbi } = await import('@smart-agent/sdk')
+    const fundRegistry = process.env.FUND_REGISTRY_ADDRESS as `0x${string}` | undefined
+    if (fundRegistry) {
+      const client = createPublicClient({
+        chain: foundry,
+        transport: http(process.env.RPC_URL ?? 'http://127.0.0.1:8545'),
+      })
+      const roundSubject = keccak256(toHex(`sa:round:${slug}`))
+      const statusHash = (await client.readContract({
+        address: fundRegistry,
+        abi: fundRegistryAbi,
+        functionName: 'getRoundStatus',
+        args: [roundSubject],
+      })) as `0x${string}`
+      const STATUS_MAP: Record<string, string> = {
+        [keccak256(toHex('sa:RoundOpen')).toLowerCase()]:     'open',
+        [keccak256(toHex('sa:RoundReview')).toLowerCase()]:   'review',
+        [keccak256(toHex('sa:RoundDecided')).toLowerCase()]:  'decided',
+        [keccak256(toHex('sa:RoundClosed')).toLowerCase()]:   'closed',
+        [keccak256(toHex('sa:RoundCanceled')).toLowerCase()]: 'canceled',
+      }
+      status = STATUS_MAP[statusHash.toLowerCase()] ?? 'open'
+    }
+  } catch (e) {
+    console.warn('[round-admin] status read failed (defaulting to open):', (e as Error).message)
+  }
+
   return {
     id: fullRoundId,
     fundAgentId,
-    status: 'open', // round body status not exposed via DiscoveryService.Round; UI reads via FundRegistry getter when needed
+    status,
     deadline: body.deadline,
     decisionDate: body.decisionDate,
-    votingStrategy: voting?.voting_strategy ?? 'steward-quorum',
-    votingThreshold: voting?.voting_threshold ?? 2,
-    votingWindowStartsAt: voting?.voting_window_starts_at ?? null,
-    votingWindowEndsAt: voting?.voting_window_ends_at ?? null,
-    eligibleVoters: voting?.eligible_voters ?? '{"kind":"stewards"}',
+    votingStrategy,
+    votingThreshold,
+    votingWindowStartsAt,
+    votingWindowEndsAt,
+    eligibleVoters: '{"kind":"stewards"}',
   }
 }
 

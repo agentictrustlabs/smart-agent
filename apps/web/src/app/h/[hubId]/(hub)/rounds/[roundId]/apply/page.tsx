@@ -26,6 +26,7 @@ import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { getPersonAgentForUser } from '@/lib/agent-registry'
 import { HUB_SLUG_MAP } from '@/lib/hub-routes'
 import { getRoundForViewer } from '@/lib/actions/rounds.action'
+import { listIntentsViaMcp } from '@/lib/intents/router'
 import { ProposalComposer } from './ProposalComposer'
 
 export const dynamic = 'force-dynamic'
@@ -46,6 +47,10 @@ async function loadViewerIntentOptions(
   //     (payload.beneficiaryAgent = me)
   // The second case lets a user draft a proposal against a need their org
   // expressed for them.
+  const me = viewerAgent.toLowerCase()
+
+  // Try SQL first — for legacy/demo users with rows in the (mostly-dropped)
+  // intents table. Falls through to MCP fan-out for stateless users.
   let rows: Array<{
     id: string
     title: string
@@ -69,10 +74,9 @@ async function loadViewerIntentOptions(
       .from(schema.intents)
       .where(eq(schema.intents.hubId, hubId))
   } catch {
-    return []
+    rows = []
   }
-  const me = viewerAgent.toLowerCase()
-  return rows
+  let sqlOptions = rows
     .filter((r) => {
       if (r.status !== 'expressed' && r.status !== 'acknowledged') return false
       if (r.expressedByAgent.toLowerCase() === me) return true
@@ -92,6 +96,31 @@ async function loadViewerIntentOptions(
         kind: intentTypeBare ?? objectBare,
       }
     })
+  if (sqlOptions.length > 0) return sqlOptions
+
+  // MCP fallback — query both person + org sources, filter by hubId in the
+  // overlay context and to expressed/acknowledged statuses.
+  const fromPerson = await listIntentsViaMcp({ source: 'person' }).catch(() => [])
+  const fromOrg = await listIntentsViaMcp({ source: 'org' }).catch(() => [])
+  const seen = new Set<string>()
+  const mcpOptions: ViewerIntentOption[] = []
+  for (const r of [...fromPerson, ...fromOrg]) {
+    if (seen.has(r.id)) continue
+    seen.add(r.id)
+    if (r.hubId && r.hubId !== hubId) continue
+    if (r.status !== 'expressed' && r.status !== 'acknowledged') continue
+    const expresser = r.expressedByAgent?.toLowerCase() ?? ''
+    const beneficiary = typeof r.payload?.beneficiaryAgent === 'string'
+      ? r.payload.beneficiaryAgent.toLowerCase()
+      : ''
+    if (expresser !== me && beneficiary !== me) continue
+    mcpOptions.push({
+      id: r.id,
+      title: r.title,
+      kind: (r.intentType?.split(':').pop()) ?? (r.object?.split(':').pop()) ?? null,
+    })
+  }
+  return mcpOptions
 }
 
 export default async function RoundApplyPage({

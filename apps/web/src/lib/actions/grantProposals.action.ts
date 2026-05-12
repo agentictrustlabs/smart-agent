@@ -123,10 +123,35 @@ export async function submitProposal(
       error: { code: 'configuration' as const, message: 'GRANT_PROPOSAL_REGISTRY_ADDRESS not set' },
     } as unknown as SubmitGrantProposalResult
   }
-  const pres = await buildMarketplacePresentation({
+  const expectedAttrs: Record<string, string> = input.poolAgentId ? { poolAgentId: input.poolAgentId } : {}
+  let pres = await buildMarketplacePresentation({
     credentialType: 'ProposalSubmitterCredential',
-    expectedAttributes: input.poolAgentId ? { poolAgentId: input.poolAgentId } : {},
+    expectedAttributes: expectedAttrs,
   })
+
+  // Stateless self-issue: passkey/SIWE users acting as their own pool
+  // admin have no ProposalSubmitterCredential. Auto-issue + retry once.
+  if (!pres.ok && pres.error.includes('no held credential')) {
+    const { getSession } = await import('@/lib/auth/session')
+    const session = await getSession()
+    const stateless = session?.via === 'passkey' || session?.via === 'siwe'
+    if (stateless && session?.smartAccountAddress && input.poolAgentId) {
+      const { selfIssueMarketplaceCredential } = await import('@/lib/spec004/self-issue')
+      const issued = await selfIssueMarketplaceCredential({
+        smartAccount: session.smartAccountAddress as `0x${string}`,
+        credentialType: 'ProposalSubmitterCredential',
+        poolAgentId: input.poolAgentId,
+      })
+      if (issued.ok) {
+        pres = await buildMarketplacePresentation({
+          credentialType: 'ProposalSubmitterCredential',
+          expectedAttributes: expectedAttrs,
+        })
+      } else {
+        console.warn('[submitGrantProposal] self-issue failed:', issued.error)
+      }
+    }
+  }
   if (!pres.ok) {
     return {
       success: false as const,

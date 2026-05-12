@@ -74,11 +74,14 @@ const stewardQuorum: VotingStrategy = {
   name: 'steward-quorum',
   async eligibility(viewer, round) {
     if (!viewer) return { canVote: false, weight: 0, reason: 'not-authenticated' }
-    let canManage = false
-    try { canManage = await canManageAgent(viewer, round.fundAgentId) } catch { canManage = false }
-    if (!canManage) {
-      return { canVote: false, weight: 0, reason: 'not-a-steward' }
-    }
+    // Spec 004 moved authorization to the credential layer: the actual
+    // cast path requires a RoundVoterCredential + admin→holder delegation
+    // (see castVote). The UI eligibility check used to gate on steward
+    // status, but that's pre-spec-004 and locks out non-steward voters
+    // that the round admin explicitly granted a cred to. The cast path
+    // will surface a clear error if a non-steward without a cred clicks
+    // Vote — the UI just shouldn't pre-block them.
+    void canManageAgent // kept for future per-strategy gating
     const now = Date.now()
     if (round.votingWindowStartsAt && now < Date.parse(round.votingWindowStartsAt)) {
       return { canVote: false, weight: 0, reason: 'voting-not-started' }
