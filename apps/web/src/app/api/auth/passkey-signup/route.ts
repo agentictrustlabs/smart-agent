@@ -284,6 +284,20 @@ export async function POST(request: Request) {
   // in the user's person-mcp and is fetched via delegation after sign-in.
   const did = `did:passkey:${CHAIN_ID}:${accountAddrLower}`
 
+  // Spec 005 — provision personal treasury (sa:hasPersonalTreasury predicate
+  // + MockUSDC mint). Self-referential in v1: the user's AgentAccount IS
+  // their treasury (plan.md § "Reuse, don't duplicate"). Failures here are
+  // non-fatal; the user can fund manually via the dashboard.
+  try {
+    const { ensurePersonalTreasury } = await import('@/lib/treasury/provision')
+    const provisioned = await ensurePersonalTreasury(accountAddrLower)
+    if (!provisioned.ok) {
+      console.warn('[passkey-signup] treasury provision incomplete:', provisioned.warnings)
+    }
+  } catch (e) {
+    console.warn('[passkey-signup] treasury provision threw:', (e as Error).message)
+  }
+
   // No server-side passkey mirror anymore — login resolves the smart
   // account by .agent name and verifies via on-chain isValidSignature.
   // The account's _passkeys[digest] mapping is the source of truth for

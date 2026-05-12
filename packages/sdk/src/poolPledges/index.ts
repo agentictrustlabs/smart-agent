@@ -20,4 +20,8 @@ export type {
   SubmitPledgeResult,
   SubmitPledgeError,
   AmendPledgeRequest,
+  // Spec 005 — settlement extensions.
+  PledgeSettlement,
+  PledgeMarkedPayment,
+  PledgePaymentRail,
 } from './types'

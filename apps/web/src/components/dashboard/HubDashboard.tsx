@@ -17,6 +17,7 @@ import { AgentTrustSearch } from '@/components/trust/AgentTrustSearch'
 import { AddGeoClaimPanel } from '@/components/profile/AddGeoClaimPanel'
 import { AddSkillClaimPanel } from '@/components/profile/AddSkillClaimPanel'
 import { MyWorkPanel } from '@/components/work-queue/MyWorkPanel'
+import { TreasuryWidget } from './TreasuryWidget'
 import { DashboardForMode } from '@/components/dashboard/modes/DashboardForMode'
 import { AddRelationshipPanel } from '@/components/profile/AddRelationshipPanel'
 import { HUB_SLUG_MAP } from '@/lib/hub-routes'
@@ -248,6 +249,7 @@ async function GenericDashboard({
         <KpiCard label="TRUST GRAPH" href="/agents"><span style={{ fontSize: '1.75rem', fontWeight: 700, color: C.accent }}>{kbEdgeCount}</span><span style={{ fontSize: '0.72rem', color: C.textMuted }}>relationships</span></KpiCard>
       </div>
 
+      <TreasuryWidget />
       <MyWorkPanel />
       <DashboardForMode onChainRoles={userOrgs.flatMap(o => o.roles)} />
       <AddGeoClaimPanel />
@@ -385,6 +387,7 @@ async function CILDashboard({
         <div style={{ fontSize: '0.78rem', color: CIL.accent, fontFamily: 'ui-monospace, monospace', marginBottom: '0.75rem' }}>{primaryName}</div>
       )}
       <NeedsAttentionCard items={cilAttentionItems} />
+      <TreasuryWidget />
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem', marginBottom: '1.5rem' }}>
         <KpiCard label="BUSINESSES" href="/groups" palette={CIL}><span style={{ fontSize: '1.75rem', fontWeight: 700, color: CIL.accent }}>{totalCircles}</span><span style={{ fontSize: '0.72rem', color: CIL.textMuted }}>in portfolio</span></KpiCard>
         <KpiCard label="CAPITAL DEPLOYED" href="/steward" palette={CIL}><span style={{ fontSize: '1.75rem', fontWeight: 700, color: CIL.accent }}>${capitalDeployed.toLocaleString()}</span><span style={{ fontSize: '0.72rem', color: CIL.textMuted }}>across Wave 1</span></KpiCard>
@@ -556,6 +559,8 @@ async function CatalystFieldDashboard({
           ))}
         </div>
       )}
+
+      <TreasuryWidget />
 
       {/* Zone 4 — Work zone (2-col 60/40 on desktop; mode picker is in MyWorkPanel itself) */}
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.5fr) minmax(0, 1fr)', gap: '0.75rem', marginBottom: '1rem' }} className="catalyst-work-grid">

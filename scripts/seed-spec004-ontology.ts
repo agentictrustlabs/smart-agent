@@ -115,6 +115,7 @@ const TERMS: Array<{ curie: string; datatype: string }> = [
   { curie: 'sa:pledgePledgedAt',     datatype: 'uint256' },
   { curie: 'sa:pledgeStoppedAt',     datatype: 'uint256' },
   { curie: 'sa:pledgeStatus',        datatype: 'bytes32' },
+  { curie: 'sa:pledgeDonor',         datatype: 'address' },
   // FundRegistry R10 — voting config attrs moved on chain.
   { curie: 'sa:roundVotingStrategy',         datatype: 'bytes32' },
   { curie: 'sa:roundVotingThreshold',        datatype: 'uint256' },
@@ -130,6 +131,18 @@ const TERMS: Array<{ curie: string; datatype: string }> = [
   { curie: 'sa:miBasis',                datatype: 'string' },
   { curie: 'sa:miProposedAt',           datatype: 'uint256' },
   { curie: 'sa:miUpdatedAt',            datatype: 'uint256' },
+  // Spec 005 — Pledge Honor (per SPEC005_PLEDGE_HONOR_AUDIT § 5).
+  // AgentAccountResolver predicate linking person agent → personal treasury account.
+  { curie: 'sa:hasPersonalTreasury',         datatype: 'address' },
+  // PledgeRegistry — settlement extensions. Composite-subject pattern; see audit § 1.2.
+  { curie: 'sa:pledgeHonoredAmount',         datatype: 'uint256' },
+  { curie: 'sa:pledgeExternallyPaidAmount',  datatype: 'uint256' },
+  { curie: 'sa:pledgeHonorTokenList',        datatype: 'bytes32-array' },
+  { curie: 'sa:pledgeLastHonoredAt',         datatype: 'uint256' },
+  { curie: 'sa:pledgeLastMarkedAt',          datatype: 'uint256' },
+  { curie: 'sa:pledgePaymentRail',           datatype: 'bytes32' },
+  { curie: 'sa:pledgeEvidenceHash',          datatype: 'bytes32' },
+  { curie: 'sa:pledgeMarkedByAgent',         datatype: 'address' },
 ]
 
 const shapeRegistryAbi = [

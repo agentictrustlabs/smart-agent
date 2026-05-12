@@ -40,6 +40,8 @@ export {
   pledgeRegistryAbi,
   matchInitiationRegistryAbi,
   agentNameAttributeResolverAbi,
+  // Spec 005 — local-dev USDC for personal-treasury honor flow
+  mockUsdcAbi,
 } from './abi'
 
 // ─── Account Client ──────────────────────────────────────────────────
@@ -562,3 +564,22 @@ export type {
   AdminDelegationScope,
   SignedDelegation as Spec004SignedDelegation,
 } from './onchain/marketplace/admin-delegation'
+
+// Spec 005 — Personal-treasury honor + admin mark-paid helpers.
+export {
+  SPEC005_SELECTORS,
+  paymentRailConcept,
+  encodeHonorBatch,
+  honorBatchHash,
+  encodeMarkPaid,
+  markPaidHash,
+  buildHonorDelegationCaveats,
+  buildMarkPaidDelegationCaveats,
+} from './onchain/marketplace/treasury'
+export type {
+  PaymentRail,
+  HonorBatchInput,
+  MarkPaidInput,
+  HonorDelegationCaveatScope,
+  MarkPaidDelegationCaveatScope,
+} from './onchain/marketplace/treasury'

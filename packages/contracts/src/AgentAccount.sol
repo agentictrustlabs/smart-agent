@@ -379,6 +379,48 @@ contract AgentAccount is BaseAccount, Initializable, UUPSUpgradeable, IAgentAcco
         }
     }
 
+    /// @notice Atomically execute multiple calls from this account.
+    /// @dev Overrides BaseAccount.executeBatch to layer the module-hook
+    ///      pre/post-check semantics already used by `execute`. Spec 005 —
+    ///      pledge honor needs `USDC.transfer(pool, amount)` +
+    ///      `PledgeRegistry.recordHonor(...)` in one atomic operation,
+    ///      pinned by a `CallDataHashEnforcer` on the redeem path so the
+    ///      donor's sub-delegation authorises exactly this calldata.
+    ///
+    ///      Auth: identical to `execute` — EntryPoint / self / DelegationManager.
+    ///      Inner calls run with `msg.sender == address(this)`.
+    ///      All-or-nothing: any inner revert bubbles and reverts the batch.
+    ///      Pre-hooks run once on the whole batch; post-hooks run on success.
+    function executeBatch(Call[] calldata calls) external override {
+        _requireForExecute();
+
+        ModulesStorage storage $ = _modulesStorage();
+        address[] memory hooks = $.installedList[MODULE_TYPE_HOOK];
+        bytes[] memory hookData = new bytes[](hooks.length);
+
+        // hookMsgData encodes the full batch so hook policy can inspect
+        // every inner call.
+        bytes memory hookMsgData = abi.encode(calls);
+
+        for (uint256 i = 0; i < hooks.length; i++) {
+            hookData[i] = IERC7579HookLike(hooks[i]).preCheck(msg.sender, 0, hookMsgData);
+        }
+
+        for (uint256 i = 0; i < calls.length; i++) {
+            (bool ok, bytes memory ret) = calls[i].target.call{ value: calls[i].value }(calls[i].data);
+            if (!ok) {
+                assembly {
+                    let len := mload(ret)
+                    revert(add(ret, 0x20), len)
+                }
+            }
+        }
+
+        for (uint256 i = 0; i < hooks.length; i++) {
+            IERC7579HookLike(hooks[i]).postCheck(hookData[i]);
+        }
+    }
+
     // ─── ERC-4337 ───────────────────────────────────────────────────
 
     /// @inheritdoc BaseAccount

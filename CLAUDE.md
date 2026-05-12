@@ -3,13 +3,13 @@
 ## Project Overview
 Smart Agent is an **Agent Smart Account Kit** — an ERC-4337 smart-account framework where agents are first-class principals operating under programmable delegation, session-scoped authority, and trust-graph-aware policy.
 
-Own contracts, own SDK. Delegation patterns inspired by ERC-7710 and MetaMask DeleGator concepts, but fully independent implementation.
+**Substrate independence (P1)**: We build our own contracts, our own SDK, our own wallet substrate. We learn from external products (Safe, Privy, MetaMask Delegation Toolkit, Aragon, Llama, Endaoment, Bulla, …) but **do not depend on them at runtime**. Open standards (ERC-4337, ERC-7710, ERC-1271, AnonCreds, OID4VCI, WebAuthn, SIWE) are protocols and are implemented ourselves. See **`docs/architecture/principles.md`** for the full rule + anti-patterns + waiver process.
 
 pnpm monorepo, Next.js 15, Foundry, TypeScript strict.
 
 ## Structure
 ```
-apps/web/              Next.js 15 App Router (Privy auth, agent deployment UI)
+apps/web/              Next.js 15 App Router (passkey + SIWE auth, demo + Google OAuth, agent deployment UI)
 apps/a2a-agent/        A2A protocol agent (Hono server, challenge auth, delegation minting)
 apps/person-mcp/       Person MCP server (PII storage, delegation-verified tools)
 packages/types/        Shared TypeScript types
@@ -144,7 +144,10 @@ SDK taxonomy change → Ontologist updates T-Box .ttl → Sync to GraphDB → SP
 ```
 
 <!-- SPECKIT START -->
-Active feature plan: `specs/003-intent-marketplace-proposal/plan.md` (Proposal Lane).
+Active feature plan: `specs/005-pledge-honor/plan.md` (Pledge Honor + Personal Treasury — settles spec-002/003 pledges).
+Recently landed:
+- `specs/004-anoncreds-marketplace-auth/plan.md` — AnonCreds-gated marketplace writes + admin→holder→session delegation chain
+- `specs/005-pledge-honor/plan.md` — donor treasury + MockUSDC + two settlement rails (cryptographic + attested); `docs/ontology/SPEC005_PLEDGE_HONOR_AUDIT.md` for predicates
 Sibling plans for the three-lane intent marketplace:
 - `specs/001-intent-marketplace-discovery/plan.md` — Direct (Relationship) Lane
 - `specs/002-intent-marketplace-pool/plan.md` — Pool Lane

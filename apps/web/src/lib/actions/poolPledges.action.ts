@@ -68,6 +68,14 @@ interface RawPledgeRow {
   onChainAssertionId: string | null
   createdAt: string
   updatedAt: string
+  // Spec 005 — pass-through from org-mcp pledge-reader.
+  settlements?: Array<{ token: string; honored: string; externallyPaid: string }>
+  lastMarkedPayment?: {
+    rail: 'crypto' | 'bank' | 'check' | 'cash' | 'in-kind' | 'other'
+    evidenceHash: string
+    markedByAgent: string
+    markedAt: string | null
+  } | null
 }
 
 function parseJsonField<T>(v: unknown, fallback: T): T {
@@ -95,6 +103,8 @@ function rowToPledge(row: RawPledgeRow): PoolPledge {
     history: parseJsonField<PoolPledge['history']>(row.history, []),
     visibility: row.visibility as PoolPledge['visibility'],
     onChainAssertionId: row.onChainAssertionId ?? undefined,
+    settlements: row.settlements ?? [],
+    lastMarkedPayment: row.lastMarkedPayment ?? null,
   }
 }
 
@@ -150,31 +160,50 @@ export async function submitPledge(
     methodSelectors: [SPEC004_SELECTORS.pledgeSubmit],
   })
 
-  // Stateless-auth users (passkey/SIWE) acting as their own pool admin have
-  // no admin→holder delegation pre-issued. Auto-self-issue and retry once.
+  // Pledges are permissionless on chain (any donor may commit; the donor's
+  // identity is captured at submit). The chain auth needs only a single
+  // self-issued admin→holder delegation rooted at the DONOR's own smart
+  // account, signed by the donor's own key. Demo users sign with
+  // users.privateKey; passkey/SIWE sign via loadSignerForCurrentUser (which
+  // still falls back to deployer until the passkey ceremony lands — that
+  // fallback is scoped to passkey/SIWE only, never demo).
   if (!chain.ok && chain.error === 'no-marketplace-credential') {
     const { getSession } = await import('@/lib/auth/session')
     const session = await getSession()
-    const stateless = session?.via === 'passkey' || session?.via === 'siwe'
-    console.log('[submitPledge] auto-issue check', { stateless, via: session?.via, sa: session?.smartAccountAddress })
-    if (stateless && session?.smartAccountAddress) {
-      const { selfIssuePledgerDelegation } = await import('@/lib/spec004/self-issue')
-      const issued = await selfIssuePledgerDelegation({
-        smartAccount: session.smartAccountAddress as `0x${string}`,
-        pledgeRegistry,
+    if (!session?.smartAccountAddress) {
+      return {
+        ok: false,
+        error: { kind: 'validation' as const, messages: ['not signed in'] },
+      } as unknown as SubmitPledgeResult
+    }
+    const { loadSignerForCurrentUser } = await import('@/lib/ssi/signer')
+    let signerCtx: Awaited<ReturnType<typeof loadSignerForCurrentUser>> | null = null
+    try { signerCtx = await loadSignerForCurrentUser() } catch { /* not signed in */ }
+    if (signerCtx?.kind !== 'eoa' || !signerCtx.userRow.privateKey) {
+      return {
+        ok: false,
+        error: { kind: 'validation' as const, messages: [
+          'cannot self-sign pledger delegation — no EOA key available (passkey ceremony not yet wired)',
+        ]},
+      } as unknown as SubmitPledgeResult
+    }
+    const { selfIssuePledgerDelegation } = await import('@/lib/spec004/self-issue')
+    const issued = await selfIssuePledgerDelegation({
+      smartAccount: session.smartAccountAddress as `0x${string}`,
+      pledgeRegistry,
+      principal: signerCtx.principal,
+      signerPrivateKey: signerCtx.userRow.privateKey as `0x${string}`,
+    })
+    if (issued.ok) {
+      chain = await resolveSpec004Chain({
+        targetRegistry: pledgeRegistry,
+        methodSelectors: [SPEC004_SELECTORS.pledgeSubmit],
       })
-      console.log('[submitPledge] self-issue result', issued)
-      if (issued.ok) {
-        chain = await resolveSpec004Chain({
-          targetRegistry: pledgeRegistry,
-          methodSelectors: [SPEC004_SELECTORS.pledgeSubmit],
-        })
-      } else {
-        return {
-          ok: false,
-          error: { kind: 'validation' as const, messages: [`self-issue failed: ${issued.error}`] },
-        } as unknown as SubmitPledgeResult
-      }
+    } else {
+      return {
+        ok: false,
+        error: { kind: 'validation' as const, messages: [`self-issue failed: ${issued.error}`] },
+      } as unknown as SubmitPledgeResult
     }
   }
 

@@ -20,6 +20,9 @@ import { getPersonAgentForUser } from '@/lib/agent-registry'
 import { getMemberPledge } from '@/lib/actions/poolPledges.action'
 import { cadenceAwareTotal } from '@smart-agent/sdk'
 import { PledgeAmendForm } from './PledgeAmendForm'
+import { PledgeHonorForm } from './PledgeHonorForm'
+import { PledgeMarkPaidForm } from '../../pools/[poolId]/admin/PledgeMarkPaidForm'
+import { readUsdcBalance } from '@/lib/treasury/provision'
 
 export const dynamic = 'force-dynamic'
 
@@ -61,6 +64,34 @@ export default async function PledgeDetailPage({
   const canStop = pledge.status === 'active' || pledge.status === 'waitlisted'
   const safeId = encodeURIComponent(pledgeId)
 
+  // Spec 005 — settlement aggregation. v1 supports USDC only on Rail A; for
+  // USD-denominated pledges we display the USDC bucket; for other units we
+  // show the externally-paid sum across all token buckets (non-USDC pledges
+  // are Rail-B only).
+  const settlements = pledge.settlements ?? []
+  // Sum honored + externallyPaid as decimal-string bigints; UI scales by 1e6
+  // for USDC display.
+  let honoredRaw = 0n, externalRaw = 0n
+  for (const s of settlements) {
+    try { honoredRaw += BigInt(s.honored) } catch { /* ignore malformed */ }
+    try { externalRaw += BigInt(s.externallyPaid) } catch { /* ignore */ }
+  }
+  const isUsdPledge = pledge.unit === 'USD'
+  // v1 stores pledgeAmount + recordHonor + markPaid all in the pledge's
+  // unit (whole dollars for USD). Token transfers happen at USDC's 6-dec
+  // scale but the ledger is unit-scale, so no division here.
+  const honoredDisplay = Number(honoredRaw)
+  const externalDisplay = Number(externalRaw)
+  const settled = honoredDisplay + externalDisplay
+  const remaining = Math.max(0, total - settled)
+  const isFullyHonored = settled >= total && total > 0
+
+  // Donor's USDC balance — used by the honor form gating.
+  const treasuryBalance = user.smartAccountAddress
+    ? await readUsdcBalance(user.smartAccountAddress as `0x${string}`)
+    : { balance: 0n, tokenAddress: null }
+  const treasuryUsd = Number(treasuryBalance.balance) / 1_000_000
+
   return (
     <div style={{ paddingBottom: '2rem' }}>
       <div style={{ marginBottom: '1rem' }}>
@@ -91,6 +122,71 @@ export default async function PledgeDetailPage({
           </Row>
         )}
       </Section>
+
+      <Section title="Settlement">
+        <Row label="Pledged total">{total} {pledge.unit}</Row>
+        <Row label="Honored (treasury)">{honoredDisplay} {pledge.unit}</Row>
+        <Row label="Externally paid">{externalDisplay} {pledge.unit}</Row>
+        <Row label="Remaining">{remaining} {pledge.unit}</Row>
+        {isFullyHonored && (
+          <div style={{ marginTop: '0.4rem', display: 'inline-block', padding: '0.2rem 0.55rem', background: '#dcfce7', color: '#166534', borderRadius: 6, fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Fully honored
+          </div>
+        )}
+        {pledge.lastMarkedPayment && (
+          <div style={{ marginTop: '0.6rem', fontSize: '0.78rem', color: C.textMuted }}>
+            <div><strong style={{ color: C.text }}>Most recent external payment</strong></div>
+            <div>Rail: {pledge.lastMarkedPayment.rail}</div>
+            <div>Evidence hash: <code style={{ fontSize: '0.72rem' }}>{pledge.lastMarkedPayment.evidenceHash.slice(0, 18)}…</code></div>
+            <div>Attested by: <code style={{ fontSize: '0.72rem' }}>{pledge.lastMarkedPayment.markedByAgent}</code></div>
+            {pledge.lastMarkedPayment.markedAt && <div>At: {pledge.lastMarkedPayment.markedAt.slice(0, 16)}</div>}
+          </div>
+        )}
+      </Section>
+
+      {pledge.status === 'active' && remaining > 0 && isUsdPledge && (
+        <Section title="Honor this pledge (Rail A — personal treasury)">
+          <div style={{ marginBottom: '0.55rem', fontSize: '0.78rem', color: C.textMuted }}>
+            Your treasury balance: <strong style={{ color: C.text }}>${treasuryUsd.toLocaleString()}</strong> USDC
+            {treasuryBalance.tokenAddress && (
+              <span style={{ marginLeft: '0.4rem', fontSize: '0.7rem' }}>
+                ({treasuryBalance.tokenAddress.slice(0, 8)}…)
+              </span>
+            )}
+          </div>
+          <PledgeHonorForm
+            pledgeId={pledge.id as `0x${string}`}
+            poolAgentId={pledge.poolAgentId as `0x${string}`}
+            remainingUsd={remaining}
+          />
+        </Section>
+      )}
+
+      {pledge.status === 'active' && remaining > 0 && !isUsdPledge && (
+        <Section title="Honor this pledge">
+          <p style={{ fontSize: '0.78rem', color: C.textMuted, margin: 0 }}>
+            Non-USD pledges (unit: <code>{pledge.unit}</code>) settle via the
+            external mark-paid rail only. Ask the pool admin to record your
+            contribution with evidence — there is no on-chain treasury rail
+            for this unit in v1.
+          </p>
+        </Section>
+      )}
+
+      {pledge.status === 'active' && remaining > 0 && (
+        <Section title="Pool admin: record external payment (Rail B)">
+          <p style={{ fontSize: '0.72rem', color: C.textMuted, margin: '0 0 0.55rem' }}>
+            Pool admins only. Non-admin attempts revert with
+            <code style={{ marginLeft: 4 }}>NotPoolOperator</code>.
+          </p>
+          <PledgeMarkPaidForm
+            pledgeId={pledge.id as `0x${string}`}
+            fundAgent={pledge.poolAgentId as `0x${string}`}
+            defaultToken={(process.env.MOCK_USDC_ADDRESS as `0x${string}`) ?? ('0x0000000000000000000000000000000000000001' as `0x${string}`)}
+            isUsdPledge={isUsdPledge}
+          />
+        </Section>
+      )}
 
       {pledge.history.length > 0 && (
         <Section title="Amendment history">

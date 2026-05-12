@@ -248,6 +248,18 @@ export async function emitAgentsTurtle(): Promise<string> {
         if (lon) lines.push(`    sa:longitude ${lit(lon)} ;`)
       } catch { /* geo not set */ }
 
+      // Spec 005 — sa:hasPersonalTreasury (self-referential in v1).
+      try {
+        const treasury = await client.readContract({
+          address: resolverAddr, abi: agentAccountResolverAbi,
+          functionName: 'getAddressProperty',
+          args: [agentAddr, HASH('sa:hasPersonalTreasury') as `0x${string}`],
+        }) as `0x${string}`
+        if (treasury && treasury !== ZERO_ADDRESS) {
+          lines.push(`    sa:hasPersonalTreasury ${accountIRI(treasury)} ;`)
+        }
+      } catch { /* treasury predicate unset */ }
+
       closeBlock(lines)
 
       // ─── SmartAgentIdentifier Node ──────────────────────────────
@@ -824,48 +836,73 @@ export async function emitRoundsTurtle(opts: { slugFilter?: string } = {}): Prom
 // belongs to a Pool (vs. some other typed-attr subject in the same store).
 const SA_POOL_OPENED_AT_HASH = HASH('sa:poolOpenedAt')
 
-// Derive pool counters from `pool_pledges` table sums (Phase 7 — replaces
-// the `pools.pledged_total` cache that no longer exists). Returns a map
-// keyed by pool URN. allocatedTotal is 0 in v1 (no allocation tracking yet);
-// availableTotal == pledgedTotal until allocation flow ships.
+// Derive pool counters from on-chain PledgeRegistry (spec-004 R8 —
+// authoritative chain source; the legacy SQL mirror `pool_pledges` was
+// dropped). Returns a map keyed by lower-cased pool address; we also
+// alias under the pool URN form so the call site can look up both.
+// allocatedTotal is 0 in v1 (no allocation tracking yet); availableTotal
+// == pledgedTotal until allocation flow ships.
 async function loadPoolCounters(): Promise<Map<string, { pledged: number; allocated: number; available: number }>> {
   const out = new Map<string, { pledged: number; allocated: number; available: number }>()
-  const path = await import('path')
-  const fs = await import('fs')
-  const cwd = process.cwd()
-  const candidates = [
-    path.resolve(cwd, '../org-mcp/org-mcp.db'),
-    path.resolve(cwd, 'apps/org-mcp/org-mcp.db'),
-    path.resolve(cwd, '../../apps/org-mcp/org-mcp.db'),
-  ]
-  const dbPath = candidates.find(p => fs.existsSync(p))
-  if (!dbPath) return out
-  let Database: new (filename: string, options?: { readonly?: boolean; fileMustExist?: boolean }) => {
-    prepare: (sql: string) => { all: () => unknown[] }
-    close: () => void
-  }
+  const pledgeRegAddr = process.env.PLEDGE_REGISTRY_ADDRESS as `0x${string}` | undefined
+  if (!pledgeRegAddr) return out
+  const client = getPublicClient()
+
+  let subjects: readonly `0x${string}`[]
   try {
-    const mod = await import('better-sqlite3')
-    Database = mod.default as unknown as typeof Database
-  } catch {
-    return out
-  }
-  const db = new Database(dbPath, { readonly: true, fileMustExist: true })
-  let rows: Array<{ pool_agent_id: string; cadence: string; amount: number; duration: number | null }> = []
-  try {
-    rows = db.prepare(
-      "SELECT pool_agent_id, cadence, amount, duration FROM pool_pledges WHERE status = 'active'"
-    ).all() as typeof rows
-  } catch { /* table might not exist on first boot */ }
-  db.close()
+    subjects = await client.readContract({
+      address: pledgeRegAddr, abi: pledgeRegistryAbi,
+      functionName: 'allSubjects',
+    }) as readonly `0x${string}`[]
+  } catch { return out }
 
   const { cadenceAwareTotal } = await import('@smart-agent/sdk')
-  for (const r of rows) {
-    const total = cadenceAwareTotal({ cadence: r.cadence as 'one-time' | 'monthly' | 'annual', amount: r.amount, duration: r.duration ?? undefined })
-    const cur = out.get(r.pool_agent_id) ?? { pledged: 0, allocated: 0, available: 0 }
-    cur.pledged += total
-    cur.available = Math.max(0, cur.pledged - cur.allocated)
-    out.set(r.pool_agent_id, cur)
+  const SA_POOL = HASH('sa:pledgePool')
+  const SA_AMOUNT = HASH('sa:pledgeAmount')
+  const SA_CADENCE = HASH('sa:pledgeCadence')
+  const SA_DURATION = HASH('sa:pledgeDuration')
+  const SA_STATUS = HASH('sa:pledgeStatus')
+  const STATUS_ACTIVE = HASH('sa:PledgeActive')
+  // sa:PledgeFullyHonored is also "active" for accumulation purposes —
+  // we want fully-honored pledges to remain in the pool's pledged total.
+  const STATUS_FULLY_HONORED = HASH('sa:PledgeFullyHonored')
+
+  // PledgeCadence in SDK is 'one-time' | 'monthly' | 'annual'. The on-chain
+  // `sa:CadenceRecurring` concept maps to 'monthly' for aggregation purposes
+  // until the SDK type widens.
+  const CADENCE_LABELS: Record<string, 'one-time' | 'monthly' | 'annual'> = {
+    [HASH('sa:CadenceOneTime').toLowerCase()]: 'one-time',
+    [HASH('sa:CadenceMonthly').toLowerCase()]: 'monthly',
+    [HASH('sa:CadenceAnnual').toLowerCase()]:  'annual',
+    [HASH('sa:CadenceRecurring').toLowerCase()]: 'monthly',
+  }
+
+  for (const subj of subjects) {
+    try {
+      const status = await client.readContract({
+        address: pledgeRegAddr, abi: pledgeRegistryAbi,
+        functionName: 'getBytes32', args: [subj, SA_STATUS],
+      }) as `0x${string}`
+      if (status !== STATUS_ACTIVE && status !== STATUS_FULLY_HONORED) continue
+
+      const [pool, amount, cadenceHash, duration] = await Promise.all([
+        client.readContract({ address: pledgeRegAddr, abi: pledgeRegistryAbi, functionName: 'getAddress', args: [subj, SA_POOL] }) as Promise<`0x${string}`>,
+        client.readContract({ address: pledgeRegAddr, abi: pledgeRegistryAbi, functionName: 'getUint',    args: [subj, SA_AMOUNT] }) as Promise<bigint>,
+        client.readContract({ address: pledgeRegAddr, abi: pledgeRegistryAbi, functionName: 'getBytes32', args: [subj, SA_CADENCE] }) as Promise<`0x${string}`>,
+        client.readContract({ address: pledgeRegAddr, abi: pledgeRegistryAbi, functionName: 'getUint',    args: [subj, SA_DURATION] }).catch(() => 0n) as Promise<bigint>,
+      ])
+      if (!pool || pool === ZERO_ADDRESS) continue
+      const cadence = CADENCE_LABELS[cadenceHash.toLowerCase()] ?? 'one-time'
+      const total = cadenceAwareTotal({
+        cadence, amount: Number(amount),
+        duration: duration > 0n ? Number(duration) : undefined,
+      })
+      const key = pool.toLowerCase()
+      const cur = out.get(key) ?? { pledged: 0, allocated: 0, available: 0 }
+      cur.pledged += total
+      cur.available = Math.max(0, cur.pledged - cur.allocated)
+      out.set(key, cur)
+    } catch { /* skip subject on read error */ }
   }
   return out
 }
@@ -1217,6 +1254,13 @@ const PLEDGE_PREDICATES = {
   pledgedAt:          HASH('sa:pledgePledgedAt'),
   stoppedAt:          HASH('sa:pledgeStoppedAt'),
   status:             HASH('sa:pledgeStatus'),
+  // Spec 005 — on-pledge-subject settlement attrs. Per-token honored/external
+  // amounts live on composite subjects (see emitSpec005PledgeSettlement).
+  lastHonoredAt:      HASH('sa:pledgeLastHonoredAt'),
+  lastMarkedAt:       HASH('sa:pledgeLastMarkedAt'),
+  paymentRail:        HASH('sa:pledgePaymentRail'),
+  evidenceHash:       HASH('sa:pledgeEvidenceHash'),
+  markedByAgent:      HASH('sa:pledgeMarkedByAgent'),
 } as const
 
 const MI_PREDICATES = {
@@ -1343,7 +1387,9 @@ async function emitOneSpec004Registry(cfg: RegistryEmitConfig): Promise<{ turtle
           field === 'amount' || field === 'duration' || field === 'weight' ||
           field === 'castAt' || field === 'updatedAt' || field === 'proposedAt' ||
           field === 'pledgedAt' || field === 'stoppedAt' || field === 'submittedAt' ||
-          field === 'withdrawnAt' || field === 'version'
+          field === 'withdrawnAt' || field === 'version' ||
+          // Spec 005 — pledge timestamps.
+          field === 'lastHonoredAt' || field === 'lastMarkedAt'
         ) {
           const v = await client.readContract({
             address: addr, abi: cfg.abi as never,
@@ -1351,7 +1397,7 @@ async function emitOneSpec004Registry(cfg: RegistryEmitConfig): Promise<{ turtle
             args: [subj, predHash],
           }) as bigint
           if (v > 0n) pairs.push(`  ${curie} ${v.toString()}`)
-        } else if (field === 'pool') {
+        } else if (field === 'pool' || field === 'markedByAgent') {
           const v = await client.readContract({
             address: addr, abi: cfg.abi as never,
             functionName: 'getAddress',
@@ -1364,7 +1410,9 @@ async function emitOneSpec004Registry(cfg: RegistryEmitConfig): Promise<{ turtle
           field === 'round' || field === 'proposal' || field === 'ballot' ||
           field === 'nullifier' || field === 'unit' || field === 'cadence' ||
           field === 'status' || field === 'initiationKind' || field === 'visibility' ||
-          field === 'initiatorNullifier'
+          field === 'initiatorNullifier' ||
+          // Spec 005 — concept-hash valued fields.
+          field === 'paymentRail' || field === 'evidenceHash'
         ) {
           const v = await client.readContract({
             address: addr, abi: cfg.abi as never,
@@ -1390,6 +1438,42 @@ async function emitOneSpec004Registry(cfg: RegistryEmitConfig): Promise<{ turtle
           if (v) pairs.push(`  ${curie} "${escapeTtlString(v)}"`)
         }
       } catch { /* skip on read error */ }
+    }
+
+    // Spec 005 — per-token settlement extension for sa:Pledge subjects.
+    // The token list lives on the pledge subject; per-token totals live on
+    // composite subjects. We aggregate honored + external sums across all
+    // tracked tokens and emit them as scalar literals on the pledge IRI.
+    // For v1 (USDC-only on Rail A) the sum is unambiguous; multi-token v2
+    // can revise to per-token reified literals.
+    if (cfg.classCurie === 'sa:Pledge') {
+      try {
+        const honorTokenList = await client.readContract({
+          address: addr, abi: cfg.abi as never,
+          functionName: 'getBytes32Arr',
+          args: [subj, HASH('sa:pledgeHonorTokenList')],
+        }) as readonly `0x${string}`[]
+        let honoredSum = 0n
+        let externalSum = 0n
+        for (const tokenBytes of honorTokenList ?? []) {
+          const tokenAddr = (`0x${tokenBytes.slice(-40)}`) as `0x${string}`
+          try {
+            const [h, x] = await client.readContract({
+              address: addr, abi: cfg.abi as never,
+              functionName: 'getSettlement',
+              args: [subj, tokenAddr],
+            }) as [bigint, bigint]
+            honoredSum += h
+            externalSum += x
+          } catch { /* skip token on read error */ }
+        }
+        // Use the same short-curie convention as the rest of PLEDGE_PREDICATES
+        // emission (sa:amount, sa:unit, sa:paymentRail, …). Consumers query
+        // against the short form; the on-chain predicate hash is still derived
+        // from the full curie `sa:pledgeHonoredAmount`.
+        if (honoredSum > 0n)  pairs.push(`  sa:honoredAmount ${honoredSum.toString()}`)
+        if (externalSum > 0n) pairs.push(`  sa:externallyPaidAmount ${externalSum.toString()}`)
+      } catch { /* token list unset — pre-honor pledge, skip */ }
     }
 
     if (pairs.length === 0) {

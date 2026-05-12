@@ -103,6 +103,8 @@ VOTE_REGISTRY=$(echo "$OUTPUT" | grep "VOTE_REGISTRY_ADDRESS=" | sed 's/.*=//')
 GRANT_PROPOSAL_REGISTRY=$(echo "$OUTPUT" | grep "GRANT_PROPOSAL_REGISTRY_ADDRESS=" | sed 's/.*=//')
 PLEDGE_REGISTRY=$(echo "$OUTPUT" | grep "PLEDGE_REGISTRY_ADDRESS=" | sed 's/.*=//')
 MATCH_INITIATION_REGISTRY=$(echo "$OUTPUT" | grep "MATCH_INITIATION_REGISTRY_ADDRESS=" | sed 's/.*=//')
+# Spec 005 — dev-only MockUSDC.
+MOCK_USDC=$(echo "$OUTPUT" | grep "MOCK_USDC_ADDRESS=" | sed 's/.*=//')
 AGENT_NAME_ATTRIBUTE_RESOLVER=$(echo "$OUTPUT" | grep "AGENT_NAME_ATTRIBUTE_RESOLVER_ADDRESS=" | sed 's/.*=//')
 
 echo ""
@@ -213,6 +215,8 @@ sed -i '/^VOTE_REGISTRY_ADDRESS=/d' "$WEB_ENV"
 sed -i '/^GRANT_PROPOSAL_REGISTRY_ADDRESS=/d' "$WEB_ENV"
 sed -i '/^PLEDGE_REGISTRY_ADDRESS=/d' "$WEB_ENV"
 sed -i '/^MATCH_INITIATION_REGISTRY_ADDRESS=/d' "$WEB_ENV"
+sed -i '/^MOCK_USDC_ADDRESS=/d' "$WEB_ENV"
+sed -i '/^USDC_ADDRESS=/d' "$WEB_ENV"
 sed -i '/^AGENT_NAME_ATTRIBUTE_RESOLVER_ADDRESS=/d' "$WEB_ENV"
 sed -i '/^RPC_URL=/d' "$WEB_ENV"
 sed -i '/^DEPLOYER_PRIVATE_KEY=/d' "$WEB_ENV"
@@ -308,6 +312,8 @@ VOTE_REGISTRY_ADDRESS=$VOTE_REGISTRY
 GRANT_PROPOSAL_REGISTRY_ADDRESS=$GRANT_PROPOSAL_REGISTRY
 PLEDGE_REGISTRY_ADDRESS=$PLEDGE_REGISTRY
 MATCH_INITIATION_REGISTRY_ADDRESS=$MATCH_INITIATION_REGISTRY
+MOCK_USDC_ADDRESS=$MOCK_USDC
+USDC_ADDRESS=$MOCK_USDC
 AGENT_NAME_ATTRIBUTE_RESOLVER_ADDRESS=$AGENT_NAME_ATTRIBUTE_RESOLVER
 EOF
 
@@ -353,6 +359,8 @@ for svc in org-mcp family-mcp person-mcp geo-mcp verifier-mcp people-group-mcp; 
   update_env_var "$ENV_FILE" GRANT_PROPOSAL_REGISTRY_ADDRESS "$GRANT_PROPOSAL_REGISTRY"
   update_env_var "$ENV_FILE" PLEDGE_REGISTRY_ADDRESS "$PLEDGE_REGISTRY"
   update_env_var "$ENV_FILE" MATCH_INITIATION_REGISTRY_ADDRESS "$MATCH_INITIATION_REGISTRY"
+  update_env_var "$ENV_FILE" MOCK_USDC_ADDRESS "$MOCK_USDC"
+  update_env_var "$ENV_FILE" USDC_ADDRESS "$MOCK_USDC"
   update_env_var "$ENV_FILE" AGENT_FACTORY_ADDRESS "$FACTORY"
   # Phase 1 — Inter-service HMAC secret + a2a-agent endpoint URL for the
   # MCPs that talk back to a2a-agent's redeem endpoints. The same secret
@@ -382,6 +390,8 @@ update_env_var "$A2A_ENV_FILE" VOTE_REGISTRY_ADDRESS "$VOTE_REGISTRY"
 update_env_var "$A2A_ENV_FILE" GRANT_PROPOSAL_REGISTRY_ADDRESS "$GRANT_PROPOSAL_REGISTRY"
 update_env_var "$A2A_ENV_FILE" PLEDGE_REGISTRY_ADDRESS "$PLEDGE_REGISTRY"
 update_env_var "$A2A_ENV_FILE" MATCH_INITIATION_REGISTRY_ADDRESS "$MATCH_INITIATION_REGISTRY"
+update_env_var "$A2A_ENV_FILE" MOCK_USDC_ADDRESS "$MOCK_USDC"
+update_env_var "$A2A_ENV_FILE" USDC_ADDRESS "$MOCK_USDC"
 update_env_var "$A2A_ENV_FILE" AGENT_ACCOUNT_RESOLVER_ADDRESS "$AGENT_ACCT_RESOLVER"
 update_env_var "$A2A_ENV_FILE" AGENT_RELATIONSHIP_ADDRESS "$RELATIONSHIP"
 update_env_var "$A2A_ENV_FILE" TIMESTAMP_ENFORCER_ADDRESS "$TIMESTAMP"
@@ -495,6 +505,15 @@ else
   echo ""
   echo "=== Seeding relationship-type registry ==="
   "$SCRIPT_DIR/seed-type-registry.sh"
+  echo ""
+  echo "=== Seeding spec-004 / spec-005 sa: predicates + shapes ==="
+  # AttributeStorage on the marketplace registries reverts every write with
+  # PredicateNotActive() unless the curies are registered in
+  # OntologyTermRegistry. Deploy.s.sol seeds Pool/Fund/Round/Proposal; this
+  # batch covers Vote/GrantProposal/Pledge/MatchInitiation + the Spec 005
+  # honor extensions (sa:hasPersonalTreasury + pledge settlement attrs).
+  (cd "$ROOT_DIR/apps/web" && pnpm exec tsx "$SCRIPT_DIR/seed-spec004-ontology.ts") \
+    || echo "  ⚠ seed-spec004-ontology failed — marketplace writes will revert"
 fi
 
 echo ""

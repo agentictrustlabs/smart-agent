@@ -57,6 +57,7 @@ import "../src/VoteRegistry.sol";
 import "../src/GrantProposalRegistry.sol";
 import "../src/PledgeRegistry.sol";
 import "../src/MatchInitiationRegistry.sol";
+import "../src/mocks/MockUSDC.sol";
 import "../src/ProposalRegistry.sol";
 import "../src/AgentNameUniversalResolver.sol";
 import "../src/enforcers/NameScopeEnforcer.sol";
@@ -295,6 +296,12 @@ contract Deploy is Script {
         );
         console.log("MatchInitiationRegistry:", address(matchInitiationRegistry));
 
+        // Spec 005 — dev-only MockUSDC for pledge-honor settlement.
+        // The deploy-local.sh script wraps `forge script` and only runs on
+        // local anvil; never invoke from a public-chain deploy path.
+        MockUSDC mockUsdc = new MockUSDC();
+        console.log("MockUSDC:", address(mockUsdc));
+
         // 15. AgentAccountResolver — owns its agent metadata storage.
         AgentAccountResolver accountResolver = new AgentAccountResolver(address(ontologyRegistry));
         console.log("AgentAccountResolver:", address(accountResolver));
@@ -486,6 +493,11 @@ contract Deploy is Script {
         _logEnv("GRANT_PROPOSAL_REGISTRY_ADDRESS", address(grantProposalRegistry));
         _logEnv("PLEDGE_REGISTRY_ADDRESS", address(pledgeRegistry));
         _logEnv("MATCH_INITIATION_REGISTRY_ADDRESS", address(matchInitiationRegistry));
+        // Spec 005 — MockUSDC (dev-only). USDC_ADDRESS aliased for
+        // forward-compat with prod where a real USDC address would be
+        // injected by env rather than by deploy.
+        _logEnv("MOCK_USDC_ADDRESS", address(mockUsdc));
+        _logEnv("USDC_ADDRESS", address(mockUsdc));
     }
 
     function _logEnv(string memory key, address addr) internal pure {

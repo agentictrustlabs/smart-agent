@@ -17,10 +17,10 @@
  * fan-out; the FundRegistry transitions are now MCP-mediated.
  */
 
-import { keccak256, toBytes, type Address, type Hex } from 'viem'
+import { keccak256, toBytes, toHex, type Address, type Hex } from 'viem'
 import { callMcp } from '@/lib/clients/mcp-client'
 import { getWalletClient, getPublicClient } from '@/lib/contracts'
-import { proposalSubject, proposalRegistryAbi } from '@smart-agent/sdk'
+import { proposalSubject, proposalRegistryAbi, grantProposalRegistryAbi } from '@smart-agent/sdk'
 
 export interface Award {
   proposalIRI: string
@@ -155,13 +155,46 @@ export async function closeRound(input: CloseRoundInput): Promise<CloseRoundResu
     await publicClient.waitForTransactionReceipt({ hash: txHash })
     proposalAnnouncements.push({ proposalIRI: a.proposalIRI, txHash })
 
-    // Flip the proposer's MCP row to 'awarded'.
-    await callMcp('org', 'grant_proposal:award', {
-      proposalId: a.proposalIRI,
-      totalAwarded: Number(a.totalAmount),
-      unit: a.unit,
-      awardedAt: decidedAt,
-    })
+    // R8 — propagate awarded status to the spec-004 GrantProposalRegistry
+    // so my on-chain reader (org-mcp/lib/grant-proposal-reader.ts)
+    // surfaces the proposal as "awarded" on detail pages + listings.
+    // Auth: GrantProposalRegistry.setStatus requires msg.sender to be an
+    // owner of the round's fund agent. The deployer is an initial owner
+    // of every freshly-deployed AgentAccount in the test environment, so
+    // this direct call from the deployer wallet passes the modifier.
+    const gpRegistryAddr = process.env.GRANT_PROPOSAL_REGISTRY_ADDRESS as Address | undefined
+    if (gpRegistryAddr) {
+      // a.proposalIRI is either a URN ("urn:smart-agent:proposal:<slug>")
+      // or a bytes32 hex (the on-chain subject). Spec-004 reader returns
+      // proposals keyed by bytes32 subject, so the path that lands here
+      // typically already has hex.
+      const isHex = /^0x[0-9a-fA-F]{64}$/.test(a.proposalIRI)
+      const gp = isHex ? (a.proposalIRI as Hex) : ps
+      try {
+        const statusTx = await wallet.writeContract({
+          address: gpRegistryAddr,
+          abi: grantProposalRegistryAbi,
+          functionName: 'setStatus',
+          args: [gp, keccak256(toHex('sa:GpAwarded'))],
+          account,
+          chain: wallet.chain ?? null,
+        })
+        await publicClient.waitForTransactionReceipt({ hash: statusTx })
+      } catch (err) {
+        console.warn('[closeRound] GrantProposalRegistry.setStatus failed (non-fatal):', err instanceof Error ? err.message : err)
+      }
+    }
+
+    // Flip the proposer's MCP row to 'awarded' (legacy path; the spec-004
+    // reader already picks up the on-chain status above).
+    try {
+      await callMcp('org', 'grant_proposal:award', {
+        proposalId: a.proposalIRI,
+        totalAwarded: Number(a.totalAmount),
+        unit: a.unit,
+        awardedAt: decidedAt,
+      })
+    } catch { /* stub tool — non-fatal */ }
   }
 
   const { scheduleKbSyncEager } = await import('@/lib/ontology/kb-write-through')

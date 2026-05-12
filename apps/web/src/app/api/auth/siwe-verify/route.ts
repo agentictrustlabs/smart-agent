@@ -90,6 +90,17 @@ export async function POST(request: Request) {
     await publicClient.waitForTransactionReceipt({ hash })
   }
 
+  // Spec 005 — provision personal treasury (idempotent). Non-fatal.
+  try {
+    const { ensurePersonalTreasury } = await import('@/lib/treasury/provision')
+    const provisioned = await ensurePersonalTreasury(smartAcctLower)
+    if (!provisioned.ok) {
+      console.warn('[siwe-verify] treasury provision incomplete:', provisioned.warnings)
+    }
+  } catch (e) {
+    console.warn('[siwe-verify] treasury provision threw:', (e as Error).message)
+  }
+
   const cookieStore = await cookies()
   const did = `did:ethr:${CHAIN_ID}:${eoaLower}`
   const name = `Wallet ${eoaLower.slice(0, 6)}…${eoaLower.slice(-4)}`

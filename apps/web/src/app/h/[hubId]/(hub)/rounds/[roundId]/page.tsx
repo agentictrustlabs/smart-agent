@@ -110,6 +110,42 @@ export default async function RoundDetailPage({
     : `urn:smart-agent:round:${roundId}`
   const proposalsReceived = await getRoundProposalCount(fullRoundId)
 
+  // Read the on-chain round status so the page reflects the lifecycle
+  // phase (open / review / decided / closed / canceled), not just whether
+  // the deadline passed. Submissions are only accepted in `open`.
+  type RoundStatus = 'open' | 'review' | 'decided' | 'closed' | 'canceled'
+  let roundStatus: RoundStatus = 'open'
+  try {
+    const { createPublicClient, http, keccak256, toHex } = await import('viem')
+    const { foundry } = await import('viem/chains')
+    const { fundRegistryAbi } = await import('@smart-agent/sdk')
+    const fundRegistry = process.env.FUND_REGISTRY_ADDRESS as `0x${string}` | undefined
+    if (fundRegistry) {
+      const client = createPublicClient({
+        chain: foundry,
+        transport: http(process.env.RPC_URL ?? 'http://127.0.0.1:8545'),
+      })
+      const slug = fullRoundId.slice('urn:smart-agent:round:'.length)
+      const subject = keccak256(toHex(`sa:round:${slug}`))
+      const statusHash = (await client.readContract({
+        address: fundRegistry,
+        abi: fundRegistryAbi,
+        functionName: 'getRoundStatus',
+        args: [subject],
+      })) as `0x${string}`
+      const STATUS_MAP: Record<string, RoundStatus> = {
+        [keccak256(toHex('sa:RoundOpen')).toLowerCase()]:     'open',
+        [keccak256(toHex('sa:RoundReview')).toLowerCase()]:   'review',
+        [keccak256(toHex('sa:RoundDecided')).toLowerCase()]:  'decided',
+        [keccak256(toHex('sa:RoundClosed')).toLowerCase()]:   'closed',
+        [keccak256(toHex('sa:RoundCanceled')).toLowerCase()]: 'canceled',
+      }
+      roundStatus = STATUS_MAP[statusHash.toLowerCase()] ?? 'open'
+    }
+  } catch (e) {
+    console.warn('[round-detail] status read failed (defaulting to open):', (e as Error).message)
+  }
+
   const deadline = formatDate(round.deadline)
   const decision = formatDate(round.decisionDate)
   const fundLabel = round.fundAgentId
@@ -129,7 +165,14 @@ export default async function RoundDetailPage({
       : null
   const mandateNarrative = (round.mandate.acceptedKinds ?? []).slice(0, 3).join(', ') || 'Open mandate'
   const tranches = round.milestoneTemplate.trancheHints
-  const canApply = !deadline.isPast
+  const canApply = !deadline.isPast && roundStatus === 'open'
+  const submissionsClosedMessage =
+    roundStatus === 'review'   ? 'Submissions closed — round is in voting/review.'
+  : roundStatus === 'decided'  ? 'Round decided — awards committed.'
+  : roundStatus === 'closed'   ? 'Round closed.'
+  : roundStatus === 'canceled' ? 'Round canceled.'
+  : deadline.isPast            ? 'This round is closed for new submissions.'
+  : 'This round is closed for new submissions.'
   // Steward gate (Phase 2.5): pool root / lead steward sees the cancel
   // button. The discovery query returns fundAgentId as a full IRI
   // (https://smartagent.io/ontology/core#agent/0x...); canManageAgent
@@ -314,7 +357,7 @@ export default async function RoundDetailPage({
           </Link>
         ) : (
           <span style={{ fontSize: '0.85rem', color: C.textMuted, padding: '0.65rem 1.1rem', fontStyle: 'italic' }}>
-            This round is closed for new submissions.
+            {submissionsClosedMessage}
           </span>
         )}
       </div>

@@ -83,6 +83,30 @@ export interface PoolPledge {
   visibility: PledgeVisibility
   /** Present iff anchored on chain. */
   onChainAssertionId?: string
+  /** Spec 005 — per-token settlement totals (decimal strings to preserve bigint precision). */
+  settlements?: PledgeSettlement[]
+  /** Spec 005 — most recent admin attestation, if any. */
+  lastMarkedPayment?: PledgeMarkedPayment | null
+}
+
+export interface PledgeSettlement {
+  /** Token contract address. v1: MockUSDC. */
+  token: string
+  /** Cumulative Rail-A (donor treasury) honored amount, token-scaled bigint as decimal string. */
+  honored: string
+  /** Cumulative Rail-B (admin mark-paid) attested amount. */
+  externallyPaid: string
+}
+
+export type PledgePaymentRail = 'crypto' | 'bank' | 'check' | 'cash' | 'in-kind' | 'other'
+
+export interface PledgeMarkedPayment {
+  rail: PledgePaymentRail
+  /** sha256 of evidence document, hex-prefixed. */
+  evidenceHash: string
+  /** AgentAccount of the admin who attested. */
+  markedByAgent: string
+  markedAt: string | null
 }
 
 export type SubmitPledgeRequest = Omit<
@@ -94,6 +118,8 @@ export type SubmitPledgeRequest = Omit<
   | 'history'
   | 'visibility'
   | 'onChainAssertionId'
+  | 'settlements'
+  | 'lastMarkedPayment'
 >
 
 export interface AmendPledgeRequest {

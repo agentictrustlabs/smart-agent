@@ -87,6 +87,21 @@ export async function POST(request: Request) {
     console.warn('[demo-login] Community seed failed:', err)
   }
 
+  // Spec 005 — provision personal treasury for demo users too. Same as
+  // passkey/SIWE: the smartAccount IS the treasury (self-referential
+  // sa:hasPersonalTreasury) + MockUSDC mint to 100k.
+  if (user.smartAccountAddress) {
+    try {
+      const { ensurePersonalTreasury } = await import('@/lib/treasury/provision')
+      const r = await ensurePersonalTreasury(user.smartAccountAddress as `0x${string}`)
+      if (!r.ok) {
+        console.warn('[demo-login] treasury provision incomplete:', r.warnings)
+      }
+    } catch (err) {
+      console.warn('[demo-login] treasury provision threw:', err)
+    }
+  }
+
   // Provision the holder wallet (idempotent) so AnonCreds-aware features
   // — trust search, "Test verification", "Get {noun} credential" — work
   // immediately without forcing the user to issue a credential first.

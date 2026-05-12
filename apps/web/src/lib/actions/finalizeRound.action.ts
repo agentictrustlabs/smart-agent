@@ -38,68 +38,67 @@ interface ProposalRow {
 }
 
 async function loadRound(fullRoundId: string): Promise<RoundRow | null> {
-  // voting_threshold lives in org-mcp's slim rounds table (off-chain DAO
-  // config). fundAgentId + status live on chain — read via DiscoveryService.
-  const path = await import('path')
-  const fs = await import('fs')
-  const candidates = [
-    path.resolve(process.cwd(), '../org-mcp/org-mcp.db'),
-    path.resolve(process.cwd(), 'apps/org-mcp/org-mcp.db'),
-  ]
-  const dbPath = candidates.find((p) => fs.existsSync(p))
-  let votingThreshold = 2 // default
-  if (dbPath) {
-    const Database = (await import('better-sqlite3')).default
-    const db = new Database(dbPath, { readonly: true })
-    try {
-      const r = db.prepare('SELECT voting_threshold FROM rounds WHERE id = ?').get(fullRoundId) as
-        | { voting_threshold: number }
-        | undefined
-      if (r) votingThreshold = r.voting_threshold
-    } finally { db.close() }
-  }
-  const { DiscoveryService } = await import('@smart-agent/discovery')
+  // R8 — all round state lives on chain. votingThreshold comes from
+  // FundRegistry.getRoundVotingConfig, fundAgentId from getRoundFundAgent.
+  // The org-mcp SQL `rounds` mirror is dropped.
   const slug = fullRoundId.startsWith('urn:smart-agent:round:')
     ? fullRoundId.slice('urn:smart-agent:round:'.length)
     : fullRoundId
-  const round = await DiscoveryService.fromEnv().getRoundDetail(slug, null)
-  if (!round) return null
-  const AGENT_IRI_PREFIX = 'https://smartagent.io/ontology/core#agent/'
-  const fundAgentId = round.fundAgentId.startsWith(AGENT_IRI_PREFIX)
-    ? round.fundAgentId.slice(AGENT_IRI_PREFIX.length)
-    : round.fundAgentId
+  const { createPublicClient, http, keccak256, toHex } = await import('viem')
+  const { foundry } = await import('viem/chains')
+  const { fundRegistryAbi } = await import('@smart-agent/sdk')
+  const fundRegistry = process.env.FUND_REGISTRY_ADDRESS as `0x${string}` | undefined
+  if (!fundRegistry) return null
+  const client = createPublicClient({
+    chain: foundry,
+    transport: http(process.env.RPC_URL ?? 'http://127.0.0.1:8545'),
+  })
+  const subject = keccak256(toHex(`sa:round:${slug}`))
+  let fundAgentId: `0x${string}` = '0x0000000000000000000000000000000000000000'
+  let votingThreshold = 2
+  try {
+    fundAgentId = (await client.readContract({
+      address: fundRegistry,
+      abi: fundRegistryAbi,
+      functionName: 'getRoundFundAgent',
+      args: [subject],
+    })) as `0x${string}`
+    if (fundAgentId === '0x0000000000000000000000000000000000000000') return null
+  } catch { return null }
+  try {
+    const cfg = await client.readContract({
+      address: fundRegistry,
+      abi: fundRegistryAbi,
+      functionName: 'getRoundVotingConfig',
+      args: [subject],
+    }) as readonly [`0x${string}`, bigint, bigint, bigint]
+    if (cfg[1] > 0n) votingThreshold = Number(cfg[1])
+  } catch { /* default */ }
   return { id: fullRoundId, fundAgentId, votingThreshold }
 }
 
 async function loadProposalsByIds(ids: string[]): Promise<Map<string, ProposalRow>> {
   if (ids.length === 0) return new Map()
-  const path = await import('path')
-  const fs = await import('fs')
-  const candidates = [
-    path.resolve(process.cwd(), '../org-mcp/org-mcp.db'),
-    path.resolve(process.cwd(), 'apps/org-mcp/org-mcp.db'),
-  ]
-  const dbPath = candidates.find((p) => fs.existsSync(p))
-  if (!dbPath) return new Map()
-  const Database = (await import('better-sqlite3')).default
-  const db = new Database(dbPath, { readonly: true })
+  // R8 — read winning proposal bodies from GrantProposalRegistry via the
+  // org-mcp `grant_proposal:list_for_round` reader. The proposal_submissions
+  // SQL mirror is dropped.
+  const want = new Set(ids.map((s) => s.toLowerCase()))
   try {
-    const placeholders = ids.map(() => '?').join(',')
-    const rows = db.prepare(
-      `SELECT id, principal, status, budget, desired_outcomes FROM proposal_submissions WHERE id IN (${placeholders})`
-    ).all(...ids) as Array<{ id: string; principal: string; status: string; budget: string; desired_outcomes: string }>
+    const res = await callMcp<{ proposals: ProposalRow[] }>(
+      'org',
+      'grant_proposal:read_self',
+      {},
+    )
     const m = new Map<string, ProposalRow>()
-    for (const r of rows) {
-      m.set(r.id, {
-        id: r.id,
-        principal: r.principal,
-        status: r.status,
-        budget: r.budget,
-        desiredOutcomes: r.desired_outcomes,
-      })
+    for (const p of res.proposals ?? []) {
+      if (!want.has(p.id.toLowerCase())) continue
+      m.set(p.id, p)
     }
     return m
-  } finally { db.close() }
+  } catch (err) {
+    console.warn('[finalize] proposal lookup failed:', err instanceof Error ? err.message : err)
+    return new Map()
+  }
 }
 
 interface TallyResponse {

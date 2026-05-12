@@ -128,6 +128,17 @@ export async function resolveSpec004Chain(
   }
   const status = await fetchSessionStatus(sessionId)
   if (!status.active || !status.sessionKeyAddress || !status.accountAddress) {
+    // Most common cause: the cookie points at an a2a session that no longer
+    // exists (fresh-start wiped state, a2a-agent restarted, or session
+    // expired). The user-facing fix is to sign out + sign back in — the
+    // demo-login/passkey/SIWE routes all re-bootstrap a fresh session.
+    if (status.reason === 'status-404' || status.reason === 'session not found') {
+      return {
+        ok: false,
+        error: 'session-status-failed',
+        message: 'Your agent session expired or was reset. Sign out and sign back in to bootstrap a new session.',
+      }
+    }
     return {
       ok: false,
       error: 'session-status-failed',

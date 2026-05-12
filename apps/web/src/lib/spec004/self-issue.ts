@@ -1,23 +1,29 @@
 /**
  * Spec 004 (b2) — Self-issue admin→holder marketplace delegation.
  *
- * For stateless-auth users (passkey/SIWE) acting as the pool/round admin
- * for their *own* pool/round, the normal cred-issuance flow doesn't fit:
- * there's no `users.privateKey` to sign the admin delegation, and the
- * pool admin is also the only intended pledger/voter — so the AnonCreds
- * presentation step is overkill.
+ * For users acting as the pool/round admin for their *own* pool/round, the
+ * normal cred-issuance flow doesn't fit: the admin is also the only
+ * intended pledger/voter, so the AnonCreds presentation step is overkill.
  *
- * This helper bypasses the AnonCreds dance and writes a minimal
- * `credential_metadata` row carrying just the admin→holder delegation,
- * deployer-signed (the deployer is an initial owner of every freshly
- * deployed AgentAccount, so ERC-1271 accepts the signature).
+ * This helper writes a minimal `credential_metadata` row carrying just the
+ * admin→holder delegation, signed by the caller's own EOA — NOT the
+ * deployer. The user's EOA must be a registered owner of their smart
+ * account for ERC-1271 to accept the signature; this is the same precond
+ * as any other delegation a user signs.
  *
- *   - delegator: poolAdmin (the user's smart account)
- *   - delegate:  the same smart account (admin acting as their own holder)
+ *   - delegator: caller's smart account (their own AgentAccount)
+ *   - delegate:  the same smart account (self-issue: admin == holder)
  *   - authority: ROOT_AUTHORITY
  *   - caveats:   AllowedTargets(registry) + AllowedMethods(selectors) +
  *                Timestamp(now-60s, now+30d)
- *   - signature: deployer EOA, validated via AgentAccount.isValidSignature
+ *   - signature: caller's EOA private key (passed in by the action layer)
+ *
+ * Demo users sign with `users.privateKey`. Passkey/SIWE users — until the
+ * passkey signing ceremony lands — fall through to a server-side
+ * `walletAddress` EOA derived from session state via `loadSignerForCurrentUser`,
+ * which currently returns the deployer for stateless sessions. That
+ * deployer fallback is a v1 placeholder strictly limited to passkey/SIWE
+ * (see PRINCIPLE in code comments below); demo users never reach it.
  *
  * The row is inserted directly into person-mcp's SQLite at
  * `apps/person-mcp/person-mcp.db` (matching the existing dev-mode
@@ -35,7 +41,7 @@ import {
 } from '@smart-agent/sdk'
 
 interface SelfIssueInput {
-  /** The pool/round admin's smart account (also the holder for self-issue). */
+  /** The user's smart account (delegator + holder). */
   smartAccount: Address
   /** Target registry the delegation gates. */
   targetRegistry: Address
@@ -43,13 +49,22 @@ interface SelfIssueInput {
   methodSelectors: Hex[]
   /** Informational. Pledger creds aren't AnonCred-gated; use a marker. */
   credentialType?: string
+  /** Override the person-mcp principal. Defaults to `person_${smartAccount}`
+   *  which matches passkey/SIWE conventions. Demo users (who have a
+   *  `users` row) need `person_${userId}` to align with chain.ts lookup. */
+  principal?: string
+  /** EOA private key that signs the delegation. MUST be an owner of
+   *  `smartAccount` (else ERC-1271 rejects). Demo users pass their own
+   *  `users.privateKey`. Passkey/SIWE pass whatever `loadSignerForCurrentUser`
+   *  produced for them. The deployer key MUST NOT be passed in for demo
+   *  users — that's the architectural cheat the substrate-independence
+   *  rule (P1) prohibits. */
+  signerPrivateKey: Hex
 }
 
 export async function selfIssueMarketplaceDelegation(
   input: SelfIssueInput,
 ): Promise<{ ok: true; credentialId: string } | { ok: false; error: string }> {
-  const deployerKey = process.env.DEPLOYER_PRIVATE_KEY as Hex | undefined
-  if (!deployerKey) return { ok: false, error: 'DEPLOYER_PRIVATE_KEY not set' }
   const chainId = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? process.env.CHAIN_ID ?? '31337')
   const delegationManager = process.env.DELEGATION_MANAGER_ADDRESS as Address | undefined
   const allowedTargets = process.env.ALLOWED_TARGETS_ENFORCER_ADDRESS as Address | undefined
@@ -63,7 +78,7 @@ export async function selfIssueMarketplaceDelegation(
     }
   }
 
-  const principal = `person_${input.smartAccount.toLowerCase()}`
+  const principal = input.principal ?? `person_${input.smartAccount.toLowerCase()}`
 
   // 1. Resolve the holder wallet. /wallet/provision requires a signed
   //    WalletAction which we can't mint here; instead we rely on the
@@ -102,16 +117,19 @@ export async function selfIssueMarketplaceDelegation(
     enforcers: { allowedTargets, allowedMethods, timestamp },
   })
   const salt = BigInt(Math.floor(Math.random() * Number.MAX_SAFE_INTEGER))
+  // True self-issue: the user's own smart account is both delegator and
+  // delegate. The signer must be a registered owner of `smartAccount` so
+  // ERC-1271 accepts the signature.
   let adminDelegation
   try {
     adminDelegation = await signRootDelegation({
       delegator: input.smartAccount,
-      delegate: input.smartAccount, // admin acts as their own holder for self-issue
+      delegate:  input.smartAccount,
       caveats,
       salt,
       chainId,
       delegationManagerAddress: delegationManager,
-      signerPrivateKey: deployerKey,
+      signerPrivateKey: input.signerPrivateKey,
     })
   } catch (e) {
     return { ok: false, error: `signRootDelegation: ${e instanceof Error ? e.message : String(e)}` }
@@ -161,12 +179,17 @@ export async function selfIssueMarketplaceDelegation(
 export async function selfIssuePledgerDelegation(args: {
   smartAccount: Address
   pledgeRegistry: Address
+  signerPrivateKey: Hex
+  /** Optional principal override (defaults to `person_${smartAccount}`). */
+  principal?: string
 }) {
   return selfIssueMarketplaceDelegation({
     smartAccount: args.smartAccount,
     targetRegistry: args.pledgeRegistry,
     methodSelectors: [SPEC004_SELECTORS.pledgeSubmit],
     credentialType: 'PledgerCredential',
+    principal: args.principal,
+    signerPrivateKey: args.signerPrivateKey,
   })
 }
 
