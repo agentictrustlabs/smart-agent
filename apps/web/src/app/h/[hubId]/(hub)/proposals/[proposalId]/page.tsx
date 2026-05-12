@@ -146,10 +146,18 @@ export default async function ProposalDetailPage({
             </span>
           )}
         </div>
-        <div style={{ marginTop: '0.6rem' }}>
+        <div style={{ marginTop: '0.6rem', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
           <Link href={`/h/${slug}/proposals`} style={{ color: C.accent, fontSize: '0.78rem', textDecoration: 'none' }}>
             ← Back to your proposals
           </Link>
+          {proposal.roundId && (
+            <Link
+              href={`/h/${slug}/rounds/${encodeURIComponent(proposal.roundId.replace('urn:smart-agent:round:', ''))}`}
+              style={{ color: C.accent, fontSize: '0.78rem', textDecoration: 'none' }}
+            >
+              ← Back to round
+            </Link>
+          )}
         </div>
       </div>
 

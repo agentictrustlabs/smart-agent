@@ -18,9 +18,22 @@ import { sqliteTable, text, integer, real } from 'drizzle-orm/sqlite-core'
 // they can run again. See docs/information-architecture/ for the plan.
 // ═══════════════════════════════════════════════════════════════════════
 
-// ─── Users ───────────────────────────────────────────────────────────
-
-export const users = sqliteTable('users', {
+// ─── Local user accounts (demo + google OAuth) ───────────────────
+//
+// Stateful auth flavors that need a server-side profile cache:
+//   - Demo personas (carry a stored EOA `privateKey` so the action layer
+//     can sign on their behalf without the passkey ceremony).
+//   - Google OAuth users (no on-chain identity at signup — profile name
+//     and email get cached here).
+//
+// Passkey + SIWE users intentionally do NOT have a row in this table —
+// their identity is anchored on chain (AgentNameResolver + AgentAccount
+// ERC-1271) and the session JWT carries display fields. See
+// docs/architecture/principles.md § P5 and § P6.
+//
+// Renamed from `users` → `local_user_accounts` so the table name reflects
+// what it actually holds and isn't read as "the canonical user identity".
+export const localUserAccounts = sqliteTable('local_user_accounts', {
   id: text('id').primaryKey(),
   email: text('email'),
   name: text('name').notNull(),
@@ -149,52 +162,10 @@ export const trainingModules = sqliteTable('training_modules', {
 // proposals moved to org-mcp (apps/org-mcp/src/db/schema.ts).
 // On-chain governance state (AgentControl) remains canonical for vote tally.
 
-// ─── Activity Logs (general-purpose field activity tracking) ─────────
-
-export const activityLogs = sqliteTable('activity_logs', {
-  id: text('id').primaryKey(),
-  /** Org agent address this activity belongs to */
-  orgAddress: text('org_address').notNull(),
-  /** User who logged the activity */
-  userId: text('user_id').notNull().references(() => users.id),
-  /** Activity type (general categories) */
-  activityType: text('activity_type', {
-    enum: [
-      'meeting', 'visit', 'training', 'outreach', 'follow-up',
-      'assessment', 'coaching', 'prayer', 'service', 'other',
-    ],
-  }).notNull().default('other'),
-  title: text('title').notNull(),
-  description: text('description'),
-  /** Number of participants / attendees */
-  participants: integer('participants').notNull().default(0),
-  /** Location label (city, neighborhood, etc.) */
-  location: text('location'),
-  /** Latitude for map display */
-  lat: text('lat'),
-  /** Longitude for map display */
-  lng: text('lng'),
-  /** Duration in minutes */
-  durationMinutes: integer('duration_minutes'),
-  /** Optional link to related entity (e.g., group address, edge ID) */
-  relatedEntity: text('related_entity'),
-  /** PROV chain — does this activity address an open need? */
-  fulfillsNeedId: text('fulfills_need_id'),
-  /** PROV chain — generalised intent link. Set alongside fulfillsNeedId for
-   *  receive-shaped intents; set alone for give/free-form intents. */
-  fulfillsIntentId: text('fulfills_intent_id'),
-  /** PROV chain — closes the marketplace→fulfillment chain. When this
-   *  is set the activity action backfills fulfillsIntentId and
-   *  fulfillsNeedId from the entitlement's links. */
-  fulfillsEntitlementId: text('fulfills_entitlement_id'),
-  /** PROV chain — Outcome contributed to by this activity. */
-  achievesOutcomeId: text('achieves_outcome_id'),
-  /** PROV chain — does this activity draw on a specific resource offering? */
-  usesOfferingId: text('uses_offering_id'),
-  /** Date of the activity (may differ from created_at) */
-  activityDate: text('activity_date').notNull().$defaultFn(() => new Date().toISOString()),
-  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
-})
+// ─── Activity Logs — REMOVED ─────────────────────────────────────
+// Activity logs moved to the org agent's on-chain metadata
+// (`getActivityLog` / `setActivityLog`) during the data-store consolidation;
+// the web SQL cache held PII and is no longer canonical.
 
 // ─── Detached Members (people tracked without accounts) ─────────────
 
@@ -207,7 +178,7 @@ export const detachedMembers = sqliteTable('detached_members', {
   assignedNodeId: text('assigned_node_id'),
   role: text('role'),
   notes: text('notes'),
-  createdBy: text('created_by').notNull().references(() => users.id),
+  createdBy: text('created_by').notNull().references(() => localUserAccounts.id),
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
 })
 
@@ -217,27 +188,8 @@ export const detachedMembers = sqliteTable('detached_members', {
 // edge type; only the cross-delegation grant for shared categories lives in
 // person-mcp's cross_delegation_grants table.
 
-// ─── Messages / Notifications ────────────────────────────────────────
-
-export const messages = sqliteTable('messages', {
-  id: text('id').primaryKey(),
-  userId: text('user_id').notNull().references(() => users.id),
-  type: text('type', {
-    enum: [
-      'ownership_offered', 'ownership_accepted',
-      'relationship_proposed', 'relationship_confirmed', 'relationship_rejected',
-      'review_received', 'dispute_filed',
-      'proposal_created', 'proposal_executed',
-      'invite_sent', 'invite_accepted',
-      'data_access_granted', 'data_access_revoked',
-    ],
-  }).notNull(),
-  title: text('title').notNull(),
-  body: text('body').notNull(),
-  link: text('link'),
-  read: integer('read').notNull().default(0),
-  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
-})
+// ─── Messages / Notifications — REMOVED ──────────────────────────
+// Moved to person-mcp.notifications / org-mcp.org_notifications.
 
 // ─── Needs / Resources / Matches (Discover layer) ──────────────────
 //
@@ -251,100 +203,14 @@ export const messages = sqliteTable('messages', {
 // types where verifiability matters (funding commitments, scripture-
 // translation pledges, leadership credentials).
 
-/**
- * NeedOccurrence — the contextual gap right now. Every active gap a
- * group/agent has gets a row. The need-type taxonomy lives in the
- * SKOS C-Box; this table just stores the type *concept URI* so the UI
- * can render labels and the scorer can filter by type.
- */
-export const needs = sqliteTable('needs', {
-  id: text('id').primaryKey(),
-  /** SKOS concept URI — e.g. "needType:CircleCoachNeeded". */
-  needType: text('need_type').notNull(),
-  /** Cached human label for fast UI rendering. */
-  needTypeLabel: text('need_type_label').notNull(),
-  /** Address of the agent (org/person/group) that holds the need. */
-  neededByAgent: text('needed_by_agent').notNull(),
-  /** Optional link back to the DB user that filed the need. */
-  neededByUserId: text('needed_by_user_id'),
-  /** Hub scope: 'catalyst' | 'cil' | 'global-church' | 'generic'. */
-  hubId: text('hub_id').notNull(),
-  title: text('title').notNull(),
-  detail: text('detail'),
-  priority: text('priority', {
-    enum: ['critical', 'high', 'normal', 'low'],
-  }).notNull().default('normal'),
-  status: text('status', {
-    enum: ['open', 'in-progress', 'met', 'cancelled', 'expired'],
-  }).notNull().default('open'),
-  /** JSON: { role?: string, skill?: string, geo?: string, time?: object, capacity?: object, credential?: string } */
-  requirements: text('requirements'),
-  /** ISO datetime — after this, status auto-transitions to 'expired'. */
-  validUntil: text('valid_until'),
-  createdBy: text('created_by').notNull(),
-  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
-  updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
-})
+// `needs` and `resourceOfferings` SQL tables — REMOVED. Intent bodies live
+// in the owner's MCP (person-mcp / org-mcp); the legacy Need/Offering
+// projections were replaced by the unified `intents` direction=receive|give
+// path. See lib/intents/router.ts.
 
-/**
- * ResourceOffering — what an agent has put forward. The agent stays an
- * agent; the offering carries the situational context (geo, time,
- * capacity, capabilities, status). Discover matches NeedOccurrences to
- * Offerings, not to raw Resources.
- */
-export const resourceOfferings = sqliteTable('resource_offerings', {
-  id: text('id').primaryKey(),
-  offeredByAgent: text('offered_by_agent').notNull(),
-  offeredByUserId: text('offered_by_user_id'),
-  hubId: text('hub_id').notNull(),
-  /** SKOS concept URI — e.g. "resourceType:Worker". One of the 12 v0 kinds. */
-  resourceType: text('resource_type').notNull(),
-  resourceTypeLabel: text('resource_type_label').notNull(),
-  title: text('title').notNull(),
-  detail: text('detail'),
-  status: text('status', {
-    enum: ['available', 'reserved', 'saturated', 'paused', 'withdrawn'],
-  }).notNull().default('available'),
-  /** JSON: hours-per-week, dollars, count, etc. — type-specific. */
-  capacity: text('capacity'),
-  /** featureId or place label (e.g. "us/colorado/wellington"). */
-  geo: text('geo'),
-  /** JSON: { start, end, recurrence } — e.g. { recurrence: "weekly", days: ["mon","wed"] }. */
-  timeWindow: text('time_window'),
-  /** JSON: [{ skill: string, role: string, level: string, evidence: string }]. */
-  capabilities: text('capabilities'),
-  validUntil: text('valid_until'),
-  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
-})
-
-/**
- * NeedResourceMatch — the bridge artifact. Discover-generated; carries
- * the score, the satisfied/missed requirements, the explanation. UI
- * renders this as the match-detail surface; work-queue aggregator
- * surfaces proposed matches as work items for the matched agent.
- */
-export const needResourceMatches = sqliteTable('need_resource_matches', {
-  id: text('id').primaryKey(),
-  needId: text('need_id').notNull().references(() => needs.id),
-  offeringId: text('offering_id').notNull().references(() => resourceOfferings.id),
-  /** Convenience cache: who is the offering's agent. */
-  matchedAgent: text('matched_agent').notNull(),
-  status: text('status', {
-    enum: ['proposed', 'accepted', 'rejected', 'stale', 'fulfilled'],
-  }).notNull().default('proposed'),
-  /** 0..10000 basis points. <2000 not surfaced. <4000 not in default ranked list. */
-  score: integer('score').notNull(),
-  /** SKOS concept URI — e.g. "matchReason:SkillRoleGeoFit". */
-  reason: text('reason').notNull(),
-  /** JSON: list of requirement keys the offering satisfies. */
-  satisfies: text('satisfies'),
-  /** JSON: list of requirement keys the offering does NOT satisfy. */
-  misses: text('misses'),
-  /** Optional: link back to the DiscoverActivity row in activityLogs. */
-  generatedByActivity: text('generated_by_activity'),
-  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
-  updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
-})
+// `needResourceMatches` SQL table — REMOVED. The bridge artifact moved to
+// `intent_matches` (Spec 001) and on-chain `MatchInitiationRegistry`
+// (Spec 004). Discover routing goes through the federated intents router.
 
 // ─── Intent / BDI Layer ───────────────────────────────────────────
 //
@@ -412,38 +278,8 @@ export const intents = sqliteTable('intents', {
   updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
 })
 
-/** Outcome — the success criterion an intent commits to. */
-export const outcomes = sqliteTable('outcomes', {
-  id: text('id').primaryKey(),
-  /** Soft reference to an intent id. Spec 004 — the `intents` SQL table
-   *  is dropped; this is now a string id pointing at an MCP-owned
-   *  intent (person-mcp / org-mcp). No FK constraint. */
-  intentId: text('intent_id').notNull(),
-  description: text('description').notNull(),
-  /** JSON: { kind: 'count'|'boolean'|'date'|'narrative', target: any, observed?: any }. */
-  metric: text('metric').notNull(),
-  status: text('status', { enum: ['pending', 'partial', 'achieved', 'not-achieved'] }).notNull().default('pending'),
-  observedAt: text('observed_at'),
-  observedBy: text('observed_by'),
-  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
-})
-
-/** Belief — light wrapper over AgentAssertion. Most beliefs are on
- *  chain; this table is for off-chain working beliefs that inform
- *  intent expression but don't yet warrant an Assertion mint. */
-export const beliefs = sqliteTable('beliefs', {
-  id: text('id').primaryKey(),
-  heldByAgent: text('held_by_agent').notNull(),
-  /** Optional: backing AgentAssertion id from the on-chain contract. */
-  assertionId: text('assertion_id'),
-  statement: text('statement').notNull(),
-  /** Confidence 0..100 — 100 = held with certainty. */
-  confidence: integer('confidence').notNull().default(75),
-  /** Optional FK — a belief that informs / supplies rationale for an intent. */
-  informsIntentId: text('informs_intent_id'),
-  validUntil: text('valid_until'),
-  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
-})
+// `outcomes` SQL table — REMOVED. Outcomes belong to the intent owner;
+// per-side MCPs (person-mcp.outcomes / org-mcp.org_outcomes) are canonical.
 
 // ─── Entitlement / Fulfillment Layer ─────────────────────────────
 //
@@ -700,78 +536,11 @@ export const policySigners = sqliteTable('policy_signers', {
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
 })
 
-// ─── Trust Deposit Layer (R7) ────────────────────────────────────
+// ─── Trust Deposit Layer (R7) — REMOVED ──────────────────────────
 //
-// Round-trip closure on dual-confirm mints these artifacts. v0 stores them
-// in local SQLite as the off-chain mirror; on-chain analogues exist in
-// packages/contracts (AgentReviewRecord, AgentSkillRegistry, AgentAssertion,
-// AgentValidationProfile). The DB columns prefigure the on-chain shape.
-//
-// Spec: docs/specs/round-trip-trust-deposit-plan.md §4
-
-/**
- * AgentReviewRecord — one party reviewing the other after dual confirmation.
- * Two rows per closed engagement: holder→provider, provider→holder.
- */
-export const agentReviewRecords = sqliteTable('agent_review_records', {
-  id: text('id').primaryKey(),
-  reviewerAgent: text('reviewer_agent').notNull(),
-  subjectAgent: text('subject_agent').notNull(),
-  engagementId: text('engagement_id').notNull(),
-  /** 0..100 score; weighted by witness presence + capacity density. */
-  score: integer('score').notNull(),
-  /** 0..1 confidence. */
-  confidence: real('confidence').notNull(),
-  narrative: text('narrative'),
-  /** 1 if a witness signed before close, else 0 — lifts downstream weight. */
-  witnessLifted: integer('witness_lifted').notNull().default(0),
-  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
-})
-
-/**
- * AgentSkillClaim — attested skill demonstrated through an engagement.
- * `side='provider'` claims are about *delivering* a skill; `side='holder'`
- * claims capture growth on the receiving side ("received-coaching",
- * "managed-grant"). Both sides grow.
- */
-export const agentSkillClaims = sqliteTable('agent_skill_claims', {
-  id: text('id').primaryKey(),
-  subjectAgent: text('subject_agent').notNull(),
-  /** Skill slug — derived from terms.skill / terms.role / terms.object leaf. */
-  skillSlug: text('skill_slug').notNull(),
-  side: text('side', { enum: ['holder', 'provider'] }).notNull(),
-  attestorAgent: text('attestor_agent').notNull(),
-  engagementId: text('engagement_id').notNull(),
-  confidence: real('confidence').notNull(),
-  witnessLifted: integer('witness_lifted').notNull().default(0),
-  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
-})
-
-/**
- * AgentAssertion — the engagement-as-claim, with both signatures and the
- * pinned evidence bundle hash. Future: full on-chain mint of this hash.
- */
-export const agentAssertions = sqliteTable('agent_assertions', {
-  id: text('id').primaryKey(),
-  engagementId: text('engagement_id').notNull(),
-  /** Canonical JSON of the engagement closure facts. */
-  payload: text('payload').notNull(),
-  /** sha256 of payload (0x-prefixed hex). */
-  payloadHash: text('payload_hash').notNull(),
-  witnessLifted: integer('witness_lifted').notNull().default(0),
-  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
-})
-
-/**
- * AgentValidationProfile — running counts and recency of trust deposits per
- * agent. The match-scoring read in R8 reads from here.
- */
-export const agentValidationProfiles = sqliteTable('agent_validation_profiles', {
-  /** Lowercased agent address. */
-  agent: text('agent').primaryKey(),
-  engagementsCount: integer('engagements_count').notNull().default(0),
-  witnessedCount: integer('witnessed_count').notNull().default(0),
-  lastEngagementAt: text('last_engagement_at'),
-  createdAt: text('created_at').notNull(),
-  updatedAt: text('updated_at').notNull(),
-})
+// The off-chain mirror tables (agent_review_records, agent_skill_claims,
+// agent_assertions, agent_validation_profiles) lived in SQLite as a cache
+// of the on-chain contracts in packages/contracts. They were dropped in
+// the data-store consolidation; on-chain registries + GraphDB are
+// canonical now. The schema definitions are removed so dead reads can be
+// found by typechecker. Spec history: docs/specs/round-trip-trust-deposit-plan.md §4.

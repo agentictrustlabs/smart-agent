@@ -5,8 +5,6 @@ import { getPublicClient } from '@/lib/contracts'
 import { agentAccountResolverAbi, ATL_GENMAP_DATA } from '@smart-agent/sdk'
 import { getOrgMembers } from '@/lib/get-org-members'
 import { getTrackedMembers } from '@/lib/agent-resolver'
-import { db, schema } from '@/db'
-import { and, eq } from 'drizzle-orm'
 import { ChurchDetailClient } from './ChurchDetailClient'
 
 interface Props {
@@ -44,13 +42,8 @@ export default async function ChurchDetailPage({ params }: Props) {
   // Load tracked members
   const trackedMembers = await getTrackedMembers(address)
 
-  // Load meetings (activity logs where relatedEntity = address and type = 'meeting')
-  let meetings: any[] = []
-  try { meetings = await db.select().from(schema.activityLogs)
-    .where(and(
-      eq(schema.activityLogs.relatedEntity, address),
-      eq(schema.activityLogs.activityType, 'meeting'),
-    )) } catch { /* activityLogs table dropped */ }
+  // Load meetings — activityLogs table dropped; empty result preserves downstream type
+  const meetings: any[] = []
 
   // Determine org address: use the parent org or fallback to the address itself
   const orgAddress = (typeof healthData.orgAddress === 'string' ? healthData.orgAddress : address)

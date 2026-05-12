@@ -76,75 +76,13 @@ export async function mintTrustDeposit(input: {
   const reviewByProvider = randomUUID()
   reviewIds.push(reviewByHolder, reviewByProvider)
 
-  try {
-    try { db.insert(schema.agentReviewRecords).values([
-      {
-        id: reviewByHolder,
-        reviewerAgent: ent.holderAgent,
-        subjectAgent: ent.providerAgent,
-        engagementId: ent.id,
-        score: baseScore,
-        confidence,
-        // Quiet engagements omit the topic from the narrative — only the
-        // resource leaf is recorded, never the case detail.
-        narrative: isQuiet
-          ? `Quiet engagement — ${skillSlug} (content not stored).`
-          : `Holder review — engagement around ${terms.topic ?? skillSlug}.`,
-        witnessLifted: witnessLifted ? 1 : 0,
-        createdAt: now,
-      },
-      {
-        id: reviewByProvider,
-        reviewerAgent: ent.providerAgent,
-        subjectAgent: ent.holderAgent,
-        engagementId: ent.id,
-        score: baseScore,
-        confidence,
-        narrative: isQuiet
-          ? `Quiet engagement — ${skillSlug} (content not stored).`
-          : `Provider review — engagement around ${terms.topic ?? skillSlug}.`,
-        witnessLifted: witnessLifted ? 1 : 0,
-        createdAt: now,
-      },
-    ]).run()
-   } catch { /* agentReviewRecords table dropped */ }} catch (err) {
-    return { error: 'review-insert-failed: ' + (err as Error).message }
-  }
-
-  // ── AgentSkillRegistry claims (both parties grow) ─────────────
-  const providerSkillId = randomUUID()
-  const holderSkillId = randomUUID()
-  skillClaimIds.push(providerSkillId, holderSkillId)
-  try {
-    try { db.insert(schema.agentSkillClaims).values([
-      {
-        id: providerSkillId,
-        subjectAgent: ent.providerAgent,
-        skillSlug,
-        side: 'provider',
-        attestorAgent: ent.holderAgent,
-        engagementId: ent.id,
-        confidence,
-        witnessLifted: witnessLifted ? 1 : 0,
-        createdAt: now,
-      },
-      {
-        id: holderSkillId,
-        subjectAgent: ent.holderAgent,
-        skillSlug: `received-${skillSlug}`,
-        side: 'holder',
-        attestorAgent: ent.providerAgent,
-        engagementId: ent.id,
-        confidence,
-        witnessLifted: witnessLifted ? 1 : 0,
-        createdAt: now,
-      },
-    ]).run()
-   } catch { /* agentSkillClaims table dropped */ }} catch (err) {
-    return { error: 'skill-claim-insert-failed: ' + (err as Error).message }
-  }
-
-  // ── AgentAssertion: engagement-as-claim, with both signatures ─
+  // Trust mirror tables (agentReviewRecords / agentSkillClaims /
+  // agentAssertions / agentValidationProfiles) were dropped during the
+  // data-store consolidation. On-chain registries are canonical; this
+  // action used to insert into the SQL mirror but now skips entirely.
+  // The returned ids are placeholders so callers can still thread them
+  // through the engagement record + thread entry below; re-implement
+  // against the on-chain writers when needed.
   const assertionId = randomUUID()
   const assertionPayload = JSON.stringify({
     engagementId: ent.id,
@@ -158,18 +96,11 @@ export async function mintTrustDeposit(input: {
     skillSlug,
   })
   const assertionHash = '0x' + createHash('sha256').update(assertionPayload).digest('hex')
-  try {
-    try { db.insert(schema.agentAssertions).values({
-      id: assertionId,
-      engagementId: ent.id,
-      payload: assertionPayload,
-      payloadHash: assertionHash,
-      witnessLifted: witnessLifted ? 1 : 0,
-      createdAt: now,
-    }).run()
-   } catch { /* agentAssertions table dropped */ }} catch (err) {
-    return { error: 'assertion-insert-failed: ' + (err as Error).message }
-  }
+  skillClaimIds.push(randomUUID(), randomUUID())
+  void baseScore
+  void confidence
+  void isQuiet
+  void terms
 
   // ── Persist refs back on engagement, advance phase, deposit ───
   try { db.update(schema.entitlements)
@@ -201,31 +132,10 @@ export async function mintTrustDeposit(input: {
   }
 }
 
-async function bumpValidationProfile(agent: string, witnessLifted: boolean, now: string): Promise<void> {
-  const lower = agent.toLowerCase()
-  let existing: any = [] as any[]
-  try { existing = db.select().from(schema.agentValidationProfiles)
-    .where(eq(schema.agentValidationProfiles.agent, lower)).get()
-   } catch { /* agentValidationProfiles table dropped */ }if (existing) {
-    try { db.update(schema.agentValidationProfiles)
-      .set({
-        engagementsCount: existing.engagementsCount + 1,
-        witnessedCount: existing.witnessedCount + (witnessLifted ? 1 : 0),
-        lastEngagementAt: now,
-        updatedAt: now,
-      })
-      .where(eq(schema.agentValidationProfiles.agent, lower))
-      .run()
-   } catch { /* agentValidationProfiles table dropped */ }} else {
-    try { db.insert(schema.agentValidationProfiles).values({
-      agent: lower,
-      engagementsCount: 1,
-      witnessedCount: witnessLifted ? 1 : 0,
-      lastEngagementAt: now,
-      createdAt: now,
-      updatedAt: now,
-    }).run()
-   } catch { /* agentValidationProfiles table dropped */ }}
+async function bumpValidationProfile(_agent: string, _witnessLifted: boolean, _now: string): Promise<void> {
+  // agentValidationProfiles table dropped — on-chain AgentValidationProfile
+  // contract is canonical. The on-chain writer is not yet wired through
+  // this action layer; track in v2-backlog.
 }
 
 function safeParse<T>(s: string | null): T | null {

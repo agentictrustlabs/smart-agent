@@ -129,23 +129,8 @@ export async function getDiscipleDetails(discipleId: string): Promise<{
   // Activity logs still live in web SQL (Phase 5 work). Prayer + training
   // counts moved to person-mcp and require a cross-delegation grant from the
   // disciple — until that flow ships those stay zero.
-  const { db, schema } = await import('@/db')
-  const { eq, desc } = await import('drizzle-orm')
-
-  let activities: DiscipleActivity[] = []
-  try {
-    let rows: any[] = []
-    try { rows = await db.select().from(schema.activityLogs)
-      .where(eq(schema.activityLogs.userId, discipleId))
-      .orderBy(desc(schema.activityLogs.activityDate))
-      .limit(5) } catch { /* activityLogs table dropped */ }
-    activities = (rows as any[] | undefined ?? []).map((r: any) => ({
-      id: r.id,
-      activityType: r.activityType,
-      title: r.title,
-      activityDate: r.activityDate,
-    }))
-  } catch { /* table may not exist */ }
+  void discipleId
+  const activities: DiscipleActivity[] = []  // activityLogs table dropped — empty result preserves downstream type
 
   const lastActivity = activities[0]?.activityDate ?? null
 

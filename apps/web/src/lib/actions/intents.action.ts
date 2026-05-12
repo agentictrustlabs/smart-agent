@@ -188,52 +188,8 @@ export async function expressIntent(input: ExpressIntentInput): Promise<{ id: st
   }
   const payloadJson = JSON.stringify(incomingPayload)
 
-  // Project to legacy table when shape fits.
-  let projectionRef: string | null = null
-  try {
-    if (input.direction === 'receive') {
-      const projId = randomUUID()
-      try { db.insert(schema.needs).values({
-        id: projId,
-        needType: input.intentType,
-        needTypeLabel: input.intentTypeLabel,
-        neededByAgent: input.expressedByAgent.toLowerCase(),
-        neededByUserId: me.id,
-        hubId: input.hubId,
-        title: input.title,
-        detail: input.detail ?? null,
-        priority: input.priority ?? 'normal',
-        status: 'open',
-        requirements: input.payload ? JSON.stringify(input.payload) : null,
-        validUntil: input.validUntil ?? null,
-        createdBy: me.id,
-        createdAt: now,
-        updatedAt: now,
-      }).run() } catch { /* needs table dropped */ }
-      projectionRef = projId
-    } else if (input.direction === 'give') {
-      const projId = randomUUID()
-      try { db.insert(schema.resourceOfferings).values({
-        id: projId,
-        offeredByAgent: input.expressedByAgent.toLowerCase(),
-        offeredByUserId: me.id,
-        hubId: input.hubId,
-        resourceType: input.object,
-        resourceTypeLabel: input.intentTypeLabel,
-        title: input.title,
-        detail: input.detail ?? null,
-        status: 'available',
-        capacity: input.payload?.capacity ? JSON.stringify(input.payload.capacity) : null,
-        geo: typeof input.payload?.geo === 'string' ? input.payload.geo : null,
-        timeWindow: input.payload?.timeWindow ? JSON.stringify(input.payload.timeWindow) : null,
-        capabilities: null,
-        validUntil: input.validUntil ?? null,
-      }).run() } catch { /* resourceOfferings table dropped */ }
-      projectionRef = projId
-    }
-  } catch (err) {
-    console.warn('[intents] projection failed (non-fatal):', (err as Error).message)
-  }
+  // (needs/resourceOfferings tables dropped — no legacy projection)
+  const projectionRef: string | null = null
 
   // Insert the canonical intents row.
   try { db.insert(schema.intents).values({
@@ -299,20 +255,7 @@ export async function expressIntent(input: ExpressIntentInput): Promise<{ id: st
     console.warn('[intents] MCP mirror failed (non-fatal):', err instanceof Error ? err.message : err)
   }
 
-  // If we have a structured outcome, mint an outcomes row too so the
-  // observation pipeline (Activity.achievesOutcomeId) has a target.
-  if (input.expectedOutcome) {
-    try { db.insert(schema.outcomes).values({
-      id: randomUUID(),
-      intentId: id,
-      description: input.expectedOutcome.description,
-      metric: JSON.stringify(input.expectedOutcome.metric),
-      status: 'pending',
-      observedAt: null,
-      observedBy: null,
-      createdAt: now,
-    }).run() } catch { /* outcomes table dropped */ }
-  }
+  // (outcomes table dropped — observation pipeline target stored in MCP going forward)
 
   return { id: canonicalId, projectionRef: projectionRef ?? undefined }
 }
@@ -352,20 +295,7 @@ export async function withdrawIntent(intentId: string): Promise<{ ok: true } | {
   } catch (err) {
     console.warn('[intents] MCP withdraw mirror failed (non-fatal):', err instanceof Error ? err.message : err)
   }
-  // Cascade: close the legacy projection too.
-  if (row.projectionRef) {
-    if (row.direction === 'receive') {
-      try { db.update(schema.needs)
-        .set({ status: 'cancelled', updatedAt: new Date().toISOString() })
-        .where(eq(schema.needs.id, row.projectionRef))
-        .run() } catch { /* needs table dropped */ }
-    } else {
-      try { db.update(schema.resourceOfferings)
-        .set({ status: 'withdrawn' })
-        .where(eq(schema.resourceOfferings.id, row.projectionRef))
-        .run() } catch { /* resourceOfferings table dropped */ }
-    }
-  }
+  // (needs/resourceOfferings tables dropped — no legacy projection cascade)
   return { ok: true }
 }
 
@@ -495,16 +425,8 @@ export async function getIntent(id: string): Promise<IntentDetail | null> {
     intent = mcpRowToWebIntent(mcp)
   }
 
-  let outcomeRow: any = undefined
-  try { outcomeRow = db.select().from(schema.outcomes).where(eq(schema.outcomes.intentId, id)).get() } catch { /* outcomes table dropped */ }
-  const outcome = outcomeRow
-    ? {
-        id: outcomeRow.id,
-        description: outcomeRow.description,
-        metric: safeJsonParse<OutcomeMetric>(outcomeRow.metric) ?? { kind: 'narrative' },
-        status: outcomeRow.status,
-      }
-    : null
+  // outcomes table dropped — outcome lookup moved to MCP
+  const outcome = null
   return { ...intent, outcome }
 }
 
@@ -535,111 +457,7 @@ export async function getIntentForLegacyOffering(offeringId: string): Promise<In
 export async function backfillIntentsFromLegacy(): Promise<{ needsBackfilled: number; offeringsBackfilled: number }> {
   return { needsBackfilled: 0, offeringsBackfilled: 0 }
 }
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-async function _deprecatedBackfillImpl(): Promise<{ needsBackfilled: number; offeringsBackfilled: number }> {
-  let needsBackfilled = 0
-  let offeringsBackfilled = 0
-  const now = new Date().toISOString()
-
-  // Receive-shaped: every needs row.
-  let allNeeds: any[] = []
-  try { allNeeds = db.select().from(schema.needs).all() } catch { /* needs table dropped */ }
-  for (const n of allNeeds) {
-    let existing: any = undefined
-    try { existing = db.select().from(schema.intents)
-      .where(and(eq(schema.intents.projectionRef, n.id), eq(schema.intents.direction, 'receive')))
-      .get() } catch { /* intents table dropped */ }
-    if (existing) continue
-    // Map the need's status to an intent status.
-    const intentStatus: IntentStatus = n.status === 'open' ? 'expressed'
-      : n.status === 'in-progress' ? 'in-progress'
-      : n.status === 'met' ? 'fulfilled'
-      : n.status === 'cancelled' ? 'withdrawn'
-      : n.status === 'expired' ? 'abandoned'
-      : 'expressed'
-    // Object inferred from the need-type → resource-type mapping table.
-    const inferredObject = inferObjectFromNeedType(n.needType)
-
-    // R16/R17 — explicit beneficiary on every intent. We expect the
-    // beneficiary to already be embedded in `requirements.beneficiaryAgent`
-    // (set by the seed or by the express-intent flow). If absent, the
-    // intent will refuse to match — acceptMatch throws on missing beneficiary.
-    const requirementsParsed = n.requirements ? safeParseObject(n.requirements) : {}
-    const payloadWithBeneficiary = JSON.stringify({
-      ...requirementsParsed,
-      beneficiaryAgent: typeof requirementsParsed.beneficiaryAgent === 'string'
-        ? requirementsParsed.beneficiaryAgent
-        : null,
-    })
-
-    try { db.insert(schema.intents).values({
-      id: randomUUID(),
-      direction: 'receive',
-      object: inferredObject,
-      topic: null,
-      intentType: n.needType,
-      intentTypeLabel: n.needTypeLabel,
-      expressedByAgent: n.neededByAgent,
-      expressedByUserId: n.neededByUserId,
-      addressedTo: `hub:${n.hubId}`,
-      hubId: n.hubId,
-      title: n.title,
-      detail: n.detail,
-      payload: payloadWithBeneficiary,
-      status: intentStatus,
-      priority: n.priority,
-      visibility: 'public',
-      expectedOutcome: null,
-      projectionRef: n.id,
-      validUntil: n.validUntil,
-      createdAt: n.createdAt,
-      updatedAt: now,
-    }).run() } catch { /* intents table dropped */ }
-    needsBackfilled++
-  }
-
-  // Give-shaped: every resource_offerings row.
-  let allOfferings: any[] = []
-  try { allOfferings = db.select().from(schema.resourceOfferings).all() } catch { /* resourceOfferings table dropped */ }
-  for (const o of allOfferings) {
-    let existing: any = undefined
-    try { existing = db.select().from(schema.intents)
-      .where(and(eq(schema.intents.projectionRef, o.id), eq(schema.intents.direction, 'give')))
-      .get() } catch { /* intents table dropped */ }
-    if (existing) continue
-    const intentStatus: IntentStatus = o.status === 'available' ? 'expressed'
-      : o.status === 'reserved' ? 'in-progress'
-      : o.status === 'saturated' ? 'fulfilled'
-      : o.status === 'paused' ? 'expressed'
-      : o.status === 'withdrawn' ? 'withdrawn'
-      : 'expressed'
-    try { db.insert(schema.intents).values({
-      id: randomUUID(),
-      direction: 'give',
-      object: o.resourceType,
-      topic: null,
-      intentType: inferGiveIntentType(o.resourceType),
-      intentTypeLabel: o.resourceTypeLabel,
-      expressedByAgent: o.offeredByAgent,
-      expressedByUserId: o.offeredByUserId,
-      addressedTo: `hub:${o.hubId}`,
-      hubId: o.hubId,
-      title: o.title,
-      detail: o.detail,
-      payload: o.capabilities ? `{"capabilities":${o.capabilities}}` : null,
-      status: intentStatus,
-      priority: 'normal',
-      visibility: 'public',
-      expectedOutcome: null,
-      projectionRef: o.id,
-      validUntil: o.validUntil,
-      createdAt: o.createdAt,
-      updatedAt: now,
-    }).run() } catch { /* intents table dropped */ }
-    offeringsBackfilled++
-  }
-  return { needsBackfilled, offeringsBackfilled }
-}
+// Legacy backfill removed — needs/resourceOfferings tables dropped.
 
 // R16/R17 helpers ──────────────────────────────────────────────────────
 
@@ -647,46 +465,6 @@ async function resolvePersonAgentForUser(userId: string): Promise<string | null>
   const { getPersonAgentForUser } = await import('@/lib/agent-registry')
   const a = await getPersonAgentForUser(userId)
   return a ? a.toLowerCase() : null
-}
-
-function safeParseObject(s: string): Record<string, unknown> {
-  try { return JSON.parse(s) as Record<string, unknown> } catch { return {} }
-}
-
-// Need-type → resource-type. Mirrors NEED_TYPE_TO_RESOURCE_TYPES in the
-// scorer (lib/discover/scorer.ts) but picks the *primary* match — we only
-// store one object per intent.
-function inferObjectFromNeedType(needType: string): string {
-  const map: Record<string, string> = {
-    'needType:CircleCoachNeeded':      'resourceType:Worker',
-    'needType:GroupLeaderApprentice':  'resourceType:Worker',
-    'needType:Treasurer':              'resourceType:Worker',
-    'needType:PrayerPartner':          'resourceType:Prayer',
-    'needType:ConnectorToFunder':      'resourceType:Connector',
-    'needType:HeartLanguageScripture': 'resourceType:Scripture',
-    'needType:TrainerForT4T':          'resourceType:Worker',
-    'needType:VenueForGathering':      'resourceType:Venue',
-    'needType:TraumaInformedCare':     'resourceType:Worker',
-    'intentType:NeedFunding':          'resourceType:Money',
-    'intentType:NeedInformation':      'resourceType:Data',
-    'intentType:NeedSafePlace':        'resourceType:Venue',
-  }
-  return map[needType] ?? 'resourceType:Worker'  // safe default
-}
-
-function inferGiveIntentType(resourceType: string): string {
-  const map: Record<string, string> = {
-    'resourceType:Skill':        'intentType:OfferSkill',
-    'resourceType:Money':        'intentType:OfferFunding',
-    'resourceType:Data':         'intentType:OfferInformation',
-    'resourceType:Prayer':       'intentType:OfferPrayer',
-    'resourceType:Worker':       'intentType:WantToContribute',
-    'resourceType:Scripture':    'intentType:OfferTeaching',
-    'resourceType:Connector':    'intentType:OfferIntroduction',
-    'resourceType:Venue':        'intentType:OfferVenue',
-    'resourceType:Curriculum':   'intentType:OfferTeaching',
-  }
-  return map[resourceType] ?? 'intentType:WantToContribute'
 }
 
 // ─── Hub summary (drives the home strip) ────────────────────────────

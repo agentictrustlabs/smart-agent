@@ -129,18 +129,24 @@ export async function submitProposal(
     expectedAttributes: expectedAttrs,
   })
 
-  // Stateless self-issue: passkey/SIWE users acting as their own pool
-  // admin have no ProposalSubmitterCredential. Auto-issue + retry once.
+  // Any EOA-backed user (demo or stateless) acting as their own pool admin
+  // has no ProposalSubmitterCredential pre-issued. Auto-self-issue using
+  // the caller's OWN key (demo: users.privateKey; stateless: the
+  // loadSignerForCurrentUser placeholder).
   if (!pres.ok && pres.error.includes('no held credential')) {
     const { getSession } = await import('@/lib/auth/session')
     const session = await getSession()
-    const stateless = session?.via === 'passkey' || session?.via === 'siwe'
-    if (stateless && session?.smartAccountAddress && input.poolAgentId) {
+    const { loadSignerForCurrentUser } = await import('@/lib/ssi/signer')
+    let signerCtx: Awaited<ReturnType<typeof loadSignerForCurrentUser>> | null = null
+    try { signerCtx = await loadSignerForCurrentUser() } catch { /* not signed in */ }
+    if (signerCtx?.kind === 'eoa' && signerCtx.userRow.privateKey && session?.smartAccountAddress && input.poolAgentId) {
       const { selfIssueMarketplaceCredential } = await import('@/lib/spec004/self-issue')
       const issued = await selfIssueMarketplaceCredential({
         smartAccount: session.smartAccountAddress as `0x${string}`,
+        signerPrivateKey: signerCtx.userRow.privateKey as `0x${string}`,
         credentialType: 'ProposalSubmitterCredential',
         poolAgentId: input.poolAgentId,
+        principal: signerCtx.principal,
       })
       if (issued.ok) {
         pres = await buildMarketplacePresentation({

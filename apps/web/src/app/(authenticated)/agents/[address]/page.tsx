@@ -15,6 +15,7 @@ import {
 } from '@smart-agent/sdk'
 import { toDidEthr } from '@smart-agent/sdk'
 import { getAgentMetadata, buildAgentNameMap, getNameFromMap } from '@/lib/agent-metadata'
+import { OrgTreasuryWidget } from '@/components/treasury/OrgTreasuryWidget'
 import { keccak256, toBytes } from 'viem'
 import { AgentSettingsClient } from './AgentSettingsClient'
 import { AgentSubNav } from '@/components/nav/AgentSubNav'
@@ -371,6 +372,9 @@ export default async function AgentSettingsPage({
       </div>
 
       <AgentSubNav address={agentAddress} />
+
+      {/* ─── Treasury balance (chain-sourced USDC for any AgentAccount) ─ */}
+      <OrgTreasuryWidget address={agentAddress} label="Treasury balance (on-chain USDC)" />
 
       {/* ─── Identity Card ─────────────────────────────────────────── */}
       <div data-component="protocol-info">

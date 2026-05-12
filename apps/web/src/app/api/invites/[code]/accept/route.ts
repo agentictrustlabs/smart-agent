@@ -49,24 +49,41 @@ export async function POST(request: Request, { params }: { params: Promise<{ cod
     if (!invite) return NextResponse.json({ error: 'Invalid or expired invitation' }, { status: 400 })
     if (new Date(invite.expiresAt) < new Date()) return NextResponse.json({ error: 'This invitation has expired' }, { status: 400 })
 
-    // Get user
-    const users = await db.select().from(schema.users)
-      .where(eq(schema.users.did, session.userId)).limit(1)
-    const user = users[0]
-    if (!user) return NextResponse.json({ error: 'User not found' }, { status: 400 })
-
-    // Get or auto-deploy person agent
-    let personAgentAddress = await getPersonAgentForUser(user.id)
-
-    if (!personAgentAddress) {
-      // Auto-deploy person agent for the user
-      try {
-        const result = await deployPersonAgent(user.name)
-        personAgentAddress = result.smartAccountAddress ?? null
-      } catch (e) {
-        console.warn('Failed to auto-deploy person agent:', e)
+    // Resolve the accepting user. Stateless auth (passkey/SIWE) has no
+    // `users` row by design — fall back to session-derived identity (the
+    // smart account IS the user's anchor). Stateful auth (demo/google)
+    // still goes through the users-table lookup.
+    const stateless = session.via === 'passkey' || session.via === 'siwe'
+    let userId: string
+    let userName: string
+    let personAgentAddress: `0x${string}` | null = null
+    if (stateless) {
+      if (!session.smartAccountAddress) {
+        return NextResponse.json({ error: 'Stateless session missing smartAccountAddress' }, { status: 400 })
+      }
+      userId = session.smartAccountAddress.toLowerCase()
+      userName = session.name ?? userId
+      // For stateless users, the smart account IS the person agent.
+      personAgentAddress = session.smartAccountAddress as `0x${string}`
+    } else {
+      const users = await db.select().from(schema.localUserAccounts)
+        .where(eq(schema.localUserAccounts.did, session.userId)).limit(1)
+      const user = users[0]
+      if (!user) return NextResponse.json({ error: 'User not found' }, { status: 400 })
+      userId = user.id
+      userName = user.name
+      personAgentAddress = (await getPersonAgentForUser(user.id)) as `0x${string}` | null
+      if (!personAgentAddress) {
+        // Auto-deploy person agent for the user
+        try {
+          const result = await deployPersonAgent(user.name)
+          personAgentAddress = (result.smartAccountAddress ?? null) as `0x${string}` | null
+        } catch (e) {
+          console.warn('Failed to auto-deploy person agent:', e)
+        }
       }
     }
+    void userName // reserved for future audit / notify-inviter formatting
 
     // Resolve the role mapping
     const roleKey = invite.role
@@ -108,32 +125,18 @@ export async function POST(request: Request, { params }: { params: Promise<{ cod
       }
     }
 
-    // 3. Mark invite accepted
+    // 3. Mark invite accepted. `acceptedBy` stores whatever userId we
+    //    derived (demo userId for stateful, smartAccount lowercase for stateless).
     await db.update(schema.invites).set({
       status: 'accepted',
-      acceptedBy: user.id,
+      acceptedBy: userId,
       acceptedAt: new Date().toISOString(),
     }).where(eq(schema.invites.id, invite.id))
 
-    // 4. Notify inviter
-    try { await db.insert(schema.messages).values({
-      id: crypto.randomUUID(),
-      userId: invite.createdBy,
-      type: 'invite_accepted',
-      title: 'Invitation accepted',
-      body: `${user.name} joined ${invite.agentName} as ${roleKey}`,
-      link: `/team`,
-    }) } catch { /* messages moved to person-mcp */ }
-
-    // 5. Notify acceptor
-    try { await db.insert(schema.messages).values({
-      id: crypto.randomUUID(),
-      userId: user.id,
-      type: 'ownership_accepted',
-      title: `Welcome to ${invite.agentName}`,
-      body: `You are now ${roleKey} of ${invite.agentName}.`,
-      link: `/dashboard`,
-    }) } catch { /* messages moved to person-mcp */ }
+    // 4 + 5. Notifications moved to person-mcp (the messages table was
+    // dropped). Try/catch the legacy SQL inserts so old code paths don't
+    // crash if the schema is still defined; real notifications happen via
+    // per-user MCPs going forward.
 
     return NextResponse.json({ success: true })
   } catch (error) {

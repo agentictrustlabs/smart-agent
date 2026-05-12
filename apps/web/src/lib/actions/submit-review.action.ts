@@ -14,8 +14,6 @@ import { REVIEW_RELATIONSHIP, ROLE_REVIEWER } from '@smart-agent/sdk'
 import { keccak256, toBytes } from 'viem'
 import type { Delegation } from '@smart-agent/types'
 import { getPersonAgentForUser } from '@/lib/agent-registry'
-import { findAgentOwnerUserIds } from '@/lib/agent-resolver'
-import { getAgentMetadata } from '@/lib/agent-metadata'
 
 // Review type hashes
 const REVIEW_TYPES: Record<string, `0x${string}`> = {
@@ -64,8 +62,8 @@ export async function submitReview(input: SubmitReviewInput): Promise<SubmitRevi
     if (!session.walletAddress) return { success: false, error: 'Not connected' }
 
     // Get user's person agent
-    const users = await db.select().from(schema.users)
-      .where(eq(schema.users.did, session.userId)).limit(1)
+    const users = await db.select().from(schema.localUserAccounts)
+      .where(eq(schema.localUserAccounts.did, session.userId)).limit(1)
     if (!users[0]) return { success: false, error: 'User not found' }
 
     const myAgent = await getPersonAgentForUser(users[0].id)
@@ -127,21 +125,7 @@ export async function submitReview(input: SubmitReviewInput): Promise<SubmitRevi
       evidenceURI: '',
     })
 
-    // Notify subject agent owner
-    try {
-      const ownerIds = await findAgentOwnerUserIds(input.subjectAddress)
-      if (ownerIds.length > 0) {
-        const subjectMeta = await getAgentMetadata(input.subjectAddress)
-        try { try { try { await db.insert(schema.messages).values({
-          id: crypto.randomUUID(),
-          userId: ownerIds[0],
-          type: 'review_received',
-          title: 'New review received',
-          body: `Your agent ${subjectMeta.displayName} received a ${input.recommendation} review (score: ${input.overallScore}/100)`,
-          link: '/reviews',
-        })  } catch { /* messages table dropped */ }} catch { /* messages table dropped */ } } catch { /* messages moved to person-mcp */ }
-      }
-    } catch { /* non-fatal */ }
+    // (notification skipped — messages table dropped; per-side MCPs handle notify going forward)
 
     return { success: true }
   } catch (error) {

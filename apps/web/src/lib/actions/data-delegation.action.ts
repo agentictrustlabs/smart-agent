@@ -1,6 +1,5 @@
 'use server'
 
-import { randomUUID } from 'crypto'
 import { db, schema } from '@/db'
 import { eq } from 'drizzle-orm'
 import { requireSession } from '@/lib/auth/session'
@@ -131,8 +130,8 @@ export async function createDataDelegation(
   if (!session) return { success: false, error: 'Not authenticated' }
 
   // Look up current user's person agent and private key
-  const users = await db.select().from(schema.users)
-    .where(eq(schema.users.did, session.userId)).limit(1)
+  const users = await db.select().from(schema.localUserAccounts)
+    .where(eq(schema.localUserAccounts.did, session.userId)).limit(1)
   const user = users[0]
   if (!user?.privateKey) return { success: false, error: 'No private key (demo users only for now)' }
 
@@ -207,27 +206,7 @@ export async function createDataDelegation(
   // Delegation is stored in the on-chain edge's metadataURI — any A2A agent
   // can read it. No need to store separately in the A2A agent's local DB.
 
-  // Create notification for the recipient
-  try {
-    // Find the recipient's user ID from their person agent
-    const allUsers = await db.select().from(schema.users).all()
-    for (const u of allUsers) {
-      const pa = await getPersonAgentForUser(u.id)
-      if (pa?.toLowerCase() === recipientPersonAgent.toLowerCase()) {
-        try { try { try { await db.insert(schema.messages).values({
-          id: randomUUID(),
-          userId: u.id,
-          type: 'data_access_granted',
-          title: `${user.name} shared personal data with you`,
-          body: `${user.name} has shared their personal information with you. View it in your Data Sharing page.`,
-          link: '/catalyst/me/sharing',
-        })  } catch { /* messages table dropped */ }} catch { /* messages table dropped */ } } catch { /* messages moved to person-mcp */ }
-        break
-      }
-    }
-  } catch (err) {
-    console.warn('[data-delegation] Notification failed:', err)
-  }
+  // (notification skipped — messages table dropped; per-side MCPs handle notify going forward)
 
   return { success: true }
 }
@@ -400,8 +379,8 @@ export async function loadDelegatedProfile(
   if (!token) return { success: false, error: 'No A2A session' }
 
   // Resolve the current user's person agent address (used as grantee in delegations)
-  const users = await db.select().from(schema.users)
-    .where(eq(schema.users.did, session.userId)).limit(1)
+  const users = await db.select().from(schema.localUserAccounts)
+    .where(eq(schema.localUserAccounts.did, session.userId)).limit(1)
   const user = users[0]
   const myPersonAgent = user ? await getPersonAgentForUser(user.id) : null
 

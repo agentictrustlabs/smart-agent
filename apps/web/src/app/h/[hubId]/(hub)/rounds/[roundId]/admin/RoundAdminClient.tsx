@@ -79,24 +79,38 @@ export function RoundAdminClient({ hubSlug, round: initial }: Props) {
     return () => { cancelled = true; clearInterval(t) }
   }, [tab, round.id])
 
-  function saveConfig() {
+  /** Save voting config. Accepts explicit overrides so quick-action buttons
+   *  ("Open voting now") can call us with the just-computed values without
+   *  waiting for React to flush a state update + re-render. Without
+   *  overrides we'd close over stale `windowStart`/`windowEnd` from the
+   *  render in which `saveConfig` was defined. */
+  function saveConfig(opts?: {
+    windowStart?: string
+    windowEnd?: string
+    strategy?: string
+    threshold?: number
+  }) {
     setMsg(null)
+    const wStart = opts?.windowStart ?? windowStart
+    const wEnd = opts?.windowEnd ?? windowEnd
+    const strat = opts?.strategy ?? strategy
+    const thresh = opts?.threshold ?? threshold
     start(async () => {
       const r = await fetch('/api/round-admin/config', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           roundFullId: round.id,
-          votingStrategy: strategy,
-          votingThreshold: threshold,
-          votingWindowStartsAt: windowStart || undefined,
-          votingWindowEndsAt: windowEnd || undefined,
+          votingStrategy: strat,
+          votingThreshold: thresh,
+          votingWindowStartsAt: wStart || undefined,
+          votingWindowEndsAt: wEnd || undefined,
         }),
       })
       const j = await r.json().catch(() => ({}))
       if (!r.ok || j.ok === false) { setMsg(`Failed: ${j.error ?? r.status}`); return }
       setMsg('Saved.')
-      setRound((prev) => ({ ...prev, votingStrategy: strategy, votingThreshold: threshold, votingWindowStartsAt: windowStart || null, votingWindowEndsAt: windowEnd || null }))
+      setRound((prev) => ({ ...prev, votingStrategy: strat, votingThreshold: thresh, votingWindowStartsAt: wStart || null, votingWindowEndsAt: wEnd || null }))
       router.refresh()
     })
   }
@@ -187,7 +201,7 @@ export function RoundAdminClient({ hubSlug, round: initial }: Props) {
             </div>
           </div>
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginTop: '0.4rem', flexWrap: 'wrap' }}>
-            <button type="button" disabled={pending} onClick={saveConfig} style={btnPrimary(pending)}>{pending ? 'Saving…' : 'Save config'}</button>
+            <button type="button" disabled={pending} onClick={() => saveConfig()} style={btnPrimary(pending)}>{pending ? 'Saving…' : 'Save config'}</button>
             <button
               type="button"
               disabled={pending}
@@ -199,9 +213,14 @@ export function RoundAdminClient({ hubSlug, round: initial }: Props) {
                 // the same `round:update_voting_config` MCP path.
                 const now = new Date()
                 const end = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
-                setWindowStart(now.toISOString())
-                setWindowEnd(end.toISOString())
-                setTimeout(saveConfig, 0)
+                const wStart = now.toISOString()
+                const wEnd = end.toISOString()
+                setWindowStart(wStart)
+                setWindowEnd(wEnd)
+                // Pass values explicitly to bypass the stale-closure trap
+                // (the old setTimeout(saveConfig, 0) captured the previous
+                // render's empty window values).
+                saveConfig({ windowStart: wStart, windowEnd: wEnd })
               }}
               style={{
                 padding: '0.5rem 0.85rem',

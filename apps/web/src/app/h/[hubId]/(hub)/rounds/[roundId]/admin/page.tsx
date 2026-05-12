@@ -18,6 +18,7 @@ import { getHubProfile } from '@/lib/hub-profiles'
 import { getPersonAgentForUser, canManageAgent } from '@/lib/agent-registry'
 import { DiscoveryService } from '@smart-agent/discovery'
 import { RoundAdminClient } from './RoundAdminClient'
+import { roundLifecycle, lifecyclePalette } from '@/lib/rounds/lifecycle'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,6 +28,7 @@ const AGENT_IRI_PREFIX = 'https://smartagent.io/ontology/core#agent/'
 
 interface RoundRow {
   id: string
+  displayName: string | null
   fundAgentId: string
   status: string
   deadline: string
@@ -128,6 +130,7 @@ async function loadRound(fullRoundId: string): Promise<RoundRow | null> {
 
   return {
     id: fullRoundId,
+    displayName: body.displayName ?? null,
     fundAgentId,
     status,
     deadline: body.deadline,
@@ -173,16 +176,38 @@ export default async function RoundAdminPage({
     )
   }
 
+  const lifecycle = roundLifecycle({
+    status: round.status,
+    deadline: round.deadline,
+    votingWindowStartsAt: round.votingWindowStartsAt,
+    votingWindowEndsAt: round.votingWindowEndsAt,
+  })
+  const palette = lifecyclePalette(lifecycle.phase)
+  const roundTitle = round.displayName?.trim() || roundId
+
   return (
     <div style={{ paddingBottom: '2rem' }}>
       <div style={{ marginBottom: '1rem' }}>
         <div style={{ fontSize: '0.65rem', fontWeight: 700, color: C.accent, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-          {profile.name} · Round admin
+          {profile.name} · Administer round
         </div>
-        <h1 style={{ fontSize: '1.45rem', fontWeight: 700, color: C.text, margin: '0.1rem 0' }}>
-          Administer round
-        </h1>
-        <p style={{ fontSize: '0.85rem', color: C.textMuted, margin: '0.2rem 0 0' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', margin: '0.1rem 0' }}>
+          <h1 style={{ fontSize: '1.45rem', fontWeight: 700, color: C.text, margin: 0 }}>
+            {roundTitle}
+          </h1>
+          <span style={{
+            padding: '0.2rem 0.55rem',
+            background: palette.bg, color: palette.fg, border: `1px solid ${palette.border}`,
+            borderRadius: 999, fontSize: '0.7rem', fontWeight: 700,
+            textTransform: 'uppercase', letterSpacing: '0.05em',
+          }}>
+            {lifecycle.label}
+          </span>
+        </div>
+        <p style={{ fontSize: '0.78rem', color: C.textMuted, margin: '0.2rem 0 0' }}>
+          {lifecycle.caption}
+        </p>
+        <p style={{ fontSize: '0.85rem', color: C.textMuted, margin: '0.35rem 0 0' }}>
           <Link href={`/h/${slug}/rounds/${roundId}`} style={{ color: C.accent }}>← Back to round</Link>
         </p>
       </div>

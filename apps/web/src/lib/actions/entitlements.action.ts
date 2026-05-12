@@ -499,23 +499,7 @@ export async function consumeEntitlementCapacity(args: {
     .where(eq(schema.entitlements.id, args.entitlementId))
     .run() } catch { /* entitlements table dropped */ }
 
-  // Emit activity entry on the Commitment Thread — the persistent backbone.
-  try {
-    let activityRow: any = undefined
-    try { activityRow = db.select().from(schema.activityLogs)
-      .where(eq(schema.activityLogs.id, args.activityId)).get() } catch { /* activityLogs table dropped */ }
-    if (activityRow) {
-      const { emitActivityEntry } = await import('./engagements/thread.action')
-      await emitActivityEntry({
-        engagementId: args.entitlementId,
-        activityId: args.activityId,
-        title: activityRow.title,
-        activityType: activityRow.activityType,
-        capacityConsumed: consumed,
-        fromAgent: ent.providerAgent,
-      })
-    }
-  } catch { /* non-fatal */ }
+  // activityLogs table dropped — activity entry skipped (no row to read)
 
   // 3. Resolve oldest open work item.
   let openItem: any = undefined
@@ -577,25 +561,11 @@ async function cascadeFulfillment(entitlementId: string): Promise<void> {
   if (!ent) return
   const now = new Date().toISOString()
 
-  // Outcomes — both holder and provider close together.
-  if (ent.holderOutcomeId) {
-    try { db.update(schema.outcomes)
-      .set({ status: 'achieved', observedAt: now, observedBy: ent.holderAgent })
-      .where(eq(schema.outcomes.id, ent.holderOutcomeId))
-      .run() } catch { /* outcomes table dropped */ }
-  }
-  if (ent.providerOutcomeId) {
-    try { db.update(schema.outcomes)
-      .set({ status: 'achieved', observedAt: now, observedBy: ent.providerAgent })
-      .where(eq(schema.outcomes.id, ent.providerOutcomeId))
-      .run() } catch { /* outcomes table dropped */ }
-  }
+  // (outcomes table dropped — cascade target moved out of web SQL)
 
-  // Source match.
-  try { db.update(schema.needResourceMatches)
-    .set({ status: 'fulfilled', updatedAt: now })
-    .where(eq(schema.needResourceMatches.id, ent.sourceMatchId))
-    .run() } catch { /* needResourceMatches table dropped */ }
+  // needResourceMatches table dropped — source-match fulfillment cascade
+  // no longer applies at the SQL layer. The on-chain MatchInitiation
+  // status is updated through the federated registry (Spec 004).
 
   // Holder intent — close on ALL accepted entitlements.
   let allEnts: any[] = []
@@ -608,16 +578,7 @@ async function cascadeFulfillment(entitlementId: string): Promise<void> {
       .set({ status: 'fulfilled', updatedAt: now })
       .where(eq(schema.intents.id, ent.holderIntentId))
       .run() } catch { /* intents table dropped */ }
-    // Also close the legacy `needs` projection if present.
-    let intent: any = undefined
-    try { intent = db.select().from(schema.intents)
-      .where(eq(schema.intents.id, ent.holderIntentId)).get() } catch { /* intents table dropped */ }
-    if (intent?.projectionRef) {
-      try { db.update(schema.needs)
-        .set({ status: 'met', updatedAt: now })
-        .where(eq(schema.needs.id, intent.projectionRef))
-        .run() } catch { /* needs table dropped */ }
-    }
+    // (needs projection close skipped — needs table dropped)
   }
 }
 
@@ -700,19 +661,8 @@ export async function getEntitlement(id: string): Promise<EntitlementDetail | nu
     .orderBy(schema.fulfillmentWorkItems.createdAt)
     .all()
     .map(rowToWorkItem) } catch { /* fulfillmentWorkItems table dropped */ }
-  let recent: any[] = []
-  try { recent = db.select().from(schema.activityLogs)
-    .where(eq(schema.activityLogs.fulfillsEntitlementId, id))
-    .orderBy(desc(schema.activityLogs.activityDate))
-    .limit(20)
-    .all()
-    .map(a => ({
-      id: a.id,
-      title: a.title,
-      activityType: a.activityType,
-      activityDate: a.activityDate,
-      userId: a.userId,
-    })) } catch { /* activityLogs table dropped */ }
+  // activityLogs table dropped — empty result preserves downstream type
+  const recent: any[] = []
   return { ...ent, workItems, recentActivities: recent }
 }
 

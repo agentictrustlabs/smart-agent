@@ -198,8 +198,9 @@ export async function castVote(input: CastVoteInput): Promise<
     expectedAttributes: { roundSubject },
   })
 
-  // Stateless self-issue: passkey/SIWE users acting as their own round
-  // admin have no RoundVoterCredential. Auto-issue + retry once.
+  // Any EOA-backed user (demo or stateless) acting as their own round
+  // admin has no RoundVoterCredential pre-issued. Auto-self-issue using
+  // the caller's OWN key.
   async function maybeSelfIssueAndRetry<T>(
     err: string,
     retry: () => Promise<T>,
@@ -207,13 +208,17 @@ export async function castVote(input: CastVoteInput): Promise<
     if (!err.includes('no held credential')) return null
     const { getSession } = await import('@/lib/auth/session')
     const session = await getSession()
-    const stateless = session?.via === 'passkey' || session?.via === 'siwe'
-    if (!stateless || !session?.smartAccountAddress) return null
+    const { loadSignerForCurrentUser } = await import('@/lib/ssi/signer')
+    let signerCtx: Awaited<ReturnType<typeof loadSignerForCurrentUser>> | null = null
+    try { signerCtx = await loadSignerForCurrentUser() } catch { /* not signed in */ }
+    if (signerCtx?.kind !== 'eoa' || !signerCtx.userRow.privateKey || !session?.smartAccountAddress) return null
     const { selfIssueMarketplaceCredential } = await import('@/lib/spec004/self-issue')
     const issued = await selfIssueMarketplaceCredential({
       smartAccount: session.smartAccountAddress as `0x${string}`,
+      signerPrivateKey: signerCtx.userRow.privateKey as `0x${string}`,
       credentialType: 'RoundVoterCredential',
       roundSubject,
+      principal: signerCtx.principal,
     })
     if (!issued.ok) {
       console.warn('[castVote] self-issue failed:', issued.error)

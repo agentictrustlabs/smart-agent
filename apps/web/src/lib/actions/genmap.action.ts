@@ -90,8 +90,8 @@ export async function createGenMapNode(data: {
   startedAt?: string
 }) {
   const session = await requireSession()
-  const user = await db.select().from(schema.users)
-    .where(eq(schema.users.walletAddress, session.walletAddress ?? '')).limit(1)
+  const user = await db.select().from(schema.localUserAccounts)
+    .where(eq(schema.localUserAccounts.walletAddress, session.walletAddress ?? '')).limit(1)
   if (!user[0]) throw new Error('User not found')
 
   const ownerAddress = session.walletAddress as `0x${string}`
@@ -299,24 +299,15 @@ export async function deleteGenMapNode(id: string) {
 
 // ─── Activity actions (kept here for co-location) ───────────────────
 
-export async function deleteActivity(id: string) {
+export async function deleteActivity(_id: string) {
   await requireSession()
-  try { await db.delete(schema.activityLogs).where(eq(schema.activityLogs.id, id)) } catch { /* activityLogs table dropped */ }
+  // (activityLogs table dropped — delete is a no-op)
 }
 
-export async function updateActivity(data: {
+export async function updateActivity(_data: {
   id: string; title?: string; description?: string; participants?: number
   location?: string; durationMinutes?: number; activityType?: string
 }) {
   await requireSession()
-  const updates: Record<string, unknown> = {}
-  if (data.title !== undefined) updates.title = data.title
-  if (data.description !== undefined) updates.description = data.description
-  if (data.participants !== undefined) updates.participants = data.participants
-  if (data.location !== undefined) updates.location = data.location
-  if (data.durationMinutes !== undefined) updates.durationMinutes = data.durationMinutes
-  if (data.activityType !== undefined) updates.activityType = data.activityType
-  if (Object.keys(updates).length > 0) {
-    try { await db.update(schema.activityLogs).set(updates).where(eq(schema.activityLogs.id, data.id)) } catch { /* activityLogs table dropped */ }
-  }
+  // (activityLogs table dropped — update is a no-op)
 }

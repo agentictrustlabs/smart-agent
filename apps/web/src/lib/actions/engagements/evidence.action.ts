@@ -19,7 +19,7 @@
 
 import { createHash } from 'crypto'
 import { db, schema } from '@/db'
-import { eq, inArray } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { getPersonAgentForUser } from '@/lib/agent-registry'
 import { emitEvidencePin, emitWitnessSig } from './thread.action'
@@ -63,15 +63,8 @@ export async function pinEvidence(input: PinEvidenceInput): Promise<{ ok: true; 
     return { error: `cannot-pin-from-status-${ent.status}` }
   }
 
-  // Validate activity ids belong to this engagement.
-  let activities: any[] = []
-  if (input.activityIds.length > 0) {
-    try {
-      activities = db.select().from(schema.activityLogs)
-        .where(inArray(schema.activityLogs.id, input.activityIds))
-        .all()
-    } catch { /* activityLogs table dropped */ }
-  }
+  // activityLogs table dropped — empty result preserves downstream type
+  const activities: any[] = []
   for (const a of activities) {
     if (a.fulfillsEntitlementId !== input.engagementId) {
       return { error: `activity-${a.id}-not-in-engagement` }

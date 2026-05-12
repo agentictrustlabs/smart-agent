@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { Suspense } from 'react'
 import { cookies } from 'next/headers'
-import { eq, desc } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { getUserOrgs } from '@/lib/get-user-orgs'
 import { getConnectedOrgs } from '@/lib/get-org-members'
@@ -29,7 +29,6 @@ import { DEMO_USER_META } from '@/lib/auth/session'
 import { CatalystFooterCTA } from '@/components/catalyst/CatalystFooterCTA'
 import { CatalystFieldZone } from '@/components/catalyst/CatalystFieldZone'
 import { CatalystAttentionStrip, CatalystAttentionStripSkeleton } from '@/components/catalyst/CatalystAttentionStrip'
-import { OpenNeedsStrip } from '@/components/discover/OpenNeedsStrip'
 import { ActiveFulfillmentsStrip } from '@/components/entitlements/ActiveFulfillmentsStrip'
 import { ActiveMarketplaceStrip } from '@/components/dashboard/ActiveMarketplaceStrip'
 
@@ -88,8 +87,8 @@ export async function HubDashboard({ hubId, currentUser, hubAddress, hubName }: 
   } catch { /* on-chain unavailable */ }
   if (!primaryName) {
     try {
-      const row = await db.select().from(schema.users)
-        .where(eq(schema.users.id, currentUser.id)).limit(1).then(r => r[0])
+      const row = await db.select().from(schema.localUserAccounts)
+        .where(eq(schema.localUserAccounts.id, currentUser.id)).limit(1).then(r => r[0])
       if (row?.agentName) primaryName = row.agentName
     } catch { /* db unavailable */ }
   }
@@ -374,8 +373,8 @@ async function CILDashboard({
   if (openProposalCount > 0) cilAttentionItems.push({ type: 'governance', label: `${openProposalCount} open proposal${openProposalCount !== 1 ? 's' : ''}`, detail: 'Awaiting votes', href: '/catalyst/steward' })
   for (const addr of decliningBusinesses) cilAttentionItems.push({ type: 'escalation', label: `Business ${addr.slice(-4)}`, detail: 'Declining revenue', href: '/catalyst/groups' })
 
-  let allActivities: any[] = []
-  try { allActivities = await db.select().from(schema.activityLogs) } catch { /* activityLogs table dropped */ }
+  // activityLogs table dropped — empty result preserves downstream type
+  const allActivities: any[] = []
   const activities = allActivities.filter(a => orgAddresses.has(a.orgAddress.toLowerCase()) || orgUserIds.has(a.userId))
   const thisMonth = new Date(); thisMonth.setDate(1); thisMonth.setHours(0,0,0,0)
   const monthActivities = activities.filter(a => new Date(a.activityDate) >= thisMonth)
@@ -429,20 +428,9 @@ async function CatalystFieldDashboard({
   const orgUserIds = new Set<string>([currentUser.id])
   for (let i = 1; i <= 7; i++) orgUserIds.add(`cat-user-00${i}`)
 
-  // Push the org/user filter into the DB instead of scanning every
-  // activity_logs row in JS. With the catalyst seed at ~111 activities
-  // this saved ~150ms per render; grows linearly with demo activity.
-  const { inArray, or } = await import('drizzle-orm')
-  const orgFilter = userOrgs.length > 0 ? inArray(schema.activityLogs.orgAddress, userOrgs.map(o => o.address.toLowerCase())) : undefined
-  const userFilter = inArray(schema.activityLogs.userId, [...orgUserIds])
-  const where = orgFilter ? or(orgFilter, userFilter) : userFilter
-  let activities: any[] = []
-  try { activities = await db.select().from(schema.activityLogs)
-    .where(where)
-    .orderBy(desc(schema.activityLogs.activityDate))
-    .limit(120) } catch { /* activityLogs table dropped */ }
-  const thisWeekIso = new Date(Date.now() - 7 * 86_400_000).toISOString().slice(0, 10)
-  const weekCount = activities.filter(a => a.activityDate >= thisWeekIso).length
+  // activityLogs table dropped — empty result preserves downstream type
+  const activities: any[] = []
+  const weekCount = 0
 
   // Fan out every per-org RPC + the unrelated DB queries in parallel.
   // PERF: dropped getAiAgentsForOrg from the critical path — the AI-agents
@@ -585,14 +573,6 @@ async function CatalystFieldDashboard({
           without already knowing the URL. Hidden when count == 0. */}
       <Suspense fallback={<div style={{ height: 90, background: 'rgba(139,94,60,0.04)', borderRadius: 12, marginBottom: '1rem' }} aria-hidden />}>
         <ActiveMarketplaceStrip userId={currentUser.id} hubSlug="catalyst" hubId={hubId} />
-      </Suspense>
-
-      {/* Zone 4.5 — Where the hub needs help (Discover layer).
-          Re-anchored from Zone 2.5 to here, AFTER the work zone, so
-          it doesn't twin with NeedsAttentionCard. Suspense'd so the
-          intents query never blocks first paint. */}
-      <Suspense fallback={<div style={{ height: 90, background: 'rgba(13,148,136,0.04)', borderRadius: 12, marginBottom: '1rem' }} aria-hidden />}>
-        <OpenNeedsStrip hubId={hubId} hubSlug="catalyst" />
       </Suspense>
 
       {/* Zone 5 — Field zone (activities + circles) */}

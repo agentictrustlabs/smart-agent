@@ -234,10 +234,8 @@ export async function listSessionsForEngagement(engagementId: string): Promise<S
  * show their session history immediately when the Cadence shape goes live.
  */
 async function backfillSessionsFromActivities(engagementId: string): Promise<void> {
-  let activities: any[] = []
-  try { activities = db.select().from(schema.activityLogs)
-    .where(eq(schema.activityLogs.fulfillsEntitlementId, engagementId))
-    .all() } catch { /* activityLogs table dropped */ }
+  // activityLogs table dropped — nothing to backfill from
+  const activities: any[] = []
   if (activities.length === 0) return
   let existing: any = [] as any[]
   try { existing = db.select().from(schema.engagementSessions)

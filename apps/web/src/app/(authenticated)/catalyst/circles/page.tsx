@@ -2,7 +2,6 @@ import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { getUserOrgs } from '@/lib/get-user-orgs'
 import { getOikosContacts as getCircles } from '@/lib/actions/oikos.action'
-import { db, schema } from '@/db'
 import { CirclesClient } from './CirclesClient'
 
 export default async function CatalystCirclesPage() {
@@ -35,18 +34,8 @@ export default async function CatalystCirclesPage() {
     createdAt: c.createdAt,
   }))
 
-  // Last-contact map: activity logs still in web SQL (Phase 5 work).
+  // Last-contact map: activityLogs table dropped — empty result preserves downstream type
   const lastContactMap: Record<string, string> = {}
-  try {
-    let allActivities: any[] = []
-    try { allActivities = await db.select().from(schema.activityLogs) } catch { /* activityLogs table dropped */ }
-    for (const circle of circles) {
-      const matching = allActivities
-        .filter(a => a.title.toLowerCase().includes(circle.personName.toLowerCase()))
-        .sort((a, b) => b.activityDate.localeCompare(a.activityDate))
-      if (matching[0]) lastContactMap[circle.id] = matching[0].activityDate
-    }
-  } catch { /* ignored */ }
 
   return (
     <CirclesClient

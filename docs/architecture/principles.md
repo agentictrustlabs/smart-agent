@@ -134,6 +134,47 @@ data comes from the user's person-mcp via delegation post-auth.
 
 ---
 
+## P6. Deployer is for bootstrap, not user-action signing
+
+The deployer EOA is for **contract deployment + governance/system writes**
+(ontology registration, type registry seeding, class-assertion emission,
+boot-time agent registration). It MUST NOT sign delegations on behalf of an
+end-user's AgentAccount to perform their authorized actions.
+
+### Concretely
+
+- **Demo users** sign with their stored `users.privateKey` (their EOA is
+  registered as an owner of their smart account at `factory.createAccount(eoa, salt)`
+  time → ERC-1271 accepts).
+- **Passkey/SIWE users** sign via their passkey/EOA. Until the passkey
+  signing ceremony lands, `loadSignerForCurrentUser` returns a
+  deployer-backed signer for stateless sessions — **v1 placeholder scoped
+  to stateless sessions only, never reachable by demo users**. The
+  placeholder is explicitly labeled in the comment at `apps/web/src/lib/ssi/signer.ts:34-37`.
+- **Self-issue** (`selfIssueMarketplaceCredential`, `selfIssuePledgerDelegation`):
+  caller's own key is the only signer. The wrapper requires `signerPrivateKey`
+  as a parameter — no implicit deployer fallback inside the SDK helper.
+- **Admin-issue to other holder** (`addRoundVoter` → `issueMarketplaceCredential`):
+  admin's own key signs the admin→holder delegation; holder's own key signs
+  their wallet provisioning. Neither slot defaults to the deployer.
+- **Pledge auth**: `PledgeRegistry.submit` is permissionless on chain; the
+  donor signs only their own session leaf. `amend`/`stop` gate on
+  `msg.sender == sa:pledgeDonor`. No admin→holder needed.
+
+### Tripwire
+
+Any new code path that uses `process.env.DEPLOYER_PRIVATE_KEY` inside a
+`*.action.ts` file (a user-action server action) is suspect. Audit it
+against this rule before merging. Legitimate deployer uses live in:
+- `lib/onchain/*Assertion.ts` (class-assertion observer)
+- `lib/demo-seed/*` and `scripts/seed-*.ts` (boot-time)
+- `lib/ssi/signer.ts` (stateless-session placeholder — documented)
+- `lib/contracts.ts::getWalletClient` (general deployer wallet for system writes)
+- `lib/actions/onboarding/*` and `lib/actions/passkey/*` (account deployment)
+- `lib/actions/recovery/*` (account recovery oracle)
+
+---
+
 ## How to apply
 
 When proposing or reviewing a spec:

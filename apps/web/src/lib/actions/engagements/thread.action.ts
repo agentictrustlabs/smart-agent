@@ -318,14 +318,8 @@ export async function backfillThreadFromEngagement(engagementId: string): Promis
     let providerIntent: any = undefined
     try { providerIntent = db.select().from(schema.intents)
       .where(eq(schema.intents.id, ent.providerIntentId)).get() } catch { /* intents table dropped */ }
-    let holderOutcome: any = null
-    if (ent.holderOutcomeId) {
-      try { holderOutcome = db.select().from(schema.outcomes).where(eq(schema.outcomes.id, ent.holderOutcomeId)).get() } catch { /* outcomes table dropped */ }
-    }
-    let providerOutcome: any = null
-    if (ent.providerOutcomeId) {
-      try { providerOutcome = db.select().from(schema.outcomes).where(eq(schema.outcomes.id, ent.providerOutcomeId)).get() } catch { /* outcomes table dropped */ }
-    }
+    const holderOutcome: any = null  // outcomes table dropped — empty result preserves downstream type
+    const providerOutcome: any = null  // outcomes table dropped — empty result preserves downstream type
     if (holderIntent) {
       await emitIntentRef({
         engagementId,
@@ -348,24 +342,12 @@ export async function backfillThreadFromEngagement(engagementId: string): Promis
     }
   }
 
-  // match_accept — re-derive score/satisfies/misses from the match row.
-  if (!existingKinds.has('match_accept')) {
-    let match: any = undefined
-    try { match = db.select().from(schema.needResourceMatches)
-      .where(eq(schema.needResourceMatches.id, ent.sourceMatchId)).get() } catch { /* needResourceMatches table dropped */ }
-    if (match) {
-      const satisfies = safeParse<string[]>(match.satisfies) ?? []
-      const misses = safeParse<string[]>(match.misses) ?? []
-      await emitMatchAccept({
-        engagementId,
-        matchId: match.id,
-        score: match.score,
-        satisfies,
-        misses,
-      })
-      inserted++
-    }
-  }
+  // match_accept — needResourceMatches table dropped; the match row that
+  // backed this rehydration path no longer exists. The match_accept thread
+  // entry is now emitted inline by `acceptMatch` at engagement creation
+  // time (see discover.action.ts), so the rehydrate-from-row backfill is
+  // unnecessary. Skipping here leaves any pre-existing match_accept
+  // entries untouched.
 
   // contract_term — synthesize from current entitlement row.
   if (!existingKinds.has('contract_term')) {
@@ -397,12 +379,8 @@ export async function backfillThreadFromEngagement(engagementId: string): Promis
     inserted++
   }
 
-  // activity entries — one per logged activity not already projected.
-  let activities: any[] = []
-  try { activities = db.select().from(schema.activityLogs)
-    .where(eq(schema.activityLogs.fulfillsEntitlementId, engagementId))
-    .orderBy(asc(schema.activityLogs.activityDate))
-    .all() } catch { /* activityLogs table dropped */ }
+  // activity entries — activityLogs table dropped; no activities to project.
+  const activities: any[] = []
   for (const a of activities) {
     if (existingActivityIds.has(a.id)) continue
     await emitActivityEntry({

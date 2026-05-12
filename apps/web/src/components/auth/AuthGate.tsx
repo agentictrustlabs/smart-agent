@@ -62,21 +62,32 @@ export function AuthGate() {
       const finish = (target: string) => { setPhase('idle'); router.push(target) }
 
       try {
-        setPhase('ensuring-user')
-        await fetch('/api/auth/ensure-user', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            walletAddress: user!.walletAddress,
-            email: user!.email ?? null,
-            name: user!.name ?? 'Agent User',
-          }),
-        })
+        // Stateless auth (passkey/SIWE) doesn't materialise a `users` row —
+        // identity is anchored on chain + the session JWT carries display
+        // name/email. Skip `ensure-user`; profile completeness lives in
+        // person-mcp going forward. Google OAuth still needs a row for its
+        // profile cache (no on-chain identity at signup).
+        const stateless = user!.via === 'passkey' || user!.via === 'siwe'
+        if (!stateless) {
+          setPhase('ensuring-user')
+          await fetch('/api/auth/ensure-user', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              walletAddress: user!.walletAddress,
+              email: user!.email ?? null,
+              name: user!.name ?? 'Agent User',
+            }),
+          })
+        }
 
         setPhase('checking-profile')
         const profileRes = await fetch('/api/auth/profile')
         const profile = await profileRes.json()
-        if (!profile.name || profile.name === 'Agent User' || !profile.email) {
+        // For stateless users, /api/auth/profile returns the JWT-derived
+        // identity (no row); treat them as onboarded by default and only
+        // route to /onboarding when they explicitly haven't set a name.
+        if (!stateless && (!profile.name || profile.name === 'Agent User' || !profile.email)) {
           finish('/onboarding')
           return
         }

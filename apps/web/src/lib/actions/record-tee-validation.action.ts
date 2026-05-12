@@ -1,13 +1,9 @@
 'use server'
 
-import { db, schema } from '@/db'
-
 import { requireSession } from '@/lib/auth/session'
 import { getPublicClient, getWalletClient } from '@/lib/contracts'
 import { agentValidationProfileAbi, agentAssertionAbi } from '@smart-agent/sdk'
 import { keccak256, toBytes } from 'viem'
-import { findAgentOwnerUserIds } from '@/lib/agent-resolver'
-import { getAgentMetadata } from '@/lib/agent-metadata'
 
 // TEE architecture hashes (match AgentValidationProfile.sol constants)
 const TEE_ARCHS: Record<string, `0x${string}`> = {
@@ -142,21 +138,7 @@ export async function recordTeeValidation(
       validationId = Number(count) - 1
     } catch { /* non-fatal */ }
 
-    // Notify agent owner
-    try {
-      const ownerIds = await findAgentOwnerUserIds(input.agentAddress)
-      if (ownerIds.length > 0) {
-        const agent = await getAgentMetadata(input.agentAddress)
-        try { try { try { await db.insert(schema.messages).values({
-          id: crypto.randomUUID(),
-          userId: ownerIds[0],
-          type: 'proposal_created',
-          title: 'TEE validation recorded',
-          body: `Agent ${agent.displayName} received a ${input.teeArch} TEE validation (method: ${input.validationMethod})`,
-          link: '/tee',
-        })  } catch { /* messages table dropped */ }} catch { /* messages table dropped */ } } catch { /* messages moved to person-mcp */ }
-      }
-    } catch { /* non-fatal */ }
+    // (notification skipped — messages table dropped; per-side MCPs handle notify going forward)
 
     return { success: true, validationId }
   } catch (error) {

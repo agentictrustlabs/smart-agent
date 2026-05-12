@@ -23,6 +23,7 @@ import { getPersonAgentForUser } from '@/lib/agent-registry'
 import { getPoolForViewer, getPoolRecentAllocations } from '@/lib/actions/pools.action'
 import { listPoolPledges } from '@/lib/actions/poolPledges.action'
 import { DiscoveryService } from '@smart-agent/discovery'
+import { OrgTreasuryWidget } from '@/components/treasury/OrgTreasuryWidget'
 
 export const dynamic = 'force-dynamic'
 
@@ -196,6 +197,17 @@ export default async function PoolDetailPage({
             : pool.acceptedUnits.join(', ')}
         </div>
       </Section>
+
+      {/* On-chain USDC balance held by the pool's AgentAccount. Distinct
+          from "Pledged total" — pledged is the sum of donor commitments
+          (intentions), treasury balance is what's actually arrived via Rail A
+          honoring + any direct transfers. */}
+      {pool.treasuryAddress && (
+        <OrgTreasuryWidget
+          address={pool.treasuryAddress as `0x${string}`}
+          label="Pool treasury (on-chain USDC)"
+        />
+      )}
 
       {/* Capacity widgets */}
       <Section title="Capacity">

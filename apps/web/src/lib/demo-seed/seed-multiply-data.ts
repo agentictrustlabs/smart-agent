@@ -6,7 +6,7 @@
 // re-seeded by a delegation-aware MCP seeder that doesn't exist yet.
 
 import { db, schema } from '@/db'
-import { eq, and } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { randomUUID } from 'crypto'
 
 function daysAgo(n: number): string {
@@ -20,52 +20,7 @@ function daysAgo(n: number): string {
 // ═══════════════════════════════════════════════════════════════════════
 
 function seedCatalystNetwork() {
-  // ─── Catalyst hub-lead inboxes (unread actionable messages) ──────
-  // These surface as "message-pending" work items in MyWorkPanel.
-  // Idempotent: keyed by (userId, type, title) so re-runs don't dupe.
-  let existingHubMsg: any = undefined
-  try { existingHubMsg = db.select().from(schema.messages)
-    .where(eq(schema.messages.type, 'review_received')).get() } catch { /* messages table dropped */ }
-  if (!existingHubMsg) {
-    const inbox: Array<{ userId: string; type: 'review_received' | 'invite_sent' | 'relationship_proposed' | 'proposal_created' | 'dispute_filed'; title: string; body: string; link: string }> = [
-      { userId: 'cat-user-002', type: 'review_received', title: 'Review received: Wellington Circle health', body: 'A peer left a review on Wellington Circle. Open the review to read or respond.', link: '/reviews' },
-      { userId: 'cat-user-002', type: 'dispute_filed', title: 'Dispute flagged: Berthoud engagement overlap', body: 'Fort Collins Hub flagged Berthoud Circle\'s stewardOf claim as overlapping with Loveland.', link: '/reviews' },
-      { userId: 'cat-user-002', type: 'invite_sent', title: 'Invite to Carlos pending', body: 'Carlos has not yet completed his community-partner onboarding.', link: '/people' },
-      { userId: 'cat-user-001', type: 'review_received', title: 'Review received: NoCo Network annual', body: 'Sarah Thompson left a review on the network this quarter.', link: '/reviews' },
-      { userId: 'cat-user-001', type: 'relationship_proposed', title: 'Coach proposal: from Sarah Thompson', body: 'Sarah proposed a regional coaching cadence with you. Confirm or decline.', link: '/relationships' },
-      { userId: 'cat-user-005', type: 'invite_sent', title: 'Three invites awaiting response', body: 'Three regional pastors have not yet replied to your alliance invites.', link: '/people' },
-    ]
-    for (const m of inbox) {
-      let dup: any = undefined
-      try { dup = db.select().from(schema.messages)
-        .where(and(eq(schema.messages.userId, m.userId), eq(schema.messages.type, m.type), eq(schema.messages.title, m.title))).get() } catch { /* messages table dropped */ }
-      if (dup) continue
-      try { db.insert(schema.messages).values({
-        id: randomUUID(),
-        userId: m.userId,
-        type: m.type,
-        title: m.title,
-        body: m.body,
-        link: m.link,
-        read: 0,
-      }).run() } catch { /* messages table dropped */ }
-    }
-  }
-
-  // ─── Data sharing notification for Maria ─────────────────────────
-  let existingMsg: any = undefined
-  try { existingMsg = db.select().from(schema.messages)
-    .where(eq(schema.messages.type, 'data_access_granted')).get() } catch { /* messages table dropped */ }
-  if (!existingMsg) {
-    try { db.insert(schema.messages).values({
-      id: randomUUID(),
-      userId: 'cat-user-001',
-      type: 'data_access_granted',
-      title: 'Ana Reyes shared personal data with you',
-      body: 'Ana Reyes has shared her contact information (email, phone, location) with you. View it in your Data Sharing page.',
-      link: '/catalyst/me/sharing',
-    }).run() } catch { /* messages table dropped */ }
-  }
+  // (messages table dropped — inbox seeding moved to per-side MCP seeders)
 
   // Ana's profile is now seeded in seed-mcp-data.ts via her own A2A
   // session (update_profile through delegation), keyed by her smart-
@@ -103,7 +58,7 @@ function seedCatalystActivities() {
   const userOrgs = new Map<string, string>()
   for (let i = 1; i <= 12; i++) {
     const id = `cat-user-${i.toString().padStart(3, '0')}`
-    const u = db.select().from(schema.users).where(eq(schema.users.id, id)).get()
+    const u = db.select().from(schema.localUserAccounts).where(eq(schema.localUserAccounts.id, id)).get()
     if (!u) continue
     userOrgs.set(id, u.personAgentAddress ?? '0x0000000000000000000000000000000000000000')
   }
@@ -280,23 +235,8 @@ function seedCatalystActivities() {
       const activityDate = daysAgo(e.daysBack)
       // Idempotent: keyed on (userId, title, activityDate prefix). Re-runs
       // against the same dataset are no-ops; new entries land naturally.
-      let dup: any = undefined
-      try { dup = db.select().from(schema.activityLogs)
-        .where(and(eq(schema.activityLogs.userId, userId), eq(schema.activityLogs.title, e.title)))
-        .get() } catch { /* activityLogs table dropped */ }
-      if (dup) { skipped++; continue }
-      try { db.insert(schema.activityLogs).values({
-        id: randomUUID(),
-        orgAddress: orgAddr,
-        userId,
-        activityType: e.type,
-        title: e.title,
-        description: e.description ?? null,
-        participants: e.participants ?? 0,
-        location: e.location ?? null,
-        durationMinutes: e.durationMinutes ?? null,
-        activityDate,
-      }).run() } catch { /* activityLogs table dropped */ }
+      // (activityLogs table dropped — activity-feed seeding moved to per-side MCP seeders)
+      void userId; void e; void orgAddr; void activityDate
       inserted++
     }
   }

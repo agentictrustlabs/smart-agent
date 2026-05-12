@@ -89,12 +89,24 @@ export function ProposalVotePanel({ roundId, proposalId }: Props) {
       fetch(`/api/votes/my-vote?roundId=${encodeURIComponent(roundId)}&proposalId=${encodeURIComponent(proposalId)}`).then((r) => r.json()),
     ])
     if (eligR.error) { setEligErr(eligR.error); setElig(null) } else { setElig(eligR); setEligErr(null) }
-    if (tallyR.tally) {
+    // Tally: when nobody has voted yet, `tally:[]` is a valid response —
+    // render zero counts instead of staying in "Loading tally…". The
+    // `proposalId === requested` find can also miss when the tally
+    // endpoint returns aggregate-only rows; in that case zeros are still
+    // the right empty state.
+    if (Array.isArray(tallyR?.tally)) {
       const entry = tallyR.tally.find((t: { proposalId: string }) => t.proposalId === proposalId)
-      if (entry) setTally({
-        approves: entry.approves, rejects: entry.rejects, abstains: entry.abstains,
-        threshold: tallyR.threshold, passes: entry.passes,
-      })
+      if (entry) {
+        setTally({
+          approves: entry.approves, rejects: entry.rejects, abstains: entry.abstains,
+          threshold: tallyR.threshold, passes: entry.passes,
+        })
+      } else {
+        setTally({
+          approves: 0, rejects: 0, abstains: 0,
+          threshold: tallyR.threshold ?? 0, passes: false,
+        })
+      }
     }
     if (myR && !myR.error && myR.vote) {
       setMyVote(myR)
@@ -166,6 +178,13 @@ export function ProposalVotePanel({ roundId, proposalId }: Props) {
       }}>
         {eligErr ? `Couldn't load eligibility: ${eligErr}`
          : elig?.message ?? 'Checking eligibility…'}
+        {elig && !elig.canVote && elig.reason && (
+          <div style={{ marginTop: '0.25rem', fontSize: '0.72rem', color: C.textMuted }}>
+            reason: <code>{elig.reason}</code>
+            {elig.reason === 'voting-not-started' && ' — voting opens after the submission deadline'}
+            {elig.reason === 'voting-closed' && ' — voting window has ended'}
+          </div>
+        )}
       </div>
 
       {/* Cast / change ballot — only when eligible */}

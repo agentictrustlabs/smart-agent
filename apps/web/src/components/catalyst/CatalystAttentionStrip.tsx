@@ -1,5 +1,3 @@
-import { db, schema } from '@/db'
-import { and, eq, inArray } from 'drizzle-orm'
 import { NeedsAttentionCard, type AttentionItem } from './NeedsAttentionCard'
 
 interface Props {
@@ -19,63 +17,15 @@ interface Props {
  * Returns nothing when there are no items.
  */
 export async function CatalystAttentionStrip({ userId, userOrgs, hubSlug }: Props) {
+  void hubSlug
   const attentionItems: AttentionItem[] = []
 
-  // 1. Stale circles — orgs with zero activity in 14 days.
-  const fourteenDaysAgo = new Date(Date.now() - 14 * 86_400_000).toISOString().slice(0, 10)
-  const orgAddrs = userOrgs.map(o => o.address.toLowerCase())
-  if (orgAddrs.length > 0) {
-    let recentRows: any[] = []
-    try { recentRows = await db.select({
-      org: schema.activityLogs.orgAddress,
-      d: schema.activityLogs.activityDate,
-    }).from(schema.activityLogs)
-      .where(inArray(schema.activityLogs.orgAddress, orgAddrs))
-      .all() } catch { /* activityLogs table dropped */ }
-    const orgsWithRecent = new Set<string>()
-    for (const r of recentRows) {
-      if (r.d >= fourteenDaysAgo) orgsWithRecent.add(r.org.toLowerCase())
-    }
-
-    // De-dupe with Open Needs: needs moved to person-mcp / org-mcp; the
-    // stale-circle detail line is best-effort for now and falls back to
-    // the generic "no activity" message when the lookup is unavailable.
-    const orgOpenNeed = new Map<string, { id: string; title: string }>()
-    try {
-      let openNeedsOnMyOrgs: any[] = []
-      try { openNeedsOnMyOrgs = db.select().from(schema.needs)
-        .where(and(
-          inArray(schema.needs.neededByAgent, orgAddrs),
-          eq(schema.needs.status, 'open'),
-        ))
-        .all() } catch { /* needs table dropped */ }
-      for (const n of openNeedsOnMyOrgs) {
-        if (!orgOpenNeed.has(n.neededByAgent)) {
-          orgOpenNeed.set(n.neededByAgent, { id: n.id, title: n.title })
-        }
-      }
-    } catch { /* needs table dropped */ }
-
-    for (const org of userOrgs) {
-      if (orgsWithRecent.has(org.address.toLowerCase())) continue
-      const matchingNeed = orgOpenNeed.get(org.address.toLowerCase())
-      if (matchingNeed) {
-        attentionItems.push({
-          type: 'group',
-          label: org.name,
-          detail: `Stale — open need posted: ${matchingNeed.title}`,
-          href: `/h/${hubSlug}/needs/${matchingNeed.id}`,
-        })
-      } else {
-        attentionItems.push({
-          type: 'group',
-          label: org.name,
-          detail: 'No activity in 14 days',
-          href: `/agents/${org.address}`,
-        })
-      }
-    }
-  }
+  // 1. Stale-circles bucket suppressed. The activity_logs SQL mirror was
+  //    dropped; the canonical activity feed lives on chain via
+  //    AgentAccountResolver.getActivityLog. Surfacing "no activity in 14
+  //    days" without that read produced false-positives on every org.
+  //    Re-enable once a per-org on-chain activity-feed reader is wired.
+  void userOrgs
 
   // 2. Stale prayers — pulled from person-mcp via the rewired action.
   try {

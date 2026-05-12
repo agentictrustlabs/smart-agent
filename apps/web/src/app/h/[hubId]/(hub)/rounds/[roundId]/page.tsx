@@ -36,6 +36,7 @@ import { getRoundForViewer } from '@/lib/actions/rounds.action'
 import { EligibilityBlock } from '../(components)/EligibilityBlock'
 import { PriorStatsBlock } from '../(components)/PriorStatsBlock'
 import { CancelRoundButton } from './CancelRoundButton'
+import { roundLifecycle, lifecyclePalette } from '@/lib/rounds/lifecycle'
 import type { ReportingCadence } from '@smart-agent/sdk'
 
 export const dynamic = 'force-dynamic'
@@ -110,11 +111,13 @@ export default async function RoundDetailPage({
     : `urn:smart-agent:round:${roundId}`
   const proposalsReceived = await getRoundProposalCount(fullRoundId)
 
-  // Read the on-chain round status so the page reflects the lifecycle
-  // phase (open / review / decided / closed / canceled), not just whether
-  // the deadline passed. Submissions are only accepted in `open`.
+  // Read the on-chain round status + voting window so the page reflects
+  // the lifecycle phase (accepting / voting / reviewing / decided / closed
+  // / canceled), not just whether the deadline passed.
   type RoundStatus = 'open' | 'review' | 'decided' | 'closed' | 'canceled'
   let roundStatus: RoundStatus = 'open'
+  let votingWindowStartsAt: string | null = null
+  let votingWindowEndsAt: string | null = null
   try {
     const { createPublicClient, http, keccak256, toHex } = await import('viem')
     const { foundry } = await import('viem/chains')
@@ -127,12 +130,10 @@ export default async function RoundDetailPage({
       })
       const slug = fullRoundId.slice('urn:smart-agent:round:'.length)
       const subject = keccak256(toHex(`sa:round:${slug}`))
-      const statusHash = (await client.readContract({
-        address: fundRegistry,
-        abi: fundRegistryAbi,
-        functionName: 'getRoundStatus',
-        args: [subject],
-      })) as `0x${string}`
+      const [statusHash, cfg] = await Promise.all([
+        client.readContract({ address: fundRegistry, abi: fundRegistryAbi, functionName: 'getRoundStatus', args: [subject] }) as Promise<`0x${string}`>,
+        client.readContract({ address: fundRegistry, abi: fundRegistryAbi, functionName: 'getRoundVotingConfig', args: [subject] }).catch(() => null) as Promise<readonly [`0x${string}`, bigint, bigint, bigint] | null>,
+      ])
       const STATUS_MAP: Record<string, RoundStatus> = {
         [keccak256(toHex('sa:RoundOpen')).toLowerCase()]:     'open',
         [keccak256(toHex('sa:RoundReview')).toLowerCase()]:   'review',
@@ -141,6 +142,11 @@ export default async function RoundDetailPage({
         [keccak256(toHex('sa:RoundCanceled')).toLowerCase()]: 'canceled',
       }
       roundStatus = STATUS_MAP[statusHash.toLowerCase()] ?? 'open'
+      if (cfg) {
+        const [, , startsAt, endsAt] = cfg
+        if (startsAt > 0n) votingWindowStartsAt = new Date(Number(startsAt) * 1000).toISOString()
+        if (endsAt > 0n)   votingWindowEndsAt   = new Date(Number(endsAt) * 1000).toISOString()
+      }
     }
   } catch (e) {
     console.warn('[round-detail] status read failed (defaulting to open):', (e as Error).message)
@@ -185,6 +191,14 @@ export default async function RoundDetailPage({
   // populate this array.
   const viewerCredentialKinds: string[] = []
 
+  const lifecycle = roundLifecycle({
+    status: roundStatus,
+    deadline: round.deadline,
+    votingWindowStartsAt,
+    votingWindowEndsAt,
+  })
+  const lifecyclePal = lifecyclePalette(lifecycle.phase)
+
   return (
     <div style={{ paddingBottom: '2rem' }}>
       {/* Header */}
@@ -192,9 +206,22 @@ export default async function RoundDetailPage({
         <div style={{ fontSize: '0.65rem', fontWeight: 700, color: C.accent, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
           {profile.name} · Round
         </div>
-        <h1 style={{ fontSize: '1.45rem', fontWeight: 700, color: C.text, margin: '0.1rem 0' }}>
-          {round.displayName ?? mandateNarrative}
-        </h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', margin: '0.1rem 0' }}>
+          <h1 style={{ fontSize: '1.45rem', fontWeight: 700, color: C.text, margin: 0 }}>
+            {round.displayName ?? mandateNarrative}
+          </h1>
+          <span style={{
+            padding: '0.2rem 0.55rem',
+            background: lifecyclePal.bg, color: lifecyclePal.fg, border: `1px solid ${lifecyclePal.border}`,
+            borderRadius: 999, fontSize: '0.7rem', fontWeight: 700,
+            textTransform: 'uppercase', letterSpacing: '0.05em',
+          }}>
+            {lifecycle.label}
+          </span>
+        </div>
+        <p style={{ fontSize: '0.78rem', color: C.textMuted, margin: '0.15rem 0 0' }}>
+          {lifecycle.caption}
+        </p>
         {round.displayName && mandateNarrative && (
           <div style={{ fontSize: '0.78rem', color: C.textMuted, marginTop: '0.15rem' }}>
             Accepts {mandateNarrative}

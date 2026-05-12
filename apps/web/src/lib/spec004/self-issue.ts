@@ -204,11 +204,15 @@ export async function selfIssuePledgerDelegation(args: {
  *     (e.g. adding a voter to a round). The web action that wraps this
  *     gate-checks that the caller is in fact the round operator.
  *
- * Both paths use the deployer EOA to sign on behalf of both the admin and
- * holder AgentAccounts (the deployer is an initial owner of every freshly
- * deployed AgentAccount, so ERC-1271 accepts the signature). The holder's
- * person-mcp wallet is provisioned at `walletContext='spec004'` so it
- * doesn't collide with the session-EOA wallet on `'default'`.
+ * Each path is signed by the caller's own key — admin signs with the
+ * admin's key, holder identity is established with the holder's key. The
+ * deployer key MUST NOT be passed in for demo users (substrate-independence
+ * rule P1). Passkey/SIWE callers fall back to whatever
+ * `loadSignerForCurrentUser` produced (a deployer placeholder until the
+ * passkey signing ceremony lands); that placeholder is scoped to stateless
+ * sessions only, never demo. The holder's person-mcp wallet is provisioned
+ * at `walletContext='spec004'` so it doesn't collide with the session-EOA
+ * wallet on `'default'`.
  *
  * Idempotent at the cred-row level — calling twice issues two creds. The
  * action layer's retry-once pattern (issue → re-resolve chain) accepts
@@ -217,35 +221,33 @@ export async function selfIssuePledgerDelegation(args: {
 export async function issueMarketplaceCredential(args: {
   /** The round/pool admin AgentAccount (delegator of the root delegation). */
   adminSmartAccount: Address
+  /** EOA private key that signs the admin→holder root delegation. MUST
+   *  be a registered owner of `adminSmartAccount` so ERC-1271 accepts.
+   *  Demo: admin's `users.privateKey`. Stateless: pass the placeholder from
+   *  `loadSignerForCurrentUser` (deployer for now; passkey ceremony later). */
+  adminSigningKey: Hex
   /** The holder AgentAccount (delegate of the root delegation; the user
    *  whose person-mcp will store the credential). */
   holderSmartAccount: Address
+  /** EOA private key for the holder's wallet provisioning + AcceptCredentialOffer
+   *  signature. Demo: holder's `users.privateKey`. Stateless: placeholder. */
+  holderSigningKey: Hex
   credentialType: 'RoundVoterCredential' | 'ProposalSubmitterCredential'
   /** Required for ProposalSubmitterCredential — binds the cred to a pool. */
   poolAgentId?: string
   /** Required for RoundVoterCredential — binds the cred to a round. */
   roundSubject?: string
   /** Override the holder's person-mcp principal. Demo/google users have
-   *  `person_<users.id>`; passkey/SIWE users have `person_<smartAccount>`.
-   *  The caller resolves which form applies (e.g. by checking the users
-   *  table for a smartAccountAddress match). Default = stateless form. */
+   *  `person_<users.id>`; passkey/SIWE users have `person_<smartAccount>`. */
   holderPrincipalOverride?: string
-  /** Override the holder's signer privateKey + wallet context. For demo
-   *  users with a stored EOA, pass their privateKey + walletContext='default'
-   *  so we route the issuance into their existing person-mcp wallet (the
-   *  wallet's `signer_eoa` matches what `loadSignerForCurrentUser` will
-   *  return at presentation time). Stateless users keep the default
-   *  deployer-signed 'spec004' wallet. */
-  holderPrivateKeyOverride?: `0x${string}`
+  /** Holder wallet context. Defaults to 'default' (the demo user's
+   *  session-EOA wallet); stateless self-issue can override to 'spec004'
+   *  to avoid collisions if needed. */
   holderWalletContextOverride?: string
 }): Promise<{ ok: true; credentialId: string } | { ok: false; error: string }> {
-  const deployerKey = process.env.DEPLOYER_PRIVATE_KEY as `0x${string}` | undefined
-  if (!deployerKey) return { ok: false, error: 'DEPLOYER_PRIVATE_KEY not set' }
-
   const principal = args.holderPrincipalOverride
     ?? `person_${args.holderSmartAccount.toLowerCase()}`
-  const holderPrivateKey = args.holderPrivateKeyOverride ?? deployerKey
-  const holderWalletContext = args.holderWalletContextOverride ?? 'spec004'
+  const holderWalletContext = args.holderWalletContextOverride ?? 'default'
   try {
     const { seedSpec004Credential } = await import('@/lib/demo-seed/seed-spec004-credentials')
     const result = await seedSpec004Credential({
@@ -254,9 +256,9 @@ export async function issueMarketplaceCredential(args: {
       credentialType: args.credentialType,
       poolAgentId: args.poolAgentId,
       roundSubject: args.roundSubject,
-      adminSigningKey: deployerKey,
+      adminSigningKey: args.adminSigningKey,
       adminAccountOverride: args.adminSmartAccount,
-      holderPrivateKeyOverride: holderPrivateKey,
+      holderPrivateKeyOverride: args.holderSigningKey,
       holderAccountOverride: args.holderSmartAccount,
       holderPrincipalOverride: principal,
       holderWalletContextOverride: holderWalletContext,
@@ -269,18 +271,24 @@ export async function issueMarketplaceCredential(args: {
 }
 
 /** Self-issue wrapper: admin == holder. Used by the existing
- *  retry-on-action-failure auto-issue path. */
+ *  retry-on-action-failure auto-issue path. The single `signerPrivateKey`
+ *  serves both admin and holder roles (since they're the same user). */
 export async function selfIssueMarketplaceCredential(args: {
   smartAccount: Address
+  signerPrivateKey: Hex
   credentialType: 'RoundVoterCredential' | 'ProposalSubmitterCredential'
   poolAgentId?: string
   roundSubject?: string
+  principal?: string
 }) {
   return issueMarketplaceCredential({
     adminSmartAccount: args.smartAccount,
+    adminSigningKey: args.signerPrivateKey,
     holderSmartAccount: args.smartAccount,
+    holderSigningKey: args.signerPrivateKey,
     credentialType: args.credentialType,
     poolAgentId: args.poolAgentId,
     roundSubject: args.roundSubject,
+    holderPrincipalOverride: args.principal,
   })
 }

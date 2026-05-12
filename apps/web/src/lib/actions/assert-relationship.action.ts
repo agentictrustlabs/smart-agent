@@ -8,11 +8,8 @@ import { eq } from 'drizzle-orm'
 import {
   getRelationshipTypeDefinitionByHash,
   getRoleDefinitionByHash,
-  relationshipTypeName,
-  roleName,
 } from '@smart-agent/sdk'
 import { findAgentOwnerUserIds } from '@/lib/agent-resolver'
-import { getAgentMetadata } from '@/lib/agent-metadata'
 
 export interface AssertRelationshipInput {
   subjectAgentAddress: string
@@ -38,8 +35,8 @@ export async function assertRelationship(
     }
 
     // Get current user
-    const users = await db.select().from(schema.users)
-      .where(eq(schema.users.did, session.userId)).limit(1)
+    const users = await db.select().from(schema.localUserAccounts)
+      .where(eq(schema.localUserAccounts.did, session.userId)).limit(1)
     const user = users[0]
     if (!user) return { success: false, error: 'User not found' }
 
@@ -78,26 +75,7 @@ export async function assertRelationship(
       }
     }
 
-    // Different owner — send notification to object agent's owner
-    try {
-      const ownerIds = await findAgentOwnerUserIds(input.objectAgentAddress)
-      const agentMeta = await getAgentMetadata(input.objectAgentAddress)
-      const ownerId = ownerIds[0] ?? null
-      const agentName = agentMeta.displayName || 'your agent'
-      const roleLabel = roleName(input.role)
-      const relationshipLabel = relationshipTypeName(input.relationshipType)
-
-      if (ownerId) {
-        try { try { try { await db.insert(schema.messages).values({
-          id: crypto.randomUUID(),
-          userId: ownerId,
-          type: 'relationship_proposed',
-          title: 'Relationship request',
-          body: `Someone wants the "${roleLabel}" role in ${relationshipLabel} with ${agentName}. Review and confirm on the Relationships page.`,
-          link: '/relationships',
-        })  } catch { /* messages table dropped */ }} catch { /* messages table dropped */ } } catch { /* messages moved to person-mcp */ }
-      }
-    } catch { /* non-fatal */ }
+    // (notification skipped — messages table dropped; per-side MCPs handle notify going forward)
 
     return { success: true, edgeId, autoConfirmed: false }
   } catch (error) {

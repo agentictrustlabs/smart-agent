@@ -102,46 +102,57 @@ export async function addRoundVoter(input: AddRoundVoterInput): Promise<AddRound
     /* if we can't reach the chain, the issuance call below will surface a clearer error */
   }
 
-  // Resolve the voter's person-mcp principal. Demo + google users have a
-  // `users` row whose .id is the principal suffix (`person_<users.id>`);
-  // passkey/SIWE users have no row and use `person_<smartAccount>`. The
-  // cred MUST be issued under the principal the voter's *active session*
-  // will resolve to, otherwise their `ssi_list_my_credentials` lookup
-  // misses and the presentation build fails with "no held credential".
+  // Admin signs the admin→holder delegation with their OWN key (P1 rule:
+  // no deployer cheating). Demo admins use users.privateKey; passkey/SIWE
+  // admins use the loadSignerForCurrentUser placeholder.
+  const { loadSignerForCurrentUser } = await import('@/lib/ssi/signer')
+  let adminSignerCtx: Awaited<ReturnType<typeof loadSignerForCurrentUser>> | null = null
+  try { adminSignerCtx = await loadSignerForCurrentUser() } catch { /* fall through */ }
+  if (adminSignerCtx?.kind !== 'eoa' || !adminSignerCtx.userRow.privateKey) {
+    return { ok: false, error: 'admin has no EOA signing key (passkey ceremony not wired)' }
+  }
+  const adminSigningKey = adminSignerCtx.userRow.privateKey as `0x${string}`
+
+  // Resolve the voter's person-mcp principal + holder signing key. Demo +
+  // google users have a `users` row whose .id is the principal suffix
+  // (`person_<users.id>`) and a stored privateKey; passkey/SIWE users have
+  // no row, only their smart account. The cred MUST be issued under the
+  // principal the voter's *active session* will resolve to.
   let holderPrincipalOverride: string | undefined
-  let holderPrivateKeyOverride: `0x${string}` | undefined
+  let holderSigningKey: `0x${string}` | undefined
   let holderWalletContextOverride: string | undefined
   try {
     const { db, schema } = await import('@/db')
     const { sql } = await import('drizzle-orm')
-    // smart_account_address is stored case-insensitively across rows
-    // (passkey users save lowercase, demo seed saves checksum). Use a
-    // SQL `LOWER(...)` match so both forms hit.
     const target = voter.toLowerCase()
-    const row = await db.select().from(schema.users)
-      .where(sql`LOWER(${schema.users.smartAccountAddress}) = ${target}`)
+    const row = await db.select().from(schema.localUserAccounts)
+      .where(sql`LOWER(${schema.localUserAccounts.smartAccountAddress}) = ${target}`)
       .limit(1).then(r => r[0])
     if (row?.id) {
       holderPrincipalOverride = `person_${row.id}`
-      // Demo users have a stored EOA — their existing 'default' wallet's
-      // signer matches what `loadSignerForCurrentUser` returns at
-      // presentation time. Route the issuance into that wallet so the
-      // signature check passes.
       if (row.privateKey) {
-        holderPrivateKeyOverride = row.privateKey as `0x${string}`
+        holderSigningKey = row.privateKey as `0x${string}`
         holderWalletContextOverride = 'default'
       }
     }
-  } catch { /* no users row → stateless principal */ }
+  } catch { /* no users row */ }
+
+  if (!holderSigningKey) {
+    return {
+      ok: false,
+      error: 'voter has no stored EOA — issuance to passkey/SIWE voters needs a holder-side accept flow (not yet wired)',
+    }
+  }
 
   const { issueMarketplaceCredential } = await import('@/lib/spec004/self-issue')
   const result = await issueMarketplaceCredential({
     adminSmartAccount: adminAccount,
+    adminSigningKey,
     holderSmartAccount: voter,
+    holderSigningKey,
     credentialType: 'RoundVoterCredential',
     roundSubject,
     holderPrincipalOverride,
-    holderPrivateKeyOverride,
     holderWalletContextOverride,
   })
   if (!result.ok) return { ok: false, error: result.error }
