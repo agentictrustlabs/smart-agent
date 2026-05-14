@@ -60,6 +60,7 @@ contract ProposalRegistryTest is Test {
         _registerTerm(proposals.SA_PROPOSAL_AWARDED_AT(), "sa:proposalAwardedAt", "uint256");
         _registerTerm(proposals.SA_PROPOSAL_BODY_HASH(), "sa:proposalBodyHash", "bytes32");
         _registerTerm(proposals.SA_PROPOSAL_AWARDING_FUND(), "sa:proposalAwardingFund", "address");
+        _registerTerm(proposals.SA_AWARD_NEED_INTENT(),      "sa:awardNeedIntent",       "string");
 
         enumStatus = keccak256(abi.encodePacked(
             proposals.CLASS_PROPOSAL_PUBLIC_FACET(),
@@ -109,7 +110,8 @@ contract ProposalRegistryTest is Test {
             totalAwarded: 5_000e6,
             bodyHash: keccak256("body-hash"),
             awardingFund: awardingFund,
-            status: STATUS_AWARDED
+            status: STATUS_AWARDED,
+            needIntentIdString: "urn:smart-agent:need-intent:test"
         });
     }
 

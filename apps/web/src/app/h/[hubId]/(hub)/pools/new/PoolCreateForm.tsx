@@ -6,7 +6,7 @@
  *
  * Fields kept minimal for the demo:
  *   - name + slug + domain
- *   - mandate.acceptedKinds (comma-separated tags)
+ *   - mandate.acceptedKinds (metadata-driven tags + custom entries)
  *   - mandate.acceptedGeo (comma-separated)
  *   - acceptedUnits (default ['USD'])
  *   - governanceModel + ceilingPolicy
@@ -18,6 +18,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import { FUNDING_KIND_OPTIONS, normalizeFundingKindId } from '@/lib/funding-kinds'
 
 const C = {
   text: '#5c4a3a',
@@ -31,6 +32,15 @@ const C = {
 
 const GOV_OPTIONS = ['fund', 'coaching-network', 'prayer-chain', 'skills-bench', 'hospitality-network'] as const
 const CEILING_OPTIONS = ['accept', 'block', 'waitlist'] as const
+const FUNDING_KIND_LABELS = new Map(FUNDING_KIND_OPTIONS.map((kind) => [kind.id, kind.label]))
+
+function normalizeSlug(value: string): string {
+  return value
+    .trimStart()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+/, '')
+}
 
 export interface EligibleOrg {
   orgAddress: `0x${string}`
@@ -51,7 +61,9 @@ export function PoolCreateForm({ hubSlug, orgs }: Props) {
   const [governanceModel, setGovernanceModel] = useState<typeof GOV_OPTIONS[number]>('fund')
   const [ceilingPolicy, setCeilingPolicy] = useState<typeof CEILING_OPTIONS[number]>('accept')
   const [visibility, setVisibility] = useState<'public' | 'private'>('public')
-  const [acceptedKinds, setAcceptedKinds] = useState('')
+  const [acceptedKinds, setAcceptedKinds] = useState<string[]>([])
+  const [customKind, setCustomKind] = useState('')
+  const [kindError, setKindError] = useState<string | null>(null)
   const [acceptedGeo, setAcceptedGeo] = useState('us/colorado')
   const [acceptedUnits, setAcceptedUnits] = useState('USD')
   const [error, setError] = useState<string | null>(null)
@@ -69,7 +81,7 @@ export function PoolCreateForm({ hubSlug, orgs }: Props) {
       setError('Slug must be lowercase letters, digits, and dashes only.')
       return
     }
-    const kindsList = acceptedKinds.split(',').map(s => s.trim()).filter(Boolean)
+    const kindsList = acceptedKinds
     const geoList = acceptedGeo.split(',').map(s => s.trim()).filter(Boolean)
     const unitsList = acceptedUnits.split(',').map(s => s.trim()).filter(Boolean)
 
@@ -91,9 +103,8 @@ export function PoolCreateForm({ hubSlug, orgs }: Props) {
             acceptedUnits: unitsList,
             ceilingPolicy,
             visibility,
-            // The operating org becomes the pool's stewardship anchor;
-            // server adds it as an on-chain owner of the pool agent so
-            // org members govern the pool uniformly.
+            // The operating org becomes the pool's stewardship anchor.
+            // Management checks use governance owners, not membership roles.
             operatingOrg: pickedOrg,
             stewards: [pickedOrg],
           }),
@@ -118,6 +129,49 @@ export function PoolCreateForm({ hubSlug, orgs }: Props) {
         setError(err instanceof Error ? err.message : String(err))
       }
     })
+  }
+
+  function toggleKind(kindId: string) {
+    setKindError(null)
+    setAcceptedKinds((current) =>
+      current.includes(kindId)
+        ? current.filter((id) => id !== kindId)
+        : [...current, kindId],
+    )
+  }
+
+  function removeKind(kindId: string) {
+    setKindError(null)
+    setAcceptedKinds((current) => current.filter((id) => id !== kindId))
+  }
+
+  function addCustomKind() {
+    setKindError(null)
+    const normalized = normalizeFundingKindId(customKind)
+    if (!normalized) return
+    if (normalized.length > 40) {
+      setKindError('Kind names must be 40 characters or fewer.')
+      return
+    }
+    if (acceptedKinds.includes(normalized)) {
+      setKindError('Already selected.')
+      return
+    }
+    setAcceptedKinds((current) => [...current, normalized])
+    setCustomKind('')
+  }
+
+  function kindLabel(kindId: string): string {
+    return FUNDING_KIND_LABELS.get(kindId) ?? kindId
+  }
+
+  function updateName(value: string) {
+    setName(value)
+    setSlug(normalizeSlug(value))
+  }
+
+  function updateSlug(value: string) {
+    setSlug(normalizeSlug(value))
   }
 
   function field(label: string, child: React.ReactNode) {
@@ -158,20 +212,127 @@ export function PoolCreateForm({ hubSlug, orgs }: Props) {
             {orgs.map(o => <option key={o.orgAddress} value={o.orgAddress}>{o.orgName}</option>)}
           </select>
           <div style={{ fontSize: '0.7rem', color: C.textMuted, marginTop: '0.25rem' }}>
-            Becomes a co-owner of the pool&apos;s AgentAccount. Its members govern the pool
-            and inherit operator rights on any round backed by it.
+            The selected organisation controls this pool. Governance owners of that organisation can
+            manage the pool and administer rounds backed by it.
           </div>
         </>
       ))}
-      {field('Display name', <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Trauma-Care + Migrant Family Pool" style={inputStyle} required />)}
-      {field('Slug (lowercase, dash-separated)', <input type="text" value={slug} onChange={e => setSlug(e.target.value)} placeholder="demo-trauma-care-pool" style={inputStyle} required />)}
+      {field('Display name', <input type="text" value={name} onChange={e => updateName(e.target.value)} placeholder="Trauma-Care + Migrant Family Pool" style={inputStyle} required />)}
+      {field('Slug (lowercase, dash-separated)', <input type="text" value={slug} onChange={e => updateSlug(e.target.value)} placeholder="trauma-care-migrant-family-pool" style={inputStyle} required />)}
       {field('Domain', <input type="text" value={domain} onChange={e => setDomain(e.target.value)} style={inputStyle} />)}
       {field('Governance model', (
         <select value={governanceModel} onChange={e => setGovernanceModel(e.target.value as typeof GOV_OPTIONS[number])} style={inputStyle}>
           {GOV_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
         </select>
       ))}
-      {field('Accepted kinds (comma-separated)', <input type="text" value={acceptedKinds} onChange={e => setAcceptedKinds(e.target.value)} placeholder="trauma-care, CompassionMinistry" style={inputStyle} required />)}
+      <div style={{ marginBottom: '0.7rem' }}>
+        <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
+          <legend style={{ fontSize: '0.78rem', fontWeight: 600, color: C.text, marginBottom: '0.25rem', padding: 0 }}>
+            Accepted funding kinds
+          </legend>
+          <div style={{ fontSize: '0.7rem', color: C.textMuted, marginBottom: '0.45rem' }}>
+            Optional. Leave empty to accept any proposal kind.
+          </div>
+          <div
+            style={{
+              border: `1px solid ${C.border}`,
+              borderRadius: 8,
+              padding: '0.55rem',
+              maxHeight: 170,
+              overflowY: 'auto',
+              background: '#fff',
+            }}
+          >
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(12rem, 1fr))', gap: '0.35rem 0.7rem' }}>
+              {FUNDING_KIND_OPTIONS.map((kind) => (
+                <label key={kind.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.45rem', fontSize: '0.8rem', color: C.text }}>
+                  <input
+                    type="checkbox"
+                    checked={acceptedKinds.includes(kind.id)}
+                    onChange={() => toggleKind(kind.id)}
+                    style={{ marginTop: '0.12rem' }}
+                  />
+                  <span>
+                    <span style={{ fontWeight: 600 }}>{kind.label}</span>
+                    {kind.description && (
+                      <span style={{ display: 'block', fontSize: '0.68rem', color: C.textMuted }}>{kind.description}</span>
+                    )}
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
+        </fieldset>
+
+        {acceptedKinds.length > 0 ? (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginTop: '0.55rem' }}>
+            {acceptedKinds.map((kindId) => {
+              const custom = !FUNDING_KIND_LABELS.has(kindId)
+              return (
+                <span
+                  key={kindId}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.3rem',
+                    padding: '0.18rem 0.45rem',
+                    borderRadius: 999,
+                    border: `1px solid ${C.border}`,
+                    background: '#faf8f3',
+                    color: C.text,
+                    fontSize: '0.72rem',
+                  }}
+                >
+                  {kindLabel(kindId)}
+                  {custom && <span style={{ color: C.textMuted, fontStyle: 'italic' }}>custom</span>}
+                  <button
+                    type="button"
+                    onClick={() => removeKind(kindId)}
+                    aria-label={`Remove ${kindLabel(kindId)}`}
+                    style={{ border: 0, background: 'transparent', color: C.textMuted, cursor: 'pointer', padding: 0, fontSize: '0.9rem', lineHeight: 1 }}
+                  >
+                    ×
+                  </button>
+                </span>
+              )
+            })}
+          </div>
+        ) : (
+          <div style={{ fontSize: '0.72rem', color: C.textMuted, marginTop: '0.45rem' }}>
+            No kinds selected. This pool will accept any proposal kind.
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: '0.45rem', marginTop: '0.55rem' }}>
+          <input
+            type="text"
+            value={customKind}
+            onChange={e => {
+              setCustomKind(e.target.value)
+              setKindError(null)
+            }}
+            onKeyDown={e => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                addCustomKind()
+              }
+            }}
+            placeholder="Enter a custom kind..."
+            style={inputStyle}
+          />
+          <button
+            type="button"
+            onClick={addCustomKind}
+            aria-label="Add custom kind"
+            style={{ minWidth: 64, padding: '0.45rem 0.7rem', borderRadius: 6, border: `1px solid ${C.border}`, background: '#faf8f3', color: C.text, fontWeight: 700, cursor: 'pointer' }}
+          >
+            Add
+          </button>
+        </div>
+        {kindError && (
+          <div style={{ fontSize: '0.72rem', color: C.errorFg, marginTop: '0.35rem' }}>{kindError}</div>
+        )}
+      </div>
       {field('Accepted geo (comma-separated)', <input type="text" value={acceptedGeo} onChange={e => setAcceptedGeo(e.target.value)} placeholder="us/colorado" style={inputStyle} />)}
       {field('Accepted units', <input type="text" value={acceptedUnits} onChange={e => setAcceptedUnits(e.target.value)} placeholder="USD" style={inputStyle} />)}
       {field('Ceiling policy', (

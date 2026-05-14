@@ -38,6 +38,10 @@ export interface CloseableProposal {
   /** Default suggested award amount — typically the proposal's budget total. */
   suggestedAmount: number
   unit: string
+  /** Spec 006 — original NeedIntent IRI; preserved into the commitment. */
+  needIntentId?: string
+  /** Spec 006 — milestone schedule (proposal body); single-tranche default applied server-side when absent. */
+  milestonesJson?: string
 }
 
 export interface CloseRoundFormProps {
@@ -53,6 +57,8 @@ interface SelectedAward {
   recipientAgentIRI: string
   totalAmount: number
   unit: string
+  needIntentId?: string
+  milestonesJson?: string
 }
 
 export function CloseRoundForm({ hubSlug, roundId, poolAgentId, proposals }: CloseRoundFormProps) {
@@ -103,6 +109,8 @@ export function CloseRoundForm({ hubSlug, roundId, poolAgentId, proposals }: Clo
         recipientAgentIRI: p.proposerAgentId,
         totalAmount: amount,
         unit: p.unit,
+        needIntentId: p.needIntentId,
+        milestonesJson: p.milestonesJson,
       })
     }
 

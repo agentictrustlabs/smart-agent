@@ -143,6 +143,40 @@ const TERMS: Array<{ curie: string; datatype: string }> = [
   { curie: 'sa:pledgePaymentRail',           datatype: 'bytes32' },
   { curie: 'sa:pledgeEvidenceHash',          datatype: 'bytes32' },
   { curie: 'sa:pledgeMarkedByAgent',         datatype: 'address' },
+  // Spec 006 — CommitmentRegistry. Universal match-fulfillment artifact.
+  // Lineage / context predicates.
+  { curie: 'sa:commitmentSourceKind',     datatype: 'bytes32' },
+  { curie: 'sa:commitmentSourceSubject',  datatype: 'bytes32' },
+  { curie: 'sa:commitmentRound',          datatype: 'bytes32' },
+  { curie: 'sa:commitmentNeedIntent',     datatype: 'string'  },
+  { curie: 'sa:commitmentOfferIntent',    datatype: 'string'  },
+  // Parties.
+  { curie: 'sa:commitmentDonor',          datatype: 'address' },
+  { curie: 'sa:commitmentRecipient',      datatype: 'address' },
+  // Terms.
+  { curie: 'sa:commitmentToken',          datatype: 'address' },
+  { curie: 'sa:commitmentTotalAmount',    datatype: 'uint256' },
+  { curie: 'sa:commitmentMilestonesJson', datatype: 'string'  },
+  // State.
+  { curie: 'sa:commitmentReleasedAmount', datatype: 'uint256' },
+  { curie: 'sa:commitmentStatus',         datatype: 'bytes32' },
+  { curie: 'sa:commitmentCommittedAt',    datatype: 'uint256' },
+  { curie: 'sa:commitmentUpdatedAt',      datatype: 'uint256' },
+  { curie: 'sa:commitmentCancelReason',   datatype: 'bytes32' },
+  // Per-milestone release + per-outcome attestation (composite subjects).
+  { curie: 'sa:milestoneReleased',        datatype: 'uint256' },
+  { curie: 'sa:milestoneReleasedAt',      datatype: 'uint256' },
+  { curie: 'sa:outcomeEvidenceHash',      datatype: 'bytes32' },
+  { curie: 'sa:outcomeRecordedAt',        datatype: 'uint256' },
+  { curie: 'sa:outcomeRecordedBy',        datatype: 'address' },
+  // AgentAccount predicate — generic treasury pointer (org + person).
+  // Spec 006 resolveRecipientTreasury reads this first, then falls back
+  // to sa:hasPersonalTreasury, then self.
+  { curie: 'sa:hasTreasury',              datatype: 'address' },
+  // Spec 006 — ProposalRegistry.announceAward extension. Stores the
+  // originating NeedIntent IRI as a string so the commit-from-award path
+  // can populate sa:commitmentNeedIntent without re-walking the proposal.
+  { curie: 'sa:awardNeedIntent',          datatype: 'string'  },
 ]
 
 const shapeRegistryAbi = [
@@ -182,6 +216,7 @@ const SHAPE_CLASSES: string[] = [
   'sa:GrantProposal',
   'sa:Pledge',
   'sa:MatchInitiation',
+  'sa:Commitment',
 ]
 
 async function defineSpec004Shapes() {

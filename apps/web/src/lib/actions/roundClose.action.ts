@@ -20,7 +20,10 @@
 import { keccak256, toBytes, toHex, type Address, type Hex } from 'viem'
 import { callMcp } from '@/lib/clients/mcp-client'
 import { getWalletClient, getPublicClient } from '@/lib/contracts'
-import { proposalSubject, proposalRegistryAbi, grantProposalRegistryAbi } from '@smart-agent/sdk'
+import {
+  proposalSubject, proposalRegistryAbi, grantProposalRegistryAbi,
+  commitmentRegistryAbi,
+} from '@smart-agent/sdk'
 
 export interface Award {
   proposalIRI: string
@@ -28,6 +31,19 @@ export interface Award {
   recipientAddr: Address
   totalAmount: bigint
   unit: string
+  /**
+   * Spec 006 — original NeedIntent IRI from the proposal's `basedOnIntent`
+   * field. Carried forward into `sa:awardNeedIntent` on the public facet
+   * and into `sa:commitmentNeedIntent` on the new commitment row. Empty
+   * string when the proposal had no anchoring intent.
+   */
+  needIntentId?: string
+  /**
+   * Spec 006 — milestone schedule JSON (proposal body's milestones field).
+   * Used to populate `sa:commitmentMilestonesJson`. If absent, the
+   * commit defaults to a single-tranche schedule covering the full amount.
+   */
+  milestonesJson?: string
 }
 
 export interface CloseRoundInput {
@@ -53,6 +69,14 @@ export interface CloseRoundResult {
   awardsRootTxHash: Hex
   statusTxHash: Hex
   proposalAnnouncements: Array<{ proposalIRI: string; txHash: Hex }>
+  commitments: Array<{
+    proposalIRI: string
+    commitmentSubject: Hex
+    donor: Address
+    recipient: Address
+    totalAmount: string  // bigint stringified for JSON serialisation
+    txHash: Hex
+  }>
 }
 
 /** Compute the Merkle awardsRoot the SESSION_DELEGATION will commit to. */
@@ -122,17 +146,25 @@ export async function closeRound(input: CloseRoundInput): Promise<CloseRoundResu
   )
   const statusTxHash = statusRes.txHash
 
-  // 4. Per-proposal: announce on chain (public facet) + flip MCP row.
-  // ProposalRegistry writes are not yet on the org-mcp tool surface — these
-  // remain signed via the deployer EOA on the web side. (Tier-1.x follow-up.)
+  // 4. Per-proposal: announce on chain (public facet) + flip MCP row +
+  //    spec-006 — create the commitment row in CommitmentRegistry.
+  // All three writes are still signed via the deployer EOA on the web side
+  // (Tier-1.x follow-up to move ProposalRegistry + CommitmentRegistry onto
+  // the org-mcp tool surface).
   const proposalAnnouncements: Array<{ proposalIRI: string; txHash: Hex }> = []
+  const commitments: CloseRoundResult['commitments'] = []
   const wallet = getWalletClient()
   const account = wallet.account!
   const publicClient = getPublicClient()
 
+  const commitmentRegistryAddr = process.env.COMMITMENT_REGISTRY_ADDRESS as Address | undefined
+  const usdcAddr = (process.env.USDC_ADDRESS ?? process.env.MOCK_USDC_ADDRESS) as Address | undefined
+
   for (const a of input.awards) {
     const proposalSlug = a.proposalIRI.replace(/^urn:smart-agent:proposal:/, '')
     const ps = proposalSubject(proposalSlug)
+    const roundSubject = keccak256(new TextEncoder().encode(`sa:round:${roundIdSlug}`))
+    const needIntentString = a.needIntentId ?? ''
     const txHash = await wallet.writeContract({
       address: proposalRegistryAddr,
       abi: proposalRegistryAbi,
@@ -140,14 +172,17 @@ export async function closeRound(input: CloseRoundInput): Promise<CloseRoundResu
       args: [{
         proposalSubject: ps,
         kind: keccak256(new TextEncoder().encode(KIND_DEFAULT)),
-        basedOnIntentId: ('0x' + '0'.repeat(64)) as Hex,
-        round: keccak256(new TextEncoder().encode(`sa:round:${roundIdSlug}`)),
+        basedOnIntentId: needIntentString
+          ? keccak256(new TextEncoder().encode(needIntentString))
+          : (('0x' + '0'.repeat(64)) as Hex),
+        round: roundSubject,
         proposer: ('0x' + '0'.repeat(40)) as Address,
         recipient: a.recipientAddr,
         totalAwarded: a.totalAmount,
         bodyHash: keccak256(toBytes(a.proposalIRI)),
         awardingFund: input.poolAgentId,
         status: keccak256(new TextEncoder().encode('sa:ProposalAwarded')),
+        needIntentIdString: needIntentString,
       }],
       account,
       chain: wallet.chain ?? null,
@@ -185,6 +220,60 @@ export async function closeRound(input: CloseRoundInput): Promise<CloseRoundResu
       }
     }
 
+    // Spec-006: create the commitment row that owns the disbursement +
+    // fulfillment lifecycle. donor = pool, recipient = resolved treasury,
+    // sourceKind = MATCH_AWARD, sourceSubject = the proposal subject.
+    // The deployer is an owner of pool (initial-owner pattern), so direct
+    // EOA call passes the donor-owner gate. Non-fatal: if the registry
+    // isn't deployed or the call reverts, closeRound still succeeds — the
+    // commitment can be created in a follow-up reconciliation pass.
+    if (commitmentRegistryAddr && usdcAddr) {
+      try {
+        const sourceKind = keccak256(toBytes('sa:CommitmentSourceAward'))
+        const milestones = a.milestonesJson && a.milestonesJson.trim().length > 0
+          ? a.milestonesJson
+          : '[{"id":"single","label":"On award","trancheBps":10000}]'
+        const commitTx = await wallet.writeContract({
+          address: commitmentRegistryAddr,
+          abi: commitmentRegistryAbi,
+          functionName: 'commit',
+          args: [{
+            sourceKind,
+            sourceSubject: ps,
+            round: roundSubject,
+            donor: input.poolAgentId,
+            recipient: a.recipientAddr,
+            token: usdcAddr,
+            totalAmount: a.totalAmount,
+            needIntentId: needIntentString || `urn:smart-agent:proposal:${proposalSlug}`,
+            offerIntentId: '',
+            milestonesJson: milestones,
+          }],
+          account,
+          chain: wallet.chain ?? null,
+        })
+        await publicClient.waitForTransactionReceipt({ hash: commitTx })
+        const commitmentSubject = keccak256(
+          new Uint8Array([
+            ...toBytes('sa:commitment:'),
+            ...toBytes(sourceKind),
+            ...toBytes(ps),
+            ...toBytes(input.poolAgentId.toLowerCase() as `0x${string}`),
+          ]),
+        )
+        commitments.push({
+          proposalIRI: a.proposalIRI,
+          commitmentSubject,
+          donor: input.poolAgentId,
+          recipient: a.recipientAddr,
+          totalAmount: a.totalAmount.toString(),
+          txHash: commitTx,
+        })
+      } catch (err) {
+        console.warn('[closeRound] CommitmentRegistry.commit failed (non-fatal):', err instanceof Error ? err.message : err)
+      }
+    }
+
     // Flip the proposer's MCP row to 'awarded' (legacy path; the spec-004
     // reader already picks up the on-chain status above).
     try {
@@ -199,6 +288,18 @@ export async function closeRound(input: CloseRoundInput): Promise<CloseRoundResu
 
   const { scheduleKbSyncEager } = await import('@/lib/ontology/kb-write-through')
   scheduleKbSyncEager()
+  // Spec 006 — mirror the new commitment rows to GraphDB so the proposer /
+  // intent surfaces can render them immediately. Best-effort; the periodic
+  // kb-sync catches any miss.
+  if (commitments.length > 0) {
+    try {
+      const { syncAllCommitmentsToGraphDB } = await import('@/lib/ontology/graphdb-sync')
+      const r = await syncAllCommitmentsToGraphDB()
+      if (!r.ok) console.warn('[closeRound] commitment sync warning:', r.message)
+    } catch (err) {
+      console.warn('[closeRound] commitment sync threw:', err instanceof Error ? err.message : err)
+    }
+  }
 
   return {
     roundId: fullRoundId,
@@ -208,5 +309,6 @@ export async function closeRound(input: CloseRoundInput): Promise<CloseRoundResu
     awardsRootTxHash,
     statusTxHash,
     proposalAnnouncements,
+    commitments,
   }
 }

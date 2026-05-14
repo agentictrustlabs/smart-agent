@@ -25,6 +25,11 @@ const TYPE_ORGANIZATION = keccak256(toBytes('atl:OrganizationAgent'))
 // TYPE_PERSON no longer needed — person agents deployed by generateDemoWallet
 const TYPE_AI = keccak256(toBytes('atl:AIAgent'))
 const TYPE_HUB = keccak256(toBytes('atl:HubAgent'))
+// Spec 006 — Treasury Service Agent. Distinct AgentAccount per org, holds
+// the org's funds, registered separately so the network graph renders
+// "org → its treasury" as two nodes.
+const TYPE_TREASURY_AGENT = keccak256(toBytes('atl:TreasuryAgent'))
+const SA_HAS_TREASURY = keccak256(toBytes('sa:hasTreasury'))
 const ZERO_HASH = '0x0000000000000000000000000000000000000000000000000000000000000000' as `0x${string}`
 
 async function deploy(salt: number): Promise<`0x${string}`> {
@@ -45,6 +50,50 @@ async function register(addr: `0x${string}`, name: string, desc: string, agentTy
       functionName: 'register', args: [addr, name, desc, agentType, ZERO_HASH, ''],
     })
   } catch (_e) { console.warn(`[catalyst-seed] Failed to register ${name}:`, _e) }
+}
+
+/**
+ * Spec 006 — deploy a dedicated Treasury AgentAccount for `orgAddr` and
+ * link it via `sa:hasTreasury` on the org. The treasury agent is
+ * registered with `TYPE_TREASURY_AGENT` so it renders as a distinct
+ * Service node on the trust graph (color = teal in TrustGraphView's
+ * NODE_COLORS map).
+ *
+ * Salt convention: `400000 + orgSalt` (orgSalt is the salt the org's own
+ * AgentAccount was deployed with). Deterministic + non-colliding with
+ * person / org / AI salts.
+ */
+async function deployAndLinkTreasury(
+  orgAddr: `0x${string}`,
+  orgSalt: number,
+  orgName: string,
+): Promise<`0x${string}` | null> {
+  try {
+    const walletClient = getWalletClient()
+    const resolverAddr = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}` | undefined
+    if (!resolverAddr) return null
+
+    const treasury = await deploy(400000 + orgSalt)
+    await register(
+      treasury,
+      `${orgName} Treasury`,
+      `Treasury Service Agent for ${orgName} — holds the org's USDC and serves as the donor address for grant-lane commitments.`,
+      TYPE_TREASURY_AGENT,
+    )
+
+    // Link org → treasury via sa:hasTreasury on the AgentAccountResolver.
+    // Deployer is an initial owner of the org's AgentAccount (factory
+    // pattern), so this write passes the resolver's onlyAgentOwner gate.
+    await walletClient.writeContract({
+      address: resolverAddr, abi: agentAccountResolverAbi,
+      functionName: 'setAddressProperty',
+      args: [orgAddr, SA_HAS_TREASURY, treasury],
+    })
+    return treasury
+  } catch (e) {
+    console.warn(`[catalyst-seed] Treasury for ${orgName} failed:`, e)
+    return null
+  }
 }
 
 async function createEdge(subject: `0x${string}`, object: `0x${string}`, relType: `0x${string}`, roles: `0x${string}`[], metadataURI?: string) {
@@ -297,6 +346,22 @@ async function doSeed() {
   await register(senegalWolofOutreach, 'Senegal Wolof Outreach', 'Catalyst sub-tenant — diaspora research and people-group segmentation for the Wolof people in Senegal/Dakar', TYPE_ORGANIZATION)
   await register(analytics, 'NoCo Growth Analytics', 'Movement health tracking for Northern Colorado circles', TYPE_AI)
   // Person agents already registered by generateDemoWallet — skip re-registration
+
+  // ─── Spec 006 — Treasury Service Agents per org ───────────────────
+  // Each org gets a dedicated TreasuryAgent (separate AgentAccount, own
+  // type, sa:hasTreasury back-link). Renders on the trust graph as a
+  // teal node next to its parent org.
+  console.log('[catalyst-seed] Deploying treasury service agents...')
+  await deployAndLinkTreasury(network,              200001, 'Catalyst NoCo Network')
+  await deployAndLinkTreasury(hub,                  200002, 'Fort Collins Network')
+  await deployAndLinkTreasury(grpWellington,        200003, 'Wellington Circle')
+  await deployAndLinkTreasury(grpLaporte,           200004, 'Laporte Circle')
+  await deployAndLinkTreasury(grpTimnath,           200005, 'Timnath Circle')
+  await deployAndLinkTreasury(grpLoveland,          200006, 'Loveland Circle')
+  await deployAndLinkTreasury(grpBerthoud,          200007, 'Berthoud Circle')
+  await deployAndLinkTreasury(grpJohnstown,         200008, 'Johnstown Circle')
+  await deployAndLinkTreasury(grpRedFeather,        200009, 'Red Feather Circle')
+  await deployAndLinkTreasury(senegalWolofOutreach, 200014, 'Senegal Wolof Outreach')
 
   // Person agent controllers already set by generateDemoWallet — skip
 
@@ -928,6 +993,11 @@ async function doMinimalSeed() {
   await register(network, 'Catalyst NoCo Network', 'Northern Colorado catalyst network — Hispanic community outreach and church planting north of Fort Collins', TYPE_ORGANIZATION)
   await register(hub, 'Fort Collins Network', 'Regional facilitator org — bilingual community development across Fort Collins and surrounding circles', TYPE_ORGANIZATION)
   await register(hubCatalyst, 'Catalyst Hub', 'Catalyst NoCo Network hub — Hispanic outreach, activity tracking, multiplication mapping', TYPE_HUB)
+
+  // Spec 006 — Treasury Service Agents (minimal-mode subset).
+  console.log('[catalyst-seed:minimal] Deploying treasury service agents...')
+  await deployAndLinkTreasury(network, 200001, 'Catalyst NoCo Network')
+  await deployAndLinkTreasury(hub,     200002, 'Fort Collins Network')
 
   // Controllers — let signed-in users approve PROPOSED edges.
   await setController(network, maria.walletAddress)

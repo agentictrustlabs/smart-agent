@@ -28,6 +28,7 @@ import {
   agentAccountAbi,
   pledgeRegistryAbi,
   mockUsdcAbi,
+  commitmentRegistryAbi,
 } from '../../abi'
 import {
   buildCaveat,
@@ -49,10 +50,12 @@ function selectorFromAbi(abi: readonly unknown[], name: string): Hex {
 }
 
 export const SPEC005_SELECTORS = {
-  executeBatch:      selectorFromAbi(agentAccountAbi as unknown as readonly AbiFunction[], 'executeBatch'),
-  pledgeRecordHonor: selectorFromAbi(pledgeRegistryAbi, 'recordHonor'),
-  pledgeMarkPaid:    selectorFromAbi(pledgeRegistryAbi, 'markPaid'),
-  erc20Transfer:     selectorFromAbi(mockUsdcAbi, 'transfer'),
+  executeBatch:           selectorFromAbi(agentAccountAbi as unknown as readonly AbiFunction[], 'executeBatch'),
+  pledgeRecordHonor:      selectorFromAbi(pledgeRegistryAbi, 'recordHonor'),
+  pledgeMarkPaid:         selectorFromAbi(pledgeRegistryAbi, 'markPaid'),
+  erc20Transfer:          selectorFromAbi(mockUsdcAbi, 'transfer'),
+  // Spec 006 — release rail (donor.executeBatch([transfer, recordRelease])).
+  commitmentRecordRelease: selectorFromAbi(commitmentRegistryAbi, 'recordRelease'),
 } as const
 
 // ─── Payment rail concept hashes ─────────────────────────────────────
@@ -136,6 +139,92 @@ export function encodeHonorBatch(input: HonorBatchInput): Hex {
 /** keccak256 of the executeBatch calldata — pinned into CallDataHashEnforcer. */
 export function honorBatchHash(input: HonorBatchInput): Hex {
   return keccak256(encodeHonorBatch(input)) as Hex
+}
+
+// ─── Spec 006 — Release rail (donor.executeBatch([transfer, recordRelease])) ─
+
+export interface ReleaseBatchInput {
+  /** Donor's AgentAccount (the executeBatch target / delegator). */
+  donor: Address
+  /** Resolved recipient AgentAccount receiving USDC. */
+  recipient: Address
+  /** USDC (or other ERC-20). */
+  token: Address
+  /** CommitmentRegistry contract. */
+  commitmentRegistry: Address
+  /** On-chain commitment subject (keccak256 per CommitmentRegistry._commitmentSubject). */
+  commitmentSubject: Hex
+  /** Milestone id (bytes32 — keccak256 of the milestone slug). */
+  milestoneId: Hex
+  /** Token-scaled amount (USDC 6-decimal). */
+  tokenAmount: bigint
+  /** Amount in commitment-scale units. Matches `totalAmount` at commit time
+   *  — typically the same as `tokenAmount` (both USDC-6-dec) for grant lane.
+   *  Kept distinct so non-USDC commitments can use different scales. */
+  commitmentScaleAmount: bigint
+}
+
+/**
+ * Encode the `executeBatch([transfer, recordRelease])` calldata. Mirrors
+ * `encodeHonorBatch` from spec-005 — same atomic dual-call shape, just
+ * pointed at the recipient + CommitmentRegistry. If `transfer` reverts
+ * (donor short on USDC), `recordRelease` never fires.
+ */
+export function encodeReleaseBatch(input: ReleaseBatchInput): Hex {
+  const transferData = encodeFunctionData({
+    abi: mockUsdcAbi,
+    functionName: 'transfer',
+    args: [input.recipient, input.tokenAmount],
+  })
+  const recordReleaseData = encodeFunctionData({
+    abi: commitmentRegistryAbi,
+    functionName: 'recordRelease',
+    args: [input.commitmentSubject, input.milestoneId, input.commitmentScaleAmount],
+  })
+  return encodeFunctionData({
+    abi: agentAccountAbi,
+    functionName: 'executeBatch',
+    args: [[
+      { target: input.token,              value: 0n, data: transferData },
+      { target: input.commitmentRegistry, value: 0n, data: recordReleaseData },
+    ]],
+  })
+}
+
+export function releaseBatchHash(input: ReleaseBatchInput): Hex {
+  return keccak256(encodeReleaseBatch(input)) as Hex
+}
+
+export interface ReleaseDelegationCaveatScope {
+  donor: Address
+  calldataHash: Hex
+  enforcers: {
+    allowedTargets: Address
+    allowedMethods: Address
+    callDataHash:   Address
+    timestamp:      Address
+    value:          Address
+  }
+  validAfter?: number
+  validUntil?: number
+}
+
+/**
+ * Caveats for a donor → session release delegation. Structure identical to
+ * `buildHonorDelegationCaveats` — only the target+selector differ
+ * (donor.executeBatch instead of treasury.executeBatch).
+ */
+export function buildReleaseDelegationCaveats(scope: ReleaseDelegationCaveatScope) {
+  const now = Math.floor(Date.now() / 1000)
+  const validAfter = scope.validAfter ?? now - 60
+  const validUntil = scope.validUntil ?? now + 300
+  return [
+    buildCaveat(scope.enforcers.allowedTargets, encodeAllowedTargetsTerms([scope.donor])),
+    buildCaveat(scope.enforcers.allowedMethods, encodeAllowedMethodsTerms([SPEC005_SELECTORS.executeBatch])),
+    buildCaveat(scope.enforcers.callDataHash,   encodeCallDataHashTerms(scope.calldataHash)),
+    buildCaveat(scope.enforcers.value,          encodeValueTerms(0n)),
+    buildCaveat(scope.enforcers.timestamp,      encodeTimestampTerms(validAfter, validUntil)),
+  ]
 }
 
 // ─── Rail B — PledgeRegistry.markPaid ────────────────────────────────

@@ -10,7 +10,7 @@ const STATUS_LABELS = ['none', 'proposed', 'confirmed', 'active', 'suspended', '
 export interface GraphNode {
   id: string
   label: string
-  type: 'person' | 'org' | 'ai' | 'eoa'
+  type: 'person' | 'org' | 'ai' | 'eoa' | 'treasury'
   did: string
   address: string
   description?: string
@@ -68,7 +68,7 @@ export async function GET(request: Request) {
     const seenNodes = new Set<string>()
     const seenEdges = new Set<string>()
 
-    function addNode(address: string, type: 'person' | 'org' | 'ai' | 'eoa') {
+    function addNode(address: string, type: 'person' | 'org' | 'ai' | 'eoa' | 'treasury') {
       const key = address.toLowerCase()
       if (seenNodes.has(key)) return
       seenNodes.add(key)
@@ -136,7 +136,7 @@ export async function GET(request: Request) {
 
     // Add agent nodes + controller edges
     for (const agentAddr of agentAddresses) {
-      const kind = (typeMap.get(agentAddr.toLowerCase()) ?? 'person') as 'person' | 'org' | 'ai'
+      const kind = (typeMap.get(agentAddr.toLowerCase()) ?? 'person') as 'person' | 'org' | 'ai' | 'treasury'
       addNode(agentAddr, kind)
 
       if (resolverAddr && client) {
@@ -214,7 +214,7 @@ export async function GET(request: Request) {
 
     // Fetch on-chain edges
     const allAddresses = [...seenNodes].map((a) => a as `0x${string}`)
-    const getNodeType = (a: string): 'person' | 'org' | 'ai' => (typeMap.get(a.toLowerCase()) as 'person' | 'org' | 'ai') ?? 'person'
+    const getNodeType = (a: string): 'person' | 'org' | 'ai' | 'treasury' => (typeMap.get(a.toLowerCase()) as 'person' | 'org' | 'ai' | 'treasury') ?? 'person'
 
     for (const addr of allAddresses) {
       try {

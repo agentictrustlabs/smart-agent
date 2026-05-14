@@ -20,10 +20,10 @@
   AllocationLimitEnforcer: 0x4ed7c70F96B99c776995fB64377f0d4aB3B0e1C1
   StewardEligibilityEnforcer: 0x322813Fd9A801c5507c9de605d63CEA4f2CE6c44
   QuorumEnforcer: 0xa85233C63b9Ee964Add6F2cffe00Fd84eb32338f
-  NameScopeEnforcer: 0x2bdCC0de6bE1f7D2ee689a0342D76F52E8EFABa3
-  MembershipProofEnforcer: 0x7bc06c482DEAd17c0e297aFbC32f6e63d3846650
-  RateLimitEnforcer: 0xc351628EB244ec633d5f21fBD6621e1a683B1181
-  RecoveryEnforcer: 0xFD471836031dc5108809D173A067e8486B9047A3
+  NameScopeEnforcer: 0x7969c5eD335650692Bc04293B07F5BF2e7A673C0
+  MembershipProofEnforcer: 0xc351628EB244ec633d5f21fBD6621e1a683B1181
+  RateLimitEnforcer: 0xFD471836031dc5108809D173A067e8486B9047A3
+  RecoveryEnforcer: 0xcbEAF3BDe82155F56486Fb5a1072cb8baAf547cc
 
 === Extracted addresses ===
 EntryPoint:                0x5FbDB2315678afecb367f032d93F642f64180aa3
@@ -47,15 +47,15 @@ AllowedMethodsEnforcer:    0x0165878A594ca255338adfa4d48449f69242Eb8F
 DataScopeEnforcer:         0xa513E6E4b8f2a923D98304ec87F64353C4D5C853
 MockTeeVerifier:           0x95401dc811bb5740090279Ba06cfA8fcF6113778
 OntologyTermRegistry:      0x998abeb3E57409262aE5b751f60747921B33613E
-AgentAccountResolver:      0x4c5859f0F772848b2D91F1D83E2Fe57935348029
-AgentUniversalResolver:    0x1291Be112d480055DaFd8a610b7d1e203891C274
-0x82e01223d51Eb87e16A03E24687EDF0F294da6f1
+AgentAccountResolver:      0x1291Be112d480055DaFd8a610b7d1e203891C274
+AgentUniversalResolver:    0x5f3f1dBD7B74C6B46e8c44f98792A1dAf8d69154
+0x2bdCC0de6bE1f7D2ee689a0342D76F52E8EFABa3
 RelationshipTypeRegistry: 0x67d269191c92Caf3cD7723F116c85e6E9bf55933
 AgentRelationshipQuery:   0xE6E340D132b5f46d1e472DebcD681B2aBc16e57E
-AgentNameRegistry:        0x5f3f1dBD7B74C6B46e8c44f98792A1dAf8d69154
-AgentNameResolver:        0xb7278A61aa25c888815aFC32Ad3cC52fF24fE575
-AgentNameUniversalRes:    0x82e01223d51Eb87e16A03E24687EDF0F294da6f1
-NameScopeEnforcer:        0x2bdCC0de6bE1f7D2ee689a0342D76F52E8EFABa3
+AgentNameRegistry:        0xb7278A61aa25c888815aFC32Ad3cC52fF24fE575
+AgentNameResolver:        0xCD8a1C3ba11CF5ECfa6267617243239504a98d90
+AgentNameUniversalRes:    0x2bdCC0de6bE1f7D2ee689a0342D76F52E8EFABa3
+NameScopeEnforcer:        0x7969c5eD335650692Bc04293B07F5BF2e7A673C0
 
 === Updated /home/barb/smart-agent/apps/web/.env ===
 Updated /home/barb/smart-agent/apps/org-mcp/.env
@@ -136,9 +136,9 @@ Funded org issuer 0xe8acf143AFbF8B1371A20ea934D334180190Eac1, family issuer 0xA8
 === Type Registry seeded: 17 relationship types ===
 
 === Seeding spec-004 / spec-005 sa: predicates + shapes ===
-[seed-spec004-ontology] registering 59 terms in 0x998abeb3E57409262aE5b751f60747921B33613E
-[seed-spec004-ontology] terms done — registered=59 skipped=0
-[seed-spec004-ontology] defining 4 shapes in 0x70e0bA845a1A0F2DA3359C97E0285013525FFC49
-[seed-spec004-ontology] shapes done — defined=4 skipped=0
+[seed-spec004-ontology] registering 80 terms in 0x998abeb3E57409262aE5b751f60747921B33613E
+[seed-spec004-ontology] terms done — registered=80 skipped=0
+[seed-spec004-ontology] defining 5 shapes in 0x70e0bA845a1A0F2DA3359C97E0285013525FFC49
+[seed-spec004-ontology] shapes done — defined=5 skipped=0
 
 Done. Start the web app with: pnpm dev

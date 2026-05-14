@@ -31,6 +31,11 @@ contract ProposalRegistry is AttributeStorage {
     bytes32 public constant SA_PROPOSAL_AWARDED_AT       = keccak256("sa:proposalAwardedAt");
     bytes32 public constant SA_PROPOSAL_BODY_HASH        = keccak256("sa:proposalBodyHash");
     bytes32 public constant SA_PROPOSAL_AWARDING_FUND    = keccak256("sa:proposalAwardingFund");
+    // Spec 006 — preserve the originating NeedIntent string-form so the
+    // commit-from-award call can populate `sa:commitmentNeedIntent`
+    // without re-walking the proposal body. basedOnIntentId stays as the
+    // bytes32 hash; this is the human/IRI string.
+    bytes32 public constant SA_AWARD_NEED_INTENT         = keccak256("sa:awardNeedIntent");
 
     error NotFundOwner();
     error ProposalNotInitialized();
@@ -42,7 +47,7 @@ contract ProposalRegistry is AttributeStorage {
     struct AnnounceParams {
         bytes32 proposalSubject;
         bytes32 kind;
-        bytes32 basedOnIntentId;
+        bytes32 basedOnIntentId;     // bytes32 hash form (legacy + crypto linkage)
         bytes32 round;
         address proposer;
         address recipient;
@@ -50,6 +55,7 @@ contract ProposalRegistry is AttributeStorage {
         bytes32 bodyHash;
         address awardingFund;
         bytes32 status;
+        string  needIntentIdString;  // Spec 006 — IRI form for commitment.commit
     }
 
     constructor(address ontologyRegistry, address shapes) AttributeStorage(ontologyRegistry) {
@@ -89,6 +95,9 @@ contract ProposalRegistry is AttributeStorage {
         _setBytes32(p.proposalSubject, SA_PROPOSAL_STATUS, p.status);
         if (p.basedOnIntentId != bytes32(0)) {
             _setBytes32(p.proposalSubject, SA_PROPOSAL_BASED_ON_INTENT, p.basedOnIntentId);
+        }
+        if (bytes(p.needIntentIdString).length > 0) {
+            _setString(p.proposalSubject, SA_AWARD_NEED_INTENT, p.needIntentIdString);
         }
         _setBytes32(p.proposalSubject, SA_PROPOSAL_ROUND, p.round);
         _setAddress(p.proposalSubject, SA_PROPOSAL_PROPOSER, p.proposer);
@@ -145,5 +154,8 @@ contract ProposalRegistry is AttributeStorage {
     }
     function isAnnounced(bytes32 proposal) external view returns (bool) {
         return this.isSet(proposal, SA_PROPOSAL_AWARDING_FUND);
+    }
+    function getAwardNeedIntent(bytes32 proposal) external view returns (string memory) {
+        return this.getString(proposal, SA_AWARD_NEED_INTENT);
     }
 }

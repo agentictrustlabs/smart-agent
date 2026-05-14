@@ -11,10 +11,13 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import type { Address } from 'viem'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { getPersonAgentForUser, canManageAgent } from '@/lib/agent-registry'
 import { getRoundForViewer } from '@/lib/actions/rounds.action'
 import { closeRound } from '@/lib/actions/roundClose.action'
+import { resolveRecipientTreasury } from '@smart-agent/sdk'
+import { getPublicClient } from '@/lib/contracts'
 
 export const dynamic = 'force-dynamic'
 
@@ -26,6 +29,10 @@ interface IncomingBody {
     recipientAgentIRI: string
     totalAmount: number
     unit: string
+    /** Spec 006 — preserves the originating NeedIntent into the commitment. */
+    needIntentId?: string
+    /** Spec 006 — fulfillment milestone schedule (JSON array). */
+    milestonesJson?: string
   }>
 }
 
@@ -76,17 +83,62 @@ export async function POST(
     }
   }
 
+  // Spec-006 phase 2: walk the recipient through the treasury resolver.
+  // The form passes `recipientAddr = proposal.proposerAgentId`, which may
+  // be a hex address (good), a non-hex principal (did:/person_/nullifier:),
+  // or — historically — fall back to the fund's own agent (the bug we're
+  // replacing). The resolver returns the AgentAccount that actually owns
+  // funds for that proposer; if it can't resolve, we reject the close
+  // outright rather than burning funds to the wrong address.
+  const resolverAddress = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as Address | undefined
+  if (!resolverAddress) {
+    return NextResponse.json(
+      { ok: false, error: 'AGENT_ACCOUNT_RESOLVER_ADDRESS not set' },
+      { status: 500 },
+    )
+  }
+  const publicClient = getPublicClient()
+  const resolvedAwards: Array<{
+    proposalIRI: string
+    recipientAgentIRI: string
+    recipientAddr: Address
+    totalAmount: bigint
+    unit: string
+    needIntentId?: string
+    milestonesJson?: string
+  }> = []
+  for (const a of body.awards) {
+    const resolved = await resolveRecipientTreasury(a.recipientAddr, {
+      publicClient,
+      resolverAddress,
+      // principalToAgent is not yet wired (Phase 2 deliverable: hex-only).
+      // Non-hex principals will return null until the MCP lookup ships.
+    })
+    if (!resolved) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: `recipient-unresolved: ${a.recipientAddr} — proposer needs sa:hasTreasury set (or pass a hex AgentAccount address)`,
+        },
+        { status: 400 },
+      )
+    }
+    resolvedAwards.push({
+      proposalIRI: a.proposalIRI,
+      recipientAgentIRI: a.recipientAgentIRI,
+      recipientAddr: resolved,
+      totalAmount: BigInt(a.totalAmount),
+      unit: a.unit,
+      needIntentId: a.needIntentId,
+      milestonesJson: a.milestonesJson,
+    })
+  }
+
   try {
     const result = await closeRound({
       roundId,
       poolAgentId: body.poolAgentId as `0x${string}`,
-      awards: body.awards.map(a => ({
-        proposalIRI: a.proposalIRI,
-        recipientAgentIRI: a.recipientAgentIRI,
-        recipientAddr: a.recipientAddr as `0x${string}`,
-        totalAmount: BigInt(a.totalAmount),
-        unit: a.unit,
-      })),
+      awards: resolvedAwards,
     })
     return NextResponse.json({ ok: true, result })
   } catch (err) {

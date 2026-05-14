@@ -39,6 +39,8 @@ export {
   grantProposalRegistryAbi,
   pledgeRegistryAbi,
   matchInitiationRegistryAbi,
+  // Spec 006 universal match fulfillment
+  commitmentRegistryAbi,
   agentNameAttributeResolverAbi,
   // Spec 005 — local-dev USDC for personal-treasury honor flow
   mockUsdcAbi,
@@ -190,7 +192,7 @@ export type {
 export {
   RDF_TYPE, ATL_DISPLAY_NAME, ATL_DESCRIPTION, ATL_IS_ACTIVE, ATL_VERSION,
   ATL_AGENT_TYPE, ATL_AI_AGENT_CLASS,
-  TYPE_PERSON, TYPE_ORGANIZATION, TYPE_AI_AGENT, TYPE_HUB,
+  TYPE_PERSON, TYPE_ORGANIZATION, TYPE_AI_AGENT, TYPE_HUB, TYPE_TREASURY_AGENT,
   CLASS_DISCOVERY, CLASS_VALIDATOR, CLASS_EXECUTOR, CLASS_ASSISTANT, CLASS_ORACLE, CLASS_CUSTOM,
   ATL_A2A_ENDPOINT, ATL_MCP_SERVER, ATL_SERVICE_ENDPOINT,
   ATL_SUPPORTED_TRUST, ATL_CAPABILITY,
@@ -205,6 +207,7 @@ export {
   ATL_GENMAP_DATA, ATL_ACTIVITY_LOG, ATL_TRACKED_MEMBERS, ATL_TEMPLATE_ID,
   ATL_PRIMARY_NAME, ATL_NAME_LABEL,
   ATL_ENTRY_POINT, ATL_IMPLEMENTATION, ATL_DELEGATION_MANAGER,
+  SA_HAS_PERSONAL_TREASURY, SA_HAS_TREASURY,
   AGENT_TYPE_LABELS, AI_CLASS_LABELS,
   // Multi-root namespace + geo
   KIND_AGENT, KIND_GEO, KIND_PEOPLE_GROUP, KIND_SKILL,
@@ -227,6 +230,10 @@ export {
   namehashRoot,
 } from './predicates'
 export type { GeoVisibility, SkillVisibility, SkillProficiencyLabel } from './predicates'
+
+// ─── Treasury Resolution (spec-006) ──────────────────────────────────
+export { resolveRecipientTreasury } from './treasury'
+export type { PrincipalToAgentResolver, ResolveRecipientContext } from './treasury'
 
 // ─── Agent Naming (.agent namespace) ─────────────────────────────────
 export {
@@ -575,6 +582,10 @@ export {
   markPaidHash,
   buildHonorDelegationCaveats,
   buildMarkPaidDelegationCaveats,
+  // Spec 006 — release rail
+  encodeReleaseBatch,
+  releaseBatchHash,
+  buildReleaseDelegationCaveats,
 } from './onchain/marketplace/treasury'
 export type {
   PaymentRail,
@@ -582,4 +593,6 @@ export type {
   MarkPaidInput,
   HonorDelegationCaveatScope,
   MarkPaidDelegationCaveatScope,
+  ReleaseBatchInput,
+  ReleaseDelegationCaveatScope,
 } from './onchain/marketplace/treasury'

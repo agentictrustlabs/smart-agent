@@ -33,6 +33,7 @@ import {
   grantProposalRegistryAbi,
   pledgeRegistryAbi,
   matchInitiationRegistryAbi,
+  commitmentRegistryAbi,
   iriToBytes32,
   ATL_CONTROLLER, ATL_CAPABILITY, ATL_SUPPORTED_TRUST,
   ATL_A2A_ENDPOINT, ATL_MCP_SERVER,
@@ -1174,6 +1175,32 @@ export async function syncPoolToGraphDB(
  * mirrored as a separate subject prefix in the emit, so the per-pool
  * mirror's freshness depends on this single DELETE+INSERT.
  */
+/**
+ * Spec 006 — wipe + re-emit ALL `sa:Commitment` subjects. Cheap (typically
+ * O(awarded-proposals) commitments per hub). Called after closeRound and
+ * after each release/cancel so the proposer/intent UI shows fresh state.
+ */
+export async function syncAllCommitmentsToGraphDB(): Promise<{ ok: boolean; message: string }> {
+  const { turtle } = await emitSpec004RegistriesTurtle()
+  if (!turtle) return { ok: false, message: 'no spec-004/006 turtle' }
+  const { DiscoveryService } = await import('@smart-agent/discovery')
+  const discovery = DiscoveryService.fromEnv()
+  const client = discovery.getClient()
+  const body = stripPrefixBlock(turtle)
+  const sparql = `${SHARED_PREFIXES}
+DELETE { GRAPH <${DATA_GRAPH}> { ?s ?p ?o } }
+WHERE  { GRAPH <${DATA_GRAPH}> { ?s ?p ?o . FILTER(STRSTARTS(STR(?s), "urn:smart-agent:commitment:")) } };
+INSERT DATA { GRAPH <${DATA_GRAPH}> {
+${body}
+} }`
+  try {
+    await client.update(sparql)
+    return { ok: true, message: 'synced all commitments' }
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : String(err) }
+  }
+}
+
 export async function syncAllPoolsToGraphDB(): Promise<{ ok: boolean; message: string }> {
   const turtle = await emitPoolsTurtle()
   if (!turtle) return { ok: false, message: 'no pool turtle (no pools on chain?)' }
@@ -1275,6 +1302,28 @@ const MI_PREDICATES = {
   updatedAt:           HASH('sa:miUpdatedAt'),
 } as const
 
+// Spec 006 — Commitment predicates. Field names map to ${field} curie
+// via the convention `sa:commitment<Field>` (e.g., `donor` → `sa:commitmentDonor`).
+// The walker's getUint/getAddress/getBytes32/getString dispatch checks the
+// field name; new spec-006 fields are added to those name lists below.
+const COMMITMENT_PREDICATES = {
+  sourceKind:      HASH('sa:commitmentSourceKind'),
+  sourceSubject:   HASH('sa:commitmentSourceSubject'),
+  round:           HASH('sa:commitmentRound'),
+  needIntent:      HASH('sa:commitmentNeedIntent'),
+  offerIntent:     HASH('sa:commitmentOfferIntent'),
+  donor:           HASH('sa:commitmentDonor'),
+  recipient:       HASH('sa:commitmentRecipient'),
+  token:           HASH('sa:commitmentToken'),
+  totalAmount:     HASH('sa:commitmentTotalAmount'),
+  milestonesJson:  HASH('sa:commitmentMilestonesJson'),
+  releasedAmount:  HASH('sa:commitmentReleasedAmount'),
+  status:          HASH('sa:commitmentStatus'),
+  committedAt:     HASH('sa:commitmentCommittedAt'),
+  updatedAt:       HASH('sa:commitmentUpdatedAt'),
+  cancelReason:    HASH('sa:commitmentCancelReason'),
+} as const
+
 interface RegistryEmitConfig {
   envKey: string
   abi: readonly unknown[]
@@ -1320,6 +1369,16 @@ const SPEC004_REGISTRIES: RegistryEmitConfig[] = [
     iriPrefix: 'urn:smart-agent:match-initiation:',
     discriminator: MI_PREDICATES.viewedIntent,
     predicates: MI_PREDICATES,
+  },
+  // Spec 006 — Commitment registry. Discriminator = donor (every commitment
+  // has one; bytes32 storage slot is non-zero when the commitment exists).
+  {
+    envKey: 'COMMITMENT_REGISTRY_ADDRESS',
+    abi: commitmentRegistryAbi,
+    classCurie: 'sa:Commitment',
+    iriPrefix: 'urn:smart-agent:commitment:',
+    discriminator: COMMITMENT_PREDICATES.donor,
+    predicates: COMMITMENT_PREDICATES,
   },
 ]
 
@@ -1389,7 +1448,9 @@ async function emitOneSpec004Registry(cfg: RegistryEmitConfig): Promise<{ turtle
           field === 'pledgedAt' || field === 'stoppedAt' || field === 'submittedAt' ||
           field === 'withdrawnAt' || field === 'version' ||
           // Spec 005 — pledge timestamps.
-          field === 'lastHonoredAt' || field === 'lastMarkedAt'
+          field === 'lastHonoredAt' || field === 'lastMarkedAt' ||
+          // Spec 006 — commitment amounts + timestamps.
+          field === 'totalAmount' || field === 'releasedAmount' || field === 'committedAt'
         ) {
           const v = await client.readContract({
             address: addr, abi: cfg.abi as never,
@@ -1397,7 +1458,11 @@ async function emitOneSpec004Registry(cfg: RegistryEmitConfig): Promise<{ turtle
             args: [subj, predHash],
           }) as bigint
           if (v > 0n) pairs.push(`  ${curie} ${v.toString()}`)
-        } else if (field === 'pool' || field === 'markedByAgent') {
+        } else if (
+          field === 'pool' || field === 'markedByAgent' ||
+          // Spec 006 — commitment parties + token.
+          field === 'donor' || field === 'recipient' || field === 'token'
+        ) {
           const v = await client.readContract({
             address: addr, abi: cfg.abi as never,
             functionName: 'getAddress',
@@ -1412,7 +1477,10 @@ async function emitOneSpec004Registry(cfg: RegistryEmitConfig): Promise<{ turtle
           field === 'status' || field === 'initiationKind' || field === 'visibility' ||
           field === 'initiatorNullifier' ||
           // Spec 005 — concept-hash valued fields.
-          field === 'paymentRail' || field === 'evidenceHash'
+          field === 'paymentRail' || field === 'evidenceHash' ||
+          // Spec 006 — commitment source-kind enum + source subject (opaque
+          // 32-byte refs) + cancel reason (sha256 of free-text).
+          field === 'sourceKind' || field === 'sourceSubject' || field === 'cancelReason'
         ) {
           const v = await client.readContract({
             address: addr, abi: cfg.abi as never,

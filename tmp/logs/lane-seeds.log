@@ -3798,3 +3798,589 @@ Version: viem@2.47.10
   Visit: http://localhost:3000/h/catalyst/proposals (after Maria signs in)
 [seed-test-pledge] no-op (spec 004 v2 — pool_pledges dropped; chain-side seeding TODO)
 [seed-test-match-initiation] no-op (spec 004 v2 — match_initiations dropped; chain-side seeding TODO)
+Found 22 T-Box .ttl files (under docs/ontology/tbox)
+  · docs/ontology/tbox/core.ttl
+  · docs/ontology/tbox/delegation.ttl
+  · docs/ontology/tbox/entitlements.ttl
+  · docs/ontology/tbox/geo.ttl
+  · docs/ontology/tbox/governance.ttl
+  · docs/ontology/tbox/hub.ttl
+  · docs/ontology/tbox/identity.ttl
+  · docs/ontology/tbox/intents.ttl
+  · docs/ontology/tbox/marketplace-lifecycle.ttl
+  · docs/ontology/tbox/matches.ttl
+  · docs/ontology/tbox/namespace.ttl
+  · docs/ontology/tbox/needs.ttl
+  · docs/ontology/tbox/people-groups.ttl
+  · docs/ontology/tbox/pg.ttl
+  · docs/ontology/tbox/pool-pledge.ttl
+  · docs/ontology/tbox/proposal.ttl
+  · docs/ontology/tbox/relationships.ttl
+  · docs/ontology/tbox/resources.ttl
+  · docs/ontology/tbox/roles.ttl
+  · docs/ontology/tbox/shacl/visibility.ttl
+  · docs/ontology/tbox/skills.ttl
+  · docs/ontology/tbox/trust.ttl
+Found 15 C-Box .ttl files (under docs/ontology/cbox)
+  · docs/ontology/cbox/agent-shapes.shacl.ttl
+  · docs/ontology/cbox/capacity-units.ttl
+  · docs/ontology/cbox/controlled-vocabularies.ttl
+  · docs/ontology/cbox/entitlement-shapes.shacl.ttl
+  · docs/ontology/cbox/hub-vocabulary.ttl
+  · docs/ontology/cbox/intent-shapes.shacl.ttl
+  · docs/ontology/cbox/intent-types.ttl
+  · docs/ontology/cbox/needs-shapes.shacl.ttl
+  · docs/ontology/cbox/people-group-scopes.ttl
+  · docs/ontology/cbox/people-group-shapes.shacl.ttl
+  · docs/ontology/cbox/reachedness-vocabulary.ttl
+  · docs/ontology/cbox/resource-types.ttl
+  · docs/ontology/cbox/skill-shapes.shacl.ttl
+  · docs/ontology/cbox/skill-vocabulary-oasf.ttl
+  · docs/ontology/cbox/skill-vocabulary.ttl
+
+Uploading T-Box + SHACL → https://smartagent.io/graph/schema/tbox
+  ✓ T-Box uploaded.
+
+Uploading C-Box → https://smartagent.io/graph/schema/cbox
+  ✓ C-Box uploaded.
+
+Verifying via SPARQL counts...
+  T-Box classes:  235
+  SHACL shapes:   6
+  C-Box concepts: 204
+  Marketplace classes present: 11 / 11
+    · https://smartagent.io/ontology/core#Fund
+    · https://smartagent.io/ontology/core#GrantProposal
+    · https://smartagent.io/ontology/core#MatchInitiation
+    · https://smartagent.io/ontology/core#MatchInitiationAssertion
+    · https://smartagent.io/ontology/core#PledgeAssertion
+    · https://smartagent.io/ontology/core#Pool
+    · https://smartagent.io/ontology/core#PoolPledge
+    · https://smartagent.io/ontology/core#PoolPledgedTotalAssertion
+    · https://smartagent.io/ontology/core#Round
+    · https://smartagent.io/ontology/core#RoundClosedAssertion
+    · https://smartagent.io/ontology/core#RoundOpenedAssertion
+
+✓ Sync complete.
+[seed-test-round] fund agent (catalyst network) → 0x0F669E6851A15FD0E5904EB197c369C2ab578D9b
+[seed-test-round] registerFund warn: The contract function "registerFund" reverted.
+
+Error: NotFundOwner()
+ 
+Contract Call:
+  address:   0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf
+  function:  registerFund(address fundAgent, bytes32[] acceptedKinds, bool openForCalls)
+  args:                  (0x0F669E6851A15FD0E5904EB197c369C2ab578D9b, ["0xe0763b6c82186160294b38982232e94f51e512b9f0e57d8eeb214ef2ee216a8b","0x28be1ff2b788efd3ef4b7749c2d0f81b2a43ababc36f2c8960dfe0c5db10580b","0xa31cb8e69ab09e362158b9bf851a54ece02060a706a8d52e7d947187be1a7bf5","0x7580d6244892989b460c96e64993a3ad3bfa5f64d354202b5ca34d00f75157c5","0x0f13c9d8222dbfb492d0af3dfd79bd0d84a51901cd45667b2374b6496a054c1a","0xd77fac1577d7fe76b7fed53864aa1cc6ca93bffa816c8edcd2fa72f4aa3ab3dc","0xc8d8c296e0c0e9617c16f250cef6bf1698592e08938576e6b044a3c5ef818c76","0x2d0f4ea592791ed7b8919f50b7079d3fa0dcbc666e8ad327b1516b6376e0781f","0x4b506235cb25b0517e0240f70e24fc2f750bfed6d2544fe5fc1f6fc301d3397e"], true)
+  sender:    0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+
+Docs: https://viem.sh/docs/contract/writeContract
+Details: execution reverted: custom error 0xb3545ef3
+Version: viem@2.47.10
+[seed-test-round] openRound warn for demo-trauma-care-q2: The contract function "openRound" reverted.
+
+Error: NotFundOwner()
+ 
+Contract Call:
+  address:   0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf
+  function:  openRound((bytes32 roundSubject, address fundAgent, address poolAgent, uint256 deadline, uint256 decisionDate, bytes32 reportingCadence, bytes32[] requiredCredentials, bytes32 visibility, bytes32 initialStatus, string mandate, string milestoneTemplate, string validatorRequirements, string slug))
+  args:               ({"roundSubject":"0xba7d5720d844ca4eabf89927d1babbe65bda75b6bec359184086371631c8bf61","fundAgent":"0x0F669E6851A15FD0E5904EB197c369C2ab578D9b","poolAgent":"0x0000000000000000000000000000000000000000","deadline":"1779895287","decisionDate":"1781277687","reportingCadence":"0x48680686fbaa3eb8a498d231a3766e99deb42819048529968dd20c370020cb28","requiredCredentials":[],"visibility":"0xebbc4f758526443c65cbc630276923c89e5f8ac0cef719eeb96b0a87cad53346","initialStatus":"0x0d37f17e287bdf05078af1c070b07ef59413a6a131f54dac6263f76d080c9990","mandate":"{\"acceptedKinds\":[\"trauma-care\",\"CompassionMinistry\",\"MigrantFamilyCare\"],\"acceptedGeo\":[\"us/colorado\"],\"budgetCeiling\":250000,\"expectedAwards\":6}","milestoneTemplate":"{}","validatorRequirements":"{}","slug":"demo-trauma-care-q2"})
+  sender:    0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+
+Docs: https://viem.sh/docs/contract/writeContract
+Details: execution reverted: custom error 0xb3545ef3
+Version: viem@2.47.10
+[seed-test-round] openRound warn for demo-spanish-scripture-q2: The contract function "openRound" reverted.
+
+Error: NotFundOwner()
+ 
+Contract Call:
+  address:   0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf
+  function:  openRound((bytes32 roundSubject, address fundAgent, address poolAgent, uint256 deadline, uint256 decisionDate, bytes32 reportingCadence, bytes32[] requiredCredentials, bytes32 visibility, bytes32 initialStatus, string mandate, string milestoneTemplate, string validatorRequirements, string slug))
+  args:               ({"roundSubject":"0x4d64467f9f671a10580ffee37b171d7e1c40f7882b323a331fd1e9d581a678cd","fundAgent":"0x0F669E6851A15FD0E5904EB197c369C2ab578D9b","poolAgent":"0x0000000000000000000000000000000000000000","deadline":"1780500087","decisionDate":"1782573687","reportingCadence":"0x48680686fbaa3eb8a498d231a3766e99deb42819048529968dd20c370020cb28","requiredCredentials":[],"visibility":"0xebbc4f758526443c65cbc630276923c89e5f8ac0cef719eeb96b0a87cad53346","initialStatus":"0x0d37f17e287bdf05078af1c070b07ef59413a6a131f54dac6263f76d080c9990","mandate":"{\"acceptedKinds\":[\"HeartLanguageScripture\",\"BibleStudy\",\"Discipleship\"],\"acceptedGeo\":[\"us/colorado\",\"us/wyoming\"],\"budgetCeiling\":60000,\"expectedAwards\":8}","milestoneTemplate":"{}","validatorRequirements":"{}","slug":"demo-spanish-scripture-q2"})
+  sender:    0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+
+Docs: https://viem.sh/docs/contract/writeContract
+Details: execution reverted: custom error 0xb3545ef3
+Version: viem@2.47.10
+[seed-test-round] openRound warn for demo-pastoral-coaching-q2: The contract function "openRound" reverted.
+
+Error: NotFundOwner()
+ 
+Contract Call:
+  address:   0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf
+  function:  openRound((bytes32 roundSubject, address fundAgent, address poolAgent, uint256 deadline, uint256 decisionDate, bytes32 reportingCadence, bytes32[] requiredCredentials, bytes32 visibility, bytes32 initialStatus, string mandate, string milestoneTemplate, string validatorRequirements, string slug))
+  args:               ({"roundSubject":"0x93ea8dd282a4cb83ab115e1b023fc4ed2f8fbb98e1aa6c81ea153521b34873a1","fundAgent":"0x0F669E6851A15FD0E5904EB197c369C2ab578D9b","poolAgent":"0x0000000000000000000000000000000000000000","deadline":"1781104887","decisionDate":"1783869687","reportingCadence":"0x7dc5939eec0033571e0a0cf7a81c00cc3cf42e60ac518fce8caf8c411d116466","requiredCredentials":[],"visibility":"0xebbc4f758526443c65cbc630276923c89e5f8ac0cef719eeb96b0a87cad53346","initialStatus":"0x0d37f17e287bdf05078af1c070b07ef59413a6a131f54dac6263f76d080c9990","mandate":"{\"acceptedKinds\":[\"CircleCoach\",\"PastoralCoaching\",\"ChurchPlanting\"],\"acceptedGeo\":[\"us/colorado\"],\"budgetCeiling\":75000,\"expectedAwards\":3}","milestoneTemplate":"{}","validatorRequirements":"{}","slug":"demo-pastoral-coaching-q2"})
+  sender:    0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+
+Docs: https://viem.sh/docs/contract/writeContract
+Details: execution reverted: custom error 0xb3545ef3
+Version: viem@2.47.10
+[seed-test-round] voting-config SQL seed skipped — defaults read from FundRegistry attrs (R10)
+[seed-test-round] GraphDB ok — INSERT 3 rounds
+
+✓ Seeded 3 rounds operated by fund 0x0F669E6851A15FD0E5904EB197c369C2ab578D9b:
+    · demo-trauma-care-q2 — Trauma-Care for Migrant Families — Compassion Ministry Q2
+    · demo-spanish-scripture-q2 — Spanish Heart-Language Scripture & Discipleship Q2
+    · demo-pastoral-coaching-q2 — Pastoral Coaching Cohort for NoCo Church Planters Q2
+[seed-test-pool] deployed pool agent demo-trauma-care-pool → 0x675E11eC5854eBd6656Fc9155D99746c9e438a16
+[seed-test-pool] PoolRegistry.open ok — demo-trauma-care-pool → tx 0x64dbddacf04fc8cb2db274f87c0ecd5d6352f89be24c46df5f687f3426c06c39
+[seed-test-pool] deployed pool agent demo-spanish-bibles-pool → 0xA6Ca03d6c704C84cA9f495BDA26b5Fa1dDaaE461
+[seed-test-pool] PoolRegistry.open warn for demo-spanish-bibles-pool: Nonce provided for the transaction is lower than the current nonce of the account.
+Try increasing the nonce or find the latest nonce with `getTransactionCount`.
+
+Request Arguments:
+  from:  0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+  to:    0x4826533B4897376654Bb4d4AD88B7faFD0C98528
+  data:  0x02163fe90000000000000000000000000000000000000000000000000000000000000020000000000000000000000000a6ca03d6c704c84ca9f495bda26b5fa1ddaae4616c58cbaae43920d66ade17a50db3718212d27fb7d157bbf58aadf6e9707dabd0780cc497caef831734d384c5854fcb49e375e02c2a30564a34028626e96f0b9f51691ce1cf6cf2a80d60fb1e7201576aa6a3e2a9852dc91b046b3e6d252d7b3600000000000000000000000000000000000000000000000000000000000001a000000000000000000000000000000000000000000000000000000000000001c00000000000000000000000000000000000000000000000000000000000000200d60aa67937108b404b751d274538218c9bb70029c5b935b3e9bf5eca6ce4d4d200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000260ebbc4f758526443c65cbc630276923c89e5f8ac0cef719eeb96b0a87cad5334600000000000000000000000000000000000000000000000000000000000002a0000000000000000000000000000000000000000000000000000000000000034000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001c4ae21aac0c6549d71dd96035b7e0bdb6c79ebdba8891b666115bc976d16a29e00000000000000000000000000000000000000000000000000000000000000026a0a34076a1ed9bbcbec281a490ad20dfd5dc8f98b5b57c12ec8d6e701f4ad8fd77fac1577d7fe76b7fed53864aa1cc6ca93bffa816c8edcd2fa72f4aa3ab3dc00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000f669e6851a15fd0e5904eb197c369c2ab578d9b000000000000000000000000000000000000000000000000000000000000006e7b226b696e6473223a5b2248656172744c616e6775616765536372697074757265222c224269626c655374756479222c224469736369706c6573686970225d2c2267656f526f6f7473223a5b2275732f636f6c6f7261646f225d2c226e6f74466f7241646d696e223a747275657d000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001864656d6f2d7370616e6973682d6269626c65732d706f6f6c0000000000000000
+ 
+Contract Call:
+  address:   0x4826533B4897376654Bb4d4AD88B7faFD0C98528
+  function:  open((address poolAgent, bytes32 domain, bytes32 governanceModel, bytes32 mandateHash, string mandateURI, bytes32[] acceptedUnits, bytes32[] acceptedKinds, bytes32 ceilingPolicy, uint256 capacityCeiling, address[] stewards, bytes32 visibility, string acceptedRestrictions, string slug))
+  args:          ({"poolAgent":"0xA6Ca03d6c704C84cA9f495BDA26b5Fa1dDaaE461","domain":"0x6c58cbaae43920d66ade17a50db3718212d27fb7d157bbf58aadf6e9707dabd0","governanceModel":"0x780cc497caef831734d384c5854fcb49e375e02c2a30564a34028626e96f0b9f","mandateHash":"0x51691ce1cf6cf2a80d60fb1e7201576aa6a3e2a9852dc91b046b3e6d252d7b36","mandateURI":"","acceptedUnits":["0xc4ae21aac0c6549d71dd96035b7e0bdb6c79ebdba8891b666115bc976d16a29e"],"acceptedKinds":["0x6a0a34076a1ed9bbcbec281a490ad20dfd5dc8f98b5b57c12ec8d6e701f4ad8f","0xd77fac1577d7fe76b7fed53864aa1cc6ca93bffa816c8edcd2fa72f4aa3ab3dc"],"ceilingPolicy":"0xd60aa67937108b404b751d274538218c9bb70029c5b935b3e9bf5eca6ce4d4d2","capacityCeiling":"0","stewards":["0x0F669E6851A15FD0E5904EB197c369C2ab578D9b"],"visibility":"0xebbc4f758526443c65cbc630276923c89e5f8ac0cef719eeb96b0a87cad53346","acceptedRestrictions":"{\"kinds\":[\"HeartLanguageScripture\",\"BibleStudy\",\"Discipleship\"],\"geoRoots\":[\"us/colorado\"],\"notForAdmin\":true}","slug":"demo-spanish-bibles-pool"})
+  sender:    0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+
+Docs: https://viem.sh/docs/contract/writeContract
+Details: nonce too low
+Version: viem@2.47.10
+[seed-test-pool] deployed pool agent demo-prayer-chain-pool → 0x21681cFE20d8d18DBD746aeD92077DC4b8BFc17A
+[seed-test-pool] PoolRegistry.open ok — demo-prayer-chain-pool → tx 0x8c6115b65ee0757942cea6bf17f0aad3225cc959038f7b7d0ec8eeb092d8ac61
+[seed-test-pool] GraphDB ok — INSERT 3 pools into data graph
+
+✓ Seeded 3 pools operated by Catalyst NoCo Network:
+    · demo-trauma-care-pool — Trauma-Care + Migrant Family Compassion Pool  (treasury 0x675E11eC5854eBd6656Fc9155D99746c9e438a16)
+    · demo-spanish-bibles-pool — Spanish Bibles for New Families Pool  (treasury 0xA6Ca03d6c704C84cA9f495BDA26b5Fa1dDaaE461)
+    · demo-prayer-chain-pool — Hispanic Family Prayer Chain Pool  (treasury 0x21681cFE20d8d18DBD746aeD92077DC4b8BFc17A)
+  Visit: http://localhost:3000/h/catalyst/pools (after Maria signs in)
+[seed-test-proposal] wrote 5 proposals to person-mcp
+
+✓ Seeded 5 GrantProposals across the catalyst rounds:
+    · draft     person_cat-user-001 → demo-trauma-care-q2
+    · submitted person_cat-user-001 → demo-trauma-care-q2
+    · submitted person_cat-user-001 → demo-spanish-scripture-q2
+    · submitted person_cat-user-002 → demo-trauma-care-q2
+    · draft     person_cat-user-002 → demo-pastoral-coaching-q2
+  Visit: http://localhost:3000/h/catalyst/proposals (after Maria signs in)
+[seed-test-pledge] no-op (spec 004 v2 — pool_pledges dropped; chain-side seeding TODO)
+[seed-test-match-initiation] no-op (spec 004 v2 — match_initiations dropped; chain-side seeding TODO)
+Found 22 T-Box .ttl files (under docs/ontology/tbox)
+  · docs/ontology/tbox/core.ttl
+  · docs/ontology/tbox/delegation.ttl
+  · docs/ontology/tbox/entitlements.ttl
+  · docs/ontology/tbox/geo.ttl
+  · docs/ontology/tbox/governance.ttl
+  · docs/ontology/tbox/hub.ttl
+  · docs/ontology/tbox/identity.ttl
+  · docs/ontology/tbox/intents.ttl
+  · docs/ontology/tbox/marketplace-lifecycle.ttl
+  · docs/ontology/tbox/matches.ttl
+  · docs/ontology/tbox/namespace.ttl
+  · docs/ontology/tbox/needs.ttl
+  · docs/ontology/tbox/people-groups.ttl
+  · docs/ontology/tbox/pg.ttl
+  · docs/ontology/tbox/pool-pledge.ttl
+  · docs/ontology/tbox/proposal.ttl
+  · docs/ontology/tbox/relationships.ttl
+  · docs/ontology/tbox/resources.ttl
+  · docs/ontology/tbox/roles.ttl
+  · docs/ontology/tbox/shacl/visibility.ttl
+  · docs/ontology/tbox/skills.ttl
+  · docs/ontology/tbox/trust.ttl
+Found 15 C-Box .ttl files (under docs/ontology/cbox)
+  · docs/ontology/cbox/agent-shapes.shacl.ttl
+  · docs/ontology/cbox/capacity-units.ttl
+  · docs/ontology/cbox/controlled-vocabularies.ttl
+  · docs/ontology/cbox/entitlement-shapes.shacl.ttl
+  · docs/ontology/cbox/hub-vocabulary.ttl
+  · docs/ontology/cbox/intent-shapes.shacl.ttl
+  · docs/ontology/cbox/intent-types.ttl
+  · docs/ontology/cbox/needs-shapes.shacl.ttl
+  · docs/ontology/cbox/people-group-scopes.ttl
+  · docs/ontology/cbox/people-group-shapes.shacl.ttl
+  · docs/ontology/cbox/reachedness-vocabulary.ttl
+  · docs/ontology/cbox/resource-types.ttl
+  · docs/ontology/cbox/skill-shapes.shacl.ttl
+  · docs/ontology/cbox/skill-vocabulary-oasf.ttl
+  · docs/ontology/cbox/skill-vocabulary.ttl
+
+Uploading T-Box + SHACL → https://smartagent.io/graph/schema/tbox
+  ✓ T-Box uploaded.
+
+Uploading C-Box → https://smartagent.io/graph/schema/cbox
+  ✓ C-Box uploaded.
+
+Verifying via SPARQL counts...
+  T-Box classes:  235
+  SHACL shapes:   6
+  C-Box concepts: 204
+  Marketplace classes present: 11 / 11
+    · https://smartagent.io/ontology/core#Fund
+    · https://smartagent.io/ontology/core#GrantProposal
+    · https://smartagent.io/ontology/core#MatchInitiation
+    · https://smartagent.io/ontology/core#MatchInitiationAssertion
+    · https://smartagent.io/ontology/core#PledgeAssertion
+    · https://smartagent.io/ontology/core#Pool
+    · https://smartagent.io/ontology/core#PoolPledge
+    · https://smartagent.io/ontology/core#PoolPledgedTotalAssertion
+    · https://smartagent.io/ontology/core#Round
+    · https://smartagent.io/ontology/core#RoundClosedAssertion
+    · https://smartagent.io/ontology/core#RoundOpenedAssertion
+
+✓ Sync complete.
+[seed-test-round] fund agent (catalyst network) → 0x0F669E6851A15FD0E5904EB197c369C2ab578D9b
+[seed-test-round] registerFund warn: The contract function "registerFund" reverted.
+
+Error: NotFundOwner()
+ 
+Contract Call:
+  address:   0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf
+  function:  registerFund(address fundAgent, bytes32[] acceptedKinds, bool openForCalls)
+  args:                  (0x0F669E6851A15FD0E5904EB197c369C2ab578D9b, ["0xe0763b6c82186160294b38982232e94f51e512b9f0e57d8eeb214ef2ee216a8b","0x28be1ff2b788efd3ef4b7749c2d0f81b2a43ababc36f2c8960dfe0c5db10580b","0xa31cb8e69ab09e362158b9bf851a54ece02060a706a8d52e7d947187be1a7bf5","0x7580d6244892989b460c96e64993a3ad3bfa5f64d354202b5ca34d00f75157c5","0x0f13c9d8222dbfb492d0af3dfd79bd0d84a51901cd45667b2374b6496a054c1a","0xd77fac1577d7fe76b7fed53864aa1cc6ca93bffa816c8edcd2fa72f4aa3ab3dc","0xc8d8c296e0c0e9617c16f250cef6bf1698592e08938576e6b044a3c5ef818c76","0x2d0f4ea592791ed7b8919f50b7079d3fa0dcbc666e8ad327b1516b6376e0781f","0x4b506235cb25b0517e0240f70e24fc2f750bfed6d2544fe5fc1f6fc301d3397e"], true)
+  sender:    0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+
+Docs: https://viem.sh/docs/contract/writeContract
+Details: execution reverted: custom error 0xb3545ef3
+Version: viem@2.47.10
+[seed-test-round] openRound warn for demo-trauma-care-q2: The contract function "openRound" reverted.
+
+Error: NotFundOwner()
+ 
+Contract Call:
+  address:   0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf
+  function:  openRound((bytes32 roundSubject, address fundAgent, address poolAgent, uint256 deadline, uint256 decisionDate, bytes32 reportingCadence, bytes32[] requiredCredentials, bytes32 visibility, bytes32 initialStatus, string mandate, string milestoneTemplate, string validatorRequirements, string slug))
+  args:               ({"roundSubject":"0xba7d5720d844ca4eabf89927d1babbe65bda75b6bec359184086371631c8bf61","fundAgent":"0x0F669E6851A15FD0E5904EB197c369C2ab578D9b","poolAgent":"0x0000000000000000000000000000000000000000","deadline":"1779897532","decisionDate":"1781279932","reportingCadence":"0x48680686fbaa3eb8a498d231a3766e99deb42819048529968dd20c370020cb28","requiredCredentials":[],"visibility":"0xebbc4f758526443c65cbc630276923c89e5f8ac0cef719eeb96b0a87cad53346","initialStatus":"0x0d37f17e287bdf05078af1c070b07ef59413a6a131f54dac6263f76d080c9990","mandate":"{\"acceptedKinds\":[\"trauma-care\",\"CompassionMinistry\",\"MigrantFamilyCare\"],\"acceptedGeo\":[\"us/colorado\"],\"budgetCeiling\":250000,\"expectedAwards\":6}","milestoneTemplate":"{}","validatorRequirements":"{}","slug":"demo-trauma-care-q2"})
+  sender:    0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+
+Docs: https://viem.sh/docs/contract/writeContract
+Details: execution reverted: custom error 0xb3545ef3
+Version: viem@2.47.10
+[seed-test-round] openRound warn for demo-spanish-scripture-q2: The contract function "openRound" reverted.
+
+Error: NotFundOwner()
+ 
+Contract Call:
+  address:   0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf
+  function:  openRound((bytes32 roundSubject, address fundAgent, address poolAgent, uint256 deadline, uint256 decisionDate, bytes32 reportingCadence, bytes32[] requiredCredentials, bytes32 visibility, bytes32 initialStatus, string mandate, string milestoneTemplate, string validatorRequirements, string slug))
+  args:               ({"roundSubject":"0x4d64467f9f671a10580ffee37b171d7e1c40f7882b323a331fd1e9d581a678cd","fundAgent":"0x0F669E6851A15FD0E5904EB197c369C2ab578D9b","poolAgent":"0x0000000000000000000000000000000000000000","deadline":"1780502332","decisionDate":"1782575932","reportingCadence":"0x48680686fbaa3eb8a498d231a3766e99deb42819048529968dd20c370020cb28","requiredCredentials":[],"visibility":"0xebbc4f758526443c65cbc630276923c89e5f8ac0cef719eeb96b0a87cad53346","initialStatus":"0x0d37f17e287bdf05078af1c070b07ef59413a6a131f54dac6263f76d080c9990","mandate":"{\"acceptedKinds\":[\"HeartLanguageScripture\",\"BibleStudy\",\"Discipleship\"],\"acceptedGeo\":[\"us/colorado\",\"us/wyoming\"],\"budgetCeiling\":60000,\"expectedAwards\":8}","milestoneTemplate":"{}","validatorRequirements":"{}","slug":"demo-spanish-scripture-q2"})
+  sender:    0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+
+Docs: https://viem.sh/docs/contract/writeContract
+Details: execution reverted: custom error 0xb3545ef3
+Version: viem@2.47.10
+[seed-test-round] openRound warn for demo-pastoral-coaching-q2: The contract function "openRound" reverted.
+
+Error: NotFundOwner()
+ 
+Contract Call:
+  address:   0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf
+  function:  openRound((bytes32 roundSubject, address fundAgent, address poolAgent, uint256 deadline, uint256 decisionDate, bytes32 reportingCadence, bytes32[] requiredCredentials, bytes32 visibility, bytes32 initialStatus, string mandate, string milestoneTemplate, string validatorRequirements, string slug))
+  args:               ({"roundSubject":"0x93ea8dd282a4cb83ab115e1b023fc4ed2f8fbb98e1aa6c81ea153521b34873a1","fundAgent":"0x0F669E6851A15FD0E5904EB197c369C2ab578D9b","poolAgent":"0x0000000000000000000000000000000000000000","deadline":"1781107132","decisionDate":"1783871932","reportingCadence":"0x7dc5939eec0033571e0a0cf7a81c00cc3cf42e60ac518fce8caf8c411d116466","requiredCredentials":[],"visibility":"0xebbc4f758526443c65cbc630276923c89e5f8ac0cef719eeb96b0a87cad53346","initialStatus":"0x0d37f17e287bdf05078af1c070b07ef59413a6a131f54dac6263f76d080c9990","mandate":"{\"acceptedKinds\":[\"CircleCoach\",\"PastoralCoaching\",\"ChurchPlanting\"],\"acceptedGeo\":[\"us/colorado\"],\"budgetCeiling\":75000,\"expectedAwards\":3}","milestoneTemplate":"{}","validatorRequirements":"{}","slug":"demo-pastoral-coaching-q2"})
+  sender:    0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+
+Docs: https://viem.sh/docs/contract/writeContract
+Details: execution reverted: custom error 0xb3545ef3
+Version: viem@2.47.10
+[seed-test-round] voting-config SQL seed skipped — defaults read from FundRegistry attrs (R10)
+[seed-test-round] GraphDB ok — INSERT 3 rounds
+
+✓ Seeded 3 rounds operated by fund 0x0F669E6851A15FD0E5904EB197c369C2ab578D9b:
+    · demo-trauma-care-q2 — Trauma-Care for Migrant Families — Compassion Ministry Q2
+    · demo-spanish-scripture-q2 — Spanish Heart-Language Scripture & Discipleship Q2
+    · demo-pastoral-coaching-q2 — Pastoral Coaching Cohort for NoCo Church Planters Q2
+[seed-test-pool] deployed pool agent demo-trauma-care-pool → 0x675E11eC5854eBd6656Fc9155D99746c9e438a16
+[seed-test-pool] PoolRegistry.open ok — demo-trauma-care-pool → tx 0x8fa6c550500e0f40cfa9e1d937a0ea437d35c2c18a4ee9c424d469930ca92eef
+[seed-test-pool] deployed pool agent demo-spanish-bibles-pool → 0xA6Ca03d6c704C84cA9f495BDA26b5Fa1dDaaE461
+[seed-test-pool] PoolRegistry.open ok — demo-spanish-bibles-pool → tx 0xef3dfbacd02f961982222a7cf8baa9016606e03604a18718552a795c105e14fe
+[seed-test-pool] deployed pool agent demo-prayer-chain-pool → 0x21681cFE20d8d18DBD746aeD92077DC4b8BFc17A
+[seed-test-pool] PoolRegistry.open ok — demo-prayer-chain-pool → tx 0x711cf9f2805dbf39d0657a38ad122e9f4c6a3e94c221024b18aec8ef88e0137c
+[seed-test-pool] GraphDB ok — INSERT 3 pools into data graph
+
+✓ Seeded 3 pools operated by Catalyst NoCo Network:
+    · demo-trauma-care-pool — Trauma-Care + Migrant Family Compassion Pool  (treasury 0x675E11eC5854eBd6656Fc9155D99746c9e438a16)
+    · demo-spanish-bibles-pool — Spanish Bibles for New Families Pool  (treasury 0xA6Ca03d6c704C84cA9f495BDA26b5Fa1dDaaE461)
+    · demo-prayer-chain-pool — Hispanic Family Prayer Chain Pool  (treasury 0x21681cFE20d8d18DBD746aeD92077DC4b8BFc17A)
+  Visit: http://localhost:3000/h/catalyst/pools (after Maria signs in)
+[seed-test-proposal] wrote 5 proposals to person-mcp
+
+✓ Seeded 5 GrantProposals across the catalyst rounds:
+    · draft     person_cat-user-001 → demo-trauma-care-q2
+    · submitted person_cat-user-001 → demo-trauma-care-q2
+    · submitted person_cat-user-001 → demo-spanish-scripture-q2
+    · submitted person_cat-user-002 → demo-trauma-care-q2
+    · draft     person_cat-user-002 → demo-pastoral-coaching-q2
+  Visit: http://localhost:3000/h/catalyst/proposals (after Maria signs in)
+[seed-test-pledge] no-op (spec 004 v2 — pool_pledges dropped; chain-side seeding TODO)
+[seed-test-match-initiation] no-op (spec 004 v2 — match_initiations dropped; chain-side seeding TODO)
+Found 22 T-Box .ttl files (under docs/ontology/tbox)
+  · docs/ontology/tbox/core.ttl
+  · docs/ontology/tbox/delegation.ttl
+  · docs/ontology/tbox/entitlements.ttl
+  · docs/ontology/tbox/geo.ttl
+  · docs/ontology/tbox/governance.ttl
+  · docs/ontology/tbox/hub.ttl
+  · docs/ontology/tbox/identity.ttl
+  · docs/ontology/tbox/intents.ttl
+  · docs/ontology/tbox/marketplace-lifecycle.ttl
+  · docs/ontology/tbox/matches.ttl
+  · docs/ontology/tbox/namespace.ttl
+  · docs/ontology/tbox/needs.ttl
+  · docs/ontology/tbox/people-groups.ttl
+  · docs/ontology/tbox/pg.ttl
+  · docs/ontology/tbox/pool-pledge.ttl
+  · docs/ontology/tbox/proposal.ttl
+  · docs/ontology/tbox/relationships.ttl
+  · docs/ontology/tbox/resources.ttl
+  · docs/ontology/tbox/roles.ttl
+  · docs/ontology/tbox/shacl/visibility.ttl
+  · docs/ontology/tbox/skills.ttl
+  · docs/ontology/tbox/trust.ttl
+Found 15 C-Box .ttl files (under docs/ontology/cbox)
+  · docs/ontology/cbox/agent-shapes.shacl.ttl
+  · docs/ontology/cbox/capacity-units.ttl
+  · docs/ontology/cbox/controlled-vocabularies.ttl
+  · docs/ontology/cbox/entitlement-shapes.shacl.ttl
+  · docs/ontology/cbox/hub-vocabulary.ttl
+  · docs/ontology/cbox/intent-shapes.shacl.ttl
+  · docs/ontology/cbox/intent-types.ttl
+  · docs/ontology/cbox/needs-shapes.shacl.ttl
+  · docs/ontology/cbox/people-group-scopes.ttl
+  · docs/ontology/cbox/people-group-shapes.shacl.ttl
+  · docs/ontology/cbox/reachedness-vocabulary.ttl
+  · docs/ontology/cbox/resource-types.ttl
+  · docs/ontology/cbox/skill-shapes.shacl.ttl
+  · docs/ontology/cbox/skill-vocabulary-oasf.ttl
+  · docs/ontology/cbox/skill-vocabulary.ttl
+
+Uploading T-Box + SHACL → https://smartagent.io/graph/schema/tbox
+  ✓ T-Box uploaded.
+
+Uploading C-Box → https://smartagent.io/graph/schema/cbox
+  ✓ C-Box uploaded.
+
+Verifying via SPARQL counts...
+  T-Box classes:  235
+  SHACL shapes:   6
+  C-Box concepts: 204
+  Marketplace classes present: 11 / 11
+    · https://smartagent.io/ontology/core#Fund
+    · https://smartagent.io/ontology/core#GrantProposal
+    · https://smartagent.io/ontology/core#MatchInitiation
+    · https://smartagent.io/ontology/core#MatchInitiationAssertion
+    · https://smartagent.io/ontology/core#PledgeAssertion
+    · https://smartagent.io/ontology/core#Pool
+    · https://smartagent.io/ontology/core#PoolPledge
+    · https://smartagent.io/ontology/core#PoolPledgedTotalAssertion
+    · https://smartagent.io/ontology/core#Round
+    · https://smartagent.io/ontology/core#RoundClosedAssertion
+    · https://smartagent.io/ontology/core#RoundOpenedAssertion
+
+✓ Sync complete.
+[seed-test-round] fund agent (catalyst network) → 0x0F669E6851A15FD0E5904EB197c369C2ab578D9b
+[seed-test-round] registerFund warn: The contract function "registerFund" reverted.
+
+Error: NotFundOwner()
+ 
+Contract Call:
+  address:   0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf
+  function:  registerFund(address fundAgent, bytes32[] acceptedKinds, bool openForCalls)
+  args:                  (0x0F669E6851A15FD0E5904EB197c369C2ab578D9b, ["0xe0763b6c82186160294b38982232e94f51e512b9f0e57d8eeb214ef2ee216a8b","0x28be1ff2b788efd3ef4b7749c2d0f81b2a43ababc36f2c8960dfe0c5db10580b","0xa31cb8e69ab09e362158b9bf851a54ece02060a706a8d52e7d947187be1a7bf5","0x7580d6244892989b460c96e64993a3ad3bfa5f64d354202b5ca34d00f75157c5","0x0f13c9d8222dbfb492d0af3dfd79bd0d84a51901cd45667b2374b6496a054c1a","0xd77fac1577d7fe76b7fed53864aa1cc6ca93bffa816c8edcd2fa72f4aa3ab3dc","0xc8d8c296e0c0e9617c16f250cef6bf1698592e08938576e6b044a3c5ef818c76","0x2d0f4ea592791ed7b8919f50b7079d3fa0dcbc666e8ad327b1516b6376e0781f","0x4b506235cb25b0517e0240f70e24fc2f750bfed6d2544fe5fc1f6fc301d3397e"], true)
+  sender:    0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+
+Docs: https://viem.sh/docs/contract/writeContract
+Details: execution reverted: custom error 0xb3545ef3
+Version: viem@2.47.10
+[seed-test-round] openRound warn for demo-trauma-care-q2: The contract function "openRound" reverted.
+
+Error: NotFundOwner()
+ 
+Contract Call:
+  address:   0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf
+  function:  openRound((bytes32 roundSubject, address fundAgent, address poolAgent, uint256 deadline, uint256 decisionDate, bytes32 reportingCadence, bytes32[] requiredCredentials, bytes32 visibility, bytes32 initialStatus, string mandate, string milestoneTemplate, string validatorRequirements, string slug))
+  args:               ({"roundSubject":"0xba7d5720d844ca4eabf89927d1babbe65bda75b6bec359184086371631c8bf61","fundAgent":"0x0F669E6851A15FD0E5904EB197c369C2ab578D9b","poolAgent":"0x0000000000000000000000000000000000000000","deadline":"1779902620","decisionDate":"1781285020","reportingCadence":"0x48680686fbaa3eb8a498d231a3766e99deb42819048529968dd20c370020cb28","requiredCredentials":[],"visibility":"0xebbc4f758526443c65cbc630276923c89e5f8ac0cef719eeb96b0a87cad53346","initialStatus":"0x0d37f17e287bdf05078af1c070b07ef59413a6a131f54dac6263f76d080c9990","mandate":"{\"acceptedKinds\":[\"trauma-care\",\"CompassionMinistry\",\"MigrantFamilyCare\"],\"acceptedGeo\":[\"us/colorado\"],\"budgetCeiling\":250000,\"expectedAwards\":6}","milestoneTemplate":"{}","validatorRequirements":"{}","slug":"demo-trauma-care-q2"})
+  sender:    0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+
+Docs: https://viem.sh/docs/contract/writeContract
+Details: execution reverted: custom error 0xb3545ef3
+Version: viem@2.47.10
+[seed-test-round] openRound warn for demo-spanish-scripture-q2: The contract function "openRound" reverted.
+
+Error: NotFundOwner()
+ 
+Contract Call:
+  address:   0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf
+  function:  openRound((bytes32 roundSubject, address fundAgent, address poolAgent, uint256 deadline, uint256 decisionDate, bytes32 reportingCadence, bytes32[] requiredCredentials, bytes32 visibility, bytes32 initialStatus, string mandate, string milestoneTemplate, string validatorRequirements, string slug))
+  args:               ({"roundSubject":"0x4d64467f9f671a10580ffee37b171d7e1c40f7882b323a331fd1e9d581a678cd","fundAgent":"0x0F669E6851A15FD0E5904EB197c369C2ab578D9b","poolAgent":"0x0000000000000000000000000000000000000000","deadline":"1780507420","decisionDate":"1782581020","reportingCadence":"0x48680686fbaa3eb8a498d231a3766e99deb42819048529968dd20c370020cb28","requiredCredentials":[],"visibility":"0xebbc4f758526443c65cbc630276923c89e5f8ac0cef719eeb96b0a87cad53346","initialStatus":"0x0d37f17e287bdf05078af1c070b07ef59413a6a131f54dac6263f76d080c9990","mandate":"{\"acceptedKinds\":[\"HeartLanguageScripture\",\"BibleStudy\",\"Discipleship\"],\"acceptedGeo\":[\"us/colorado\",\"us/wyoming\"],\"budgetCeiling\":60000,\"expectedAwards\":8}","milestoneTemplate":"{}","validatorRequirements":"{}","slug":"demo-spanish-scripture-q2"})
+  sender:    0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+
+Docs: https://viem.sh/docs/contract/writeContract
+Details: execution reverted: custom error 0xb3545ef3
+Version: viem@2.47.10
+[seed-test-round] openRound warn for demo-pastoral-coaching-q2: The contract function "openRound" reverted.
+
+Error: NotFundOwner()
+ 
+Contract Call:
+  address:   0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf
+  function:  openRound((bytes32 roundSubject, address fundAgent, address poolAgent, uint256 deadline, uint256 decisionDate, bytes32 reportingCadence, bytes32[] requiredCredentials, bytes32 visibility, bytes32 initialStatus, string mandate, string milestoneTemplate, string validatorRequirements, string slug))
+  args:               ({"roundSubject":"0x93ea8dd282a4cb83ab115e1b023fc4ed2f8fbb98e1aa6c81ea153521b34873a1","fundAgent":"0x0F669E6851A15FD0E5904EB197c369C2ab578D9b","poolAgent":"0x0000000000000000000000000000000000000000","deadline":"1781112220","decisionDate":"1783877020","reportingCadence":"0x7dc5939eec0033571e0a0cf7a81c00cc3cf42e60ac518fce8caf8c411d116466","requiredCredentials":[],"visibility":"0xebbc4f758526443c65cbc630276923c89e5f8ac0cef719eeb96b0a87cad53346","initialStatus":"0x0d37f17e287bdf05078af1c070b07ef59413a6a131f54dac6263f76d080c9990","mandate":"{\"acceptedKinds\":[\"CircleCoach\",\"PastoralCoaching\",\"ChurchPlanting\"],\"acceptedGeo\":[\"us/colorado\"],\"budgetCeiling\":75000,\"expectedAwards\":3}","milestoneTemplate":"{}","validatorRequirements":"{}","slug":"demo-pastoral-coaching-q2"})
+  sender:    0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+
+Docs: https://viem.sh/docs/contract/writeContract
+Details: execution reverted: custom error 0xb3545ef3
+Version: viem@2.47.10
+[seed-test-round] voting-config SQL seed skipped — defaults read from FundRegistry attrs (R10)
+[seed-test-round] GraphDB ok — INSERT 3 rounds
+
+✓ Seeded 3 rounds operated by fund 0x0F669E6851A15FD0E5904EB197c369C2ab578D9b:
+    · demo-trauma-care-q2 — Trauma-Care for Migrant Families — Compassion Ministry Q2
+    · demo-spanish-scripture-q2 — Spanish Heart-Language Scripture & Discipleship Q2
+    · demo-pastoral-coaching-q2 — Pastoral Coaching Cohort for NoCo Church Planters Q2
+[seed-test-pool] deployed pool agent demo-trauma-care-pool → 0x675E11eC5854eBd6656Fc9155D99746c9e438a16
+[seed-test-pool] PoolRegistry.open ok — demo-trauma-care-pool → tx 0x575a01aac1ae63dc29bcad9a301e0b8f38508be43c3ce32b5d83d79934922d93
+[seed-test-pool] deployed pool agent demo-spanish-bibles-pool → 0xA6Ca03d6c704C84cA9f495BDA26b5Fa1dDaaE461
+[seed-test-pool] PoolRegistry.open ok — demo-spanish-bibles-pool → tx 0xa2c49c63d833912fd41468f53f614f5065876c63e4e121ed7051e0618ee32355
+[seed-test-pool] deployed pool agent demo-prayer-chain-pool → 0x21681cFE20d8d18DBD746aeD92077DC4b8BFc17A
+[seed-test-pool] PoolRegistry.open ok — demo-prayer-chain-pool → tx 0x8c6115b65ee0757942cea6bf17f0aad3225cc959038f7b7d0ec8eeb092d8ac61
+[seed-test-pool] GraphDB ok — INSERT 3 pools into data graph
+
+✓ Seeded 3 pools operated by Catalyst NoCo Network:
+    · demo-trauma-care-pool — Trauma-Care + Migrant Family Compassion Pool  (treasury 0x675E11eC5854eBd6656Fc9155D99746c9e438a16)
+    · demo-spanish-bibles-pool — Spanish Bibles for New Families Pool  (treasury 0xA6Ca03d6c704C84cA9f495BDA26b5Fa1dDaaE461)
+    · demo-prayer-chain-pool — Hispanic Family Prayer Chain Pool  (treasury 0x21681cFE20d8d18DBD746aeD92077DC4b8BFc17A)
+  Visit: http://localhost:3000/h/catalyst/pools (after Maria signs in)
+[seed-test-proposal] wrote 5 proposals to person-mcp
+
+✓ Seeded 5 GrantProposals across the catalyst rounds:
+    · draft     person_cat-user-001 → demo-trauma-care-q2
+    · submitted person_cat-user-001 → demo-trauma-care-q2
+    · submitted person_cat-user-001 → demo-spanish-scripture-q2
+    · submitted person_cat-user-002 → demo-trauma-care-q2
+    · draft     person_cat-user-002 → demo-pastoral-coaching-q2
+  Visit: http://localhost:3000/h/catalyst/proposals (after Maria signs in)
+[seed-test-pledge] no-op (spec 004 v2 — pool_pledges dropped; chain-side seeding TODO)
+[seed-test-match-initiation] no-op (spec 004 v2 — match_initiations dropped; chain-side seeding TODO)
+Found 22 T-Box .ttl files (under docs/ontology/tbox)
+  · docs/ontology/tbox/core.ttl
+  · docs/ontology/tbox/delegation.ttl
+  · docs/ontology/tbox/entitlements.ttl
+  · docs/ontology/tbox/geo.ttl
+  · docs/ontology/tbox/governance.ttl
+  · docs/ontology/tbox/hub.ttl
+  · docs/ontology/tbox/identity.ttl
+  · docs/ontology/tbox/intents.ttl
+  · docs/ontology/tbox/marketplace-lifecycle.ttl
+  · docs/ontology/tbox/matches.ttl
+  · docs/ontology/tbox/namespace.ttl
+  · docs/ontology/tbox/needs.ttl
+  · docs/ontology/tbox/people-groups.ttl
+  · docs/ontology/tbox/pg.ttl
+  · docs/ontology/tbox/pool-pledge.ttl
+  · docs/ontology/tbox/proposal.ttl
+  · docs/ontology/tbox/relationships.ttl
+  · docs/ontology/tbox/resources.ttl
+  · docs/ontology/tbox/roles.ttl
+  · docs/ontology/tbox/shacl/visibility.ttl
+  · docs/ontology/tbox/skills.ttl
+  · docs/ontology/tbox/trust.ttl
+Found 15 C-Box .ttl files (under docs/ontology/cbox)
+  · docs/ontology/cbox/agent-shapes.shacl.ttl
+  · docs/ontology/cbox/capacity-units.ttl
+  · docs/ontology/cbox/controlled-vocabularies.ttl
+  · docs/ontology/cbox/entitlement-shapes.shacl.ttl
+  · docs/ontology/cbox/hub-vocabulary.ttl
+  · docs/ontology/cbox/intent-shapes.shacl.ttl
+  · docs/ontology/cbox/intent-types.ttl
+  · docs/ontology/cbox/needs-shapes.shacl.ttl
+  · docs/ontology/cbox/people-group-scopes.ttl
+  · docs/ontology/cbox/people-group-shapes.shacl.ttl
+  · docs/ontology/cbox/reachedness-vocabulary.ttl
+  · docs/ontology/cbox/resource-types.ttl
+  · docs/ontology/cbox/skill-shapes.shacl.ttl
+  · docs/ontology/cbox/skill-vocabulary-oasf.ttl
+  · docs/ontology/cbox/skill-vocabulary.ttl
+
+Uploading T-Box + SHACL → https://smartagent.io/graph/schema/tbox
+fetch failed
+[seed-test-round] fund agent (catalyst network) → 0x0F669E6851A15FD0E5904EB197c369C2ab578D9b
+[seed-test-round] registerFund warn: The contract function "registerFund" reverted.
+
+Error: NotFundOwner()
+ 
+Contract Call:
+  address:   0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf
+  function:  registerFund(address fundAgent, bytes32[] acceptedKinds, bool openForCalls)
+  args:                  (0x0F669E6851A15FD0E5904EB197c369C2ab578D9b, ["0xe0763b6c82186160294b38982232e94f51e512b9f0e57d8eeb214ef2ee216a8b","0x28be1ff2b788efd3ef4b7749c2d0f81b2a43ababc36f2c8960dfe0c5db10580b","0xa31cb8e69ab09e362158b9bf851a54ece02060a706a8d52e7d947187be1a7bf5","0x7580d6244892989b460c96e64993a3ad3bfa5f64d354202b5ca34d00f75157c5","0x0f13c9d8222dbfb492d0af3dfd79bd0d84a51901cd45667b2374b6496a054c1a","0xd77fac1577d7fe76b7fed53864aa1cc6ca93bffa816c8edcd2fa72f4aa3ab3dc","0xc8d8c296e0c0e9617c16f250cef6bf1698592e08938576e6b044a3c5ef818c76","0x2d0f4ea592791ed7b8919f50b7079d3fa0dcbc666e8ad327b1516b6376e0781f","0x4b506235cb25b0517e0240f70e24fc2f750bfed6d2544fe5fc1f6fc301d3397e"], true)
+  sender:    0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+
+Docs: https://viem.sh/docs/contract/writeContract
+Details: execution reverted: custom error 0xb3545ef3
+Version: viem@2.47.10
+[seed-test-round] openRound warn for demo-trauma-care-q2: The contract function "openRound" reverted.
+
+Error: NotFundOwner()
+ 
+Contract Call:
+  address:   0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf
+  function:  openRound((bytes32 roundSubject, address fundAgent, address poolAgent, uint256 deadline, uint256 decisionDate, bytes32 reportingCadence, bytes32[] requiredCredentials, bytes32 visibility, bytes32 initialStatus, string mandate, string milestoneTemplate, string validatorRequirements, string slug))
+  args:               ({"roundSubject":"0xba7d5720d844ca4eabf89927d1babbe65bda75b6bec359184086371631c8bf61","fundAgent":"0x0F669E6851A15FD0E5904EB197c369C2ab578D9b","poolAgent":"0x0000000000000000000000000000000000000000","deadline":"1779903991","decisionDate":"1781286391","reportingCadence":"0x48680686fbaa3eb8a498d231a3766e99deb42819048529968dd20c370020cb28","requiredCredentials":[],"visibility":"0xebbc4f758526443c65cbc630276923c89e5f8ac0cef719eeb96b0a87cad53346","initialStatus":"0x0d37f17e287bdf05078af1c070b07ef59413a6a131f54dac6263f76d080c9990","mandate":"{\"acceptedKinds\":[\"trauma-care\",\"CompassionMinistry\",\"MigrantFamilyCare\"],\"acceptedGeo\":[\"us/colorado\"],\"budgetCeiling\":250000,\"expectedAwards\":6}","milestoneTemplate":"{}","validatorRequirements":"{}","slug":"demo-trauma-care-q2"})
+  sender:    0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+
+Docs: https://viem.sh/docs/contract/writeContract
+Details: execution reverted: custom error 0xb3545ef3
+Version: viem@2.47.10
+[seed-test-round] openRound warn for demo-spanish-scripture-q2: The contract function "openRound" reverted.
+
+Error: NotFundOwner()
+ 
+Contract Call:
+  address:   0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf
+  function:  openRound((bytes32 roundSubject, address fundAgent, address poolAgent, uint256 deadline, uint256 decisionDate, bytes32 reportingCadence, bytes32[] requiredCredentials, bytes32 visibility, bytes32 initialStatus, string mandate, string milestoneTemplate, string validatorRequirements, string slug))
+  args:               ({"roundSubject":"0x4d64467f9f671a10580ffee37b171d7e1c40f7882b323a331fd1e9d581a678cd","fundAgent":"0x0F669E6851A15FD0E5904EB197c369C2ab578D9b","poolAgent":"0x0000000000000000000000000000000000000000","deadline":"1780508791","decisionDate":"1782582391","reportingCadence":"0x48680686fbaa3eb8a498d231a3766e99deb42819048529968dd20c370020cb28","requiredCredentials":[],"visibility":"0xebbc4f758526443c65cbc630276923c89e5f8ac0cef719eeb96b0a87cad53346","initialStatus":"0x0d37f17e287bdf05078af1c070b07ef59413a6a131f54dac6263f76d080c9990","mandate":"{\"acceptedKinds\":[\"HeartLanguageScripture\",\"BibleStudy\",\"Discipleship\"],\"acceptedGeo\":[\"us/colorado\",\"us/wyoming\"],\"budgetCeiling\":60000,\"expectedAwards\":8}","milestoneTemplate":"{}","validatorRequirements":"{}","slug":"demo-spanish-scripture-q2"})
+  sender:    0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+
+Docs: https://viem.sh/docs/contract/writeContract
+Details: execution reverted: custom error 0xb3545ef3
+Version: viem@2.47.10
+[seed-test-round] openRound warn for demo-pastoral-coaching-q2: The contract function "openRound" reverted.
+
+Error: NotFundOwner()
+ 
+Contract Call:
+  address:   0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf
+  function:  openRound((bytes32 roundSubject, address fundAgent, address poolAgent, uint256 deadline, uint256 decisionDate, bytes32 reportingCadence, bytes32[] requiredCredentials, bytes32 visibility, bytes32 initialStatus, string mandate, string milestoneTemplate, string validatorRequirements, string slug))
+  args:               ({"roundSubject":"0x93ea8dd282a4cb83ab115e1b023fc4ed2f8fbb98e1aa6c81ea153521b34873a1","fundAgent":"0x0F669E6851A15FD0E5904EB197c369C2ab578D9b","poolAgent":"0x0000000000000000000000000000000000000000","deadline":"1781113591","decisionDate":"1783878391","reportingCadence":"0x7dc5939eec0033571e0a0cf7a81c00cc3cf42e60ac518fce8caf8c411d116466","requiredCredentials":[],"visibility":"0xebbc4f758526443c65cbc630276923c89e5f8ac0cef719eeb96b0a87cad53346","initialStatus":"0x0d37f17e287bdf05078af1c070b07ef59413a6a131f54dac6263f76d080c9990","mandate":"{\"acceptedKinds\":[\"CircleCoach\",\"PastoralCoaching\",\"ChurchPlanting\"],\"acceptedGeo\":[\"us/colorado\"],\"budgetCeiling\":75000,\"expectedAwards\":3}","milestoneTemplate":"{}","validatorRequirements":"{}","slug":"demo-pastoral-coaching-q2"})
+  sender:    0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+
+Docs: https://viem.sh/docs/contract/writeContract
+Details: execution reverted: custom error 0xb3545ef3
+Version: viem@2.47.10
+[seed-test-round] voting-config SQL seed skipped — defaults read from FundRegistry attrs (R10)
+[seed-test-round] GraphDB ok — INSERT 3 rounds
+
+✓ Seeded 3 rounds operated by fund 0x0F669E6851A15FD0E5904EB197c369C2ab578D9b:
+    · demo-trauma-care-q2 — Trauma-Care for Migrant Families — Compassion Ministry Q2
+    · demo-spanish-scripture-q2 — Spanish Heart-Language Scripture & Discipleship Q2
+    · demo-pastoral-coaching-q2 — Pastoral Coaching Cohort for NoCo Church Planters Q2
+[seed-test-pool] deployed pool agent demo-trauma-care-pool → 0x675E11eC5854eBd6656Fc9155D99746c9e438a16
+[seed-test-pool] PoolRegistry.open ok — demo-trauma-care-pool → tx 0xa4d255028e0d48c7538e097f6d5efd55bb7abd1fa86788675d966b5317771810
+[seed-test-pool] deployed pool agent demo-spanish-bibles-pool → 0xA6Ca03d6c704C84cA9f495BDA26b5Fa1dDaaE461
+[seed-test-pool] PoolRegistry.open ok — demo-spanish-bibles-pool → tx 0x00ec9101bcbe9480d396a1d17beef9106785441575519cdb9937210132f744db
+[seed-test-pool] deployed pool agent demo-prayer-chain-pool → 0x21681cFE20d8d18DBD746aeD92077DC4b8BFc17A
+[seed-test-pool] PoolRegistry.open ok — demo-prayer-chain-pool → tx 0x2639a4b0a504217dba6ebd668e621f97db253e3348021e03e159e426bfecc173
+[seed-test-pool] GraphDB ok — INSERT 3 pools into data graph
+
+✓ Seeded 3 pools operated by Catalyst NoCo Network:
+    · demo-trauma-care-pool — Trauma-Care + Migrant Family Compassion Pool  (treasury 0x675E11eC5854eBd6656Fc9155D99746c9e438a16)
+    · demo-spanish-bibles-pool — Spanish Bibles for New Families Pool  (treasury 0xA6Ca03d6c704C84cA9f495BDA26b5Fa1dDaaE461)
+    · demo-prayer-chain-pool — Hispanic Family Prayer Chain Pool  (treasury 0x21681cFE20d8d18DBD746aeD92077DC4b8BFc17A)
+  Visit: http://localhost:3000/h/catalyst/pools (after Maria signs in)
+[seed-test-proposal] wrote 5 proposals to person-mcp
+
+✓ Seeded 5 GrantProposals across the catalyst rounds:
+    · draft     person_cat-user-001 → demo-trauma-care-q2
+    · submitted person_cat-user-001 → demo-trauma-care-q2
+    · submitted person_cat-user-001 → demo-spanish-scripture-q2
+    · submitted person_cat-user-002 → demo-trauma-care-q2
+    · draft     person_cat-user-002 → demo-pastoral-coaching-q2
+  Visit: http://localhost:3000/h/catalyst/proposals (after Maria signs in)
+[seed-test-pledge] no-op (spec 004 v2 — pool_pledges dropped; chain-side seeding TODO)
+[seed-test-match-initiation] no-op (spec 004 v2 — match_initiations dropped; chain-side seeding TODO)

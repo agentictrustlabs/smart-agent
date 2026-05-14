@@ -193,6 +193,14 @@ export default async function StewardProposalsPage({
             proposerLabel: `${r.proposal.proposerAgentId.slice(0, 6)}…${r.proposal.proposerAgentId.slice(-4)}`,
             suggestedAmount: r.proposal.budget?.total ?? 0,
             unit: r.proposal.budget?.lineItems?.[0]?.unit ?? 'USD',
+            // Spec 006 — preserve the originating NeedIntent and milestone
+            // schedule into the commitment created at closeRound time. Both
+            // are optional; the action layer falls back to a single-tranche
+            // default when milestonesJson is empty.
+            needIntentId: r.proposal.basedOnIntentId ?? undefined,
+            milestonesJson: r.proposal.milestones && r.proposal.milestones.length > 0
+              ? JSON.stringify(r.proposal.milestones)
+              : undefined,
           }))}
       />
     </div>

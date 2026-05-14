@@ -30,6 +30,10 @@ import { ProposalVotePanel } from '@/components/voting/ProposalVotePanel'
 import { FundingAndOutcomesPanel } from '@/components/voting/FundingAndOutcomesPanel'
 import { canManageAgent } from '@/lib/agent-registry'
 import type { GrantProposal } from '@smart-agent/sdk'
+import { getCommitmentForProposal, getMilestoneRelease } from '@/lib/actions/commitments.action'
+import { proposalSubject as proposalSubjectFn } from '@smart-agent/sdk'
+import { CommitmentTimelinePanel } from './CommitmentTimelinePanel'
+import type { Address, Hex } from 'viem'
 
 export const dynamic = 'force-dynamic'
 
@@ -112,6 +116,44 @@ export default async function ProposalDetailPage({
   let canManageFund = false
   if (fundAgentForRound) {
     try { canManageFund = await canManageAgent(myAgent, fundAgentForRound) } catch { canManageFund = false }
+  }
+
+  // Spec 006 — load the on-chain commitment row for this proposal (if any)
+  // and the per-milestone release records. We compute the proposal subject
+  // from the proposal slug (proposalId is either URN or bare slug). The
+  // donor is the round's pool agent (unified governance: round operator =
+  // pool, also serves as donor for grant-lane commitments).
+  let commitment: Awaited<ReturnType<typeof getCommitmentForProposal>> = null
+  let milestoneReleases: Array<{ id: string; label: string; trancheBps: number; releasedAmount: string | null; releasedAt: number | null }> = []
+  if (proposal.status === 'awarded' && fundAgentForRound) {
+    const proposalSlug = proposal.id.replace(/^urn:smart-agent:proposal:/, '')
+    const proposalSubjectHex = proposalSubjectFn(proposalSlug) as Hex
+    // Strip the IRI prefix the discovery layer attaches.
+    const AGENT_IRI_PREFIX = 'https://smartagent.io/ontology/core#agent/'
+    const donorAddr = (fundAgentForRound.startsWith(AGENT_IRI_PREFIX)
+      ? fundAgentForRound.slice(AGENT_IRI_PREFIX.length)
+      : fundAgentForRound) as Address
+    commitment = await getCommitmentForProposal(proposalSubjectHex, donorAddr)
+    if (commitment) {
+      let parsed: Array<{ id?: string; label?: string; trancheBps?: number }> = []
+      try { parsed = JSON.parse(commitment.milestonesJson || '[]') } catch { parsed = [] }
+      if (parsed.length === 0) {
+        parsed = [{ id: 'single', label: 'On award', trancheBps: 10000 }]
+      }
+      const { keccak256: keccak, toBytes: kbToBytes } = await import('viem')
+      milestoneReleases = await Promise.all(parsed.map(async (m) => {
+        const id = m.id ?? 'single'
+        const mid = keccak(kbToBytes(id)) as Hex
+        const rel = await getMilestoneRelease(commitment!.commitmentSubject, mid)
+        return {
+          id,
+          label: m.label ?? id,
+          trancheBps: m.trancheBps ?? Math.floor(10000 / parsed.length),
+          releasedAmount: rel?.amount ?? null,
+          releasedAt: rel?.releasedAt ?? null,
+        }
+      }))
+    }
   }
 
   const status = proposal.status
@@ -311,6 +353,16 @@ export default async function ProposalDetailPage({
           Renders only when the proposal is on a round (drafts skip). */}
       {proposal.roundId && proposal.status !== 'draft' && (
         <ProposalVotePanel roundId={proposal.roundId} proposalId={proposal.id} />
+      )}
+
+      {/* Spec 006 — universal commitment timeline. Renders for any
+          awarded proposal that has a CommitmentRegistry row. */}
+      {proposal.status === 'awarded' && commitment && (
+        <CommitmentTimelinePanel
+          commitment={commitment}
+          milestones={milestoneReleases}
+          canRelease={canManageFund}
+        />
       )}
 
       {/* Funding + outcomes — only for awarded proposals (Sprint C). */}

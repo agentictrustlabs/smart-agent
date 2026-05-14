@@ -22,6 +22,12 @@ export const TYPE_PERSON = keccak256(toBytes('atl:PersonAgent'))
 export const TYPE_ORGANIZATION = keccak256(toBytes('atl:OrganizationAgent'))
 export const TYPE_AI_AGENT = keccak256(toBytes('atl:AIAgent'))
 export const TYPE_HUB = keccak256(toBytes('atl:HubAgent'))
+// Treasury Service Agent — a Service-class agent that exists solely to
+// hold a separate AgentAccount for an org's funds. Distinct from the
+// org's own OrganizationAgent so the graph can show "org → its treasury"
+// as two nodes, and so pool/fund treasuries (which are NOT registered as
+// agents at all) stay outside the network view.
+export const TYPE_TREASURY_AGENT = keccak256(toBytes('atl:TreasuryAgent'))
 
 // ─── AI agent class values ──────────────────────────────────────────
 export const CLASS_DISCOVERY = keccak256(toBytes('atl:DiscoveryAgent'))
@@ -94,6 +100,16 @@ export const ATL_TEMPLATE_ID = keccak256(toBytes('atl:templateId'))
 export const ATL_PRIMARY_NAME = keccak256(toBytes('atl:primaryName'))
 /** The label for this agent at its level in the namespace (e.g., "david") */
 export const ATL_NAME_LABEL = keccak256(toBytes('atl:nameLabel'))
+
+// ─── Treasury declarations (spec-005 + spec-006) ───────────────────
+// Both predicates store an Address value via AgentAccountResolver.
+// `sa:hasPersonalTreasury` — self-link a person agent to the AgentAccount
+// holding their personal funds (spec-005 set the smart account itself).
+// `sa:hasTreasury` — generic recipient/treasury pointer used by any
+// AgentAccount (person or org). spec-006's resolveRecipientTreasury
+// reads in priority order: sa:hasTreasury → sa:hasPersonalTreasury → self.
+export const SA_HAS_PERSONAL_TREASURY = keccak256(toBytes('sa:hasPersonalTreasury'))
+export const SA_HAS_TREASURY = keccak256(toBytes('sa:hasTreasury'))
 
 // ─── ERC-4337 technical ─────────────────────────────────────────────
 export const ATL_ENTRY_POINT = keccak256(toBytes('atl:entryPoint'))
@@ -217,6 +233,7 @@ export const AGENT_TYPE_LABELS: Record<string, string> = {
   [TYPE_ORGANIZATION]: 'Organization',
   [TYPE_AI_AGENT]: 'AI Agent',
   [TYPE_HUB]: 'Hub',
+  [TYPE_TREASURY_AGENT]: 'Treasury',
 }
 
 export const AI_CLASS_LABELS: Record<string, string> = {

@@ -1,11 +1,12 @@
 'use client'
 
 import { useEffect, useState, useRef, useCallback } from 'react'
+import { AgentDrillInDialog } from './AgentDrillInDialog'
 
 interface GraphNode {
   id: string
   label: string
-  type: 'person' | 'org' | 'ai' | 'eoa'
+  type: 'person' | 'org' | 'ai' | 'eoa' | 'treasury'
   did: string
   address: string
   description?: string
@@ -42,7 +43,15 @@ interface GraphData {
   edges: GraphEdge[]
 }
 
-const NODE_COLORS: Record<string, string> = { person: '#1565c0', org: '#2e7d32', ai: '#f59e0b', eoa: '#94a3b8' }
+const NODE_COLORS: Record<string, string> = {
+  person: '#1565c0',
+  org: '#2e7d32',
+  ai: '#f59e0b',
+  eoa: '#94a3b8',
+  // Treasury Service Agents — distinct color so org and its treasury read
+  // as two distinct nodes on the graph.
+  treasury: '#0d9488',
+}
 
 const EDGE_COLORS: Record<string, string> = {
   Governance: '#f59e0b', Membership: '#1565c0', Alliance: '#ec4899', 'Church Lineage': '#ec4899',
@@ -63,12 +72,19 @@ function layoutNodes(nodes: GraphNode[], w: number, h: number): GraphNode[] {
   }))
 }
 
+// Viewport dimensions for the SVG. Module-scope constants so the pan
+// callbacks closing over them never hit the TDZ when Fast Refresh
+// reorders bindings during a hot reload.
+const W = 900
+const H = 600
+
 export function TrustGraphView({ orgAddress }: { orgAddress?: string }) {
   const [rawData, setRawData] = useState<(GraphData & { currentUserAddresses?: string[] }) | null>(null)
   const [selectedNode, setSelectedNode] = useState<string | null>(null)
   const [selectedEdge, setSelectedEdge] = useState<GraphEdge | null>(null)
   const [filter, setFilter] = useState<'all' | 'mine'>('mine')
   const [showLegend, setShowLegend] = useState(false)
+  const [drillIn, setDrillIn] = useState(false)
 
   // Zoom & pan state
   const svgRef = useRef<SVGSVGElement>(null)
@@ -160,7 +176,6 @@ export function TrustGraphView({ orgAddress }: { orgAddress?: string }) {
     }
   })()
 
-  const W = 900, H = 600
   const nodes = layoutNodes(data.nodes, W, H)
   const nodeMap = new Map(nodes.map((n) => [n.id.toLowerCase(), n]))
 
@@ -229,6 +244,7 @@ export function TrustGraphView({ orgAddress }: { orgAddress?: string }) {
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
               <span data-component="legend-item"><span style={{ background: NODE_COLORS.person }} data-component="legend-dot" /> Person</span>
               <span data-component="legend-item"><span style={{ background: NODE_COLORS.org }} data-component="legend-dot" /> Org</span>
+              <span data-component="legend-item"><span style={{ background: NODE_COLORS.treasury }} data-component="legend-dot" /> Treasury</span>
               <span data-component="legend-item"><span style={{ background: NODE_COLORS.ai }} data-component="legend-dot" /> AI</span>
               <span data-component="legend-item"><span style={{ background: NODE_COLORS.eoa }} data-component="legend-dot" /> EOA</span>
             </div>
@@ -396,6 +412,22 @@ export function TrustGraphView({ orgAddress }: { orgAddress?: string }) {
                 </div>
               )}
 
+              {/* Drill-in CTA — opens the focused detail dialog without
+                  disturbing the main graph's selection / highlights. */}
+              <div style={{ margin: '0.5rem 0' }}>
+                <button
+                  type="button"
+                  onClick={() => setDrillIn(true)}
+                  style={{
+                    padding: '0.45rem 0.85rem', borderRadius: 6,
+                    background: '#1565c0', color: '#fff', border: 'none',
+                    fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer',
+                  }}
+                >
+                  Drill in →
+                </button>
+              </div>
+
               <h4>Relationships ({connectedEdges.length})</h4>
               {connectedEdges.map((e, i) => {
                 const peer = e.source.toLowerCase() === selectedNode
@@ -499,6 +531,16 @@ export function TrustGraphView({ orgAddress }: { orgAddress?: string }) {
           )})()}
         </div>
       </div>
+
+      <AgentDrillInDialog
+        open={drillIn}
+        onClose={() => setDrillIn(false)}
+        focusNode={selectedNodeData ?? null}
+        allNodes={data.nodes}
+        allEdges={data.edges}
+        nodeColors={NODE_COLORS}
+        edgeColors={EDGE_COLORS}
+      />
     </div>
   )
 }

@@ -81,6 +81,10 @@ export function ProposalVotePanel({ roundId, proposalId }: Props) {
   const [rationale, setRationale] = useState('')
   const [pending, start] = useTransition()
   const [castMsg, setCastMsg] = useState<string | null>(null)
+  // First-load flag: poll-driven `refresh()` should not overwrite the
+  // user's in-progress draft (ballot click + rationale text). We only
+  // seed `vote` / `rationale` from the server on the very first read.
+  const [hasSeededDraft, setHasSeededDraft] = useState(false)
 
   async function refresh() {
     const [eligR, tallyR, myR] = await Promise.all([
@@ -110,14 +114,26 @@ export function ProposalVotePanel({ roundId, proposalId }: Props) {
     }
     if (myR && !myR.error && myR.vote) {
       setMyVote(myR)
-      setVote(myR.vote)
-      setRationale(myR.rationale ?? '')
+      // Only seed the draft state on the FIRST read — subsequent polls
+      // would clobber the user's mid-edit ballot selection / rationale.
+      if (!hasSeededDraft) {
+        setVote(myR.vote)
+        setRationale(myR.rationale ?? '')
+        setHasSeededDraft(true)
+      }
+    } else if (!hasSeededDraft) {
+      // No prior vote: still mark seeded so refresh() doesn't keep
+      // re-running this branch on every poll.
+      setHasSeededDraft(true)
     }
   }
 
   useEffect(() => {
     refresh()
-    const t = setInterval(() => refresh(), 5000)
+    // 15s cadence — was 5s and produced a wall of dev-mode warnings on
+    // each poll cycle. Voting outcomes don't change that fast in
+    // practice; the steward dashboard polls at the same rate elsewhere.
+    const t = setInterval(() => refresh(), 15000)
     return () => clearInterval(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roundId, proposalId])

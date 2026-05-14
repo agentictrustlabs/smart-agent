@@ -6,7 +6,7 @@ import {
   ATL_CAPABILITY, ATL_SUPPORTED_TRUST, ATL_A2A_ENDPOINT, ATL_MCP_SERVER,
   ATL_LATITUDE, ATL_LONGITUDE, ATL_SPATIAL_CRS, ATL_SPATIAL_TYPE,
   ATL_PRIMARY_NAME, ATL_NAME_LABEL,
-  TYPE_PERSON, TYPE_ORGANIZATION, TYPE_AI_AGENT,
+  TYPE_PERSON, TYPE_ORGANIZATION, TYPE_AI_AGENT, TYPE_TREASURY_AGENT,
 } from '@smart-agent/sdk'
 import { db, schema } from '@/db'
 
@@ -22,7 +22,7 @@ export interface AgentMetadata {
   primaryName: string
   /** Name label at this level (e.g., "david") */
   nameLabel: string
-  agentType: 'person' | 'org' | 'ai' | 'unknown'
+  agentType: 'person' | 'org' | 'ai' | 'treasury' | 'unknown'
   agentTypeLabel: string
   aiAgentClass: string
   capabilities: string[]
@@ -38,10 +38,11 @@ export interface AgentMetadata {
   spatialType: string
 }
 
-const TYPE_MAP: Record<string, 'person' | 'org' | 'ai'> = {
+const TYPE_MAP: Record<string, 'person' | 'org' | 'ai' | 'treasury'> = {
   [TYPE_PERSON]: 'person',
   [TYPE_ORGANIZATION]: 'org',
   [TYPE_AI_AGENT]: 'ai',
+  [TYPE_TREASURY_AGENT]: 'treasury',
 }
 
 /**

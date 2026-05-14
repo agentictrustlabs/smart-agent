@@ -36,11 +36,22 @@ export default async function NewRoundPage({ params }: { params: Promise<{ hubId
 
   // Eligible = pools whose AgentAccount the viewer can manage.
   const allPools = await listPoolsForViewer({ hubId: internalHubId, viewerAgentId: myAgent })
+  console.log(`[rounds/new] viewer=${myAgent} found ${allPools.length} pools in hub=${internalHubId}`)
   const eligiblePools: EligiblePool[] = []
   for (const p of allPools) {
-    if (!p.treasuryAddress) continue
+    if (!p.treasuryAddress) {
+      console.log(`[rounds/new] skip ${p.id} — no treasuryAddress`)
+      continue
+    }
     let canMng = false
-    try { canMng = await canManageAgent(myAgent, p.treasuryAddress) } catch { canMng = false }
+    let err: string | null = null
+    try {
+      canMng = await canManageAgent(myAgent, p.treasuryAddress)
+    } catch (e) {
+      err = e instanceof Error ? e.message : String(e)
+      canMng = false
+    }
+    console.log(`[rounds/new] pool=${p.id} treasury=${p.treasuryAddress} canManage=${canMng}${err ? ` err=${err}` : ''}`)
     if (!canMng) continue
     eligiblePools.push({
       poolAgentId: p.id,
@@ -50,6 +61,7 @@ export default async function NewRoundPage({ params }: { params: Promise<{ hubId
       acceptedGeo: p.acceptedRestrictions?.geoRoots ?? [],
     })
   }
+  console.log(`[rounds/new] eligible pools: ${eligiblePools.length}`)
 
   return (
     <div style={{ paddingBottom: '2rem' }}>

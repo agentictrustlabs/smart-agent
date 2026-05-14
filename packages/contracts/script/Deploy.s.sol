@@ -56,6 +56,7 @@ import "../src/FundRegistry.sol";
 import "../src/VoteRegistry.sol";
 import "../src/GrantProposalRegistry.sol";
 import "../src/PledgeRegistry.sol";
+import "../src/CommitmentRegistry.sol";
 import "../src/MatchInitiationRegistry.sol";
 import "../src/mocks/MockUSDC.sol";
 import "../src/ProposalRegistry.sol";
@@ -291,6 +292,12 @@ contract Deploy is Script {
             address(ontologyRegistry), address(shapeRegistry)
         );
         console.log("PledgeRegistry:", address(pledgeRegistry));
+        // Spec 006 — universal match-fulfillment artifact. Reuses the same
+        // ontology + shape stores so SHACL gating is centralised.
+        CommitmentRegistry commitmentRegistry = new CommitmentRegistry(
+            address(ontologyRegistry), address(shapeRegistry)
+        );
+        console.log("CommitmentRegistry:", address(commitmentRegistry));
         MatchInitiationRegistry matchInitiationRegistry = new MatchInitiationRegistry(
             address(ontologyRegistry), address(shapeRegistry)
         );
@@ -492,6 +499,7 @@ contract Deploy is Script {
         _logEnv("VOTE_REGISTRY_ADDRESS", address(voteRegistry));
         _logEnv("GRANT_PROPOSAL_REGISTRY_ADDRESS", address(grantProposalRegistry));
         _logEnv("PLEDGE_REGISTRY_ADDRESS", address(pledgeRegistry));
+        _logEnv("COMMITMENT_REGISTRY_ADDRESS", address(commitmentRegistry));
         _logEnv("MATCH_INITIATION_REGISTRY_ADDRESS", address(matchInitiationRegistry));
         // Spec 005 — MockUSDC (dev-only). USDC_ADDRESS aliased for
         // forward-compat with prod where a real USDC address would be
