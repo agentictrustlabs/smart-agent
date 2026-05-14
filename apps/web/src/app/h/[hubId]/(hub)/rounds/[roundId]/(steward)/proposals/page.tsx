@@ -36,6 +36,7 @@ import { StewardTallySummary } from '@/components/voting/StewardTallySummary'
 import { rankCue } from '@smart-agent/sdk'
 import type { RankBasis, GrantProposal } from '@smart-agent/sdk'
 import { CloseRoundForm, type CloseableProposal } from './CloseRoundForm'
+import { AGENT_IRI_PREFIX, resolveAgentLabel } from '@/lib/agent-label'
 
 export const dynamic = 'force-dynamic'
 
@@ -103,7 +104,6 @@ export default async function StewardProposalsPage({
   // explicitly granted a RoundVoterCredential. Steward-specific surfaces
   // (rank-side controls, finalize awards, etc.) stay gated on
   // `canManageAgent(fundAgent)` so they only render for actual operators.
-  const AGENT_IRI_PREFIX = 'https://smartagent.io/ontology/core#agent/'
   const fundAddress = round.fundAgentId.startsWith(AGENT_IRI_PREFIX)
     ? round.fundAgentId.slice(AGENT_IRI_PREFIX.length)
     : round.fundAgentId
@@ -121,6 +121,12 @@ export default async function StewardProposalsPage({
     stewardAgentId: myAgent,
     fundAgentId: round.fundAgentId,
   })
+  const proposerLabels = new Map(
+    await Promise.all(ranked.map(async (r) => {
+      const resolved = await resolveAgentLabel(r.proposal.proposerAgentId, 'Unresolved proposer')
+      return [r.proposal.proposerAgentId, resolved.label] as const
+    })),
+  )
 
   return (
     <div style={{ paddingBottom: '2rem' }}>
@@ -173,6 +179,7 @@ export default async function StewardProposalsPage({
               basis={r.basis}
               rank={i + 1}
               hubSlug={slug}
+              proposerLabel={proposerLabels.get(r.proposal.proposerAgentId) ?? 'Unresolved proposer'}
             />
           ))}
         </div>
@@ -190,7 +197,7 @@ export default async function StewardProposalsPage({
           .map<CloseableProposal>(r => ({
             proposalIRI: r.proposal.id,
             proposerAgentId: r.proposal.proposerAgentId,
-            proposerLabel: `${r.proposal.proposerAgentId.slice(0, 6)}…${r.proposal.proposerAgentId.slice(-4)}`,
+            proposerLabel: proposerLabels.get(r.proposal.proposerAgentId) ?? 'Unresolved proposer',
             suggestedAmount: r.proposal.budget?.total ?? 0,
             unit: r.proposal.budget?.lineItems?.[0]?.unit ?? 'USD',
             // Spec 006 — preserve the originating NeedIntent and milestone
@@ -212,13 +219,14 @@ function ProposalRow({
   basis,
   rank,
   hubSlug,
+  proposerLabel,
 }: {
   proposal: GrantProposal
   basis: RankBasis
   rank: number
   hubSlug: string
+  proposerLabel: string
 }) {
-  const proposerLabel = `${proposal.proposerAgentId.slice(0, 6)}…${proposal.proposerAgentId.slice(-4)}`
   const intentLabel = proposal.basedOnIntentId
     ? `${proposal.basedOnIntentId.slice(0, 8)}…`
     : '—'

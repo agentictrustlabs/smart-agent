@@ -11,6 +11,7 @@ import {
   listPublicActiveInitiationsForIntent,
 } from '@/lib/actions/matchInitiations.action'
 import { CandidatesSection } from '../(components)/CandidatesSection'
+import { IntentFulfillmentSection } from './IntentFulfillmentSection'
 
 export const dynamic = 'force-dynamic'
 
@@ -121,6 +122,11 @@ export default async function IntentDetailPage({ params, searchParams }: {
           {intent.validUntil && <Field label="Valid until" value={new Date(intent.validUntil).toLocaleDateString()} />}
         </div>
       </div>
+
+      {/* Spec 006 — fulfillment forward walk: every commitment whose
+          sa:commitmentNeedIntent matches this intent's URN. Renders only
+          when at least one commitment exists (else section is hidden). */}
+      <IntentFulfillmentSection intentUrn={`urn:smart-agent:intent:${id}`} hubSlug={slug} />
 
       {/* Spec 001 — Compatible counter-intents (US2 / US3 / US4) */}
       {showCandidates && (

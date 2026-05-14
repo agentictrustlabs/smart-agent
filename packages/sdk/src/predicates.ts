@@ -25,9 +25,14 @@ export const TYPE_HUB = keccak256(toBytes('atl:HubAgent'))
 // Treasury Service Agent — a Service-class agent that exists solely to
 // hold a separate AgentAccount for an org's funds. Distinct from the
 // org's own OrganizationAgent so the graph can show "org → its treasury"
-// as two nodes, and so pool/fund treasuries (which are NOT registered as
-// agents at all) stay outside the network view.
+// as two nodes.
 export const TYPE_TREASURY_AGENT = keccak256(toBytes('atl:TreasuryAgent'))
+// Pool Agent — the AgentAccount behind a `sa:Pool` entity. Holds pooled
+// funds AND serves as the round operator under the unified-governance
+// rule. Registered in AgentAccountResolver so its displayName resolves
+// everywhere; filtered OUT of the main network graph because pools are
+// infra entities, not trust-graph principals.
+export const TYPE_POOL_AGENT = keccak256(toBytes('atl:PoolAgent'))
 
 // ─── AI agent class values ──────────────────────────────────────────
 export const CLASS_DISCOVERY = keccak256(toBytes('atl:DiscoveryAgent'))
@@ -234,6 +239,7 @@ export const AGENT_TYPE_LABELS: Record<string, string> = {
   [TYPE_AI_AGENT]: 'AI Agent',
   [TYPE_HUB]: 'Hub',
   [TYPE_TREASURY_AGENT]: 'Treasury',
+  [TYPE_POOL_AGENT]: 'Pool',
 }
 
 export const AI_CLASS_LABELS: Record<string, string> = {

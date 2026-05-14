@@ -19,6 +19,10 @@ export default defineConfig({
     viewport: { width: 1280, height: 720 },
     screenshot: 'only-on-failure',
     trace: 'on-first-retry',
+    // Record an mp4 of every test (pass or fail) so the grant-flow E2E
+    // produces a walkthrough video for demos + bug reports.
+    video: 'on',
   },
+  outputDir: './test-results',
   reporter: [['list']],
 })

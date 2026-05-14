@@ -31,6 +31,8 @@ import {
   normalizeGovernance,
   poolRegistryAbi,
   PoolRegistryClient,
+  agentAccountResolverAbi,
+  TYPE_POOL_AGENT,
 } from '@smart-agent/sdk'
 import { requireOrgPrincipalAny as requireOrgPrincipal } from '../auth/principal-context.js'
 import { requirePoolRegistryAddress } from '../lib/contracts.js'
@@ -76,6 +78,9 @@ interface PoolCreateArgs {
   token: string
   /** Canonical pool id slug (e.g. 'demo-trauma-care-pool'). */
   id: string
+  /** Human-readable display name used to register the AgentAccount on
+   *  AgentAccountResolver. Falls back to the slug if absent. */
+  name?: string
   /** Free-text domain slug (e.g. 'faith-network'). */
   domain: string
   governanceModel: 'fund' | 'coaching-network' | 'prayer-chain' | 'skills-bench' | 'hospitality-network'
@@ -102,6 +107,7 @@ const createTool = {
     properties: {
       token: { type: 'string' },
       id: { type: 'string' },
+      name: { type: 'string' },
       domain: { type: 'string' },
       governanceModel: { type: 'string' },
       mandate: { type: 'object' },
@@ -136,6 +142,37 @@ const createTool = {
       salt,
     })
     const treasuryAddress = deploy.address
+
+    // Spec-006 invariant — every pool's AgentAccount MUST be registered on
+    // AgentAccountResolver so its displayName resolves on round detail,
+    // proposal timeline, and agent graph pages. The user's AgentAccount
+    // (orgPrincipal) is the initial owner, so we redeem the register call
+    // through their session — msg.sender at resolver.register lands as
+    // orgPrincipal which `onlyAgentOwner(pool)` accepts.
+    const resolverAddr = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as Address | undefined
+    if (resolverAddr) {
+      try {
+        const ZERO_HASH = ('0x' + '0'.repeat(64)) as Hex
+        const displayName = args.name?.trim() || args.id
+        const description = `Pool "${displayName}" — ${normalizeGovernance(args.governanceModel)}`
+        const registerData = encodeFunctionData({
+          abi: agentAccountResolverAbi,
+          functionName: 'register',
+          args: [treasuryAddress, displayName, description, TYPE_POOL_AGENT, ZERO_HASH, ''],
+        })
+        await callA2aRedeem(sessionId, {
+          mcpTool: 'pool:create',
+          mcpCallId: randomUUID(),
+          target: resolverAddr,
+          value: 0n,
+          callData: registerData,
+        })
+      } catch (err) {
+        // Non-fatal: pool body still opens. Repair via
+        // scripts/repair-pool-registration.ts.
+        console.warn(`[pool:create] resolver.register failed (non-fatal):`, (err as Error).message?.slice(0, 200))
+      }
+    }
 
     const mandateJson = JSON.stringify({
       acceptedKinds: args.mandate.acceptedKinds,

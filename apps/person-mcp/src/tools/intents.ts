@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { and, eq } from 'drizzle-orm'
+import { and, eq, inArray } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { intents, needs, offerings } from '../db/schema.js'
 import { requirePrincipal } from '../auth/principal-context.js'
@@ -96,7 +96,21 @@ export const intentsTools = {
       const rows = db.select().from(intents)
         .where(and(eq(intents.id, args.id), eq(intents.principal, principal)))
         .all()
-      if (rows.length === 0) return mcpText({ intent: null })
+      if (rows.length === 0) {
+        // Public-read fallback: intents stored with visibility=public or
+        // public-coarse are readable by ANY authenticated viewer (the
+        // public on-chain assertion would also expose them; we mirror
+        // that semantics here so the web detail page can render).
+        const pub = db.select().from(intents)
+          .where(and(eq(intents.id, args.id), inArray(intents.visibility, ['public', 'public-coarse'])))
+          .all()
+        if (pub.length === 0) return mcpText({ intent: null })
+        const intent = pub[0]
+        const projection = intent.direction === 'receive'
+          ? db.select().from(needs).where(eq(needs.intentId, intent.id)).all()
+          : db.select().from(offerings).where(eq(offerings.intentId, intent.id)).all()
+        return mcpText({ intent, projection })
+      }
       const intent = rows[0]
       const projection = intent.direction === 'receive'
         ? db.select().from(needs).where(eq(needs.intentId, intent.id)).all()

@@ -44,11 +44,12 @@ export interface CreatePoolResult {
 }
 
 export async function createPool(input: CreatePoolInput): Promise<CreatePoolResult> {
-  // The MCP tool re-uses the same field names. `name` is web-only metadata
-  // (it lives in GraphDB once the on-chain → KB sync runs); strip it so we
-  // don't carry an unknown field across the wire.
+  // Pass `name` through so the MCP tool can register the pool's AgentAccount
+  // on AgentAccountResolver with a real displayName (spec-006 invariant —
+  // every pool agent must resolve everywhere it's referenced).
   const result = await callMcp<CreatePoolResult>('org', 'pool:create', {
     id: input.id,
+    name: input.name,
     domain: input.domain,
     governanceModel: input.governanceModel,
     mandate: input.mandate,

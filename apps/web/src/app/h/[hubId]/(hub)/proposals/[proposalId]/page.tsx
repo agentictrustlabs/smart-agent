@@ -106,12 +106,14 @@ export default async function ProposalDetailPage({
   // fund agent (needed for the funding panel's canManage gate).
   let deadlinePassed = false
   let fundAgentForRound: string | null = null
+  let roundDisplayName: string | null = null
   if (proposal.roundId) {
     const { round } = await getRoundForViewer(proposal.roundId, myAgent)
     if (round?.deadline) {
       deadlinePassed = Date.now() > Date.parse(round.deadline)
     }
     fundAgentForRound = round?.fundAgentId ?? null
+    roundDisplayName = round?.displayName?.trim() || null
   }
   let canManageFund = false
   if (fundAgentForRound) {
@@ -124,7 +126,13 @@ export default async function ProposalDetailPage({
   // donor is the round's pool agent (unified governance: round operator =
   // pool, also serves as donor for grant-lane commitments).
   let commitment: Awaited<ReturnType<typeof getCommitmentForProposal>> = null
-  let milestoneReleases: Array<{ id: string; label: string; trancheBps: number; releasedAmount: string | null; releasedAt: number | null }> = []
+  let milestoneReleases: Array<{
+    id: string; label: string; trancheBps: number
+    releasedAmount: string | null
+    releasedAt: number | null
+    signerLabel: string | null
+    signerEoa: string | null
+  }> = []
   if (proposal.status === 'awarded' && fundAgentForRound) {
     const proposalSlug = proposal.id.replace(/^urn:smart-agent:proposal:/, '')
     const proposalSubjectHex = proposalSubjectFn(proposalSlug) as Hex
@@ -151,6 +159,8 @@ export default async function ProposalDetailPage({
           trancheBps: m.trancheBps ?? Math.floor(10000 / parsed.length),
           releasedAmount: rel?.amount ?? null,
           releasedAt: rel?.releasedAt ?? null,
+          signerLabel: rel?.signerLabel ?? null,
+          signerEoa: rel?.signerEoa ?? null,
         }
       }))
     }
@@ -235,8 +245,11 @@ export default async function ProposalDetailPage({
       <Section title="Target">
         <Row label="Round">
           {proposal.roundId ? (
-            <Link href={`/h/${slug}/rounds/${proposal.roundId}`} style={{ color: C.accent, textDecoration: 'none' }}>
-              {proposal.roundId}
+            <Link
+              href={`/h/${slug}/rounds/${encodeURIComponent(proposal.roundId.replace('urn:smart-agent:round:', ''))}`}
+              style={{ color: C.accent, textDecoration: 'none', fontWeight: 600 }}
+            >
+              {roundDisplayName ?? proposal.roundId.replace('urn:smart-agent:round:', '')}
             </Link>
           ) : proposal.fundMandateId ? (
             <span>Open call · fund {proposal.fundMandateId}</span>

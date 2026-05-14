@@ -11,7 +11,7 @@
  * controlled, not sourced from on chain — it's the consumer page's
  * job to actually filter results by the selected network.
  *
- * The bar always includes "All sisters" as the first chip (= no
+ * The bar always includes "All people" as the first chip (= no
  * filter). The user's primary network can be highlighted but doesn't
  * auto-default; that's the consumer page's choice.
  */
@@ -44,7 +44,7 @@ export function NetworkChipBar({
 }) {
   const router = useRouter()
   const params = useSearchParams()
-  const current = params.get(paramName) ?? ''   // empty = "All sisters"
+  const current = params.get(paramName) ?? ''   // empty = "All people"
 
   function pick(slug: string) {
     const next = new URLSearchParams(params.toString())
@@ -62,7 +62,7 @@ export function NetworkChipBar({
         marginBottom: '0.75rem',
       }}
     >
-      <Chip label="All sisters" active={current === ''} onClick={() => pick('')} />
+      <Chip label="All people" active={current === ''} onClick={() => pick('')} />
       {options.map(opt => (
         <Chip
           key={opt.slug}

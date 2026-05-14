@@ -14,6 +14,8 @@
 
 import { type Address } from 'viem'
 import { callMcp } from '@/lib/clients/mcp-client'
+import { getPublicClient } from '@/lib/contracts'
+import { agentAccountResolverAbi } from '@smart-agent/sdk'
 
 export interface OpenRoundInput {
   /** Canonical round id slug (e.g. 'demo-trauma-care-q2'). */
@@ -60,6 +62,40 @@ export interface OpenRoundResult {
 
 export async function openRound(input: OpenRoundInput): Promise<OpenRoundResult> {
   const fullId = `urn:smart-agent:round:${input.id}`
+
+  // Spec-006 invariant — fundAgent MUST resolve. The round operator
+  // appears on round detail, proposal timeline, commitment views, and the
+  // agent graph; if it's not registered on AgentAccountResolver every
+  // display name there falls back to hex truncation. Reject early with a
+  // clear error rather than letting an un-resolvable round land on chain.
+  // Contract-level enforcement (FundRegistry.openRound staticcall to the
+  // resolver) is the proper fix but requires a redeploy; this off-chain
+  // gate matches the same invariant at the action boundary.
+  const resolverAddress = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as Address | undefined
+  if (resolverAddress) {
+    try {
+      const pub = getPublicClient()
+      const isRegistered = (await pub.readContract({
+        address: resolverAddress, abi: agentAccountResolverAbi,
+        functionName: 'isRegistered', args: [input.fundAgentId],
+      })) as boolean
+      if (!isRegistered) {
+        throw new Error(
+          `fundAgent ${input.fundAgentId} is not registered on AgentAccountResolver — ` +
+          `every round operator must resolve. Re-run pool creation (which now registers) ` +
+          `or run scripts/repair-pool-registration.ts to backfill.`,
+        )
+      }
+    } catch (err) {
+      // If the read itself fails (e.g. wrong env), let the error bubble —
+      // we never want to silently accept an unresolved operator.
+      if (err instanceof Error && err.message.startsWith('fundAgent')) throw err
+      // RPC blip / read-error: warn but don't block — the contract call
+      // will still get the chance to land downstream.
+      console.warn('[openRound] resolver isRegistered probe failed (proceeding):', (err as Error).message?.slice(0, 160))
+    }
+  }
+
   const deadlineSec = Math.floor(Date.parse(input.deadline) / 1000)
   const decisionSec = Math.floor(Date.parse(input.decisionDate) / 1000)
 

@@ -21,6 +21,7 @@
 import Link from 'next/link'
 import type { RoundListItem, RankBasis } from '@smart-agent/sdk'
 import { rankCue } from '@smart-agent/sdk'
+import { resolveAgentLabel } from '@/lib/agent-label'
 
 const C = {
   text: '#5c4a3a',
@@ -70,32 +71,14 @@ export async function RoundCard({
   const dl = formatDeadline(round.deadline)
   const matched = round.matchedIntentIds.length > 0
   const isClosed = dl.daysLeft !== null && dl.daysLeft < 0
-  // Resolve the operator AgentAccount's display/primary name on-chain.
-  // For most pools the operator = pool's own treasury, so this often
-  // shows the same name as the pool, signalling self-operated rounds.
-  const AGENT_IRI_PREFIX = 'https://smartagent.io/ontology/core#agent/'
-  const operatorAddr = round.fundAgentId
-    ? (round.fundAgentId.startsWith(AGENT_IRI_PREFIX)
-        ? round.fundAgentId.slice(AGENT_IRI_PREFIX.length)
-        : round.fundAgentId) as `0x${string}`
-    : null
-  let operatorLabel = 'unknown operator'
-  if (operatorAddr) {
-    try {
-      const { getAgentMetadata } = await import('@/lib/agent-metadata')
-      const meta = await getAgentMetadata(operatorAddr)
-      operatorLabel = meta.primaryName || meta.displayName || `${operatorAddr.slice(0, 6)}…${operatorAddr.slice(-4)}`
-    } catch {
-      operatorLabel = `${operatorAddr.slice(0, 6)}…${operatorAddr.slice(-4)}`
-    }
-  }
+  const operatorLabel = (await resolveAgentLabel(round.fundAgentId, 'Unresolved operator')).label
   // Pool linkage — when sa:operatedByPool is set the card surfaces "in
   // pool <name>" so the user sees the round↔pool relationship at a
   // glance instead of guessing from the fund hex.
   const poolLabel = round.poolName
     ? round.poolName
     : round.poolAgentId
-      ? `${round.poolAgentId.slice(0, 6)}…${round.poolAgentId.slice(-4)}`
+      ? (await resolveAgentLabel(round.poolAgentId, 'Unresolved pool')).label
       : null
 
   const mandateNarrative = (round.mandate.acceptedKinds ?? []).slice(0, 3).join(', ') || 'Open mandate'

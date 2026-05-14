@@ -21,6 +21,11 @@ export interface GraphNode {
   isResolverRegistered?: boolean
 }
 
+// Resolver agentType values that should NOT appear as nodes on the main
+// network graph, even though they're registered for displayName lookup.
+// Pool/fund treasuries are infra entities — clutter the trust-graph view.
+const HIDDEN_TYPES = new Set(['pool'])
+
 export interface TemplateInfo {
   id: number
   name: string
@@ -68,14 +73,18 @@ export async function GET(request: Request) {
     const seenNodes = new Set<string>()
     const seenEdges = new Set<string>()
 
-    function addNode(address: string, type: 'person' | 'org' | 'ai' | 'eoa' | 'treasury') {
+    function addNode(address: string, type: 'person' | 'org' | 'ai' | 'eoa' | 'treasury' | 'pool') {
       const key = address.toLowerCase()
       if (seenNodes.has(key)) return
       seenNodes.add(key)
+      // Pool/fund agents stay in typeMap (the proposal / round / commitment
+      // pages read displayName from there) but are kept off the main
+      // network graph. Mark seen so we don't re-attempt later.
+      if (HIDDEN_TYPES.has(type)) return
       nodes.push({
         id: address,
         label: nameMap.get(key) ?? `${address.slice(0, 6)}...${address.slice(-4)}`,
-        type,
+        type: type as GraphNode['type'],
         did: type === 'eoa' ? `eoa:${address}` : (agentNameMap.get(key) || toDidEthr(CHAIN_ID, address as `0x${string}`)),
         address,
       })
@@ -136,7 +145,7 @@ export async function GET(request: Request) {
 
     // Add agent nodes + controller edges
     for (const agentAddr of agentAddresses) {
-      const kind = (typeMap.get(agentAddr.toLowerCase()) ?? 'person') as 'person' | 'org' | 'ai' | 'treasury'
+      const kind = (typeMap.get(agentAddr.toLowerCase()) ?? 'person') as 'person' | 'org' | 'ai' | 'treasury' | 'pool'
       addNode(agentAddr, kind)
 
       if (resolverAddr && client) {
@@ -214,7 +223,7 @@ export async function GET(request: Request) {
 
     // Fetch on-chain edges
     const allAddresses = [...seenNodes].map((a) => a as `0x${string}`)
-    const getNodeType = (a: string): 'person' | 'org' | 'ai' | 'treasury' => (typeMap.get(a.toLowerCase()) as 'person' | 'org' | 'ai' | 'treasury') ?? 'person'
+    const getNodeType = (a: string): 'person' | 'org' | 'ai' | 'treasury' | 'pool' => (typeMap.get(a.toLowerCase()) as 'person' | 'org' | 'ai' | 'treasury' | 'pool') ?? 'person'
 
     for (const addr of allAddresses) {
       try {

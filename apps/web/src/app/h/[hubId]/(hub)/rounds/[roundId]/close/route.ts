@@ -11,11 +11,12 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import type { Address } from 'viem'
+import type { Address, Hex } from 'viem'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { getPersonAgentForUser, canManageAgent } from '@/lib/agent-registry'
 import { getRoundForViewer } from '@/lib/actions/rounds.action'
 import { closeRound } from '@/lib/actions/roundClose.action'
+import { releaseTranche } from '@/lib/actions/commitments.action'
 import { resolveRecipientTreasury } from '@smart-agent/sdk'
 import { getPublicClient } from '@/lib/contracts'
 
@@ -140,7 +141,39 @@ export async function POST(
       poolAgentId: body.poolAgentId as `0x${string}`,
       awards: resolvedAwards,
     })
-    return NextResponse.json({ ok: true, result })
+
+    // Spec-006 auto-release rule — when a proposal carries no milestone
+    // schedule (or a single 10000-bps "on award" tranche), close-round
+    // IS the payment. Walk each commitment, decide if it qualifies, and
+    // fire releaseTranche signed by the steward who just closed the
+    // round. Multi-milestone awards stay gated on explicit Release
+    // clicks because they're meant to release after attestations.
+    const autoReleases: Array<{ proposalIRI: string; ok: boolean; txHash?: Hex; error?: string }> = []
+    for (const commitment of result.commitments) {
+      const award = resolvedAwards.find((a) => a.proposalIRI === commitment.proposalIRI)
+      if (!award) continue
+      let milestones: Array<{ id?: string; trancheBps?: number }> = []
+      try { milestones = JSON.parse(award.milestonesJson || '[]') } catch { milestones = [] }
+      const isSingleTranche =
+        milestones.length === 0 ||
+        (milestones.length === 1 && (milestones[0]?.trancheBps ?? 10000) === 10000)
+      if (!isSingleTranche) continue
+      const milestoneId = milestones[0]?.id ?? 'single'
+      const release = await releaseTranche({
+        commitmentSubject: commitment.commitmentSubject,
+        milestoneId,
+        tokenAmount: BigInt(commitment.totalAmount),
+        commitmentScaleAmount: BigInt(commitment.totalAmount),
+      })
+      autoReleases.push({
+        proposalIRI: commitment.proposalIRI,
+        ok: release.ok,
+        txHash: release.txHash,
+        error: release.error,
+      })
+    }
+
+    return NextResponse.json({ ok: true, result, autoReleases })
   } catch (err) {
     return NextResponse.json(
       { ok: false, error: err instanceof Error ? err.message : String(err) },

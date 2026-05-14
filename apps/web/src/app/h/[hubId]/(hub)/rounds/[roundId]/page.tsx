@@ -37,6 +37,7 @@ import { EligibilityBlock } from '../(components)/EligibilityBlock'
 import { PriorStatsBlock } from '../(components)/PriorStatsBlock'
 import { CancelRoundButton } from './CancelRoundButton'
 import { roundLifecycle, lifecyclePalette } from '@/lib/rounds/lifecycle'
+import { resolveAgentLabel, stripAgentIri } from '@/lib/agent-label'
 import type { ReportingCadence } from '@smart-agent/sdk'
 import type { RoundProposalBrief } from '@/lib/actions/grantProposals.action'
 
@@ -158,31 +159,12 @@ export default async function RoundDetailPage({
 
   const deadline = formatDate(round.deadline)
   const decision = formatDate(round.decisionDate)
-  // Pool reference — when sa:operatedByPool is set, show "in pool <name>"
-  // so the user can navigate from a round back to the pool that operates
-  // it. Falls back to the hex slice when no display name is mirrored.
-  const AGENT_IRI_PREFIX = 'https://smartagent.io/ontology/core#agent/'
-  const stripAgentIri = (s: string | undefined): string =>
-    !s ? '' : s.startsWith(AGENT_IRI_PREFIX) ? s.slice(AGENT_IRI_PREFIX.length) : s
-  // Resolve the operator's display/primary name from the on-chain resolver.
-  // Falls back to the hex slice (built into getAgentMetadata) when the
-  // resolver has no entry.
-  const { getAgentMetadata } = await import('@/lib/agent-metadata')
-  let operatorLabel = 'unknown operator'
-  if (round.fundAgentId) {
-    const operatorAddr = stripAgentIri(round.fundAgentId) as `0x${string}`
-    try {
-      const meta = await getAgentMetadata(operatorAddr)
-      operatorLabel = meta.primaryName || meta.displayName || `${operatorAddr.slice(0, 6)}…${operatorAddr.slice(-4)}`
-    } catch {
-      operatorLabel = `${operatorAddr.slice(0, 6)}…${operatorAddr.slice(-4)}`
-    }
-  }
+  const operatorLabel = (await resolveAgentLabel(round.fundAgentId, 'Unresolved operator')).label
   const poolAddress = stripAgentIri(round.poolAgentId)
   const poolLabel = round.poolName
     ? round.poolName
     : poolAddress
-      ? `${poolAddress.slice(0, 6)}…${poolAddress.slice(-4)}`
+      ? (await resolveAgentLabel(poolAddress, 'Unresolved pool')).label
       : null
   const mandateNarrative = (round.mandate.acceptedKinds ?? []).slice(0, 3).join(', ') || 'Open mandate'
   const tranches = round.milestoneTemplate.trancheHints

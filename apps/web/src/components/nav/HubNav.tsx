@@ -11,6 +11,7 @@ const NAV_ITEMS: Array<{ href: string; label: string; requires?: string }> = [
   { href: '/network', label: 'Network' },
   { href: '/reviews', label: 'Reviews', requires: 'reviews' },
   { href: '/treasury', label: 'Treasury', requires: 'treasury' },
+  { href: '/tasks', label: 'Tasks' },
   { href: '/settings', label: 'Admin', requires: 'settings' },
 ]
 

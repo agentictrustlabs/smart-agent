@@ -9,6 +9,20 @@ import { CreateOrgDialog } from '@/components/org/CreateOrgDialog'
 import { IssueCredentialDialog } from '@/lib/credentials/IssueCredentialDialog'
 import { listIssuableKinds } from '@/lib/credentials/registry'
 import type { HubId } from '@/lib/hub-profiles'
+
+// Local copy of hub-routes' HUB_SLUG_REVERSE — we can't import from
+// '@/lib/hub-routes' here because that module transitively imports
+// `next/headers` (via DEMO_USER_META), which is server-only and would
+// fail this file's 'use client' contract.
+const HUB_SLUG_REVERSE: Record<string, string> = {
+  catalyst: 'catalyst',
+  cil: 'mission',
+  'global-church': 'globalchurch',
+  generic: 'globalchurch',
+}
+function getHubSlugForId(hubId: string): string {
+  return HUB_SLUG_REVERSE[hubId] ?? 'globalchurch'
+}
 import { CatalystViewCtx } from '@/components/catalyst/CatalystViewContext'
 import type { ViewMode } from '@/components/catalyst/CatalystViewContext'
 import QuickActivityModal from '@/components/catalyst/QuickActivityModal'
@@ -476,6 +490,36 @@ function HubLayoutInner({ children }: { children: React.ReactNode }) {
                       </div>
                     </div>
                     <div style={{ borderTop: `1px solid ${T.border}`, margin: '0.3rem 0' }} />
+                    <Link
+                      href={`/h/${getHubSlugForId(profile.id)}/tasks`}
+                      onClick={() => setUserMenuOpen(false)}
+                      style={{
+                        display: 'block',
+                        padding: '0.5rem 1rem',
+                        fontSize: '0.82rem',
+                        color: T.text,
+                        textDecoration: 'none',
+                        fontWeight: 600,
+                      }}
+                      data-testid="user-dropdown-inbox"
+                    >
+                      📥 Inbox
+                    </Link>
+                    <Link
+                      href="/wallet"
+                      onClick={() => setUserMenuOpen(false)}
+                      style={{
+                        display: 'block',
+                        padding: '0.5rem 1rem',
+                        fontSize: '0.82rem',
+                        color: T.text,
+                        textDecoration: 'none',
+                        fontWeight: 500,
+                      }}
+                      data-testid="user-dropdown-wallet"
+                    >
+                      Wallet
+                    </Link>
                     <Link
                       href="/catalyst/me"
                       onClick={() => setUserMenuOpen(false)}

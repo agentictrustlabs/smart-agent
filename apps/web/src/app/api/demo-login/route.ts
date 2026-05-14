@@ -87,13 +87,17 @@ export async function POST(request: Request) {
     console.warn('[demo-login] Community seed failed:', err)
   }
 
-  // Spec 005 — provision personal treasury for demo users too. Same as
-  // passkey/SIWE: the smartAccount IS the treasury (self-referential
-  // sa:hasPersonalTreasury) + MockUSDC mint to 100k.
+  // Spec 005 + 006 — provision a distinct personal treasury agent for the
+  // demo user. Pass the user's wallet EOA so it's the treasury's initial
+  // owner; deployer is co-owner via factory's serverSigner. Mints $1M
+  // USDC into the treasury (NOT into the person smart account).
   if (user.smartAccountAddress) {
     try {
       const { ensurePersonalTreasury } = await import('@/lib/treasury/provision')
-      const r = await ensurePersonalTreasury(user.smartAccountAddress as `0x${string}`)
+      const r = await ensurePersonalTreasury(
+        user.smartAccountAddress as `0x${string}`,
+        user.walletAddress as `0x${string}` | undefined,
+      )
       if (!r.ok) {
         console.warn('[demo-login] treasury provision incomplete:', r.warnings)
       }

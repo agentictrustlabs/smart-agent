@@ -22,6 +22,10 @@ interface MilestoneRow {
   trancheBps: number
   releasedAmount: string | null
   releasedAt: number | null
+  /** Display name of the steward who signed the release tx (pulled from
+   *  the Released event's tx.from + agent-metadata lookup). */
+  signerLabel: string | null
+  signerEoa: string | null
 }
 
 interface Props {
@@ -172,11 +176,15 @@ export function CommitmentTimelinePanel({ commitment, milestones, canRelease }: 
             const releasedHere = !!m.releasedAt
             const expected = trancheAmount(m.trancheBps).toString()
             const isPending = pendingId === m.id && pending
+            const releasedAtIso = m.releasedAt
+              ? new Date(m.releasedAt * 1000).toISOString().slice(0, 10)
+              : null
             return (
               <li key={m.id} style={{
-                display: 'flex', gap: '0.6rem', alignItems: 'center',
+                display: 'flex', flexDirection: 'column',
                 padding: '0.45rem 0', borderBottom: `1px dashed ${C.border}`,
               }}>
+                <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
                 <span style={{
                   fontSize: '0.62rem', fontWeight: 700,
                   padding: '0.18rem 0.5rem', borderRadius: 999,
@@ -208,6 +216,21 @@ export function CommitmentTimelinePanel({ commitment, milestones, canRelease }: 
                   >
                     {isPending ? 'Releasing…' : 'Release →'}
                   </button>
+                )}
+                </div>
+                {releasedHere && (
+                  <div style={{
+                    fontSize: '0.7rem', color: C.textMuted, marginTop: '0.3rem',
+                    marginLeft: 'calc(5rem + 0.6rem)',
+                  }}>
+                    Released by{' '}
+                    <strong style={{ color: C.text }}>
+                      {m.signerLabel ?? (m.signerEoa
+                        ? `${m.signerEoa.slice(0, 6)}…${m.signerEoa.slice(-4)}`
+                        : 'unknown steward')}
+                    </strong>
+                    {releasedAtIso && <> · {releasedAtIso}</>}
+                  </div>
                 )}
               </li>
             )

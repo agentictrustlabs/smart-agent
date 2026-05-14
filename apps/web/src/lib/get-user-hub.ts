@@ -56,5 +56,16 @@ export async function getUserHubId(userId: string): Promise<HubId> {
     } catch { /* ignored */ }
   }
 
+  // 4. Demo-userId prefix as final fallback. Useful when a demo user's
+  //    on-chain HAS_MEMBER edge to their hub hasn't been observed yet
+  //    (e.g. fresh-start race / edge-sync lag). The prefix is set by the
+  //    seed scripts (cat-* for catalyst, mission-* for cil, gc-* for
+  //    global-church) and is otherwise opaque to the app.
+  if (typeof userId === 'string') {
+    if (userId.startsWith('cat-')) return 'catalyst'
+    if (userId.startsWith('mission-')) return 'cil'
+    if (userId.startsWith('gc-')) return 'global-church'
+  }
+
   return 'generic'
 }

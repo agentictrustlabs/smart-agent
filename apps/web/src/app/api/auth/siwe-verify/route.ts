@@ -90,10 +90,12 @@ export async function POST(request: Request) {
     await publicClient.waitForTransactionReceipt({ hash })
   }
 
-  // Spec 005 — provision personal treasury (idempotent). Non-fatal.
+  // Spec 005 + 006 — provision a distinct personal treasury agent
+  // (idempotent). User's signing EOA is the SIWE wallet address.
+  // Non-fatal.
   try {
     const { ensurePersonalTreasury } = await import('@/lib/treasury/provision')
-    const provisioned = await ensurePersonalTreasury(smartAcctLower)
+    const provisioned = await ensurePersonalTreasury(smartAcctLower, eoa)
     if (!provisioned.ok) {
       console.warn('[siwe-verify] treasury provision incomplete:', provisioned.warnings)
     }
