@@ -43,4 +43,7 @@ export const config = {
   grantProposalRegistryAddress: process.env.GRANT_PROPOSAL_REGISTRY_ADDRESS as `0x${string}` | undefined,
   pledgeRegistryAddress: process.env.PLEDGE_REGISTRY_ADDRESS as `0x${string}` | undefined,
   matchInitiationRegistryAddress: process.env.MATCH_INITIATION_REGISTRY_ADDRESS as `0x${string}` | undefined,
+  // Phase 4 — Spec 006 commitment lifecycle + spec 003 public proposal facet.
+  commitmentRegistryAddress: process.env.COMMITMENT_REGISTRY_ADDRESS as `0x${string}` | undefined,
+  proposalRegistryAddress: process.env.PROPOSAL_REGISTRY_ADDRESS as `0x${string}` | undefined,
 }

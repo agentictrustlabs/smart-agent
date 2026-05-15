@@ -3,6 +3,14 @@
  * presentation for the AnonCreds-gated marketplace tools (vote:cast,
  * grant_proposal:*, …).
  *
+ * Routing rule (phase 3 of A2A-first consolidation):
+ *   - All person-mcp tool calls (`ssi_list_my_credentials`,
+ *     `ssi_get_credential_details`, `ssi_create_wallet_action`,
+ *     `ssi_create_presentation`) go through `callMcp('person', …)` which
+ *     resolves to the signed-in user's person agent via the A2A proxy.
+ *     The user IS the presenter here, so we never pin `agentAddress`.
+ *   - No direct HTTP to PERSON_MCP_URL.
+ *
  * The action layer needs to hand org-mcp a presentation JSON + request.
  * org-mcp's inline `verifyPresentation` then runs `verifierVerifyPresentation`
  * and derives the nullifier from `holderPseudoId`. This helper drives the
@@ -10,14 +18,14 @@
  *
  *   1. Build a `presentationRequest` matching what org-mcp expects.
  *   2. Mint + sign a `CreatePresentation` WalletAction.
- *   3. Call `ssi_create_presentation` on person-mcp.
+ *   3. Call `ssi_create_presentation` on person-mcp via A2A proxy.
  *   4. Return `{ presentationJson, presentationRequest }`.
  */
 
 import 'server-only'
 import { CREDENTIAL_KINDS, findCredentialKind } from '@smart-agent/sdk'
 import type { WalletAction } from '@smart-agent/privacy-creds'
-import { person } from '@/lib/ssi/clients'
+import { callMcp } from '@/lib/clients/mcp-client'
 import { signWalletAction, loadSignerForCurrentUser } from '@/lib/ssi/signer'
 
 export type MarketplaceCredentialType = 'ProposalSubmitterCredential' | 'RoundVoterCredential'
@@ -90,13 +98,45 @@ export async function buildMarketplacePresentation(
   }
   const principal = signerCtx.principal
 
-  // Locate the holder wallet + credential id matching the type.
-  const list = await person.callTool<{ credentials: Array<{
+  // Locate the holder wallet + credential id matching the type. If
+  // expectedAttributes are present (e.g. `poolAgentId` for the proposal
+  // submitter cred), prefer a cred whose attribute values actually match.
+  // The list endpoint only returns metadata (no attribute values) — for
+  // attribute-aware matching we have to drill into each candidate via
+  // `ssi_get_credential_details`. Otherwise a user with creds for
+  // multiple pools/rounds would just present the first one and get
+  // rejected downstream as `attribute mismatch`.
+  const list = await callMcp<{ credentials: Array<{
     id: string; holderWalletRef: string; credentialType: string; walletContext: string
-  }> }>('ssi_list_my_credentials', { principal })
-  const row = list.credentials.find((c) => c.credentialType === input.credentialType)
-  if (!row) {
+  }> }>('person', 'ssi_list_my_credentials', { principal })
+  const candidates = list.credentials.filter((c) => c.credentialType === input.credentialType)
+  if (candidates.length === 0) {
     return { ok: false, error: `no held credential of type ${input.credentialType}` }
+  }
+  const expected = input.expectedAttributes ?? {}
+  const expectedKeys = Object.keys(expected)
+  let row: typeof candidates[number] | undefined
+  if (expectedKeys.length === 0) {
+    // No attribute constraints — first cred is fine.
+    row = candidates[0]
+  } else {
+    for (const c of candidates) {
+      try {
+        const details = await callMcp<{
+          credential?: { attributes?: Record<string, string> }
+          error?: string
+        }>('person', 'ssi_get_credential_details', { principal, credentialId: c.id })
+        const attrs = details.credential?.attributes ?? {}
+        const matches = expectedKeys.every(k => (attrs[k] ?? '').toLowerCase() === (expected[k] ?? '').toLowerCase())
+        if (matches) { row = c; break }
+      } catch { /* try the next candidate */ }
+    }
+    if (!row) {
+      // Treat "have cred but none matching the action context" as
+      // equivalent to "no held credential" so the action layer's
+      // auto-self-issue path fires and mints a fresh cred for THIS pool.
+      return { ok: false, error: `no held credential of type ${input.credentialType} matching expectedAttributes` }
+    }
   }
 
   const presentationRequest = buildRequest(input)
@@ -104,7 +144,8 @@ export async function buildMarketplacePresentation(
   // Reveal attr_holderPseudoId always; reveal any expectedAttributes' attr_<name>.
   const revealReferents = Object.keys(presentationRequest.requested_attributes as Record<string, unknown>)
 
-  const built = await person.callTool<{ action: WalletAction & { expiresAt: string } }>(
+  const built = await callMcp<{ action: WalletAction & { expiresAt: string } }>(
+    'person',
     'ssi_create_wallet_action',
     {
       principal,
@@ -123,10 +164,10 @@ export async function buildMarketplacePresentation(
   const action: WalletAction = { ...built.action, expiresAt: BigInt(built.action.expiresAt) }
   const { signer, signature } = await signWalletAction(action)
 
-  const presRes = await person.callTool<{
+  const presRes = await callMcp<{
     presentation?: string
     error?: string
-  }>('ssi_create_presentation', {
+  }>('person', 'ssi_create_presentation', {
     action: built.action,
     signature,
     expectedSigner: signer,

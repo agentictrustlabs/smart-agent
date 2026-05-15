@@ -1,6 +1,16 @@
 /**
  * Spec 004 (b2) — Self-issue admin→holder marketplace delegation.
  *
+ * Routing rule (phase 3 of A2A-first consolidation):
+ *   - No person-mcp /tools/ traffic in this file — all signing happens
+ *     server-side and the credential row is written directly via SQLite
+ *     for the dev-mode self-issue path.
+ *   - One direct-HTTP holder-wallet lookup remains
+ *     (`GET ${walletUrl}/wallet/<principal>/<context>`); marked with a
+ *     TODO(phase-4) below — person-mcp owner needs to expose this as an
+ *     MCP tool (e.g. `ssi_get_holder_wallet`) so it can ride the A2A
+ *     proxy instead of going direct.
+ *
  * For users acting as the pool/round admin for their *own* pool/round, the
  * normal cred-issuance flow doesn't fit: the admin is also the only
  * intended pledger/voter, so the AnonCreds presentation step is overkill.
@@ -84,6 +94,11 @@ export async function selfIssueMarketplaceDelegation(
   //    WalletAction which we can't mint here; instead we rely on the
   //    onboarding flow (HubOnboardClient → provisionHolderWalletViaSession)
   //    to have already created the holder wallet for this principal.
+  //
+  // TODO(phase-4): this lookup is currently a direct HTTP GET on person-mcp.
+  // Wrap as an `ssi_get_holder_wallet` MCP tool in person-mcp so this can
+  // route via `callMcp('person', 'ssi_get_holder_wallet', { principal,
+  // walletContext })` and stop hitting PERSON_MCP_URL directly.
   const walletUrl = process.env.SSI_WALLET_URL ?? process.env.PERSON_MCP_URL ?? 'http://localhost:3500'
   const walletContext = 'default'
   let holderWalletId: string
@@ -270,9 +285,16 @@ export async function issueMarketplaceCredential(args: {
   }
 }
 
-/** Self-issue wrapper: admin == holder. Used by the existing
- *  retry-on-action-failure auto-issue path. The single `signerPrivateKey`
- *  serves both admin and holder roles (since they're the same user). */
+/** Self-issue wrapper: admin == holder.
+ *
+ *  Kept for the legitimate self-apply shape (e.g. Maria, who IS the round
+ *  operator, applying to her own pool — admin and holder are the same
+ *  agent). The cross-operator stranger path (David applying to Maria's
+ *  round) no longer flows through here — it goes through
+ *  `requestProposalAccess` in `apps/web/src/lib/actions/proposalAccess.action.ts`,
+ *  which routes the admin-side signing through the round operator so the
+ *  admin → holder delegation's delegator equals the fund agent and the
+ *  on-chain `onlyRoundOperator` modifier passes. */
 export async function selfIssueMarketplaceCredential(args: {
   smartAccount: Address
   signerPrivateKey: Hex

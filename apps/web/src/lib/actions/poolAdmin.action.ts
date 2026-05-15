@@ -40,8 +40,8 @@ export async function updatePoolMandate(
       newMandateHash: mandateHash,
       newMandateURI: input.mandateURI ?? '',
     })
-    const { scheduleKbSyncEager } = await import('@/lib/ontology/kb-write-through')
-    scheduleKbSyncEager()
+    const { hubScheduleKbSync } = await import('@/lib/clients/hub-client')
+    await hubScheduleKbSync(true)
     return res
   } catch (err) {
     if (err instanceof McpCallError) return { ok: false, error: err.message }
@@ -63,8 +63,8 @@ export async function rotatePoolStewards(
       poolAgent: input.poolAgent,
       newStewards: input.stewards,
     })
-    const { scheduleKbSyncEager } = await import('@/lib/ontology/kb-write-through')
-    scheduleKbSyncEager()
+    const { hubScheduleKbSync } = await import('@/lib/clients/hub-client')
+    await hubScheduleKbSync(true)
     return res
   } catch (err) {
     if (err instanceof McpCallError) return { ok: false, error: err.message }

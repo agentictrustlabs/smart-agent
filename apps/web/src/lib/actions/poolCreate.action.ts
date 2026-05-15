@@ -68,8 +68,8 @@ export async function createPool(input: CreatePoolInput): Promise<CreatePoolResu
   // page we redirect to finds the new pool without the multi-MB rebuild
   // that crashed the GraphDB instance under seed load.
   try {
-    const { syncPoolToGraphDB } = await import('@/lib/ontology/graphdb-sync')
-    const r = await syncPoolToGraphDB(result.treasuryAddress, input.id)
+    const { hubSyncPool } = await import('@/lib/clients/hub-client')
+    const r = await hubSyncPool(result.treasuryAddress, input.id)
     if (!r.ok) console.warn('[poolCreate] per-pool sync failed:', r.message)
   } catch (err) {
     console.warn('[poolCreate] per-pool sync threw:', err instanceof Error ? err.message : err)

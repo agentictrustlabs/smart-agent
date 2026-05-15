@@ -52,6 +52,7 @@ SERVICES=(
   "verifier-mcp:3700:@smart-agent/verifier-mcp"
   "skill-mcp:3800:@smart-agent/skill-mcp"
   "people-group-mcp:3300:@smart-agent/people-group-mcp"
+  "hub-mcp:3900:@smart-agent/hub-mcp"
 )
 WEB_PORT=3000
 WEB_FILTER="@smart-agent/web"

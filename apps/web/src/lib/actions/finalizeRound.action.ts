@@ -35,6 +35,10 @@ interface ProposalRow {
   status: string
   budget: string                    // JSON
   desiredOutcomes: string           // JSON
+  /** Hex address — the proposer's hub-org treasury that should receive
+   *  funds at award time. Set at submit time; zero address means a legacy
+   *  row without a recipient (treat as fatal, not as "send to pool"). */
+  recipientAddress: `0x${string}`
 }
 
 async function loadRound(fullRoundId: string): Promise<RoundRow | null> {
@@ -158,15 +162,21 @@ export async function finalizeRoundFromTally(
       total = b.total ?? 0
       unit = b.lineItems?.[0]?.unit ?? 'USD'
     } catch { /* keep defaults */ }
-    // Recipient: prefer the proposer's principal as the recipient address.
-    // Person principals are 'person_<userId>' in our demo seed, not 0x; for
-    // the on-chain Award we need a 0x address. Fall back to the fund agent
-    // when the proposer is a person principal — the disbursement layer
-    // can re-target later via the proposer's claim flow.
-    const principalLower = p.principal.toLowerCase()
-    const recipientAddr: Address = /^0x[0-9a-f]{40}$/.test(principalLower)
-      ? (principalLower as Address)
-      : (round.fundAgentId as Address)
+    // Recipient: the proposer's hub-org treasury, captured at submit time
+    // in `sa:gpRecipient`. We require it to be a non-zero address — the
+    // user explicitly forbade falling back to the pool (that would send
+    // funds in a circle). If the proposal pre-dates the recipient field,
+    // fail loudly so the demo / test sees a clear error.
+    const recipientAddr: Address = p.recipientAddress
+    if (!recipientAddr || recipientAddr === '0x0000000000000000000000000000000000000000') {
+      return {
+        ok: false,
+        error:
+          `proposal ${id} has no recipientAddress on chain (sa:gpRecipient is zero) — ` +
+          `re-submit the proposal after the recipient-resolution fix landed, ` +
+          `or run scripts/fresh-start.sh to reseed`,
+      }
+    }
     awards.push({
       proposalIRI: p.id,
       recipientAgentIRI: p.principal,

@@ -10,11 +10,16 @@ import { mcpProxy } from './routes/mcp-proxy'
 import { onchainRedeem } from './routes/onchain-redeem'
 import { sessionMeta } from './routes/session-meta'
 import { a2a } from './routes/a2a'
+import { hostContext } from './middleware/host-context'
 
 const app = new Hono()
 
 // ─── Middleware ──────────────────────────────────────────────────────
 app.use('*', logger())
+// Host-context MUST sit before every route. It binds the request to a
+// specific agent principal based on the subdomain in the Host header and
+// rejects non-public routes that arrive without a resolvable subdomain.
+app.use('*', hostContext)
 
 // ─── Health ─────────────────────────────────────────────────────────
 app.get('/health', (c) => c.json({ status: 'ok' }))
@@ -41,9 +46,10 @@ app.route('/', a2a)
 
 // ─── Start Server ───────────────────────────────────────────────────
 console.log(`Smart Agent A2A server starting on port ${config.PORT}`)
-console.log(`  Chain ID: ${config.CHAIN_ID}`)
-console.log(`  RPC URL:  ${config.RPC_URL}`)
-console.log(`  Agent card: http://localhost:${config.PORT}/.well-known/agent.json`)
+console.log(`  Chain ID:    ${config.CHAIN_ID}`)
+console.log(`  RPC URL:     ${config.RPC_URL}`)
+console.log(`  host routing: *.${config.A2A_HOST_BASE}:${config.PORT}`)
+console.log(`  Agent card:  http://<slug>.${config.A2A_HOST_BASE}:${config.PORT}/.well-known/agent.json`)
 
 serve({
   fetch: app.fetch,

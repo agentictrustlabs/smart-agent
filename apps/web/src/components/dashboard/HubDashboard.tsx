@@ -6,7 +6,7 @@ import { db, schema } from '@/db'
 import { getUserOrgs } from '@/lib/get-user-orgs'
 import { getConnectedOrgs } from '@/lib/get-org-members'
 import { NeedsAttentionCard, type AttentionItem } from '@/components/catalyst/NeedsAttentionCard'
-import { DiscoveryService } from '@smart-agent/discovery'
+import { hubCountAgentsByType, hubCountEdges } from '@/lib/clients/hub-client'
 import { getPersonAgentForUser, getAiAgentsForOrg } from '@/lib/agent-registry'
 import { getAgentMetadata } from '@/lib/agent-metadata'
 import { listHubsForOnboarding } from '@/lib/actions/onboarding/setup-agent.action'
@@ -159,11 +159,10 @@ async function GenericDashboard({
   let kbAgentCount = 0
   let kbEdgeCount = 0
   try {
-    const discovery = DiscoveryService.fromEnv()
-    const counts = await discovery.countAgentsByType()
+    const counts = await hubCountAgentsByType()
     kbAgentCount = Object.values(counts).reduce((a, b) => a + b, 0)
-    kbEdgeCount = await discovery.countEdges()
-  } catch { /* GraphDB may be unavailable */ }
+    kbEdgeCount = await hubCountEdges()
+  } catch { /* hub-mcp / GraphDB may be unavailable */ }
 
   // Only show the JoinHubBanner on the truly hub-less /dashboard. Hub-
   // specific routes already restrict access to members.

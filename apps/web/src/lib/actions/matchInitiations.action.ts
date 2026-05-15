@@ -21,7 +21,7 @@
  *     re-issue the bumps.
  */
 
-import { DiscoveryService } from '@smart-agent/discovery'
+import { hubListActiveInitiationsForIntent, hubGetHopDistance } from '@/lib/clients/hub-client'
 import {
   MatchInitiationClient,
   computeBasis,
@@ -202,8 +202,7 @@ export async function listPublicActiveInitiationsForIntent(
   intentId: string,
 ): Promise<Array<{ id: string; viewedIntentId: string; candidateIntentId: string; status: string }>> {
   try {
-    const discovery = DiscoveryService.fromEnv()
-    const rows = await discovery.listActiveInitiationsForIntent(intentId)
+    const rows = await hubListActiveInitiationsForIntent(intentId)
     return rows.map((r) => ({
       id: r.id,
       viewedIntentId: r.viewedIntentId,
@@ -365,11 +364,10 @@ export async function listCandidatesForIntent(input: {
   let hopMap = new Map<string, number>()
   if (input.viewerAgentAddress) {
     try {
-      const discovery = DiscoveryService.fromEnv()
       const results = await Promise.all(
         visible.map(async (c) => {
           try {
-            const hops = await discovery.getHopDistance(input.viewerAgentAddress!, c.expressedByAgent)
+            const hops = await hubGetHopDistance(input.viewerAgentAddress!, c.expressedByAgent)
             return [c.expressedByAgent.toLowerCase(), hops ?? 6] as const
           } catch {
             return [c.expressedByAgent.toLowerCase(), 6] as const

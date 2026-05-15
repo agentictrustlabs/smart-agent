@@ -1,9 +1,26 @@
 'use server'
 
+/**
+ * Routing rule (phase 3 of A2A-first consolidation):
+ *   - OID4VCI endpoints on org-mcp (`/oid4vci/offer-by-code`, `/token`,
+ *     `/credential`) are PUBLIC PROTOCOL endpoints — they stay direct
+ *     HTTP via the `org` client. OID4VCI is an unauthenticated
+ *     standards surface; the holder's identity is established by the
+ *     pre-authorized_code + AnonCreds blinding ceremony, not by a
+ *     session token.
+ *   - Person-mcp tool calls (`ssi_create_wallet_action`,
+ *     `ssi_start_credential_exchange`, `ssi_finish_credential_exchange`)
+ *     route through `callMcp('person', …)` — signed-in user is the
+ *     redeeming holder.
+ *   - `GET ${walletUrl}/wallet/<principal>/<context>` is a direct HTTP
+ *     check against person-mcp's non-tool surface; TODO(phase-4).
+ */
+
 import { revalidatePath } from 'next/cache'
 import type { WalletAction } from '@smart-agent/privacy-creds'
 import { loadSignerForCurrentUser, signWalletAction } from '@/lib/ssi/signer'
-import { person, org } from '@/lib/ssi/clients'
+import { org } from '@/lib/ssi/clients'
+import { callMcp } from '@/lib/clients/mcp-client'
 import { ssiConfig } from '@/lib/ssi/config'
 
 export async function redeemOid4vciOfferAction(args: {
@@ -53,6 +70,8 @@ export async function redeemOid4vciOfferAction(args: {
     const walletContext = (args as { walletContext?: string }).walletContext ?? 'default'
 
     // Ensure wallet exists for this (principal, context).
+    // TODO(phase-4): direct GET on person-mcp non-tool route. Wrap as
+    // `ssi_get_holder_wallet` so this can route via callMcp.
     let holderWalletId: string | undefined
     try {
       const r = await fetch(
@@ -68,7 +87,8 @@ export async function redeemOid4vciOfferAction(args: {
       holderWalletId = p.holderWalletId
     }
 
-    const built = await person.callTool<{ action: WalletAction & { expiresAt: string } }>(
+    const built = await callMcp<{ action: WalletAction & { expiresAt: string } }>(
+      'person',
       'ssi_create_wallet_action',
       {
         principal,
@@ -83,7 +103,8 @@ export async function redeemOid4vciOfferAction(args: {
     const action: WalletAction = { ...built.action, expiresAt: BigInt(built.action.expiresAt) }
     const { signature } = await signWalletAction(action)
 
-    const req = await person.callTool<{ requestId: string; credentialRequestJson: string }>(
+    const req = await callMcp<{ requestId: string; credentialRequestJson: string }>(
+      'person',
       'ssi_start_credential_exchange',
       {
         action: built.action, signature,
@@ -94,7 +115,8 @@ export async function redeemOid4vciOfferAction(args: {
 
     const credRes = await org.oid4vciCredential(tok.access_token, freshOffer.credDefId, req.credentialRequestJson)
 
-    const fin = await person.callTool<{ credentialId: string }>(
+    const fin = await callMcp<{ credentialId: string }>(
+      'person',
       'ssi_finish_credential_exchange',
       {
         principal,

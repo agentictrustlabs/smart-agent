@@ -1,5 +1,12 @@
 'use server'
 
+/**
+ * Routing rule (phase 3 of A2A-first consolidation): this file delegates
+ * to `acceptCredentialAction` (A2A-routed) and `org.oid4vciOffer` (issuer
+ * protocol — public OID4VCI endpoint, stays direct). No new MCP HTTP
+ * routes are touched here.
+ */
+
 import { revalidatePath } from 'next/cache'
 import { acceptCredentialAction } from './accept.action'
 

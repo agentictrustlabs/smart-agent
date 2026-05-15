@@ -31,6 +31,8 @@ import { workItemsTools } from './tools/work-items.js'
 import { crossDelegationsTools } from './tools/cross-delegations.js'
 import { receivedDelegationsTools } from './tools/received-delegations.js'
 import { grantProposalsTools } from './tools/grantProposals.js'
+// Phase 4 — AgentRelationship MCP tools for person-side trust-graph writes.
+import { relationshipTools } from './tools/relationship.js'
 // Spec 004 v2 — person-mcp's `pool_pledge:*` and `match_initiation:*`
 // stub tools were removed. Pledges and match initiations are
 // authoritative on chain (PledgeRegistry / MatchInitiationRegistry);
@@ -59,6 +61,8 @@ const allTools = {
   ...crossDelegationsTools,
   ...receivedDelegationsTools,
   ...grantProposalsTools,
+  // Phase 4 additions.
+  ...relationshipTools,
 } as const
 
 const toolDefinitions = Object.values(allTools).map(

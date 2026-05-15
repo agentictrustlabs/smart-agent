@@ -196,16 +196,16 @@ export function ExpressIntentForm({ hubId, hubSlug, eligibleAgents }: Props) {
         <>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '0.7rem', marginBottom: '1rem' }}>
             <div>
-              <label style={labelStyle}>Title — one sentence</label>
-              <input style={fieldStyle} value={title} onChange={e => setTitle(e.target.value)} placeholder={direction === 'receive' ? "What do you need?" : "What are you offering?"} />
+              <label htmlFor="intent-title" style={labelStyle}>Title — one sentence</label>
+              <input id="intent-title" style={fieldStyle} value={title} onChange={e => setTitle(e.target.value)} placeholder={direction === 'receive' ? "What do you need?" : "What are you offering?"} />
             </div>
             <div>
-              <label style={labelStyle}>Topic / scope (optional)</label>
-              <input style={fieldStyle} value={topic} onChange={e => setTopic(e.target.value)} placeholder="e.g. unreached people groups in NoCo, well-water filter project" />
+              <label htmlFor="intent-topic" style={labelStyle}>Topic / scope (optional)</label>
+              <input id="intent-topic" style={fieldStyle} value={topic} onChange={e => setTopic(e.target.value)} placeholder="e.g. unreached people groups in NoCo, well-water filter project" />
             </div>
             <div>
-              <label style={labelStyle}>Detail (optional)</label>
-              <textarea style={{ ...fieldStyle, fontFamily: 'inherit' }} rows={3} value={detail} onChange={e => setDetail(e.target.value)} placeholder="What context, qualifications, or constraints matter?" />
+              <label htmlFor="intent-detail" style={labelStyle}>Detail (optional)</label>
+              <textarea id="intent-detail" style={{ ...fieldStyle, fontFamily: 'inherit' }} rows={3} value={detail} onChange={e => setDetail(e.target.value)} placeholder="What context, qualifications, or constraints matter?" />
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
               <div>
@@ -309,6 +309,8 @@ function DirectionTile({ active, bg, fg, border, icon, label, sub, onClick }: {
     <button
       type="button"
       onClick={onClick}
+      aria-label={label}
+      aria-pressed={active}
       style={{
         textAlign: 'left',
         background: active ? bg : '#fafaf6',
@@ -318,7 +320,10 @@ function DirectionTile({ active, bg, fg, border, icon, label, sub, onClick }: {
         cursor: 'pointer',
       }}
     >
-      <div style={{ fontSize: '1.4rem', marginBottom: '0.3rem' }}>{icon}</div>
+      {/* aria-hidden — emoji is decorative; the button's accessible
+          name comes from aria-label so screen readers + tests see
+          "Receive" / "Give" instead of "📥 Receive I need / …". */}
+      <div aria-hidden="true" style={{ fontSize: '1.4rem', marginBottom: '0.3rem' }}>{icon}</div>
       <div style={{ fontSize: '0.95rem', fontWeight: 700, color: fg }}>{label}</div>
       <div style={{ fontSize: '0.78rem', color: '#5c4a3a', marginTop: '0.15rem' }}>{sub}</div>
     </button>

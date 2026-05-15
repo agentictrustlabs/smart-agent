@@ -114,6 +114,11 @@ interface SubmitArgs {
    *  cards, and the proposal detail page. */
   displayName: string
   basedOnIntentId: string
+  /** Hex address of the recipient AgentAccount that will receive funds at
+   *  award time. Distinct from the anonymous proposer nullifier — recipient
+   *  is the proposer's hub-org treasury (publicly named). MUST be a non-zero
+   *  address; the on-chain contract reverts with `MissingRecipient` otherwise. */
+  recipientAddress: `0x${string}`
   /** Spec 004 — when present, gate the submit on AnonCreds verification
    *  of a ProposalSubmitterCredential rather than principal-from-token.
    *  The credential must bind `poolAgentId` matching the round's pool.
@@ -305,6 +310,7 @@ const submitTool = {
       roundId: { type: 'string' },                 // URN or slug; converted to subject
       displayName: { type: 'string' },
       basedOnIntentId: { type: 'string' },
+      recipientAddress: { type: 'string' },
       budget: { type: 'object' },
       plan: { type: 'object' },
       milestones: { type: 'array' },
@@ -323,7 +329,7 @@ const submitTool = {
       },
       chain: { type: 'array', items: { type: 'object' } },
     },
-    required: ['token', 'roundId', 'displayName', 'basedOnIntentId', 'budget', 'plan', 'milestones', 'desiredOutcomes', 'reportingObligations', 'organisationalBackground', 'presentation', 'chain'],
+    required: ['token', 'roundId', 'displayName', 'basedOnIntentId', 'recipientAddress', 'budget', 'plan', 'milestones', 'desiredOutcomes', 'reportingObligations', 'organisationalBackground', 'presentation', 'chain'],
   },
   handler: async (args: SubmitArgs) => {
     await requireOrgPrincipal(args.token, args, 'grant_proposal:submit')
@@ -347,6 +353,11 @@ const submitTool = {
     }
     if (!args.roundId) {
       return err({ kind: 'validation', messages: ['roundId required'] })
+    }
+    if (!args.recipientAddress
+        || !/^0x[0-9a-fA-F]{40}$/.test(args.recipientAddress)
+        || args.recipientAddress === '0x0000000000000000000000000000000000000000') {
+      return err({ kind: 'validation', messages: ['recipientAddress required (non-zero hex address)'] })
     }
 
     // ─── Verify AnonCreds presentation ─────────────────────────────────
@@ -405,6 +416,7 @@ const submitTool = {
       reportingJson: JSON.stringify(args.reportingObligations),
       orgBackgroundJson: JSON.stringify(args.organisationalBackground),
       basisJson,
+      recipient: args.recipientAddress,
     })
     const tx = await callA2aRedeemWithChain(sessionId, {
       mcpTool: 'grant_proposal:submit',

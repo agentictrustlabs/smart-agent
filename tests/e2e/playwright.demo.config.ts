@@ -15,7 +15,7 @@ import { defineConfig } from '@playwright/test'
 export default defineConfig({
   testDir: '.',
   testMatch: ['grant-flow-demo.spec.ts', 'grant-flow-full-ui-demo.spec.ts'],
-  timeout: 900_000, // 15 min — beforeAll pre-warm + bootstrap can stretch on a cold dev server
+  timeout: 1_800_000, // 30 min — beforeAll pre-warm + bootstrap + full UI walk on a cold dev server
   retries: 0,
   workers: 1,
   fullyParallel: false,
@@ -25,6 +25,11 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     trace: 'off',
     video: 'off',
+    // Default is Infinity — a single mis-matched locator (e.g. selectOption
+    // by label when the dropdown text is a slug) hangs the entire test.
+    // 30s is plenty for a real action; anything longer is a bug.
+    actionTimeout: 30_000,
+    navigationTimeout: 60_000,
   },
   outputDir: './demo-output',
   reporter: [['list']],

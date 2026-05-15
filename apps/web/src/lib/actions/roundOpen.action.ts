@@ -38,7 +38,14 @@ export interface OpenRoundInput {
     displayName?: string
   }
   milestoneTemplate?: { minMilestones: number; maxMilestones: number; trancheHints?: { atKickoff: number; midpoint: number; completion: number } }
+  /** Legacy/optional — `minValidators` count hint that pre-dates the explicit
+   *  EOA list. Kept so older callers still compile. */
   validatorRequirements?: { minValidators: number }
+  /** Explicit validator EOA list. Stored on-chain as JSON under the
+   *  `sa:roundValidatorRequirements` predicate so the tasks-inbox query
+   *  surfaces attestation tasks to those EOAs. Empty array == no validator
+   *  gate (any pool steward can attest as a fallback). */
+  validators?: Address[]
   reportingCadence: 'monthly' | 'quarterly' | 'annual' | 'milestone' | 'none'
   /** ISO-8601 deadline. Proposers can submit until this timestamp. */
   deadline: string
@@ -116,24 +123,41 @@ export async function openRound(input: OpenRoundInput): Promise<OpenRoundResult>
   const milestoneTemplateJson = input.milestoneTemplate
     ? JSON.stringify(input.milestoneTemplate)
     : ''
-  const validatorRequirementsJson = input.validatorRequirements
-    ? JSON.stringify(input.validatorRequirements)
-    : ''
+  // Carry both the explicit validator EOA list AND the legacy minValidators
+  // hint in the same JSON shape that `commitments.action.readRoundValidators`
+  // expects to deserialise. The contract stores opaque JSON; readers parse
+  // it. Lower-case the EOAs so the inbox match is canonical.
+  const validatorPayload: Record<string, unknown> = {}
+  if (input.validators && input.validators.length > 0) {
+    validatorPayload.validators = input.validators.map((v) => v.toLowerCase())
+  }
+  if (input.validatorRequirements) {
+    validatorPayload.minValidators = input.validatorRequirements.minValidators
+  }
+  const validatorRequirementsJson =
+    Object.keys(validatorPayload).length > 0
+      ? JSON.stringify(validatorPayload)
+      : ''
 
-  const { txHash } = await callMcp<{ txHash: `0x${string}` }>('org', 'round:open', {
-    roundId: input.id,
-    fundAgent: input.fundAgentId,
-    poolAgent: input.poolAgentId,
-    deadline: deadlineSec,
-    decisionDate: decisionSec,
-    reportingCadence: input.reportingCadence,
-    requiredCredentials: input.requiredCredentials ?? [],
-    visibility: input.visibility,
-    initialStatus: 'open',
-    mandate: mandateJson,
-    milestoneTemplate: milestoneTemplateJson,
-    validatorRequirements: validatorRequirementsJson,
-  })
+  const { txHash } = await callMcp<{ txHash: `0x${string}` }>(
+    'org',
+    'round:open',
+    {
+      roundId: input.id,
+      fundAgent: input.fundAgentId,
+      poolAgent: input.poolAgentId,
+      deadline: deadlineSec,
+      decisionDate: decisionSec,
+      reportingCadence: input.reportingCadence,
+      requiredCredentials: input.requiredCredentials ?? [],
+      visibility: input.visibility,
+      initialStatus: 'open',
+      mandate: mandateJson,
+      milestoneTemplate: milestoneTemplateJson,
+      validatorRequirements: validatorRequirementsJson,
+    },
+    { agentAddress: input.fundAgentId },
+  )
 
   // Voting window defaults (per output/voting-and-admin-plan.md):
   //   - opens at the submission deadline
@@ -147,14 +171,19 @@ export async function openRound(input: OpenRoundInput): Promise<OpenRoundResult>
   const votingStrategy = input.votingStrategy ?? 'steward-quorum'
   const votingThreshold = input.votingThreshold ?? 2
 
-  await callMcp('org', 'round:update_voting_config', {
-    roundId: fullId,
-    votingStrategy,
-    votingThreshold,
-    votingWindowStartsAt,
-    votingWindowEndsAt,
-    eligibleVoters: { kind: 'stewards' },
-  })
+  await callMcp(
+    'org',
+    'round:update_voting_config',
+    {
+      roundId: fullId,
+      votingStrategy,
+      votingThreshold,
+      votingWindowStartsAt,
+      votingWindowEndsAt,
+      eligibleVoters: { kind: 'stewards' },
+    },
+    { agentAddress: input.fundAgentId },
+  )
 
   // Targeted per-round sync — splices just this round's triples (plus
   // its RoundOpenedAssertion anchor) into the data graph. Replaces the

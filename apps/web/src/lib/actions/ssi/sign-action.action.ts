@@ -1,6 +1,9 @@
 'use server'
 
 /**
+ * Routing rule (phase 3 of A2A-first consolidation): in-process EIP-712
+ * sign only — no MCP HTTP traffic in this file.
+ *
  * Server-side signing fallback for `signWalletActionClient` when the
  * caller's signer kind is `eoa` (demo / SIWE-with-stored-key paths).
  * Demo users have a server-resident private key so there's no point

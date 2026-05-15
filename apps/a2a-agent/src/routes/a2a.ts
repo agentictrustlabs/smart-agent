@@ -7,27 +7,57 @@ import { config } from '../config'
 const a2a = new Hono()
 
 // ─── GET /.well-known/agent.json ────────────────────────────────────
+//
+// Host-aware. When the request arrives at a subdomain that resolved
+// to a concrete agent principal, return that agent's metadata. Otherwise
+// (bare port — for service discovery / health checks) return the generic
+// process-level card.
 
 a2a.get('/.well-known/agent.json', (c) => {
+  const host = c.req.header('Host') ?? c.req.header('host') ?? `localhost:${config.PORT}`
+  const proto = c.req.header('X-Forwarded-Proto') ?? 'http'
+  const origin = `${proto}://${host}`
+  const ctx = c.get('agentHostContext')
+
+  if (ctx) {
+    return c.json({
+      name: ctx.displayName,
+      slug: ctx.slug,
+      agentAddress: ctx.agentAddress,
+      agentType: ctx.agentType,
+      description: `Smart Agent A2A endpoint for ${ctx.displayName}`,
+      version: '0.0.1',
+      protocol: 'a2a',
+      capabilities: {
+        auth: { challenge: true, erc1271Verify: true },
+        sessions: { create: true, revoke: true, delegationTokenMint: true },
+        messaging: { handleRouting: true },
+      },
+      endpoints: {
+        challenge: `${origin}/auth/challenge`,
+        verify: `${origin}/auth/verify`,
+        sessionInit: `${origin}/session/init`,
+        delegationMint: `${origin}/delegation/mint`,
+        agentMessage: `${origin}/a2a/:handle`,
+        mcpProxy: `${origin}/mcp/:server/:tool`,
+      },
+      chainId: config.CHAIN_ID,
+    })
+  }
+
+  // Generic (no host context). Discoverable for tooling that hits the
+  // bare port, but not bound to any specific principal.
   return c.json({
     name: 'Smart Agent A2A',
     description:
-      'Agent-to-Agent protocol server for Smart Agent accounts. Supports challenge-based authentication, session management, and delegation token minting.',
+      'Agent-to-Agent protocol server for Smart Agent accounts. Per-agent endpoints are served on subdomains of the configured host base.',
     version: '0.0.1',
     protocol: 'a2a',
+    hostBase: config.A2A_HOST_BASE,
     capabilities: {
-      auth: {
-        challenge: true,
-        erc1271Verify: true,
-      },
-      sessions: {
-        create: true,
-        revoke: true,
-        delegationTokenMint: true,
-      },
-      messaging: {
-        handleRouting: true,
-      },
+      auth: { challenge: true, erc1271Verify: true },
+      sessions: { create: true, revoke: true, delegationTokenMint: true },
+      messaging: { handleRouting: true },
     },
     endpoints: {
       challenge: '/auth/challenge',
@@ -55,7 +85,8 @@ a2a.post('/:handle', async (c) => {
     return c.json({ error: 'Handle not found' }, 404)
   }
 
-  const message = await c.req.json()
+  // Reserved for forward A2A messaging; today we just acknowledge.
+  await c.req.json().catch(() => ({}))
 
   return c.json({
     status: 'received',

@@ -1,6 +1,18 @@
 'use server'
 
 /**
+ * Routing rule (phase 3 of A2A-first consolidation):
+ *   - Person-mcp tool calls (`ssi_create_wallet_action`,
+ *     `ssi_start_credential_exchange`, `ssi_finish_credential_exchange`)
+ *     go through `callMcp('person', …)` — signed-in user IS the holder.
+ *   - Issuer-side calls (`org` / `family` / `geo` / `skill` `offer`
+ *     and `issue`) hit the issuer's protocol endpoints directly via
+ *     the `clients.ts` SDK. Not user-authenticated.
+ *   - `POST ${walletUrl}/credentials/store` (in `issueCredentialViaSession`)
+ *     is a direct HTTP call on person-mcp's non-tool surface, gated by
+ *     the one-shot `requestId` issued by the dispatch handler. Stays
+ *     direct for now — TODO(phase-4) to wrap as MCP tool.
+ *
  * Generic AnonCreds issuance flow — replaces per-credential-type actions
  * (`anon-org.action.ts`, `geo-attestation.action.ts`). Adding a new
  * credential type means adding an entry to `CREDENTIAL_KINDS` and a form
@@ -25,7 +37,8 @@ import {
   type IssuerKey,
 } from '@smart-agent/sdk'
 import { loadSignerForCurrentUser } from '@/lib/ssi/signer'
-import { person, org, family, geo, skill } from '@/lib/ssi/clients'
+import { org, family, geo, skill } from '@/lib/ssi/clients'
+import { callMcp } from '@/lib/clients/mcp-client'
 import { ssiConfig } from '@/lib/ssi/config'
 import { getSignerContext } from './wallet-provision.action'
 import { hashWalletAction, type SignerContext } from '@/lib/credentials/wallet-helpers'
@@ -95,7 +108,8 @@ export async function prepareCredentialIssuance(input: {
     const client = issuerClientByKey(descriptor.issuerKey)
     const offer = await client.offer(descriptor.credentialType)
 
-    const built = await person.callTool<{ action: WalletAction & { expiresAt: string } }>(
+    const built = await callMcp<{ action: WalletAction & { expiresAt: string } }>(
+      'person',
       'ssi_create_wallet_action',
       {
         principal,
@@ -146,7 +160,8 @@ export async function completeCredentialIssuance(input: {
 
     const client = issuerClientByKey(descriptor.issuerKey)
 
-    const req = await person.callTool<{ requestId: string; credentialRequestJson: string; error?: string }>(
+    const req = await callMcp<{ requestId: string; credentialRequestJson: string; error?: string }>(
+      'person',
       'ssi_start_credential_exchange',
       {
         action: input.action,
@@ -163,7 +178,8 @@ export async function completeCredentialIssuance(input: {
       attributes: input.attributes,
     })
 
-    const fin = await person.callTool<{ credentialId?: string; error?: string }>(
+    const fin = await callMcp<{ credentialId?: string; error?: string }>(
+      'person',
       'ssi_finish_credential_exchange',
       {
         principal,
@@ -243,6 +259,8 @@ export async function issueCredentialViaSession(input: {
 
     // /credentials/store is authenticated by the one-shot requestId issued
     // by the dispatch handler — no separate signature needed.
+    // TODO(phase-4): direct POST on person-mcp non-tool route. Wrap as
+    // `ssi_credentials_store` MCP tool so this can ride the A2A proxy.
     const storeRes = await fetch(`${ssiConfig.walletUrl}/credentials/store`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },

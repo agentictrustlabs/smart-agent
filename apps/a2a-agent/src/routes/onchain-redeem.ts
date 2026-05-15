@@ -63,6 +63,10 @@ import {
   TOOL_POLICIES,
   POOL_REGISTRY_SELECTORS_BY_TOOL,
   FUND_REGISTRY_SELECTORS_BY_TOOL,
+  AGENT_ACCOUNT_RESOLVER_SELECTORS_BY_TOOL,
+  COMMITMENT_REGISTRY_SELECTORS_BY_TOOL,
+  agentAccountResolverAbi,
+  commitmentRegistryAbi,
   resolveTargetAddress,
   type ToolPolicy,
 } from '@smart-agent/sdk'
@@ -113,6 +117,8 @@ const ABIS: Record<string, readonly unknown[]> = {
   PoolRegistry: poolRegistryAbi as readonly unknown[],
   FundRegistry: fundRegistryAbi as readonly unknown[],
   AgentAccountFactory: agentAccountFactoryAbi as readonly unknown[],
+  AgentAccountResolver: agentAccountResolverAbi as readonly unknown[],
+  CommitmentRegistry: commitmentRegistryAbi as readonly unknown[],
 }
 
 function selectorFor(target: keyof typeof ABIS, functionName: string): `0x${string}` {
@@ -143,6 +149,12 @@ function policyAllowedSelectors(toolId: string, policy: ToolPolicy): Set<`0x${st
   }
   if (policy.allowedTargets.includes('FundRegistry')) {
     tryAdd('FundRegistry', FUND_REGISTRY_SELECTORS_BY_TOOL[toolId])
+  }
+  if (policy.allowedTargets.includes('AgentAccountResolver')) {
+    tryAdd('AgentAccountResolver', AGENT_ACCOUNT_RESOLVER_SELECTORS_BY_TOOL[toolId])
+  }
+  if (policy.allowedTargets.includes('CommitmentRegistry')) {
+    tryAdd('CommitmentRegistry', COMMITMENT_REGISTRY_SELECTORS_BY_TOOL[toolId])
   }
   return out
 }

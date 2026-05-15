@@ -12,7 +12,7 @@
  * proposerSideSignals helper computes the basis snapshot.
  */
 
-import { DiscoveryService } from '@smart-agent/discovery'
+import { getHubDiscovery } from '@/lib/clients/hub-client'
 import {
   GrantProposalClient,
   proposerSideSignals,
@@ -76,6 +76,74 @@ export interface SubmitProposalActionInput {
 }
 
 /**
+ * Resolve the recipient AgentAccount address for the current user — i.e.
+ * the treasury that should receive funds when one of their proposals is
+ * awarded. Walks DEMO_USER_META → AgentAccountResolver(displayName) →
+ * `sa:hasTreasury` for the user's hub-org. The result is a public,
+ * stable address (the hub-org's treasury), distinct from the user's
+ * anonymous AnonCreds nullifier proposerAgentId.
+ *
+ * Throws (not returns null) so the caller can surface a precise error
+ * back to the form rather than silently defaulting to the pool.
+ */
+async function resolveProposerRecipientAddress(userId: string): Promise<`0x${string}`> {
+  const { DEMO_USER_META } = await import('@/lib/auth/session')
+  const meta = DEMO_USER_META[userId]
+  if (!meta) {
+    throw new Error(
+      `resolveProposerRecipientAddress: no DEMO_USER_META row for ${userId} — ` +
+      `recipient resolution for non-demo users not yet wired (v2 follow-up: read primary-org edge from AgentRelationship)`,
+    )
+  }
+  const orgName = meta.org
+  const resolverAddr = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}` | undefined
+  if (!resolverAddr) throw new Error('AGENT_ACCOUNT_RESOLVER_ADDRESS not set')
+
+  const { getPublicClient } = await import('@/lib/contracts')
+  const { agentAccountResolverAbi } = await import('@smart-agent/sdk')
+  const { keccak256, toBytes } = await import('viem')
+  const pub = getPublicClient()
+
+  // Walk the resolver to find the agent whose atl:displayName matches the
+  // user's hub-org. The resolver doesn't expose a name→address lookup, so
+  // we scan agentCount. For demo scale this is small (<200 agents).
+  const ATL_DISPLAY = keccak256(toBytes('atl:displayName'))
+  const SA_HAS_TREASURY = keccak256(toBytes('sa:hasTreasury'))
+  let orgAgent: `0x${string}` | null = null
+  const count = (await pub.readContract({
+    address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'agentCount',
+  })) as bigint
+  for (let i = 0n; i < count; i++) {
+    const addr = (await pub.readContract({
+      address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'getAgentAt', args: [i],
+    })) as `0x${string}`
+    let dn = ''
+    try {
+      dn = (await pub.readContract({
+        address: resolverAddr, abi: agentAccountResolverAbi,
+        functionName: 'getStringProperty', args: [addr, ATL_DISPLAY],
+      })) as string
+    } catch { /* skip; agent may not have displayName set */ }
+    if (dn === orgName) { orgAgent = addr; break }
+  }
+  if (!orgAgent) {
+    throw new Error(`resolveProposerRecipientAddress: no agent registered with displayName "${orgName}" on AgentAccountResolver`)
+  }
+
+  const treasury = (await pub.readContract({
+    address: resolverAddr, abi: agentAccountResolverAbi,
+    functionName: 'getAddressProperty', args: [orgAgent, SA_HAS_TREASURY],
+  })) as `0x${string}`
+  if (!treasury || treasury === '0x0000000000000000000000000000000000000000') {
+    throw new Error(
+      `resolveProposerRecipientAddress: org "${orgName}" (${orgAgent}) has no sa:hasTreasury — ` +
+      `seed must register a treasury so award funds have a recipient`,
+    )
+  }
+  return treasury
+}
+
+/**
  * Submit a proposal. Computes the proposer-side basis snapshot via
  * DiscoveryService, then invokes the proposer's MCP grant_proposal:submit
  * tool. Returns the typed `SubmitGrantProposalResult` shape — the route
@@ -85,6 +153,35 @@ export interface SubmitProposalActionInput {
 export async function submitProposal(
   input: SubmitProposalActionInput,
 ): Promise<SubmitGrantProposalResult> {
+  // 0. Resolve recipient — the hub-org's treasury that will receive funds
+  //    at award time. If the caller already plumbed one through the
+  //    request, honour it; otherwise look it up from the current user.
+  //    Hard-fail when unresolvable (NO fallback to pool / zero address —
+  //    the demo-finalize assertion depends on this being a real treasury).
+  let recipientAddress: `0x${string}` =
+    (input.request.recipientAddress as `0x${string}` | undefined) ?? '0x0000000000000000000000000000000000000000'
+  if (recipientAddress === '0x0000000000000000000000000000000000000000') {
+    const { getCurrentUser } = await import('@/lib/auth/get-current-user')
+    const me = await getCurrentUser()
+    if (!me) {
+      return {
+        success: false as const,
+        error: { code: 'unauthorized' as const, message: 'not-authenticated' },
+      } as unknown as SubmitGrantProposalResult
+    }
+    try {
+      recipientAddress = await resolveProposerRecipientAddress(me.id)
+    } catch (e) {
+      return {
+        success: false as const,
+        error: {
+          code: 'validation' as const,
+          message: `recipient resolution failed: ${e instanceof Error ? e.message : String(e)}`,
+        },
+      } as unknown as SubmitGrantProposalResult
+    }
+  }
+
   // 1. Compute the basis snapshot. Best-effort — when discovery is
   //    unavailable the basis falls back to a cold-start placeholder and
   //    the MCP tool stores it as-is. The basis is NOT part of the typed
@@ -93,7 +190,7 @@ export async function submitProposal(
   //    field that the MCP tool understands.
   let basis: unknown = undefined
   try {
-    const discovery = DiscoveryService.fromEnv()
+    const discovery = getHubDiscovery()
     if (input.request.roundId && input.request.proposerAgentId) {
       const signals = await proposerSideSignals(
         {
@@ -129,24 +226,36 @@ export async function submitProposal(
     expectedAttributes: expectedAttrs,
   })
 
-  // Any EOA-backed user (demo or stateless) acting as their own pool admin
-  // has no ProposalSubmitterCredential pre-issued. Auto-self-issue using
-  // the caller's OWN key (demo: users.privateKey; stateless: the
-  // loadSignerForCurrentUser placeholder).
+  // No ProposalSubmitterCredential held for this pool — a stranger is
+  // applying to someone else's round. Route through the operator-attested
+  // access gateway: requestProposalAccess() resolves the round → fund
+  // agent → operator user, then issues a fresh credential whose admin →
+  // holder delegation is signed by the operator and rooted at the fund
+  // agent. This makes msg.sender at GrantProposalRegistry.submit equal
+  // the fund agent so the on-chain `onlyRoundOperator` modifier passes.
+  //
+  // The legitimate self-apply case (Maria applying to her own pool) also
+  // lands here because she has no pre-issued cred either — but in that
+  // case the operator IS Maria, so the issuance is functionally a self-
+  // issue. The gateway handles both shapes uniformly.
   if (!pres.ok && pres.error.includes('no held credential')) {
     const { getSession } = await import('@/lib/auth/session')
     const session = await getSession()
     const { loadSignerForCurrentUser } = await import('@/lib/ssi/signer')
     let signerCtx: Awaited<ReturnType<typeof loadSignerForCurrentUser>> | null = null
     try { signerCtx = await loadSignerForCurrentUser() } catch { /* not signed in */ }
-    if (signerCtx?.kind === 'eoa' && signerCtx.userRow.privateKey && session?.smartAccountAddress && input.poolAgentId) {
-      const { selfIssueMarketplaceCredential } = await import('@/lib/spec004/self-issue')
-      const issued = await selfIssueMarketplaceCredential({
-        smartAccount: session.smartAccountAddress as `0x${string}`,
-        signerPrivateKey: signerCtx.userRow.privateKey as `0x${string}`,
-        credentialType: 'ProposalSubmitterCredential',
-        poolAgentId: input.poolAgentId,
-        principal: signerCtx.principal,
+    if (
+      signerCtx?.kind === 'eoa' &&
+      signerCtx.userRow.privateKey &&
+      session?.smartAccountAddress &&
+      input.request.roundId
+    ) {
+      const { requestProposalAccess } = await import('@/lib/actions/proposalAccess.action')
+      const issued = await requestProposalAccess({
+        roundId: input.request.roundId,
+        holderSmartAccount: session.smartAccountAddress as `0x${string}`,
+        holderPrivateKey: signerCtx.userRow.privateKey as `0x${string}`,
+        holderPrincipal: signerCtx.principal,
       })
       if (issued.ok) {
         pres = await buildMarketplacePresentation({
@@ -154,7 +263,7 @@ export async function submitProposal(
           expectedAttributes: expectedAttrs,
         })
       } else {
-        console.warn('[submitGrantProposal] self-issue failed:', issued.error)
+        console.warn('[submitGrantProposal] requestProposalAccess failed:', issued.error)
       }
     }
   }
@@ -186,6 +295,7 @@ export async function submitProposal(
   const client = new GrantProposalClient(invoker)
   const augmented = {
     ...input.request,
+    recipientAddress,
     ...(basis ? { basis } : {}),
     presentation: {
       presentationJson: pres.presentationJson,
@@ -245,6 +355,8 @@ interface RawProposalRow {
   basis: string | object | null
   visibility: string
   createdAt: string
+  /** Hex address — set at submit time. Zero address means legacy row. */
+  recipientAddress?: `0x${string}`
 }
 
 function parseJsonField<T>(v: unknown, fallback: T): T {
@@ -284,6 +396,7 @@ function rowToProposal(row: RawProposalRow): GrantProposal {
       composite: 0.6 * (1 / 7) + 0.4 * 0.5,
       isColdStart: true,
     }),
+    recipientAddress: row.recipientAddress ?? '0x0000000000000000000000000000000000000000',
   }
 }
 
@@ -541,7 +654,7 @@ export async function listProposalsForRoundSteward(
   if (proposals.length === 0) return []
 
   // Compute stewardSideSignals per proposal.
-  const discovery = DiscoveryService.fromEnv()
+  const discovery = getHubDiscovery()
   const sideDiscovery = discovery as unknown as SideSignalsDiscovery
   const enriched = await Promise.all(
     proposals.map(async (p) => {

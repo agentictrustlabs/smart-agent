@@ -16,7 +16,8 @@ import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { HUB_SLUG_MAP } from '@/lib/hub-routes'
 import { getHubProfile } from '@/lib/hub-profiles'
 import { getPersonAgentForUser, canManageAgent } from '@/lib/agent-registry'
-import { DiscoveryService } from '@smart-agent/discovery'
+import { hubGetRoundDetail } from '@/lib/clients/hub-client'
+import type { Round } from '@smart-agent/discovery'
 import { RoundAdminClient } from './RoundAdminClient'
 import { roundLifecycle, lifecyclePalette } from '@/lib/rounds/lifecycle'
 
@@ -42,15 +43,15 @@ interface RoundRow {
 
 async function loadRound(fullRoundId: string): Promise<RoundRow | null> {
   // R8 — round body lives on chain. Body fields (fundAgent, deadline,
-  // decisionDate) come from DiscoveryService; voting config comes from
-  // FundRegistry.getRoundVotingConfig. The org-mcp `rounds` SQL mirror is
-  // dropped — there is no per-round SQL row to read from anymore.
+  // decisionDate) come from hub-mcp's cached GraphDB read; voting config
+  // comes from FundRegistry.getRoundVotingConfig. The org-mcp `rounds` SQL
+  // mirror is dropped — there is no per-round SQL row to read from anymore.
   const slug = fullRoundId.startsWith('urn:smart-agent:round:')
     ? fullRoundId.slice('urn:smart-agent:round:'.length)
     : fullRoundId
-  let body: Awaited<ReturnType<DiscoveryService['getRoundDetail']>> = null
+  let body: Round | null = null
   try {
-    body = await DiscoveryService.fromEnv().getRoundDetail(slug, null)
+    body = await hubGetRoundDetail(slug, null)
   } catch { body = null }
   if (!body) return null
   const fundAgentId = body.fundAgentId.startsWith(AGENT_IRI_PREFIX)

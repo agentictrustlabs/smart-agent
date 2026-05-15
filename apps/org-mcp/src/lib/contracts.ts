@@ -81,3 +81,17 @@ export function requireMatchInitiationRegistryAddress(): Address {
   }
   return config.matchInitiationRegistryAddress
 }
+
+export function requireCommitmentRegistryAddress(): Address {
+  if (!config.commitmentRegistryAddress) {
+    throw new Error('org-mcp: COMMITMENT_REGISTRY_ADDRESS not set')
+  }
+  return config.commitmentRegistryAddress
+}
+
+export function requireProposalRegistryAddress(): Address {
+  if (!config.proposalRegistryAddress) {
+    throw new Error('org-mcp: PROPOSAL_REGISTRY_ADDRESS not set')
+  }
+  return config.proposalRegistryAddress
+}

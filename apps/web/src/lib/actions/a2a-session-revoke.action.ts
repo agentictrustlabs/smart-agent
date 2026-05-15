@@ -32,8 +32,11 @@ import { eq } from 'drizzle-orm'
 import { requireSession } from '@/lib/auth/session'
 import { A2A_SESSION_COOKIE_NAME } from './a2a-session-constants'
 import { getA2ASessionToken } from './a2a-session.action'
-
-const A2A_AGENT_URL = process.env.A2A_AGENT_URL ?? 'http://localhost:3100'
+import {
+  resolveA2AEndpointForAgent,
+  A2AUrlResolverError,
+} from '@/lib/clients/a2a-url-resolver'
+import { a2aFetch } from '@/lib/clients/a2a-fetch'
 
 export interface RevokeResult {
   success: boolean
@@ -68,26 +71,49 @@ export async function revokeA2ASessionForUser(): Promise<RevokeResult> {
     .limit(1)
   const user = users[0]
   if (!user) return { success: false, error: 'User not found' }
+
+  // Resolve the agent's A2A endpoint (host-aware). The smart-account
+  // address is the bootstrap principal; reverse-resolve to the slug. No
+  // fallback to the bare port.
+  const agentAddr = (user.smartAccountAddress ?? userSession.smartAccountAddress) as string | undefined
+  let endpoint: string | null = null
+  let hostHeader: string | null = null
+  if (agentAddr) {
+    try {
+      const r = await resolveA2AEndpointForAgent(agentAddr)
+      endpoint = r.endpoint
+      hostHeader = r.hostHeader
+    } catch (e) {
+      if (!(e instanceof A2AUrlResolverError)) throw e
+      // Resolution failed — record so we can surface partial cleanup below.
+      endpoint = null
+    }
+  }
+
   if (!user.privateKey) {
     // Passkey / Google / SIWE users — no server-side key. Phase 4 only
     // supports the demo / legacy path here; production wallet signing
     // will be wired into the wallet/passkey adapter later. We still
     // clear the cookie + delete the a2a session so the UI behaves sanely.
-    await deleteA2aSession(sessionId)
+    if (endpoint && hostHeader) await deleteA2aSession(endpoint, hostHeader, sessionId)
     await clearCookie()
     return { success: true, partial: true, error: 'On-chain revoke skipped (no server-side signer)' }
   }
 
   // 2. Status lookup — must surface a rootGrantHash for the on-chain revoke.
   let rootGrantHash: Hex | null = null
-  try {
-    const statusRes = await fetch(`${A2A_AGENT_URL}/session/${sessionId}/status`)
-    if (statusRes.ok) {
-      const data = await statusRes.json()
-      rootGrantHash = (data?.rootGrantHash as Hex | null) ?? null
+  if (endpoint && hostHeader) {
+    try {
+      const statusRes = await a2aFetch(`${endpoint}/session/${sessionId}/status`, {
+        headers: { 'Host': hostHeader },
+      })
+      if (statusRes.ok) {
+        const data = await statusRes.json() as { rootGrantHash?: Hex | null }
+        rootGrantHash = data?.rootGrantHash ?? null
+      }
+    } catch {
+      // Best-effort; we fall through to cookie-only cleanup if needed.
     }
-  } catch {
-    // Best-effort; we fall through to cookie-only cleanup if needed.
   }
 
   // 3. On-chain revoke (if we have a hash).
@@ -124,14 +150,14 @@ export async function revokeA2ASessionForUser(): Promise<RevokeResult> {
     } catch (err) {
       // Don't block cleanup on on-chain failure; surface as partial.
       const msg = err instanceof Error ? err.message : 'Revoke tx failed'
-      await deleteA2aSession(sessionId)
+      if (endpoint && hostHeader) await deleteA2aSession(endpoint, hostHeader, sessionId)
       await clearCookie()
       return { success: true, partial: true, rootGrantHash: rootGrantHash ?? undefined, error: msg }
     }
   }
 
   // 4. Delete the a2a-agent session (status='revoked').
-  await deleteA2aSession(sessionId)
+  if (endpoint && hostHeader) await deleteA2aSession(endpoint, hostHeader, sessionId)
 
   // 5. Clear cookie.
   await clearCookie()
@@ -145,13 +171,12 @@ export async function revokeA2ASessionForUser(): Promise<RevokeResult> {
   }
 }
 
-async function deleteA2aSession(sessionId: string): Promise<void> {
+async function deleteA2aSession(endpoint: string, hostHeader: string, sessionId: string): Promise<void> {
   try {
-    await fetch(`${A2A_AGENT_URL}/api/a2a/session/${sessionId}`, { method: 'DELETE' }).catch(() => {})
-    // Direct path on a2a-agent too — middleware DELETE requires Bearer.
-    await fetch(`${A2A_AGENT_URL}/session/${sessionId}`, {
+    // Direct path on a2a-agent — middleware DELETE requires Bearer + host.
+    await a2aFetch(`${endpoint}/session/${sessionId}`, {
       method: 'DELETE',
-      headers: { Authorization: `Bearer ${sessionId}` },
+      headers: { Authorization: `Bearer ${sessionId}`, 'Host': hostHeader },
     }).catch(() => {})
   } catch {
     // best-effort

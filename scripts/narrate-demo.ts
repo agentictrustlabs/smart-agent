@@ -95,17 +95,22 @@ function probeDurationSec(file: string): number {
  * durations so each chapter's narration lands at the right moment in the
  * concatenated output.
  */
-function buildSegments(timeline: ChapterLine[], videoDur: number): Segment[] {
+function buildSegments(timeline: ChapterLine[], videoDur: number, audioDurs: number[]): Segment[] {
   const trim = process.env.TRIM_LOADING === '1'
   const tail = parseFloat(process.env.TRIM_TAIL_SEC ?? '7')
+  const audioPad = parseFloat(process.env.AUDIO_PAD_SEC ?? '0.6')
   const minLen = 4
   const out: Segment[] = []
   let cumulative = 0
   for (let i = 0; i < timeline.length; i++) {
     const start = timeline[i].offsetSec
     const nextStart = timeline[i + 1]?.offsetSec ?? videoDur
-    let end = trim ? (nextStart - tail) : nextStart
-    if (end - start < minLen) end = start + minLen
+    const sourceWindow = nextStart - start
+    const audioFloor = audioDurs[i] + audioPad
+    let keep = trim ? Math.max(audioFloor, sourceWindow - tail) : sourceWindow
+    keep = Math.min(keep, sourceWindow)           // can't invent source frames
+    if (keep < minLen) keep = Math.min(minLen, sourceWindow)
+    let end = start + keep
     if (end > videoDur) end = videoDur
     out.push({
       chapter: timeline[i].chapter,
@@ -138,7 +143,10 @@ async function main() {
   const videoDur = probeDurationSec(VIDEO_PATH)
   console.log(`Original video duration: ${videoDur.toFixed(2)}s`)
 
-  const segments = buildSegments(timeline, videoDur)
+  const audioDurs = timeline.map(l =>
+    probeDurationSec(path.join(AUDIO_DIR, `ch-${String(l.chapter).padStart(2, '0')}.mp3`)),
+  )
+  const segments = buildSegments(timeline, videoDur, audioDurs)
   const totalNewDur = segments[segments.length - 1].newStartSec
     + (segments[segments.length - 1].endSec - segments[segments.length - 1].startSec)
   if (process.env.TRIM_LOADING === '1') {

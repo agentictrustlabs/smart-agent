@@ -10,12 +10,29 @@ import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts'
 import { parseEther } from 'viem'
 import { keccak256, encodePacked, toBytes } from 'viem'
 import { deploySmartAccount, getPublicClient, getWalletClient } from '@/lib/contracts'
-import { agentAccountResolverAbi, ATL_CONTROLLER } from '@smart-agent/sdk'
+import { agentAccountResolverAbi, ATL_CONTROLLER, ATL_PRIMARY_NAME } from '@smart-agent/sdk'
 
 const DEPLOYER_KEY = process.env.DEPLOYER_PRIVATE_KEY as `0x${string}`
 
 const TYPE_PERSON = keccak256(toBytes('atl:PersonAgent'))
 const ZERO_HASH = '0x0000000000000000000000000000000000000000000000000000000000000000' as `0x${string}`
+
+/** Turn a display name like "Pastor David Chen" into a DNS-safe slug
+ *  "pastor-david-chen" suitable as the leftmost label of a primary name.
+ *  Falls back to a deterministic hash-derived slug when the input is
+ *  empty or produces nothing legal after stripping. The A2A URL resolver
+ *  derives the host slug from the leftmost label of `ATL_PRIMARY_NAME`,
+ *  so this slug must match `^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`. */
+function deriveSlug(name: string | undefined, agentAddress: `0x${string}`): string {
+  const fromName = (name ?? '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .replace(/-{2,}/g, '-')
+  if (fromName) return fromName
+  // Deterministic, address-derived fallback. Always shaped as a valid DNS label.
+  return `agent-${agentAddress.slice(2, 10).toLowerCase()}`
+}
 
 /**
  * Generate a new wallet, fund it, deploy an AgentAccount, and deploy
@@ -60,14 +77,31 @@ export async function generateDemoWallet(userName?: string): Promise<{
   const personSalt = BigInt(personSaltHash)
   const personAgentAddress = await deploySmartAccount(deployerAddr, personSalt) as `0x${string}`
 
-  // 5. Register person agent in on-chain resolver (uses deployer directly, no session needed)
+  // 5. Register person agent in on-chain resolver (uses deployer directly, no session needed).
+  //
+  //    The three on-chain properties below — `register`, `ATL_CONTROLLER`,
+  //    `ATL_PRIMARY_NAME` — are ALL required for a person agent to be a
+  //    first-class principal in the system:
+  //      • `register` lands the agent in AgentAccountResolver so other
+  //        property writes don't revert with `NotRegistered`.
+  //      • `ATL_CONTROLLER` ties the user's EOA to the smart account so
+  //        `getOrgsForPersonAgent` / KB sync can reverse-resolve ownership.
+  //      • `ATL_PRIMARY_NAME` is what the A2A URL resolver reads to derive
+  //        the per-agent host slug (`<slug>.agent.localhost:3100`) — without
+  //        it, every `callMcp()` for this user 401s with
+  //        "A2A endpoint unresolvable: no primary name registered".
+  //
+  //    Each step is idempotent at the read-first level so a re-run does
+  //    not pile on duplicate controllers or overwrite a correct name.
   const resolverAddr = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}`
+  const slug = deriveSlug(userName, personAgentAddress)
+  const primaryName = `${slug}.agent`
   if (resolverAddr) {
     try {
       const wc = getWalletClient()
       const pc = getPublicClient()
 
-      // Register in resolver
+      // 5a. Register (skip if already registered).
       const isReg = await pc.readContract({
         address: resolverAddr, abi: agentAccountResolverAbi,
         functionName: 'isRegistered', args: [personAgentAddress],
@@ -82,18 +116,59 @@ export async function generateDemoWallet(userName?: string): Promise<{
         await pc.waitForTransactionReceipt({ hash: regHash })
       }
 
-      // Set ATL_CONTROLLER
-      const ctrlHash = await wc.writeContract({
+      // 5b. ATL_CONTROLLER — skip if the EOA is already in the multi-address
+      //     list, otherwise re-runs append duplicate copies of the same key.
+      const existingControllers = await pc.readContract({
         address: resolverAddr, abi: agentAccountResolverAbi,
-        functionName: 'addMultiAddressProperty',
-        args: [personAgentAddress, ATL_CONTROLLER as `0x${string}`, account.address],
-      })
-      await pc.waitForTransactionReceipt({ hash: ctrlHash })
+        functionName: 'getMultiAddressProperty',
+        args: [personAgentAddress, ATL_CONTROLLER as `0x${string}`],
+      }) as readonly `0x${string}`[]
+      const alreadyController = existingControllers.some(
+        a => a.toLowerCase() === account.address.toLowerCase(),
+      )
+      if (!alreadyController) {
+        const ctrlHash = await wc.writeContract({
+          address: resolverAddr, abi: agentAccountResolverAbi,
+          functionName: 'addMultiAddressProperty',
+          args: [personAgentAddress, ATL_CONTROLLER as `0x${string}`, account.address],
+        })
+        await pc.waitForTransactionReceipt({ hash: ctrlHash })
+      }
 
-      console.log(`[generate-wallet] Person agent registered: ${personAgentAddress} → ${account.address}`)
+      // 5c. ATL_PRIMARY_NAME — skip if already set to the same value.
+      //     Mandatory: this is what the A2A URL resolver reads. If this
+      //     write fails we throw — the agent is unusable without it and a
+      //     silent warn would surface as a downstream 401 instead.
+      const existingPrimary = await pc.readContract({
+        address: resolverAddr, abi: agentAccountResolverAbi,
+        functionName: 'getStringProperty',
+        args: [personAgentAddress, ATL_PRIMARY_NAME as `0x${string}`],
+      }) as string
+      if (existingPrimary !== primaryName) {
+        const nameHash = await wc.writeContract({
+          address: resolverAddr, abi: agentAccountResolverAbi,
+          functionName: 'setStringProperty',
+          args: [personAgentAddress, ATL_PRIMARY_NAME as `0x${string}`, primaryName],
+        })
+        await pc.waitForTransactionReceipt({ hash: nameHash })
+      }
+
+      console.log(`[generate-wallet] Person agent registered: ${personAgentAddress} → ${account.address} (primary=${primaryName})`)
     } catch (err) {
-      console.warn('[generate-wallet] Person agent registration failed:', err)
+      // Make this loud — without these three writes the person agent
+      // cannot route A2A traffic, and the symptom appears far downstream
+      // as a silent `callMcp` 401. Demo seed runs swallow this at the
+      // boot-seed level, but the log line is unambiguous.
+      console.error(
+        `[generate-wallet] Person agent registration failed for ${personAgentAddress} (primary=${primaryName}):`,
+        err instanceof Error ? err.message : err,
+      )
+      throw err
     }
+  } else {
+    throw new Error(
+      '[generate-wallet] AGENT_ACCOUNT_RESOLVER_ADDRESS not set — cannot register person agent',
+    )
   }
 
   return {

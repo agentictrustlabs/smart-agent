@@ -28,9 +28,12 @@ import {
 import { callMcp } from '@/lib/clients/mcp-client'
 import { loadSignerForCurrentUser } from '@/lib/ssi/signer'
 import { getA2ASessionToken } from '@/lib/actions/a2a-session.action'
+import {
+  resolveA2AEndpointForCurrentUser,
+  A2AUrlResolverError,
+} from '@/lib/clients/a2a-url-resolver'
+import { a2aFetch } from '@/lib/clients/a2a-fetch'
 import type { Address, Hex } from 'viem'
-
-const A2A_AGENT_URL = process.env.A2A_AGENT_URL ?? 'http://localhost:3100'
 
 // ─── Types ───────────────────────────────────────────────────────────
 
@@ -79,7 +82,21 @@ interface SessionStatus {
 }
 
 async function fetchSessionStatus(sessionId: string): Promise<SessionStatus> {
-  const res = await fetch(`${A2A_AGENT_URL}/session/${sessionId}/status`, { cache: 'no-store' })
+  // /session/:id/status is host-protected (Phase 1). Resolve the current
+  // user's A2A endpoint and call through with the right Host header.
+  let ep
+  try {
+    ep = await resolveA2AEndpointForCurrentUser()
+  } catch (e) {
+    if (e instanceof A2AUrlResolverError) {
+      return { active: false, reason: `endpoint-resolution-failed: ${e.message}` }
+    }
+    throw e
+  }
+  const res = await a2aFetch(`${ep.endpoint}/session/${sessionId}/status`, {
+    cache: 'no-store',
+    headers: { 'Host': ep.hostHeader },
+  })
   if (!res.ok) return { active: false, reason: `status-${res.status}` }
   return await res.json() as SessionStatus
 }
@@ -256,8 +273,16 @@ export async function resolveSpec004Chain(
   })
 
   const leafSalt = BigInt(Math.floor(Math.random() * Number.MAX_SAFE_INTEGER))
+  // The leaf's `delegator` MUST equal the admin delegation's `delegate`
+  // (the cred holder) — that's what DelegationManager's chain walk checks
+  // when validating index N+1's delegate equals index N's delegator. In
+  // the legacy single-user path the session's accountAddress happened to
+  // match the holder, but in the stranger-applies-to-round flow the
+  // admin → holder delegation's delegator is the fund agent, not the
+  // session principal. Reading the holder directly from the cred is the
+  // robust source of truth.
   const leaf = await signChildDelegation({
-    delegator: status.accountAddress as Address,
+    delegator: adminDelegation.delegate as Address,
     delegate: status.sessionKeyAddress as Address,
     parentHash: parentHash as Hex,
     caveats: leafCaveats,

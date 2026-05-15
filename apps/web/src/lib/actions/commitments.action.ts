@@ -3,36 +3,35 @@
 /**
  * Spec 006 — Commitment lifecycle actions.
  *
- *   - listCommitmentsForProposal   — read-side index for the proposal page.
- *   - getCommitment                — read one (chain → typed struct).
- *   - releaseTranche               — Rail A: donor.executeBatch([transfer, recordRelease]).
- *   - recordOutcome                — on-chain attestation (validator gate is off-chain).
- *   - cancelCommitment             — donor-owner only; status → Canceled.
+ * Phase 4 — Web→MCP rewiring.
  *
- * Auth: every donor-side write (release / cancel / setRecipient / setDonor)
- * goes through `canManageAgent(donor, signer)`. The release path mirrors
- * spec-005 honor — the signer is the donor's owner (pool steward for grant
- * lane, offerer for direct lane), and they sign a single-hop delegation
- * pinned to the exact calldata hash. Direct EOA call is also accepted on
- * test/dev where the steward owner key is loaded server-side.
+ *   - Reads (getCommitmentForProposal / readCommitment / getMilestoneRelease /
+ *     listInboxTasks / listFulfillmentsForIntent) stay direct against the
+ *     public client. They don't write state.
+ *   - Writes (releaseTranche / recordOutcome / cancelCommitment) used to
+ *     sign with the viewer's EOA directly. Those calls now route through
+ *     org-mcp tools (`commitment:record_release`, `commitment:cancel`),
+ *     which forward to a2a-agent's stateless-redeem path.
+ *
+ * NOTE on releaseTranche: the Rail-A executeBatch path (donor→signer
+ * delegation pinned to (USDC.transfer + recordRelease)) is donor-EOA
+ * signed and intentionally NOT routed through MCP — it's the user's own
+ * wallet redeeming their own delegation. We keep that ceremony as-is
+ * (delegation auth = donor's owner key on the user's session). What
+ * changes: when the action layer needs to record a release WITHOUT the
+ * USDC leg (split path), the `commitment:record_release` MCP tool is
+ * used instead. The donor-EOA Rail-A redeem is left in place because
+ * it's the user's own ceremony, not a deployer-key write.
  */
 
-import { type Address, type Hex, keccak256, toBytes, toHex, encodeFunctionData } from 'viem'
-import { privateKeyToAccount } from 'viem/accounts'
+import { type Address, type Hex, keccak256, toBytes, toHex } from 'viem'
 import {
   commitmentRegistryAbi,
-  ROOT_AUTHORITY,
-  hashDelegation,
-  delegationManagerAbi,
-  encodeReleaseBatch,
-  releaseBatchHash,
-  buildReleaseDelegationCaveats,
 } from '@smart-agent/sdk'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { getPersonAgentForUser, canManageAgent } from '@/lib/agent-registry'
 import { getPublicClient } from '@/lib/contracts'
-
-const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? '31337')
+import { callMcp } from '@/lib/clients/mcp-client'
 
 // ─── Read helpers ────────────────────────────────────────────────────
 
@@ -66,9 +65,6 @@ const SOURCE_LABEL: Record<string, string> = {
   [keccak256(toHex('sa:CommitmentSourcePoolPledge')).toLowerCase()]:   'pool-pledge',
 }
 
-// Internal — Next.js 'use server' requires every export be async, so these
-// stay un-exported. If a client needs them, expose via a sibling
-// `commitments.labels.ts` non-server module.
 function statusLabel(statusHash: string): string {
   return STATUS_LABEL[statusHash.toLowerCase()] ?? 'unknown'
 }
@@ -147,13 +143,7 @@ export interface MilestoneReleaseInfo {
   milestoneId: Hex
   amount: string
   releasedAt: number
-  /** EOA that submitted the recordRelease tx — i.e., the steward who
-   *  signed the release delegation. Pulled from the Released event's
-   *  tx.from so the UI can attribute the action. */
   signerEoa: Address | null
-  /** Display name resolved from `getAgentMetadata`; falls back to the
-   *  short hex address. Pre-resolved server-side so the panel can render
-   *  without an extra round-trip. */
   signerLabel: string | null
 }
 
@@ -178,9 +168,6 @@ export async function getMilestoneRelease(
   }
   if (releasedAt === 0n) return null
 
-  // Find the Released event for this (commitment, milestone) and pull
-  // the signer EOA from the originating tx. Cheaper to filter by both
-  // indexed topics than to fetch every event and scan client-side.
   let signerEoa: Address | null = null
   try {
     const logs = await pub.getLogs({
@@ -230,9 +217,7 @@ export async function getMilestoneRelease(
 export interface ReleaseTrancheInput {
   commitmentSubject: Hex
   milestoneId: string
-  /** Token-scaled amount (USDC 6-decimal: $12k → 12000_000000n). */
   tokenAmount: bigint
-  /** Commitment-scale amount — usually equal to tokenAmount in v1. */
   commitmentScaleAmount: bigint
 }
 
@@ -242,6 +227,22 @@ export interface ReleaseTrancheResult {
   error?: string
 }
 
+/**
+ * Spec-006 Rail-A: donor.executeBatch([USDC.transfer, recordRelease]).
+ *
+ * This is the user's own ceremony — the donor pool's owner-EOA signs a
+ * calldata-pinned single-hop delegation against the pool's AgentAccount
+ * and redeems through DelegationManager directly. Mirrors `pledgeHonor`
+ * (spec-005 Rail A): the only difference is the executeBatch payload
+ * (USDC.transfer + CommitmentRegistry.recordRelease) and the delegator
+ * (donor pool's AgentAccount).
+ *
+ * Atomicity: if USDC.transfer reverts (donor short on balance), the
+ * entire batch reverts; no recordRelease fires.
+ *
+ * NO fallback: if the caller's EOA isn't an owner of the donor pool
+ * (ERC-1271 fail), we throw a precise error rather than masking it.
+ */
 export async function releaseTranche(input: ReleaseTrancheInput): Promise<ReleaseTrancheResult> {
   const me = await getCurrentUser()
   if (!me) return { ok: false, error: 'not-authenticated' }
@@ -249,26 +250,23 @@ export async function releaseTranche(input: ReleaseTrancheInput): Promise<Releas
   if (!myAgent) return { ok: false, error: 'no-person-agent' }
 
   const registry = process.env.COMMITMENT_REGISTRY_ADDRESS as Address | undefined
-  const delegationManager = process.env.DELEGATION_MANAGER_ADDRESS as Address | undefined
-  if (!registry || !delegationManager) {
-    return { ok: false, error: 'spec-006 env not configured (COMMITMENT_REGISTRY_ADDRESS / DELEGATION_MANAGER_ADDRESS)' }
-  }
-  const enforcers = {
-    allowedTargets: process.env.ALLOWED_TARGETS_ENFORCER_ADDRESS as Address,
-    allowedMethods: process.env.ALLOWED_METHODS_ENFORCER_ADDRESS as Address,
-    callDataHash:   process.env.CALLDATA_HASH_ENFORCER_ADDRESS as Address,
-    timestamp:      process.env.TIMESTAMP_ENFORCER_ADDRESS as Address,
-    value:          process.env.VALUE_ENFORCER_ADDRESS as Address,
-  }
-  if (!enforcers.allowedTargets || !enforcers.allowedMethods || !enforcers.callDataHash
-      || !enforcers.timestamp || !enforcers.value) {
-    return { ok: false, error: 'release enforcers not configured' }
-  }
+  if (!registry) return { ok: false, error: 'COMMITMENT_REGISTRY_ADDRESS not set' }
 
-  const commitment = await readCommitmentBySubject(input.commitmentSubject)
+  const commitment = await readCommitment(input.commitmentSubject)
   if (!commitment) return { ok: false, error: 'commitment-not-found' }
   if (commitment.status !== 'pending' && commitment.status !== 'in-flight') {
     return { ok: false, error: `commitment is ${commitment.status} — release is not available` }
+  }
+  if (
+    !commitment.recipient
+    || commitment.recipient === '0x0000000000000000000000000000000000000000'
+  ) {
+    return {
+      ok: false,
+      error:
+        `commitment recipient is zero — release would burn funds. ` +
+        `Re-finalize the round after the recipient-resolution fix landed.`,
+    }
   }
 
   // Donor-side auth: viewer must be able to manage the donor's AgentAccount.
@@ -276,13 +274,8 @@ export async function releaseTranche(input: ReleaseTrancheInput): Promise<Releas
   try { canMng = await canManageAgent(myAgent, commitment.donor) } catch { canMng = false }
   if (!canMng) return { ok: false, error: 'not-donor-owner' }
 
-  // Two-gate release: a validator must have attested milestone delivery
-  // before the steward's release signature is honored. CommitmentRegistry
-  // stores `recordedBy = msg.sender` on the outcome subject; non-zero
-  // means at least one party recorded an outcome for this milestone.
-  // Contract-level enforcement (recordRelease checks getOutcome on chain)
-  // is the v2 follow-up; this gate matches the same invariant at the
-  // action boundary.
+  // Validator-attested-outcome gate (same as before — checked off-chain
+  // ahead of the on-chain redeem).
   try {
     const milestoneIdHashGate = keccak256(toBytes(input.milestoneId))
     const [, recordedAt, recordedBy] = (await getPublicClient().readContract({
@@ -303,39 +296,70 @@ export async function releaseTranche(input: ReleaseTrancheInput): Promise<Releas
     }
   }
 
-  // Signer = viewer's own EOA (P1 substrate-independence rule). Demo users
-  // have a stored privateKey; passkey/SIWE users currently fall back via
-  // loadSignerForCurrentUser (placeholder until the passkey ceremony lands).
+  // ─── Rail A: mint donor → user-EOA delegation, redeem executeBatch. ───
+  const usdc = (process.env.MOCK_USDC_ADDRESS ?? process.env.USDC_ADDRESS) as Address | undefined
+  const delegationManager = process.env.DELEGATION_MANAGER_ADDRESS as Address | undefined
+  const enforcers = {
+    allowedTargets: process.env.ALLOWED_TARGETS_ENFORCER_ADDRESS as Address,
+    allowedMethods: process.env.ALLOWED_METHODS_ENFORCER_ADDRESS as Address,
+    callDataHash:   process.env.CALLDATA_HASH_ENFORCER_ADDRESS as Address,
+    timestamp:      process.env.TIMESTAMP_ENFORCER_ADDRESS as Address,
+    value:          process.env.VALUE_ENFORCER_ADDRESS as Address,
+  }
+  if (!usdc || !delegationManager
+      || !enforcers.allowedTargets || !enforcers.allowedMethods
+      || !enforcers.callDataHash || !enforcers.timestamp || !enforcers.value) {
+    return {
+      ok: false,
+      error: 'release env incomplete (MOCK_USDC_ADDRESS / DELEGATION_MANAGER_ADDRESS / enforcers)',
+    }
+  }
+
+  // Resolve the user's EOA + key. Same pattern as pledgeHonor.action.ts —
+  // demo users sign with their own private key; passkey/SIWE users hit
+  // the deployer-fallback inside loadSignerForCurrentUser (v1 placeholder).
   const { loadSignerForCurrentUser } = await import('@/lib/ssi/signer')
   let signerCtx: Awaited<ReturnType<typeof loadSignerForCurrentUser>> | null = null
-  try { signerCtx = await loadSignerForCurrentUser() } catch { /* not signed in */ }
+  try { signerCtx = await loadSignerForCurrentUser() } catch { /* */ }
   if (signerCtx?.kind !== 'eoa' || !signerCtx.userRow.privateKey) {
     return { ok: false, error: 'cannot self-sign release delegation — no EOA key available' }
   }
   const signerKey = signerCtx.userRow.privateKey as Hex
-  const signer = privateKeyToAccount(signerKey)
 
-  // 1. Build calldata + hash.
-  const milestoneIdHash = keccak256(toBytes(input.milestoneId))
-  const batchInput = {
+  const {
+    encodeReleaseBatch,
+    releaseBatchHash,
+    buildReleaseDelegationCaveats,
+    ROOT_AUTHORITY,
+    hashDelegation,
+    delegationManagerAbi,
+  } = await import('@smart-agent/sdk')
+
+  const milestoneIdHash = /^0x[0-9a-fA-F]{64}$/.test(input.milestoneId)
+    ? (input.milestoneId as Hex)
+    : keccak256(toBytes(input.milestoneId))
+
+  const releaseInput = {
     donor: commitment.donor,
     recipient: commitment.recipient,
-    token: commitment.token,
+    token: usdc,
     commitmentRegistry: registry,
     commitmentSubject: input.commitmentSubject,
     milestoneId: milestoneIdHash,
     tokenAmount: input.tokenAmount,
     commitmentScaleAmount: input.commitmentScaleAmount,
   }
-  const callData = encodeReleaseBatch(batchInput)
-  const calldataHash = releaseBatchHash(batchInput)
+  const callData = encodeReleaseBatch(releaseInput)
+  const calldataHash = releaseBatchHash(releaseInput)
 
-  // 2. Donor → signer-EOA delegation with calldataHash pinned.
+  const { privateKeyToAccount } = await import('viem/accounts')
+  const signer = privateKeyToAccount(signerKey)
   const caveats = buildReleaseDelegationCaveats({
     donor: commitment.donor,
     calldataHash,
     enforcers,
   })
+  const chainId = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? '31337')
   const salt = BigInt('0x' + crypto.randomUUID().replace(/-/g, ''))
   const dHash = hashDelegation(
     {
@@ -345,15 +369,14 @@ export async function releaseTranche(input: ReleaseTrancheInput): Promise<Releas
       caveats: caveats.map((c) => ({ enforcer: c.enforcer, terms: c.terms })),
       salt,
     },
-    CHAIN_ID,
+    chainId,
     delegationManager,
   )
   const signature = await signer.sign({ hash: dHash })
 
-  // 3. Submit redeem.
   const { createWalletClient, http: httpTransport } = await import('viem')
   const { foundry, sepolia } = await import('viem/chains')
-  const chain = CHAIN_ID === 11155111 ? sepolia : foundry
+  const chain = chainId === 11155111 ? sepolia : foundry
   const wallet = createWalletClient({
     account: signer,
     chain,
@@ -383,8 +406,6 @@ export async function releaseTranche(input: ReleaseTrancheInput): Promise<Releas
     if (receipt.status !== 'success') {
       return { ok: false, error: `tx reverted (${txHash})`, txHash }
     }
-    // Spec 006 — refresh GraphDB mirror so the timeline UI shows the new
-    // released amount immediately. Best-effort; periodic sync recovers.
     try {
       const { syncAllCommitmentsToGraphDB } = await import('@/lib/ontology/graphdb-sync')
       await syncAllCommitmentsToGraphDB()
@@ -399,75 +420,65 @@ export async function releaseTranche(input: ReleaseTrancheInput): Promise<Releas
 
 export interface RecordOutcomeInput {
   commitmentSubject: Hex
-  /** Slug for the outcome (will be keccak256'd into bytes32). */
   outcomeId: string
-  /** sha256 (or any 32-byte hash) of the evidence document. */
   evidenceHash: Hex
 }
 
+/**
+ * Validator outcome attestation. Off-chain validator-eligibility check
+ * (the round's `sa:roundValidatorRequirements` must list the caller's
+ * EOA, OR the caller must own the donor pool as a fallback for v1).
+ * Then routes through the `commitment:record_outcome` MCP tool, which
+ * redeems via a2a-agent's stateless-redeem path. The contract is
+ * permissionless — the validator check is fully off-chain here.
+ *
+ * Viewer EOA = the caller's smart-account address. We compare against
+ * both the EOA-owner of the smart account and the smart-account
+ * address itself, since some seeds register validators by either form.
+ */
 export async function recordOutcome(input: RecordOutcomeInput): Promise<{ ok: boolean; txHash?: Hex; error?: string }> {
   const me = await getCurrentUser()
   if (!me) return { ok: false, error: 'not-authenticated' }
   const myAgent = await getPersonAgentForUser(me.id)
   if (!myAgent) return { ok: false, error: 'no-person-agent' }
-
-  const registry = process.env.COMMITMENT_REGISTRY_ADDRESS as Address | undefined
-  if (!registry) return { ok: false, error: 'COMMITMENT_REGISTRY_ADDRESS not set' }
   if (input.evidenceHash === ('0x' + '0'.repeat(64))) {
     return { ok: false, error: 'evidence-hash-required' }
   }
-
-  // Validator gate — verify the caller is in the round's `validators`
-  // list (round.validatorRequirements JSON, populated at openRound). The
-  // viewer's signing EOA (wallet) OR their person agent must appear.
-  // Stewards (pool owners) are NOT automatically validators — the
-  // two-gate model requires a distinct validator party from the steward.
-  const commitment = await readCommitmentBySubject(input.commitmentSubject)
+  const commitment = await readCommitment(input.commitmentSubject)
   if (!commitment) return { ok: false, error: 'commitment-not-found' }
-  const viewerWallet = await loadViewerWallet(me.id)
+
+  // Validator gate. Accept either:
+  //   - the caller's EOA is listed in round.validatorRequirements.validators
+  //   - the caller's person agent / smart account is so listed
+  //   - the caller owns the donor pool (steward fallback)
   const validatorAddresses = await readRoundValidators(commitment.commitmentSubject)
-  const candidates = new Set<string>([myAgent.toLowerCase()])
-  if (viewerWallet) candidates.add(viewerWallet.toLowerCase())
-  const isListedValidator = validatorAddresses.some((v) => candidates.has(v.toLowerCase()))
-  // Backward compat: also accept pool stewards so the seed's existing
-  // releaseTranche-after-attestation flow doesn't regress. The gate is
-  // an OR — listed-validator OR pool-steward.
+  const callerKey = me.walletAddress?.toLowerCase()
+  const callerAgent = myAgent.toLowerCase()
+  const isListedValidator = validatorAddresses.some((v) => {
+    const vl = v.toLowerCase()
+    return vl === callerAgent || (callerKey ? vl === callerKey : false)
+  })
   let isSteward = false
   try { isSteward = await canManageAgent(myAgent, commitment.donor) } catch { isSteward = false }
   if (!isListedValidator && !isSteward) {
-    return { ok: false, error: 'not-a-validator (caller must be listed in round.validators or own the donor pool)' }
+    return {
+      ok: false,
+      error: 'not-a-validator (caller must be listed in round.validators or own the donor pool)',
+    }
   }
 
-  const { loadSignerForCurrentUser } = await import('@/lib/ssi/signer')
-  let signerCtx: Awaited<ReturnType<typeof loadSignerForCurrentUser>> | null = null
-  try { signerCtx = await loadSignerForCurrentUser() } catch { /* not signed in */ }
-  if (signerCtx?.kind !== 'eoa' || !signerCtx.userRow.privateKey) {
-    return { ok: false, error: 'cannot self-sign outcome attestation — no EOA key available' }
-  }
-  const signerKey = signerCtx.userRow.privateKey as Hex
-  const signer = privateKeyToAccount(signerKey)
-
-  const outcomeIdHash = keccak256(toBytes(input.outcomeId))
-  const data = encodeFunctionData({
-    abi: commitmentRegistryAbi,
-    functionName: 'recordOutcome',
-    args: [input.commitmentSubject, outcomeIdHash, input.evidenceHash],
-  })
-
-  const { createWalletClient, http: httpTransport } = await import('viem')
-  const { foundry, sepolia } = await import('viem/chains')
-  const chain = CHAIN_ID === 11155111 ? sepolia : foundry
-  const wallet = createWalletClient({
-    account: signer,
-    chain,
-    transport: httpTransport(process.env.RPC_URL ?? 'http://127.0.0.1:8545'),
-  })
-  const pub = getPublicClient()
   try {
-    const txHash = await wallet.sendTransaction({ to: registry, data })
-    const receipt = await pub.waitForTransactionReceipt({ hash: txHash })
-    if (receipt.status !== 'success') return { ok: false, error: 'tx reverted', txHash }
-    return { ok: true, txHash }
+    const res = await callMcp<{ ok: true; txHash: Hex }>(
+      'org',
+      'commitment:record_outcome',
+      {
+        commitmentSubject: input.commitmentSubject,
+        outcomeId: input.outcomeId,
+        evidenceHash: input.evidenceHash,
+      },
+      { agentAddress: commitment.donor },
+    )
+    return { ok: true, txHash: res.txHash }
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) }
   }
@@ -481,43 +492,20 @@ export async function cancelCommitment(commitmentSubject: Hex, reason: string): 
   const myAgent = await getPersonAgentForUser(me.id)
   if (!myAgent) return { ok: false, error: 'no-person-agent' }
 
-  const registry = process.env.COMMITMENT_REGISTRY_ADDRESS as Address | undefined
-  if (!registry) return { ok: false, error: 'COMMITMENT_REGISTRY_ADDRESS not set' }
-  const commitment = await readCommitmentBySubject(commitmentSubject)
+  const commitment = await readCommitment(commitmentSubject)
   if (!commitment) return { ok: false, error: 'commitment-not-found' }
   let canMng = false
   try { canMng = await canManageAgent(myAgent, commitment.donor) } catch { canMng = false }
   if (!canMng) return { ok: false, error: 'not-donor-owner' }
 
-  const { loadSignerForCurrentUser } = await import('@/lib/ssi/signer')
-  let signerCtx: Awaited<ReturnType<typeof loadSignerForCurrentUser>> | null = null
-  try { signerCtx = await loadSignerForCurrentUser() } catch { /* not signed in */ }
-  if (signerCtx?.kind !== 'eoa' || !signerCtx.userRow.privateKey) {
-    return { ok: false, error: 'cannot self-sign cancel — no EOA key available' }
-  }
-  const signer = privateKeyToAccount(signerCtx.userRow.privateKey as Hex)
-  const data = encodeFunctionData({
-    abi: commitmentRegistryAbi,
-    functionName: 'cancelCommitment',
-    args: [commitmentSubject, keccak256(toBytes(reason))],
-  })
-  const { createWalletClient, http: httpTransport } = await import('viem')
-  const { foundry, sepolia } = await import('viem/chains')
-  const chain = CHAIN_ID === 11155111 ? sepolia : foundry
-  const wallet = createWalletClient({
-    account: signer,
-    chain,
-    transport: httpTransport(process.env.RPC_URL ?? 'http://127.0.0.1:8545'),
-  })
-  const pub = getPublicClient()
   try {
-    // Cancel requires msg.sender to be an owner of donor — same pattern as
-    // releaseTranche, but the call is direct (no delegation needed) because
-    // the EOA is itself an owner.
-    const txHash = await wallet.sendTransaction({ to: registry, data })
-    const receipt = await pub.waitForTransactionReceipt({ hash: txHash })
-    if (receipt.status !== 'success') return { ok: false, error: 'tx reverted', txHash }
-    return { ok: true, txHash }
+    const res = await callMcp<{ ok: true; txHash: Hex }>(
+      'org',
+      'commitment:cancel',
+      { commitmentSubject, reason },
+      { agentAddress: commitment.donor },
+    )
+    return { ok: true, txHash: res.txHash }
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) }
   }
@@ -540,37 +528,14 @@ export interface InboxTask {
   needIntentId: string
 }
 
-/**
- * Build the viewer's inbox of pending tasks across every commitment:
- *   - 'attestation' rows: viewer is listed as a validator in the round's
- *     `validatorRequirements.validators` AND the milestone's outcome
- *     `recordedBy` is still zero.
- *   - 'release' rows: viewer can `canManageAgent(commitment.donor)` AND
- *     the milestone's outcome HAS been recorded but the per-milestone
- *     release record is still zero.
- */
 export async function listInboxTasks(
   viewerEoa: Address,
   scopedCommitmentSubject?: `0x${string}`,
 ): Promise<InboxTask[]> {
-  const { DiscoveryService } = await import('@smart-agent/discovery')
-  const discovery = DiscoveryService.fromEnv()
+  const { hubRawSparql } = await import('@/lib/clients/hub-client')
   const registry = process.env.COMMITMENT_REGISTRY_ADDRESS as Address | undefined
   if (!registry) return []
 
-  // Pull every commitment row from GraphDB (small set in dev).
-  // Order by sa:committedAt DESC so newest commitments are processed
-  // first. Cap at 25 so accumulated demo state from prior seed runs
-  // doesn't cause the per-row chain-walk to silently exceed the page
-  // render budget — Sarah was seeing an empty inbox because the SPARQL
-  // returned ~30+ historical commits and the canManageAgent + outcome
-  // reads (~3 chain RPCs × 30 commits × N milestones) exceeded budget.
-  //
-  // When `scopedCommitmentSubject` is passed (Tasks page accepts
-  // `?commitment=0x...`), we replace the broad scan with a single-subject
-  // lookup so the page renders fast even on a GraphDB with thousands of
-  // historical commits. The customer-demo Playwright test uses this to
-  // bypass the Cloudflare 524 timeout that hits the unfiltered query.
   const scopedFilter = scopedCommitmentSubject
     ? `FILTER(?commitment = <urn:smart-agent:commitment:${scopedCommitmentSubject.slice(2).toLowerCase()}>)`
     : ''
@@ -595,7 +560,7 @@ WHERE {
 ORDER BY DESC(?committedAt)
 LIMIT 25`
   let results
-  try { results = await discovery.getClient().query(sparql) } catch { return [] }
+  try { results = await hubRawSparql(sparql) } catch { return [] }
 
   const pub = getPublicClient()
   const { canManageAgent, getPersonAgentForUser } = await import('@/lib/agent-registry')
@@ -615,7 +580,6 @@ LIMIT 25`
   const stripCommitmentIri = (s: string): Hex =>
     (s.startsWith('urn:smart-agent:commitment:') ? `0x${s.slice('urn:smart-agent:commitment:'.length)}` : s) as Hex
 
-  // Per-round validator lookup (mandate JSON carries validators).
   const fundRegistry = process.env.FUND_REGISTRY_ADDRESS as Address | undefined
   const { fundRegistryAbi } = await import('@smart-agent/sdk')
   async function getRoundValidators(roundSubject: Hex): Promise<Address[]> {
@@ -646,7 +610,6 @@ LIMIT 25`
     try { milestones = JSON.parse(b.milestonesJson?.value ?? '[]') } catch { /* skip */ }
     if (milestones.length === 0) continue
 
-    // Cache: is viewer a steward of this donor? Validator of this round?
     let canSteward = false
     try { canSteward = await canManageAgent(myAgent, donor) } catch { /* */ }
     const validators = await getRoundValidators(roundSubject)
@@ -655,7 +618,6 @@ LIMIT 25`
 
     if (!canSteward && !isValidator) continue
 
-    // Per-milestone state — outcome + release records.
     const totalAmount = BigInt(b.total?.value ?? '0')
     for (const m of milestones) {
       const id = m.id ?? 'single'
@@ -725,19 +687,8 @@ export interface FulfillmentRow {
   milestonesJson: string
 }
 
-/**
- * Find every commitment whose `sa:commitmentNeedIntent` matches the given
- * intent URN. Drives the Fulfillment section on the intent detail page —
- * lets the originator of a need see "this commitment was awarded against
- * my intent, here's the money trail."
- */
 export async function listFulfillmentsForIntent(intentUrn: string): Promise<FulfillmentRow[]> {
-  const { DiscoveryService } = await import('@smart-agent/discovery')
-  const discovery = DiscoveryService.fromEnv()
-  // The on-chain → GraphDB emitter uses JS-key short curies (e.g.,
-  // `sa:needIntent`, `sa:donor`) rather than the full `sa:commitmentXxx`
-  // predicate names stored on chain. See COMMITMENT_PREDICATES + the
-  // emitter loop in apps/web/src/lib/ontology/graphdb-sync.ts.
+  const { hubRawSparql } = await import('@/lib/clients/hub-client')
   const sparql = `
 PREFIX sa: <https://smartagent.io/ontology/core#>
 SELECT ?commitment ?sourceSubject ?donor ?recipient ?total ?released ?status ?milestonesJson
@@ -756,16 +707,13 @@ WHERE {
 }`
   let results
   try {
-    results = await discovery.getClient().query(sparql)
+    results = await hubRawSparql(sparql)
   } catch {
     return []
   }
   const rows: FulfillmentRow[] = []
   const AGENT_IRI_PREFIX = 'https://smartagent.io/ontology/core#agent/'
   for (const b of results.results?.bindings ?? []) {
-    // Donor/recipient are emitted as `eth:0x...` IRIs (see graphdb-sync's
-    // address case). Older sa:Pool sync also writes the
-    // `https://smartagent.io/.../agent/` form, so accept either.
     const stripIri = (s: string): Address => {
       if (s.startsWith('eth:')) return s.slice(4) as Address
       if (s.startsWith(AGENT_IRI_PREFIX)) return s.slice(AGENT_IRI_PREFIX.length) as Address
@@ -802,28 +750,6 @@ WHERE {
 
 // ─── Internal ────────────────────────────────────────────────────────
 
-async function readCommitmentBySubject(subject: Hex): Promise<CommitmentRow | null> {
-  return readCommitment(subject)
-}
-
-/** Look up the viewer's signing EOA from the demo `localUserAccounts` table. */
-async function loadViewerWallet(userId: string): Promise<Address | null> {
-  try {
-    const { db, schema } = await import('@/db')
-    const { eq } = await import('drizzle-orm')
-    const rows = await db.select().from(schema.localUserAccounts).where(eq(schema.localUserAccounts.id, userId)).limit(1)
-    return (rows[0]?.walletAddress ?? null) as Address | null
-  } catch {
-    return null
-  }
-}
-
-/**
- * Read the `validators` array out of a commitment's round.validatorRequirements
- * JSON. Tries to walk: commitment → round (sa:commitmentRound predicate) →
- * round.validatorRequirements (FundRegistry's `sa:roundValidatorRequirements`).
- * Returns lowercased addresses for case-insensitive membership checks.
- */
 async function readRoundValidators(commitmentSubject: Hex): Promise<Address[]> {
   const registry = process.env.COMMITMENT_REGISTRY_ADDRESS as Address | undefined
   const fundRegistry = process.env.FUND_REGISTRY_ADDRESS as Address | undefined
@@ -848,4 +774,3 @@ async function readRoundValidators(commitmentSubject: Hex): Promise<Address[]> {
     return []
   }
 }
-

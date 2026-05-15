@@ -201,6 +201,7 @@ export async function POST(request: Request) {
     const r = await bootstrapA2ASessionForUser({
       smartAccountAddress: user.smartAccountAddress,
       privateKey: user.privateKey,
+      personAgentAddress: user.personAgentAddress,
     })
     if (r.success && r.sessionId) {
       a2aSessionId = r.sessionId

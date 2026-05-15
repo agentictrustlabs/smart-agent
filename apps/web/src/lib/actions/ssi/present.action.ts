@@ -1,9 +1,24 @@
 'use server'
 
+/**
+ * Routing rule (phase 3 of A2A-first consolidation):
+ *   - Person-mcp tool calls (`ssi_list_my_credentials`,
+ *     `ssi_create_wallet_action`, `ssi_create_presentation`) go through
+ *     `callMcp('person', …)`. The signed-in user IS the holder making
+ *     the presentation; no `agentAddress` opt needed.
+ *   - family-mcp verifier endpoints (`guardianRequest` / `guardianCheck`)
+ *     are issuer/verifier PROTOCOL surfaces, not /tools/, and stay
+ *     direct HTTP via the `family` client.
+ *   - `dispatchWalletAction` continues to flow through the session-grant
+ *     code path in `wallet-action/dispatch.ts` (see TODO there for the
+ *     phase-4 wrapping of `/wallet-action/dispatch` as an MCP tool).
+ */
+
 import { revalidatePath } from 'next/cache'
 import type { WalletAction } from '@smart-agent/privacy-creds'
 import { loadSignerForCurrentUser, signWalletAction } from '@/lib/ssi/signer'
-import { person, family } from '@/lib/ssi/clients'
+import { family } from '@/lib/ssi/clients'
+import { callMcp } from '@/lib/clients/mcp-client'
 import { dispatchWalletAction, DispatchError } from '@/lib/wallet-action/dispatch'
 
 export interface PresentToCoachResult {
@@ -28,9 +43,9 @@ export async function presentGuardianToCoachAction(args: {
   try {
     const { principal } = await loadSignerForCurrentUser()
 
-    const list = await person.callTool<{ credentials: Array<{
+    const list = await callMcp<{ credentials: Array<{
       id: string; holderWalletRef: string; credentialType: string; walletContext: string
-    }> }>('ssi_list_my_credentials', { principal })
+    }> }>('person', 'ssi_list_my_credentials', { principal })
     const row = list.credentials.find(c => c.id === args.credentialId)
     if (!row) return { success: false, error: 'unknown credential' }
     if (row.credentialType !== 'GuardianOfMinorCredential') {
@@ -43,7 +58,8 @@ export async function presentGuardianToCoachAction(args: {
     const req = await family.guardianRequest()
     const presentationRequest = req.presentationRequest
 
-    const built = await person.callTool<{ action: WalletAction & { expiresAt: string } }>(
+    const built = await callMcp<{ action: WalletAction & { expiresAt: string } }>(
+      'person',
       'ssi_create_wallet_action',
       {
         principal,
@@ -63,11 +79,11 @@ export async function presentGuardianToCoachAction(args: {
     const action: WalletAction = { ...built.action, expiresAt: BigInt(built.action.expiresAt) }
     const { signer, signature } = await signWalletAction(action)
 
-    const presRes = await person.callTool<{
+    const presRes = await callMcp<{
       presentation?: string
       auditSummary?: { revealedAttrs: string[]; pairwiseHandle: string }
       error?: string
-    }>('ssi_create_presentation', {
+    }>('person', 'ssi_create_presentation', {
       action: built.action,
       signature,
       expectedSigner: signer,
@@ -122,9 +138,9 @@ export async function presentGuardianToCoachViaSession(args: {
   try {
     const { principal } = await loadSignerForCurrentUser()
 
-    const list = await person.callTool<{ credentials: Array<{
+    const list = await callMcp<{ credentials: Array<{
       id: string; holderWalletRef: string; credentialType: string; walletContext: string
-    }> }>('ssi_list_my_credentials', { principal })
+    }> }>('person', 'ssi_list_my_credentials', { principal })
     const row = list.credentials.find(c => c.id === args.credentialId)
     if (!row) return { success: false, error: 'unknown credential' }
     if (row.credentialType !== 'GuardianOfMinorCredential') {

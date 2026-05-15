@@ -1,6 +1,21 @@
 /**
  * Spec 004 (b2) — demo-seed bootstrap for marketplace credentials.
  *
+ * Routing rule (phase 3 of A2A-first consolidation):
+ *   - Person-mcp tool calls (`ssi_create_wallet_action`,
+ *     `ssi_start_credential_exchange`, `ssi_finish_credential_exchange`)
+ *     target the HOLDER's person agent — which is NOT the signed-in user
+ *     in the admin-issue path. We pin the A2A host explicitly with
+ *     `callMcp('person', name, args, { agentAddress: holderAccount })`
+ *     so the A2A proxy resolves to the holder's `<slug>.agent.localhost:3100`.
+ *   - Org-mcp `/credential/offer` + `/credential/issue` are issuer protocol
+ *     endpoints (unauthenticated, holder-side AnonCreds blinding) and stay
+ *     direct HTTP via the `org` client.
+ *   - The OID4VCI-style endpoints on org-mcp also stay direct as public
+ *     protocol surfaces (handled in clients.ts).
+ *   - The final SQL backfill is a direct sqlite write into person-mcp.db
+ *     (dev-only fallback for the row update); not an HTTP path, kept as is.
+ *
  * Issues `ProposalSubmitterCredential` to a given holder for a pool,
  * and / or `RoundVoterCredential` for a round, AND mints the matching
  * `admin → holder` on-chain delegation (signed by the admin's stored
@@ -26,7 +41,8 @@ import {
   SPEC004_SELECTORS,
   type Spec004SignedDelegation,
 } from '@smart-agent/sdk'
-import { org, person } from '@/lib/ssi/clients'
+import { org } from '@/lib/ssi/clients'
+import { callMcp } from '@/lib/clients/mcp-client'
 import { provisionHolderWalletForDemoUser } from './provision-holder-wallet'
 import { bootstrapA2ASessionForUser } from '@/lib/actions/a2a-session.action'
 
@@ -181,13 +197,14 @@ export async function seedSpec004Credential(input: SeedSpec004Input): Promise<Se
   const credentialOfferJson = offer.credentialOfferJson
 
   // ─── 2. Build + sign an AcceptCredentialOffer WalletAction ───────
-  //         person-mcp's /tools/ endpoint unwraps the content[0].text
-  //         envelope and returns the parsed JSON directly, so we use
-  //         `person.callTool` rather than going through a2a's mcp-proxy.
+  //         Routed via `callMcp('person', …, { agentAddress: holderAccount })`
+  //         so the A2A proxy resolves to the HOLDER's person agent (not the
+  //         signed-in admin's). person-mcp's tool endpoint unwraps the
+  //         content[0].text envelope and returns parsed JSON directly.
   void bootstrapA2ASessionForUser
   let actionPayload: { action?: WalletAction & { expiresAt: string }; error?: string }
   try {
-    actionPayload = await person.callTool<typeof actionPayload>('ssi_create_wallet_action', {
+    actionPayload = await callMcp<typeof actionPayload>('person', 'ssi_create_wallet_action', {
       principal: holderPrincipal,
       walletContext: holderWalletContext,
       type: 'AcceptCredentialOffer',
@@ -198,7 +215,7 @@ export async function seedSpec004Credential(input: SeedSpec004Input): Promise<Se
       schemaId: offer.schemaId,
       credDefId: offer.credDefId,
       issuerId: offer.issuerId,
-    })
+    }, { agentAddress: holderAccount })
   } catch (e) {
     return { ok: false, error: `ssi_create_wallet_action threw: ${e instanceof Error ? e.message : String(e)}` }
   }
@@ -215,14 +232,15 @@ export async function seedSpec004Credential(input: SeedSpec004Input): Promise<Se
   })
 
   // ─── 3. Holder builds the credential request via ssi-wallet-mcp ──
+  //         A2A-routed against the holder's person agent.
   let startParsed: { credentialRequestJson?: string; requestId?: string; error?: string }
   try {
-    startParsed = await person.callTool<typeof startParsed>('ssi_start_credential_exchange', {
+    startParsed = await callMcp<typeof startParsed>('person', 'ssi_start_credential_exchange', {
       action: actionPayload.action,
       signature: acceptSignature,
       credentialOfferJson,
       credDefId: offer.credDefId,
-    })
+    }, { agentAddress: holderAccount })
   } catch (e) {
     return { ok: false, error: `ssi_start_credential_exchange threw: ${e instanceof Error ? e.message : String(e)}` }
   }
@@ -246,6 +264,11 @@ export async function seedSpec004Credential(input: SeedSpec004Input): Promise<Se
   //         spec-004 needs the explicit type so the right credDef is
   //         loaded. Plain fetch — `org.issue` SDK helper doesn't surface
   //         the field yet.
+  //
+  //         Per phase 3 routing rule: org-mcp `/credential/issue` is an
+  //         ISSUER protocol endpoint (not a /tools/ surface and not
+  //         user-authenticated — the AnonCreds blinding ceremony
+  //         establishes holder identity). Stays direct HTTP by design.
   const issuedResp = await fetch(`${process.env.ORG_MCP_URL ?? 'http://localhost:3400'}/credential/issue`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -312,9 +335,10 @@ export async function seedSpec004Credential(input: SeedSpec004Input): Promise<Se
   }
 
   // ─── 6. Holder stores credential + admin delegation ──────────────
+  //         A2A-routed against the holder's person agent.
   let finishParsed: { credentialId?: string; error?: string }
   try {
-    finishParsed = await person.callTool<typeof finishParsed>('ssi_finish_credential_exchange', {
+    finishParsed = await callMcp<typeof finishParsed>('person', 'ssi_finish_credential_exchange', {
       principal: holderPrincipal,
       holderWalletId,
       requestId: startParsed.requestId ?? '',
@@ -326,7 +350,7 @@ export async function seedSpec004Credential(input: SeedSpec004Input): Promise<Se
       // AnonCred so the action layer can rebuild the chain at action time.
       adminDelegationJson: JSON.stringify(adminDelegation),
       adminDelegationTarget: targetRegistry.toLowerCase(),
-    })
+    }, { agentAddress: holderAccount })
   } catch (e) {
     return { ok: false, error: `ssi_finish_credential_exchange threw: ${e instanceof Error ? e.message : String(e)}` }
   }

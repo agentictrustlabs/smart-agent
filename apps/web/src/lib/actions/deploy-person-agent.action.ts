@@ -3,11 +3,10 @@
 import { db, schema } from '@/db'
 import { eq } from 'drizzle-orm'
 import { requireSession } from '@/lib/auth/session'
-import { deploySmartAccount } from '@/lib/contracts'
-import { keccak256, encodePacked } from 'viem'
+import { keccak256, encodePacked, type Address } from 'viem'
 import { getPersonAgentForUser } from '@/lib/agent-registry'
-import { addAgentController } from '@/lib/agent-resolver'
 import { registerAgentMetadata } from '@/lib/actions/agent-metadata.action'
+import { callMcp } from '@/lib/clients/mcp-client'
 
 export interface DeployPersonAgentResult {
   success: boolean
@@ -17,8 +16,17 @@ export interface DeployPersonAgentResult {
 }
 
 /**
- * Deploy a Person Agent — calls AgentAccountFactory.createAccount() on-chain
- * to deploy an ERC-4337 AgentAccount owned by the user's wallet.
+ * Phase 4 — Deploy a Person Agent through the org-mcp `agent:deploy`
+ * tool which forwards to a2a-agent's /session/:id/deploy-agent endpoint.
+ * The web app no longer signs the factory call with the deployer wallet.
+ *
+ * The controller-list write was previously a direct setStringProperty;
+ * registerAgentMetadata now routes through the agent_resolver:register
+ * MCP tool, which handles register/updateCore + multi-string props.
+ * Controller list additions become a separate concern handled by the
+ * `agent_resolver:register` tool family when needed (the previous
+ * addAgentController helper used the deployer wallet and is replaced
+ * with the multi-string property pass inside the same MCP tool).
  */
 export async function deployPersonAgent(agentName?: string): Promise<DeployPersonAgentResult> {
   try {
@@ -49,13 +57,16 @@ export async function deployPersonAgent(agentName?: string): Promise<DeployPerso
     }
 
     const ownerAddress = session.walletAddress as `0x${string}`
-
-    // Deterministic salt from owner address
     const saltHash = keccak256(encodePacked(['string', 'address'], ['person', ownerAddress]))
     const salt = BigInt(saltHash)
 
-    // Deploy on-chain via factory
-    const smartAccountAddress = await deploySmartAccount(ownerAddress, salt)
+    const deployRes = await callMcp<{ ok: true; address: Address; txHash: `0x${string}` }>(
+      'org',
+      'agent:deploy',
+      { owner: ownerAddress, salt: salt.toString() },
+      { agentAddress: ownerAddress },
+    )
+    const smartAccountAddress = deployRes.address
 
     await registerAgentMetadata({
       agentAddress: smartAccountAddress,
@@ -63,7 +74,6 @@ export async function deployPersonAgent(agentName?: string): Promise<DeployPerso
       description: '',
       agentType: 'person',
     })
-    await addAgentController(smartAccountAddress, ownerAddress)
 
     return { success: true, agentId: smartAccountAddress, smartAccountAddress }
   } catch (error) {

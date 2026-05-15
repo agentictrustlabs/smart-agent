@@ -1,0 +1,10 @@
+
+> @smart-agent/hub-mcp@0.0.1 dev /home/barb/smart-agent/apps/hub-mcp
+> tsx src/index.ts
+
+[hub-mcp] HTTP server on http://localhost:3900
+[hub-mcp] GraphDB: https://graphdb.agentkg.io (SmartAgents)
+[hub-mcp] Tools: discovery:list_agents, discovery:get_agent_detail, discovery:list_rounds, discovery:get_round_detail, discovery:list_pools, discovery:get_pool_detail, discovery:get_outgoing_edges, discovery:get_incoming_edges, discovery:get_hop_distance, discovery:list_recent_allocations, discovery:raw_sparql, discovery:list_candidates_for_intent, discovery:list_active_initiations_for_intent, discovery:count_agents_by_type, discovery:count_edges, sync:all, sync:pool, sync:round, sync:all_pools, sync:all_commitments, sync:schedule
+[hub-mcp] MCP stdio transport connected
+<-- GET /health
+--> GET /health [32m200[0m 0ms

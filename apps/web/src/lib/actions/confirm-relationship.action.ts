@@ -7,14 +7,14 @@ import {
   getEdgeRoles,
 } from '@/lib/contracts'
 import { ROLE_REVIEWER } from '@smart-agent/sdk'
-import { scheduleKbSyncEager } from '@/lib/ontology/kb-write-through'
+import { hubScheduleKbSync } from '@/lib/clients/hub-client'
 
 export async function confirmRelationshipAction(edgeId: string) {
   try {
     const session = await requireSession()
     if (!session.walletAddress) return { success: false, error: 'No wallet' }
     await confirmRelationship(edgeId as `0x${string}`)
-    scheduleKbSyncEager()
+    await hubScheduleKbSync(true)
 
     // Reviewer authority is derived from the active relationship itself.
     try {
@@ -35,7 +35,7 @@ export async function rejectRelationshipAction(edgeId: string) {
     const session = await requireSession()
     if (!session.walletAddress) return { success: false, error: 'No wallet' }
     await rejectRelationship(edgeId as `0x${string}`)
-    scheduleKbSyncEager()
+    await hubScheduleKbSync(true)
     return { success: true }
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : 'Failed to reject' }

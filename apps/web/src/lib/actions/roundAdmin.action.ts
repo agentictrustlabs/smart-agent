@@ -53,8 +53,30 @@ export async function advanceRoundLifecycle(
         newStatus,
       },
     )
-    const { scheduleKbSyncEager } = await import('@/lib/ontology/kb-write-through')
-    scheduleKbSyncEager()
+    // When the admin advances to `review` (i.e. closes submissions and opens
+    // voting), bump `votingWindowStartsAt` to now. The round was created with
+    // `votingWindowStartsAt = submissionDeadline` (14 days out by default),
+    // so without this the eligibility check still reports `voting-not-started`
+    // even though the status moved to review. Voting window end is left alone
+    // — the operator can still cap voting at the configured ISO timestamp.
+    if (newStatus === 'review') {
+      const nowIso = new Date().toISOString()
+      try {
+        await callMcp('org', 'round:update_voting_config', {
+          roundId: roundFullId.startsWith('urn:smart-agent:round:')
+            ? roundFullId
+            : `urn:smart-agent:round:${roundSlug}`,
+          votingWindowStartsAt: nowIso,
+        })
+      } catch (err) {
+        // Non-fatal: status advanced; voting just won't open if this
+        // config update missed. Surfaced via the eligibility-reason
+        // chip in the UI.
+        console.warn('[advanceRoundLifecycle] voting-window bump failed (non-fatal):', err instanceof Error ? err.message : err)
+      }
+    }
+    const { hubScheduleKbSync } = await import('@/lib/clients/hub-client')
+    await hubScheduleKbSync(true)
     return { ok: true, newStatus, txHash: res.txHash }
   } catch (err) {
     if (err instanceof McpCallError) return { ok: false, error: err.message }

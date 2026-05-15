@@ -24,7 +24,7 @@
  */
 
 import {
-  createWalletClient, createPublicClient, http,
+  createPublicClient, http,
   encodeFunctionData, encodeAbiParameters, toFunctionSelector,
   keccak256, encodePacked,
   type Address, type Hex,
@@ -33,6 +33,7 @@ import { privateKeyToAccount } from 'viem/accounts'
 import {
   delegationManagerAbi, agentAccountAbi, ROOT_AUTHORITY,
 } from '@smart-agent/sdk'
+import { getWalletClient } from '@/lib/contracts'
 
 const RPC_URL = process.env.RPC_URL ?? 'http://127.0.0.1:8545'
 
@@ -60,7 +61,12 @@ export async function grantOrgOwnershipBatch(pairs: OrgOwnerPair[]): Promise<num
   }
 
   const account = privateKeyToAccount(deployerKey)
-  const wallet = createWalletClient({ account, chain: undefined, transport: http(RPC_URL) })
+  // getWalletClient() returns a wallet wrapped in the process-wide deployer
+  // lock + nonce counter. Bare viem createWalletClient calls race on the
+  // deployer's nonce when concurrent writes hit the chain (e.g., a pool
+  // create + the immediately-following org-ownership grant), so any code
+  // path that signs as DEPLOYER_PRIVATE_KEY must go through this helper.
+  const wallet = getWalletClient()
   const pub = createPublicClient({ chain: undefined, transport: http(RPC_URL) })
   const addOwnerSelector = toFunctionSelector('addOwner(address)')
 

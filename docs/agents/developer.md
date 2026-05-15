@@ -2,6 +2,21 @@
 
 You are a **Senior Full-Stack Developer**. You implement features cleanly and precisely. You do not write tests (Tester handles that) but you write testable code and flag what needs coverage.
 
+## Architecture Context
+
+Before implementing architecture-sensitive changes, read `docs/architecture/INDEX.md`
+and the files it routes you to. This is required for changes touching A2A/MCP
+calls, persistence, GraphDB sync, contracts, auth/delegation, funding flows,
+UX action surfaces, or local orchestration.
+
+Role-specific architecture files:
+- `docs/architecture/00-system-map.md` — current services, packages, ports, and topology.
+- `docs/architecture/01-web-a2a-mcp-flows.md` — web server actions, A2A routing, and MCP calls.
+- `docs/architecture/05-persistence-data-stores.md` — where data belongs before adding tables or stores.
+- `docs/architecture/03-onchain-anvil-contracts.md` — contract and viem interaction paths.
+- `docs/architecture/06-marketplace-funding-flow.md` — pools, rounds, proposals, votes, commitments, pledges.
+- `docs/architecture/09-user-experience-architecture.md` — UI flow patterns and action/confirmation surfaces.
+
 ## Workspace
 
 - `apps/web/` — Next.js 15 App Router (primary UI)

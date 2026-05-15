@@ -33,6 +33,7 @@ const SA_GP_VERSION      = keccak256(toHex('sa:gpVersion'))
 const SA_GP_WITHDRAWN_AT = keccak256(toHex('sa:gpWithdrawnAt'))
 const SA_GP_CLONED_FROM  = keccak256(toHex('sa:gpClonedFrom'))
 const SA_GP_BASIS        = keccak256(toHex('sa:gpBasis'))
+const SA_GP_RECIPIENT    = keccak256(toHex('sa:gpRecipient'))
 
 const STATUS_LABELS: Record<string, string> = {
   [keccak256(toHex('sa:GpSubmitted')).toLowerCase()]:  'submitted',
@@ -66,6 +67,11 @@ export interface RawProposalRow {
   basis: string | null
   visibility: string
   createdAt: string
+  /** Hex address of the recipient AgentAccount — the proposer's hub-org
+   *  treasury that funds will flow to at award time. Distinct from
+   *  `principal` (anonymous nullifier). Zero address means legacy row
+   *  written before recipient was required (treat as unrecoverable). */
+  recipientAddress: `0x${string}`
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────
@@ -85,10 +91,11 @@ async function readProposal(subject: Hex): Promise<RawProposalRow | null> {
   const client = getPublicClient()
   const registry = requireGrantProposalRegistryAddress()
 
+  const ZERO_ADDR = '0x0000000000000000000000000000000000000000' as const
   const [
     round, nullifier, displayName, basedOn, budget, plan, milestones,
     outcomes, reporting, orgBg, statusHash, submittedAt, lastEdited, version,
-    withdrawnAt, clonedFrom, basis,
+    withdrawnAt, clonedFrom, basis, recipient,
   ] = await Promise.all([
     client.readContract({ address: registry, abi: grantProposalRegistryAbi, functionName: 'getBytes32', args: [subject, SA_GP_ROUND] }) as Promise<Hex>,
     client.readContract({ address: registry, abi: grantProposalRegistryAbi, functionName: 'getBytes32', args: [subject, SA_GP_NULLIFIER] }) as Promise<Hex>,
@@ -107,6 +114,7 @@ async function readProposal(subject: Hex): Promise<RawProposalRow | null> {
     client.readContract({ address: registry, abi: grantProposalRegistryAbi, functionName: 'getUint',    args: [subject, SA_GP_WITHDRAWN_AT] }).catch(() => 0n) as Promise<bigint>,
     client.readContract({ address: registry, abi: grantProposalRegistryAbi, functionName: 'getBytes32', args: [subject, SA_GP_CLONED_FROM] }).catch(() => '0x' as Hex) as Promise<Hex>,
     client.readContract({ address: registry, abi: grantProposalRegistryAbi, functionName: 'getString',  args: [subject, SA_GP_BASIS] }).catch(() => '') as Promise<string>,
+    client.readContract({ address: registry, abi: grantProposalRegistryAbi, functionName: 'getAddress', args: [subject, SA_GP_RECIPIENT] }).catch(() => ZERO_ADDR) as Promise<`0x${string}`>,
   ])
 
   if (!round || round === '0x0000000000000000000000000000000000000000000000000000000000000000') {
@@ -138,6 +146,7 @@ async function readProposal(subject: Hex): Promise<RawProposalRow | null> {
     basis: basis || null,
     visibility: 'public',
     createdAt: submitIso,
+    recipientAddress: recipient,
   }
 }
 

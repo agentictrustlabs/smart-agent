@@ -96,10 +96,10 @@ const CHROME_SCRIPT = `
   cur.id = '__demo_cursor__'
   cur.style.cssText = [
     'position: fixed', 'top: 50%', 'left: 50%',
-    'width: 22px', 'height: 22px', 'margin-left: -11px', 'margin-top: -11px',
+    'width: 36px', 'height: 36px', 'margin-left: -18px', 'margin-top: -18px',
     'border-radius: 50%',
-    'background: radial-gradient(circle, rgba(15,23,42,0.92) 0 35%, rgba(15,23,42,0.35) 36% 60%, transparent 65%)',
-    'box-shadow: 0 0 0 1px rgba(255,255,255,0.7), 0 4px 12px rgba(0,0,0,0.25)',
+    'background: radial-gradient(circle, rgba(15,23,42,0.95) 0 38%, rgba(15,23,42,0.42) 39% 62%, transparent 68%)',
+    'box-shadow: 0 0 0 2px rgba(255,255,255,0.85), 0 6px 18px rgba(0,0,0,0.32)',
     'pointer-events: none', 'z-index: 2147483646',
     'transition: width 0.15s ease, height 0.15s ease',
   ].join(';')
@@ -109,25 +109,27 @@ const CHROME_SCRIPT = `
     cur.style.top  = e.clientY + 'px'
   }, true)
   document.addEventListener('mousedown', (e) => {
-    cur.style.width = '32px'; cur.style.height = '32px'
+    cur.style.width = '52px'; cur.style.height = '52px'
+    cur.style.marginLeft = '-26px'; cur.style.marginTop = '-26px'
     const ring = document.createElement('div')
     ring.style.cssText = [
       'position: fixed',
       'left: ' + e.clientX + 'px', 'top: ' + e.clientY + 'px',
-      'width: 8px', 'height: 8px', 'margin-left: -4px', 'margin-top: -4px',
-      'border: 2px solid rgba(251,191,36,0.95)',
+      'width: 12px', 'height: 12px', 'margin-left: -6px', 'margin-top: -6px',
+      'border: 3px solid rgba(251,191,36,0.95)',
       'border-radius: 50%',
       'pointer-events: none', 'z-index: 2147483645',
-      'animation: __demoRipple 0.55s ease-out forwards',
+      'animation: __demoRipple 0.65s ease-out forwards',
     ].join(';')
     document.documentElement.appendChild(ring)
-    setTimeout(() => ring.remove(), 650)
+    setTimeout(() => ring.remove(), 750)
   }, true)
   document.addEventListener('mouseup', () => {
-    cur.style.width = '22px'; cur.style.height = '22px'
+    cur.style.width = '36px'; cur.style.height = '36px'
+    cur.style.marginLeft = '-18px'; cur.style.marginTop = '-18px'
   }, true)
   const css = document.createElement('style')
-  css.textContent = '@keyframes __demoRipple { 0% { width:8px; height:8px; opacity:1 } 100% { width:64px; height:64px; margin-left:-32px; margin-top:-32px; opacity:0 } }'
+  css.textContent = '@keyframes __demoRipple { 0% { width:12px; height:12px; opacity:1 } 100% { width:112px; height:112px; margin-left:-56px; margin-top:-56px; opacity:0 } }'
   document.documentElement.appendChild(css)
 })();
 window.__demoBanner = (chapter, total, text, sub) => {
@@ -163,7 +165,20 @@ window.__demoBannerHide = () => {
 
 const TOTAL_CHAPTERS = 15
 
-async function setBanner(page: Page, chapter: number, total: number, text: string, sub?: string): Promise<void> {
+// Narration timeline — populated by setBanner(narration). scripts/narrate-demo.ts
+// reads this to mux per-chapter TTS onto the recorded video.
+const chapterTimeline: Array<{ chapter: number; offsetSec: number; narration: string }> = []
+let demoStartMs = 0
+
+async function setBanner(page: Page, chapter: number, total: number, text: string, sub?: string, narration?: string): Promise<void> {
+  if (narration && chapter > 0) {
+    if (demoStartMs === 0) demoStartMs = Date.now()
+    chapterTimeline.push({
+      chapter,
+      offsetSec: (Date.now() - demoStartMs) / 1000,
+      narration,
+    })
+  }
   await page.evaluate(
     ({ chapter, total, text, sub }) => {
       const w = window as unknown as { __demoBanner?: (c: number, t: number, x: string, s?: string) => void }
@@ -237,6 +252,13 @@ test.beforeAll(async ({ browser }) => {
       headers: { origin: BASE, 'content-type': 'application/json' },
     })
   }
+  // Use a known seeded pool/round/proposal to warm the dynamic-route
+  // compiles ahead of the recording — Next.js dev compiles `/pools/[id]`
+  // etc. on first hit, and those compiles add 5-10s mid-chapter if we
+  // don't pre-trigger them here.
+  const seedPoolUrn = 'urn:smart-agent:pool:demo-trauma-care-pool'
+  const seedPoolEnc = encodeURIComponent(seedPoolUrn)
+  const seedRoundEnc = encodeURIComponent('urn:smart-agent:round:demo-trauma-care-q2')
   const warmUrls = [
     `${BASE}/demo`,
     `${BASE}/`,
@@ -244,8 +266,13 @@ test.beforeAll(async ({ browser }) => {
     `${BASE}/wallet`,
     `${BASE}/h/${bs.hubSlug}/pools`,
     `${BASE}/h/${bs.hubSlug}/pools/new`,
+    `${BASE}/h/${bs.hubSlug}/pools/${seedPoolEnc}`,
+    `${BASE}/h/${bs.hubSlug}/pools/${seedPoolEnc}/pledge`,
     `${BASE}/h/${bs.hubSlug}/rounds`,
     `${BASE}/h/${bs.hubSlug}/rounds/new`,
+    `${BASE}/h/${bs.hubSlug}/rounds/${seedRoundEnc}`,
+    `${BASE}/h/${bs.hubSlug}/rounds/${seedRoundEnc}/apply`,
+    `${BASE}/h/${bs.hubSlug}/rounds/${seedRoundEnc}/admin`,
     `${BASE}/h/${bs.hubSlug}/intents`,
     `${BASE}/h/${bs.hubSlug}/intents/new`,
     `${BASE}/h/${bs.hubSlug}/proposals`,
@@ -291,7 +318,7 @@ async function resolveOrgTreasury(orgSa: Address): Promise<Address> {
 }
 
 test('Full UI grant lifecycle — Maria → David → Sarah → Maria', async ({ browser }) => {
-  test.setTimeout(720_000) // 12 min cap — full UI walk
+  test.setTimeout(1_800_000) // 30 min cap — full UI walk + cold Next.js compile lulls
 
   const ctx: BrowserContext = await browser.newContext({
     viewport: { width: 1440, height: 900 },
@@ -319,6 +346,7 @@ test('Full UI grant lifecycle — Maria → David → Sarah → Maria', async ({
   await setBanner(page, 1, TOTAL_CHAPTERS,
     'Maria signs in',
     'Demo users are real on-chain principals — same flow as a passkey/SIWE production user.',
+    "Welcome to Smart Agent. We're walking through a complete grant lifecycle, end to end. Maria, the steward of Catalyst NoCo Network, is signing in. In production this is a passkey or sign-in-with-Ethereum flow; the demo user picker is just a shortcut into the same on-chain principal.",
   )
   await pause(READ)
   {
@@ -336,6 +364,7 @@ test('Full UI grant lifecycle — Maria → David → Sarah → Maria', async ({
   await setBanner(page, 2, TOTAL_CHAPTERS,
     'Maria\'s wallet — $1M USDC in her treasury',
     'Money never sits on her smart account. A separate Treasury Service Agent custodies USDC.',
+    "This is Maria's wallet. She has one million dollars in USDC, but notice it's held in a separate Treasury Service Agent, not on her person account. Money never sits on a person's smart account directly — that separation is a core safety property of the platform.",
   )
   await pause(READ + 800)
 
@@ -344,22 +373,31 @@ test('Full UI grant lifecycle — Maria → David → Sarah → Maria', async ({
   await setBanner(page, 3, TOTAL_CHAPTERS,
     'Maria creates a new grant pool',
     'The pool\'s AgentAccount is co-owned by Catalyst NoCo Network so stewards = org owners.',
+    "Maria opens the pool create form. The pool is its own on-chain agent — its account is co-owned by the Catalyst NoCo organisation, so stewards equal org owners. She fills in display name, slug, and visibility, then signs the deploy transaction.",
   )
   await pause(READ)
   await fillPoolForm(page, { displayName: POOL_NAME, slug: POOL_SLUG })
   await pause(700)
   await page.getByRole('button', { name: /Create pool/i }).first().click()
-  await page.waitForURL(/\/pools\//, { timeout: 60_000 }).catch(() => {})
+  // Exclude `/pools/new` and `/pools/new/...` — those are the form URLs;
+  // we want the pool detail page after a successful create. Without this,
+  // a slow submit (40+s) leaves us on /pools/new and the test's downstream
+  // chapter-4 fallback nav goes to /pools/new/pledge → 404.
+  await page.waitForURL(/\/pools\/(?!new(\/|$))/, { timeout: 120_000 })
   await page.waitForLoadState('networkidle', { timeout: 30_000 }).catch(() => {})
   await pause(SETTLE + 800)
 
   // Capture the resulting pool detail URL so we can navigate back later.
   const poolDetailUrl = page.url()
+  if (/\/pools\/new(\/|$)/.test(poolDetailUrl)) {
+    throw new Error(`Pool creation did not redirect to a pool detail page; still at ${poolDetailUrl}`)
+  }
 
   // ── Chapter 4: pledge $30k ──────────────────────────────────────────
   await setBanner(page, 4, TOTAL_CHAPTERS,
     'Maria pledges $30,000 to the pool',
     'PledgeRegistry records the commitment. The honor step (next chapter) actually moves USDC.',
+    "With the pool live, Maria pledges thirty thousand dollars to back this round. The pledge is recorded in PledgeRegistry, but no USDC has moved yet — that's a separate honor step she'll take next.",
   )
   await pause(READ)
   let pledgeDetailUrl: string | null = null
@@ -403,6 +441,7 @@ test('Full UI grant lifecycle — Maria → David → Sarah → Maria', async ({
   await setBanner(page, 5, TOTAL_CHAPTERS,
     'Maria honors the pledge — USDC moves from her treasury to the pool',
     'executeBatch on her treasury: ERC-20 transfer + PledgeRegistry.markPaid in a single tx.',
+    "She honors the pledge with a single executeBatch transaction on her treasury. Two things happen atomically: USDC transfers from her treasury to the pool, and PledgeRegistry records the payment. One click, one signature.",
   )
   await pause(READ)
   {
@@ -420,19 +459,28 @@ test('Full UI grant lifecycle — Maria → David → Sarah → Maria', async ({
   await setBanner(page, 6, TOTAL_CHAPTERS,
     'Maria opens a grant round on her pool',
     'The round inherits the pool\'s stewards. Validators are listed by EOA — Sarah for this demo.',
+    "Next, Maria opens a grant round on the pool. The round inherits the pool's stewards as voters and lists Sarah as the validator who will attest milestone delivery. It goes live for applications immediately.",
   )
   await pause(READ)
   await fillRoundForm(page, {
     poolName: POOL_NAME,
+    poolUrn: `urn:smart-agent:pool:${POOL_SLUG}`,
     displayName: ROUND_NAME,
     slug: ROUND_SLUG,
     validatorEoa: bs.sarahEoa,
   })
   await pause(700)
   await page.getByRole('button', { name: /Open round/i }).first().click()
-  await page.waitForURL(/\/rounds\//, { timeout: 60_000 }).catch(() => {})
+  // /\/rounds\//  matches /rounds/new itself — use a negative lookahead so
+  // we only consider an actual round detail URL "open". If submit fails
+  // (e.g. HTML5 required validation on a hidden field), we stay on /new
+  // and the test should error fast instead of cascading downstream.
+  await page.waitForURL(/\/rounds\/(?!new(\/|$))/, { timeout: 60_000 })
   await page.waitForLoadState('networkidle', { timeout: 30_000 }).catch(() => {})
   const roundDetailUrl = page.url()
+  if (/\/rounds\/new(\/|$)/.test(roundDetailUrl)) {
+    throw new Error(`Round creation did not redirect to a round detail page; still at ${roundDetailUrl}`)
+  }
   await pause(SETTLE + 600)
 
   // ── Chapter 7: David signs in ───────────────────────────────────────
@@ -440,6 +488,7 @@ test('Full UI grant lifecycle — Maria → David → Sarah → Maria', async ({
   await setBanner(page, 7, TOTAL_CHAPTERS,
     'Pastor David signs in',
     'Switching principals is a normal session swap — no on-chain "logout"; just a different session cookie.',
+    "Now we switch principals. Pastor David, on the other side of the network, signs in. There's no on-chain logout — just a different session cookie. From the platform's perspective every party is a first-class agent with its own identity.",
   )
   await pause(READ - 600)
   {
@@ -457,6 +506,7 @@ test('Full UI grant lifecycle — Maria → David → Sarah → Maria', async ({
   await setBanner(page, 8, TOTAL_CHAPTERS,
     'David expresses a NeedIntent — "Need funding for trauma-care training"',
     'Public intents emit an on-chain assertion + sync to the catalog so funders can discover them.',
+    "David expresses a NeedIntent — he needs funding for trauma-care training in Fort Collins. The body of the intent stays in his personal MCP server. The public version surfaces in the marketplace as an on-chain assertion.",
   )
   await pause(READ)
   const intentTitle = `Need funding for trauma-care training ${RUN_SUFFIX}`
@@ -472,6 +522,7 @@ test('Full UI grant lifecycle — Maria → David → Sarah → Maria', async ({
   await setBanner(page, 9, TOTAL_CHAPTERS,
     'David applies to Maria\'s round',
     'Proposal anchors to his NeedIntent. Milestones split the award into validator-gated tranches.',
+    "David applies to Maria's round. His proposal anchors directly to his intent and splits the award into two milestones, each gated by a validator attestation plus a steward release. No money moves at this point.",
   )
   await pause(READ)
   await fillProposalForm(page, { title: PROPOSAL_TITLE })
@@ -482,12 +533,36 @@ test('Full UI grant lifecycle — Maria → David → Sarah → Maria', async ({
   const proposalDetailUrl = page.url()
   await pause(SETTLE + 600)
 
-  // ── Chapter 10: switch to Maria, vote Approve ──────────────────────
+  // ── Preconditions for voting: open the voting window ───────────────
+  // The round defaults `votingWindowStartsAt = submissionDeadline` (14
+  // days out for a fresh demo round), so the vote UI hides the Approve
+  // button with "voting-not-started". Have Maria, the round operator,
+  // transition the round from `open` → `review` so voting opens now.
+  // This used to live inside chapter 12 but voting MUST be open before
+  // chapters 10–11 cast.
   await uiLogin(page, 'cat-user-001')
+  await page.goto(`${roundDetailUrl}/admin`, { waitUntil: 'networkidle' })
+  {
+    const lifecycleTab = page.getByRole('button', { name: /^lifecycle$/i })
+    if (await lifecycleTab.count() > 0) {
+      await lifecycleTab.first().click()
+      await pause(800)
+    }
+    const toReviewBtn = page.getByRole('button', { name: /Close submissions, open voting/i })
+    if (await toReviewBtn.count() > 0) {
+      await toReviewBtn.first().hover(); await pause(400)
+      await toReviewBtn.first().click()
+      await page.waitForLoadState('networkidle', { timeout: 30_000 }).catch(() => {})
+      await pause(900)
+    }
+  }
+
+  // ── Chapter 10: vote Approve (Maria still signed in) ───────────────
   await page.goto(proposalDetailUrl, { waitUntil: 'networkidle' })
   await setBanner(page, 10, TOTAL_CHAPTERS,
     'Maria votes Approve',
     'Voting policy is "steward-quorum" — 2 approvals required for the round to award.',
+    "Maria reviews the proposal and votes Approve. The round's voting policy is steward-quorum — two approvals are needed for the round to award.",
   )
   await pause(READ)
   await castVote(page, 'Approve', 'Strong plan, clear milestones.')
@@ -499,6 +574,7 @@ test('Full UI grant lifecycle — Maria → David → Sarah → Maria', async ({
   await setBanner(page, 11, TOTAL_CHAPTERS,
     'David votes Approve on his own proposal',
     'Proposers can vote in this round template. In stricter templates a recusal rule applies.',
+    "David also votes Approve on his own proposal — this template permits proposer voting. Stricter templates can enforce recusal. With two approvals in, the round is ready to finalise.",
   )
   await pause(READ - 300)
   await castVote(page, 'Approve', 'Confident in delivery.')
@@ -510,6 +586,7 @@ test('Full UI grant lifecycle — Maria → David → Sarah → Maria', async ({
   await setBanner(page, 12, TOTAL_CHAPTERS,
     'Maria finalises the round — announces award + commits',
     'Single click triggers setRoundStatus(decided) + announceAward + CommitmentRegistry.commit.',
+    "Maria finalises the round with a single click. Behind the scenes the contract sets the round status to decided, announces the award, and creates a Commitment record with two milestones — the on-chain promise of payment-on-delivery.",
   )
   await pause(READ)
   {
@@ -542,6 +619,7 @@ test('Full UI grant lifecycle — Maria → David → Sarah → Maria', async ({
   await setBanner(page, 13, TOTAL_CHAPTERS,
     'Sarah (validator) attests both milestones',
     'Validator gate is off-chain (AnonCreds in production); on-chain attestation is what unlocks each tranche.',
+    "Sarah, the validator, sees both milestones in her inbox. She attests kickoff first — typing an evidence summary; only the hash goes on-chain. Then she attests the final report. Each attestation is what unlocks the matching tranche.",
   )
   await pause(READ)
   await attestMilestones(page, 2)
@@ -553,6 +631,7 @@ test('Full UI grant lifecycle — Maria → David → Sarah → Maria', async ({
   await setBanner(page, 14, TOTAL_CHAPTERS,
     'Maria (steward) releases both tranches',
     'Each release is an executeBatch on the pool: USDC transfer + CommitmentRegistry.recordRelease.',
+    "Now back to Maria. Her steward inbox shows two attested milestones ready for release. She approves the first tranche — twelve thousand dollars — then the second — eighteen thousand. Each release is an executeBatch: USDC transfer plus on-chain release record.",
   )
   await pause(READ)
   await releaseTranches(page, 2)
@@ -568,12 +647,33 @@ test('Full UI grant lifecycle — Maria → David → Sarah → Maria', async ({
   await setBanner(page, 15, TOTAL_CHAPTERS,
     `+$${delta$} settled into Fort Collins Network Treasury`,
     `Treasury balance: $${before$} → $${after$}  ·  Smart account → sa:hasTreasury → on-chain USDC`,
+    `And there's the outcome. Fort Collins Treasury balance grew by exactly thirty thousand dollars — the full grant, delivered on-chain. The Commitment is now marked Completed. End of demo.`,
   )
   await pause(7000)
   await hideBanner(page)
   await pause(400)
 
+  // Capture the video handle BEFORE close so we can rename it to the
+  // canonical path scripts/narrate-demo.ts expects.
+  const recording = page.video()
   await ctx.close()
+  if (recording) {
+    const dest = path.resolve(__dirname, 'demo-output/smart-agent-grant-lifecycle-demo.webm')
+    if (fs.existsSync(dest)) fs.unlinkSync(dest)
+    await recording.saveAs(dest)
+    await recording.delete().catch(() => {})
+    console.log(`[full-demo] saved recording → ${dest}`)
+  }
+
+  // Persist the narration timeline so scripts/narrate-demo.ts can mux
+  // per-chapter audio onto the recorded video.
+  try {
+    const timelinePath = path.resolve(__dirname, 'demo-output/chapter-timeline.json')
+    fs.writeFileSync(timelinePath, JSON.stringify(chapterTimeline, null, 2))
+    console.log(`[full-demo] Narration timeline: ${timelinePath} (${chapterTimeline.length} chapters)`)
+  } catch (e) {
+    console.warn('[full-demo] could not write chapter-timeline.json:', (e as Error).message)
+  }
 
   // ── Correctness assertion ──────────────────────────────────────────
   const THIRTY_K = 30_000n * 10n ** 6n
@@ -606,20 +706,56 @@ async function fillPledgeForm(page: Page, dollars: string): Promise<void> {
 
 async function fillRoundForm(page: Page, r: {
   poolName: string
+  poolUrn: string
   displayName: string
   slug: string
   validatorEoa: Address
 }): Promise<void> {
-  // Pool select — pick the pool Maria just created by display name.
-  const poolSel = page.getByLabel(/Pool this round draws from/i).first()
+  // Pool select — pick by value (URN). The dropdown's option text is the
+  // pool *slug*, not the display name, so selectOption({label:displayName})
+  // would silently hang (playwright's default actionTimeout is infinity).
+  // We always have the URN in hand, so just select by value with a finite
+  // timeout and fall back to the most recently added option on mismatch.
+  const poolSel = page.locator('select').first()
   if (await poolSel.count() > 0) {
-    await poolSel.selectOption({ label: r.poolName }).catch(async () => {
-      // Fallback: select first option.
-      await poolSel.selectOption({ index: 1 }).catch(() => {})
-    })
+    try {
+      await poolSel.selectOption({ value: r.poolUrn }, { timeout: 5_000 })
+    } catch {
+      // Fallback: count options and pick the last one (Maria's newest pool).
+      const optCount = await poolSel.locator('option').count()
+      if (optCount > 0) {
+        await poolSel.selectOption({ index: optCount - 1 }, { timeout: 5_000 }).catch(() => {})
+      }
+    }
   }
-  await page.getByLabel(/Round slug/i).first().fill(r.slug)
-  await page.getByLabel(/Display name/i).first().fill(r.displayName)
+  // Round slug + display name — use direct input[placeholder=...] when
+  // available since the wrapping <label><div>text</div><input/></label>
+  // pattern can confuse getByLabel.
+  const slugInput = page.locator('input[placeholder*="trauma-care-q3"]').first()
+  if (await slugInput.count() > 0) {
+    await slugInput.fill(r.slug)
+  } else {
+    await page.getByLabel(/Round slug/i).first().fill(r.slug, { timeout: 5_000 })
+  }
+  const dispInput = page.locator('input[placeholder*="Trauma-Care"]').first()
+  if (await dispInput.count() > 0) {
+    await dispInput.fill(r.displayName)
+  } else {
+    await page.getByLabel(/Display name/i).first().fill(r.displayName, { timeout: 5_000 })
+  }
+  // Accepted kinds — REQUIRED by the form. Maria-created pools have an
+  // empty acceptedKinds list, so pickPool leaves this field empty and
+  // HTML5 required validation silently blocks the submit. Fill it.
+  const kindsInput = page.locator('input[placeholder*="CompassionMinistry"]').first()
+  if (await kindsInput.count() > 0) {
+    const cur = await kindsInput.inputValue()
+    if (!cur.trim()) await kindsInput.fill('trauma-care, CompassionMinistry')
+  }
+  // Submission deadline stays at the form default (14 days out) so the
+  // apply page's deadline-passed gate doesn't block David. The test
+  // performs an explicit "Close submissions, open voting" admin action
+  // between chapter 9 and chapter 10 to advance the round into the
+  // voting-open state.
   // Validator list — find an input that accepts validator addresses if
   // present; else skip (round will default to no validators, which means
   // any pool steward can attest as a fallback).
@@ -630,8 +766,10 @@ async function fillRoundForm(page: Page, r: {
 }
 
 async function fillIntentForm(page: Page, title: string): Promise<void> {
-  // Step 1 — direction
-  const receive = page.getByRole('button', { name: /^Receive/i }).first()
+  // Step 1 — direction. The button's accessible name leads with the 📥
+  // emoji ("📥 Receive I need / I'm asking for…"), so anchoring the regex
+  // with `^Receive` doesn't match. Drop the anchor.
+  const receive = page.getByRole('button', { name: /Receive/i }).first()
   await receive.click()
   await page.waitForTimeout(400)
   // Step 2 — pick an intent type that's a money-receive ("Need funding").
@@ -640,14 +778,27 @@ async function fillIntentForm(page: Page, title: string): Promise<void> {
     await moneyTile.click().catch(() => {})
   }
   await page.waitForTimeout(400)
-  // Title
-  const titleField = page.getByLabel(/Title/i).first()
-  await titleField.fill(title)
+  // Title — the visible "Title — one sentence" caption is a sibling <div>,
+  // not a wrapping <label>, so getByLabel(/Title/i) misses. The textbox's
+  // accessible name comes from its placeholder.
+  const titleField = page.getByPlaceholder(/What do you need\?/i).first()
+  if (await titleField.count() > 0) {
+    await titleField.fill(title)
+  } else {
+    // Old build fallback.
+    await page.getByLabel(/Title/i).first().fill(title, { timeout: 5_000 })
+  }
 }
 
 async function fillProposalForm(page: Page, p: { title: string }): Promise<void> {
-  // Title
-  await page.getByLabel(/Title/i).first().fill(p.title)
+  // Title — ProposalComposer wraps it in <Section title="Title"> (heading,
+  // not a <label>), so use the placeholder.
+  const titleField = page.getByPlaceholder(/short name for this proposal/i).first()
+  if (await titleField.count() > 0) {
+    await titleField.fill(p.title)
+  } else {
+    await page.getByLabel(/Title/i).first().fill(p.title, { timeout: 5_000 })
+  }
   // First budget line item
   const lineName = page.getByPlaceholder(/Line item/i).first()
   if (await lineName.count() > 0) await lineName.fill('Cohort delivery')

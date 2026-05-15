@@ -18,8 +18,11 @@ import {
   computeAllowedTargetAddresses,
   computeAllowedSelectors,
 } from '@/lib/actions/a2a-session-caveats'
-
-const A2A_AGENT_URL = process.env.A2A_AGENT_URL ?? 'http://localhost:3100'
+import {
+  resolveA2AEndpointForAgent,
+  A2AUrlResolverError,
+} from '@/lib/clients/a2a-url-resolver'
+import { a2aFetch } from '@/lib/clients/a2a-fetch'
 
 /**
  * POST /api/a2a/bootstrap/client
@@ -66,18 +69,45 @@ export async function POST() {
 
   const accountAddress = (user?.smartAccountAddress ?? walletAddress) as `0x${string}`
 
+  // Resolve the agent's A2A endpoint (host-aware). The seed model is:
+  //   user EOA owns user.smartAccount (ERC-1271 identity, signs delegations)
+  //   user.smartAccount has a person agent (the routed-to "agent identity")
+  // The registered-on-resolver address is the person agent, so we route
+  // A2A traffic via that name. The session itself is still bound to the
+  // smart account (verifier checks ERC-1271 against accountAddress).
+  // No fallback — if neither address resolves, surface clearly.
+  const personAgent = user?.personAgentAddress as `0x${string}` | undefined
+  let endpoint: string
+  let hostHeader: string
+  try {
+    const r = await resolveA2AEndpointForAgent(personAgent ?? accountAddress)
+    endpoint = r.endpoint
+    hostHeader = r.hostHeader
+  } catch (e) {
+    if (e instanceof A2AUrlResolverError) {
+      return NextResponse.json(
+        { error: `A2A endpoint unresolvable for ${personAgent ?? accountAddress}: ${e.message}` },
+        { status: 500 },
+      )
+    }
+    throw e
+  }
+
   try {
     // ─── Step 1: Session init (unauthenticated — just generates keypair) ─
-    const initRes = await fetch(`${A2A_AGENT_URL}/session/init`, {
+    const initRes = await a2aFetch(`${endpoint}/session/init`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Host': hostHeader,
+      },
       body: JSON.stringify({ accountAddress, durationSeconds: 86400 }),
     })
     if (!initRes.ok) {
-      const err = await initRes.json().catch(() => ({}))
+      const err = await initRes.json().catch(() => ({})) as { error?: string }
       return NextResponse.json({ error: `Session init: ${err.error ?? initRes.statusText}` }, { status: 502 })
     }
-    const { sessionId, sessionKeyAddress } = await initRes.json()
+    const { sessionId, sessionKeyAddress } = await initRes.json() as { sessionId: string; sessionKeyAddress: `0x${string}` }
 
     // ─── Step 2: Build delegation hash with FULL caveat set ─────────
     // Same caveats as the server-side bootstrap (a2a-session.action.ts):

@@ -21,6 +21,20 @@ docs/ontology/         Agentic trust ontology (T-Box/C-Box/A-Box turtle files)
 docs/specs/            Architecture spec and roadmap
 ```
 
+## Architecture Navigation
+
+All agents should start architecture-sensitive work from `docs/architecture/INDEX.md`.
+It routes by concern area and role across system, technical, information, UX, operational,
+GraphDB, A2A/MCP, on-chain, and funding architecture.
+
+Use it before changing:
+- service boundaries or MCP tools,
+- data ownership or persistence,
+- on-chain registries or GraphDB sync,
+- auth, sessions, delegation, or permissions,
+- UX flows that affect actions, funding, treasury, credentials, or trust,
+- local orchestration, readiness, seed, or deployment behavior.
+
 ## Commands
 ```bash
 pnpm dev               # Start web dev server → http://localhost:3000
@@ -122,6 +136,7 @@ Orchestrator + Sub-agent model. See `docs/agents/` for role guides.
 | Infra                    | docs/agents/infra.md                   |
 | Test User                | docs/agents/user.md                    |
 | Documentarian            | docs/agents/documentarian.md           |
+| UI Designer              | docs/agents/ui-designer.md             |
 | Ontologist               | docs/agents/ontologist.md              |
 | Security                 | docs/agents/security.md                |
 | Information Architect    | docs/agents/information-architect.md   |

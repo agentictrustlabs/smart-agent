@@ -3,12 +3,14 @@
 import { db, schema } from '@/db'
 import { eq } from 'drizzle-orm'
 import { requireSession } from '@/lib/auth/session'
-import { deploySmartAccount, getPublicClient, getWalletClient, createRelationship, confirmRelationship } from '@/lib/contracts'
-import { agentControlAbi, ORGANIZATION_GOVERNANCE, ROLE_OWNER } from '@smart-agent/sdk'
-import { keccak256, encodePacked } from 'viem'
+import {
+  agentControlAbi, ORGANIZATION_GOVERNANCE, ROLE_OWNER,
+} from '@smart-agent/sdk'
+import { keccak256, encodePacked, type Address, type Hex } from 'viem'
 import { registerAgentMetadata } from '@/lib/actions/agent-metadata.action'
-import { addAgentController } from '@/lib/agent-resolver'
+import { callMcp } from '@/lib/clients/mcp-client'
 import { scheduleKbSyncEager } from '@/lib/ontology/kb-write-through'
+import { getPublicClient, getWalletClient } from '@/lib/contracts'
 
 export interface DeployOrgAgentInput {
   name: string
@@ -26,11 +28,16 @@ export interface DeployOrgAgentResult {
 }
 
 /**
- * Deploy an Organization Agent with multi-sig governance:
- * 1. Deploy 4337 smart account via factory
- * 2. Initialize AgentControl governance (owner set, quorum)
- * 3. Add co-owners
- * 4. Store in DB
+ * Phase 4 — Deploy an Organization Agent with multi-sig governance.
+ *
+ *   1. Deploy 4337 smart account via the `agent:deploy` MCP tool
+ *      (forwards to a2a /session/:id/deploy-agent).
+ *   2. Initialize AgentControl governance — AgentControl is NOT in the
+ *      Phase 4 migration scope, so this step still uses the deployer
+ *      wallet directly (best-effort; non-fatal).
+ *   3. registerAgentMetadata via the agent_resolver:register MCP tool.
+ *   4. Emit OWNER edge from the user's person agent to the new org via
+ *      the person-mcp `relationship:emit_edge` tool.
  */
 export async function deployOrgAgent(
   input: DeployOrgAgentInput,
@@ -59,7 +66,6 @@ export async function deployOrgAgent(
 
     const ownerAddress = session.walletAddress as `0x${string}`
 
-    // Unique salt
     const saltHash = keccak256(
       encodePacked(
         ['string', 'address', 'string'],
@@ -68,28 +74,32 @@ export async function deployOrgAgent(
     )
     const salt = BigInt(saltHash)
 
-    // 1. Deploy smart account
-    const smartAccountAddress = await deploySmartAccount(ownerAddress, salt)
+    // 1. Deploy smart account via MCP.
+    const deployRes = await callMcp<{ ok: true; address: Address }>(
+      'org',
+      'agent:deploy',
+      { owner: ownerAddress, salt: salt.toString() },
+      { agentAddress: ownerAddress },
+    )
+    const smartAccountAddress = deployRes.address
 
-    // 2. Initialize governance on AgentControl
+    // 2. Governance init — AgentControl is OUT OF Phase 4 migration scope
+    // and stays a deployer-signed write here. The auto-add-co-owners loop
+    // also stays direct because AgentControl is not on the MCP surface.
     const controlAddr = process.env.AGENT_CONTROL_ADDRESS as `0x${string}`
     if (controlAddr) {
       const walletClient = getWalletClient()
       const publicClient = getPublicClient()
-
       const minOwners = Math.max(1, input.minOwners || 1)
       const quorum = Math.max(1, Math.min(input.quorum || 1, minOwners))
-
       try {
         let hash = await walletClient.writeContract({
           address: controlAddr,
           abi: agentControlAbi,
           functionName: 'initializeAgent',
-          args: [smartAccountAddress as `0x${string}`, BigInt(minOwners), BigInt(quorum)],
+          args: [smartAccountAddress, BigInt(minOwners), BigInt(quorum)],
         })
         await publicClient.waitForTransactionReceipt({ hash })
-
-        // 3. Add co-owners
         for (const coOwner of input.coOwners) {
           const addr = coOwner.trim()
           if (addr && addr.startsWith('0x') && addr.length === 42) {
@@ -97,7 +107,7 @@ export async function deployOrgAgent(
               address: controlAddr,
               abi: agentControlAbi,
               functionName: 'addOwner',
-              args: [smartAccountAddress as `0x${string}`, addr as `0x${string}`],
+              args: [smartAccountAddress, addr as `0x${string}`],
             })
             await publicClient.waitForTransactionReceipt({ hash })
           }
@@ -107,29 +117,43 @@ export async function deployOrgAgent(
       }
     }
 
+    // 3. Register metadata via MCP.
     await registerAgentMetadata({
       agentAddress: smartAccountAddress,
       displayName: input.name.trim(),
       description: input.description.trim(),
       agentType: 'org',
     })
-    await addAgentController(smartAccountAddress, ownerAddress)
 
-    // Mint an on-chain ORGANIZATION_GOVERNANCE + ROLE_OWNER edge from the
-    // user's person agent → the new org. Mirrors the seed flow: ownership
-    // becomes visible in the trust graph and getControlledAgentsForUser can
-    // surface a Confirm button on /relationships even if the controller list
-    // is later modified. Best-effort: missing person agent or chain hiccup
-    // shouldn't block the deploy.
+    // 4. Owner-edge from the user's person agent → org via person-mcp.
     if (user.personAgentAddress) {
       try {
-        const edgeId = await createRelationship({
-          subject: user.personAgentAddress as `0x${string}`,
-          object: smartAccountAddress as `0x${string}`,
-          roles: [ROLE_OWNER],
-          relationshipType: ORGANIZATION_GOVERNANCE,
-        })
-        await confirmRelationship(edgeId)
+        const r = await callMcp<{ ok: true; edgeId: Hex }>(
+          'person',
+          'relationship:emit_edge',
+          {
+            subject: user.personAgentAddress,
+            object: smartAccountAddress,
+            relationshipType: ORGANIZATION_GOVERNANCE,
+            roles: [ROLE_OWNER],
+          },
+          { agentAddress: user.personAgentAddress },
+        )
+        // Move PROPOSED → CONFIRMED → ACTIVE so the owner edge reflects
+        // the same lifecycle the prior createRelationship/confirmRelationship
+        // pair produced.
+        await callMcp(
+          'person',
+          'relationship:set_edge_status',
+          { edgeId: r.edgeId, newStatus: 2 },
+          { agentAddress: user.personAgentAddress },
+        ).catch(() => undefined)
+        await callMcp(
+          'person',
+          'relationship:set_edge_status',
+          { edgeId: r.edgeId, newStatus: 3 },
+          { agentAddress: user.personAgentAddress },
+        ).catch(() => undefined)
         scheduleKbSyncEager()
       } catch (e) {
         console.warn('Owner edge mint failed (non-fatal):', (e as Error).message)

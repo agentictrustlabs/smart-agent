@@ -48,6 +48,7 @@ export async function verifyDelegationAndExtractOrgPrincipal(
   )
 
   if (!result.valid || !result.claims) {
+    console.warn(`[org-mcp][verify-delegation] failed (token=${(token ?? '').slice(0, 32)}…, len=${(token ?? '').length}): ${result.error}`)
     return { error: `Delegation verification failed: ${result.error ?? 'unknown'}` }
   }
 

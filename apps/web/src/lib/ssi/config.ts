@@ -1,7 +1,21 @@
-// person-mcp absorbed the ssi-wallet routes (provision/credentials/proofs/
-// audit/oid4vp/match-against-public-set) post-merge — they live on the same
-// port as the MCP tools. `walletUrl` aliases `personUrl` so the existing
-// callers keep compiling without a per-file edit.
+// Routing rule (phase 3 of A2A-first consolidation):
+//
+//   `personUrl` / `walletUrl` are RESERVED for two narrow uses:
+//     (1) Public protocol endpoints (`/oid4vp/*`, `/oid4vci/*`, `/.well-known/*`)
+//         — these are unauthenticated standards endpoints and route direct.
+//     (2) Deferred direct-HTTP routes that haven't been wrapped as MCP tools
+//         yet (`/wallet/<principal>/<context>`, `/credentials/store`,
+//         `/wallet-action/dispatch`, `/session-store/*`). Tracked TODO(phase-4)
+//         in their call sites.
+//
+//   ALL person-mcp /tools/<name> traffic MUST go through the A2A proxy via
+//   `callMcp('person', name, args)` from `@/lib/clients/mcp-client`. The
+//   `person` client in `clients.ts` enforces this.
+//
+//   `orgUrl` / `familyUrl` / `geoUrl` / `skillUrl` / `verifierUrl` continue
+//   to route direct for issuer/verifier protocol surfaces — they're not
+//   user-authenticated tool calls and the A2A proxy currently has no
+//   notion of a non-`/tools/` passthrough.
 const personUrl = process.env.PERSON_MCP_URL ?? 'http://localhost:3200'
 
 export const ssiConfig = {

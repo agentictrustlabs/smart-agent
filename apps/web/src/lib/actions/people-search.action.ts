@@ -17,7 +17,8 @@
  * Returns degree-bucketed results ready for direct render.
  */
 
-import { DiscoveryService } from '@smart-agent/discovery'
+import { hubListAgents } from '@/lib/clients/hub-client'
+import type { KBAgent } from '@smart-agent/discovery'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { getPersonAgentForUser } from '@/lib/agent-registry'
 import {
@@ -58,11 +59,10 @@ export async function searchPeople(opts: {
 } = {}): Promise<PeopleSearchResult> {
   const limit = opts.limit ?? DEFAULT_LIMIT
 
-  // ── 1. Catalog ──────────────────────────────────────────────────
-  const discovery = DiscoveryService.fromEnv()
-  let agents: Awaited<ReturnType<typeof discovery.listAgents>> = []
+  // ── 1. Catalog (hub-mcp KB read, cached) ───────────────────────
+  let agents: KBAgent[] = []
   try {
-    agents = await discovery.listAgents({
+    agents = await hubListAgents({
       agentType: 'person',
       search: opts.query?.trim() || undefined,
       capability: opts.capability?.trim() || undefined,
@@ -71,7 +71,7 @@ export async function searchPeople(opts: {
       limit: Math.max(limit * 2, 80),    // overfetch, we'll re-rank
     })
   } catch (err) {
-    console.error('[searchPeople] listAgents failed:', err)
+    console.error('[searchPeople] hubListAgents failed:', err)
     return { callerScored: false, count: 0, hits: [] }
   }
 

@@ -52,7 +52,7 @@ export interface ToolPolicy {
   executionPath: ExecutionPath
 
   /** On-chain targets this tool may invoke. Empty array for mcp-only paths. */
-  allowedTargets: Array<'PoolRegistry' | 'FundRegistry' | 'AgentAccountFactory' | 'GrantRegistry' | 'ClassAssertionContract' | 'AgentRelationship' | 'AgentAccountResolver' | 'VoteRegistry' | 'GrantProposalRegistry' | 'PledgeRegistry' | 'MatchInitiationRegistry'>
+  allowedTargets: Array<'PoolRegistry' | 'FundRegistry' | 'AgentAccountFactory' | 'GrantRegistry' | 'ClassAssertionContract' | 'AgentRelationship' | 'AgentAccountResolver' | 'VoteRegistry' | 'GrantProposalRegistry' | 'PledgeRegistry' | 'MatchInitiationRegistry' | 'ProposalRegistry' | 'CommitmentRegistry'>
 
   /** 4-byte function selectors callable on the targets. Empty for mcp-only. */
   allowedSelectors: Hex[]
@@ -97,6 +97,50 @@ export const FUND_REGISTRY_SELECTORS_BY_TOOL: Record<string, string[]> = {
   'round:update_voting_config': ['setRoundVotingConfig'],
 }
 
+/** AgentAccountResolver selectors a tool is allowed to invoke. pool:create
+ *  must register the pool's AgentAccount so its displayName resolves on
+ *  round-detail, proposal-timeline and the agent-graph pages (spec-006
+ *  invariant). */
+export const AGENT_ACCOUNT_RESOLVER_SELECTORS_BY_TOOL: Record<string, string[]> = {
+  'pool:create': ['register', 'setStringProperty'],
+  // Phase 4 — A2A-first routing consolidation. Writes the web app
+  // previously did directly against the deployer wallet now route via
+  // the agent_resolver:* tool family.
+  'agent_resolver:register': [
+    'register',
+    'updateCore',
+    'setStringProperty',
+    'addMultiStringProperty',
+    'clearMultiStringProperty',
+  ],
+  'agent_resolver:set_address_property': ['setAddressProperty'],
+  'agent_resolver:set_string_property':  ['setStringProperty'],
+  'agent_resolver:add_multi_address_property': ['addMultiAddressProperty'],
+}
+
+/** Phase 4 — AgentRelationship selectors a tool may invoke. relationship:*
+ *  tools live on person-mcp; proposal_registry:* + commitment:* live on
+ *  org-mcp and call other targets (ProposalRegistry / CommitmentRegistry)
+ *  whose selectors are routed via the target table below. */
+export const AGENT_RELATIONSHIP_SELECTORS_BY_TOOL: Record<string, string[]> = {
+  'relationship:emit_edge': ['createEdge', 'addRole'],
+  'relationship:set_edge_status': ['setEdgeStatus'],
+}
+
+/** Phase 4 — public-facet ProposalRegistry writes. */
+export const PROPOSAL_REGISTRY_SELECTORS_BY_TOOL: Record<string, string[]> = {
+  'proposal_registry:announce_award': ['announceAward'],
+  'proposal_registry:set_status': ['setStatus'],
+}
+
+/** Phase 4 — CommitmentRegistry writes (spec-006). */
+export const COMMITMENT_REGISTRY_SELECTORS_BY_TOOL: Record<string, string[]> = {
+  'commitment:commit':         ['commit'],
+  'commitment:record_release': ['recordRelease'],
+  'commitment:record_outcome': ['recordOutcome'],
+  'commitment:cancel':         ['cancelCommitment'],
+}
+
 // ─── Default-mcp-only policy template ────────────────────────────────
 
 function mcpOnly(toolId: string, mcpServer: ToolPolicy['mcpServer']): ToolPolicy {
@@ -118,7 +162,7 @@ function mcpOnly(toolId: string, mcpServer: ToolPolicy['mcpServer']): ToolPolicy
 function statelessRedeem(
   toolId: string,
   mcpServer: ToolPolicy['mcpServer'],
-  target: ToolPolicy['allowedTargets'][number],
+  target: ToolPolicy['allowedTargets'][number] | ToolPolicy['allowedTargets'][number][],
   // selectors filled in at runtime from the policy table above
 ): ToolPolicy {
   return {
@@ -126,7 +170,7 @@ function statelessRedeem(
     mcpServer,
     riskTier: 'routine',
     executionPath: 'stateless-redeem',
-    allowedTargets: [target],
+    allowedTargets: Array.isArray(target) ? target : [target],
     allowedSelectors: [],  // populated at session-bootstrap time from POOL/FUND_REGISTRY_SELECTORS_BY_TOOL
     maxValueWei: 0n,
     requiresTaskBinding: false,
@@ -205,6 +249,54 @@ export const TOOL_POLICIES: Record<string, ToolPolicy> = {
   'grant_proposal:list_for_round': mcpOnly('grant_proposal:list_for_round', 'org-mcp'),
   'grant_proposal:count_for_round': mcpOnly('grant_proposal:count_for_round', 'org-mcp'),
   'grant_proposal:rescind':        mcpOnly('grant_proposal:rescind', 'org-mcp'),
+
+  // ─── Phase 4 — A2A-first routing consolidation ─────────────────────
+  // AgentAccountResolver writes — multi-tx (register + multi-string +
+  // single-string passes). Each individual on-chain call is targeted
+  // at AgentAccountResolver; the action layer treats this as one
+  // logical MCP call but the a2a-agent receives one redeem per tx.
+  'agent_resolver:register':            statelessRedeem('agent_resolver:register', 'org-mcp', 'AgentAccountResolver'),
+  'agent_resolver:set_address_property': statelessRedeem('agent_resolver:set_address_property', 'org-mcp', 'AgentAccountResolver'),
+  'agent_resolver:set_string_property':  statelessRedeem('agent_resolver:set_string_property', 'org-mcp', 'AgentAccountResolver'),
+  'agent_resolver:add_multi_address_property': statelessRedeem('agent_resolver:add_multi_address_property', 'org-mcp', 'AgentAccountResolver'),
+  'agent_resolver:read':                mcpOnly('agent_resolver:read', 'org-mcp'),
+  'agent_resolver:read_address_property': mcpOnly('agent_resolver:read_address_property', 'org-mcp'),
+
+  // ProposalRegistry (public-facet) — sub-delegated because it's
+  // an asset-affecting state mutation (awarded / revoked / rescinded).
+  'proposal_registry:announce_award': subDelegated('proposal_registry:announce_award', 'org-mcp', 'ProposalRegistry', /* requiresHuman */ true),
+  'proposal_registry:set_status':     subDelegated('proposal_registry:set_status', 'org-mcp', 'ProposalRegistry'),
+
+  // CommitmentRegistry — spec 006 disbursement lifecycle.
+  // commit / cancel: msg.sender must own the donor pool's AgentAccount; the
+  // user's session's smart account IS that owner, so stateless-redeem works.
+  // record_outcome: permissionless on chain (AnonCreds validator gate is
+  // off-chain). record_release is NOT routed through MCP at all — it's a
+  // Rail-A executeBatch on the donor AgentAccount and is signed by the
+  // pool-owner's EOA in the action layer (mirrors pledgeHonor.action.ts).
+  'commitment:commit':         statelessRedeem('commitment:commit', 'org-mcp', 'CommitmentRegistry'),
+  'commitment:record_release': statelessRedeem('commitment:record_release', 'org-mcp', 'CommitmentRegistry'),
+  'commitment:record_outcome': statelessRedeem('commitment:record_outcome', 'org-mcp', 'CommitmentRegistry'),
+  'commitment:cancel':         statelessRedeem('commitment:cancel', 'org-mcp', 'CommitmentRegistry'),
+  'commitment:get':            mcpOnly('commitment:get', 'org-mcp'),
+  'commitment:list':           mcpOnly('commitment:list', 'org-mcp'),
+
+  // FundRegistry / PoolRegistry — read-only helpers.
+  'fund_registry:get_round_fund_agent': mcpOnly('fund_registry:get_round_fund_agent', 'org-mcp'),
+  'fund_registry:get_round_status':     mcpOnly('fund_registry:get_round_status', 'org-mcp'),
+  'fund_registry:list_rounds_by_pool':  mcpOnly('fund_registry:list_rounds_by_pool', 'org-mcp'),
+  'pool_registry:get_pool':             mcpOnly('pool_registry:get_pool', 'org-mcp'),
+  'pool_registry:list_pools_by_steward': mcpOnly('pool_registry:list_pools_by_steward', 'org-mcp'),
+
+  // person-mcp — AgentRelationship writes routed via stateless-redeem.
+  'relationship:emit_edge':       statelessRedeem('relationship:emit_edge', 'person-mcp', 'AgentRelationship'),
+  'relationship:set_edge_status': statelessRedeem('relationship:set_edge_status', 'person-mcp', 'AgentRelationship'),
+  'relationship:list_outgoing':   mcpOnly('relationship:list_outgoing', 'person-mcp'),
+
+  // agent:deploy — routes through /session/:id/deploy-agent (separate
+  // endpoint from redeem-tx). Mark as routine; the a2a-agent layer
+  // independently validates the salt + owner against the session.
+  'agent:deploy': statelessRedeem('agent:deploy', 'org-mcp', 'AgentAccountFactory'),
   'round:get_voting_config':       mcpOnly('round:get_voting_config', 'org-mcp'),
   // Spec 004 R10 — voting config moved to FundRegistry attrs;
   // round:update_voting_config now writes on chain.
@@ -219,7 +311,7 @@ export const TOOL_POLICIES: Record<string, ToolPolicy> = {
   'vote:tally_for_round':          mcpOnly('vote:tally_for_round', 'org-mcp'),
 
   // ─── org-mcp: routine on-chain (stateless redeem path) ─────────────
-  'pool:create':                    statelessRedeem('pool:create', 'org-mcp', 'PoolRegistry'),
+  'pool:create':                    statelessRedeem('pool:create', 'org-mcp', ['PoolRegistry', 'AgentAccountResolver']),
   'pool:update_mandate':            statelessRedeem('pool:update_mandate', 'org-mcp', 'PoolRegistry'),
   'pool:rotate_stewards':           statelessRedeem('pool:rotate_stewards', 'org-mcp', 'PoolRegistry'),
   'pool:set_accepted_restrictions': statelessRedeem('pool:set_accepted_restrictions', 'org-mcp', 'PoolRegistry'),
@@ -355,6 +447,22 @@ export function listAllowedFunctionNames(): { target: string; functionName: stri
     if (!isOnchainTool(tool)) continue
     for (const fn of fns) out.push({ target: 'FundRegistry', functionName: fn })
   }
+  for (const [tool, fns] of Object.entries(AGENT_ACCOUNT_RESOLVER_SELECTORS_BY_TOOL)) {
+    if (!isOnchainTool(tool)) continue
+    for (const fn of fns) out.push({ target: 'AgentAccountResolver', functionName: fn })
+  }
+  for (const [tool, fns] of Object.entries(AGENT_RELATIONSHIP_SELECTORS_BY_TOOL)) {
+    if (!isOnchainTool(tool)) continue
+    for (const fn of fns) out.push({ target: 'AgentRelationship', functionName: fn })
+  }
+  for (const [tool, fns] of Object.entries(PROPOSAL_REGISTRY_SELECTORS_BY_TOOL)) {
+    if (!isOnchainTool(tool)) continue
+    for (const fn of fns) out.push({ target: 'ProposalRegistry', functionName: fn })
+  }
+  for (const [tool, fns] of Object.entries(COMMITMENT_REGISTRY_SELECTORS_BY_TOOL)) {
+    if (!isOnchainTool(tool)) continue
+    for (const fn of fns) out.push({ target: 'CommitmentRegistry', functionName: fn })
+  }
   return out
 }
 
@@ -375,5 +483,7 @@ export function resolveTargetAddress(
     case 'GrantProposalRegistry':  return env.GRANT_PROPOSAL_REGISTRY_ADDRESS as Address | undefined
     case 'PledgeRegistry':         return env.PLEDGE_REGISTRY_ADDRESS as Address | undefined
     case 'MatchInitiationRegistry': return env.MATCH_INITIATION_REGISTRY_ADDRESS as Address | undefined
+    case 'ProposalRegistry':       return env.PROPOSAL_REGISTRY_ADDRESS as Address | undefined
+    case 'CommitmentRegistry':     return env.COMMITMENT_REGISTRY_ADDRESS as Address | undefined
   }
 }

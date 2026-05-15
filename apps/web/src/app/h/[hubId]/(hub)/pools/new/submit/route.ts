@@ -104,6 +104,7 @@ export async function POST(req: NextRequest) {
         { status: 401 },
       )
     }
+    console.error('[pools/new/submit] failed:', err)
     return NextResponse.json({ ok: false, error: message }, { status: 500 })
   }
 }

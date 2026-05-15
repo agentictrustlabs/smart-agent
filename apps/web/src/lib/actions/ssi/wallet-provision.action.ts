@@ -1,6 +1,18 @@
 'use server'
 
 /**
+ * Routing rule (phase 3 of A2A-first consolidation):
+ *   - Person-mcp tool calls (`ssi_create_wallet_action`,
+ *     `ssi_provision_wallet`) go through `callMcp('person', …)` —
+ *     signed-in user IS the principal being provisioned.
+ *   - `GET ${walletUrl}/wallet/<principal>/<context>` (idempotency check)
+ *     is a direct HTTP call on person-mcp's non-tool surface; TODO(phase-4)
+ *     wrap as `ssi_get_holder_wallet`.
+ *   - `dispatchWalletAction` flows through the session-grant path
+ *     (TODO(phase-4) for wrapping `/wallet-action/dispatch` as MCP tool).
+ */
+
+/**
  * Shared client-signing primitives for the AnonCreds wallet flow:
  *   • prepareWalletProvisionIfNeeded — idempotent check; returns either
  *     an existing holderWalletId OR an unsigned ProvisionHolderWallet
@@ -18,7 +30,7 @@
 
 import type { WalletAction } from '@smart-agent/privacy-creds'
 import { loadSignerForCurrentUser } from '@/lib/ssi/signer'
-import { person } from '@/lib/ssi/clients'
+import { callMcp } from '@/lib/clients/mcp-client'
 import { ssiConfig } from '@/lib/ssi/config'
 import { requireSession } from '@/lib/auth/session'
 import { hashWalletAction, type SignerContext } from '@/lib/credentials/wallet-helpers'
@@ -78,6 +90,8 @@ export async function prepareWalletProvisionIfNeeded(): Promise<{
 
     // Idempotent check — person-mcp may already have a holder wallet for
     // this (principal, walletContext) pair from an earlier session.
+    // TODO(phase-4): direct GET on person-mcp non-tool route. Wrap as
+    // `ssi_get_holder_wallet` so this can route via callMcp.
     try {
       const res = await fetch(
         `${ssiConfig.walletUrl}/wallet/${encodeURIComponent(principal)}/${encodeURIComponent(WALLET_CONTEXT)}`,
@@ -95,7 +109,8 @@ export async function prepareWalletProvisionIfNeeded(): Promise<{
       }
     } catch { /* fall through */ }
 
-    const built = await person.callTool<{ action: WalletAction & { expiresAt: string } }>(
+    const built = await callMcp<{ action: WalletAction & { expiresAt: string } }>(
+      'person',
       'ssi_create_wallet_action',
       {
         principal,
@@ -123,7 +138,8 @@ export async function submitWalletProvision(input: {
 }): Promise<{ success: boolean; holderWalletId?: string; walletContext?: string; error?: string }> {
   try {
     const signer = await getSignerContext()
-    const res = await person.callTool<{ holderWalletId?: string; error?: string }>(
+    const res = await callMcp<{ holderWalletId?: string; error?: string }>(
+      'person',
       'ssi_provision_wallet',
       {
         action: input.action,
@@ -166,6 +182,8 @@ export async function provisionHolderWalletViaSession(): Promise<{
     const principal = ctx.principal
 
     // Idempotent: skip dispatch if already provisioned.
+    // TODO(phase-4): direct GET on person-mcp non-tool route. Wrap as
+    // `ssi_get_holder_wallet` so this can route via callMcp.
     try {
       const res = await fetch(
         `${ssiConfig.walletUrl}/wallet/${encodeURIComponent(principal)}/${encodeURIComponent(WALLET_CONTEXT)}`,

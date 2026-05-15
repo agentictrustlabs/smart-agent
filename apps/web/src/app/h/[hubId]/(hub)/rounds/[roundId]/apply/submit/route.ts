@@ -68,6 +68,10 @@ export async function POST(
   const fullRoundId = rawRound.startsWith('urn:smart-agent:round:')
     ? rawRound
     : `urn:smart-agent:round:${rawRound}`
+  // recipientAddress is resolved server-side from the current user's
+  // hub-org (`sa:hasTreasury`). The form doesn't surface it directly —
+  // the proposer's identity already pins the recipient. submitProposal()
+  // looks it up when the request carries the zero address.
   const request: SubmitGrantProposalRequest = {
     proposerAgentId: body.proposerAgentId ?? myAgent,
     displayName: (body.displayName ?? '').trim(),
@@ -80,6 +84,7 @@ export async function POST(
     desiredOutcomes: body.desiredOutcomes ?? [],
     reportingObligations: body.reportingObligations ?? { cadence: 'none', format: 'written' },
     organisationalBackground: body.organisationalBackground ?? { narrative: '' },
+    recipientAddress: '0x0000000000000000000000000000000000000000',
   }
 
   // Quick required-field gate — surfaces a friendlier error than the MCP
@@ -126,6 +131,10 @@ export async function POST(
   try {
     result = await submitProposal({ request, poolAgentId })
   } catch (err) {
+    // Log the full trace so we can see what blew up deep in the MCP /
+    // AnonCreds / delegation chain — the response body only carries the
+    // short message and tail-line which often hides the real root cause.
+    console.error('[apply/submit] submitProposal threw:', err)
     return NextResponse.json(
       {
         ok: false,
@@ -136,6 +145,11 @@ export async function POST(
       },
       { status: 500 },
     )
+  }
+  if (!result.ok) {
+    // Typed-error path also worth logging — many failures come back as
+    // { ok:false, error: ... } instead of a thrown exception.
+    console.error('[apply/submit] submitProposal returned error:', result.error)
   }
 
   if (!result.ok) {

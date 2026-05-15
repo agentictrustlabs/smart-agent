@@ -22,9 +22,33 @@ import {
   computeAllowedSelectors,
   computeAllowedTargetAddresses,
 } from './a2a-session-caveats'
+import {
+  resolveA2AEndpointForAgent,
+  A2AUrlResolverError,
+} from '@/lib/clients/a2a-url-resolver'
+import { a2aFetch } from '@/lib/clients/a2a-fetch'
 
-const A2A_AGENT_URL = process.env.A2A_AGENT_URL ?? 'http://localhost:3100'
 const A2A_SESSION_COOKIE = A2A_SESSION_COOKIE_NAME
+
+/**
+ * Resolve the A2A endpoint for an agent address, with structured error
+ * mapping into the existing `{ success: false, error }` shape used by the
+ * bootstrap helpers.
+ */
+async function endpointFor(addr: string): Promise<
+  | { ok: true; endpoint: string; hostHeader: string }
+  | { ok: false; error: string }
+> {
+  try {
+    const r = await resolveA2AEndpointForAgent(addr)
+    return { ok: true, endpoint: r.endpoint, hostHeader: r.hostHeader }
+  } catch (e) {
+    if (e instanceof A2AUrlResolverError) {
+      return { ok: false, error: `A2A endpoint unresolvable for ${addr}: ${e.message}` }
+    }
+    throw e
+  }
+}
 
 /**
  * Bootstrap an A2A session by signing a delegation on behalf of the user's
@@ -52,6 +76,12 @@ const A2A_SESSION_COOKIE = A2A_SESSION_COOKIE_NAME
 export async function bootstrapA2ASessionForUser(user: {
   smartAccountAddress?: string | null
   privateKey?: string | null
+  /** Routes A2A traffic for this user. In the catalyst seed model the smart
+   *  account (signs delegations via ERC-1271) and the person agent (registered
+   *  on AgentAccountResolver with a primary name) are distinct addresses. We
+   *  resolve the A2A host from the person agent and keep the session bound to
+   *  the smart account. Falls back to the smart account if absent. */
+  personAgentAddress?: string | null
 }, options?: { durationSeconds?: number }): Promise<{ success: boolean; sessionId?: string; error?: string }> {
   const durationSeconds = options?.durationSeconds ?? 86400
   if (!user.smartAccountAddress) {
@@ -79,17 +109,24 @@ export async function bootstrapA2ASessionForUser(user: {
   }
   const userAccount = signer
 
+  const routingAddress = user.personAgentAddress ?? user.smartAccountAddress
+  const ep = await endpointFor(routingAddress)
+  if (!ep.ok) return { success: false, error: ep.error }
+
   try {
-    const initRes = await fetch(`${A2A_AGENT_URL}/session/init`, {
+    const initRes = await a2aFetch(`${ep.endpoint}/session/init`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Host': ep.hostHeader,
+      },
       body: JSON.stringify({ accountAddress: user.smartAccountAddress, durationSeconds }),
     })
     if (!initRes.ok) {
-      const err = await initRes.json().catch(() => ({}))
+      const err = await initRes.json().catch(() => ({})) as { error?: string }
       return { success: false, error: `Init: ${err.error ?? initRes.statusText}` }
     }
-    const { sessionId, sessionKeyAddress } = await initRes.json()
+    const { sessionId, sessionKeyAddress } = await initRes.json() as { sessionId: string; sessionKeyAddress: `0x${string}` }
 
     const now = Math.floor(Date.now() / 1000)
     const expiresAt = now + durationSeconds
@@ -146,9 +183,12 @@ export async function bootstrapA2ASessionForUser(user: {
     const delegationHash = hashDelegation(delegationData, chainId, delegationManagerAddr)
     const delegationSig = await userAccount.signMessage({ message: { raw: delegationHash } })
 
-    const pkgRes = await fetch(`${A2A_AGENT_URL}/session/package`, {
+    const pkgRes = await a2aFetch(`${ep.endpoint}/session/package`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Host': ep.hostHeader,
+      },
       body: JSON.stringify({
         sessionId,
         delegation: {
@@ -159,7 +199,7 @@ export async function bootstrapA2ASessionForUser(user: {
       }),
     })
     if (!pkgRes.ok) {
-      const err = await pkgRes.json().catch(() => ({}))
+      const err = await pkgRes.json().catch(() => ({})) as { error?: string }
       return { success: false, error: `Package: ${err.error ?? pkgRes.statusText}` }
     }
 

@@ -1,6 +1,25 @@
 /**
  * Client for person-mcp's SessionRecord HTTP API.
  *
+ * Routing rule (phase 3 of A2A-first consolidation):
+ *   - Every function in this file currently performs a direct HTTP call
+ *     against person-mcp's non-`/tools/` `/session-store/*` routes
+ *     (`/epoch/<addr>`, `/insert`, `/by-cookie/<value>`, `/active/<addr>`,
+ *     `/revoke`, `/bump-epoch`). These are part of person-mcp's Hono app
+ *     but live OUTSIDE the MCP tool surface, so the A2A proxy at
+ *     `/mcp/<server>/<tool>` cannot currently target them.
+ *   - TODO(phase-4): person-mcp owner should expose this state through
+ *     MCP tools (e.g. `ssi_session_epoch`, `ssi_session_insert`,
+ *     `ssi_session_by_cookie`, `ssi_session_list_active`,
+ *     `ssi_session_revoke`, `ssi_session_bump_epoch`) so this entire
+ *     module can flip to `callMcp('person', …)`. Tracked as the last
+ *     PERSON_MCP_URL holdout in apps/web/src/lib/auth/.
+ *   - Some entry points (`fetchSessionByCookie`) intentionally key off
+ *     a cookie value that the A2A proxy's per-session auth path doesn't
+ *     yet know how to forward — wrapping those tools also requires
+ *     extending the A2A delegation-token contract to carry the cookie's
+ *     opaque session id. Phase 4 should design that.
+ *
  * Person-mcp owns the canonical session/revocation/audit state. The web
  * app reads/writes through these endpoints instead of touching SQLite
  * directly — keeps a single owner per design doc §5.

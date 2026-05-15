@@ -1,125 +1,34 @@
 /**
- * Debounced write-through sync from on-chain → GraphDB.
+ * Thin shim — the real on-chain → GraphDB sync now lives in hub-mcp
+ * (`apps/hub-mcp/src/lib/kb-write-through.ts`). Phase 5 of the A2A-First
+ * Routing Consolidation moved the implementation out of the web app so
+ * the cache layer + the writes that invalidate it sit in the same
+ * process.
  *
- * Every server-side write that mutates the public trust graph
- * (createRelationship, confirmRelationship, agent registration, etc.)
- * calls `scheduleKbSync()`. Calls inside the QUIET_MS window coalesce
- * into one sync — so a burst (catalyst-seed creates ~3000 edges) costs
- * a single GraphDB upload instead of N.
+ * Existing callers keep their `scheduleKbSync()` / `scheduleKbSyncEager()`
+ * imports; the call is now a single hub-mcp RPC instead of an in-process
+ * timer. Hub-mcp owns the debounce / cooldown / min-interval logic.
  *
- * Why a process-wide singleton:
- *   • The KB is denormalized read-model. Stale state shows up as wrong
- *     KPI counts and an empty /agents directory; correctness on chain is
- *     unaffected, so we never block a write to wait for the sync.
- *   • If the sync itself is in flight when a new mutation arrives, we
- *     re-arm the timer once it finishes, guaranteeing the latest state
- *     eventually lands.
+ * The web no longer holds GraphDB write credentials. `SKIP_KB_SYNC=true`
+ * is still honoured (hub-mcp inherits the same env-gate).
  *
- * Backpressure (in order of strictness):
- *   1. QUIET_MS         — wait this long after the LAST mutation before
- *                          syncing. Coalesces bursts.
- *   2. COOLDOWN_MS      — after a SUCCESSFUL sync, hold off this long
- *                          before starting another even if mutations pile up.
- *   3. MIN_INTERVAL_MS  — hard floor between sync STARTS regardless of
- *                          success. Caps load when GraphDB is failing
- *                          (524 / 500) and we'd otherwise retry too fast.
- *
- * Failure handling: log and move on. The next call retriggers the sync;
- * a manual `POST /api/ontology-sync` still works as a backstop.
- *
- * Env-gate `SKIP_KB_SYNC=true` → `scheduleKbSync()` is a no-op. Use during
- * seed scripts that drive their own SPARQL writes so the action layer
- * doesn't pile follow-up full-graph PUTs on top.
+ * Deprecated — new code should call `hubScheduleKbSync()` from
+ * `@/lib/clients/hub-client` directly.
  */
 
-const QUIET_MS         = 120_000   // wait this long after the last write before syncing
-const COOLDOWN_MS      = 90_000    // wait at least this long after a successful sync
-const MIN_INTERVAL_MS  = 60_000    // hard floor between sync starts
+import { hubScheduleKbSync } from '@/lib/clients/hub-client'
 
-type LockState = {
-  timer: NodeJS.Timeout | null
-  inflight: Promise<void> | null
-  pending: boolean
-  /** Epoch ms of the last successful sync; 0 means never. */
-  lastSyncOkAt: number
-  /** Epoch ms of the last sync START (success or failure). */
-  lastSyncStartedAt: number
-}
-
-// globalThis singleton so Next.js HMR doesn't fork independent timers.
-const G = globalThis as unknown as { __kbSyncLock?: LockState }
-if (!G.__kbSyncLock) {
-  G.__kbSyncLock = { timer: null, inflight: null, pending: false, lastSyncOkAt: 0, lastSyncStartedAt: 0 }
-}
-const lock = G.__kbSyncLock
-
-function syncDisabled(): boolean {
-  const v = process.env.SKIP_KB_SYNC?.toLowerCase()
-  return v === '1' || v === 'true' || v === 'yes'
-}
-
-async function runSync(): Promise<boolean> {
-  lock.lastSyncStartedAt = Date.now()
-  // Lazy import — graphdb-sync pulls heavy deps; only load on actual sync.
-  const mod = await import('./graphdb-sync')
-  const result = await mod.syncOnChainToGraphDB()
-  console.log('[kb-sync]', result.success ? `ok (${result.agentCount} agents)` : `failed: ${result.message}`)
-  return result.success
-}
-
-/**
- * Schedule a debounced sync. Use for non-user-facing burst writes (e.g.,
- * seed scripts, multi-edge migrations) where coalescing is the goal.
- *
- * For user-driven UI actions where the user expects to see their write
- * reflected on the next page load, prefer `scheduleKbSyncEager()` — it
- * skips the quiet-after-write debounce and fires as soon as the cooldown
- * and min-interval allow.
- */
+/** Schedule a debounced kb-sync. Bursts coalesce inside hub-mcp's QUIET_MS window. */
 export function scheduleKbSync(): void {
-  schedule({ eager: false })
+  // Fire-and-forget — the underlying tool only enqueues a timer.
+  void hubScheduleKbSync(false).catch(err => {
+    console.warn('[kb-sync] hub-mcp scheduling failed:', err instanceof Error ? err.message : err)
+  })
 }
 
-/**
- * Like `scheduleKbSync()` but skips QUIET_MS — fires immediately if no
- * sync is in flight and we're past MIN_INTERVAL_MS / COOLDOWN_MS. Use
- * after user-driven writes (createPool, openRound, etc.) so the
- * /pools, /rounds index pages reflect the new state on the user's next
- * navigation without a 2-minute lag.
- */
+/** Eager schedule — skips the QUIET_MS debounce but still respects rate-limit floors. */
 export function scheduleKbSyncEager(): void {
-  schedule({ eager: true })
-}
-
-function schedule(opts: { eager: boolean }): void {
-  if (syncDisabled()) return
-
-  // If a sync is already running, mark pending so we re-arm when it ends.
-  if (lock.inflight) { lock.pending = true; return }
-
-  const now = Date.now()
-  const sinceOk     = now - lock.lastSyncOkAt
-  const sinceStart  = now - lock.lastSyncStartedAt
-  const waitForOk    = sinceOk    < COOLDOWN_MS     ? COOLDOWN_MS - sinceOk        : 0
-  const waitForStart = sinceStart < MIN_INTERVAL_MS ? MIN_INTERVAL_MS - sinceStart : 0
-  // Eager bypasses QUIET_MS but still respects the rate-limit floors.
-  const baseWait = opts.eager ? 0 : QUIET_MS
-  const wait = Math.max(baseWait, waitForOk, waitForStart)
-
-  if (lock.timer) clearTimeout(lock.timer)
-  lock.timer = setTimeout(() => {
-    lock.timer = null
-    lock.inflight = runSync()
-      .then(ok => {
-        if (ok) lock.lastSyncOkAt = Date.now()
-      })
-      .catch(e => { console.warn('[kb-sync] error:', (e as Error).message) })
-      .finally(() => {
-        lock.inflight = null
-        if (lock.pending) {
-          lock.pending = false
-          schedule({ eager: false })
-        }
-      })
-  }, wait)
+  void hubScheduleKbSync(true).catch(err => {
+    console.warn('[kb-sync] hub-mcp eager scheduling failed:', err instanceof Error ? err.message : err)
+  })
 }

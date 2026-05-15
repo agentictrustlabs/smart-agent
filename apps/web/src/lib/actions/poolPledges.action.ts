@@ -16,7 +16,8 @@
  * uses a same-DB shortcut to read the pool body for validation. // TODO(cross-mcp).
  */
 
-import { DiscoveryService } from '@smart-agent/discovery'
+// DiscoveryService import removed — Phase 5 routes KB reads through hub-mcp.
+// Future signal computations should import from `@/lib/clients/hub-client`.
 import {
   PoolPledgeClient,
   type SubmitPledgeRequest,
@@ -384,6 +385,5 @@ export async function stopMemberPledge(
   }
 }
 
-// Use DiscoveryService import to avoid `unused` warnings — kept here so future
-// signal computations (e.g., for amend-side rerank) can grow without re-importing.
-void DiscoveryService
+// (Phase 5) — DiscoveryService usage was removed; KB reads route through
+// `@/lib/clients/hub-client` (getHubDiscovery / hubListAgents / ...).

@@ -4,6 +4,10 @@
  * Org actions used by HubOnboardClient's `org` step and by the hub-home /
  * dropdown "Create organization" surfaces.
  *
+ * Phase 4 — HAS_MEMBER edge writes route via the person-mcp
+ * `relationship:emit_edge` + `relationship:set_edge_status` tools so the
+ * web layer no longer signs them with the deployer wallet.
+ *
  *   - getJoinableOrgsForHub: orgs that are HAS_MEMBER of this hub
  *   - joinOrgAsPerson:       link person agent → org via HAS_MEMBER edge
  *   - createOrgInHub:        deploy a fresh org agent + add it to the hub
@@ -12,7 +16,7 @@
  *                              this hub?
  */
 
-import { getAddress } from 'viem'
+import { getAddress, type Hex } from 'viem'
 import { eq } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { requireSession, getSession } from '@/lib/auth/session'
@@ -20,8 +24,6 @@ import {
   getEdgesBySubject,
   getEdgesByObject,
   getEdge,
-  createRelationship,
-  confirmRelationship,
   getPublicClient,
 } from '@/lib/contracts'
 import { getAgentMetadata } from '@/lib/agent-metadata'
@@ -33,7 +35,8 @@ import {
 } from '@smart-agent/sdk'
 import { deployOrgAgent } from '@/lib/actions/deploy-org-agent.action'
 import { getPersonAgentForUser } from '@/lib/agent-registry'
-import { setAgentTemplateId } from '@/lib/agent-resolver'
+import { ATL_TEMPLATE_ID } from '@/lib/agent-resolver'
+import { callMcp } from '@/lib/clients/mcp-client'
 
 const HAS_MEMBER_HEX = (HAS_MEMBER as string).toLowerCase()
 
@@ -45,11 +48,6 @@ export interface JoinableOrg {
   alreadyMember: boolean
 }
 
-/**
- * List orgs that are members of the given hub. Each entry includes whether
- * the *currently-logged-in* user is already a member of that org so the UI
- * can hide redundant "Join" buttons.
- */
 export async function getJoinableOrgsForHub(hubAddressInput: string): Promise<JoinableOrg[]> {
   const hubAddress = getAddress(hubAddressInput as `0x${string}`)
   const session = await getSession()
@@ -57,8 +55,6 @@ export async function getJoinableOrgsForHub(hubAddressInput: string): Promise<Jo
   if (session) {
     const stateless = session.via === 'passkey' || session.via === 'siwe'
     if (stateless && session.smartAccountAddress) {
-      // For passkey/SIWE: person agent == smart account (single-account
-      // model). No users row.
       personAgent = getAddress(session.smartAccountAddress as `0x${string}`)
     } else {
       const user = await db.select().from(schema.localUserAccounts)
@@ -84,7 +80,6 @@ export async function getJoinableOrgsForHub(hubAddressInput: string): Promise<Jo
       if (seen.has(candidate)) continue
       seen.add(candidate)
 
-      // Confirm it's an org (not a person agent member of the hub).
       const core = await getPublicClient().readContract({
         address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'getCore',
         args: [getAddress(candidate as `0x${string}`)],
@@ -108,16 +103,38 @@ export async function getJoinableOrgsForHub(hubAddressInput: string): Promise<Jo
   return orgs.sort((a, b) => a.displayName.localeCompare(b.displayName))
 }
 
-/** True if the current user already has any org membership in this hub. */
 export async function currentUserOrgInHub(hubAddressInput: string): Promise<boolean> {
   const orgs = await getJoinableOrgsForHub(hubAddressInput)
   return orgs.some(o => o.alreadyMember)
 }
 
-/**
- * Add the user as a member of an existing org. Writes a HAS_MEMBER edge
- * with subject=org and object=personAgent.
- */
+async function emitConfirmedActiveEdge(opts: {
+  delegateFrom: `0x${string}`
+  subject: `0x${string}`
+  object: `0x${string}`
+  relationshipType: `0x${string}`
+  roles: `0x${string}`[]
+}): Promise<Hex> {
+  const r = await callMcp<{ ok: true; edgeId: Hex }>(
+    'person',
+    'relationship:emit_edge',
+    {
+      subject: opts.subject,
+      object: opts.object,
+      relationshipType: opts.relationshipType,
+      roles: opts.roles,
+    },
+    { agentAddress: opts.delegateFrom },
+  )
+  await callMcp('person', 'relationship:set_edge_status',
+    { edgeId: r.edgeId, newStatus: 2 },
+    { agentAddress: opts.delegateFrom }).catch(() => undefined)
+  await callMcp('person', 'relationship:set_edge_status',
+    { edgeId: r.edgeId, newStatus: 3 },
+    { agentAddress: opts.delegateFrom }).catch(() => undefined)
+  return r.edgeId
+}
+
 export async function joinOrgAsPerson(orgAddressInput: string): Promise<{ success: boolean; error?: string }> {
   try {
     const session = await requireSession()
@@ -131,35 +148,27 @@ export async function joinOrgAsPerson(orgAddressInput: string): Promise<{ succes
     const personAgent = getAddress(smartAcctRaw as `0x${string}`)
     const org = getAddress(orgAddressInput as `0x${string}`)
 
-    // Idempotent: skip if the edge already exists.
     if (await isPersonInOrg(org, personAgent)) {
       return { success: true }
     }
 
-    const edgeId = await createRelationship({
+    await emitConfirmedActiveEdge({
+      delegateFrom: personAgent,
       subject: org,
       object: personAgent,
       roles: [ROLE_MEMBER as `0x${string}`],
       relationshipType: HAS_MEMBER as `0x${string}`,
     })
-    await confirmRelationship(edgeId)
     return { success: true }
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : 'join org failed' }
   }
 }
 
-/**
- * Deploy a new org agent, register it, link it to the hub, and add the
- * caller as a member. One server roundtrip from the client's perspective.
- */
 export async function createOrgInHub(input: {
   hubAddress: string
   name: string
   description: string
-  /** Org template (e.g. 'church', 'service-business'). Persisted via
-   *  setAgentTemplateId so downstream views can derive the correct
-   *  capabilities, AI agents, and role slots. */
   templateId: string
 }): Promise<{ success: boolean; orgAddress?: string; error?: string }> {
   try {
@@ -174,8 +183,6 @@ export async function createOrgInHub(input: {
     if (!input.name.trim()) return { success: false, error: 'org name is required' }
     if (!input.templateId) return { success: false, error: 'org template is required' }
 
-    // 1. Deploy + register the org agent (existing helper handles smart-account
-    // deployment + AgentControl init + AgentAccountResolver registration).
     const deploy = await deployOrgAgent({
       name: input.name.trim(),
       description: input.description.trim(),
@@ -188,41 +195,44 @@ export async function createOrgInHub(input: {
     }
     const orgAddress = getAddress(deploy.smartAccountAddress as `0x${string}`)
 
-    // 1b. Persist the org template so the dashboard, navigation, and AI
-    // agent provisioning pick up the right profile downstream. This is a
-    // separate write because deployOrgAgent doesn't take a template; if it
-    // fails we still return success (org exists, just untagged) and let
-    // the UI surface a "no template" fallback.
     try {
-      await setAgentTemplateId(orgAddress, input.templateId)
+      await callMcp(
+        'org',
+        'agent_resolver:set_string_property',
+        {
+          agentAddress: orgAddress,
+          predicate: ATL_TEMPLATE_ID,
+          value: input.templateId,
+        },
+        { agentAddress: orgAddress },
+      )
     } catch (err) {
-      console.warn('setAgentTemplateId failed (non-fatal):', err)
+      console.warn('agent_resolver:set_string_property(TEMPLATE_ID) failed (non-fatal):', err)
     }
 
-    // 2. Link the org to the hub (HAS_MEMBER edge subject=hub, object=org).
     const hubAddress = getAddress(input.hubAddress as `0x${string}`)
+    const personAgent = getAddress(smartAcctRaw as `0x${string}`)
+
     try {
-      const hubEdge = await createRelationship({
-        subject: hubAddress, object: orgAddress,
-        roles: [ROLE_MEMBER as `0x${string}`],
+      await emitConfirmedActiveEdge({
+        delegateFrom: personAgent,
+        subject: hubAddress,
+        object: orgAddress,
         relationshipType: HAS_MEMBER as `0x${string}`,
+        roles: [ROLE_MEMBER as `0x${string}`],
       })
-      await confirmRelationship(hubEdge)
     } catch (err) {
       console.warn('hub HAS_MEMBER write failed:', err)
-      // Non-fatal — org is deployed, but admin will need to add it to hub
-      // manually. Caller still gets a successful result with the org addr.
     }
 
-    // 3. Auto-add caller as a member of the new org.
-    const personAgent = getAddress(smartAcctRaw as `0x${string}`)
     try {
-      const orgEdge = await createRelationship({
-        subject: orgAddress, object: personAgent,
-        roles: [ROLE_MEMBER as `0x${string}`],
+      await emitConfirmedActiveEdge({
+        delegateFrom: personAgent,
+        subject: orgAddress,
+        object: personAgent,
         relationshipType: HAS_MEMBER as `0x${string}`,
+        roles: [ROLE_MEMBER as `0x${string}`],
       })
-      await confirmRelationship(orgEdge)
     } catch (err) {
       console.warn('org HAS_MEMBER write failed:', err)
     }

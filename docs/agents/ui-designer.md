@@ -3,6 +3,21 @@
 ## Role
 Visual design quality, component architecture, and UX consistency across all hub interfaces.
 
+## Architecture Context
+
+Start UX architecture work from `docs/architecture/INDEX.md`, especially
+`docs/architecture/09-user-experience-architecture.md` and
+`docs/architecture/06-marketplace-funding-flow.md`. Keep navigation, action
+center, funding, credential, treasury, and confirmation patterns aligned with
+those docs.
+
+Role-specific architecture files:
+- `docs/architecture/09-user-experience-architecture.md` — UX mental models, labels, navigation, action center.
+- `docs/architecture/06-marketplace-funding-flow.md` — funding, grants, proposals, voting, commitments, pledges.
+- `docs/architecture/02-auth-session-delegation.md` — permission and consent UX.
+- `docs/architecture/05-persistence-data-stores.md` — source-of-truth concepts that affect labels and states.
+- `docs/architecture/10-operational-architecture.md` — readiness and error-state expectations.
+
 ## Workflow: Division of Labor
 
 ### Creative Visual Design → Cursor / GPT / Lovable

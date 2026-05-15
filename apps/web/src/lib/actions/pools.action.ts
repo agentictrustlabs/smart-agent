@@ -3,15 +3,15 @@
 /**
  * Spec 002 — Intent Marketplace (Pool Lane). Pool action layer.
  *
- * Server-only entry points for the pools index + detail pages. Pipes
- * through `@smart-agent/discovery` for public-mirror reads + applies the
- * proposer-side rank signals (proximity to the pool's stewardship agent +
- * cold-start outcomes per FR-015).
+ * Server-only entry points for the pools index + detail pages. Public-mirror
+ * reads go through `hub-mcp` (cached LRU + per-write invalidation); the action
+ * layer applies the proposer-side rank signals (proximity to the pool's
+ * stewardship agent + cold-start outcomes per FR-015).
  *
  * Reads only. No on-chain or GraphDB writes.
  */
 
-import { DiscoveryService } from '@smart-agent/discovery'
+import { getHubDiscovery } from '@/lib/clients/hub-client'
 import {
   PoolClient,
   rank,
@@ -94,7 +94,7 @@ export async function listPoolsForViewer(
     search: input.search,
   }
 
-  const discovery = DiscoveryService.fromEnv()
+  const discovery = getHubDiscovery()
   const client = new PoolClient(discovery)
 
   let pools: PoolListItem[] = []
@@ -163,7 +163,7 @@ export async function getPoolForViewer(
   poolId: string,
   viewerAgentId: string,
 ): Promise<GetPoolDetailResult> {
-  const discovery = DiscoveryService.fromEnv()
+  const discovery = getHubDiscovery()
   const client = new PoolClient(discovery)
   let pool: Pool | null = null
   try {
@@ -192,7 +192,7 @@ export async function getPoolRecentAllocations(
   viewerAgentId: string,
   limit = 5,
 ): Promise<PoolAllocationSummary[]> {
-  const discovery = DiscoveryService.fromEnv()
+  const discovery = getHubDiscovery()
   const client = new PoolClient(discovery)
   try {
     return await client.getRecentAllocations(poolId, viewerAgentId, limit)

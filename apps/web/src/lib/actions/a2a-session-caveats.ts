@@ -14,6 +14,10 @@ import {
   poolRegistryAbi,
   fundRegistryAbi,
   agentAccountFactoryAbi,
+  agentAccountResolverAbi,
+  agentRelationshipAbi,
+  proposalRegistryAbi,
+  commitmentRegistryAbi,
   listAllowedFunctionNames,
   listAllowedTargetSymbols,
   resolveTargetAddress,
@@ -23,12 +27,21 @@ interface AbiByTarget {
   PoolRegistry: readonly unknown[]
   FundRegistry: readonly unknown[]
   AgentAccountFactory: readonly unknown[]
+  AgentAccountResolver: readonly unknown[]
+  // Phase 4 — A2A-first routing consolidation.
+  AgentRelationship: readonly unknown[]
+  ProposalRegistry: readonly unknown[]
+  CommitmentRegistry: readonly unknown[]
 }
 
 const ABIS: AbiByTarget = {
   PoolRegistry: poolRegistryAbi as readonly unknown[],
   FundRegistry: fundRegistryAbi as readonly unknown[],
   AgentAccountFactory: agentAccountFactoryAbi as readonly unknown[],
+  AgentAccountResolver: agentAccountResolverAbi as readonly unknown[],
+  AgentRelationship: agentRelationshipAbi as readonly unknown[],
+  ProposalRegistry: proposalRegistryAbi as readonly unknown[],
+  CommitmentRegistry: commitmentRegistryAbi as readonly unknown[],
 }
 
 function selectorOf(targetSymbol: keyof AbiByTarget, functionName: string): `0x${string}` {

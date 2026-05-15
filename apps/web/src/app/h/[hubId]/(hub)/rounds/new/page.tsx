@@ -24,6 +24,17 @@ export const dynamic = 'force-dynamic'
 
 const C = { text: '#5c4a3a', textMuted: '#9a8c7e', accent: '#8b5e3c', card: '#ffffff', border: '#ece6db' }
 
+/** `demo-grant-pool-tf2cab` → `Demo Grant Pool tf2cab`. Used as a
+ *  dropdown-label fallback when the on-chain `sa:displayName` hasn't
+ *  resolved yet (newly-created pools take a few seconds to land in the
+ *  GraphDB mirror). */
+function humaniseSlug(slug: string): string {
+  return slug
+    .split('-')
+    .map(seg => seg.length === 0 ? seg : seg[0].toUpperCase() + seg.slice(1))
+    .join(' ')
+}
+
 export default async function NewRoundPage({ params }: { params: Promise<{ hubId: string }> }) {
   const { hubId: slug } = await params
   const internalHubId = HUB_SLUG_MAP[slug]
@@ -56,7 +67,13 @@ export default async function NewRoundPage({ params }: { params: Promise<{ hubId
     eligiblePools.push({
       poolAgentId: p.id,
       poolAgentAddress: p.treasuryAddress,
-      name: p.name || p.id.split(':').pop() || 'Pool',
+      // Humanise the slug fallback so the round-create dropdown shows
+      // "Demo Grant Pool tf2cab" instead of the raw URN. The on-chain
+      // display name (sa:displayName) is the authoritative source once
+      // the resolver-register tx + GraphDB sync have landed; until then
+      // the slug is all we have, and a humanised slug is far easier to
+      // distinguish in a dropdown than the kebab-case version.
+      name: p.name || humaniseSlug(p.id.split(':').pop() ?? '') || 'Pool',
       acceptedKinds: p.acceptedRestrictions?.kinds ?? [],
       acceptedGeo: p.acceptedRestrictions?.geoRoots ?? [],
     })

@@ -153,6 +153,40 @@ importers:
         specifier: ^5.5.0
         version: 5.9.3
 
+  apps/hub-mcp:
+    dependencies:
+      '@hono/node-server':
+        specifier: ^1.11.0
+        version: 1.19.14(hono@4.12.14)
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.12.1
+        version: 1.29.0(zod@3.25.76)
+      '@smart-agent/discovery':
+        specifier: workspace:*
+        version: link:../../packages/discovery
+      '@smart-agent/sdk':
+        specifier: workspace:*
+        version: link:../../packages/sdk
+      '@smart-agent/types':
+        specifier: workspace:*
+        version: link:../../packages/types
+      hono:
+        specifier: ^4.4.0
+        version: 4.12.14
+      viem:
+        specifier: ^2.21.0
+        version: 2.47.10(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76)
+    devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.19.17
+      tsx:
+        specifier: ^4.0.0
+        version: 4.21.0
+      typescript:
+        specifier: ^5.5.0
+        version: 5.9.3
+
   apps/org-mcp:
     dependencies:
       '@hono/node-server':
@@ -460,6 +494,9 @@ importers:
       tailwind-merge:
         specifier: ^3.5.0
         version: 3.5.0
+      undici:
+        specifier: ^8.3.0
+        version: 8.3.0
       viem:
         specifier: ^2.21.0
         version: 2.47.10(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76)
@@ -4204,6 +4241,10 @@ packages:
 
   undici-types@6.21.0:
     resolution: {integrity: sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ==}
+
+  undici@8.3.0:
+    resolution: {integrity: sha512-TkUDgb6tl7KOGZ+7e8E3d2FYgUQgF6z5YypqjWmixVQSQERFcVrVg0ySADm2LVLRh5ljAaHTCR5Fmz3Q34rB7Q==}
+    engines: {node: '>=22.19.0'}
 
   unpipe@1.0.0:
     resolution: {integrity: sha512-pjy2bYhSsufwWlKwPc+l3cN7+wuJlK6uz0YdJEOlQDbl6jo/YlPi4mb8agUkVC8BF7V8NuzeyPNqRksA3hztKQ==}
@@ -8275,6 +8316,8 @@ snapshots:
   underscore@1.13.6: {}
 
   undici-types@6.21.0: {}
+
+  undici@8.3.0: {}
 
   unpipe@1.0.0: {}
 

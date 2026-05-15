@@ -1,6 +1,20 @@
 'use server'
 
 /**
+ * Routing rule (phase 3 of A2A-first consolidation):
+ *   - Person-mcp tool calls (`ssi_list_my_credentials`,
+ *     `ssi_create_wallet_action`, `ssi_create_presentation`) go through
+ *     `callMcp('person', …)`. The signed-in user IS the holder being
+ *     verified; no `agentAddress` opt needed.
+ *   - verifier-mcp endpoints (`verifier.request`, `verifier.check`) are
+ *     verifier PROTOCOL surfaces, not /tools/, and stay direct HTTP via
+ *     the `verifier` client.
+ *   - `dispatchWalletAction` flows through the session-grant path in
+ *     `wallet-action/dispatch.ts` (TODO(phase-4) there for wrapping
+ *     `/wallet-action/dispatch` as an MCP tool).
+ */
+
+/**
  * Round-trip a held AnonCreds credential through the third-party
  * verifier-mcp. Used by the "Test verification" button on
  * HeldCredentialsPanel — proves end-to-end that the holder can prove
@@ -26,7 +40,8 @@ import type { WalletAction } from '@smart-agent/privacy-creds'
 import { walletActionDomain, WalletActionTypes } from '@smart-agent/privacy-creds'
 import { hashTypedData } from 'viem'
 import { loadSignerForCurrentUser } from '@/lib/ssi/signer'
-import { person, verifier } from '@/lib/ssi/clients'
+import { verifier } from '@/lib/ssi/clients'
+import { callMcp } from '@/lib/clients/mcp-client'
 import { ssiConfig } from '@/lib/ssi/config'
 import { requireSession } from '@/lib/auth/session'
 import { dispatchWalletAction, DispatchError } from '@/lib/wallet-action/dispatch'
@@ -108,9 +123,9 @@ export async function prepareVerifyHeldCredential(input: {
 
     // Locate the credential row so we know which holder wallet + cred type
     // we're presenting from.
-    const list = await person.callTool<{ credentials: Array<{
+    const list = await callMcp<{ credentials: Array<{
       id: string; holderWalletRef: string; credentialType: string; walletContext: string
-    }> }>('ssi_list_my_credentials', { principal })
+    }> }>('person', 'ssi_list_my_credentials', { principal })
     const row = list.credentials.find(c => c.id === input.credentialId)
     if (!row) return { success: false, error: 'unknown credential' }
 
@@ -128,7 +143,8 @@ export async function prepareVerifyHeldCredential(input: {
       .map(r => predicateFromRequest(req.presentationRequest, r))
       .filter((x): x is { attribute: string; operator: '>=' | '<=' | '>' | '<'; value: number } => Boolean(x))
 
-    const built = await person.callTool<{ action: WalletAction & { expiresAt: string } }>(
+    const built = await callMcp<{ action: WalletAction & { expiresAt: string } }>(
+      'person',
       'ssi_create_wallet_action',
       {
         principal,
@@ -217,11 +233,11 @@ export async function completeVerifyHeldCredential(input: {
   try {
     const signer = await getSignerContext()
 
-    const presRes = await person.callTool<{
+    const presRes = await callMcp<{
       presentation?: string
       auditSummary?: { revealedAttrs: string[]; pairwiseHandle: string }
       error?: string
-    }>('ssi_create_presentation', {
+    }>('person', 'ssi_create_presentation', {
       action: input.action,
       signature: input.signature,
       expectedSigner: signer.signerAddress,
@@ -282,9 +298,9 @@ export async function verifyHeldCredentialViaSession(input: {
     const ctx = await loadSignerForCurrentUser()
     const principal = ctx.principal
 
-    const list = await person.callTool<{ credentials: Array<{
+    const list = await callMcp<{ credentials: Array<{
       id: string; holderWalletRef: string; credentialType: string; walletContext: string
-    }> }>('ssi_list_my_credentials', { principal })
+    }> }>('person', 'ssi_list_my_credentials', { principal })
     const row = list.credentials.find(c => c.id === input.credentialId)
     if (!row) return { success: false, error: 'unknown credential' }
 

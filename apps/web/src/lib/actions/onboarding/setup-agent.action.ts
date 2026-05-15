@@ -18,19 +18,19 @@
  *                                     ATL_PRIMARY_NAME + ATL_NAME_LABEL.
  */
 
-import { getAddress, keccak256, toBytes, encodePacked, type PublicClient } from 'viem'
+import { getAddress, keccak256, toBytes, encodePacked, type PublicClient, type Hex } from 'viem'
 import { cookies } from 'next/headers'
 import { db, schema } from '@/db'
 import { eq } from 'drizzle-orm'
 import { requireSession } from '@/lib/auth/session'
 import { getPublicClient, getWalletClient } from '@/lib/contracts'
-import { addAgentController } from '@/lib/agent-resolver'
 import { registerAgentMetadata } from '@/lib/actions/agent-metadata.action'
-import { createRelationship, confirmRelationship } from '@/lib/contracts'
+import { callMcp } from '@/lib/clients/mcp-client'
 import {
   agentAccountResolverAbi,
   agentNameRegistryAbi,
   agentNameResolverAbi,
+  ATL_CONTROLLER,
   ATL_PRIMARY_NAME,
   ATL_NAME_LABEL,
   TYPE_HUB,
@@ -279,12 +279,21 @@ export async function ensurePersonAgentRegistered(): Promise<{ success: boolean;
     ) {
       const ownerAddr = getAddress(walletForController as `0x${string}`)
       try {
-        await addAgentController(smartAcct, ownerAddr)
+        await callMcp(
+          'org',
+          'agent_resolver:add_multi_address_property',
+          {
+            agentAddress: smartAcct,
+            predicate: ATL_CONTROLLER,
+            value: ownerAddr,
+          },
+          { agentAddress: smartAcct },
+        )
       } catch (e) {
         // The bootstrap server may have already been removed from _owners
         // (Phase 2). The agent is still registered; treat the controller
         // write as a non-fatal best-effort.
-        console.warn('[onboarding] addAgentController skipped:', (e as Error).message)
+        console.warn('[onboarding] add_multi_address_property skipped:', (e as Error).message)
       }
     }
     return { success: true }
@@ -392,13 +401,23 @@ export async function joinHubAsPerson(hubAddress: string): Promise<{ success: bo
     }
     if (!core.active) return { success: false, error: 'hub is not active' }
 
-    const edgeId = await createRelationship({
-      subject: hub,
-      object: personAgent,
-      roles: [ROLE_MEMBER as `0x${string}`],
-      relationshipType: HAS_MEMBER as `0x${string}`,
-    })
-    await confirmRelationship(edgeId)
+    const r = await callMcp<{ ok: true; edgeId: Hex }>(
+      'person',
+      'relationship:emit_edge',
+      {
+        subject: hub,
+        object: personAgent,
+        relationshipType: HAS_MEMBER,
+        roles: [ROLE_MEMBER],
+      },
+      { agentAddress: personAgent },
+    )
+    await callMcp('person', 'relationship:set_edge_status',
+      { edgeId: r.edgeId, newStatus: 2 },
+      { agentAddress: personAgent }).catch(() => undefined)
+    await callMcp('person', 'relationship:set_edge_status',
+      { edgeId: r.edgeId, newStatus: 3 },
+      { agentAddress: personAgent }).catch(() => undefined)
     const { scheduleKbSyncEager } = await import('@/lib/ontology/kb-write-through')
     scheduleKbSyncEager()
     return { success: true }
@@ -509,19 +528,33 @@ export async function registerPersonalAgentName(input: RegisterNameInput): Promi
       })
       await pub.waitForTransactionReceipt({ hash: h })
     })
+    // accountResolver writes route through agent_resolver:set_string_property
+    // MCP tool — Phase 4 removed deployer-wallet writes against
+    // AgentAccountResolver from the web layer.
+    void accountResolver
     await tolerant('setStringProperty(NAME_LABEL)', async () => {
-      const h = await wallet.writeContract({
-        address: accountResolver, abi: agentAccountResolverAbi, functionName: 'setStringProperty',
-        args: [accountAddr, ATL_NAME_LABEL as `0x${string}`, label],
-      })
-      await pub.waitForTransactionReceipt({ hash: h })
+      await callMcp(
+        'org',
+        'agent_resolver:set_string_property',
+        {
+          agentAddress: accountAddr,
+          predicate: ATL_NAME_LABEL,
+          value: label,
+        },
+        { agentAddress: accountAddr },
+      )
     })
     await tolerant('setStringProperty(PRIMARY_NAME)', async () => {
-      const h = await wallet.writeContract({
-        address: accountResolver, abi: agentAccountResolverAbi, functionName: 'setStringProperty',
-        args: [accountAddr, ATL_PRIMARY_NAME as `0x${string}`, fullName],
-      })
-      await pub.waitForTransactionReceipt({ hash: h })
+      await callMcp(
+        'org',
+        'agent_resolver:set_string_property',
+        {
+          agentAddress: accountAddr,
+          predicate: ATL_PRIMARY_NAME,
+          value: fullName,
+        },
+        { agentAddress: accountAddr },
+      )
     })
 
     // Mirror the chosen name into the DB so onboarding status has a stable

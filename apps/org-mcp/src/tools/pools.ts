@@ -33,6 +33,8 @@ import {
   PoolRegistryClient,
   agentAccountResolverAbi,
   TYPE_POOL_AGENT,
+  ATL_PRIMARY_NAME,
+  AGENT_TLD,
 } from '@smart-agent/sdk'
 import { requireOrgPrincipalAny as requireOrgPrincipal } from '../auth/principal-context.js'
 import { requirePoolRegistryAddress } from '../lib/contracts.js'
@@ -167,6 +169,30 @@ const createTool = {
           value: 0n,
           callData: registerData,
         })
+
+        // Spec-007 routing invariant — the pool's AgentAccount MUST carry an
+        // `ATL_PRIMARY_NAME` so a2a-agent can reverse-resolve its slug from
+        // the Host header. Without this, downstream actions that route by
+        // pool address (round:open, voting config, ...) throw
+        // "Agent ... has no primary name registered". The slug uses the pool
+        // id which is already kebab-cased and unique per registry.
+        try {
+          const primaryName = `${args.id}.${AGENT_TLD}`
+          const setNameData = encodeFunctionData({
+            abi: agentAccountResolverAbi,
+            functionName: 'setStringProperty',
+            args: [treasuryAddress, ATL_PRIMARY_NAME as `0x${string}`, primaryName],
+          })
+          await callA2aRedeem(sessionId, {
+            mcpTool: 'pool:create',
+            mcpCallId: randomUUID(),
+            target: resolverAddr,
+            value: 0n,
+            callData: setNameData,
+          })
+        } catch (err) {
+          console.warn(`[pool:create] setStringProperty(ATL_PRIMARY_NAME) failed (non-fatal):`, (err as Error).message?.slice(0, 200))
+        }
       } catch (err) {
         // Non-fatal: pool body still opens. Repair via
         // scripts/repair-pool-registration.ts.

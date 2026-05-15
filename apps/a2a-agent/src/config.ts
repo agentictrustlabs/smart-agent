@@ -38,6 +38,12 @@ export const config = {
   RPC_URL: env('RPC_URL', 'http://127.0.0.1:8545'),
   CHAIN_ID: parseInt(env('CHAIN_ID', '31337'), 10),
   A2A_SESSION_SECRET: requireSecret('A2A_SESSION_SECRET'),
+  // Host suffix this process matches when extracting agent slugs from the
+  // `Host` header (e.g. `rich-pedersen.agent.localhost` → slug `rich-pedersen`).
+  // The `.localhost` TLD resolves all subdomains to 127.0.0.1 by spec, so we
+  // don't need DNS or a reverse proxy for local dev. Override only when running
+  // behind a domain like `agent.example.com`.
+  A2A_HOST_BASE: env('A2A_HOST_BASE', 'agent.localhost'),
   AGENT_ACCOUNT_RESOLVER_ADDRESS: env('AGENT_ACCOUNT_RESOLVER_ADDRESS', '0x0000000000000000000000000000000000000000') as `0x${string}`,
   DELEGATION_MANAGER_ADDRESS: env('DELEGATION_MANAGER_ADDRESS', '0x0000000000000000000000000000000000000000') as `0x${string}`,
   TIMESTAMP_ENFORCER_ADDRESS: env('TIMESTAMP_ENFORCER_ADDRESS', '0x0000000000000000000000000000000000000000') as `0x${string}`,

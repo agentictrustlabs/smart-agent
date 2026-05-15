@@ -683,6 +683,7 @@ async function main() {
         reportingJson: '{"cadence":"quarterly"}',
         orgBackgroundJson: '{"narrative":"Pastor David has led Fort Collins Network outreach for 6 years."}',
         basisJson: '{"proximityHops":1,"composite":0.82}',
+        recipient: davidOrgTreasury,
       }],
     })
     console.log('  GrantProposalRegistry.submit ✓ (anchored to David\'s intent)')

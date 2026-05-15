@@ -1,3 +1,11 @@
+/**
+ * Routing note (phase 3 of A2A-first consolidation): this module performs
+ * only local DB reads + in-process EIP-712 signing — no MCP HTTP. It is
+ * imported by every SSI flow that needs the user's signer identity; all
+ * downstream MCP calls those flows make route through `callMcp('person',
+ * …)` via `@/lib/ssi/clients`. Nothing here talks to person-mcp directly.
+ */
+
 import { privateKeyToAccount } from 'viem/accounts'
 import { hashTypedData, getAddress } from 'viem'
 import { walletActionDomain, WalletActionTypes, type WalletAction } from '@smart-agent/privacy-creds'

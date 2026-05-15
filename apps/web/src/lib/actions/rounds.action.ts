@@ -13,7 +13,7 @@
  * Reads only. No on-chain or GraphDB writes.
  */
 
-import { DiscoveryService } from '@smart-agent/discovery'
+import { getHubDiscovery } from '@/lib/clients/hub-client'
 import {
   RoundClient,
   proposerSideSignals,
@@ -188,7 +188,7 @@ export async function listRoundsForViewer(
     includeClosed: input.includeClosed,
   }
 
-  const discovery = DiscoveryService.fromEnv()
+  const discovery = getHubDiscovery()
   const client = new RoundClient(discovery)
 
   let rounds: RoundListItem[] = []
@@ -293,7 +293,7 @@ export async function getRoundForViewer(
   roundId: string,
   viewerAgentId: string,
 ): Promise<RoundDetailActionResult> {
-  const discovery = DiscoveryService.fromEnv()
+  const discovery = getHubDiscovery()
   const client = new RoundClient(discovery)
   let round: Round | null = null
   try {

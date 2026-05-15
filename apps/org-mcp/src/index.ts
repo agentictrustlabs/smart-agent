@@ -28,6 +28,13 @@ import { poolPledgesTools } from './tools/poolPledges.js'
 import { proposalVotesTools } from './tools/proposalVotes.js'
 import { fundingTools } from './tools/disbursements.js'
 import { marketplaceCredIssuanceTools } from './tools/marketplaceCredIssuance.js'
+// Phase 4 — A2A-first routing consolidation.
+import { agentResolverTools } from './tools/agent_resolver.js'
+import { proposalRegistryTools } from './tools/proposal_registry.js'
+import { commitmentTools } from './tools/commitment.js'
+import { fundRegistryReadTools } from './tools/fund_registry_read.js'
+import { poolRegistryReadTools } from './tools/pool_registry_read.js'
+import { agentDeployTools } from './tools/agent_deploy.js'
 
 const allTools = {
   ...orgProfileTools,
@@ -47,6 +54,13 @@ const allTools = {
   ...proposalVotesTools,
   ...fundingTools,
   ...marketplaceCredIssuanceTools,
+  // Phase 4 additions.
+  ...agentResolverTools,
+  ...proposalRegistryTools,
+  ...commitmentTools,
+  ...fundRegistryReadTools,
+  ...poolRegistryReadTools,
+  ...agentDeployTools,
 } as const
 
 const toolDefinitions = Object.values(allTools).map(

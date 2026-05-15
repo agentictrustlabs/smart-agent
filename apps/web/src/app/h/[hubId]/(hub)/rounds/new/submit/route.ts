@@ -29,6 +29,10 @@ interface IncomingBody {
   votingStrategy?: 'steward-quorum' | 'member-approval' | 'quadratic' | 'ranked-choice'
   votingThreshold?: number
   votingWindowDays?: number
+  /** Validator EOAs that may attest milestones for this round. Each entry
+   *  is a 0x… hex address (the EOA the user signs releases / attestations
+   *  with). Stored on-chain as JSON under `sa:roundValidatorRequirements`. */
+  validators?: string[]
 }
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ hubId: string }> }) {
@@ -80,6 +84,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ hubId: str
       votingStrategy: body.votingStrategy,
       votingThreshold: body.votingThreshold,
       votingWindowDays: body.votingWindowDays,
+      validators: body.validators?.map((v) => v as `0x${string}`),
     })
 
     // Auto-issue RoundVoterCredentials to every Membership/member of
@@ -88,11 +93,10 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ hubId: str
     // presentation path. Best-effort: failures don't block round
     // creation — admins can re-issue individually via the voters tab.
     try {
-      const { DiscoveryService } = await import('@smart-agent/discovery')
+      const { hubListPools } = await import('@/lib/clients/hub-client')
       const { listOrgMembersOnChain } = await import('@/lib/agent-registry')
       const { addRoundVoter } = await import('@/lib/actions/round-voters.action')
-      const discovery = DiscoveryService.fromEnv()
-      const pools = await discovery.listPools({ hubId: internalHubId, viewerAgentId: myAgent })
+      const pools = await hubListPools({ hubId: internalHubId, viewerAgentId: myAgent })
       const pool = pools.find(p => (p.treasuryAddress ?? '').toLowerCase() === (body.poolAgentId ?? '').toLowerCase())
       if (pool) {
         const AGENT_IRI_PREFIX = 'https://smartagent.io/ontology/core#agent/'
@@ -120,6 +124,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ hubId: str
 
     return NextResponse.json({ ok: true, result })
   } catch (err) {
+    console.error('[rounds/new/submit] failed:', err)
     return NextResponse.json(
       { ok: false, error: err instanceof Error ? err.message : String(err) },
       { status: 500 },

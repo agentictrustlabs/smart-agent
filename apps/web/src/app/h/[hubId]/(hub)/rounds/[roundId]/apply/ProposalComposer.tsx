@@ -268,8 +268,29 @@ export function ProposalComposer(props: ProposalComposerProps) {
       {/* Intent picker */}
       <Section title="Underlying intent">
         {props.viewerIntents.length === 0 ? (
-          <div style={{ fontSize: '0.85rem', color: C.textMuted, fontStyle: 'italic' }}>
-            You have no expressed or acknowledged intents in this hub. Express a need first.
+          <div
+            role="alert"
+            style={{
+              background: '#fef3c7',
+              border: '1px solid #fde68a',
+              color: '#92400e',
+              borderRadius: 8,
+              padding: '0.75rem 0.95rem',
+              fontSize: '0.85rem',
+              lineHeight: 1.45,
+            }}
+          >
+            <strong style={{ display: 'block', marginBottom: '0.25rem' }}>
+              You need an expressed intent to anchor this proposal.
+            </strong>
+            Every proposal must point at a public NeedIntent so reviewers can match scope to ask.
+            {' '}
+            <a
+              href={`/h/${props.hubSlug}/intents/new`}
+              style={{ color: '#92400e', fontWeight: 700, textDecoration: 'underline' }}
+            >
+              Express a need first →
+            </a>
           </div>
         ) : (
           <select

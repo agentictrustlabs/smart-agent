@@ -256,6 +256,54 @@ export default async function RoundDetailPage({
         </div>
       </div>
 
+      {/* Operator lifecycle banner — surfaces the "Close submissions,
+          open voting" transition that is otherwise buried in the
+          Lifecycle tab on /admin. First-time operators have no other
+          discovery path. */}
+      {canCancel && roundStatus === 'open' && (
+        <div
+          role="status"
+          style={{
+            background: '#fef3c7',
+            border: '1px solid #fde68a',
+            color: '#92400e',
+            borderRadius: 10,
+            padding: '0.85rem 1rem',
+            marginBottom: '1rem',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '0.85rem',
+            flexWrap: 'wrap',
+          }}
+        >
+          <div>
+            <div style={{ fontSize: '0.88rem', fontWeight: 700 }}>
+              Ready to open voting?
+            </div>
+            <div style={{ fontSize: '0.78rem', marginTop: '0.2rem', color: '#a16207' }}>
+              Submissions close when you open voting. Stewards can then cast their votes on
+              {proposalsReceived > 0 ? ` the ${proposalsReceived} proposal${proposalsReceived === 1 ? '' : 's'}` : ' submitted proposals'}.
+            </div>
+          </div>
+          <Link
+            href={`/h/${slug}/rounds/${roundId}/admin`}
+            style={{
+              padding: '0.5rem 0.95rem',
+              background: '#92400e',
+              color: '#fff',
+              borderRadius: 8,
+              fontSize: '0.82rem',
+              fontWeight: 700,
+              textDecoration: 'none',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Close submissions, open voting →
+          </Link>
+        </div>
+      )}
+
       {/* Mandate */}
       <Section title="Round criteria">
         <div style={{ fontSize: '0.85rem', color: C.text, lineHeight: 1.5 }}>
@@ -369,7 +417,7 @@ export default async function RoundDetailPage({
                 href={`/h/${slug}/rounds/${roundId}/admin`}
                 style={{ padding: '0.55rem 0.95rem', background: C.card, color: C.text, border: `1px solid ${C.border}`, borderRadius: 8, fontSize: '0.82rem', fontWeight: 600, textDecoration: 'none' }}
               >
-                Admin →
+                Lifecycle &amp; admin →
               </Link>
               <CancelRoundButton hubSlug={slug} roundId={roundId} />
             </>

@@ -4384,3 +4384,901 @@ Version: viem@2.47.10
   Visit: http://localhost:3000/h/catalyst/proposals (after Maria signs in)
 [seed-test-pledge] no-op (spec 004 v2 — pool_pledges dropped; chain-side seeding TODO)
 [seed-test-match-initiation] no-op (spec 004 v2 — match_initiations dropped; chain-side seeding TODO)
+Found 22 T-Box .ttl files (under docs/ontology/tbox)
+  · docs/ontology/tbox/core.ttl
+  · docs/ontology/tbox/delegation.ttl
+  · docs/ontology/tbox/entitlements.ttl
+  · docs/ontology/tbox/geo.ttl
+  · docs/ontology/tbox/governance.ttl
+  · docs/ontology/tbox/hub.ttl
+  · docs/ontology/tbox/identity.ttl
+  · docs/ontology/tbox/intents.ttl
+  · docs/ontology/tbox/marketplace-lifecycle.ttl
+  · docs/ontology/tbox/matches.ttl
+  · docs/ontology/tbox/namespace.ttl
+  · docs/ontology/tbox/needs.ttl
+  · docs/ontology/tbox/people-groups.ttl
+  · docs/ontology/tbox/pg.ttl
+  · docs/ontology/tbox/pool-pledge.ttl
+  · docs/ontology/tbox/proposal.ttl
+  · docs/ontology/tbox/relationships.ttl
+  · docs/ontology/tbox/resources.ttl
+  · docs/ontology/tbox/roles.ttl
+  · docs/ontology/tbox/shacl/visibility.ttl
+  · docs/ontology/tbox/skills.ttl
+  · docs/ontology/tbox/trust.ttl
+Found 15 C-Box .ttl files (under docs/ontology/cbox)
+  · docs/ontology/cbox/agent-shapes.shacl.ttl
+  · docs/ontology/cbox/capacity-units.ttl
+  · docs/ontology/cbox/controlled-vocabularies.ttl
+  · docs/ontology/cbox/entitlement-shapes.shacl.ttl
+  · docs/ontology/cbox/hub-vocabulary.ttl
+  · docs/ontology/cbox/intent-shapes.shacl.ttl
+  · docs/ontology/cbox/intent-types.ttl
+  · docs/ontology/cbox/needs-shapes.shacl.ttl
+  · docs/ontology/cbox/people-group-scopes.ttl
+  · docs/ontology/cbox/people-group-shapes.shacl.ttl
+  · docs/ontology/cbox/reachedness-vocabulary.ttl
+  · docs/ontology/cbox/resource-types.ttl
+  · docs/ontology/cbox/skill-shapes.shacl.ttl
+  · docs/ontology/cbox/skill-vocabulary-oasf.ttl
+  · docs/ontology/cbox/skill-vocabulary.ttl
+
+Uploading T-Box + SHACL → https://smartagent.io/graph/schema/tbox
+  ✓ T-Box uploaded.
+
+Uploading C-Box → https://smartagent.io/graph/schema/cbox
+  ✓ C-Box uploaded.
+
+Verifying via SPARQL counts...
+  T-Box classes:  235
+  SHACL shapes:   6
+  C-Box concepts: 204
+  Marketplace classes present: 11 / 11
+    · https://smartagent.io/ontology/core#Fund
+    · https://smartagent.io/ontology/core#GrantProposal
+    · https://smartagent.io/ontology/core#MatchInitiation
+    · https://smartagent.io/ontology/core#MatchInitiationAssertion
+    · https://smartagent.io/ontology/core#PledgeAssertion
+    · https://smartagent.io/ontology/core#Pool
+    · https://smartagent.io/ontology/core#PoolPledge
+    · https://smartagent.io/ontology/core#PoolPledgedTotalAssertion
+    · https://smartagent.io/ontology/core#Round
+    · https://smartagent.io/ontology/core#RoundClosedAssertion
+    · https://smartagent.io/ontology/core#RoundOpenedAssertion
+
+✓ Sync complete.
+[seed-test-round] fund agent (catalyst network) → 0x0F669E6851A15FD0E5904EB197c369C2ab578D9b
+[seed-test-round] registerFund warn: The contract function "registerFund" reverted.
+
+Error: NotFundOwner()
+ 
+Contract Call:
+  address:   0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf
+  function:  registerFund(address fundAgent, bytes32[] acceptedKinds, bool openForCalls)
+  args:                  (0x0F669E6851A15FD0E5904EB197c369C2ab578D9b, ["0xe0763b6c82186160294b38982232e94f51e512b9f0e57d8eeb214ef2ee216a8b","0x28be1ff2b788efd3ef4b7749c2d0f81b2a43ababc36f2c8960dfe0c5db10580b","0xa31cb8e69ab09e362158b9bf851a54ece02060a706a8d52e7d947187be1a7bf5","0x7580d6244892989b460c96e64993a3ad3bfa5f64d354202b5ca34d00f75157c5","0x0f13c9d8222dbfb492d0af3dfd79bd0d84a51901cd45667b2374b6496a054c1a","0xd77fac1577d7fe76b7fed53864aa1cc6ca93bffa816c8edcd2fa72f4aa3ab3dc","0xc8d8c296e0c0e9617c16f250cef6bf1698592e08938576e6b044a3c5ef818c76","0x2d0f4ea592791ed7b8919f50b7079d3fa0dcbc666e8ad327b1516b6376e0781f","0x4b506235cb25b0517e0240f70e24fc2f750bfed6d2544fe5fc1f6fc301d3397e"], true)
+  sender:    0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+
+Docs: https://viem.sh/docs/contract/writeContract
+Details: execution reverted: custom error 0xb3545ef3
+Version: viem@2.47.10
+[seed-test-round] openRound warn for demo-trauma-care-q2: The contract function "openRound" reverted.
+
+Error: NotFundOwner()
+ 
+Contract Call:
+  address:   0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf
+  function:  openRound((bytes32 roundSubject, address fundAgent, address poolAgent, uint256 deadline, uint256 decisionDate, bytes32 reportingCadence, bytes32[] requiredCredentials, bytes32 visibility, bytes32 initialStatus, string mandate, string milestoneTemplate, string validatorRequirements, string slug))
+  args:               ({"roundSubject":"0xba7d5720d844ca4eabf89927d1babbe65bda75b6bec359184086371631c8bf61","fundAgent":"0x0F669E6851A15FD0E5904EB197c369C2ab578D9b","poolAgent":"0x0000000000000000000000000000000000000000","deadline":"1780009030","decisionDate":"1781391430","reportingCadence":"0x48680686fbaa3eb8a498d231a3766e99deb42819048529968dd20c370020cb28","requiredCredentials":[],"visibility":"0xebbc4f758526443c65cbc630276923c89e5f8ac0cef719eeb96b0a87cad53346","initialStatus":"0x0d37f17e287bdf05078af1c070b07ef59413a6a131f54dac6263f76d080c9990","mandate":"{\"acceptedKinds\":[\"trauma-care\",\"CompassionMinistry\",\"MigrantFamilyCare\"],\"acceptedGeo\":[\"us/colorado\"],\"budgetCeiling\":250000,\"expectedAwards\":6}","milestoneTemplate":"{}","validatorRequirements":"{}","slug":"demo-trauma-care-q2"})
+  sender:    0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+
+Docs: https://viem.sh/docs/contract/writeContract
+Details: execution reverted: custom error 0xb3545ef3
+Version: viem@2.47.10
+[seed-test-round] openRound warn for demo-spanish-scripture-q2: The contract function "openRound" reverted.
+
+Error: NotFundOwner()
+ 
+Contract Call:
+  address:   0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf
+  function:  openRound((bytes32 roundSubject, address fundAgent, address poolAgent, uint256 deadline, uint256 decisionDate, bytes32 reportingCadence, bytes32[] requiredCredentials, bytes32 visibility, bytes32 initialStatus, string mandate, string milestoneTemplate, string validatorRequirements, string slug))
+  args:               ({"roundSubject":"0x4d64467f9f671a10580ffee37b171d7e1c40f7882b323a331fd1e9d581a678cd","fundAgent":"0x0F669E6851A15FD0E5904EB197c369C2ab578D9b","poolAgent":"0x0000000000000000000000000000000000000000","deadline":"1780613830","decisionDate":"1782687430","reportingCadence":"0x48680686fbaa3eb8a498d231a3766e99deb42819048529968dd20c370020cb28","requiredCredentials":[],"visibility":"0xebbc4f758526443c65cbc630276923c89e5f8ac0cef719eeb96b0a87cad53346","initialStatus":"0x0d37f17e287bdf05078af1c070b07ef59413a6a131f54dac6263f76d080c9990","mandate":"{\"acceptedKinds\":[\"HeartLanguageScripture\",\"BibleStudy\",\"Discipleship\"],\"acceptedGeo\":[\"us/colorado\",\"us/wyoming\"],\"budgetCeiling\":60000,\"expectedAwards\":8}","milestoneTemplate":"{}","validatorRequirements":"{}","slug":"demo-spanish-scripture-q2"})
+  sender:    0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+
+Docs: https://viem.sh/docs/contract/writeContract
+Details: execution reverted: custom error 0xb3545ef3
+Version: viem@2.47.10
+[seed-test-round] openRound warn for demo-pastoral-coaching-q2: The contract function "openRound" reverted.
+
+Error: NotFundOwner()
+ 
+Contract Call:
+  address:   0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf
+  function:  openRound((bytes32 roundSubject, address fundAgent, address poolAgent, uint256 deadline, uint256 decisionDate, bytes32 reportingCadence, bytes32[] requiredCredentials, bytes32 visibility, bytes32 initialStatus, string mandate, string milestoneTemplate, string validatorRequirements, string slug))
+  args:               ({"roundSubject":"0x93ea8dd282a4cb83ab115e1b023fc4ed2f8fbb98e1aa6c81ea153521b34873a1","fundAgent":"0x0F669E6851A15FD0E5904EB197c369C2ab578D9b","poolAgent":"0x0000000000000000000000000000000000000000","deadline":"1781218630","decisionDate":"1783983430","reportingCadence":"0x7dc5939eec0033571e0a0cf7a81c00cc3cf42e60ac518fce8caf8c411d116466","requiredCredentials":[],"visibility":"0xebbc4f758526443c65cbc630276923c89e5f8ac0cef719eeb96b0a87cad53346","initialStatus":"0x0d37f17e287bdf05078af1c070b07ef59413a6a131f54dac6263f76d080c9990","mandate":"{\"acceptedKinds\":[\"CircleCoach\",\"PastoralCoaching\",\"ChurchPlanting\"],\"acceptedGeo\":[\"us/colorado\"],\"budgetCeiling\":75000,\"expectedAwards\":3}","milestoneTemplate":"{}","validatorRequirements":"{}","slug":"demo-pastoral-coaching-q2"})
+  sender:    0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+
+Docs: https://viem.sh/docs/contract/writeContract
+Details: execution reverted: custom error 0xb3545ef3
+Version: viem@2.47.10
+[seed-test-round] voting-config SQL seed skipped — defaults read from FundRegistry attrs (R10)
+[seed-test-round] GraphDB ok — INSERT 3 rounds
+
+✓ Seeded 3 rounds operated by fund 0x0F669E6851A15FD0E5904EB197c369C2ab578D9b:
+    · demo-trauma-care-q2 — Trauma-Care for Migrant Families — Compassion Ministry Q2
+    · demo-spanish-scripture-q2 — Spanish Heart-Language Scripture & Discipleship Q2
+    · demo-pastoral-coaching-q2 — Pastoral Coaching Cohort for NoCo Church Planters Q2
+[seed-test-pool] deployed pool agent demo-trauma-care-pool → 0x675E11eC5854eBd6656Fc9155D99746c9e438a16
+[seed-test-pool] PoolRegistry.open ok — demo-trauma-care-pool → tx 0xfd877f696586206735baf670f4179fc24a169a9a9c6a9b70c87f5d378a870230
+[seed-test-pool] deployed pool agent demo-spanish-bibles-pool → 0xA6Ca03d6c704C84cA9f495BDA26b5Fa1dDaaE461
+[seed-test-pool] PoolRegistry.open ok — demo-spanish-bibles-pool → tx 0xf4889ea865687556aaca1da0f5bce92ef5dfc99c34245a690610f62960b49157
+[seed-test-pool] deployed pool agent demo-prayer-chain-pool → 0x21681cFE20d8d18DBD746aeD92077DC4b8BFc17A
+[seed-test-pool] PoolRegistry.open ok — demo-prayer-chain-pool → tx 0xc9c99eb3d54277b2e78866e3a0bc5791359f846cf9eaaa8575c1d02a12f9382f
+[seed-test-pool] GraphDB ok — INSERT 3 pools into data graph
+
+✓ Seeded 3 pools operated by Catalyst NoCo Network:
+    · demo-trauma-care-pool — Trauma-Care + Migrant Family Compassion Pool  (treasury 0x675E11eC5854eBd6656Fc9155D99746c9e438a16)
+    · demo-spanish-bibles-pool — Spanish Bibles for New Families Pool  (treasury 0xA6Ca03d6c704C84cA9f495BDA26b5Fa1dDaaE461)
+    · demo-prayer-chain-pool — Hispanic Family Prayer Chain Pool  (treasury 0x21681cFE20d8d18DBD746aeD92077DC4b8BFc17A)
+  Visit: http://localhost:3000/h/catalyst/pools (after Maria signs in)
+[seed-test-proposal] wrote 5 proposals to person-mcp
+
+✓ Seeded 5 GrantProposals across the catalyst rounds:
+    · draft     person_cat-user-001 → demo-trauma-care-q2
+    · submitted person_cat-user-001 → demo-trauma-care-q2
+    · submitted person_cat-user-001 → demo-spanish-scripture-q2
+    · submitted person_cat-user-002 → demo-trauma-care-q2
+    · draft     person_cat-user-002 → demo-pastoral-coaching-q2
+  Visit: http://localhost:3000/h/catalyst/proposals (after Maria signs in)
+[seed-test-pledge] no-op (spec 004 v2 — pool_pledges dropped; chain-side seeding TODO)
+[seed-test-match-initiation] no-op (spec 004 v2 — match_initiations dropped; chain-side seeding TODO)
+Found 22 T-Box .ttl files (under docs/ontology/tbox)
+  · docs/ontology/tbox/core.ttl
+  · docs/ontology/tbox/delegation.ttl
+  · docs/ontology/tbox/entitlements.ttl
+  · docs/ontology/tbox/geo.ttl
+  · docs/ontology/tbox/governance.ttl
+  · docs/ontology/tbox/hub.ttl
+  · docs/ontology/tbox/identity.ttl
+  · docs/ontology/tbox/intents.ttl
+  · docs/ontology/tbox/marketplace-lifecycle.ttl
+  · docs/ontology/tbox/matches.ttl
+  · docs/ontology/tbox/namespace.ttl
+  · docs/ontology/tbox/needs.ttl
+  · docs/ontology/tbox/people-groups.ttl
+  · docs/ontology/tbox/pg.ttl
+  · docs/ontology/tbox/pool-pledge.ttl
+  · docs/ontology/tbox/proposal.ttl
+  · docs/ontology/tbox/relationships.ttl
+  · docs/ontology/tbox/resources.ttl
+  · docs/ontology/tbox/roles.ttl
+  · docs/ontology/tbox/shacl/visibility.ttl
+  · docs/ontology/tbox/skills.ttl
+  · docs/ontology/tbox/trust.ttl
+Found 15 C-Box .ttl files (under docs/ontology/cbox)
+  · docs/ontology/cbox/agent-shapes.shacl.ttl
+  · docs/ontology/cbox/capacity-units.ttl
+  · docs/ontology/cbox/controlled-vocabularies.ttl
+  · docs/ontology/cbox/entitlement-shapes.shacl.ttl
+  · docs/ontology/cbox/hub-vocabulary.ttl
+  · docs/ontology/cbox/intent-shapes.shacl.ttl
+  · docs/ontology/cbox/intent-types.ttl
+  · docs/ontology/cbox/needs-shapes.shacl.ttl
+  · docs/ontology/cbox/people-group-scopes.ttl
+  · docs/ontology/cbox/people-group-shapes.shacl.ttl
+  · docs/ontology/cbox/reachedness-vocabulary.ttl
+  · docs/ontology/cbox/resource-types.ttl
+  · docs/ontology/cbox/skill-shapes.shacl.ttl
+  · docs/ontology/cbox/skill-vocabulary-oasf.ttl
+  · docs/ontology/cbox/skill-vocabulary.ttl
+
+Uploading T-Box + SHACL → https://smartagent.io/graph/schema/tbox
+PUT https://smartagent.io/graph/schema/tbox failed (524): <!DOCTYPE html>
+<!--[if lt IE 7]> <html class="no-js ie6 oldie" lang="en-US"> <![endif]-->
+<!--[if IE 7]>    <html class="no-js ie7 oldie" lang="en-US"> <![endif]-->
+<!--[if IE 8]>    <html class="no-js ie8 oldie" lang="en-US"> <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en-US"> <!--<![endif]-->
+<head>
+
+<title>agentkg.io | 524: A timeout occurred</title>
+<meta charset="UTF-8" />
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+<meta name="robots" content="noindex, nofollow" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<link rel="stylesheet" id="cf_styles-css" href="/cdn-cgi/styles/main.css" />
+</head>
+<body>
+<div id="cf-wrapper">
+    <div id="cf-error-details" class="p-0">
+        <header class="mx-auto pt-10 lg:pt-6 lg:px-8 w-240 lg:w-full mb-8">
+            <h1 class="inline-block sm:block sm:mb-2 font-light text-60 lg:text-4xl text-black-dark leading-tight mr-2">
+                <span class="inline-block">A timeout occurred</span>
+                <span class="code-label">Error code 524</span>
+            </h1>
+            <div>
+                Visit <a href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_524&utm_campaign=graphdb.agentkg.io" target="_blank" rel="noopener noreferrer">cloudflare.com</a> for more information.
+            </div>
+            <div class="mt-3">2026-05-15 12:25:32 UTC</div>
+        </header>
+        <div class="my-8 bg-gradient-gray">
+            <div class="w-240 lg:w-full mx-auto">
+                <div class="clearfix md:px-8">
+                    <div id="cf-browser-status" class=" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center">
+  <div class="relative mb-10 md:m-0">
+    
+    <span class="cf-icon-browser block md:hidden h-20 bg-center bg-no-repeat"></span>
+    <span class="cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4"></span>
+    
+  </div>
+  <span class="md:block w-full truncate">You</span>
+  <h3 class="md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3">
+  
+    Browser
+  
+  </h3>
+  
+  <span class="leading-1.3 text-2xl text-green-success">Working</span>
+  
+</div>
+                    <div id="cf-cloudflare-status" class=" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center">
+  <div class="relative mb-10 md:m-0">
+    <a href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_524&#38;utm_campaign=graphdb.agentkg.io" target="_blank" rel="noopener noreferrer">
+    <span class="cf-icon-cloud block md:hidden h-20 bg-center bg-no-repeat"></span>
+    <span class="cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4"></span>
+    </a>
+  </div>
+  <span class="md:block w-full truncate">Denver</span>
+  <h3 class="md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3">
+  <a href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_524&utm_campaign=graphdb.agentkg.io" target="_blank" rel="noopener noreferrer">
+    Cloudflare
+  </a>
+  </h3>
+  
+  <span class="leading-1.3 text-2xl text-green-success">Working</span>
+  
+</div>
+                    <div id="cf-host-status" class="cf-error-source relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center">
+  <div class="relative mb-10 md:m-0">
+    
+    <span class="cf-icon-server block md:hidden h-20 bg-center bg-no-repeat"></span>
+    <span class="cf-icon-error w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4"></span>
+    
+  </div>
+  <span class="md:block w-full truncate">graphdb.agentkg.io</span>
+  <h3 class="md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3">
+  
+    Host
+  
+  </h3>
+  
+  <span class="leading-1.3 text-2xl text-red-error">Error</span>
+  
+</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="w-240 lg:w-full mx-auto mb-8 lg:px-8">
+            <div class="clearfix">
+                <div class="w-1/2 md:w-full float-left pr-6 md:pb-10 md:pr-0 leading-relaxed">
+                    <h2 class="text-3xl font-normal leading-1.3 mb-4">What happened?</h2>
+                    <p class="mb-2">The origin web server timed out responding to this request.</p><p>The likely cause is an overloaded background task, database or application, stressing the resources on the host web server.</p>
+                </div>
+                <div class="w-1/2 md:w-full float-left leading-relaxed">
+                    <h2 class="text-3xl font-normal leading-1.3 mb-4">What can I do?</h2>
+                    
+              <h3 class="text-15 font-semibold mb-2">If you're a visitor of this website:</h3>
+              <p class="mb-6">Please try again in a few minutes.</p>
+
+              <h3 class="text-15 font-semibold mb-2">If you're the owner of this website:</h3>
+              <p>Please refer to the <a rel="noopener noreferrer" href="https://developers.cloudflare.com/support/troubleshooting/http-status-codes/cloudflare-5xx-errors/error-524/">Error 524</a> article:</p>
+              <ul class="ml-4">
+                <li>Contact your hosting provider; check for long-running processes or an overloaded web server.</li>
+                <li>Use status polling of large HTTP processes to avoid this error.</li>
+                <li>Run the long-running scripts on a <a rel="noopener noreferrer" href="https://developers.cloudflare.com/dns/proxy-status/#dns-only-records">grey-clouded subdomain</a>.</li>
+                <li>Enterprise customers can <a rel="noopener noreferrer" href="https://developers.cloudflare.com/support/troubleshooting/http-status-codes/cloudflare-5xx-errors/error-524/#resolution-on-cloudflare">increase the timeout setting</a> globally or for specific requests using Cache Rules.</li>
+              </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="cf-error-footer cf-wrapper w-240 lg:w-full py-10 sm:py-4 sm:px-8 mx-auto text-center sm:text-left border-solid border-0 border-t border-gray-300">
+    <p class="text-13">
+      <span class="cf-footer-item sm:block sm:mb-1">Cloudflare Ray ID: <strong class="font-semibold">9fc21d2c795b9aea</strong></span>
+      <span class="cf-footer-separator sm:hidden">&bull;</span>
+      <span id="cf-footer-item-ip" class="cf-footer-item hidden sm:block sm:mb-1">
+        Your IP:
+        <button type="button" id="cf-footer-ip-reveal" class="cf-footer-ip-reveal-btn">Click to reveal</button>
+        <span class="hidden" id="cf-footer-ip">76.25.51.114</span>
+        <span class="cf-footer-separator sm:hidden">&bull;</span>
+      </span>
+      <span class="cf-footer-item sm:block sm:mb-1"><span>Performance &amp; security by</span> <a rel="noopener noreferrer" href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_524&#38;utm_campaign=graphdb.agentkg.io" id="brand_link" target="_blank">Cloudflare</a></span>
+      
+    </p>
+    <script>(function(){function d(){var b=a.getElementById("cf-footer-item-ip"),c=a.getElementById("cf-footer-ip-reveal");b&&"classList"in b&&(b.classList.remove("hidden"),c.addEventListener("click",function(){c.classList.add("hidden");a.getElementById("cf-footer-ip").classList.remove("hidden")}))}var a=document;document.addEventListener&&a.addEventListener("DOMContentLoaded",d)})();</script>
+  </div><!-- /.error-footer -->
+
+    </div>
+</div>
+</body>
+</html>
+[seed-test-round] fund agent (catalyst network) → 0x0F669E6851A15FD0E5904EB197c369C2ab578D9b
+[seed-test-round] FundRegistry.registerFund ok — tx 0xfca57a073962278356bb823de6c4f7e011238b7cd937ae7567053ea0f8336210
+[seed-test-round] FundRegistry.openRound ok — demo-trauma-care-q2 → tx 0xb4b0d173a30463e9875c59c52deb6b9ca9328f3da0ebd380420ae1391bc202da
+[seed-test-round] FundRegistry.openRound ok — demo-spanish-scripture-q2 → tx 0x9b1b17576f89ab444f9481775a35cd59b5ae91b7d4991b3893c37ccb5d4daa29
+[seed-test-round] FundRegistry.openRound ok — demo-pastoral-coaching-q2 → tx 0xd5ac61ba34f5fd890129e897872df1feaf69c034c55abdd2245280e119fbb790
+[seed-test-round] voting-config SQL seed skipped — defaults read from FundRegistry attrs (R10)
+SPARQL UPDATE failed (524): <!DOCTYPE html>
+<!--[if lt IE 7]> <html class="no-js ie6 oldie" lang="en-US"> <![endif]-->
+<!--[if IE 7]>    <html class="no-js ie7 oldie" lang="en-US"> <![endif]-->
+<!--[if IE 8]>    <html class="no-js ie8 oldie" lang="en-US"> <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en-US"> <!--<![endif]-->
+<head>
+
+<title>agentkg.io | 524: A timeout occurred</title>
+<meta charset="UTF-8" />
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+<meta name="robots" content="noindex, nofollow" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<link rel="stylesheet" id="cf_styles-css" href="/cdn-cgi/styles/main.css" />
+</head>
+<body>
+<div id="cf-wrapper">
+    <div id="cf-error-details" class="p-0">
+        <header class="mx-auto pt-10 lg:pt-6 lg:px-8 w-240 lg:w-full mb-8">
+            <h1 class="inline-block sm:block sm:mb-2 font-light text-60 lg:text-4xl text-black-dark leading-tight mr-2">
+                <span class="inline-block">A timeout occurred</span>
+                <span class="code-label">Error code 524</span>
+            </h1>
+            <div>
+                Visit <a href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_524&utm_campaign=graphdb.agentkg.io" target="_blank" rel="noopener noreferrer">cloudflare.com</a> for more information.
+            </div>
+            <div class="mt-3">2026-05-15 12:27:56 UTC</div>
+        </header>
+        <div class="my-8 bg-gradient-gray">
+            <div class="w-240 lg:w-full mx-auto">
+                <div class="clearfix md:px-8">
+                    <div id="cf-browser-status" class=" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center">
+  <div class="relative mb-10 md:m-0">
+    
+    <span class="cf-icon-browser block md:hidden h-20 bg-center bg-no-repeat"></span>
+    <span class="cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4"></span>
+    
+  </div>
+  <span class="md:block w-full truncate">You</span>
+  <h3 class="md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3">
+  
+    Browser
+  
+  </h3>
+  
+  <span class="leading-1.3 text-2xl text-green-success">Working</span>
+  
+</div>
+                    <div id="cf-cloudflare-status" class=" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center">
+  <div class="relative mb-10 md:m-0">
+    <a href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_524&#38;utm_campaign=graphdb.agentkg.io" target="_blank" rel="noopener noreferrer">
+    <span class="cf-icon-cloud block md:hidden h-20 bg-center bg-no-repeat"></span>
+    <span class="cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4"></span>
+    </a>
+  </div>
+  <span class="md:block w-full truncate">Denver</span>
+  <h3 class="md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3">
+  <a href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_524&utm_campaign=graphdb.agentkg.io" target="_blank" rel="noopener noreferrer">
+    Cloudflare
+  </a>
+  </h3>
+  
+  <span class="leading-1.3 text-2xl text-green-success">Working</span>
+  
+</div>
+                    <div id="cf-host-status" class="cf-error-source relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center">
+  <div class="relative mb-10 md:m-0">
+    
+    <span class="cf-icon-server block md:hidden h-20 bg-center bg-no-repeat"></span>
+    <span class="cf-icon-error w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4"></span>
+    
+  </div>
+  <span class="md:block w-full truncate">graphdb.agentkg.io</span>
+  <h3 class="md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3">
+  
+    Host
+  
+  </h3>
+  
+  <span class="leading-1.3 text-2xl text-red-error">Error</span>
+  
+</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="w-240 lg:w-full mx-auto mb-8 lg:px-8">
+            <div class="clearfix">
+                <div class="w-1/2 md:w-full float-left pr-6 md:pb-10 md:pr-0 leading-relaxed">
+                    <h2 class="text-3xl font-normal leading-1.3 mb-4">What happened?</h2>
+                    <p class="mb-2">The origin web server timed out responding to this request.</p><p>The likely cause is an overloaded background task, database or application, stressing the resources on the host web server.</p>
+                </div>
+                <div class="w-1/2 md:w-full float-left leading-relaxed">
+                    <h2 class="text-3xl font-normal leading-1.3 mb-4">What can I do?</h2>
+                    
+              <h3 class="text-15 font-semibold mb-2">If you're a visitor of this website:</h3>
+              <p class="mb-6">Please try again in a few minutes.</p>
+
+              <h3 class="text-15 font-semibold mb-2">If you're the owner of this website:</h3>
+              <p>Please refer to the <a rel="noopener noreferrer" href="https://developers.cloudflare.com/support/troubleshooting/http-status-codes/cloudflare-5xx-errors/error-524/">Error 524</a> article:</p>
+              <ul class="ml-4">
+                <li>Contact your hosting provider; check for long-running processes or an overloaded web server.</li>
+                <li>Use status polling of large HTTP processes to avoid this error.</li>
+                <li>Run the long-running scripts on a <a rel="noopener noreferrer" href="https://developers.cloudflare.com/dns/proxy-status/#dns-only-records">grey-clouded subdomain</a>.</li>
+                <li>Enterprise customers can <a rel="noopener noreferrer" href="https://developers.cloudflare.com/support/troubleshooting/http-status-codes/cloudflare-5xx-errors/error-524/#resolution-on-cloudflare">increase the timeout setting</a> globally or for specific requests using Cache Rules.</li>
+              </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="cf-error-footer cf-wrapper w-240 lg:w-full py-10 sm:py-4 sm:px-8 mx-auto text-center sm:text-left border-solid border-0 border-t border-gray-300">
+    <p class="text-13">
+      <span class="cf-footer-item sm:block sm:mb-1">Cloudflare Ray ID: <strong class="font-semibold">9fc220af09609aea</strong></span>
+      <span class="cf-footer-separator sm:hidden">&bull;</span>
+      <span id="cf-footer-item-ip" class="cf-footer-item hidden sm:block sm:mb-1">
+        Your IP:
+        <button type="button" id="cf-footer-ip-reveal" class="cf-footer-ip-reveal-btn">Click to reveal</button>
+        <span class="hidden" id="cf-footer-ip">76.25.51.114</span>
+        <span class="cf-footer-separator sm:hidden">&bull;</span>
+      </span>
+      <span class="cf-footer-item sm:block sm:mb-1"><span>Performance &amp; security by</span> <a rel="noopener noreferrer" href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_524&#38;utm_campaign=graphdb.agentkg.io" id="brand_link" target="_blank">Cloudflare</a></span>
+      
+    </p>
+    <script>(function(){function d(){var b=a.getElementById("cf-footer-item-ip"),c=a.getElementById("cf-footer-ip-reveal");b&&"classList"in b&&(b.classList.remove("hidden"),c.addEventListener("click",function(){c.classList.add("hidden");a.getElementById("cf-footer-ip").classList.remove("hidden")}))}var a=document;document.addEventListener&&a.addEventListener("DOMContentLoaded",d)})();</script>
+  </div><!-- /.error-footer -->
+
+    </div>
+</div>
+</body>
+</html>
+[seed-test-pool] deployed pool agent demo-trauma-care-pool → 0x675E11eC5854eBd6656Fc9155D99746c9e438a16
+[seed-test-pool] PoolRegistry.open ok — demo-trauma-care-pool → tx 0x6737aabcc9c901583abaa2402e32cd7fc93dde594aebe0c454684d7e46559639
+[seed-test-pool] deployed pool agent demo-spanish-bibles-pool → 0xA6Ca03d6c704C84cA9f495BDA26b5Fa1dDaaE461
+[seed-test-pool] PoolRegistry.open ok — demo-spanish-bibles-pool → tx 0x06089ddc82876426a1f85a736c65be66965c31e212846c82ad9b77d3e3fd10c3
+[seed-test-pool] deployed pool agent demo-prayer-chain-pool → 0x21681cFE20d8d18DBD746aeD92077DC4b8BFc17A
+[seed-test-pool] PoolRegistry.open ok — demo-prayer-chain-pool → tx 0x828aba857792de05e146288f6a514180afb98f3206fd33e225c474473dba26bd
+SPARQL UPDATE failed (524): <!DOCTYPE html>
+<!--[if lt IE 7]> <html class="no-js ie6 oldie" lang="en-US"> <![endif]-->
+<!--[if IE 7]>    <html class="no-js ie7 oldie" lang="en-US"> <![endif]-->
+<!--[if IE 8]>    <html class="no-js ie8 oldie" lang="en-US"> <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en-US"> <!--<![endif]-->
+<head>
+
+<title>agentkg.io | 524: A timeout occurred</title>
+<meta charset="UTF-8" />
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+<meta name="robots" content="noindex, nofollow" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<link rel="stylesheet" id="cf_styles-css" href="/cdn-cgi/styles/main.css" />
+</head>
+<body>
+<div id="cf-wrapper">
+    <div id="cf-error-details" class="p-0">
+        <header class="mx-auto pt-10 lg:pt-6 lg:px-8 w-240 lg:w-full mb-8">
+            <h1 class="inline-block sm:block sm:mb-2 font-light text-60 lg:text-4xl text-black-dark leading-tight mr-2">
+                <span class="inline-block">A timeout occurred</span>
+                <span class="code-label">Error code 524</span>
+            </h1>
+            <div>
+                Visit <a href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_524&utm_campaign=graphdb.agentkg.io" target="_blank" rel="noopener noreferrer">cloudflare.com</a> for more information.
+            </div>
+            <div class="mt-3">2026-05-15 12:30:28 UTC</div>
+        </header>
+        <div class="my-8 bg-gradient-gray">
+            <div class="w-240 lg:w-full mx-auto">
+                <div class="clearfix md:px-8">
+                    <div id="cf-browser-status" class=" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center">
+  <div class="relative mb-10 md:m-0">
+    
+    <span class="cf-icon-browser block md:hidden h-20 bg-center bg-no-repeat"></span>
+    <span class="cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4"></span>
+    
+  </div>
+  <span class="md:block w-full truncate">You</span>
+  <h3 class="md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3">
+  
+    Browser
+  
+  </h3>
+  
+  <span class="leading-1.3 text-2xl text-green-success">Working</span>
+  
+</div>
+                    <div id="cf-cloudflare-status" class=" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center">
+  <div class="relative mb-10 md:m-0">
+    <a href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_524&#38;utm_campaign=graphdb.agentkg.io" target="_blank" rel="noopener noreferrer">
+    <span class="cf-icon-cloud block md:hidden h-20 bg-center bg-no-repeat"></span>
+    <span class="cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4"></span>
+    </a>
+  </div>
+  <span class="md:block w-full truncate">Denver</span>
+  <h3 class="md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3">
+  <a href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_524&utm_campaign=graphdb.agentkg.io" target="_blank" rel="noopener noreferrer">
+    Cloudflare
+  </a>
+  </h3>
+  
+  <span class="leading-1.3 text-2xl text-green-success">Working</span>
+  
+</div>
+                    <div id="cf-host-status" class="cf-error-source relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center">
+  <div class="relative mb-10 md:m-0">
+    
+    <span class="cf-icon-server block md:hidden h-20 bg-center bg-no-repeat"></span>
+    <span class="cf-icon-error w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4"></span>
+    
+  </div>
+  <span class="md:block w-full truncate">graphdb.agentkg.io</span>
+  <h3 class="md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3">
+  
+    Host
+  
+  </h3>
+  
+  <span class="leading-1.3 text-2xl text-red-error">Error</span>
+  
+</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="w-240 lg:w-full mx-auto mb-8 lg:px-8">
+            <div class="clearfix">
+                <div class="w-1/2 md:w-full float-left pr-6 md:pb-10 md:pr-0 leading-relaxed">
+                    <h2 class="text-3xl font-normal leading-1.3 mb-4">What happened?</h2>
+                    <p class="mb-2">The origin web server timed out responding to this request.</p><p>The likely cause is an overloaded background task, database or application, stressing the resources on the host web server.</p>
+                </div>
+                <div class="w-1/2 md:w-full float-left leading-relaxed">
+                    <h2 class="text-3xl font-normal leading-1.3 mb-4">What can I do?</h2>
+                    
+              <h3 class="text-15 font-semibold mb-2">If you're a visitor of this website:</h3>
+              <p class="mb-6">Please try again in a few minutes.</p>
+
+              <h3 class="text-15 font-semibold mb-2">If you're the owner of this website:</h3>
+              <p>Please refer to the <a rel="noopener noreferrer" href="https://developers.cloudflare.com/support/troubleshooting/http-status-codes/cloudflare-5xx-errors/error-524/">Error 524</a> article:</p>
+              <ul class="ml-4">
+                <li>Contact your hosting provider; check for long-running processes or an overloaded web server.</li>
+                <li>Use status polling of large HTTP processes to avoid this error.</li>
+                <li>Run the long-running scripts on a <a rel="noopener noreferrer" href="https://developers.cloudflare.com/dns/proxy-status/#dns-only-records">grey-clouded subdomain</a>.</li>
+                <li>Enterprise customers can <a rel="noopener noreferrer" href="https://developers.cloudflare.com/support/troubleshooting/http-status-codes/cloudflare-5xx-errors/error-524/#resolution-on-cloudflare">increase the timeout setting</a> globally or for specific requests using Cache Rules.</li>
+              </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="cf-error-footer cf-wrapper w-240 lg:w-full py-10 sm:py-4 sm:px-8 mx-auto text-center sm:text-left border-solid border-0 border-t border-gray-300">
+    <p class="text-13">
+      <span class="cf-footer-item sm:block sm:mb-1">Cloudflare Ray ID: <strong class="font-semibold">9fc22468e9cc9aea</strong></span>
+      <span class="cf-footer-separator sm:hidden">&bull;</span>
+      <span id="cf-footer-item-ip" class="cf-footer-item hidden sm:block sm:mb-1">
+        Your IP:
+        <button type="button" id="cf-footer-ip-reveal" class="cf-footer-ip-reveal-btn">Click to reveal</button>
+        <span class="hidden" id="cf-footer-ip">76.25.51.114</span>
+        <span class="cf-footer-separator sm:hidden">&bull;</span>
+      </span>
+      <span class="cf-footer-item sm:block sm:mb-1"><span>Performance &amp; security by</span> <a rel="noopener noreferrer" href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_524&#38;utm_campaign=graphdb.agentkg.io" id="brand_link" target="_blank">Cloudflare</a></span>
+      
+    </p>
+    <script>(function(){function d(){var b=a.getElementById("cf-footer-item-ip"),c=a.getElementById("cf-footer-ip-reveal");b&&"classList"in b&&(b.classList.remove("hidden"),c.addEventListener("click",function(){c.classList.add("hidden");a.getElementById("cf-footer-ip").classList.remove("hidden")}))}var a=document;document.addEventListener&&a.addEventListener("DOMContentLoaded",d)})();</script>
+  </div><!-- /.error-footer -->
+
+    </div>
+</div>
+</body>
+</html>
+[seed-test-proposal] wrote 5 proposals to person-mcp
+
+✓ Seeded 5 GrantProposals across the catalyst rounds:
+    · draft     person_cat-user-001 → demo-trauma-care-q2
+    · submitted person_cat-user-001 → demo-trauma-care-q2
+    · submitted person_cat-user-001 → demo-spanish-scripture-q2
+    · submitted person_cat-user-002 → demo-trauma-care-q2
+    · draft     person_cat-user-002 → demo-pastoral-coaching-q2
+  Visit: http://localhost:3000/h/catalyst/proposals (after Maria signs in)
+[seed-test-pledge] no-op (spec 004 v2 — pool_pledges dropped; chain-side seeding TODO)
+[seed-test-match-initiation] no-op (spec 004 v2 — match_initiations dropped; chain-side seeding TODO)
+Found 22 T-Box .ttl files (under docs/ontology/tbox)
+  · docs/ontology/tbox/core.ttl
+  · docs/ontology/tbox/delegation.ttl
+  · docs/ontology/tbox/entitlements.ttl
+  · docs/ontology/tbox/geo.ttl
+  · docs/ontology/tbox/governance.ttl
+  · docs/ontology/tbox/hub.ttl
+  · docs/ontology/tbox/identity.ttl
+  · docs/ontology/tbox/intents.ttl
+  · docs/ontology/tbox/marketplace-lifecycle.ttl
+  · docs/ontology/tbox/matches.ttl
+  · docs/ontology/tbox/namespace.ttl
+  · docs/ontology/tbox/needs.ttl
+  · docs/ontology/tbox/people-groups.ttl
+  · docs/ontology/tbox/pg.ttl
+  · docs/ontology/tbox/pool-pledge.ttl
+  · docs/ontology/tbox/proposal.ttl
+  · docs/ontology/tbox/relationships.ttl
+  · docs/ontology/tbox/resources.ttl
+  · docs/ontology/tbox/roles.ttl
+  · docs/ontology/tbox/shacl/visibility.ttl
+  · docs/ontology/tbox/skills.ttl
+  · docs/ontology/tbox/trust.ttl
+Found 15 C-Box .ttl files (under docs/ontology/cbox)
+  · docs/ontology/cbox/agent-shapes.shacl.ttl
+  · docs/ontology/cbox/capacity-units.ttl
+  · docs/ontology/cbox/controlled-vocabularies.ttl
+  · docs/ontology/cbox/entitlement-shapes.shacl.ttl
+  · docs/ontology/cbox/hub-vocabulary.ttl
+  · docs/ontology/cbox/intent-shapes.shacl.ttl
+  · docs/ontology/cbox/intent-types.ttl
+  · docs/ontology/cbox/needs-shapes.shacl.ttl
+  · docs/ontology/cbox/people-group-scopes.ttl
+  · docs/ontology/cbox/people-group-shapes.shacl.ttl
+  · docs/ontology/cbox/reachedness-vocabulary.ttl
+  · docs/ontology/cbox/resource-types.ttl
+  · docs/ontology/cbox/skill-shapes.shacl.ttl
+  · docs/ontology/cbox/skill-vocabulary-oasf.ttl
+  · docs/ontology/cbox/skill-vocabulary.ttl
+
+Uploading T-Box + SHACL → https://smartagent.io/graph/schema/tbox
+  ✓ T-Box uploaded.
+
+Uploading C-Box → https://smartagent.io/graph/schema/cbox
+  ✓ C-Box uploaded.
+
+Verifying via SPARQL counts...
+  T-Box classes:  235
+  SHACL shapes:   6
+  C-Box concepts: 204
+  Marketplace classes present: 11 / 11
+    · https://smartagent.io/ontology/core#Fund
+    · https://smartagent.io/ontology/core#GrantProposal
+    · https://smartagent.io/ontology/core#MatchInitiation
+    · https://smartagent.io/ontology/core#MatchInitiationAssertion
+    · https://smartagent.io/ontology/core#PledgeAssertion
+    · https://smartagent.io/ontology/core#Pool
+    · https://smartagent.io/ontology/core#PoolPledge
+    · https://smartagent.io/ontology/core#PoolPledgedTotalAssertion
+    · https://smartagent.io/ontology/core#Round
+    · https://smartagent.io/ontology/core#RoundClosedAssertion
+    · https://smartagent.io/ontology/core#RoundOpenedAssertion
+
+✓ Sync complete.
+[seed-test-round] fund agent (catalyst network) → 0x0F669E6851A15FD0E5904EB197c369C2ab578D9b
+[seed-test-round] registerFund warn: The contract function "registerFund" reverted.
+
+Error: NotFundOwner()
+ 
+Contract Call:
+  address:   0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf
+  function:  registerFund(address fundAgent, bytes32[] acceptedKinds, bool openForCalls)
+  args:                  (0x0F669E6851A15FD0E5904EB197c369C2ab578D9b, ["0xe0763b6c82186160294b38982232e94f51e512b9f0e57d8eeb214ef2ee216a8b","0x28be1ff2b788efd3ef4b7749c2d0f81b2a43ababc36f2c8960dfe0c5db10580b","0xa31cb8e69ab09e362158b9bf851a54ece02060a706a8d52e7d947187be1a7bf5","0x7580d6244892989b460c96e64993a3ad3bfa5f64d354202b5ca34d00f75157c5","0x0f13c9d8222dbfb492d0af3dfd79bd0d84a51901cd45667b2374b6496a054c1a","0xd77fac1577d7fe76b7fed53864aa1cc6ca93bffa816c8edcd2fa72f4aa3ab3dc","0xc8d8c296e0c0e9617c16f250cef6bf1698592e08938576e6b044a3c5ef818c76","0x2d0f4ea592791ed7b8919f50b7079d3fa0dcbc666e8ad327b1516b6376e0781f","0x4b506235cb25b0517e0240f70e24fc2f750bfed6d2544fe5fc1f6fc301d3397e"], true)
+  sender:    0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+
+Docs: https://viem.sh/docs/contract/writeContract
+Details: execution reverted: custom error 0xb3545ef3
+Version: viem@2.47.10
+[seed-test-round] openRound warn for demo-trauma-care-q2: The contract function "openRound" reverted.
+
+Error: NotFundOwner()
+ 
+Contract Call:
+  address:   0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf
+  function:  openRound((bytes32 roundSubject, address fundAgent, address poolAgent, uint256 deadline, uint256 decisionDate, bytes32 reportingCadence, bytes32[] requiredCredentials, bytes32 visibility, bytes32 initialStatus, string mandate, string milestoneTemplate, string validatorRequirements, string slug))
+  args:               ({"roundSubject":"0xba7d5720d844ca4eabf89927d1babbe65bda75b6bec359184086371631c8bf61","fundAgent":"0x0F669E6851A15FD0E5904EB197c369C2ab578D9b","poolAgent":"0x0000000000000000000000000000000000000000","deadline":"1780069748","decisionDate":"1781452148","reportingCadence":"0x48680686fbaa3eb8a498d231a3766e99deb42819048529968dd20c370020cb28","requiredCredentials":[],"visibility":"0xebbc4f758526443c65cbc630276923c89e5f8ac0cef719eeb96b0a87cad53346","initialStatus":"0x0d37f17e287bdf05078af1c070b07ef59413a6a131f54dac6263f76d080c9990","mandate":"{\"acceptedKinds\":[\"trauma-care\",\"CompassionMinistry\",\"MigrantFamilyCare\"],\"acceptedGeo\":[\"us/colorado\"],\"budgetCeiling\":250000,\"expectedAwards\":6}","milestoneTemplate":"{}","validatorRequirements":"{}","slug":"demo-trauma-care-q2"})
+  sender:    0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+
+Docs: https://viem.sh/docs/contract/writeContract
+Details: execution reverted: custom error 0xb3545ef3
+Version: viem@2.47.10
+[seed-test-round] openRound warn for demo-spanish-scripture-q2: The contract function "openRound" reverted.
+
+Error: NotFundOwner()
+ 
+Contract Call:
+  address:   0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf
+  function:  openRound((bytes32 roundSubject, address fundAgent, address poolAgent, uint256 deadline, uint256 decisionDate, bytes32 reportingCadence, bytes32[] requiredCredentials, bytes32 visibility, bytes32 initialStatus, string mandate, string milestoneTemplate, string validatorRequirements, string slug))
+  args:               ({"roundSubject":"0x4d64467f9f671a10580ffee37b171d7e1c40f7882b323a331fd1e9d581a678cd","fundAgent":"0x0F669E6851A15FD0E5904EB197c369C2ab578D9b","poolAgent":"0x0000000000000000000000000000000000000000","deadline":"1780674548","decisionDate":"1782748148","reportingCadence":"0x48680686fbaa3eb8a498d231a3766e99deb42819048529968dd20c370020cb28","requiredCredentials":[],"visibility":"0xebbc4f758526443c65cbc630276923c89e5f8ac0cef719eeb96b0a87cad53346","initialStatus":"0x0d37f17e287bdf05078af1c070b07ef59413a6a131f54dac6263f76d080c9990","mandate":"{\"acceptedKinds\":[\"HeartLanguageScripture\",\"BibleStudy\",\"Discipleship\"],\"acceptedGeo\":[\"us/colorado\",\"us/wyoming\"],\"budgetCeiling\":60000,\"expectedAwards\":8}","milestoneTemplate":"{}","validatorRequirements":"{}","slug":"demo-spanish-scripture-q2"})
+  sender:    0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+
+Docs: https://viem.sh/docs/contract/writeContract
+Details: execution reverted: custom error 0xb3545ef3
+Version: viem@2.47.10
+[seed-test-round] openRound warn for demo-pastoral-coaching-q2: The contract function "openRound" reverted.
+
+Error: NotFundOwner()
+ 
+Contract Call:
+  address:   0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf
+  function:  openRound((bytes32 roundSubject, address fundAgent, address poolAgent, uint256 deadline, uint256 decisionDate, bytes32 reportingCadence, bytes32[] requiredCredentials, bytes32 visibility, bytes32 initialStatus, string mandate, string milestoneTemplate, string validatorRequirements, string slug))
+  args:               ({"roundSubject":"0x93ea8dd282a4cb83ab115e1b023fc4ed2f8fbb98e1aa6c81ea153521b34873a1","fundAgent":"0x0F669E6851A15FD0E5904EB197c369C2ab578D9b","poolAgent":"0x0000000000000000000000000000000000000000","deadline":"1781279348","decisionDate":"1784044148","reportingCadence":"0x7dc5939eec0033571e0a0cf7a81c00cc3cf42e60ac518fce8caf8c411d116466","requiredCredentials":[],"visibility":"0xebbc4f758526443c65cbc630276923c89e5f8ac0cef719eeb96b0a87cad53346","initialStatus":"0x0d37f17e287bdf05078af1c070b07ef59413a6a131f54dac6263f76d080c9990","mandate":"{\"acceptedKinds\":[\"CircleCoach\",\"PastoralCoaching\",\"ChurchPlanting\"],\"acceptedGeo\":[\"us/colorado\"],\"budgetCeiling\":75000,\"expectedAwards\":3}","milestoneTemplate":"{}","validatorRequirements":"{}","slug":"demo-pastoral-coaching-q2"})
+  sender:    0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+
+Docs: https://viem.sh/docs/contract/writeContract
+Details: execution reverted: custom error 0xb3545ef3
+Version: viem@2.47.10
+[seed-test-round] voting-config SQL seed skipped — defaults read from FundRegistry attrs (R10)
+[seed-test-round] GraphDB ok — INSERT 3 rounds
+
+✓ Seeded 3 rounds operated by fund 0x0F669E6851A15FD0E5904EB197c369C2ab578D9b:
+    · demo-trauma-care-q2 — Trauma-Care for Migrant Families — Compassion Ministry Q2
+    · demo-spanish-scripture-q2 — Spanish Heart-Language Scripture & Discipleship Q2
+    · demo-pastoral-coaching-q2 — Pastoral Coaching Cohort for NoCo Church Planters Q2
+[seed-test-pool] deployed pool agent demo-trauma-care-pool → 0x675E11eC5854eBd6656Fc9155D99746c9e438a16
+[seed-test-pool] PoolRegistry.open ok — demo-trauma-care-pool → tx 0x5263e7bd716e1c81a409e671307e85ed7a35da39f3aad6e2521ca54105a5c51a
+[seed-test-pool] deployed pool agent demo-spanish-bibles-pool → 0xA6Ca03d6c704C84cA9f495BDA26b5Fa1dDaaE461
+[seed-test-pool] PoolRegistry.open ok — demo-spanish-bibles-pool → tx 0xb1e57eaf6a68a961af7e620b41a73716b93b9737528b3c27296880d563f0e18c
+[seed-test-pool] deployed pool agent demo-prayer-chain-pool → 0x21681cFE20d8d18DBD746aeD92077DC4b8BFc17A
+[seed-test-pool] PoolRegistry.open ok — demo-prayer-chain-pool → tx 0x2453209312ea79c7982dbaf28cc267d78e2c12a5cb82b1500cb09335b92b5ca2
+[seed-test-pool] GraphDB ok — INSERT 3 pools into data graph
+
+✓ Seeded 3 pools operated by Catalyst NoCo Network:
+    · demo-trauma-care-pool — Trauma-Care + Migrant Family Compassion Pool  (treasury 0x675E11eC5854eBd6656Fc9155D99746c9e438a16)
+    · demo-spanish-bibles-pool — Spanish Bibles for New Families Pool  (treasury 0xA6Ca03d6c704C84cA9f495BDA26b5Fa1dDaaE461)
+    · demo-prayer-chain-pool — Hispanic Family Prayer Chain Pool  (treasury 0x21681cFE20d8d18DBD746aeD92077DC4b8BFc17A)
+  Visit: http://localhost:3000/h/catalyst/pools (after Maria signs in)
+[seed-test-proposal] wrote 5 proposals to person-mcp
+
+✓ Seeded 5 GrantProposals across the catalyst rounds:
+    · draft     person_cat-user-001 → demo-trauma-care-q2
+    · submitted person_cat-user-001 → demo-trauma-care-q2
+    · submitted person_cat-user-001 → demo-spanish-scripture-q2
+    · submitted person_cat-user-002 → demo-trauma-care-q2
+    · draft     person_cat-user-002 → demo-pastoral-coaching-q2
+  Visit: http://localhost:3000/h/catalyst/proposals (after Maria signs in)
+[seed-test-pledge] no-op (spec 004 v2 — pool_pledges dropped; chain-side seeding TODO)
+[seed-test-match-initiation] no-op (spec 004 v2 — match_initiations dropped; chain-side seeding TODO)
+Found 22 T-Box .ttl files (under docs/ontology/tbox)
+  · docs/ontology/tbox/core.ttl
+  · docs/ontology/tbox/delegation.ttl
+  · docs/ontology/tbox/entitlements.ttl
+  · docs/ontology/tbox/geo.ttl
+  · docs/ontology/tbox/governance.ttl
+  · docs/ontology/tbox/hub.ttl
+  · docs/ontology/tbox/identity.ttl
+  · docs/ontology/tbox/intents.ttl
+  · docs/ontology/tbox/marketplace-lifecycle.ttl
+  · docs/ontology/tbox/matches.ttl
+  · docs/ontology/tbox/namespace.ttl
+  · docs/ontology/tbox/needs.ttl
+  · docs/ontology/tbox/people-groups.ttl
+  · docs/ontology/tbox/pg.ttl
+  · docs/ontology/tbox/pool-pledge.ttl
+  · docs/ontology/tbox/proposal.ttl
+  · docs/ontology/tbox/relationships.ttl
+  · docs/ontology/tbox/resources.ttl
+  · docs/ontology/tbox/roles.ttl
+  · docs/ontology/tbox/shacl/visibility.ttl
+  · docs/ontology/tbox/skills.ttl
+  · docs/ontology/tbox/trust.ttl
+Found 15 C-Box .ttl files (under docs/ontology/cbox)
+  · docs/ontology/cbox/agent-shapes.shacl.ttl
+  · docs/ontology/cbox/capacity-units.ttl
+  · docs/ontology/cbox/controlled-vocabularies.ttl
+  · docs/ontology/cbox/entitlement-shapes.shacl.ttl
+  · docs/ontology/cbox/hub-vocabulary.ttl
+  · docs/ontology/cbox/intent-shapes.shacl.ttl
+  · docs/ontology/cbox/intent-types.ttl
+  · docs/ontology/cbox/needs-shapes.shacl.ttl
+  · docs/ontology/cbox/people-group-scopes.ttl
+  · docs/ontology/cbox/people-group-shapes.shacl.ttl
+  · docs/ontology/cbox/reachedness-vocabulary.ttl
+  · docs/ontology/cbox/resource-types.ttl
+  · docs/ontology/cbox/skill-shapes.shacl.ttl
+  · docs/ontology/cbox/skill-vocabulary-oasf.ttl
+  · docs/ontology/cbox/skill-vocabulary.ttl
+
+Uploading T-Box + SHACL → https://smartagent.io/graph/schema/tbox
+  ✓ T-Box uploaded.
+
+Uploading C-Box → https://smartagent.io/graph/schema/cbox
+  ✓ C-Box uploaded.
+
+Verifying via SPARQL counts...
+  T-Box classes:  235
+  SHACL shapes:   6
+  C-Box concepts: 204
+  Marketplace classes present: 11 / 11
+    · https://smartagent.io/ontology/core#Fund
+    · https://smartagent.io/ontology/core#GrantProposal
+    · https://smartagent.io/ontology/core#MatchInitiation
+    · https://smartagent.io/ontology/core#MatchInitiationAssertion
+    · https://smartagent.io/ontology/core#PledgeAssertion
+    · https://smartagent.io/ontology/core#Pool
+    · https://smartagent.io/ontology/core#PoolPledge
+    · https://smartagent.io/ontology/core#PoolPledgedTotalAssertion
+    · https://smartagent.io/ontology/core#Round
+    · https://smartagent.io/ontology/core#RoundClosedAssertion
+    · https://smartagent.io/ontology/core#RoundOpenedAssertion
+
+✓ Sync complete.
+[seed-test-round] fund agent (catalyst network) → 0x0F669E6851A15FD0E5904EB197c369C2ab578D9b
+[seed-test-round] registerFund warn: The contract function "registerFund" reverted.
+
+Error: NotFundOwner()
+ 
+Contract Call:
+  address:   0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf
+  function:  registerFund(address fundAgent, bytes32[] acceptedKinds, bool openForCalls)
+  args:                  (0x0F669E6851A15FD0E5904EB197c369C2ab578D9b, ["0xe0763b6c82186160294b38982232e94f51e512b9f0e57d8eeb214ef2ee216a8b","0x28be1ff2b788efd3ef4b7749c2d0f81b2a43ababc36f2c8960dfe0c5db10580b","0xa31cb8e69ab09e362158b9bf851a54ece02060a706a8d52e7d947187be1a7bf5","0x7580d6244892989b460c96e64993a3ad3bfa5f64d354202b5ca34d00f75157c5","0x0f13c9d8222dbfb492d0af3dfd79bd0d84a51901cd45667b2374b6496a054c1a","0xd77fac1577d7fe76b7fed53864aa1cc6ca93bffa816c8edcd2fa72f4aa3ab3dc","0xc8d8c296e0c0e9617c16f250cef6bf1698592e08938576e6b044a3c5ef818c76","0x2d0f4ea592791ed7b8919f50b7079d3fa0dcbc666e8ad327b1516b6376e0781f","0x4b506235cb25b0517e0240f70e24fc2f750bfed6d2544fe5fc1f6fc301d3397e"], true)
+  sender:    0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+
+Docs: https://viem.sh/docs/contract/writeContract
+Details: execution reverted: custom error 0xb3545ef3
+Version: viem@2.47.10
+[seed-test-round] openRound warn for demo-trauma-care-q2: The contract function "openRound" reverted.
+
+Error: NotFundOwner()
+ 
+Contract Call:
+  address:   0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf
+  function:  openRound((bytes32 roundSubject, address fundAgent, address poolAgent, uint256 deadline, uint256 decisionDate, bytes32 reportingCadence, bytes32[] requiredCredentials, bytes32 visibility, bytes32 initialStatus, string mandate, string milestoneTemplate, string validatorRequirements, string slug))
+  args:               ({"roundSubject":"0xba7d5720d844ca4eabf89927d1babbe65bda75b6bec359184086371631c8bf61","fundAgent":"0x0F669E6851A15FD0E5904EB197c369C2ab578D9b","poolAgent":"0x0000000000000000000000000000000000000000","deadline":"1780076459","decisionDate":"1781458859","reportingCadence":"0x48680686fbaa3eb8a498d231a3766e99deb42819048529968dd20c370020cb28","requiredCredentials":[],"visibility":"0xebbc4f758526443c65cbc630276923c89e5f8ac0cef719eeb96b0a87cad53346","initialStatus":"0x0d37f17e287bdf05078af1c070b07ef59413a6a131f54dac6263f76d080c9990","mandate":"{\"acceptedKinds\":[\"trauma-care\",\"CompassionMinistry\",\"MigrantFamilyCare\"],\"acceptedGeo\":[\"us/colorado\"],\"budgetCeiling\":250000,\"expectedAwards\":6}","milestoneTemplate":"{}","validatorRequirements":"{}","slug":"demo-trauma-care-q2"})
+  sender:    0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+
+Docs: https://viem.sh/docs/contract/writeContract
+Details: execution reverted: custom error 0xb3545ef3
+Version: viem@2.47.10
+[seed-test-round] openRound warn for demo-spanish-scripture-q2: The contract function "openRound" reverted.
+
+Error: NotFundOwner()
+ 
+Contract Call:
+  address:   0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf
+  function:  openRound((bytes32 roundSubject, address fundAgent, address poolAgent, uint256 deadline, uint256 decisionDate, bytes32 reportingCadence, bytes32[] requiredCredentials, bytes32 visibility, bytes32 initialStatus, string mandate, string milestoneTemplate, string validatorRequirements, string slug))
+  args:               ({"roundSubject":"0x4d64467f9f671a10580ffee37b171d7e1c40f7882b323a331fd1e9d581a678cd","fundAgent":"0x0F669E6851A15FD0E5904EB197c369C2ab578D9b","poolAgent":"0x0000000000000000000000000000000000000000","deadline":"1780681259","decisionDate":"1782754859","reportingCadence":"0x48680686fbaa3eb8a498d231a3766e99deb42819048529968dd20c370020cb28","requiredCredentials":[],"visibility":"0xebbc4f758526443c65cbc630276923c89e5f8ac0cef719eeb96b0a87cad53346","initialStatus":"0x0d37f17e287bdf05078af1c070b07ef59413a6a131f54dac6263f76d080c9990","mandate":"{\"acceptedKinds\":[\"HeartLanguageScripture\",\"BibleStudy\",\"Discipleship\"],\"acceptedGeo\":[\"us/colorado\",\"us/wyoming\"],\"budgetCeiling\":60000,\"expectedAwards\":8}","milestoneTemplate":"{}","validatorRequirements":"{}","slug":"demo-spanish-scripture-q2"})
+  sender:    0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+
+Docs: https://viem.sh/docs/contract/writeContract
+Details: execution reverted: custom error 0xb3545ef3
+Version: viem@2.47.10
+[seed-test-round] openRound warn for demo-pastoral-coaching-q2: The contract function "openRound" reverted.
+
+Error: NotFundOwner()
+ 
+Contract Call:
+  address:   0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf
+  function:  openRound((bytes32 roundSubject, address fundAgent, address poolAgent, uint256 deadline, uint256 decisionDate, bytes32 reportingCadence, bytes32[] requiredCredentials, bytes32 visibility, bytes32 initialStatus, string mandate, string milestoneTemplate, string validatorRequirements, string slug))
+  args:               ({"roundSubject":"0x93ea8dd282a4cb83ab115e1b023fc4ed2f8fbb98e1aa6c81ea153521b34873a1","fundAgent":"0x0F669E6851A15FD0E5904EB197c369C2ab578D9b","poolAgent":"0x0000000000000000000000000000000000000000","deadline":"1781286059","decisionDate":"1784050859","reportingCadence":"0x7dc5939eec0033571e0a0cf7a81c00cc3cf42e60ac518fce8caf8c411d116466","requiredCredentials":[],"visibility":"0xebbc4f758526443c65cbc630276923c89e5f8ac0cef719eeb96b0a87cad53346","initialStatus":"0x0d37f17e287bdf05078af1c070b07ef59413a6a131f54dac6263f76d080c9990","mandate":"{\"acceptedKinds\":[\"CircleCoach\",\"PastoralCoaching\",\"ChurchPlanting\"],\"acceptedGeo\":[\"us/colorado\"],\"budgetCeiling\":75000,\"expectedAwards\":3}","milestoneTemplate":"{}","validatorRequirements":"{}","slug":"demo-pastoral-coaching-q2"})
+  sender:    0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+
+Docs: https://viem.sh/docs/contract/writeContract
+Details: execution reverted: custom error 0xb3545ef3
+Version: viem@2.47.10
+[seed-test-round] voting-config SQL seed skipped — defaults read from FundRegistry attrs (R10)
+[seed-test-round] GraphDB ok — INSERT 3 rounds
+
+✓ Seeded 3 rounds operated by fund 0x0F669E6851A15FD0E5904EB197c369C2ab578D9b:
+    · demo-trauma-care-q2 — Trauma-Care for Migrant Families — Compassion Ministry Q2
+    · demo-spanish-scripture-q2 — Spanish Heart-Language Scripture & Discipleship Q2
+    · demo-pastoral-coaching-q2 — Pastoral Coaching Cohort for NoCo Church Planters Q2
+[seed-test-pool] deployed pool agent demo-trauma-care-pool → 0x675E11eC5854eBd6656Fc9155D99746c9e438a16
+[seed-test-pool] PoolRegistry.open ok — demo-trauma-care-pool → tx 0x83ce56707a16304c97d920b2e9f06f6230dd52b51f46da22428acfc37232e7f8
+[seed-test-pool] deployed pool agent demo-spanish-bibles-pool → 0xA6Ca03d6c704C84cA9f495BDA26b5Fa1dDaaE461
+[seed-test-pool] PoolRegistry.open ok — demo-spanish-bibles-pool → tx 0x867921440b2ebdfa2aedb0b312fc204403b5c06b668bbb70a7998b56211cc8e6
+[seed-test-pool] deployed pool agent demo-prayer-chain-pool → 0x21681cFE20d8d18DBD746aeD92077DC4b8BFc17A
+[seed-test-pool] PoolRegistry.open ok — demo-prayer-chain-pool → tx 0xd886a98672657210fdefa618fd6b93f3d9ca70b7fa29a11dfa77e0d787db2a2f
+[seed-test-pool] GraphDB ok — INSERT 3 pools into data graph
+
+✓ Seeded 3 pools operated by Catalyst NoCo Network:
+    · demo-trauma-care-pool — Trauma-Care + Migrant Family Compassion Pool  (treasury 0x675E11eC5854eBd6656Fc9155D99746c9e438a16)
+    · demo-spanish-bibles-pool — Spanish Bibles for New Families Pool  (treasury 0xA6Ca03d6c704C84cA9f495BDA26b5Fa1dDaaE461)
+    · demo-prayer-chain-pool — Hispanic Family Prayer Chain Pool  (treasury 0x21681cFE20d8d18DBD746aeD92077DC4b8BFc17A)
+  Visit: http://localhost:3000/h/catalyst/pools (after Maria signs in)
+[seed-test-proposal] wrote 5 proposals to person-mcp
+
+✓ Seeded 5 GrantProposals across the catalyst rounds:
+    · draft     person_cat-user-001 → demo-trauma-care-q2
+    · submitted person_cat-user-001 → demo-trauma-care-q2
+    · submitted person_cat-user-001 → demo-spanish-scripture-q2
+    · submitted person_cat-user-002 → demo-trauma-care-q2
+    · draft     person_cat-user-002 → demo-pastoral-coaching-q2
+  Visit: http://localhost:3000/h/catalyst/proposals (after Maria signs in)
+[seed-test-pledge] no-op (spec 004 v2 — pool_pledges dropped; chain-side seeding TODO)
+[seed-test-match-initiation] no-op (spec 004 v2 — match_initiations dropped; chain-side seeding TODO)

@@ -2,6 +2,20 @@
 
 You are a **Unit Test Engineer**. You write thorough, maintainable unit tests using Vitest and Testing Library.
 
+## Architecture Context
+
+For tests around cross-service flows, persistence, GraphDB sync, contracts,
+permissions, or funding workflows, start with `docs/architecture/INDEX.md`.
+Use the routed architecture files to identify boundaries, mocks, invariants,
+and source-of-truth expectations.
+
+Role-specific architecture files:
+- `docs/architecture/01-web-a2a-mcp-flows.md` — mock and boundary points for web/A2A/MCP tests.
+- `docs/architecture/05-persistence-data-stores.md` — source-of-truth and persistence invariants.
+- `docs/architecture/02-auth-session-delegation.md` — auth, session, and permission test cases.
+- `docs/architecture/06-marketplace-funding-flow.md` — funding workflow state transitions.
+- `docs/architecture/09-user-experience-architecture.md` — user-visible behavior expectations.
+
 ## Stack
 
 - **Vitest** — test runner

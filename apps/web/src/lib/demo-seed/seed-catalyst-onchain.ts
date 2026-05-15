@@ -37,6 +37,19 @@ async function deploy(salt: number): Promise<`0x${string}`> {
   return deploySmartAccount(walletClient.account!.address, BigInt(salt))
 }
 
+/** Turn a display name like "Catalyst NoCo Network" into a DNS-safe
+ *  slug "catalyst-noco-network" suitable for an A2A host label. The
+ *  URL resolver derives the host's leftmost label as the slug, so
+ *  every registered agent MUST have a primary name set or A2A routing
+ *  fails 401 with "no primary name registered". */
+function slugify(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .replace(/-{2,}/g, '-')
+}
+
 async function register(addr: `0x${string}`, name: string, desc: string, agentType: `0x${string}`) {
   const walletClient = getWalletClient()
   const resolverAddr = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}`
@@ -44,11 +57,30 @@ async function register(addr: `0x${string}`, name: string, desc: string, agentTy
   try {
     const client = getPublicClient()
     const isReg = await client.readContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'isRegistered', args: [addr] }) as boolean
-    if (isReg) return
-    await walletClient.writeContract({
-      address: resolverAddr, abi: agentAccountResolverAbi,
-      functionName: 'register', args: [addr, name, desc, agentType, ZERO_HASH, ''],
-    })
+    if (!isReg) {
+      await walletClient.writeContract({
+        address: resolverAddr, abi: agentAccountResolverAbi,
+        functionName: 'register', args: [addr, name, desc, agentType, ZERO_HASH, ''],
+      })
+    }
+    // Always (idempotently) set the agent's primary name so A2A URL
+    // resolution can derive a slug. Re-running is cheap — same hash
+    // value writes are no-ops at the storage level.
+    const primaryName = `${slugify(name)}.agent`
+    try {
+      const existing = await client.readContract({
+        address: resolverAddr, abi: agentAccountResolverAbi,
+        functionName: 'getStringProperty', args: [addr, ATL_PRIMARY_NAME as `0x${string}`],
+      }) as string
+      if (existing !== primaryName) {
+        await walletClient.writeContract({
+          address: resolverAddr, abi: agentAccountResolverAbi,
+          functionName: 'setStringProperty', args: [addr, ATL_PRIMARY_NAME as `0x${string}`, primaryName],
+        })
+      }
+    } catch (e) {
+      console.warn(`[catalyst-seed] setStringProperty(ATL_PRIMARY_NAME) failed for ${name}:`, e)
+    }
   } catch (_e) { console.warn(`[catalyst-seed] Failed to register ${name}:`, _e) }
 }
 

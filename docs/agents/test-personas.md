@@ -1,5 +1,16 @@
 # Test Personas — QA Plan
 
+Use `docs/architecture/INDEX.md` and
+`docs/architecture/09-user-experience-architecture.md` when refreshing these
+personas so scenarios match the current system, UX, funding, trust, and
+operational architecture.
+
+Persona-specific architecture files:
+- `docs/architecture/09-user-experience-architecture.md` — user journeys and labels.
+- `docs/architecture/06-marketplace-funding-flow.md` — donor, applicant, voter, validator, treasurer scenarios.
+- `docs/architecture/02-auth-session-delegation.md` — login, consent, credentials, permission scenarios.
+- `docs/architecture/10-operational-architecture.md` — environment and readiness assumptions for tests.
+
 ## Persona 1: Alex (Org Administrator)
 **Goal:** Deploy org, add team members, create governance relationships
 **Flow:**

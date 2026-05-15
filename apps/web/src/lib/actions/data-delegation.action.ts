@@ -18,8 +18,12 @@ import {
 } from '@smart-agent/sdk'
 import type { DataScopeGrant } from '@smart-agent/sdk'
 import { privateKeyToAccount } from 'viem/accounts'
+import {
+  resolveA2AEndpointForCurrentUser,
+  A2AUrlResolverError,
+} from '@/lib/clients/a2a-url-resolver'
+import { a2aFetch } from '@/lib/clients/a2a-fetch'
 
-const A2A_AGENT_URL = process.env.A2A_AGENT_URL ?? 'http://localhost:3100'
 const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? '31337')
 
 // ─── Types ─────────────────────────────────────────────────────────
@@ -196,8 +200,8 @@ export async function createDataDelegation(
       metadataURI,
     })
     await confirmRelationship(edgeId)
-    const { scheduleKbSyncEager } = await import('@/lib/ontology/kb-write-through')
-    scheduleKbSyncEager()
+    const { hubScheduleKbSync } = await import('@/lib/clients/hub-client')
+    await hubScheduleKbSync(true)
   } catch (err) {
     console.warn('[data-delegation] Edge creation failed:', err)
     // Continue — delegation still works without the edge
@@ -384,21 +388,31 @@ export async function loadDelegatedProfile(
   const user = users[0]
   const myPersonAgent = user ? await getPersonAgentForUser(user.id) : null
 
+  let ep
   try {
-    let url = `${A2A_AGENT_URL}/profile/delegated?target=${encodeURIComponent(targetPrincipal)}`
+    ep = await resolveA2AEndpointForCurrentUser()
+  } catch (e) {
+    if (e instanceof A2AUrlResolverError) {
+      return { success: false, error: `A2A endpoint unresolvable: ${e.message}` }
+    }
+    throw e
+  }
+
+  try {
+    let url = `${ep.endpoint}/profile/delegated?target=${encodeURIComponent(targetPrincipal)}`
     if (myPersonAgent) url += `&grantee=${encodeURIComponent(myPersonAgent)}`
 
-    const res = await fetch(url, {
-      headers: { 'Authorization': `Bearer ${token}` },
+    const res = await a2aFetch(url, {
+      headers: { 'Authorization': `Bearer ${token}`, 'Host': ep.hostHeader },
     })
 
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}))
+      const err = await res.json().catch(() => ({})) as { error?: string }
       return { success: false, error: err.error ?? 'Failed to load delegated profile' }
     }
 
-    const data = await res.json()
-    return { success: true, profile: data.profile ?? null, allowedFields: data.allowedFields }
+    const data = await res.json() as { profile?: Record<string, unknown>; allowedFields?: string[] }
+    return { success: true, profile: data.profile, allowedFields: data.allowedFields }
   } catch {
     return { success: false, error: 'A2A agent unreachable' }
   }

@@ -1,0 +1,43 @@
+Fri May 15 10:45:44 MDT 2026
+
+Running 1 test using 1 worker
+
+[full-demo] running bootstrap…
+[full-demo] Maria treasury: 0x930A6C5aa3bFe5e1fB6EbBa07a8A1a6970FDC1F6
+[full-demo] Fort Collins: 0xD763eea2Ae49a131a814db64259Ab6fbE423E27b
+[full-demo] pre-warming pages (no recording)…
+[full-demo] pre-warm complete
+[full-demo] Fort Collins Treasury balance before: $0
+[full-demo] saved recording → /home/barb/smart-agent/tests/e2e/demo-output/smart-agent-grant-lifecycle-demo.webm
+[full-demo] Narration timeline: /home/barb/smart-agent/tests/e2e/demo-output/chapter-timeline.json (15 chapters)
+  ✘  1 tests/e2e/grant-flow-full-ui-demo.spec.ts:320:5 › Full UI grant lifecycle — Maria → David → Sarah → Maria (6.3m)
+
+
+  1) tests/e2e/grant-flow-full-ui-demo.spec.ts:320:5 › Full UI grant lifecycle — Maria → David → Sarah → Maria 
+
+    Error: Fort Collins Treasury should grow by exactly $30k — got 0
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoBe[2m([22m[32mexpected[39m[2m) // Object.is equality[22m
+
+    Expected: [32m30000000000n[39m
+    Received: [31m0n[39m
+
+      678 |   // ── Correctness assertion ──────────────────────────────────────────
+      679 |   const THIRTY_K = 30_000n * 10n ** 6n
+    > 680 |   expect(delta, `Fort Collins Treasury should grow by exactly $30k — got ${delta.toString()}`).toBe(THIRTY_K)
+          |                                                                                                ^
+      681 |   console.log(`[full-demo] Fort Collins Treasury after: $${after$}  (Δ +$${delta$})`)
+      682 | })
+      683 |
+        at /home/barb/smart-agent/tests/e2e/grant-flow-full-ui-demo.spec.ts:680:96
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tests/e2e/demo-output/grant-flow-full-ui-demo-Fu-6f9a1-ria-→-David-→-Sarah-→-Maria/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tests/e2e/demo-output/grant-flow-full-ui-demo-Fu-6f9a1-ria-→-David-→-Sarah-→-Maria/error-context.md
+
+  Slow test file: tests/e2e/grant-flow-full-ui-demo.spec.ts (6.3m)
+  Consider running tests from slow files in parallel. See: https://playwright.dev/docs/test-parallel
+  1 failed
+    tests/e2e/grant-flow-full-ui-demo.spec.ts:320:5 › Full UI grant lifecycle — Maria → David → Sarah → Maria 

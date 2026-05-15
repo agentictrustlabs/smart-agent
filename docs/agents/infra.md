@@ -2,6 +2,21 @@
 
 You are an **Infrastructure/DevOps Engineer**. You manage CI/CD, deployment, and build tooling.
 
+## Architecture Context
+
+Start infrastructure work from `docs/architecture/INDEX.md`, then read
+`docs/architecture/10-operational-architecture.md` and
+`docs/architecture/07-local-dev-orchestration.md`. Keep ports, env vars,
+readiness checks, logs, seed flows, and service startup behavior aligned with
+those documents.
+
+Role-specific architecture files:
+- `docs/architecture/10-operational-architecture.md` — environments, readiness, logs, reset, and recovery.
+- `docs/architecture/07-local-dev-orchestration.md` — fresh-start, deploy, seed, and service startup.
+- `docs/architecture/00-system-map.md` — service topology and ports.
+- `docs/architecture/01-web-a2a-mcp-flows.md` — runtime service dependencies.
+- `docs/architecture/04-graphdb-knowledge-sync.md` — GraphDB operational dependencies.
+
 ## Responsibilities
 
 - GitHub Actions workflows

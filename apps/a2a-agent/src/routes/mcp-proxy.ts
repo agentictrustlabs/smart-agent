@@ -11,6 +11,7 @@ import { requireSession } from '../middleware/require-session'
 const PERSON_MCP_URL = process.env.PERSON_MCP_URL ?? 'http://localhost:3200'
 const ORG_MCP_URL = process.env.ORG_MCP_URL ?? 'http://localhost:3400'
 const PEOPLE_GROUP_MCP_URL = process.env.PEOPLE_GROUP_MCP_URL ?? 'http://localhost:3300'
+const HUB_MCP_URL = process.env.HUB_MCP_URL ?? 'http://localhost:3900'
 
 interface StoredSessionPackage {
   sessionPrivateKey: string
@@ -32,6 +33,11 @@ const SERVERS = {
   org:           { url: ORG_MCP_URL,          audience: 'urn:mcp:server:org'           as const },
   'people-group': { url: PEOPLE_GROUP_MCP_URL, audience: 'urn:mcp:server:people-groups' as const },
 } as const
+
+// hub-mcp is system-level (no per-user delegation). Routed separately
+// below — see the `/hub/:tool` handler that bypasses requireSession.
+const HUB_AUDIENCE = 'urn:mcp:server:hub' as const
+void HUB_AUDIENCE // reserved for future request-signing if needed
 
 type ServerKey = keyof typeof SERVERS
 
@@ -141,6 +147,37 @@ const mcpProxy = new Hono()
  *     body: JSON.stringify({}),
  *   })
  */
+// ── Hub-mcp proxy — system-level, no session required ──────────────
+//
+// hub-mcp serves public knowledge-base reads (DiscoveryService over
+// GraphDB) and on-chain → KB sync writes. It is NOT bound to any
+// user's smart account, so we deliberately skip `requireSession` and
+// the per-agent host check here. Cache invalidation lives inside
+// hub-mcp itself (`sync:*` tools call `cacheInvalidateFamily` after
+// successful writes), so the read-after-write fence is preserved.
+//
+// The host-context middleware allows the `system.<base>` subdomain
+// without requiring a slug→agent resolution; that's how web clients
+// reach this route (via `callMcp('hub', …)` with Host: system.agent.localhost).
+mcpProxy.post('/hub/:tool', async (c) => {
+  const toolName = c.req.param('tool')
+  const args = await c.req.json().catch(() => ({}))
+  try {
+    const res = await fetch(`${HUB_MCP_URL}/tools/${toolName}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(args ?? {}),
+    })
+    if (!res.ok) {
+      const body = await res.text().catch(() => '')
+      return c.json({ error: `hub-mcp ${toolName} failed: ${res.status} ${body.slice(0, 200)}` }, 502)
+    }
+    return c.json(await res.json())
+  } catch (e) {
+    return c.json({ error: `hub-mcp ${toolName} unreachable: ${e instanceof Error ? e.message : String(e)}` }, 502)
+  }
+})
+
 mcpProxy.post('/:server/:tool', requireSession, async (c) => {
   const sess = c.get('session')
   const serverKey = c.req.param('server') as ServerKey

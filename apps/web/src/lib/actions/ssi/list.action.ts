@@ -1,7 +1,18 @@
 'use server'
 
+/**
+ * Routing rule (phase 3 of A2A-first consolidation):
+ *   - Person-mcp tool calls (`ssi_list_my_credentials`,
+ *     `ssi_list_proof_audit`, `ssi_list_wallets`, `ssi_get_credential_details`)
+ *     go through `callMcp('person', …)`. The signed-in user IS the
+ *     credential holder here, so no `agentAddress` opt — default A2A
+ *     resolution to the user's own person agent applies.
+ *   - On-chain resolver lookups (AgentAccountResolver, OnChainResolver)
+ *     are pure RPC reads against the L1 client — not MCP routes.
+ */
+
 import { loadSignerForCurrentUser } from '@/lib/ssi/signer'
-import { person } from '@/lib/ssi/clients'
+import { callMcp } from '@/lib/clients/mcp-client'
 import { ssiConfig } from '@/lib/ssi/config'
 import { OnChainResolver } from '@smart-agent/credential-registry'
 import { getPublicClient } from '@/lib/contracts'
@@ -76,12 +87,13 @@ export async function walletStatusAction(opts: { walletContext?: string } = {}):
     const { principal } = await loadSignerForCurrentUser()
 
     const [list, audit, wallets] = await Promise.all([
-      person.callTool<{ credentials: CredentialRow[] }>(
+      callMcp<{ credentials: CredentialRow[] }>(
+        'person',
         'ssi_list_my_credentials',
         opts.walletContext ? { principal, walletContext: opts.walletContext } : { principal },
       ),
-      person.callTool<{ audit: AuditRow[] }>('ssi_list_proof_audit', { principal, limit: 50 }),
-      person.callTool<{ wallets: WalletSummary[] }>('ssi_list_wallets', { principal }),
+      callMcp<{ audit: AuditRow[] }>('person', 'ssi_list_proof_audit', { principal, limit: 50 }),
+      callMcp<{ wallets: WalletSummary[] }>('person', 'ssi_list_wallets', { principal }),
     ])
 
     // "anchored" = schema + credDef both published on chain under the ids
@@ -119,7 +131,8 @@ export async function walletStatusAction(opts: { walletContext?: string } = {}):
     // row so the panel can display attributes without an extra round-trip.
     const detailResults = await Promise.all(
       list.credentials.map(c =>
-        person.callTool<{ credential?: { attributes?: Record<string, string> }; error?: string }>(
+        callMcp<{ credential?: { attributes?: Record<string, string> }; error?: string }>(
+          'person',
           'ssi_get_credential_details',
           { principal, credentialId: c.id },
         ).catch(() => ({ credential: undefined } as { credential?: { attributes?: Record<string, string> } })),

@@ -125,6 +125,10 @@ export interface SubmitGrantProposalInput {
   reportingJson: string
   orgBackgroundJson: string
   basisJson?: string
+  /** Recipient AgentAccount that will receive funds at award time
+   *  (the proposer's hub-org `sa:hasTreasury`). MUST be non-zero — the
+   *  contract reverts with `MissingRecipient` otherwise. */
+  recipient: Address
 }
 
 export interface EditGrantProposalInput {
@@ -155,6 +159,7 @@ export class GrantProposalRegistryClient {
       reportingJson: input.reportingJson,
       orgBackgroundJson: input.orgBackgroundJson,
       basisJson: input.basisJson ?? '',
+      recipient: input.recipient,
     } as const
   }
 

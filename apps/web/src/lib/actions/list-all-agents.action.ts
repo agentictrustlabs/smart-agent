@@ -1,6 +1,10 @@
 'use server'
 
-import { DiscoveryService } from '@smart-agent/discovery'
+import {
+  hubListAgents,
+  hubGetOutgoingEdges,
+  hubGetIncomingEdges,
+} from '@/lib/clients/hub-client'
 import type { KBAgent } from '@smart-agent/discovery'
 
 /**
@@ -71,17 +75,18 @@ function kbAgentToCardData(agent: KBAgent): AgentCardData {
  */
 export async function listAllAgents(): Promise<AgentCardData[]> {
   try {
-    const discovery = DiscoveryService.fromEnv()
-    const agents = await discovery.listAgents()
+    const agents = await hubListAgents()
 
-    // Load relationships for each agent in parallel (batched)
+    // Load relationships for each agent in parallel (batched). Reads
+    // flow through hub-mcp so the LRU cache absorbs repeated hits when
+    // the same agent appears in multiple views.
     const results = await Promise.all(
       agents.map(async (agent) => {
         const card = kbAgentToCardData(agent)
         try {
           const [outEdges, inEdges] = await Promise.all([
-            discovery.getOutgoingEdges(agent.address),
-            discovery.getIncomingEdges(agent.address),
+            hubGetOutgoingEdges(agent.address),
+            hubGetIncomingEdges(agent.address),
           ])
           card.outEdges = outEdges.map(e => ({
             targetAddress: e.objectAddress,

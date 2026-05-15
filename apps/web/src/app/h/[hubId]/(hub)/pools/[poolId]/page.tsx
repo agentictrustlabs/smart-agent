@@ -22,7 +22,7 @@ import { getHubProfile } from '@/lib/hub-profiles'
 import { getPersonAgentForUser } from '@/lib/agent-registry'
 import { getPoolForViewer, getPoolRecentAllocations } from '@/lib/actions/pools.action'
 import { listPoolPledges } from '@/lib/actions/poolPledges.action'
-import { DiscoveryService } from '@smart-agent/discovery'
+import { hubListRounds } from '@/lib/clients/hub-client'
 import { OrgTreasuryWidget } from '@/components/treasury/OrgTreasuryWidget'
 
 export const dynamic = 'force-dynamic'
@@ -86,8 +86,8 @@ export default async function PoolDetailPage({
     .filter((p, i, arr) => arr.findIndex(x => x.id === p.id) === i)
     .slice(0, 10)
 
-  // Rounds operated by this pool's stewardship agent. We hit
-  // DiscoveryService.listRounds directly instead of going through the
+  // Rounds operated by this pool's stewardship agent. We hit hub-mcp's
+  // cached `discovery:list_rounds` directly instead of going through the
   // listRoundsForViewer action, because that action does an N+1
   // proposerSideSignals fetch per round (5 rounds × ~15s GraphDB query
   // = up to 75s page-render time). On the pool detail surface we just
@@ -98,8 +98,7 @@ export default async function PoolDetailPage({
   // friendlier than a 500.
   let roundsForPool: Array<{ id: string; displayName?: string; fundAgentId: string; poolAgentId?: string; deadline: string; mandate: { acceptedKinds: string[] } }> = []
   try {
-    const discovery = DiscoveryService.fromEnv()
-    const allHubRounds = await discovery.listRounds({
+    const allHubRounds = await hubListRounds({
       hubId: internalHubId,
       viewerAgentId: myAgent,
       includeClosed: true,

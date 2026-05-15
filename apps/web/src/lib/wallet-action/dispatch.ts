@@ -1,6 +1,18 @@
 /**
  * Server-side WalletActionV1 dispatch.
  *
+ * Routing rule (phase 3 of A2A-first consolidation):
+ *   - The session-record lookup at step 1 is performed via
+ *     `fetchSessionByCookie`, which lives in
+ *     `apps/web/src/lib/auth/person-mcp-session-client.ts` — that file is
+ *     itself a direct-HTTP module against person-mcp's `/session-store/*`
+ *     routes (TODO phase-4 there).
+ *   - Step 5 (`POST /wallet-action/dispatch` on person-mcp) is ALSO direct
+ *     HTTP because the route is a non-`/tools/` Hono endpoint that the
+ *     A2A proxy cannot currently target. TODO(phase-4): wrap as an MCP
+ *     tool (e.g. `ssi_dispatch_wallet_action`) so this whole module can
+ *     route through `callMcp('person', …)` and drop PERSON_MCP_URL.
+ *
  * Replaces the legacy passkey-prompted flow (signWalletActionClient +
  * submitWalletProvision/store/present) with a single server-side path:
  *
@@ -102,6 +114,10 @@ export async function dispatchWalletAction<T = unknown>(input: DispatchInput): P
   }
 
   // 5. Dispatch to person-mcp.
+  //    TODO(phase-4): replace with `callMcp('person', 'ssi_dispatch_wallet_action',
+  //    { action, actionSignature: signature, sessionId, payload })` once person-mcp
+  //    exposes the dispatch handler as an MCP tool. The current direct HTTP
+  //    POST is a deferred carve-out from the A2A-first routing rule.
   const res = await fetch(`${PERSON_MCP_URL}/wallet-action/dispatch`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },

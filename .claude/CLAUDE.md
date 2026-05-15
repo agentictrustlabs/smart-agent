@@ -18,6 +18,13 @@ When scheduled work arrives:
 
 Every non-trivial unit of work MUST go through the task lifecycle.
 
+## Architecture Context
+
+For architecture-sensitive scheduled work, start with `docs/architecture/INDEX.md`.
+Use it to route to the correct system, technical, information, UX, operational,
+A2A/MCP, GraphDB, on-chain, or funding architecture document before producing
+plans or artifacts.
+
 ### When a task is required
 - Any multi-step work (implement, audit, report, verify, refactor)
 - Anything that produces an artifact in `./output/`

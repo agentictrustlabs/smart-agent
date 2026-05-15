@@ -28,9 +28,15 @@ export async function getPersonAgentForUser(userId: string): Promise<string | nu
   // agent (single-account model). Detect by shape and return directly.
   if (/^0x[0-9a-fA-F]{40}$/.test(userId)) return userId
 
-  // Fast path: read the persisted address from the user row. The on-chain
-  // scan is reserved as a fallback for rows that never finished provisioning.
-  const user = await db.select().from(schema.localUserAccounts).where(eq(schema.localUserAccounts.id, userId)).limit(1)
+  // The session layer passes the subject DID (e.g. `did:demo:cat-001`),
+  // while `local_user_accounts.id` is the row id (e.g. `cat-user-001`).
+  // Try both columns; DID-based session IDs match `did`, demo-script
+  // direct IDs match `id`.
+  const user = await db.select().from(schema.localUserAccounts).where(
+    userId.startsWith('did:')
+      ? eq(schema.localUserAccounts.did, userId)
+      : eq(schema.localUserAccounts.id, userId),
+  ).limit(1)
   if (!user[0]) return null
   if (user[0].personAgentAddress) return user[0].personAgentAddress
   // OAuth / passkey / SIWE users without a separate person agent: the smart

@@ -1,9 +1,23 @@
 'use server'
 
+/**
+ * Routing rule (phase 3 of A2A-first consolidation):
+ *   - Person-mcp tool calls go through `callMcp('person', …)` (the
+ *     signed-in user IS the holder here, so no `agentAddress` opt).
+ *   - Issuer-side calls (`org.offer`, `org.issue`, `family.offer`,
+ *     `family.issue`) hit the issuer's protocol endpoints directly via
+ *     the `clients.ts` SDK — these are not /tools/ MCP calls and not
+ *     user-authenticated.
+ *   - `GET ${walletUrl}/wallet/<principal>/<context>` is a direct HTTP
+ *     check against person-mcp's non-tool surface; TODO(phase-4) wrap
+ *     as `ssi_get_holder_wallet`.
+ */
+
 import { revalidatePath } from 'next/cache'
 import type { WalletAction } from '@smart-agent/privacy-creds'
 import { loadSignerForCurrentUser, signWalletAction } from '@/lib/ssi/signer'
-import { person, org, family } from '@/lib/ssi/clients'
+import { org, family } from '@/lib/ssi/clients'
+import { callMcp } from '@/lib/clients/mcp-client'
 import { ssiConfig } from '@/lib/ssi/config'
 
 type IssuerKey = 'org' | 'family'
@@ -22,6 +36,8 @@ export async function acceptCredentialAction(args: {
     const { principal } = await loadSignerForCurrentUser()
 
     // ── 0. Ensure a holder wallet exists for this (principal, context) ─────
+    // TODO(phase-4): direct GET on person-mcp non-tool route. Wrap as
+    // an `ssi_get_holder_wallet` MCP tool so this can ride the A2A proxy.
     let holderWalletId: string | undefined
     try {
       const res = await fetch(
@@ -45,7 +61,8 @@ export async function acceptCredentialAction(args: {
     const offer = await client.offer(args.credentialType)
 
     // ── 2. Build + sign AcceptCredentialOffer action ────────────────────
-    const built = await person.callTool<{ action: WalletAction & { expiresAt: string } }>(
+    const built = await callMcp<{ action: WalletAction & { expiresAt: string } }>(
+      'person',
       'ssi_create_wallet_action',
       {
         principal,
@@ -60,7 +77,8 @@ export async function acceptCredentialAction(args: {
     const action: WalletAction = { ...built.action, expiresAt: BigInt(built.action.expiresAt) }
     const { signature } = await signWalletAction(action)
 
-    const req = await person.callTool<{ requestId: string; credentialRequestJson: string }>(
+    const req = await callMcp<{ requestId: string; credentialRequestJson: string }>(
+      'person',
       'ssi_start_credential_exchange',
       { action: built.action, signature, credentialOfferJson: offer.credentialOfferJson, credDefId: offer.credDefId },
     )
@@ -71,7 +89,8 @@ export async function acceptCredentialAction(args: {
       attributes: args.attributes,
     })
 
-    const fin = await person.callTool<{ credentialId: string }>(
+    const fin = await callMcp<{ credentialId: string }>(
+      'person',
       'ssi_finish_credential_exchange',
       {
         principal,

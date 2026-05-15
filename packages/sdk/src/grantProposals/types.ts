@@ -101,6 +101,15 @@ export interface GrantProposal {
   withdrawnAt?: string
   clonedFromProposalId?: string
   basis: RankBasis
+  /**
+   * Hex address of the recipient AgentAccount that receives funds at award
+   * time (the proposer's hub-org's `sa:hasTreasury`). Distinct from the
+   * proposer's anonymous nullifier `proposerAgentId` — the proposer is a
+   * pseudonym (AnonCreds), but the recipient is a publicly-named treasury
+   * so commitment-release tranches can transfer USDC into it. Required at
+   * submit time; the on-chain row stores it under `sa:gpRecipient`.
+   */
+  recipientAddress: `0x${string}`
 }
 
 export type SubmitGrantProposalRequest = Omit<

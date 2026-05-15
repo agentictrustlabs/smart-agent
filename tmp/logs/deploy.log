@@ -136,8 +136,8 @@ Funded org issuer 0xe8acf143AFbF8B1371A20ea934D334180190Eac1, family issuer 0xA8
 === Type Registry seeded: 17 relationship types ===
 
 === Seeding spec-004 / spec-005 sa: predicates + shapes ===
-[seed-spec004-ontology] registering 80 terms in 0x998abeb3E57409262aE5b751f60747921B33613E
-[seed-spec004-ontology] terms done — registered=80 skipped=0
+[seed-spec004-ontology] registering 81 terms in 0x998abeb3E57409262aE5b751f60747921B33613E
+[seed-spec004-ontology] terms done — registered=81 skipped=0
 [seed-spec004-ontology] defining 5 shapes in 0x70e0bA845a1A0F2DA3359C97E0285013525FFC49
 [seed-spec004-ontology] shapes done — defined=5 skipped=0
 

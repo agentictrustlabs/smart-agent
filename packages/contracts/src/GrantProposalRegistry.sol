@@ -57,9 +57,15 @@ contract GrantProposalRegistry is AttributeStorage {
     bytes32 public constant SA_GP_WITHDRAWN_AT  = keccak256("sa:gpWithdrawnAt");
     bytes32 public constant SA_GP_CLONED_FROM   = keccak256("sa:gpClonedFrom");
     bytes32 public constant SA_GP_BASIS         = keccak256("sa:gpBasis");        // JSON
+    /// Recipient AgentAccount that receives funds at award time. Distinct
+    /// from the anonymous submitter `sa:gpNullifier` — recipient is the
+    /// proposer's hub-org treasury (publicly named) so post-award
+    /// commitment-release tranches can transfer USDC into it.
+    bytes32 public constant SA_GP_RECIPIENT     = keccak256("sa:gpRecipient");
 
     error NotRoundOperator();
     error GrantProposalNotFound();
+    error MissingRecipient();
 
     event GrantProposalSubmitted(bytes32 indexed gpSubject, bytes32 indexed roundSubject, bytes32 indexed nullifier);
     event GrantProposalEdited(bytes32 indexed gpSubject, uint256 newVersion);
@@ -78,6 +84,11 @@ contract GrantProposalRegistry is AttributeStorage {
         string  reportingJson;
         string  orgBackgroundJson;
         string  basisJson;
+        /// Recipient AgentAccount that will receive funds at award time.
+        /// Required (non-zero) so the round close can wire a Commitment
+        /// row with a non-zero recipient and Rail-A release tranches can
+        /// move USDC into it.
+        address recipient;
     }
 
     struct EditPatch {
@@ -121,6 +132,7 @@ contract GrantProposalRegistry is AttributeStorage {
     }
 
     function submit(SubmitParams calldata p) external onlyRoundOperator(p.roundSubject) {
+        if (p.recipient == address(0)) revert MissingRecipient();
         bytes32 subj = _gpSubject(p.roundSubject, p.nullifier);
 
         _setBytes32(subj, SA_GP_ROUND, p.roundSubject);
@@ -137,6 +149,7 @@ contract GrantProposalRegistry is AttributeStorage {
         _setUint(subj, SA_GP_SUBMITTED_AT, block.timestamp);
         _setUint(subj, SA_GP_LAST_EDITED, block.timestamp);
         _setUint(subj, SA_GP_VERSION, 0);
+        _setAddress(subj, SA_GP_RECIPIENT, p.recipient);
         if (bytes(p.basisJson).length > 0) {
             _setString(subj, SA_GP_BASIS, p.basisJson);
         }
