@@ -416,6 +416,9 @@ const readSelfTool = {
   },
   // R8 — read pledges directly from PledgeRegistry, filtered by the
   // caller's donor nullifier (derived from authenticated principal).
+  // Each row carries `id` = on-chain pledgeSubject (bytes32 hex). For
+  // downstream clarity we ALSO expose `pledgeSubject` as an explicit
+  // field so the SDK's getById can match against either alias.
   handler: async (args: { token: string; status?: string; poolAgentId?: string }) => {
     const principal = await requireOrgPrincipal(args.token, args, 'pool_pledge:read_self')
     try {
@@ -427,7 +430,12 @@ const readSelfTool = {
         const target = getAddress(args.poolAgentId).toLowerCase()
         rows = rows.filter((r) => r.poolAgentId.toLowerCase() === target)
       }
-      return mcpText({ pledges: rows })
+      const annotated = rows.map((r) => ({ ...r, pledgeSubject: r.id }))
+      console.log(
+        `[pool_pledge:read_self] principal=${principal} returned ${annotated.length} pledge(s)`
+        + (annotated.length > 0 ? `: [${annotated.map((r) => r.id).join(', ')}]` : ''),
+      )
+      return mcpText({ pledges: annotated })
     } catch (e) {
       console.warn('[pool_pledge:read_self] reader failed:', (e as Error).message)
       return mcpText({ pledges: [] })

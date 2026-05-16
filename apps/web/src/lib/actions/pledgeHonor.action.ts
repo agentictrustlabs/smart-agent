@@ -60,7 +60,23 @@ export async function honorPledge(input: HonorPledgeInput): Promise<HonorPledgeR
   if (!session?.smartAccountAddress) {
     return { ok: false, error: 'not signed in' }
   }
-  const treasury = session.smartAccountAddress as Address
+  // Resolve the actual treasury via sa:hasPersonalTreasury — spec-006's
+  // architectural invariant is that USDC NEVER moves into/out of a person
+  // smart account directly; the linked Treasury Service Agent is the only
+  // place USDC actually sits (see lib/treasury/provision.ts). The bootstrap
+  // script's `ensureMariaTreasury` mints into that linked treasury, NOT the
+  // person SA — using session.smartAccountAddress directly here would try
+  // to transfer from a zero-balance smart account and revert with
+  // ERC20InsufficientBalance (0xe450d38c).
+  const personSa = session.smartAccountAddress as Address
+  let treasury: Address = personSa
+  try {
+    const { readUsdcBalance } = await import('@/lib/treasury/provision')
+    const t = await readUsdcBalance(personSa)
+    if (t.treasury && t.treasury.toLowerCase() !== personSa.toLowerCase()) {
+      treasury = t.treasury
+    }
+  } catch { /* fall back to self */ }
 
   // Resolve the user's own EOA key. Demo: `users.privateKey`.
   // Passkey/SIWE: still uses the deployer-fallback inside loadSignerForCurrentUser

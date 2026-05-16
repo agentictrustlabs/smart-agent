@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import { ConfirmActionModal } from '@/components/ui/ConfirmActionModal'
 
 const C = {
   card: '#ffffff', border: '#ece6db', text: '#5c4a3a', textMuted: '#9a8c7e',
@@ -50,12 +51,15 @@ const NEXT_LIFECYCLE_ACTIONS: Array<{ from: string; to: string; label: string; a
   { from: 'decided', to: 'closed',   action: 'advance-to-closed',  label: 'Mark round closed (post-dispute window)' },
 ]
 
+type ModalKind = 'finalize' | 'cancel' | null
+
 export function RoundAdminClient({ hubSlug, round: initial }: Props) {
   const router = useRouter()
   const [tab, setTab] = useState<Tab>('config')
   const [round, setRound] = useState<RoundView>(initial)
   const [pending, start] = useTransition()
   const [msg, setMsg] = useState<string | null>(null)
+  const [modalKind, setModalKind] = useState<ModalKind>(null)
 
   // ─── Config form state ─────────────────────────────────────────
   const [strategy, setStrategy] = useState(round.votingStrategy)
@@ -252,21 +256,48 @@ export function RoundAdminClient({ hubSlug, round: initial }: Props) {
             ))}
 
           {round.status === 'review' && (
-            <button type="button" disabled={pending} onClick={() => {
-              if (confirm('Finalize awards from current vote tally? This commits the awards Merkle root on chain and opens the 72h dispute window.')) finalizeFromTally()
-            }} style={btnPrimary(pending)}>
-              {pending ? 'Working…' : 'Finalize awards from tally'}
+            <button type="button" disabled={pending} onClick={() => setModalKind('finalize')} style={btnPrimary(pending)}>
+              Finalize awards from tally
             </button>
           )}
 
           {round.status !== 'closed' && round.status !== 'canceled' && (
-            <button type="button" disabled={pending} onClick={() => {
-              if (confirm('Cancel this round? This is reversible only by re-opening with a new round id.')) advance('cancel')
-            }} style={btnDanger(pending)}>
-              {pending ? 'Working…' : 'Cancel round'}
+            <button type="button" disabled={pending} onClick={() => setModalKind('cancel')} style={btnDanger(pending)}>
+              Cancel round
             </button>
           )}
           {msg && <span style={{ fontSize: '0.8rem', color: C.textMuted }}>{msg}</span>}
+
+          <ConfirmActionModal
+            open={modalKind === 'finalize'}
+            title="Finalize awards?"
+            summary="Award decisions will be committed from the current vote tally."
+            details={[
+              'Commits the awards Merkle root on chain',
+              'Opens a 72-hour dispute window',
+              `Round: ${round.id.replace('urn:smart-agent:round:', '')}`,
+            ]}
+            consequence="This action is on-chain and cannot be undone. Winners are notified once the dispute window closes."
+            confirmLabel="Finalize awards"
+            onConfirm={() => { setModalKind(null); finalizeFromTally() }}
+            onCancel={() => setModalKind(null)}
+          />
+
+          <ConfirmActionModal
+            open={modalKind === 'cancel'}
+            title="Cancel this round?"
+            summary="The round will be permanently marked as canceled."
+            details={[
+              `Round: ${round.id.replace('urn:smart-agent:round:', '')}`,
+              'All submitted proposals will remain visible but receive no award',
+              'Reversible only by opening a new round with a new ID',
+            ]}
+            consequence="This writes a canceled status to the chain. Funds are not moved — they remain in the pool."
+            confirmLabel="Cancel round"
+            dangerous
+            onConfirm={() => { setModalKind(null); advance('cancel') }}
+            onCancel={() => setModalKind(null)}
+          />
           <p style={{ fontSize: '0.78rem', color: C.textMuted, lineHeight: 1.5, marginTop: '0.6rem' }}>
             Lifecycle transitions write to chain via <code>FundRegistry.setRoundStatus</code> and mirror to the cache.
             <br />

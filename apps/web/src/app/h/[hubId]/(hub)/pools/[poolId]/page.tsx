@@ -264,9 +264,12 @@ export default async function PoolDetailPage({
               const principalShort = p.principalDisplay.startsWith('0x')
                 ? `${p.principalDisplay.slice(0, 8)}…${p.principalDisplay.slice(-4)}`
                 : p.principalDisplay
+              const pledgeHref = `/h/${slug}/pledges/${encodeURIComponent(p.id)}`
               return (
                 <li key={p.id} style={{ marginBottom: '0.35rem' }}>
-                  {formatAmount(p.amount, p.unit)} —{' '}
+                  <Link href={pledgeHref} style={{ color: C.accent, textDecoration: 'none' }}>
+                    {formatAmount(p.amount, p.unit)}
+                  </Link>{' '}—{' '}
                   <span style={{ fontWeight: 600 }}>{principalShort}</span>
                   <span style={{ color: C.textMuted, marginLeft: '0.4rem' }}>· {p.cadence}</span>
                   {p.pledgedAt && (

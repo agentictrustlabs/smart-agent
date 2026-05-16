@@ -9,6 +9,7 @@
 
 import type { PolicyView } from '@/lib/actions/engagements/policy.action'
 import { SignPolicyButton } from './SignPolicyButton'
+import { truncateAddress } from '@/lib/ui/formatAgent'
 
 const C = {
   card: '#ffffff', border: '#ece6db',
@@ -92,7 +93,7 @@ export function PolicyPanel({
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
             {policy.signers.map(s => {
-              const name = agentNameByAddress[s.agent] ?? `${s.agent.slice(0, 8)}…${s.agent.slice(-4)}`
+              const name = agentNameByAddress[s.agent] ?? truncateAddress(s.agent)
               const signed = s.signedAt !== null
               const isMe = myLower === s.agent
               return (

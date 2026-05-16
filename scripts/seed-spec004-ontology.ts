@@ -103,6 +103,11 @@ const TERMS: Array<{ curie: string; datatype: string }> = [
   { curie: 'sa:gpVersion',        datatype: 'uint256' },
   { curie: 'sa:gpSubmittedAt',    datatype: 'uint256' },
   { curie: 'sa:gpWithdrawnAt',    datatype: 'uint256' },
+  // Spec 005 / Rail-A — recipient AgentAccount receiving funds at award
+  // time. GrantProposalRegistry.submit() writes `_setAddress(... SA_GP_RECIPIENT ...)`
+  // so the predicate must be active in OntologyTermRegistry; otherwise
+  // AttributeStorage reverts with PredicateNotActive() (selector 0x898efc7c).
+  { curie: 'sa:gpRecipient',      datatype: 'address' },
   // PledgeRegistry
   { curie: 'sa:pledgePool',          datatype: 'address' },
   { curie: 'sa:pledgeNullifier',     datatype: 'bytes32' },

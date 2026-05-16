@@ -262,10 +262,13 @@ export const TOOL_POLICIES: Record<string, ToolPolicy> = {
   'agent_resolver:read':                mcpOnly('agent_resolver:read', 'org-mcp'),
   'agent_resolver:read_address_property': mcpOnly('agent_resolver:read_address_property', 'org-mcp'),
 
-  // ProposalRegistry (public-facet) — sub-delegated because it's
-  // an asset-affecting state mutation (awarded / revoked / rescinded).
-  'proposal_registry:announce_award': subDelegated('proposal_registry:announce_award', 'org-mcp', 'ProposalRegistry', /* requiresHuman */ true),
-  'proposal_registry:set_status':     subDelegated('proposal_registry:set_status', 'org-mcp', 'ProposalRegistry'),
+  // ProposalRegistry (public-facet) — stateless-redeem to match the org-mcp
+  // tool impls, which use callA2aRedeem (NOT callA2aRedeemSubDelegated).
+  // msg.sender at the registry is the user's smart account (round operator),
+  // which `onlyRoundOperator` accepts. Matches the same fix the commitment:*
+  // family already had applied.
+  'proposal_registry:announce_award': statelessRedeem('proposal_registry:announce_award', 'org-mcp', 'ProposalRegistry'),
+  'proposal_registry:set_status':     statelessRedeem('proposal_registry:set_status', 'org-mcp', 'ProposalRegistry'),
 
   // CommitmentRegistry — spec 006 disbursement lifecycle.
   // commit / cancel: msg.sender must own the donor pool's AgentAccount; the

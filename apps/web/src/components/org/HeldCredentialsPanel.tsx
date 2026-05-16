@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { walletStatusAction, type CredentialRow } from '@/lib/actions/ssi/list.action'
+import { truncateAddress } from '@/lib/ui/formatAgent'
 import {
   prepareVerifyHeldCredential,
   completeVerifyHeldCredential,
@@ -320,7 +321,7 @@ function CredentialCard({
             )}
           </>
         ) : c.issuerAddress ? (
-          <code style={{ fontSize: 10 }}>{c.issuerAddress.slice(0, 6)}…{c.issuerAddress.slice(-4)}</code>
+          <code style={{ fontSize: 10 }}>{truncateAddress(c.issuerAddress)}</code>
         ) : (
           <code style={{ fontSize: 10 }}>{c.issuerId.slice(0, 28)}{c.issuerId.length > 28 ? '…' : ''}</code>
         )}

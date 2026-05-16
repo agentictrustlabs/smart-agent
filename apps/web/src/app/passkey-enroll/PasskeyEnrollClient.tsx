@@ -70,7 +70,7 @@ export function PasskeyEnrollClient() {
         const parsed = parseAttestationObject(new Uint8Array(attResp.attestationObject))
 
         // ─── Step 2: server adds passkey + builds recovery delegation ─
-        setMsg('Registering passkey on-chain…')
+        setMsg('Registering your passkey…')
         const step1 = await enrollOAuthAddPasskeyAction({
           credentialIdBase64Url: parsed.credentialIdBase64Url,
           pubKeyX: parsed.pubKeyX.toString(),
@@ -86,7 +86,7 @@ export function PasskeyEnrollClient() {
         }
 
         // ─── Step 3: passkey signs the delegation hash ───────────────
-        setMsg('Signing recovery delegation with your passkey…')
+        setMsg('Confirm with your device to finish setup…')
         const challengeBytes = hexToBytes(step1.delegationHash)
         const challengeAb = new ArrayBuffer(challengeBytes.length)
         new Uint8Array(challengeAb).set(challengeBytes)
@@ -116,7 +116,7 @@ export function PasskeyEnrollClient() {
         const delegationSig = ('0x01' + passkeySig.slice(2)) as `0x${string}`
 
         // ─── Step 4: server stores delegation + removes bootstrap owner ─
-        setMsg('Removing bootstrap server from your account…')
+        setMsg('Finalising your account setup…')
         const step2 = await enrollOAuthFinalizeAction({
           delegation: step1.delegation,
           delegationSignature: delegationSig,
@@ -150,7 +150,7 @@ export function PasskeyEnrollClient() {
         }}
         data-testid="passkey-enroll-submit"
       >
-        {pending ? 'Working…' : 'Add a passkey'}
+        {pending ? 'Setting up…' : 'Sign in with this device'}
       </button>
       <button
         onClick={() => router.replace('/dashboard')}
@@ -162,7 +162,16 @@ export function PasskeyEnrollClient() {
       >
         Skip for now
       </button>
-      {msg && <div style={{ marginTop: 12, fontSize: 13 }} data-testid="passkey-enroll-msg">{msg}</div>}
+      {msg && (
+        <div
+          role="status"
+          aria-live="polite"
+          style={{ marginTop: 12, fontSize: 13 }}
+          data-testid="passkey-enroll-msg"
+        >
+          {msg}
+        </div>
+      )}
     </div>
   )
 }

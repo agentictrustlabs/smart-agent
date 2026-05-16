@@ -113,10 +113,29 @@ export async function POST(
   }
 
   if (!result.ok) {
+    console.error('[pledge/submit] submitPledge !ok:', JSON.stringify(result.error))
     return NextResponse.json({ ok: false, error: result.error }, { status: 400 })
   }
 
-  // Success → redirect to "your pledges" page.
-  const target = `/h/${slug}/pledges`
+  // Success → redirect to the pledge detail page so the "Honor pledge"
+  // CTA is immediately visible. Falls back to the pool detail if for any
+  // reason the action didn't return an id (shouldn't happen — submitPledge
+  // populates `result.pledge.id` on the success path).
+  // The MCP returns `{ ok, txHash, pledgeSubject, poolAgent, status }` —
+  // pledgeSubject is the on-chain identifier (0x… hex) and what the
+  // pledge detail route accepts as its [pledgeId] param. The SDK
+  // SubmitPledgeResult type advertises a `pledge: PoolPledge` shape but
+  // the runtime payload uses these flat fields instead.
+  const r = result as {
+    ok: true
+    txHash?: string
+    pledgeSubject?: string
+    pledge?: { id?: string }
+  }
+  const pledgeId = r.pledgeSubject ?? r.pledge?.id
+  const target = pledgeId
+    ? `/h/${slug}/pledges/${encodeURIComponent(pledgeId)}`
+    : `/h/${slug}/pools/${encodeURIComponent(rawPoolId)}`
+  console.log('[pledge/submit] success pledgeId=' + pledgeId + ' → ' + target)
   return NextResponse.redirect(new URL(target, req.url), { status: 303 })
 }

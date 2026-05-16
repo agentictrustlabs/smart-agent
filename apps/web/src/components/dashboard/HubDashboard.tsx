@@ -31,6 +31,254 @@ import { CatalystFieldZone } from '@/components/catalyst/CatalystFieldZone'
 import { CatalystAttentionStrip, CatalystAttentionStripSkeleton } from '@/components/catalyst/CatalystAttentionStrip'
 import { ActiveFulfillmentsStrip } from '@/components/entitlements/ActiveFulfillmentsStrip'
 import { ActiveMarketplaceStrip } from '@/components/dashboard/ActiveMarketplaceStrip'
+import { GettingStartedChecklist, RegisterOrgCard } from '@/components/dashboard/GettingStartedChecklist'
+
+// ─── Action Center helpers ───────────────────────────────────────────
+
+/**
+ * Lightweight counts object used by ActionCenterCard. Kept separate from the
+ * full work-queue aggregator so the card can be rendered without loading
+ * the entire per-mode item list. Sources:
+ *
+ *   fundingMilestones  — items in the govern-mode queue (decision-edge +
+ *                        decision-proposal kinds) that map to funding work.
+ *                        v1: uses the total govern-mode bucket from
+ *                        listMyWorkItemsAction as a proxy; a dedicated
+ *                        commitment-tasks count is Phase 3 work.
+ *   openRounds         — constant 0 in v1; requires a hub-scoped round
+ *                        query the Action Center avoids to keep load fast.
+ *   pendingVotes       — items of kind decision-proposal in the work queue.
+ *   pledgesAwaiting    — constant 0 in v1; pledges are donor-initiated and
+ *                        don't yet flow through the work queue.
+ *
+ * All counts are best-effort — a failing source returns 0, never throws.
+ */
+interface ActionCounts {
+  fundingMilestones: number
+  openRounds: number
+  pendingVotes: number
+  pledgesAwaiting: number
+}
+
+async function getActionCounts(hubId: string): Promise<ActionCounts> {
+  let fundingMilestones = 0
+  let pendingVotes = 0
+  let openRounds = 0
+  let pledgesAwaiting = 0
+
+  // Work-queue derived counts (govern-mode tasks + open votes).
+  try {
+    const { listMyWorkItemsAction } = await import('@/lib/work-queue/aggregator')
+    const { items } = await listMyWorkItemsAction({})
+    fundingMilestones = items.filter(
+      it => it.kind === 'decision-edge' || it.kind === 'decision-proposal' || it.kind === 'manage-orphan',
+    ).length
+    pendingVotes = items.filter(it => it.kind === 'decision-proposal').length
+  } catch { /* keep zeros */ }
+
+  // Open rounds the viewer can apply to: hub-scoped, status `open`, and
+  // submission deadline still in the future. Best-effort; the discovery
+  // SDK call is independent of the viewer's identity, so this is a pure
+  // hub-level count (good enough for a dashboard summary).
+  try {
+    const { DiscoveryService } = await import('@smart-agent/discovery')
+    const discovery = DiscoveryService.fromEnv()
+    const rounds = await discovery.listRounds({ hubId, viewerAgentId: '', includeClosed: false })
+    const nowMs = Date.now()
+    openRounds = rounds.filter(r => {
+      const dl = r.deadline ? Date.parse(r.deadline) : 0
+      return !dl || dl > nowMs
+    }).length
+  } catch { /* keep zero */ }
+
+  // Pledges awaiting honor: caller's own pledges with status=active where
+  // the donor still has remaining capacity to pay. Reuses the same MCP
+  // path the pledge list page uses, so caches stay warm.
+  try {
+    const { listMemberPledges } = await import('@/lib/actions/poolPledges.action')
+    const result = await listMemberPledges()
+    pledgesAwaiting = result.pledges.filter(p => {
+      if (p.status !== 'active') return false
+      // Honored ≥ total ⇒ nothing left to release. We don't have settlement
+      // totals here cheaply, so treat any active pledge as "awaiting" until
+      // the dedicated count tool ships. False-positives are acceptable —
+      // the dashboard link still goes to the pledge list where the user
+      // can see the live state.
+      return true
+    }).length
+  } catch { /* keep zero */ }
+
+  return { fundingMilestones, openRounds, pendingVotes, pledgesAwaiting }
+}
+
+/**
+ * Action Center card — top-of-page summary of everything needing the
+ * viewer's attention, expressed as four plain-language counts with
+ * direct links. When all counts are zero, shows a "You're all caught up"
+ * empty state with a single secondary CTA.
+ *
+ * Server Component. Data comes from the existing work-queue aggregator.
+ * Falls back to all-zero silently on any fetch failure.
+ */
+async function ActionCenterCard({ hubSlug }: { hubSlug: string }) {
+  const { HUB_SLUG_MAP } = await import('@/lib/hub-routes')
+  const hubId = HUB_SLUG_MAP[hubSlug] ?? 'catalyst'
+  const counts = await getActionCounts(hubId)
+  const total = counts.fundingMilestones + counts.openRounds + counts.pendingVotes + counts.pledgesAwaiting
+  const allClear = total === 0
+
+  return (
+    <div
+      style={{
+        background: '#ffffff',
+        border: `1px solid ${C.border}`,
+        borderRadius: 14,
+        padding: '1rem 1.25rem',
+        marginBottom: '1rem',
+      }}
+    >
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+        <h2
+          style={{
+            fontSize: '0.7rem',
+            fontWeight: 700,
+            color: C.textMuted,
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+            margin: 0,
+          }}
+        >
+          Action Center
+        </h2>
+        {!allClear && (
+          <span
+            style={{
+              padding: '0.18rem 0.55rem',
+              background: 'rgba(139,94,60,0.10)',
+              color: C.accent,
+              border: `1px solid rgba(139,94,60,0.20)`,
+              borderRadius: 999,
+              fontSize: '0.7rem',
+              fontWeight: 700,
+            }}
+          >
+            {total} pending
+          </span>
+        )}
+      </div>
+
+      {allClear ? (
+        /* Empty state */
+        <div style={{ textAlign: 'center', padding: '0.75rem 0 0.25rem' }}>
+          <div style={{ fontSize: '0.92rem', fontWeight: 700, color: C.text, marginBottom: '0.3rem' }}>
+            You&apos;re all caught up
+          </div>
+          <div style={{ fontSize: '0.8rem', color: C.text, marginBottom: '0.85rem' }}>
+            No milestones, votes, or pledges need your attention right now.
+          </div>
+          <Link
+            href={`/h/${hubSlug}/rounds`}
+            style={{
+              display: 'inline-block',
+              padding: '0.45rem 0.95rem',
+              border: `1px solid ${C.border}`,
+              borderRadius: 8,
+              fontSize: '0.8rem',
+              fontWeight: 600,
+              color: C.text,
+              textDecoration: 'none',
+            }}
+          >
+            Explore the marketplace
+          </Link>
+        </div>
+      ) : (
+        /* Action rows */
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+          <ActionRow
+            label="Funding milestones"
+            count={counts.fundingMilestones}
+            detail="attestations or releases pending"
+            href={`/h/${hubSlug}/tasks`}
+          />
+          <ActionRow
+            label="Open funding rounds"
+            count={counts.openRounds}
+            detail="you can apply to"
+            href={`/h/${hubSlug}/rounds`}
+          />
+          <ActionRow
+            label="Proposals to vote on"
+            count={counts.pendingVotes}
+            detail="awaiting your vote"
+            href={`/h/${hubSlug}/proposals`}
+          />
+          <ActionRow
+            label="Pledges awaiting payment"
+            count={counts.pledgesAwaiting}
+            detail="ready to release"
+            href={`/h/${hubSlug}/pledges`}
+          />
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ActionRow({
+  label,
+  count,
+  detail,
+  href,
+}: {
+  label: string
+  count: number
+  detail: string
+  href: string
+}) {
+  if (count === 0) return null
+  return (
+    <Link
+      href={href}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.75rem',
+        padding: '0.55rem 0.7rem',
+        background: 'rgba(139,94,60,0.04)',
+        border: `1px solid ${C.border}`,
+        borderRadius: 8,
+        textDecoration: 'none',
+        color: 'inherit',
+      }}
+    >
+      {/* Count badge */}
+      <span
+        style={{
+          flexShrink: 0,
+          minWidth: 28,
+          height: 28,
+          borderRadius: '50%',
+          background: C.accent,
+          color: '#fff',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '0.78rem',
+          fontWeight: 700,
+        }}
+      >
+        {count}
+      </span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: '0.85rem', fontWeight: 600, color: C.text }}>{label}</div>
+        <div style={{ fontSize: '0.72rem', color: C.textMuted }}>{detail}</div>
+      </div>
+      <span style={{ fontSize: '1rem', color: C.textMuted }}>›</span>
+    </Link>
+  )
+}
 
 /**
  * Hub-aware dashboard view. Pure render — caller (a route) decides which
@@ -186,6 +434,12 @@ async function GenericDashboard({
     } catch { /* cookies optional */ }
   }
 
+  // For the generic dashboard we don't have a hub slug; use the hubId
+  // itself as a fallback slug. Hub-specific routes resolve via HUB_SLUG_MAP.
+  // For the Action Center, link to the current hub's routes. If the hub
+  // has no slug (generic/no-hub state), links fall back gracefully.
+  const hubSlugForCenter = hubId !== 'generic' ? hubId : ''
+
   return (
     <div>
       <h1 style={{ fontSize: '1.35rem', fontWeight: 700, color: C.text, margin: '0 0 0.75rem' }}>
@@ -193,6 +447,14 @@ async function GenericDashboard({
       </h1>
 
       {showJoinHubBanner && <JoinHubBanner hubs={availableHubs} />}
+
+      {/* Action Center — only show when the user has a hub context.
+          Falls back to all-zero (all-clear state) if the hub has no slug. */}
+      {hubSlugForCenter && (
+        <Suspense fallback={<div style={{ height: 72, background: 'rgba(139,94,60,0.04)', borderRadius: 14, marginBottom: '1rem' }} aria-hidden />}>
+          <ActionCenterCard hubSlug={hubSlugForCenter} />
+        </Suspense>
+      )}
 
       <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: '1rem 1.25rem', marginBottom: '1rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
@@ -306,11 +568,13 @@ async function GenericDashboard({
 
       <DelegationSection userId={currentUser.id} />
 
-      {userOrgs.length === 0 && !showJoinHubBanner && (
-        <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: '2rem', textAlign: 'center' }}>
-          <p style={{ fontSize: '0.9rem', color: C.textMuted, marginBottom: '0.75rem' }}>You are not yet associated with any organization.</p>
-          <Link href="/setup" style={{ display: 'inline-block', padding: '0.5rem 1.25rem', background: C.accent, color: '#fff', borderRadius: 8, fontWeight: 600, fontSize: '0.85rem', textDecoration: 'none' }}>Create Organization</Link>
-        </div>
+      {userOrgs.length === 0 && !showJoinHubBanner && hubAddress && (
+        <RegisterOrgCard
+          hubSlug={hubId !== 'generic' ? hubId : 'globalchurch'}
+          hubAddress={hubAddress}
+          hubName={hubName}
+          hubId={hubId as 'catalyst' | 'cil' | 'global-church' | 'generic'}
+        />
       )}
     </div>
   )
@@ -508,7 +772,7 @@ async function CatalystFieldDashboard({
         <h1 style={{ fontSize: '1.45rem', fontWeight: 700, color: C.text, margin: '0 0 0.2rem' }}>
           {greeting}, {firstName}
         </h1>
-        <div style={{ fontSize: '0.85rem', color: C.textMuted, display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+        <div style={{ fontSize: '0.85rem', color: C.text, display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
           <span>{subhead}</span>
           {primaryName && (
             <span title={`Your unique name in this network: ${primaryName}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.2rem', fontSize: '0.7rem', color: C.textMuted, cursor: 'help' }}>
@@ -525,17 +789,24 @@ async function CatalystFieldDashboard({
         <CatalystAttentionStrip userId={currentUser.id} userOrgs={userOrgs} hubSlug="catalyst" />
       </Suspense>
 
-      {/* Zone 3 — Role-aware KPI row (4 tiles, or zero-state welcome) */}
+      {/* Zone 2.8 — Register org card (shown when user has no org) */}
+      {userOrgs.length === 0 && hubAddress && (
+        <RegisterOrgCard
+          hubSlug="catalyst"
+          hubAddress={hubAddress}
+          hubName={hubName}
+          hubId={hubId}
+        />
+      )}
+
+      {/* Zone 3 — Role-aware KPI row (4 tiles) or first-run checklist */}
       {kpis.allZero ? (
-        <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: '1rem 1.25rem', marginBottom: '1rem' }}>
-          <div style={{ fontSize: '0.95rem', fontWeight: 700, color: C.text, marginBottom: '0.35rem' }}>Welcome to {hubProfile.name}</div>
-          <div style={{ fontSize: '0.82rem', color: C.textMuted, marginBottom: '0.75rem' }}>You&apos;re a member — here are three first steps:</div>
-          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <Link href="/groups" style={ctaBtn(C.accent)}>Find your group</Link>
-            <Link href="/oikos" style={ctaBtn(C.accent)}>Add someone to your oikos</Link>
-            <Link href="/nurture" style={ctaBtn(C.accent)}>Start nurture</Link>
-          </div>
-        </div>
+        <GettingStartedChecklist
+          hubSlug="catalyst"
+          isOwner={mode === 'govern'}
+          hasOrg={userOrgs.length > 0}
+          hasExpressedIntent={false}
+        />
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.6rem', marginBottom: '1rem' }} className="catalyst-kpi-grid">
           {kpis.tiles.map(tile => (
@@ -546,6 +817,12 @@ async function CatalystFieldDashboard({
           ))}
         </div>
       )}
+
+      {/* Zone 2.5 — Action Center (funding-scoped attention items).
+          Suspense'd so slow work-queue reads don't block the page. */}
+      <Suspense fallback={<div style={{ height: 72, background: 'rgba(139,94,60,0.04)', borderRadius: 14, marginBottom: '1rem' }} aria-hidden />}>
+        <ActionCenterCard hubSlug="catalyst" />
+      </Suspense>
 
       <TreasuryWidget />
 

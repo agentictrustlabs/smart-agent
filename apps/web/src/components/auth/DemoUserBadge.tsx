@@ -92,7 +92,7 @@ export function DemoUserBadge() {
             </div>
           </div>
 
-          {/* Disconnect */}
+          {/* Sign out */}
           <button
             onClick={disconnect}
             style={{
@@ -102,7 +102,7 @@ export function DemoUserBadge() {
               fontSize: '0.8rem', color: '#b91c1c', fontWeight: 600,
             }}
           >
-            Disconnect
+            Sign out
           </button>
         </div>
       )}

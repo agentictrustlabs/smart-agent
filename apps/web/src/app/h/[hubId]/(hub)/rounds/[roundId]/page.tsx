@@ -198,63 +198,34 @@ export default async function RoundDetailPage({
 
   return (
     <div style={{ paddingBottom: '2rem' }}>
-      {/* Header */}
-      <div style={{ marginBottom: '1rem' }}>
-        <div style={{ fontSize: '0.65rem', fontWeight: 700, color: C.accent, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-          {profile.name} · Round
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', margin: '0.1rem 0' }}>
-          <h1 style={{ fontSize: '1.45rem', fontWeight: 700, color: C.text, margin: 0 }}>
-            {round.displayName ?? mandateNarrative}
-          </h1>
-          <span style={{
-            padding: '0.2rem 0.55rem',
-            background: lifecyclePal.bg, color: lifecyclePal.fg, border: `1px solid ${lifecyclePal.border}`,
-            borderRadius: 999, fontSize: '0.7rem', fontWeight: 700,
-            textTransform: 'uppercase', letterSpacing: '0.05em',
-          }}>
-            {lifecycle.label}
-          </span>
-        </div>
-        <p style={{ fontSize: '0.78rem', color: C.textMuted, margin: '0.15rem 0 0' }}>
-          {lifecycle.caption}
-        </p>
-        {round.displayName && mandateNarrative && (
-          <div style={{ fontSize: '0.78rem', color: C.textMuted, marginTop: '0.15rem' }}>
-            Accepts {mandateNarrative}
-          </div>
-        )}
-        <div style={{ fontSize: '0.78rem', color: C.textMuted, display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
-          <span title="Round operator — the AgentAccount whose owners control voting config, lifecycle, and award finalisation. Usually the pool's owner; can be set to a separate operating org.">
-            Operator: <strong style={{ color: C.text }}>{operatorLabel}</strong>
-          </span>
-          {poolLabel && (
-            <span>
-              · in pool{' '}
-              {poolAddress ? (
-                <Link href={`/h/${slug}/pools/${encodeURIComponent(poolAddress)}`} style={{ color: C.accent, fontWeight: 600, textDecoration: 'none' }}>
-                  {poolLabel}
-                </Link>
-              ) : (
-                <strong style={{ color: C.text }}>{poolLabel}</strong>
-              )}
-            </span>
-          )}
-          {proposalsReceived > 0 && (
-            <span>· {proposalsReceived} proposal{proposalsReceived === 1 ? '' : 's'}</span>
-          )}
-          {round.visibility === 'private' && (
-            <span style={{ fontSize: '0.6rem', fontWeight: 700, color: C.privateFg, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-              Private
-            </span>
-          )}
-          {deadline.isPast && (
-            <span style={{ fontSize: '0.6rem', fontWeight: 700, padding: '0.15rem 0.5rem', borderRadius: 999, background: '#f3f4f6', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-              Closed
-            </span>
-          )}
-        </div>
-      </div>
+      {/* ─── Above-the-fold hero card ─────────────────────────────────
+          Answers in one viewport: what is this round, can I apply,
+          by when, for how much, and what is the current status.
+          The detail sections (mandate, eligibility, schedule, etc.)
+          remain below for users who want the full picture.            */}
+      <RoundHeroCard
+        hubSlug={slug}
+        roundId={roundId}
+        profileName={profile.name}
+        displayName={round.displayName}
+        mandateNarrative={mandateNarrative}
+        lifecycle={lifecycle}
+        lifecyclePal={lifecyclePal}
+        roundStatus={roundStatus}
+        deadline={deadline}
+        budgetCeiling={round.mandate.budgetCeiling}
+        expectedAwards={round.mandate.expectedAwards}
+        requiredCredentials={round.requiredCredentials}
+        addressedApplicants={round.addressedApplicants}
+        canApply={canApply}
+        canCancel={canCancel}
+        proposalsReceived={proposalsReceived}
+        visibility={round.visibility}
+        poolLabel={poolLabel}
+        poolAddress={poolAddress}
+        submissionsClosedMessage={submissionsClosedMessage}
+        votingWindowStartsAt={votingWindowStartsAt}
+      />
 
       {/* Operator lifecycle banner — surfaces the "Close submissions,
           open voting" transition that is otherwise buried in the
@@ -444,6 +415,340 @@ export default async function RoundDetailPage({
           </span>
         )}
       </div>
+    </div>
+  )
+}
+
+// ─── Round Hero Card ──────────────────────────────────────────────────
+// First-viewport card answering: what is this, can I apply, by when,
+// for how much. Replaces the previous loose header block.
+
+interface HeroLifecycle {
+  label: string
+  caption: string
+  phase: string
+}
+interface HeroLifecyclePal {
+  bg: string
+  fg: string
+  border: string
+}
+interface HeroDeadline {
+  rel: string
+  abs: string
+  isPast: boolean
+}
+
+function RoundHeroCard({
+  hubSlug,
+  roundId,
+  profileName,
+  displayName,
+  mandateNarrative,
+  lifecycle,
+  lifecyclePal,
+  roundStatus,
+  deadline,
+  budgetCeiling,
+  expectedAwards,
+  requiredCredentials,
+  addressedApplicants,
+  canApply,
+  canCancel,
+  proposalsReceived,
+  visibility,
+  poolLabel,
+  poolAddress,
+  submissionsClosedMessage,
+  votingWindowStartsAt,
+}: {
+  hubSlug: string
+  roundId: string
+  profileName: string
+  displayName: string | null | undefined
+  mandateNarrative: string
+  lifecycle: HeroLifecycle
+  lifecyclePal: HeroLifecyclePal
+  roundStatus: string
+  deadline: HeroDeadline
+  budgetCeiling: number
+  expectedAwards: number
+  requiredCredentials: string[]
+  addressedApplicants?: string[]
+  canApply: boolean
+  canCancel: boolean
+  proposalsReceived: number
+  visibility: string
+  poolLabel: string | null
+  poolAddress: string | null | undefined
+  submissionsClosedMessage: string
+  votingWindowStartsAt: string | null
+}) {
+  const roundName = displayName ?? mandateNarrative
+
+  // Eligibility chip — one short plain-English summary:
+  //   private + addressed → "Invitation only"
+  //   required credentials → "Requires: <kind>"
+  //   open public         → "Open to hub members"
+  const eligibilitySummary = (() => {
+    if (visibility === 'private' && addressedApplicants && addressedApplicants.length > 0) {
+      return 'Invitation only'
+    }
+    if (requiredCredentials.length > 0) {
+      const first = requiredCredentials[0].replace(/^urn:smart-agent:credential-kind:/, '')
+      return `Requires: ${first}${requiredCredentials.length > 1 ? ` + ${requiredCredentials.length - 1} more` : ''}`
+    }
+    return 'Open to hub members'
+  })()
+
+  function formatBudget(n: number): string {
+    if (!Number.isFinite(n) || n <= 0) return '—'
+    if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`
+    if (n >= 1_000) return `$${Math.round(n / 1_000)}k`
+    return `$${n}`
+  }
+
+  // Derive the secondary CTA label when the window is closed.
+  const secondaryCtaText = (() => {
+    if (roundStatus === 'review') {
+      if (votingWindowStartsAt) {
+        const d = new Date(votingWindowStartsAt)
+        const now = Date.now()
+        if (d.getTime() > now) return `Voting opens ${d.toISOString().slice(0, 10)}`
+        return 'Voting is open'
+      }
+      return 'Voting in progress'
+    }
+    if (roundStatus === 'decided') return 'Decision made — awards committed'
+    if (roundStatus === 'closed') return 'This round is closed'
+    if (roundStatus === 'canceled') return 'This round was canceled'
+    if (deadline.isPast) return 'Application window has closed'
+    return submissionsClosedMessage
+  })()
+
+  return (
+    <div
+      style={{
+        background: C.card,
+        border: `1px solid ${C.border}`,
+        borderRadius: 14,
+        padding: '1.25rem 1.35rem',
+        marginBottom: '1rem',
+      }}
+    >
+      {/* Eyebrow */}
+      <div style={{ fontSize: '0.62rem', fontWeight: 700, color: C.accent, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.2rem' }}>
+        {profileName} · Funding round
+      </div>
+
+      {/* Title + status pill */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.65rem', flexWrap: 'wrap', marginBottom: '0.55rem' }}>
+        <h1 style={{ fontSize: '1.45rem', fontWeight: 700, color: C.text, margin: 0, flex: 1, minWidth: 0 }}>
+          {roundName}
+        </h1>
+        <span
+          aria-label={`Status: ${lifecycle.label}`}
+          style={{
+            flexShrink: 0,
+            padding: '0.22rem 0.6rem',
+            background: lifecyclePal.bg,
+            color: lifecyclePal.fg,
+            border: `1px solid ${lifecyclePal.border}`,
+            borderRadius: 999,
+            fontSize: '0.65rem',
+            fontWeight: 700,
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+            marginTop: '0.3rem',
+          }}
+        >
+          {lifecycle.label}
+        </span>
+      </div>
+
+      {/* Lifecycle caption */}
+      {lifecycle.caption && (
+        <p style={{ fontSize: '0.78rem', color: C.textMuted, margin: '0 0 0.75rem', lineHeight: 1.5 }}>
+          {lifecycle.caption}
+        </p>
+      )}
+
+      {/* Eligibility chip */}
+      <div style={{ marginBottom: '0.9rem' }}>
+        <span
+          title="Who can apply to this round"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.35rem',
+            padding: '0.22rem 0.7rem',
+            background: 'rgba(139,94,60,0.07)',
+            border: '1px solid rgba(139,94,60,0.18)',
+            borderRadius: 999,
+            fontSize: '0.72rem',
+            color: C.text,
+            fontWeight: 600,
+          }}
+        >
+          <span aria-hidden style={{ fontSize: '0.65rem', color: C.accent }}>Eligible:</span>
+          {eligibilitySummary}
+        </span>
+      </div>
+
+      {/* Three metric tiles */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(3, 1fr)',
+          gap: '0.6rem',
+          marginBottom: '1.1rem',
+        }}
+      >
+        <MetricTile
+          label="Submission deadline"
+          value={deadline.isPast ? 'Closed' : deadline.rel}
+          sub={!deadline.isPast && deadline.abs && deadline.rel !== deadline.abs ? deadline.abs : undefined}
+          urgent={!deadline.isPast && deadline.rel === 'today'}
+        />
+        <MetricTile
+          label="Budget ceiling"
+          value={formatBudget(budgetCeiling)}
+        />
+        <MetricTile
+          label="Awards expected"
+          value={expectedAwards > 0 ? String(expectedAwards) : '—'}
+          sub={expectedAwards > 0 ? 'grants' : undefined}
+        />
+      </div>
+
+      {/* Pool attribution */}
+      {poolLabel && (
+        <div style={{ fontSize: '0.75rem', color: C.textMuted, marginBottom: '0.9rem' }}>
+          Funded by{' '}
+          {poolAddress ? (
+            <Link
+              href={`/h/${hubSlug}/pools/${encodeURIComponent(poolAddress)}`}
+              style={{ color: C.accent, fontWeight: 600, textDecoration: 'none' }}
+            >
+              {poolLabel}
+            </Link>
+          ) : (
+            <strong style={{ color: C.text }}>{poolLabel}</strong>
+          )}
+          {proposalsReceived > 0 && (
+            <span style={{ marginLeft: '0.5rem' }}>
+              · {proposalsReceived} proposal{proposalsReceived === 1 ? '' : 's'} submitted
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Primary CTA row */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+        {canApply ? (
+          <Link
+            href={`/h/${hubSlug}/rounds/${roundId}/apply`}
+            style={{
+              display: 'inline-block',
+              padding: '0.7rem 1.25rem',
+              background: C.accent,
+              color: '#fff',
+              borderRadius: 10,
+              fontSize: '0.9rem',
+              fontWeight: 700,
+              textDecoration: 'none',
+            }}
+          >
+            Apply with a proposal
+          </Link>
+        ) : (
+          <span
+            style={{
+              fontSize: '0.85rem',
+              color: C.textMuted,
+              fontStyle: 'italic',
+              padding: '0.5rem 0',
+            }}
+          >
+            {secondaryCtaText}
+          </span>
+        )}
+
+        {/* Secondary nav links */}
+        <Link
+          href={`/h/${hubSlug}/rounds/${roundId}/proposals`}
+          style={{
+            fontSize: '0.8rem',
+            color: C.accent,
+            textDecoration: 'none',
+            fontWeight: 600,
+          }}
+        >
+          {proposalsReceived > 0
+            ? `View ${proposalsReceived} proposal${proposalsReceived === 1 ? '' : 's'}`
+            : 'View proposals'}
+        </Link>
+
+        {canCancel && (
+          <Link
+            href={`/h/${hubSlug}/rounds/${roundId}/admin`}
+            style={{ fontSize: '0.8rem', color: C.textMuted, textDecoration: 'none', fontWeight: 600 }}
+          >
+            Admin
+          </Link>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function MetricTile({
+  label,
+  value,
+  sub,
+  urgent,
+}: {
+  label: string
+  value: string
+  sub?: string
+  urgent?: boolean
+}) {
+  return (
+    <div
+      style={{
+        background: urgent ? '#fff8f0' : 'rgba(139,94,60,0.04)',
+        border: `1px solid ${urgent ? 'rgba(139,94,60,0.25)' : C.border}`,
+        borderRadius: 10,
+        padding: '0.6rem 0.75rem',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '0.15rem',
+      }}
+    >
+      <span
+        style={{
+          fontSize: '0.6rem',
+          fontWeight: 700,
+          color: C.textMuted,
+          textTransform: 'uppercase',
+          letterSpacing: '0.06em',
+        }}
+      >
+        {label}
+      </span>
+      <span
+        style={{
+          fontSize: '1.1rem',
+          fontWeight: 700,
+          color: urgent ? C.accent : C.text,
+          lineHeight: 1.2,
+        }}
+      >
+        {value}
+      </span>
+      {sub && (
+        <span style={{ fontSize: '0.65rem', color: C.textMuted }}>{sub}</span>
+      )}
     </div>
   )
 }

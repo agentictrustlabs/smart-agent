@@ -5,12 +5,14 @@
  *   - POST /api/commitments/attest    (validator attests a milestone)
  *   - POST /api/commitments/release   (steward approves + releases)
  *
- * Server-rendered task data flows in via props; the client owns transient
- * pending / error state for the action call.
+ * Both actions are now guarded by ConfirmActionModal so neither fires
+ * on a single accidental click. Server-rendered task data flows in via
+ * props; the client owns transient pending / error state for the action call.
  */
 
 import { useState, useTransition } from 'react'
 import type { InboxTask } from '@/lib/actions/commitments.action'
+import { ConfirmActionModal } from '@/components/ui/ConfirmActionModal'
 
 const C = {
   attest: '#0f766e',
@@ -20,12 +22,31 @@ const C = {
   errorFg: '#991b1b',
 }
 
+function shortAddr(addr: string): string {
+  if (!addr || addr.length < 10) return addr
+  return `${addr.slice(0, 6)}…${addr.slice(-4)}`
+}
+
+function formatUsdc(amountStr: string): string {
+  try {
+    const n = BigInt(amountStr)
+    const dollars = Number(n) / 1_000_000
+    if (dollars >= 1_000_000) return `$${(dollars / 1_000_000).toFixed(1)}M`
+    if (dollars >= 1_000) return `$${(dollars / 1_000).toFixed(1)}k`
+    return `$${dollars.toLocaleString()}`
+  } catch {
+    return amountStr
+  }
+}
+
 export function TaskRowActions({ task, hubSlug }: { task: InboxTask; hubSlug: string }) {
   const [pending, start] = useTransition()
   const [evidence, setEvidence] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [attestModalOpen, setAttestModalOpen] = useState(false)
+  const [releaseModalOpen, setReleaseModalOpen] = useState(false)
 
-  function onAttest() {
+  function doAttest() {
     setError(null)
     start(async () => {
       try {
@@ -50,17 +71,26 @@ export function TaskRowActions({ task, hubSlug }: { task: InboxTask; hubSlug: st
     })
   }
 
-  function onRelease() {
+  function doRelease() {
     setError(null)
     start(async () => {
       try {
+        // task.amount is the tranche size in commitment-unit scale (whole
+        // USD for grant rounds). The on-chain executeBatch transfer expects
+        // USDC at 6-decimal precision (1 USD = 1_000_000 raw units), while
+        // `recordRelease` records in commitment-unit scale. Scale the two
+        // sides independently — mirrors `PledgeHonorForm` and avoids the
+        // ERC20InsufficientBalance (0xe450d38c) revert that fires when
+        // `tokenAmount` is shipped as raw whole-USD.
+        const unit = BigInt(task.amount)
+        const tokenAmount = (unit * 1_000_000n).toString()
         const res = await fetch('/api/commitments/release', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
             commitmentSubject: task.commitmentSubject,
             milestoneId: task.milestoneId,
-            tokenAmount: task.amount,
+            tokenAmount,
             commitmentScaleAmount: task.amount,
           }),
         })
@@ -76,6 +106,10 @@ export function TaskRowActions({ task, hubSlug }: { task: InboxTask; hubSlug: st
     })
   }
 
+  const recipientDisplay = task.recipientLabel ?? shortAddr(task.recipient)
+  const amountDisplay = formatUsdc(task.amount)
+  const evidenceSummary = evidence.trim() || `${task.milestoneLabel} delivered`
+
   return (
     <div>
       {task.kind === 'attestation' ? (
@@ -85,6 +119,7 @@ export function TaskRowActions({ task, hubSlug }: { task: InboxTask; hubSlug: st
             value={evidence}
             placeholder="Evidence summary (optional)"
             onChange={(e) => setEvidence(e.target.value)}
+            aria-label="Evidence summary"
             style={{
               flex: 1, minWidth: '14rem',
               padding: '0.35rem 0.55rem', fontSize: '0.8rem',
@@ -93,7 +128,7 @@ export function TaskRowActions({ task, hubSlug }: { task: InboxTask; hubSlug: st
           />
           <button
             type="button"
-            onClick={onAttest}
+            onClick={() => setAttestModalOpen(true)}
             disabled={pending}
             style={{
               padding: '0.4rem 0.9rem', borderRadius: 8,
@@ -102,32 +137,69 @@ export function TaskRowActions({ task, hubSlug }: { task: InboxTask; hubSlug: st
               cursor: pending ? 'not-allowed' : 'pointer',
             }}
           >
-            {pending ? 'Attesting…' : 'Attest delivered →'}
+            {pending ? 'Attesting…' : 'Confirm milestone'}
           </button>
+
+          <ConfirmActionModal
+            open={attestModalOpen}
+            title="Confirm this milestone?"
+            summary="Your attestation certifies that the milestone deliverable has been met."
+            details={[
+              `Milestone: ${task.milestoneLabel}`,
+              `Recipient: ${recipientDisplay}`,
+              `Evidence: ${evidenceSummary}`,
+            ]}
+            consequence="Your attestation is recorded on chain and unlocks the matching milestone payment for release by the pool steward."
+            confirmLabel="Confirm milestone"
+            skipKey={`attest-${task.commitmentSubject}-${task.milestoneId}`}
+            onConfirm={() => { setAttestModalOpen(false); doAttest() }}
+            onCancel={() => setAttestModalOpen(false)}
+          />
         </div>
       ) : (
-        <button
-          type="button"
-          onClick={onRelease}
-          disabled={pending}
-          style={{
-            padding: '0.4rem 0.9rem', borderRadius: 8,
-            background: pending ? '#cfc4b3' : C.release, color: '#fff',
-            border: 'none', fontSize: '0.8rem', fontWeight: 700,
-            cursor: pending ? 'not-allowed' : 'pointer',
-          }}
-        >
-          {pending ? 'Releasing…' : 'Approve & release →'}
-        </button>
+        <>
+          <button
+            type="button"
+            onClick={() => setReleaseModalOpen(true)}
+            disabled={pending}
+            style={{
+              padding: '0.4rem 0.9rem', borderRadius: 8,
+              background: pending ? '#cfc4b3' : C.release, color: '#fff',
+              border: 'none', fontSize: '0.8rem', fontWeight: 700,
+              cursor: pending ? 'not-allowed' : 'pointer',
+            }}
+          >
+            {pending ? 'Releasing…' : 'Release payment'}
+          </button>
+
+          <ConfirmActionModal
+            open={releaseModalOpen}
+            title="Release this milestone payment?"
+            summary="Funds will be transferred from the pool to the recipient."
+            details={[
+              `Milestone: ${task.milestoneLabel}`,
+              `Amount: ${amountDisplay}`,
+              `Recipient: ${recipientDisplay}`,
+            ]}
+            consequence="This transfers USDC from the pool to the recipient's treasury and records the release on chain."
+            confirmLabel="Release payment"
+            skipKey={`release-${task.commitmentSubject}-${task.milestoneId}`}
+            onConfirm={() => { setReleaseModalOpen(false); doRelease() }}
+            onCancel={() => setReleaseModalOpen(false)}
+          />
+        </>
       )}
       {error && (
-        <div style={{ marginTop: '0.4rem', padding: '0.35rem 0.55rem', background: C.errorBg, color: C.errorFg, fontSize: '0.74rem', borderRadius: 6 }}>
+        <div
+          role="alert"
+          style={{ marginTop: '0.4rem', padding: '0.35rem 0.55rem', background: C.errorBg, color: C.errorFg, fontSize: '0.74rem', borderRadius: 6 }}
+        >
           {error}
         </div>
       )}
       <div style={{ marginTop: '0.4rem', fontSize: '0.72rem' }}>
         <a href={`/h/${hubSlug}/proposals/${task.proposalSubject}`} style={{ color: C.accent, textDecoration: 'none', fontWeight: 600 }}>
-          View proposal + commitment →
+          View proposal + commitment
         </a>
       </div>
     </div>

@@ -27,7 +27,11 @@ import { createRequire } from 'node:module'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(__dirname, '..')
-const OUT_DIR = path.resolve(repoRoot, 'tests/e2e/demo-output')
+// NARRATE_OUT_DIR override so the produced mp4 + cached mp3s can live
+// OUTSIDE the playwright `outputDir` (which is wiped on every test run).
+const OUT_DIR = process.env.NARRATE_OUT_DIR
+  ? path.resolve(process.env.NARRATE_OUT_DIR)
+  : path.resolve(repoRoot, 'tests/e2e/demo-output')
 
 const _require = createRequire(import.meta.url)
 const FFMPEG_BIN = _require('ffmpeg-static') as string
@@ -43,11 +47,15 @@ interface Segment {
   chapter: number
   startSec: number    // start in ORIGINAL video
   endSec: number      // end in ORIGINAL video
-  newStartSec: number // start in TRIMMED video (where narration plays)
+  holdSec: number     // extra hold of the last frame after [start,end] is consumed,
+                      // so each chapter's video segment lasts at least as long as
+                      // its narration. Prevents chapter-N audio from bleeding into
+                      // chapter-(N+1)'s window.
+  newStartSec: number // start in OUTPUT (where narration plays)
   narration: string
 }
 
-async function generateChapterAudio(line: ChapterLine, voice = 'alloy'): Promise<string> {
+async function generateChapterAudio(line: ChapterLine): Promise<string> {
   const file = path.join(AUDIO_DIR, `ch-${String(line.chapter).padStart(2, '0')}.mp3`)
   if (fs.existsSync(file) && fs.statSync(file).size > 100) {
     console.log(`  ch${line.chapter}: cached (${fs.statSync(file).size} bytes)`)
@@ -55,14 +63,40 @@ async function generateChapterAudio(line: ChapterLine, voice = 'alloy'): Promise
   }
   const key = process.env.OPENAI_API_KEY
   if (!key) throw new Error('OPENAI_API_KEY not set')
-  const res = await fetch('https://api.openai.com/v1/audio/speech', {
-    method: 'POST',
-    headers: { 'authorization': `Bearer ${key}`, 'content-type': 'application/json' },
-    body: JSON.stringify({
-      model: 'gpt-4o-mini-tts', voice, input: line.narration,
-      response_format: 'mp3', speed: 1.0,
-    }),
-  })
+  // Voice + model knobs — env overrides for tuning narration clarity.
+  //   NARRATE_VOICE: alloy | echo | fable | onyx | nova | shimmer
+  //   NARRATE_MODEL: tts-1 | tts-1-hd | gpt-4o-mini-tts
+  //   NARRATE_SPEED: 0.25 – 4.0 (default 1.0)
+  // Defaults aim for a clear, broadcast-style product-demo voice.
+  const voice = process.env.NARRATE_VOICE ?? 'nova'
+  const model = process.env.NARRATE_MODEL ?? 'tts-1-hd'
+  const speed = parseFloat(process.env.NARRATE_SPEED ?? '1.0')
+  // Retry up to 3 times on transient OpenAI server errors (5xx).
+  // The TTS endpoint occasionally 500s under load; a short sleep + retry
+  // typically recovers without the user having to re-run the whole mux.
+  let res: Response | null = null
+  let lastErr: string | null = null
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) {
+      await new Promise(r => setTimeout(r, 1500 * attempt))
+      console.log(`  ch${line.chapter}: retry ${attempt}`)
+    }
+    res = await fetch('https://api.openai.com/v1/audio/speech', {
+      method: 'POST',
+      headers: { 'authorization': `Bearer ${key}`, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        model, voice, input: line.narration,
+        response_format: 'mp3', speed,
+      }),
+    }).catch(e => {
+      lastErr = e instanceof Error ? e.message : String(e)
+      return null as Response | null
+    })
+    if (res && res.ok) break
+    if (res && res.status < 500) break  // 4xx — don't retry
+    if (res) lastErr = `${res.status}: ${(await res.text().catch(() => '')).slice(0, 200)}`
+  }
+  if (!res) throw new Error(`OpenAI TTS network error after retries: ${lastErr}`)
   if (!res.ok) {
     const txt = await res.text().catch(() => '')
     throw new Error(`OpenAI TTS ${res.status}: ${txt.slice(0, 300)}`)
@@ -106,20 +140,33 @@ function buildSegments(timeline: ChapterLine[], videoDur: number, audioDurs: num
     const start = timeline[i].offsetSec
     const nextStart = timeline[i + 1]?.offsetSec ?? videoDur
     const sourceWindow = nextStart - start
-    const audioFloor = audioDurs[i] + audioPad
-    let keep = trim ? Math.max(audioFloor, sourceWindow - tail) : sourceWindow
-    keep = Math.min(keep, sourceWindow)           // can't invent source frames
-    if (keep < minLen) keep = Math.min(minLen, sourceWindow)
-    let end = start + keep
+    // Required total runtime for this chapter in the OUTPUT — long enough
+    // for the narration to play out with a small padding buffer before the
+    // next chapter's narration starts.
+    const required = audioDurs[i] + audioPad
+    // How much SOURCE footage we keep. When TRIM_LOADING is on we drop the
+    // tail-loading lull (up to `tail` seconds); otherwise use the full
+    // source window. We also floor to `minLen` so a very short source
+    // chapter still shows a banner.
+    let sourceKeep = trim ? Math.max(minLen, sourceWindow - tail) : sourceWindow
+    sourceKeep = Math.min(sourceKeep, sourceWindow)
+    let end = start + sourceKeep
     if (end > videoDur) end = videoDur
+    // If the narration is longer than the kept source, freeze the last
+    // frame for the remainder. This is what stops chapter-N's audio from
+    // bleeding into chapter-(N+1) — previously buildSegments capped at
+    // sourceWindow and the amix overlapped narrations.
+    const segmentVisible = end - start
+    const holdSec = Math.max(0, required - segmentVisible)
     out.push({
       chapter: timeline[i].chapter,
       startSec: start,
       endSec: end,
+      holdSec,
       newStartSec: cumulative,
       narration: timeline[i].narration,
     })
-    cumulative += (end - start)
+    cumulative += segmentVisible + holdSec
   }
   return out
 }
@@ -147,12 +194,10 @@ async function main() {
     probeDurationSec(path.join(AUDIO_DIR, `ch-${String(l.chapter).padStart(2, '0')}.mp3`)),
   )
   const segments = buildSegments(timeline, videoDur, audioDurs)
-  const totalNewDur = segments[segments.length - 1].newStartSec
-    + (segments[segments.length - 1].endSec - segments[segments.length - 1].startSec)
-  if (process.env.TRIM_LOADING === '1') {
-    const saved = videoDur - totalNewDur
-    console.log(`Trimming loading lulls — new duration ${totalNewDur.toFixed(2)}s (saved ${saved.toFixed(2)}s)`)
-  }
+  const lastSeg = segments[segments.length - 1]
+  const totalNewDur = lastSeg.newStartSec + (lastSeg.endSec - lastSeg.startSec) + lastSeg.holdSec
+  const totalHold = segments.reduce((acc, s) => acc + s.holdSec, 0)
+  console.log(`Output duration ${totalNewDur.toFixed(2)}s (source ${videoDur.toFixed(2)}s, last-frame hold ${totalHold.toFixed(2)}s)`)
 
   // Build ffmpeg filter_complex:
   //   1. For each segment, trim video to [start,end] and reset pts.
@@ -164,12 +209,15 @@ async function main() {
   const filterParts: string[] = []
   const videoLabels: string[] = []
 
-  // Video: trim each segment by seconds, reset PTS, then concat.
+  // Video: trim each segment by seconds, reset PTS, optionally hold the
+  // last frame to cover narration overhang, then concat.
   for (let i = 0; i < segments.length; i++) {
     const s = segments[i]
-    filterParts.push(
-      `[0:v]trim=start=${s.startSec.toFixed(3)}:end=${s.endSec.toFixed(3)},setpts=PTS-STARTPTS[v${i}]`,
-    )
+    const trimExpr = `[0:v]trim=start=${s.startSec.toFixed(3)}:end=${s.endSec.toFixed(3)},setpts=PTS-STARTPTS`
+    const padExpr = s.holdSec > 0.01
+      ? `,tpad=stop_mode=clone:stop_duration=${s.holdSec.toFixed(3)}`
+      : ''
+    filterParts.push(`${trimExpr}${padExpr}[v${i}]`)
     videoLabels.push(`[v${i}]`)
   }
   filterParts.push(`${videoLabels.join('')}concat=n=${segments.length}:v=1:a=0[vout]`)

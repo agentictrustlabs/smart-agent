@@ -49,6 +49,7 @@ export async function POST(req: NextRequest) {
     commitmentScaleAmount,
   })
   if (!result.ok) {
+    console.error('[api/commitments/release] failed:', { input: body, result })
     return NextResponse.json(result, { status: 400 })
   }
   return NextResponse.json(result)

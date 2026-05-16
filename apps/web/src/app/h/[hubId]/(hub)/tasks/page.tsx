@@ -90,10 +90,10 @@ export default async function TasksPage({ params, searchParams }: {
           {profile.name} · Your tasks
         </div>
         <h1 style={{ fontSize: '1.45rem', fontWeight: 700, color: C.text, margin: '0.1rem 0' }}>
-          Inbox ({tasks.length})
+          Funding milestones ({tasks.length})
         </h1>
         <p style={{ fontSize: '0.85rem', color: C.textMuted, margin: '0.2rem 0 0' }}>
-          Milestones across every active commitment that need an action from you.
+          Milestones across every active commitment that need an action from you — attestations to record, tranches to release.
         </p>
       </div>
 

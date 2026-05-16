@@ -87,7 +87,7 @@ export function FundingAndOutcomesPanel({ proposalId, fundAgent, isProposer, can
       })
       const j = await r.json().catch(() => ({}))
       if (!r.ok || j.ok === false) { setMsg(`Failed: ${j.error ?? r.status}`); return }
-      setMsg('Claim submitted. Awaiting payout from steward.')
+      setMsg('Claim submitted. Awaiting payment from your administrator.')
       await refresh()
     })
   }

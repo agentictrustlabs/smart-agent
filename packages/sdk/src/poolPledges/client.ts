@@ -48,14 +48,29 @@ export class PoolPledgeClient implements IPoolPledgeClient {
     return result
   }
 
-  /** Read one pledge by id (donor-self via read_self). */
+  /** Read one pledge by id (donor-self via read_self).
+   *
+   * Spec 002 + R8: PledgeRegistry-backed reads return `id` = on-chain
+   * pledgeSubject (bytes32 hex). The lookup accepts EITHER the row id OR
+   * the on-chain pledgeSubject and compares case-insensitively, because
+   * different code paths (route redirects, RSC params) may have applied
+   * `encodeURIComponent` / `getAddress` checksums that change casing.
+   * Some rows ALSO carry an explicit `pledgeSubject` field surfaced by
+   * the MCP for clarity; we match against that too. */
   async getById(id: string): Promise<PoolPledge | null> {
-    const result = await this.mcp.call<{ pledges: PoolPledge[] }>(
+    const result = await this.mcp.call<{ pledges: (PoolPledge & { pledgeSubject?: string })[] }>(
       this.target,
       'pool_pledge:read_self',
       {},
     )
-    return result.pledges?.find(p => p.id === id) ?? null
+    const target = id.toLowerCase()
+    return (
+      result.pledges?.find(p => {
+        if (p.id?.toLowerCase() === target) return true
+        if (p.pledgeSubject && p.pledgeSubject.toLowerCase() === target) return true
+        return false
+      }) ?? null
+    )
   }
 
   /** List the donor's own pledges. */

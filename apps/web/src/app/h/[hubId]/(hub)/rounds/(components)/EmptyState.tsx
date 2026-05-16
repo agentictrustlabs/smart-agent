@@ -57,7 +57,7 @@ export function EmptyState({
       <div style={{ fontSize: '0.95rem', fontWeight: 700, color: C.text, marginBottom: '0.4rem' }}>
         {title}
       </div>
-      <div style={{ fontSize: '0.82rem', color: C.textMuted, marginBottom: cta ? '0.85rem' : 0 }}>
+      <div style={{ fontSize: '0.82rem', color: C.text, marginBottom: cta ? '0.85rem' : 0 }}>
         {body}
       </div>
       {cta && (

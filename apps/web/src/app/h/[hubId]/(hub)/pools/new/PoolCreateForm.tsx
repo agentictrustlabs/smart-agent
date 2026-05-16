@@ -19,6 +19,7 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { FUNDING_KIND_OPTIONS, normalizeFundingKindId } from '@/lib/funding-kinds'
+import { ConfirmActionModal } from '@/components/ui/ConfirmActionModal'
 
 const C = {
   text: '#5c4a3a',
@@ -69,6 +70,7 @@ export function PoolCreateForm({ hubSlug, orgs }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [onboardCta, setOnboardCta] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+  const [confirmOpen, setConfirmOpen] = useState(false)
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -81,6 +83,11 @@ export function PoolCreateForm({ hubSlug, orgs }: Props) {
       setError('Slug must be lowercase letters, digits, and dashes only.')
       return
     }
+    // Show confirmation modal before signing.
+    setConfirmOpen(true)
+  }
+
+  function doCreate() {
     const kindsList = acceptedKinds
     const geoList = acceptedGeo.split(',').map(s => s.trim()).filter(Boolean)
     const unitsList = acceptedUnits.split(',').map(s => s.trim()).filter(Boolean)
@@ -381,9 +388,27 @@ export function PoolCreateForm({ hubSlug, orgs }: Props) {
           disabled={isPending}
           style={{ padding: '0.55rem 1.1rem', background: C.accent, color: '#fff', border: 'none', borderRadius: 8, fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer' }}
         >
-          {isPending ? 'Creating…' : 'Create pool'}
+          {isPending ? 'Creating…' : 'Review and create'}
         </button>
       </div>
+
+      <ConfirmActionModal
+        open={confirmOpen}
+        title="Create this giving pool?"
+        summary="A new pool will be registered and anchored to your organisation on chain."
+        details={[
+          `Name: ${name}`,
+          `Managed by: ${orgs.find(o => o.orgAddress === pickedOrg)?.orgName ?? pickedOrg.slice(0, 8) + '…'}`,
+          acceptedKinds.length > 0
+            ? `Accepts: ${acceptedKinds.slice(0, 3).join(', ')}${acceptedKinds.length > 3 ? ` + ${acceptedKinds.length - 3} more` : ''}`
+            : 'Accepts: any proposal kind',
+          `Visibility: ${visibility}`,
+        ]}
+        consequence="Creating a pool writes to the on-chain registry. The pool will be publicly discoverable once created."
+        confirmLabel="Create pool"
+        onConfirm={() => { setConfirmOpen(false); doCreate() }}
+        onCancel={() => setConfirmOpen(false)}
+      />
     </form>
   )
 }

@@ -168,7 +168,7 @@ export function ProposalVotePanel({ roundId, proposalId }: Props) {
       }}
     >
       <h2 style={{ fontSize: '0.7rem', fontWeight: 700, color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 0.65rem' }}>
-        Steward votes
+        Member votes
       </h2>
 
       {/* Tally */}

@@ -68,15 +68,44 @@ export async function POST(req: NextRequest) {
     // org (or the org itself acting as msg.sender) passes
     // `_isAccountOwner(poolAgent, ...)` on every round-admin / pool-admin
     // write. This is what enforces the unified governance rule.
+    //
+    // We ALSO add the creating steward's EOA as a direct owner. This is
+    // what lets the steward sign Rail-A release delegations (donor pool →
+    // steward EOA) at tranche-release time. AgentAccount.isValidSignature
+    // only resolves ERC-1271 signatures against EOAs in its direct owner
+    // set (no recursive contract-owner walk); without this grant, the
+    // steward's signature recovers to an EOA that the pool doesn't
+    // recognise and DelegationManager._validateSignature reverts with
+    // InvalidSignature() (selector 0x8baa579f). Bootstrap-time deployer
+    // signing here is the canonical pattern (same as the org grant above)
+    // — runtime release never touches the deployer key.
     try {
       const { grantOrgOwnershipBatch } = await import('@/lib/demo-seed/grant-org-ownership')
-      await grantOrgOwnershipBatch([{
+      const grants = [{
         orgAddress: result.treasuryAddress,
         userSmartAccount: body.operatingOrg,
         label: `${body.name} ← anchored to org ${body.operatingOrg.slice(0, 8)}`,
-      }])
+      }]
+      // Demo / EOA users have `user.walletAddress !== smartAccountAddress`
+      // — the wallet IS their signing EOA. Add it as a pool owner so the
+      // Rail-A release path's ERC-1271 ECDSA check accepts their sig.
+      // For passkey/SIWE users the wallet field aliases the smart account
+      // (no EOA key on the server); the existing deployer-fallback in
+      // `loadSignerForCurrentUser` covers that case, so we skip adding
+      // the smart-account-as-EOA-owner (it'd be a contract address, not
+      // an EOA — irrelevant to the _verifyEcdsa path).
+      if (user.walletAddress
+          && user.smartAccountAddress
+          && user.walletAddress.toLowerCase() !== user.smartAccountAddress.toLowerCase()) {
+        grants.push({
+          orgAddress: result.treasuryAddress,
+          userSmartAccount: user.walletAddress as Address,
+          label: `${body.name} ← steward EOA ${user.walletAddress.slice(0, 8)}`,
+        })
+      }
+      await grantOrgOwnershipBatch(grants)
     } catch (err) {
-      console.warn('[pools/new] failed to add org as owner (pool will still exist with deployer-only ownership):', err)
+      console.warn('[pools/new] failed to add steward / org owners (pool will still exist with deployer-only ownership):', err)
     }
 
     return NextResponse.json({ ok: true, result })

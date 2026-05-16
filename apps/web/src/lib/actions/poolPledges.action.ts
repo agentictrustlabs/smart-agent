@@ -344,18 +344,25 @@ export async function getMemberPledge(pledgeId: string): Promise<PoolPledge | nu
   const orgClient = new PoolPledgeClient(orgInvoker, 'self')
   try {
     const raw = await orgClient.getById(pledgeId) as unknown as RawPledgeRow | null
-    if (raw) return rowToPledge(raw)
-  } catch {
-    /* fallthrough */
+    if (raw) {
+      console.log(`[getMemberPledge] found via org-mcp: id=${pledgeId}`)
+      return rowToPledge(raw)
+    }
+  } catch (e) {
+    console.warn(`[getMemberPledge] org-mcp lookup threw for id=${pledgeId}:`, (e as Error).message)
   }
   try {
     const personInvoker = makeMcpInvoker('intent')
     const personClient = new PoolPledgeClient(personInvoker, 'intent')
     const raw = await personClient.getById(pledgeId) as unknown as RawPledgeRow | null
-    if (raw) return rowToPledge(raw)
-  } catch {
-    /* none */
+    if (raw) {
+      console.log(`[getMemberPledge] found via person-mcp: id=${pledgeId}`)
+      return rowToPledge(raw)
+    }
+  } catch (e) {
+    console.warn(`[getMemberPledge] person-mcp lookup threw for id=${pledgeId}:`, (e as Error).message)
   }
+  console.warn(`[getMemberPledge] NOT FOUND for id=${pledgeId}`)
   return null
 }
 

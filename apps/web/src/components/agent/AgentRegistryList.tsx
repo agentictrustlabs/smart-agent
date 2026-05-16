@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import type { AgentCardData } from '@/lib/actions/list-all-agents.action'
+import { truncateAddress } from '@/lib/ui/formatAgent'
 
 type SortField = 'name' | 'type' | 'relationships'
 type SortDir = 'asc' | 'desc'
@@ -16,9 +17,8 @@ const TYPE_COLORS: Record<string, { bg: string; text: string; border: string }> 
   unknown: { bg: '#f5f5f5', text: '#616161', border: '#e0e0e0' },
 }
 
-function truncAddr(addr: string): string {
-  return `${addr.slice(0, 6)}...${addr.slice(-4)}`
-}
+// Alias the shared helper under the local name used throughout this file.
+const truncAddr = truncateAddress
 
 export function AgentRegistryList({ agents }: { agents: AgentCardData[] }) {
   const [search, setSearch] = useState('')

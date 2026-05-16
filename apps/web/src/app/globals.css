@@ -1244,6 +1244,41 @@ input:focus, textarea:focus, select:focus {
 
 textarea { resize: vertical; }
 
+/* ─── Focus rings (WCAG 2.2 AA) ──────────────────────────────────────
+   Applied via :focus-visible so mouse users don't see outlines.
+   Accent #8b5e3c on white gives a visible 3:1 contrast ring.
+   Offset 2px keeps the ring from overlapping the element border.
+   ────────────────────────────────────────────────────────────────── */
+*:focus-visible {
+  outline: 2px solid #8b5e3c;
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Primary CTAs: ensure minimum 44×44px touch target on mobile AND
+   vertically center the label inside that enforced height. Without the
+   flex centering, button text floats to the top of the padded area
+   because the natural content height is less than 44px. */
+button, [role="button"], a[href] {
+  min-height: 44px;
+  /* Only override layout for buttons that haven't picked their own.
+     `inline-flex` keeps the button inline like normal; the alignment
+     rules center label content vertically + horizontally inside the
+     min-height box. Inline content (a inside a sentence) is unaffected
+     because the text-label-sm/span-a override below resets it. */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+/* Exempt small inline spans that are navigational links only on desktop,
+   plus inline anchors that should flow with text. Pill nav tabs and
+   breadcrumb links use py-1.5 which naturally reaches ≥44px on mobile
+   via line-height. */
+.text-label-sm[href], span a, [data-badge] {
+  min-height: unset;
+  display: inline;
+}
+
 /* ─── Alerts ────────────────────────────────────────────────────────── */
 [data-component="error-message"] {
   background: rgba(239, 68, 68, 0.1);
@@ -2462,3 +2497,63 @@ textarea { resize: vertical; }
     box-shadow: 0 -1px 8px rgba(0, 0, 0, 0.06);
   }
 }
+
+/* ─── Modal responsive (≤640px) ─────────────────────────────────────── */
+@media (max-width: 640px) {
+  /* ConfirmActionModal near-fullscreen on mobile */
+  [role="dialog"] {
+    max-width: calc(100vw - 1rem) !important;
+    max-height: 90vh;
+    overflow-y: auto;
+    border-radius: 16px 16px 0 0 !important;
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+  }
+  /* The backdrop aligns the dialog to the bottom edge on mobile */
+  [role="presentation"]:has([role="dialog"]) {
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
+}
+
+/* ─── Empty state utility ────────────────────────────────────────────── */
+/* Every empty-state placeholder should have one useful action link.
+   This class enforces the visual contract for empty list zones. */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+  color: #9a8c7e;
+}
+.empty-state__heading {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #5c4a3a;
+}
+.empty-state__body {
+  font-size: 0.82rem;
+  color: #5c4a3a;
+  line-height: 1.55;
+}
+.empty-state__cta {
+  display: inline-block;
+  padding: 0.45rem 0.95rem;
+  border-radius: 8px;
+  border: 1px solid #ece6db;
+  background: #ffffff;
+  color: #5c4a3a;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-decoration: none;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+

@@ -99,7 +99,7 @@ export function StewardTallySummary({ roundId, proposalIds, onPassingChange }: P
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.6rem' }}>
         <div>
           <div style={{ fontSize: '0.7rem', fontWeight: 700, color: C.accent, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-            Steward votes — live tally
+            Member votes — live tally
           </div>
           <div style={{ marginTop: '0.4rem', display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
             <Pill color={C.approve} label="approve" count={totalApproves} />

@@ -92,44 +92,54 @@ const CHROME_SCRIPT = `
 ;(function(){
   if (window.__demoChromeInstalled) return
   window.__demoChromeInstalled = true
+  const SIZE = 56
+  const HALF = SIZE / 2
   const cur = document.createElement('div')
   cur.id = '__demo_cursor__'
   cur.style.cssText = [
     'position: fixed', 'top: 50%', 'left: 50%',
-    'width: 36px', 'height: 36px', 'margin-left: -18px', 'margin-top: -18px',
+    'width: ' + SIZE + 'px', 'height: ' + SIZE + 'px',
+    'margin-left: -' + HALF + 'px', 'margin-top: -' + HALF + 'px',
     'border-radius: 50%',
-    'background: radial-gradient(circle, rgba(15,23,42,0.95) 0 38%, rgba(15,23,42,0.42) 39% 62%, transparent 68%)',
-    'box-shadow: 0 0 0 2px rgba(255,255,255,0.85), 0 6px 18px rgba(0,0,0,0.32)',
+    // High-contrast amber dot with a dark ring — visible on light + dark surfaces.
+    'background: radial-gradient(circle, rgba(251,191,36,0.98) 0 42%, rgba(251,146,60,0.85) 43% 70%, transparent 78%)',
+    'box-shadow: 0 0 0 3px rgba(15,23,42,0.95), 0 0 0 6px rgba(255,255,255,0.95), 0 10px 24px rgba(0,0,0,0.45)',
     'pointer-events: none', 'z-index: 2147483646',
-    'transition: width 0.15s ease, height 0.15s ease',
+    'transition: width 0.12s ease, height 0.12s ease, transform 0.06s linear',
   ].join(';')
   document.documentElement.appendChild(cur)
-  document.addEventListener('mousemove', (e) => {
-    cur.style.left = e.clientX + 'px'
-    cur.style.top  = e.clientY + 'px'
-  }, true)
+  function moveTo(x, y) {
+    cur.style.left = x + 'px'
+    cur.style.top  = y + 'px'
+  }
+  // Track every mouse position signal so the cursor follows the action
+  // even when Playwright skips intermediate mousemove frames.
+  document.addEventListener('mousemove', (e) => moveTo(e.clientX, e.clientY), true)
+  document.addEventListener('pointermove', (e) => moveTo(e.clientX, e.clientY), true)
+  document.addEventListener('click',       (e) => moveTo(e.clientX, e.clientY), true)
   document.addEventListener('mousedown', (e) => {
-    cur.style.width = '52px'; cur.style.height = '52px'
-    cur.style.marginLeft = '-26px'; cur.style.marginTop = '-26px'
+    moveTo(e.clientX, e.clientY)
+    cur.style.width = (SIZE + 16) + 'px'; cur.style.height = (SIZE + 16) + 'px'
+    cur.style.marginLeft = '-' + (HALF + 8) + 'px'; cur.style.marginTop = '-' + (HALF + 8) + 'px'
     const ring = document.createElement('div')
     ring.style.cssText = [
       'position: fixed',
       'left: ' + e.clientX + 'px', 'top: ' + e.clientY + 'px',
-      'width: 12px', 'height: 12px', 'margin-left: -6px', 'margin-top: -6px',
-      'border: 3px solid rgba(251,191,36,0.95)',
+      'width: 16px', 'height: 16px', 'margin-left: -8px', 'margin-top: -8px',
+      'border: 4px solid rgba(251,191,36,0.95)',
       'border-radius: 50%',
       'pointer-events: none', 'z-index: 2147483645',
-      'animation: __demoRipple 0.65s ease-out forwards',
+      'animation: __demoRipple 0.7s ease-out forwards',
     ].join(';')
     document.documentElement.appendChild(ring)
-    setTimeout(() => ring.remove(), 750)
+    setTimeout(() => ring.remove(), 800)
   }, true)
   document.addEventListener('mouseup', () => {
-    cur.style.width = '36px'; cur.style.height = '36px'
-    cur.style.marginLeft = '-18px'; cur.style.marginTop = '-18px'
+    cur.style.width = SIZE + 'px'; cur.style.height = SIZE + 'px'
+    cur.style.marginLeft = '-' + HALF + 'px'; cur.style.marginTop = '-' + HALF + 'px'
   }, true)
   const css = document.createElement('style')
-  css.textContent = '@keyframes __demoRipple { 0% { width:12px; height:12px; opacity:1 } 100% { width:112px; height:112px; margin-left:-56px; margin-top:-56px; opacity:0 } }'
+  css.textContent = '@keyframes __demoRipple { 0% { width:16px; height:16px; opacity:1 } 100% { width:140px; height:140px; margin-left:-70px; margin-top:-70px; opacity:0 } }'
   document.documentElement.appendChild(css)
 })();
 window.__demoBanner = (chapter, total, text, sub) => {
@@ -206,6 +216,32 @@ async function readUsdcBalance(address: Address): Promise<bigint> {
 /**
  * Visible /demo sign-in. Customer sees the user card + click.
  */
+/**
+ * Sprint-2 UX wrapped destructive actions in a ConfirmActionModal
+ * (role="dialog"). After clicking the trigger button, look for the
+ * modal and click its primary "confirm" button (the colored one — the
+ * dialog's last button; Cancel comes first per accessibility spec).
+ * No-op when no modal opens (preserves compat with non-modal paths).
+ */
+async function confirmModalIfPresent(page: Page): Promise<void> {
+  const dialog = page.getByRole('dialog')
+  // Wait briefly for the modal to mount; if it doesn't appear, the action
+  // wasn't gated and we move on.
+  try {
+    await dialog.first().waitFor({ state: 'visible', timeout: 2_500 })
+  } catch {
+    return
+  }
+  // The primary action button in ConfirmActionModal is the LAST button
+  // inside the dialog (Cancel is first, primary second).
+  const primary = dialog.locator('button').last()
+  if (await primary.count() > 0) {
+    await primary.hover().catch(() => {})
+    await page.waitForTimeout(400)
+    await primary.click().catch(() => {})
+  }
+}
+
 async function uiLogin(page: Page, userId: string): Promise<void> {
   await page.goto(`${BASE}/demo`, { waitUntil: 'networkidle' })
   const btn = page.locator(`[data-testid="demo-login-${userId}"]`)
@@ -215,6 +251,20 @@ async function uiLogin(page: Page, userId: string): Promise<void> {
   await btn.click()
   await page.waitForURL(/\/h\/.+\/home|\/dashboard/, { timeout: 30_000 }).catch(() => {})
   await page.waitForLoadState('networkidle', { timeout: 20_000 }).catch(() => {})
+  // Settle pause — give the session cookie + user-context fetch a chance
+  // to land before the next chapter's navigation. Without this, the
+  // immediate `page.goto(<protected-route>)` can be served with the
+  // PREVIOUS session, leaving the test on a "Not authorized" page.
+  await page.waitForTimeout(1500)
+  // Confirm the session actually flipped by waiting for the next
+  // /api/auth/session response that includes the new user. Best-effort —
+  // tolerates the API not being polled (some pages cache the response).
+  try {
+    await page.waitForResponse(
+      r => r.url().includes('/api/auth/session') && r.status() === 200,
+      { timeout: 5_000 },
+    )
+  } catch { /* not strictly required */ }
   await page.waitForTimeout(500)
 }
 
@@ -247,9 +297,14 @@ test.beforeAll(async ({ browser }) => {
   const w = await ctx.newPage()
   async function warmLogin(userId: string) {
     await w.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' })
+    // 90s timeout — the default 30s isn't enough when boot-seed is still
+    // hammering the deployer-lock with hub-relationship edges. Demo-login
+    // contends for the same lock when it provisions Maria's treasury, and
+    // can sit waiting >30s during peak seed churn.
     await w.request.post(`${BASE}/api/demo-login`, {
       data: { userId },
       headers: { origin: BASE, 'content-type': 'application/json' },
+      timeout: 90_000,
     })
   }
   // Use a known seeded pool/round/proposal to warm the dynamic-route
@@ -378,7 +433,15 @@ test('Full UI grant lifecycle — Maria → David → Sarah → Maria', async ({
   await pause(READ)
   await fillPoolForm(page, { displayName: POOL_NAME, slug: POOL_SLUG })
   await pause(700)
-  await page.getByRole('button', { name: /Create pool/i }).first().click()
+  // Sprint-2 UX: pool form's primary button is now "Review and create" —
+  // it opens a ConfirmActionModal before signing. Click both, then wait
+  // for the redirect to the pool detail.
+  await page.getByRole('button', { name: /Review and create|Create pool/i }).first().click()
+  await pause(500)
+  const confirmBtn = page.getByRole('button', { name: /Create pool|Confirm|Sign/i }).last()
+  if (await confirmBtn.count() > 0) {
+    await confirmBtn.click({ timeout: 10_000 }).catch(() => {})
+  }
   // Exclude `/pools/new` and `/pools/new/...` — those are the form URLs;
   // we want the pool detail page after a successful create. Without this,
   // a slow submit (40+s) leaves us on /pools/new and the test's downstream
@@ -413,9 +476,12 @@ test('Full UI grant lifecycle — Maria → David → Sarah → Maria', async ({
     await fillPledgeForm(page, '30000')
     await pause(600)
     await page.getByRole('button', { name: /Submit pledge/i }).first().click()
-    // After submit, server-action redirect lands on /pledges/<id> OR
-    // back to the pool detail. Wait for either + capture URL.
-    await page.waitForURL(/\/pledges\/|\/pools\//, { timeout: 60_000 }).catch(() => {})
+    // After submit, the composer fires a POST and follows the 303 via
+    // `router.push(res.url)`. Wait specifically for the pledge detail URL
+    // pattern — matching `/pools/` here would resolve instantly because
+    // the current URL is `/h/<hub>/pools/<id>/pledge`, which ALSO contains
+    // `/pools/`. We only care about the post-redirect URL.
+    await page.waitForURL(/\/pledges\/0x[0-9a-fA-F]+/, { timeout: 60_000 }).catch(() => {})
     await page.waitForLoadState('networkidle', { timeout: 30_000 }).catch(() => {})
     const finalUrl = page.url()
     if (/\/pledges\/[^/?]+/.test(finalUrl)) {
@@ -445,10 +511,11 @@ test('Full UI grant lifecycle — Maria → David → Sarah → Maria', async ({
   )
   await pause(READ)
   {
-    const honorBtn = page.getByRole('button', { name: /Honor pledge/i })
+    const honorBtn = page.getByRole('button', { name: /Honor pledge|Release payment/i })
     if (await honorBtn.count() > 0) {
       await honorBtn.first().hover(); await pause(500)
       await honorBtn.first().click()
+      await confirmModalIfPresent(page)
       await page.waitForLoadState('networkidle', { timeout: 60_000 }).catch(() => {})
     }
   }
@@ -609,6 +676,7 @@ test('Full UI grant lifecycle — Maria → David → Sarah → Maria', async ({
     await finalizeBtn.first().hover()
     await pause(500)
     await finalizeBtn.first().click()
+    await confirmModalIfPresent(page)
     await page.waitForLoadState('networkidle', { timeout: 60_000 }).catch(() => {})
   }
   await pause(SETTLE + 800)
@@ -848,6 +916,7 @@ async function attestMilestones(page: Page, expected: number): Promise<void> {
       await page.waitForTimeout(500)
     }
     await row.click()
+    await confirmModalIfPresent(page)
     await page.waitForLoadState('networkidle', { timeout: 30_000 }).catch(() => {})
     await page.waitForTimeout(900)
   }
@@ -860,6 +929,7 @@ async function releaseTranches(page: Page, expected: number): Promise<void> {
     if (count === 0) break
     await btn.first().hover(); await page.waitForTimeout(400)
     await btn.first().click()
+    await confirmModalIfPresent(page)
     await page.waitForLoadState('networkidle', { timeout: 60_000 }).catch(() => {})
     await page.waitForTimeout(900)
   }

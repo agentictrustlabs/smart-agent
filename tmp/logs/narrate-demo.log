@@ -1,0 +1,175 @@
+Loaded 15 chapters.
+Generating narration mp3s…
+  ch1: cached (782400 bytes)
+  ch2: cached (682560 bytes)
+  ch3: cached (740640 bytes)
+  ch4: cached (630240 bytes)
+  ch5: cached (588480 bytes)
+  ch6: cached (651840 bytes)
+  ch7: cached (668640 bytes)
+  ch8: cached (722880 bytes)
+  ch9: cached (727200 bytes)
+  ch10: cached (602880 bytes)
+  ch11: cached (614400 bytes)
+  ch12: cached (698880 bytes)
+  ch13: cached (673920 bytes)
+  ch14: cached (679200 bytes)
+  ch15: cached (596160 bytes)
+Original video duration: 438.00s
+Trimming loading lulls — new duration 422.43s (saved 15.57s)
+
+ffmpeg encoding (15 segments)…
+ffmpeg version 7.0.2-static https://johnvansickle.com/ffmpeg/  Copyright (c) 2000-2024 the FFmpeg developers
+  built with gcc 8 (Debian 8.3.0-6)
+  configuration: --enable-gpl --enable-version3 --enable-static --disable-debug --disable-ffplay --disable-indev=sndio --disable-outdev=sndio --cc=gcc --enable-fontconfig --enable-frei0r --enable-gnutls --enable-gmp --enable-libgme --enable-gray --enable-libaom --enable-libfribidi --enable-libass --enable-libvmaf --enable-libfreetype --enable-libmp3lame --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libopenjpeg --enable-librubberband --enable-libsoxr --enable-libspeex --enable-libsrt --enable-libvorbis --enable-libopus --enable-libtheora --enable-libvidstab --enable-libvo-amrwbenc --enable-libvpx --enable-libwebp --enable-libx264 --enable-libx265 --enable-libxml2 --enable-libdav1d --enable-libxvid --enable-libzvbi --enable-libzimg
+  libavutil      59.  8.100 / 59.  8.100
+  libavcodec     61.  3.100 / 61.  3.100
+  libavformat    61.  1.100 / 61.  1.100
+  libavdevice    61.  1.100 / 61.  1.100
+  libavfilter    10.  1.100 / 10.  1.100
+  libswscale      8.  1.100 /  8.  1.100
+  libswresample   5.  1.100 /  5.  1.100
+  libpostproc    58.  1.100 / 58.  1.100
+Input #0, matroska,webm, from '/home/barb/demo-output-permanent/smart-agent-grant-lifecycle-demo.webm':
+  Metadata:
+    ENCODER         : Lavf61.1.100
+  Duration: 00:07:18.00, start: 0.000000, bitrate: 518 kb/s
+  Stream #0:0: Video: vp8, yuv420p(progressive), 1440x900, SAR 1:1 DAR 8:5, 25 fps, 25 tbr, 1k tbn
+      Metadata:
+        ENCODER         : Lavc61.3.100 libvpx
+        DURATION        : 00:07:18.000000000
+[mp3 @ 0x18e36100] Estimating duration from bitrate, this may be inaccurate
+Input #1, mp3, from '/home/barb/demo-output-permanent/narration/ch-01.mp3':
+  Duration: 00:00:39.12, start: 0.000000, bitrate: 160 kb/s
+  Stream #1:0: Audio: mp3 (mp3float), 24000 Hz, mono, fltp, 160 kb/s
+[mp3 @ 0x18e54380] Estimating duration from bitrate, this may be inaccurate
+Input #2, mp3, from '/home/barb/demo-output-permanent/narration/ch-02.mp3':
+  Duration: 00:00:34.13, start: 0.000000, bitrate: 160 kb/s
+  Stream #2:0: Audio: mp3 (mp3float), 24000 Hz, mono, fltp, 160 kb/s
+[mp3 @ 0x18ea0100] Estimating duration from bitrate, this may be inaccurate
+Input #3, mp3, from '/home/barb/demo-output-permanent/narration/ch-03.mp3':
+  Duration: 00:00:37.03, start: 0.000000, bitrate: 160 kb/s
+  Stream #3:0: Audio: mp3 (mp3float), 24000 Hz, mono, fltp, 160 kb/s
+[mp3 @ 0x18e91440] Estimating duration from bitrate, this may be inaccurate
+Input #4, mp3, from '/home/barb/demo-output-permanent/narration/ch-04.mp3':
+  Duration: 00:00:31.51, start: 0.000000, bitrate: 160 kb/s
+  Stream #4:0: Audio: mp3 (mp3float), 24000 Hz, mono, fltp, 160 kb/s
+[mp3 @ 0x18eb1100] Estimating duration from bitrate, this may be inaccurate
+Input #5, mp3, from '/home/barb/demo-output-permanent/narration/ch-05.mp3':
+  Duration: 00:00:29.42, start: 0.000000, bitrate: 160 kb/s
+  Stream #5:0: Audio: mp3 (mp3float), 24000 Hz, mono, fltp, 160 kb/s
+[mp3 @ 0x18efbdc0] Estimating duration from bitrate, this may be inaccurate
+Input #6, mp3, from '/home/barb/demo-output-permanent/narration/ch-06.mp3':
+  Duration: 00:00:32.59, start: 0.000000, bitrate: 160 kb/s
+  Stream #6:0: Audio: mp3 (mp3float), 24000 Hz, mono, fltp, 160 kb/s
+[mp3 @ 0x18eefa40] Estimating duration from bitrate, this may be inaccurate
+Input #7, mp3, from '/home/barb/demo-output-permanent/narration/ch-07.mp3':
+  Duration: 00:00:33.43, start: 0.000000, bitrate: 160 kb/s
+  Stream #7:0: Audio: mp3 (mp3float), 24000 Hz, mono, fltp, 160 kb/s
+[mp3 @ 0x18f0c980] Estimating duration from bitrate, this may be inaccurate
+Input #8, mp3, from '/home/barb/demo-output-permanent/narration/ch-08.mp3':
+  Duration: 00:00:36.14, start: 0.000000, bitrate: 160 kb/s
+  Stream #8:0: Audio: mp3 (mp3float), 24000 Hz, mono, fltp, 160 kb/s
+[mp3 @ 0x18f2c9c0] Estimating duration from bitrate, this may be inaccurate
+Input #9, mp3, from '/home/barb/demo-output-permanent/narration/ch-09.mp3':
+  Duration: 00:00:36.36, start: 0.000000, bitrate: 160 kb/s
+  Stream #9:0: Audio: mp3 (mp3float), 24000 Hz, mono, fltp, 160 kb/s
+[mp3 @ 0x18f0e540] Estimating duration from bitrate, this may be inaccurate
+Input #10, mp3, from '/home/barb/demo-output-permanent/narration/ch-10.mp3':
+  Duration: 00:00:30.14, start: 0.000000, bitrate: 160 kb/s
+  Stream #10:0: Audio: mp3 (mp3float), 24000 Hz, mono, fltp, 160 kb/s
+[mp3 @ 0x18f68300] Estimating duration from bitrate, this may be inaccurate
+Input #11, mp3, from '/home/barb/demo-output-permanent/narration/ch-11.mp3':
+  Duration: 00:00:30.72, start: 0.000000, bitrate: 160 kb/s
+  Stream #11:0: Audio: mp3 (mp3float), 24000 Hz, mono, fltp, 160 kb/s
+[mp3 @ 0x18f85e00] Estimating duration from bitrate, this may be inaccurate
+Input #12, mp3, from '/home/barb/demo-output-permanent/narration/ch-12.mp3':
+  Duration: 00:00:34.94, start: 0.000000, bitrate: 160 kb/s
+  Stream #12:0: Audio: mp3 (mp3float), 24000 Hz, mono, fltp, 160 kb/s
+[mp3 @ 0x18f695c0] Estimating duration from bitrate, this may be inaccurate
+Input #13, mp3, from '/home/barb/demo-output-permanent/narration/ch-13.mp3':
+  Duration: 00:00:33.70, start: 0.000000, bitrate: 160 kb/s
+  Stream #13:0: Audio: mp3 (mp3float), 24000 Hz, mono, fltp, 160 kb/s
+[mp3 @ 0x18fdec80] Estimating duration from bitrate, this may be inaccurate
+Input #14, mp3, from '/home/barb/demo-output-permanent/narration/ch-14.mp3':
+  Duration: 00:00:33.96, start: 0.000000, bitrate: 160 kb/s
+  Stream #14:0: Audio: mp3 (mp3float), 24000 Hz, mono, fltp, 160 kb/s
+[mp3 @ 0x18fc2940] Estimating duration from bitrate, this may be inaccurate
+Input #15, mp3, from '/home/barb/demo-output-permanent/narration/ch-15.mp3':
+  Duration: 00:00:29.81, start: 0.000000, bitrate: 160 kb/s
+  Stream #15:0: Audio: mp3 (mp3float), 24000 Hz, mono, fltp, 160 kb/s
+Stream mapping:
+  Stream #0:0 (vp8) -> trim:default
+  Stream #0:0 (vp8) -> trim:default
+  Stream #0:0 (vp8) -> trim:default
+  Stream #0:0 (vp8) -> trim:default
+  Stream #0:0 (vp8) -> trim:default
+  Stream #0:0 (vp8) -> trim:default
+  Stream #0:0 (vp8) -> trim:default
+  Stream #0:0 (vp8) -> trim:default
+  Stream #0:0 (vp8) -> trim:default
+  Stream #0:0 (vp8) -> trim:default
+  Stream #0:0 (vp8) -> trim:default
+  Stream #0:0 (vp8) -> trim:default
+  Stream #0:0 (vp8) -> trim:default
+  Stream #0:0 (vp8) -> trim:default
+  Stream #0:0 (vp8) -> trim:default
+  Stream #1:0 (mp3float) -> adelay:default
+  Stream #2:0 (mp3float) -> adelay:default
+  Stream #3:0 (mp3float) -> adelay:default
+  Stream #4:0 (mp3float) -> adelay:default
+  Stream #5:0 (mp3float) -> adelay:default
+  Stream #6:0 (mp3float) -> adelay:default
+  Stream #7:0 (mp3float) -> adelay:default
+  Stream #8:0 (mp3float) -> adelay:default
+  Stream #9:0 (mp3float) -> adelay:default
+  Stream #10:0 (mp3float) -> adelay:default
+  Stream #11:0 (mp3float) -> adelay:default
+  Stream #12:0 (mp3float) -> adelay:default
+  Stream #13:0 (mp3float) -> adelay:default
+  Stream #14:0 (mp3float) -> adelay:default
+  Stream #15:0 (mp3float) -> adelay:default
+  concat:out:v0 -> Stream #0:0 (libx264)
+  amix:default -> Stream #0:1 (aac)
+Press [q] to stop, [?] for help
+[vost#0:0/libx264 @ 0x19002ac0] No information about the input framerate is available. Falling back to a default value of 25fps. Use the -r option if you want a different framerate.
+[libx264 @ 0x1901cc00] using SAR=1/1
+[libx264 @ 0x1901cc00] using cpu capabilities: MMX2 SSE2Fast SSSE3 SSE4.2 AVX FMA3 BMI2 AVX2
+[libx264 @ 0x1901cc00] profile High, level 4.0, 4:2:0, 8-bit
+[libx264 @ 0x1901cc00] 264 - core 164 r3191 4613ac3 - H.264/MPEG-4 AVC codec - Copyleft 2003-2024 - http://www.videolan.org/x264.html - options: cabac=1 ref=3 deblock=1:0:0 analyse=0x3:0x113 me=hex subme=7 psy=1 psy_rd=1.00:0.00 mixed_ref=1 me_range=16 chroma_me=1 trellis=1 8x8dct=1 cqm=0 deadzone=21,11 fast_pskip=1 chroma_qp_offset=-2 threads=24 lookahead_threads=4 sliced_threads=0 nr=0 decimate=1 interlaced=0 bluray_compat=0 constrained_intra=0 bframes=3 b_pyramid=2 b_adapt=1 b_bias=0 direct=1 weightb=1 open_gop=0 weightp=2 keyint=250 keyint_min=25 scenecut=40 intra_refresh=0 rc_lookahead=40 rc=crf mbtree=1 crf=22.0 qcomp=0.60 qpmin=0 qpmax=69 qpstep=4 ip_ratio=1.40 aq=1:1.00
+[aac @ 0x19028200] Too many bits 6826.666667 > 6144 per frame requested, clamping to max
+Output #0, mp4, to '/home/barb/demo-output-permanent/smart-agent-grant-lifecycle-narrated.mp4':
+  Metadata:
+    encoder         : Lavf61.1.100
+  Stream #0:0: Video: h264 (avc1 / 0x31637661), yuv420p(tv, bt470bg/unknown/unknown, progressive), 1440x900 [SAR 1:1 DAR 8:5], q=2-31, 25 fps, 12800 tbn
+      Metadata:
+        encoder         : Lavc61.3.100 libx264
+      Side data:
+        cpb: bitrate max/min/avg: 0/0/0 buffer size: 0 vbv_delay: N/A
+  Stream #0:1: Audio: aac (LC) (mp4a / 0x6134706D), 24000 Hz, mono, fltp, 144 kb/s
+      Metadata:
+        encoder         : Lavc61.3.100 aac
+frame=  205 fps=0.0 q=27.0 size=     256KiB time=00:00:08.12 bitrate= 258.3kbits/s speed=16.2x    frame=  555 fps=555 q=27.0 size=    1024KiB time=00:00:22.12 bitrate= 379.2kbits/s speed=22.1x    frame=  932 fps=621 q=27.0 size=    1280KiB time=00:00:37.20 bitrate= 281.9kbits/s speed=24.8x    frame= 1348 fps=674 q=27.0 size=    1792KiB time=00:00:53.84 bitrate= 272.7kbits/s speed=26.9x    frame= 1786 fps=714 q=27.0 size=    2304KiB time=00:01:11.36 bitrate= 264.5kbits/s speed=28.5x    frame= 2177 fps=725 q=27.0 size=    2816KiB time=00:01:27.00 bitrate= 265.2kbits/s speed=  29x    frame= 2566 fps=733 q=27.0 size=    3328KiB time=00:01:42.56 bitrate= 265.8kbits/s speed=29.3x    frame= 2975 fps=743 q=27.0 size=    3584KiB time=00:01:58.92 bitrate= 246.9kbits/s speed=29.7x    frame= 3384 fps=752 q=27.0 size=    4352KiB time=00:02:15.28 bitrate= 263.5kbits/s speed=  30x    frame= 3769 fps=753 q=27.0 size=    4864KiB time=00:02:30.68 bitrate= 264.4kbits/s speed=30.1x    frame= 4123 fps=749 q=27.0 size=    5376KiB time=00:02:44.84 bitrate= 267.2kbits/s speed=  30x    frame= 4527 fps=754 q=27.0 size=    5888KiB time=00:03:01.00 bitrate= 266.5kbits/s speed=30.2x    frame= 4904 fps=754 q=27.0 size=    6400KiB time=00:03:16.08 bitrate= 267.4kbits/s speed=30.2x    frame= 5320 fps=760 q=27.0 size=    6912KiB time=00:03:32.72 bitrate= 266.2kbits/s speed=30.4x    frame= 5723 fps=763 q=27.0 size=    7424KiB time=00:03:48.84 bitrate= 265.8kbits/s speed=30.5x    frame= 6299 fps=758 q=27.0 size=    7936KiB time=00:04:11.88 bitrate= 258.1kbits/s speed=30.3x    frame= 6716 fps=762 q=27.0 size=    8448KiB time=00:04:28.56 bitrate= 257.7kbits/s speed=30.5x    frame= 7076 fps=760 q=27.0 size=    8704KiB time=00:04:42.96 bitrate= 252.0kbits/s speed=30.4x    frame= 7448 fps=759 q=27.0 size=    9472KiB time=00:04:57.84 bitrate= 260.5kbits/s speed=30.4x    frame= 7829 fps=759 q=27.0 size=    9984KiB time=00:05:13.08 bitrate= 261.2kbits/s speed=30.4x    frame= 8235 fps=762 q=27.0 size=   10496KiB time=00:05:29.32 bitrate= 261.1kbits/s speed=30.5x    frame= 8620 fps=762 q=27.0 size=   11008KiB time=00:05:44.72 bitrate= 261.6kbits/s speed=30.5x    frame= 9002 fps=762 q=27.0 size=   11520KiB time=00:06:00.00 bitrate= 262.1kbits/s speed=30.5x    frame= 9352 fps=760 q=27.0 size=   12032KiB time=00:06:14.00 bitrate= 263.5kbits/s speed=30.4x    frame= 9724 fps=759 q=27.0 size=   12544KiB time=00:06:28.88 bitrate= 264.2kbits/s speed=30.4x    frame=10105 fps=759 q=27.0 size=   13312KiB time=00:06:44.12 bitrate= 269.9kbits/s speed=30.4x    frame=10466 fps=758 q=27.0 size=   13824KiB time=00:06:58.56 bitrate= 270.6kbits/s speed=30.3x    [mp4 @ 0x18fe8f00] Starting second pass: moving the moov atom to the beginning of the file
+[out#0/mp4 @ 0x18fe9640] video:9630KiB audio:4568KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: 1.806356%
+frame=10561 fps=760 q=-1.0 Lsize=   14455KiB time=00:07:02.36 bitrate= 280.4kbits/s speed=30.4x    
+[libx264 @ 0x1901cc00] frame I:75    Avg QP:10.81  size: 55489
+[libx264 @ 0x1901cc00] frame P:2670  Avg QP:15.37  size:  1402
+[libx264 @ 0x1901cc00] frame B:7816  Avg QP:12.82  size:   250
+[libx264 @ 0x1901cc00] consecutive B-frames:  1.0%  0.6%  1.1% 97.3%
+[libx264 @ 0x1901cc00] mb I  I16..4: 57.8% 29.1% 13.2%
+[libx264 @ 0x1901cc00] mb P  I16..4:  4.7%  1.2%  0.1%  P16..4:  2.7%  0.1%  0.1%  0.0%  0.0%    skip:91.1%
+[libx264 @ 0x1901cc00] mb B  I16..4:  0.2%  0.2%  0.0%  B16..8:  1.1%  0.0%  0.0%  direct: 1.7%  skip:96.8%  L0:45.7% L1:54.0% BI: 0.3%
+[libx264 @ 0x1901cc00] 8x8 transform intra:25.8% inter:45.8%
+[libx264 @ 0x1901cc00] coded y,uvDC,uvAC intra: 4.8% 7.9% 5.6% inter: 0.2% 1.8% 0.1%
+[libx264 @ 0x1901cc00] i16 v,h,dc,p: 72% 24%  4%  0%
+[libx264 @ 0x1901cc00] i8 v,h,dc,ddl,ddr,vr,hd,vl,hu: 29% 14% 56%  0%  0%  0%  0%  0%  0%
+[libx264 @ 0x1901cc00] i4 v,h,dc,ddl,ddr,vr,hd,vl,hu: 30% 34% 17%  2%  3%  3%  4%  2%  5%
+[libx264 @ 0x1901cc00] i8c dc,h,v,p: 74% 22%  4%  0%
+[libx264 @ 0x1901cc00] Weighted P-Frames: Y:0.7% UV:0.5%
+[libx264 @ 0x1901cc00] ref P L0: 75.6%  2.7% 15.7%  6.0%  0.0%
+[libx264 @ 0x1901cc00] ref B L0: 53.0% 46.0%  1.0%
+[libx264 @ 0x1901cc00] ref B L1: 98.0%  2.0%
+[libx264 @ 0x1901cc00] kb/s:186.74
+[aac @ 0x19028200] Qavg: 65471.391
+
+✓ Narrated demo: /home/barb/demo-output-permanent/smart-agent-grant-lifecycle-narrated.mp4 (14.1 MB)

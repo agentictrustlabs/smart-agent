@@ -12,7 +12,7 @@ import {
 import {
   agentAccountResolverAbi, agentRelationshipQueryAbi, roleName,
   TYPE_PERSON, TYPE_ORGANIZATION, TYPE_AI_AGENT, TYPE_HUB,
-  ATL_CONTROLLER, HAS_MEMBER,
+  ATL_CONTROLLER, HAS_MEMBER, ATL_DISPLAY_NAME,
 } from '@smart-agent/sdk'
 
 function resolver() { return process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}` }
@@ -79,6 +79,33 @@ export async function getPersonAgentForUser(userId: string): Promise<string | nu
     }
   } catch { /* ignored */ }
   return null
+}
+
+/**
+ * Read `ATL_DISPLAY_NAME` for an agent address. Returns the human-readable
+ * display name (e.g. "Demo Grant Pool tf36vm") or `null` when the agent
+ * isn't registered / has no display name set. Caller is responsible for
+ * the truncated-address fallback when this returns null.
+ *
+ * Used by UI surfaces that want to show "Pool: Demo Grant Pool" instead
+ * of "Pool: 0xc37d24…" — addresses are not primary-UI material per the
+ * UX audit's plain-language pass.
+ */
+export async function getAgentDisplayName(agentAddress: string): Promise<string | null> {
+  const addr = resolver()
+  if (!addr) return null
+  try {
+    const client = getPublicClient()
+    const name = await client.readContract({
+      address: addr,
+      abi: agentAccountResolverAbi,
+      functionName: 'getStringProperty',
+      args: [agentAddress as `0x${string}`, ATL_DISPLAY_NAME as `0x${string}`],
+    }) as string
+    return name && name.length > 0 ? name : null
+  } catch {
+    return null
+  }
 }
 
 /**

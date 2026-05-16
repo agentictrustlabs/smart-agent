@@ -97,13 +97,17 @@ export function CommitmentTimelinePanel({ commitment, milestones, canRelease }: 
     start(async () => {
       try {
         const amount = trancheAmount(m.trancheBps)
+        // tokenAmount must be USDC-6-decimal scaled; commitmentScaleAmount
+        // stays in commitment-unit scale (whole USD for grant rounds).
+        // Shipping the same raw value to both caused ERC20InsufficientBalance.
+        const tokenAmount = (amount * 1_000_000n).toString()
         const res = await fetch('/api/commitments/release', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
             commitmentSubject: commitment.commitmentSubject,
             milestoneId: m.id,
-            tokenAmount: amount.toString(),
+            tokenAmount,
             commitmentScaleAmount: amount.toString(),
           }),
         })

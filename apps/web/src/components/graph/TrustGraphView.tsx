@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { AgentDrillInDialog } from './AgentDrillInDialog'
+import { truncateAddress } from '@/lib/ui/formatAgent'
 
 interface GraphNode {
   id: string
@@ -345,7 +346,7 @@ export function TrustGraphView({ orgAddress }: { orgAddress?: string }) {
                 )}
                 <text x={node.x} y={(node.y ?? 0) + r + 14} fill="#1a1a2e" fontSize="11" textAnchor="middle" fontWeight="600">{node.label}</text>
                 <text x={node.x} y={(node.y ?? 0) + r + 25} fill="#6b7280" fontSize="7" textAnchor="middle">
-                  {node.address.slice(0, 6)}...{node.address.slice(-4)}
+                  {truncateAddress(node.address)}
                 </text>
               </g>
             )

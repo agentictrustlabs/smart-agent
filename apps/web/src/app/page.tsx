@@ -1,6 +1,16 @@
 import Link from 'next/link'
 import { HUB_LANDING_CONFIGS } from '@/lib/hub-routes'
 
+/**
+ * Root entry page — three-option model:
+ *   1. Sign in  (returning user, primary path)
+ *   2. Join a community  (new user joining a specific hub)
+ *   3. Explore demo  (third option, not the primary)
+ *
+ * Hub cards are community-oriented, not developer-oriented.
+ * Demo access is a secondary affordance for users who want to explore
+ * before committing to a sign-in.
+ */
 export default function HomePage() {
   return (
     <main
@@ -11,6 +21,8 @@ export default function HomePage() {
       }}
     >
       <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-6 py-8 lg:px-10">
+
+        {/* ── Hero section ── */}
         <section
           className="overflow-hidden rounded-[32px] border border-white/70 shadow-[0_24px_80px_rgba(40,52,89,0.12)]"
           style={{
@@ -23,8 +35,9 @@ export default function HomePage() {
               <div
                 className="flex h-16 w-16 items-center justify-center rounded-[22px] shadow-[0_16px_36px_rgba(74,88,128,0.18)]"
                 style={{ background: 'linear-gradient(135deg, #384a7a 0%, #7b58c7 100%)' }}
+                aria-hidden="true"
               >
-                <svg width="30" height="30" viewBox="0 0 48 48" fill="none">
+                <svg width="30" height="30" viewBox="0 0 48 48" fill="none" aria-hidden="true">
                   <path d="M14 24L20 18L26 24L32 18L38 24" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
                   <path d="M14 32L20 26L26 32L32 26L38 32" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.55" />
                   <circle cx="24" cy="14" r="3" fill="white" />
@@ -32,38 +45,70 @@ export default function HomePage() {
               </div>
               <div>
                 <div className="text-sm font-semibold uppercase tracking-[0.2em] text-[#667085]">Smart Agent</div>
-                <div className="text-sm text-[#7b8297]">Hub access</div>
+                <div className="text-sm text-[#7b8297]">Community platform</div>
               </div>
             </div>
 
             <h1 className="max-w-xl text-5xl font-semibold leading-[1.02] tracking-[-0.05em] text-[#171c28] sm:text-6xl">
-              Select a hub
+              Welcome back
             </h1>
 
             <p className="mt-5 max-w-2xl text-lg leading-8 text-[#5d6478]">
-              Choose a hub to continue. Each hub has its own landing page, demo users, and entry flow.
+              Sign in to your community, join a new one, or explore with a demo account.
             </p>
 
-            <div className="mt-5">
+            {/* Three primary entry options */}
+            <div className="mt-8 flex flex-wrap items-center gap-3">
+              {/* Option 1: Sign in — primary */}
               <Link
-                href="/demo"
-                className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold no-underline transition"
+                href="/h/catalyst"
+                className="inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold no-underline transition"
                 style={{
-                  background: 'rgba(63, 110, 232, 0.08)',
-                  color: '#3f6ee8',
-                  border: '1px solid rgba(63, 110, 232, 0.20)',
+                  background: '#384a7a',
+                  color: '#ffffff',
                 }}
               >
-                Sign in as a demo user →
+                Sign in
+                <span aria-hidden="true">→</span>
               </Link>
-              <span className="ml-3 text-xs text-[#94a3b8]">
-                fully provisioned: wallet, person agent, hub membership, city tag
-              </span>
+
+              {/* Option 2: Join a community — secondary */}
+              <Link
+                href="#communities"
+                className="inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold no-underline transition"
+                style={{
+                  background: 'rgba(56,74,122,0.08)',
+                  color: '#384a7a',
+                  border: '1px solid rgba(56,74,122,0.20)',
+                }}
+              >
+                Join a community
+              </Link>
+
+              {/* Option 3: Explore demo — tertiary */}
+              <Link
+                href="/demo"
+                className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium no-underline transition"
+                style={{
+                  background: 'transparent',
+                  color: '#6b7280',
+                  border: '1px solid #d1d5db',
+                }}
+              >
+                Explore demo
+              </Link>
             </div>
           </div>
         </section>
 
-        <section className="mt-8">
+        {/* ── Community hub cards ── */}
+        <section id="communities" className="mt-8" aria-labelledby="communities-heading">
+          <h2
+            id="communities-heading"
+            className="mb-4 text-sm font-semibold uppercase tracking-widest text-[#94a3b8]"
+          >
+            Choose your community
+          </h2>
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
             {HUB_LANDING_CONFIGS.map((hub) => (
               <div
@@ -82,19 +127,9 @@ export default function HomePage() {
                     >
                       {hub.eyebrow}
                     </div>
-                    <div
-                      className="flex h-11 w-11 items-center justify-center rounded-[16px] text-sm font-bold"
-                      style={{
-                        background: 'rgba(255,255,255,0.7)',
-                        color: hub.color,
-                        boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.55)',
-                      }}
-                    >
-                      {hub.demoUsers.length}
-                    </div>
                   </div>
 
-                  <h3 className="mt-8 text-2xl font-semibold tracking-[-0.03em] text-[#202637] transition-colors group-hover:text-black">
+                  <h3 className="mt-6 text-2xl font-semibold tracking-[-0.03em] text-[#202637] transition-colors group-hover:text-black">
                     {hub.name}
                   </h3>
                   <p className="mt-3 text-sm leading-7 text-[#5d6478]">
@@ -103,23 +138,23 @@ export default function HomePage() {
 
                   <div className="mt-8 flex items-center justify-between gap-2">
                     <Link
+                      href={`/h/${hub.slug}`}
+                      className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold no-underline transition"
+                      style={{ background: hub.color, color: '#ffffff' }}
+                    >
+                      Join or sign in
+                      <span aria-hidden="true">→</span>
+                    </Link>
+                    <Link
                       href={`/demo#hub-${hub.hubId}`}
-                      className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold no-underline transition"
+                      className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-medium no-underline transition"
                       style={{
                         background: 'rgba(255,255,255,0.55)',
                         color: hub.color,
                         border: `1px solid ${hub.color}30`,
                       }}
                     >
-                      {hub.demoUsers.length} demo users →
-                    </Link>
-                    <Link
-                      href={`/h/${hub.slug}`}
-                      className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold no-underline transition"
-                      style={{ background: 'rgba(255,255,255,0.74)', color: hub.color }}
-                    >
-                      Open hub
-                      <span aria-hidden="true">→</span>
+                      Demo
                     </Link>
                   </div>
                 </div>

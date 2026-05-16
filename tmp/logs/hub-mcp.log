@@ -7,4 +7,1160 @@
 [hub-mcp] Tools: discovery:list_agents, discovery:get_agent_detail, discovery:list_rounds, discovery:get_round_detail, discovery:list_pools, discovery:get_pool_detail, discovery:get_outgoing_edges, discovery:get_incoming_edges, discovery:get_hop_distance, discovery:list_recent_allocations, discovery:raw_sparql, discovery:list_candidates_for_intent, discovery:list_active_initiations_for_intent, discovery:count_agents_by_type, discovery:count_edges, sync:all, sync:pool, sync:round, sync:all_pools, sync:all_commitments, sync:schedule
 [hub-mcp] MCP stdio transport connected
 <-- GET /health
---> GET /health [32m200[0m 0ms
+--> GET /health [32m200[0m 1ms
+<-- POST /tools/sync:all
+[ontology-sync] Starting on-chain → GraphDB sync...
+[ontology-sync] Emitted 86 agents. Building combined data-graph turtle...
+[ontology-sync] Data graph uploaded: 86 agents + 0 class assertions + 0 rounds + 0 pools
+--> POST /tools/sync:all [32m200[0m 1s
+<-- POST /tools/sync:all
+[ontology-sync] Starting on-chain → GraphDB sync...
+[ontology-sync] Emitted 86 agents. Building combined data-graph turtle...
+[ontology-sync] Data graph uploaded: 86 agents + 0 class assertions + 0 rounds + 3 pools
+--> POST /tools/sync:all [32m200[0m 2s
+<-- POST /tools/sync:schedule
+--> POST /tools/sync:schedule [32m200[0m 1ms
+[ontology-sync] Starting on-chain → GraphDB sync...
+[ontology-sync] Emitted 107 agents. Building combined data-graph turtle...
+[ontology-sync] Data graph uploaded: 107 agents + 0 class assertions + 0 rounds + 3 pools
+[kb-sync] ok (107 agents)
+<-- POST /tools/discovery:list_pools
+--> POST /tools/discovery:list_pools [32m200[0m 184ms
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 503ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 1ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 717ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 3s
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 1ms
+<-- POST /tools/discovery:get_pool_detail
+--> POST /tools/discovery:get_pool_detail [32m200[0m 149ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 255ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:list_recent_allocations
+--> POST /tools/discovery:list_recent_allocations [32m200[0m 57ms
+<-- POST /tools/discovery:list_rounds
+--> POST /tools/discovery:list_rounds [32m200[0m 51ms
+<-- POST /tools/discovery:get_pool_detail
+--> POST /tools/discovery:get_pool_detail [32m200[0m 55ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 275ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:list_rounds
+--> POST /tools/discovery:list_rounds [32m200[0m 55ms
+<-- POST /tools/discovery:list_pools
+--> POST /tools/discovery:list_pools [32m200[0m 84ms
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 262ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 503ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 718ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:list_pools
+--> POST /tools/discovery:list_pools [32m200[0m 0ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 119ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 2ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 131ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 123ms
+<-- POST /tools/sync:pool
+--> POST /tools/sync:pool [32m200[0m 251ms
+<-- POST /tools/discovery:get_pool_detail
+<-- POST /tools/discovery:get_pool_detail
+--> POST /tools/discovery:get_pool_detail [32m200[0m 124ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 262ms
+--> POST /tools/discovery:get_pool_detail [32m200[0m 315ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:list_recent_allocations
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:list_recent_allocations
+--> POST /tools/discovery:list_recent_allocations [32m200[0m 50ms
+--> POST /tools/discovery:list_recent_allocations [32m200[0m 50ms
+<-- POST /tools/discovery:list_rounds
+<-- POST /tools/discovery:list_rounds
+--> POST /tools/discovery:list_rounds [32m200[0m 49ms
+--> POST /tools/discovery:list_rounds [32m200[0m 56ms
+<-- POST /tools/discovery:get_pool_detail
+--> POST /tools/discovery:get_pool_detail [32m200[0m 176ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 263ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:get_pool_detail
+--> POST /tools/discovery:get_pool_detail [32m200[0m 0ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:get_pool_detail
+--> POST /tools/discovery:get_pool_detail [32m200[0m 0ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:get_pool_detail
+--> POST /tools/discovery:get_pool_detail [32m200[0m 179ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 250ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:list_recent_allocations
+--> POST /tools/discovery:list_recent_allocations [32m200[0m 57ms
+<-- POST /tools/discovery:list_rounds
+--> POST /tools/discovery:list_rounds [32m200[0m 48ms
+<-- POST /tools/discovery:list_pools
+--> POST /tools/discovery:list_pools [32m200[0m 138ms
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 268ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 483ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 690ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 883ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:list_pools
+--> POST /tools/discovery:list_pools [32m200[0m 116ms
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 272ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 445ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 1ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 626ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 1ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 811ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/sync:round
+--> POST /tools/sync:round [32m200[0m 160ms
+<-- POST /tools/discovery:list_pools
+--> POST /tools/discovery:list_pools [32m200[0m 59ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 60ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 0ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 1ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 202ms
+<-- POST /tools/discovery:list_active_initiations_for_intent
+--> POST /tools/discovery:list_active_initiations_for_intent [32m200[0m 61ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 52ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 125ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 60ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 158ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 60ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 1ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 129ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 188ms
+<-- POST /tools/sync:schedule
+--> POST /tools/sync:schedule [32m200[0m 1ms
+[ontology-sync] Starting on-chain → GraphDB sync...
+[ontology-sync] Emitted 110 agents. Building combined data-graph turtle...
+[ontology-sync] Data graph uploaded: 110 agents + 0 class assertions + 1 rounds + 4 pools + 1 GrantProposal
+[kb-sync] ok (110 agents)
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 119ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 114ms
+<-- POST /tools/sync:schedule
+--> POST /tools/sync:schedule [32m200[0m 0ms
+<-- POST /tools/sync:all_commitments
+--> POST /tools/sync:all_commitments [32m200[0m 236ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 228ms
+[ontology-sync] Starting on-chain → GraphDB sync...
+[ontology-sync] Emitted 110 agents. Building combined data-graph turtle...
+[ontology-sync] Data graph uploaded: 110 agents + 0 class assertions + 1 rounds + 4 pools + 2 Vote + 1 GrantProposal + 1 Commitment
+[kb-sync] ok (110 agents)
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 177ms
+<-- POST /tools/discovery:list_pools
+--> POST /tools/discovery:list_pools [32m200[0m 191ms
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 168ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 252ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 353ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 1ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 451ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:get_pool_detail
+--> POST /tools/discovery:get_pool_detail [32m200[0m 123ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 164ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:list_recent_allocations
+--> POST /tools/discovery:list_recent_allocations [32m200[0m 47ms
+<-- POST /tools/discovery:list_rounds
+--> POST /tools/discovery:list_rounds [32m200[0m 59ms
+<-- POST /tools/discovery:get_pool_detail
+--> POST /tools/discovery:get_pool_detail [32m200[0m 54ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 151ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:list_rounds
+--> POST /tools/discovery:list_rounds [32m200[0m 137ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 62ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 186ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 48ms
+<-- POST /tools/discovery:list_pools
+--> POST /tools/discovery:list_pools [32m200[0m 53ms
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 154ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 1ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 252ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 346ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 453ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 129ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 1ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 116ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 124ms
+<-- POST /tools/sync:pool
+--> POST /tools/sync:pool [32m200[0m 214ms
+<-- POST /tools/discovery:get_pool_detail
+<-- POST /tools/discovery:get_pool_detail
+--> POST /tools/discovery:get_pool_detail [32m200[0m 166ms
+<-- POST /tools/discovery:get_pool_detail
+--> POST /tools/discovery:get_pool_detail [32m200[0m 0ms
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 157ms
+--> POST /tools/discovery:get_pool_detail [32m200[0m 215ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:list_recent_allocations
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:list_recent_allocations
+--> POST /tools/discovery:list_recent_allocations [32m200[0m 84ms
+--> POST /tools/discovery:list_recent_allocations [32m200[0m 90ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 257ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 1ms
+<-- POST /tools/discovery:list_recent_allocations
+--> POST /tools/discovery:list_recent_allocations [32m200[0m 0ms
+<-- POST /tools/discovery:list_rounds
+<-- POST /tools/discovery:list_rounds
+<-- POST /tools/discovery:list_rounds
+--> POST /tools/discovery:list_rounds [32m200[0m 52ms
+--> POST /tools/discovery:list_rounds [32m200[0m 58ms
+--> POST /tools/discovery:list_rounds [32m200[0m 59ms
+<-- POST /tools/discovery:get_pool_detail
+<-- POST /tools/discovery:get_pool_detail
+--> POST /tools/discovery:get_pool_detail [32m200[0m 128ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 162ms
+--> POST /tools/discovery:get_pool_detail [32m200[0m 216ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 1ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:get_pool_detail
+--> POST /tools/discovery:get_pool_detail [32m200[0m 0ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:get_pool_detail
+--> POST /tools/discovery:get_pool_detail [32m200[0m 1ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/sync:all_pools
+--> POST /tools/sync:all_pools [32m200[0m 206ms
+<-- POST /tools/discovery:list_pools
+--> POST /tools/discovery:list_pools [32m200[0m 121ms
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 176ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 1ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 280ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 381ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 483ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 589ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:list_pools
+--> POST /tools/discovery:list_pools [32m200[0m 125ms
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 171ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 283ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 379ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 1ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 478ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 576ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/sync:round
+--> POST /tools/sync:round [32m200[0m 220ms
+<-- POST /tools/discovery:list_pools
+--> POST /tools/discovery:list_pools [32m200[0m 83ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 63ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 1ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 0ms
+<-- POST /tools/discovery:get_round_detail
+<-- POST /tools/discovery:list_active_initiations_for_intent
+--> POST /tools/discovery:get_round_detail [32m200[0m 129ms
+--> POST /tools/discovery:list_active_initiations_for_intent [32m200[0m 121ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 130ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 70ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 122ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 57ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 0ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 155ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 230ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 61ms
+<-- POST /tools/sync:schedule
+--> POST /tools/sync:schedule [32m200[0m 1ms
+[ontology-sync] Starting on-chain → GraphDB sync...
+[ontology-sync] Emitted 110 agents. Building combined data-graph turtle...
+[ontology-sync] Data graph uploaded: 110 agents + 0 class assertions + 2 rounds + 5 pools + 2 Vote + 2 GrantProposal + 1 Pledge + 1 Commitment
+[kb-sync] ok (110 agents)
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 120ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 135ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 122ms
+<-- POST /tools/sync:schedule
+--> POST /tools/sync:schedule [32m200[0m 0ms
+<-- POST /tools/sync:all_commitments
+--> POST /tools/sync:all_commitments [32m200[0m 334ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 135ms
+[ontology-sync] Starting on-chain → GraphDB sync...
+[ontology-sync] Emitted 110 agents. Building combined data-graph turtle...
+[ontology-sync] Data graph uploaded: 110 agents + 0 class assertions + 2 rounds + 5 pools + 4 Vote + 2 GrantProposal + 1 Pledge + 2 Commitment
+[kb-sync] ok (110 agents)
+<-- POST /tools/sync:schedule
+--> POST /tools/sync:schedule [32m200[0m 1ms
+<-- POST /tools/discovery:list_pools
+--> POST /tools/discovery:list_pools [32m200[0m 125ms
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 350ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 1ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 629ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 1ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 907ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 1ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 1s
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 1ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 1s
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 1ms
+<-- POST /tools/discovery:get_pool_detail
+--> POST /tools/discovery:get_pool_detail [32m200[0m 121ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 330ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:list_recent_allocations
+--> POST /tools/discovery:list_recent_allocations [32m200[0m 45ms
+<-- POST /tools/discovery:list_rounds
+--> POST /tools/discovery:list_rounds [32m200[0m 49ms
+<-- POST /tools/discovery:get_pool_detail
+--> POST /tools/discovery:get_pool_detail [32m200[0m 0ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:list_rounds
+--> POST /tools/discovery:list_rounds [32m200[0m 131ms
+<-- POST /tools/discovery:get_round_detail
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 59ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 366ms
+--> POST /tools/discovery:get_round_detail [32m200[0m 431ms
+<-- POST /tools/discovery:raw_sparql
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:raw_sparql [32m200[0m 61ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 352ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 59ms
+<-- POST /tools/discovery:list_pools
+--> POST /tools/discovery:list_pools [32m200[0m 58ms
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 393ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 1ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 722ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 1s
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 1s
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 2s
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 155ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 0ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 169ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 72ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 126ms
+[ontology-sync] Starting on-chain → GraphDB sync...
+[ontology-sync] Emitted 110 agents. Building combined data-graph turtle...
+[ontology-sync] Data graph uploaded: 110 agents + 0 class assertions + 2 rounds + 5 pools + 4 Vote + 2 GrantProposal + 1 Pledge + 2 Commitment
+[kb-sync] ok (110 agents)
+<-- POST /tools/sync:pool
+--> POST /tools/sync:pool [32m200[0m 185ms
+<-- POST /tools/discovery:get_pool_detail
+<-- POST /tools/discovery:get_pool_detail
+--> POST /tools/discovery:get_pool_detail [32m200[0m 134ms
+<-- POST /tools/discovery:get_pool_detail
+--> POST /tools/discovery:get_pool_detail [32m200[0m 0ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_pool_detail [32m200[0m 180ms
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 333ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 1ms
+<-- POST /tools/discovery:list_recent_allocations
+--> POST /tools/discovery:get_hop_distance [32m200[0m 600ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:list_recent_allocations
+--> POST /tools/discovery:list_recent_allocations [32m200[0m 578ms
+--> POST /tools/discovery:list_recent_allocations [32m200[0m 308ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 917ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:list_recent_allocations
+--> POST /tools/discovery:list_recent_allocations [32m200[0m 0ms
+<-- POST /tools/discovery:list_rounds
+<-- POST /tools/discovery:list_rounds
+<-- POST /tools/discovery:list_rounds
+--> POST /tools/discovery:list_rounds [32m200[0m 56ms
+--> POST /tools/discovery:list_rounds [32m200[0m 55ms
+--> POST /tools/discovery:list_rounds [32m200[0m 60ms
+<-- POST /tools/discovery:get_pool_detail
+<-- POST /tools/discovery:get_pool_detail
+--> POST /tools/discovery:get_pool_detail [32m200[0m 140ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_pool_detail [32m200[0m 127ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 350ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 588ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 1ms
+<-- POST /tools/discovery:get_pool_detail
+--> POST /tools/discovery:get_pool_detail [32m200[0m 123ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 1ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/sync:all_pools
+--> POST /tools/sync:all_pools [32m200[0m 219ms
+<-- POST /tools/discovery:list_pools
+--> POST /tools/discovery:list_pools [32m200[0m 156ms
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 378ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 689ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 1s
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 1s
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 2s
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 2s
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/sync:round
+--> POST /tools/sync:round [32m200[0m 164ms
+<-- POST /tools/discovery:list_pools
+--> POST /tools/discovery:list_pools [32m200[0m 62ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 67ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 0ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 1ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 158ms
+<-- POST /tools/discovery:list_active_initiations_for_intent
+--> POST /tools/discovery:list_active_initiations_for_intent [32m200[0m 71ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 54ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 139ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 70ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 130ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 66ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 0ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 120ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 129ms
+<-- POST /tools/sync:schedule
+--> POST /tools/sync:schedule [32m200[0m 0ms
+[ontology-sync] Starting on-chain → GraphDB sync...
+[ontology-sync] Emitted 110 agents. Building combined data-graph turtle...
+[ontology-sync] Data graph uploaded: 110 agents + 0 class assertions + 3 rounds + 6 pools + 4 Vote + 3 GrantProposal + 2 Pledge + 2 Commitment
+[kb-sync] ok (110 agents)
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 124ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 125ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 140ms
+<-- POST /tools/sync:schedule
+--> POST /tools/sync:schedule [32m200[0m 1ms
+<-- POST /tools/sync:schedule
+--> POST /tools/sync:schedule [32m200[0m 0ms
+<-- POST /tools/sync:all_commitments
+--> POST /tools/sync:all_commitments [32m200[0m 471ms
+[ontology-sync] Starting on-chain → GraphDB sync...
+[ontology-sync] Emitted 110 agents. Building combined data-graph turtle...
+[ontology-sync] Data graph uploaded: 110 agents + 0 class assertions + 3 rounds + 6 pools + 6 Vote + 3 GrantProposal + 2 Pledge + 3 Commitment
+[kb-sync] ok (110 agents)
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 154ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 118ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 121ms
+<-- POST /tools/sync:schedule
+--> POST /tools/sync:schedule [32m200[0m 0ms
+<-- POST /tools/discovery:list_pools
+--> POST /tools/discovery:list_pools [32m200[0m 125ms
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 387ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 684ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 1s
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 1s
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 2s
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 2s
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:get_pool_detail
+--> POST /tools/discovery:get_pool_detail [32m200[0m 125ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 410ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 1ms
+<-- POST /tools/discovery:list_recent_allocations
+--> POST /tools/discovery:list_recent_allocations [32m200[0m 46ms
+<-- POST /tools/discovery:list_rounds
+--> POST /tools/discovery:list_rounds [32m200[0m 55ms
+<-- POST /tools/discovery:get_pool_detail
+--> POST /tools/discovery:get_pool_detail [32m200[0m 0ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:list_rounds
+--> POST /tools/discovery:list_rounds [32m200[0m 135ms
+<-- POST /tools/discovery:get_round_detail
+<-- POST /tools/discovery:get_round_detail
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 59ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_round_detail [32m200[0m 124ms
+--> POST /tools/discovery:get_round_detail [32m200[0m 125ms
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 392ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:get_hop_distance [32m200[0m 669ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:get_hop_distance [32m200[0m 4s
+--> POST /tools/discovery:raw_sparql [32m200[0m 3s
+--> POST /tools/discovery:raw_sparql [32m200[0m 3s
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 56ms
+<-- POST /tools/discovery:list_pools
+--> POST /tools/discovery:list_pools [32m200[0m 50ms
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 413ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 1ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 707ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 1s
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 1s
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 2s
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 2s
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 1ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 122ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 0ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 127ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 57ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 132ms
+[ontology-sync] Starting on-chain → GraphDB sync...
+[ontology-sync] Emitted 110 agents. Building combined data-graph turtle...
+[ontology-sync] Data graph uploaded: 110 agents + 0 class assertions + 3 rounds + 6 pools + 6 Vote + 3 GrantProposal + 2 Pledge + 3 Commitment
+[kb-sync] ok (110 agents)
+<-- POST /tools/sync:pool
+--> POST /tools/sync:pool [32m200[0m 201ms
+<-- POST /tools/discovery:get_pool_detail
+<-- POST /tools/discovery:get_pool_detail
+--> POST /tools/discovery:get_pool_detail [32m200[0m 171ms
+<-- POST /tools/discovery:get_pool_detail
+--> POST /tools/discovery:get_pool_detail [32m200[0m 0ms
+--> POST /tools/discovery:get_pool_detail [32m200[0m 115ms
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 385ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 1ms
+<-- POST /tools/discovery:list_recent_allocations
+--> POST /tools/discovery:get_hop_distance [32m200[0m 704ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:list_recent_allocations
+--> POST /tools/discovery:list_recent_allocations [32m200[0m 318ms
+--> POST /tools/discovery:list_recent_allocations [32m200[0m 639ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 1s
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 1ms
+<-- POST /tools/discovery:list_recent_allocations
+--> POST /tools/discovery:list_recent_allocations [32m200[0m 0ms
+<-- POST /tools/discovery:list_rounds
+<-- POST /tools/discovery:list_rounds
+<-- POST /tools/discovery:list_rounds
+--> POST /tools/discovery:list_rounds [32m200[0m 59ms
+--> POST /tools/discovery:list_rounds [32m200[0m 56ms
+--> POST /tools/discovery:list_rounds [32m200[0m 62ms
+<-- POST /tools/discovery:get_pool_detail
+--> POST /tools/discovery:get_pool_detail [32m200[0m 122ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 344ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 1ms
+<-- POST /tools/discovery:get_pool_detail
+--> POST /tools/discovery:get_pool_detail [32m200[0m 1ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/sync:all_pools
+--> POST /tools/sync:all_pools [32m200[0m 211ms
+<-- POST /tools/discovery:get_pool_detail
+--> POST /tools/discovery:get_pool_detail [32m200[0m 133ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 343ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:list_pools
+--> POST /tools/discovery:list_pools [32m200[0m 129ms
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 329ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 606ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 865ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 1ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 1s
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 1s
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 2s
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 1ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 2s
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/sync:round
+--> POST /tools/sync:round [32m200[0m 183ms
+<-- POST /tools/discovery:list_pools
+--> POST /tools/discovery:list_pools [32m200[0m 59ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 59ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 1ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 1ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 185ms
+<-- POST /tools/discovery:list_active_initiations_for_intent
+--> POST /tools/discovery:list_active_initiations_for_intent [32m200[0m 55ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 55ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 165ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 66ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 118ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 67ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 0ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 129ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 122ms
+<-- POST /tools/sync:schedule
+--> POST /tools/sync:schedule [32m200[0m 0ms
+[ontology-sync] Starting on-chain → GraphDB sync...
+[ontology-sync] Emitted 110 agents. Building combined data-graph turtle...
+[ontology-sync] Data graph uploaded: 110 agents + 0 class assertions + 4 rounds + 7 pools + 6 Vote + 4 GrantProposal + 3 Pledge + 3 Commitment
+[kb-sync] ok (110 agents)
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 132ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 140ms
+<-- POST /tools/sync:schedule
+--> POST /tools/sync:schedule [32m200[0m 1ms
+<-- POST /tools/discovery:list_pools
+--> POST /tools/discovery:list_pools [32m200[0m 124ms
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 377ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 651ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 923ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 1s
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 1ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 2s
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 2s
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 2s
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:get_pool_detail
+--> POST /tools/discovery:get_pool_detail [32m200[0m 125ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 325ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:list_recent_allocations
+--> POST /tools/discovery:list_recent_allocations [32m200[0m 48ms
+<-- POST /tools/discovery:list_rounds
+--> POST /tools/discovery:list_rounds [32m200[0m 52ms
+<-- POST /tools/discovery:get_pool_detail
+--> POST /tools/discovery:get_pool_detail [32m200[0m 57ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 365ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:list_rounds
+--> POST /tools/discovery:list_rounds [32m200[0m 52ms
+<-- POST /tools/discovery:get_round_detail
+<-- POST /tools/discovery:get_round_detail
+<-- POST /tools/discovery:get_round_detail
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 51ms
+--> POST /tools/discovery:get_round_detail [32m200[0m 110ms
+--> POST /tools/discovery:get_round_detail [32m200[0m 115ms
+--> POST /tools/discovery:get_round_detail [32m200[0m 126ms
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 340ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:get_hop_distance [32m200[0m 609ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:get_hop_distance [32m200[0m 883ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 808ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 1s
+--> POST /tools/discovery:raw_sparql [32m200[0m 278ms
+--> POST /tools/discovery:raw_sparql [32m200[0m 550ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 48ms
+<-- POST /tools/discovery:list_pools
+--> POST /tools/discovery:list_pools [32m200[0m 51ms
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 381ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 672ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 1ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 958ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 1s
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 2s
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 2s
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 2s
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 118ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 1ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 137ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 124ms
+[ontology-sync] Starting on-chain → GraphDB sync...
+[ontology-sync] Emitted 110 agents. Building combined data-graph turtle...
+[ontology-sync] Data graph uploaded: 110 agents + 0 class assertions + 4 rounds + 7 pools + 8 Vote + 4 GrantProposal + 3 Pledge + 3 Commitment
+[kb-sync] ok (110 agents)
+<-- POST /tools/sync:pool
+--> POST /tools/sync:pool [32m200[0m 175ms
+<-- POST /tools/discovery:get_pool_detail
+<-- POST /tools/discovery:get_pool_detail
+--> POST /tools/discovery:get_pool_detail [32m200[0m 126ms
+--> POST /tools/discovery:get_pool_detail [32m200[0m 112ms
+<-- POST /tools/discovery:get_pool_detail
+--> POST /tools/discovery:get_pool_detail [32m200[0m 0ms
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 354ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:list_recent_allocations
+--> POST /tools/discovery:get_hop_distance [32m200[0m 641ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:list_recent_allocations
+--> POST /tools/discovery:list_recent_allocations [32m200[0m 578ms
+--> POST /tools/discovery:list_recent_allocations [32m200[0m 290ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 939ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:list_recent_allocations
+--> POST /tools/discovery:list_recent_allocations [32m200[0m 0ms
+<-- POST /tools/discovery:list_rounds
+<-- POST /tools/discovery:list_rounds
+<-- POST /tools/discovery:list_rounds
+--> POST /tools/discovery:list_rounds [32m200[0m 52ms
+--> POST /tools/discovery:list_rounds [32m200[0m 56ms
+--> POST /tools/discovery:list_rounds [32m200[0m 60ms
+<-- POST /tools/discovery:get_pool_detail
+<-- POST /tools/discovery:get_pool_detail
+--> POST /tools/discovery:get_pool_detail [32m200[0m 122ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 357ms
+--> POST /tools/discovery:get_pool_detail [32m200[0m 380ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:get_pool_detail
+--> POST /tools/discovery:get_pool_detail [32m200[0m 0ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/sync:all_pools
+--> POST /tools/sync:all_pools [32m200[0m 237ms
+<-- POST /tools/discovery:list_pools
+--> POST /tools/discovery:list_pools [32m200[0m 122ms
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 409ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 702ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 995ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 1s
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 2s
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 2s
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 2s
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+--> POST /tools/discovery:get_hop_distance [32m200[0m 2s
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/sync:round
+--> POST /tools/sync:round [32m200[0m 183ms
+<-- POST /tools/discovery:list_pools
+--> POST /tools/discovery:list_pools [32m200[0m 58ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 68ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 0ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 0ms
+<-- POST /tools/discovery:get_round_detail
+<-- POST /tools/discovery:list_active_initiations_for_intent
+--> POST /tools/discovery:get_round_detail [32m200[0m 120ms
+--> POST /tools/discovery:list_active_initiations_for_intent [32m200[0m 132ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 117ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 59ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 122ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 57ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 1ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 201ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 121ms
+<-- POST /tools/sync:schedule
+--> POST /tools/sync:schedule [32m200[0m 0ms
+[ontology-sync] Starting on-chain → GraphDB sync...
+[ontology-sync] Emitted 110 agents. Building combined data-graph turtle...
+[ontology-sync] Data graph uploaded: 110 agents + 0 class assertions + 5 rounds + 8 pools + 8 Vote + 5 GrantProposal + 4 Pledge + 3 Commitment
+[kb-sync] ok (110 agents)
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 3s
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 130ms
+<-- POST /tools/sync:schedule
+--> POST /tools/sync:schedule [32m200[0m 0ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 177ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 129ms
+<-- POST /tools/sync:schedule
+--> POST /tools/sync:schedule [32m200[0m 0ms
+<-- POST /tools/sync:all_commitments
+[ontology-sync] Starting on-chain → GraphDB sync...
+--> POST /tools/sync:all_commitments [32m200[0m 416ms
+[ontology-sync] Emitted 110 agents. Building combined data-graph turtle...
+[ontology-sync] Data graph uploaded: 110 agents + 0 class assertions + 5 rounds + 8 pools + 10 Vote + 5 GrantProposal + 4 Pledge + 4 Commitment
+[kb-sync] ok (110 agents)
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 191ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 131ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 129ms

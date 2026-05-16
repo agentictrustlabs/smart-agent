@@ -16,7 +16,7 @@ import Link from 'next/link'
 import { redirect, notFound } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { HUB_SLUG_MAP } from '@/lib/hub-routes'
-import { getPersonAgentForUser } from '@/lib/agent-registry'
+import { getPersonAgentForUser, getAgentDisplayName } from '@/lib/agent-registry'
 import { getMemberPledge } from '@/lib/actions/poolPledges.action'
 import { cadenceAwareTotal } from '@smart-agent/sdk'
 import { PledgeAmendForm } from './PledgeAmendForm'
@@ -63,6 +63,11 @@ export default async function PledgeDetailPage({
   const canAmend = pledge.status === 'active'
   const canStop = pledge.status === 'active' || pledge.status === 'waitlisted'
   const safeId = encodeURIComponent(pledgeId)
+
+  // Resolve the destination pool's human-readable name so the honor-pledge
+  // confirmation modal can show "Recipient pool: Demo Grant Pool tf36vm"
+  // instead of the truncated agent address.
+  const poolName = await getAgentDisplayName(pledge.poolAgentId)
 
   // Spec 005 — settlement aggregation. v1 supports USDC only on Rail A; for
   // USD-denominated pledges we display the USDC bucket; for other units we
@@ -158,6 +163,7 @@ export default async function PledgeDetailPage({
             pledgeId={pledge.id as `0x${string}`}
             poolAgentId={pledge.poolAgentId as `0x${string}`}
             remainingUsd={remaining}
+            poolName={poolName ?? undefined}
           />
         </Section>
       )}

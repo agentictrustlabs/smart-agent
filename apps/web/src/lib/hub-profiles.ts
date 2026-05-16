@@ -136,7 +136,7 @@ export const HUB_PROFILES: HubProfile[] = [
     navItems: [
       { href: '/dashboard', label: 'Home', section: 'primary', exact: true, activePrefixes: ['/', '/dashboard', '/h/'] },
       { href: '/groups', label: 'Organizations', section: 'primary', activePrefixes: ['/groups', '/catalyst/groups', '/agents'] },
-      { href: '/steward', label: 'Manage', section: 'primary', activePrefixes: ['/steward', '/treasury', '/reviews', '/network', '/trust'] },
+      { href: '/steward', label: 'Govern', section: 'primary', activePrefixes: ['/steward', '/treasury', '/reviews', '/network', '/trust'] },
       { href: '/activity', label: 'Activity', section: 'primary', activePrefixes: ['/activity', '/activities'] },
       { href: '/settings', label: 'Settings', section: 'admin', requiresCapability: 'settings' },
       { href: '/me', label: 'Profile', section: 'personal' },
@@ -194,7 +194,7 @@ export const HUB_PROFILES: HubProfile[] = [
       { href: '/dashboard', label: 'Home', section: 'primary', exact: true, activePrefixes: ['/', '/dashboard', '/h/'] },
       { href: '/agents', label: 'Agents', section: 'primary', activePrefixes: ['/agents'] },
       { href: '/explorer', label: 'Explorer', section: 'primary', activePrefixes: ['/explorer'] },
-      { href: '/steward', label: 'Management', section: 'primary', activePrefixes: ['/steward', '/treasury', '/reviews', '/network', '/trust', '/groups', '/activity', '/nurture', '/oikos'] },
+      { href: '/steward', label: 'Govern', section: 'primary', activePrefixes: ['/steward', '/treasury', '/reviews', '/network', '/trust', '/groups', '/activity', '/nurture', '/oikos'] },
       { href: '/settings', label: 'Settings', section: 'admin', requiresCapability: 'settings' },
       { href: '/me', label: 'Profile', section: 'personal' },
     ],
@@ -254,7 +254,7 @@ export const HUB_PROFILES: HubProfile[] = [
       // Phase 2 redesign: rename Build → Groups (broader umbrella for
       // circles, house churches, and metro hubs across sister networks).
       { href: '/groups', label: 'Groups', section: 'primary', activePrefixes: ['/groups', '/catalyst/groups', '/catalyst/map'] },
-      { href: '/steward', label: 'Steward', section: 'primary', requiresCapability: 'governance', activePrefixes: ['/steward', '/treasury', '/reviews', '/network', '/trust'] },
+      { href: '/steward', label: 'Govern', section: 'primary', requiresCapability: 'governance', activePrefixes: ['/steward', '/treasury', '/reviews', '/network', '/trust'] },
       // Spec 001/004 — Direct lane entry point (intent marketplace).
       // Legacy Need/Offering Discover layer was retired; only the
       // intents surface remains in this tab.
@@ -333,7 +333,7 @@ export const HUB_PROFILES: HubProfile[] = [
       { href: '/h/mission/home', label: 'Command Center', section: 'primary', exact: true, activePrefixes: ['/', '/dashboard', '/h/mission/home'] },
       { href: '/groups', label: 'Portfolio', section: 'primary', activePrefixes: ['/groups', '/catalyst/groups', '/catalyst/members'] },
       { href: '/activity', label: 'Revenue', section: 'primary', activePrefixes: ['/activity', '/catalyst/activities', '/activities'] },
-      { href: '/steward', label: 'Governance', section: 'primary', activePrefixes: ['/steward', '/treasury', '/reviews', '/network', '/trust'] },
+      { href: '/steward', label: 'Govern', section: 'primary', activePrefixes: ['/steward', '/treasury', '/reviews', '/network', '/trust'] },
       { href: '/nurture', label: 'Training', section: 'primary', activePrefixes: ['/nurture', '/catalyst/grow'] },
       { href: '/agents', label: 'Agents', section: 'admin', requiresCapability: 'agents' },
       { href: '/settings', label: 'Settings', section: 'admin', requiresCapability: 'settings' },

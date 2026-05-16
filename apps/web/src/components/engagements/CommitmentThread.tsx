@@ -14,6 +14,7 @@
 
 import Link from 'next/link'
 import type { ThreadEntryRow, ThreadEntryKind } from '@/lib/actions/engagements/thread.action'
+import { truncateAddress } from '@/lib/ui/formatAgent'
 
 const C = {
   card: '#ffffff', border: '#ece6db',
@@ -295,9 +296,8 @@ function ThreadBody({
   }
 }
 
-function shortAddr(a: string): string {
-  return `${a.slice(0, 6)}…${a.slice(-4)}`
-}
+// Delegate to the shared helper for consistent formatting across surfaces.
+const shortAddr = truncateAddress
 
 function fmtTime(iso: string): string {
   try {

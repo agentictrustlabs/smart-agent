@@ -155,7 +155,11 @@ export function AuthGate() {
         </div>
       )}
       {error && (
-        <div style={{ fontSize: '0.82rem', color: '#c62828', textAlign: 'center', maxWidth: 300, marginTop: '0.5rem' }}>
+        <div
+          role="alert"
+          aria-live="assertive"
+          style={{ fontSize: '0.82rem', color: '#c62828', textAlign: 'center', maxWidth: 300, marginTop: '0.5rem' }}
+        >
           {error}
         </div>
       )}

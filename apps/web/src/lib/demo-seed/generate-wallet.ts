@@ -154,6 +154,43 @@ export async function generateDemoWallet(userName?: string): Promise<{
       }
 
       console.log(`[generate-wallet] Person agent registered: ${personAgentAddress} → ${account.address} (primary=${primaryName})`)
+
+      // 5d. Register the USER'S smart account too. Many web actions
+      //     (SSI credential issuance, list_intents, etc.) route via the
+      //     smart account address — NOT the deployer-owned person agent.
+      //     Without ATL_PRIMARY_NAME on the smart account, those routes
+      //     throw "A2A endpoint not resolvable: no primary name
+      //     registered" mid-flow (e.g. chapter 9 proposal-apply →
+      //     ssi_create_wallet_action). Slug = `<base>-sa.agent` to
+      //     keep it distinct from the person agent's `<base>.agent`.
+      const saSlug = `${slug}-sa`
+      const saPrimaryName = `${saSlug}.agent`
+      const isSaReg = await pc.readContract({
+        address: resolverAddr, abi: agentAccountResolverAbi,
+        functionName: 'isRegistered', args: [smartAccountAddress],
+      }) as boolean
+      if (!isSaReg) {
+        const saRegHash = await wc.writeContract({
+          address: resolverAddr, abi: agentAccountResolverAbi,
+          functionName: 'register',
+          args: [smartAccountAddress, userName ?? 'Personal Account', '', TYPE_PERSON, ZERO_HASH, ''],
+        })
+        await pc.waitForTransactionReceipt({ hash: saRegHash })
+      }
+      const existingSaPrimary = await pc.readContract({
+        address: resolverAddr, abi: agentAccountResolverAbi,
+        functionName: 'getStringProperty',
+        args: [smartAccountAddress, ATL_PRIMARY_NAME as `0x${string}`],
+      }) as string
+      if (existingSaPrimary !== saPrimaryName) {
+        const saNameHash = await wc.writeContract({
+          address: resolverAddr, abi: agentAccountResolverAbi,
+          functionName: 'setStringProperty',
+          args: [smartAccountAddress, ATL_PRIMARY_NAME as `0x${string}`, saPrimaryName],
+        })
+        await pc.waitForTransactionReceipt({ hash: saNameHash })
+      }
+      console.log(`[generate-wallet] Smart account registered: ${smartAccountAddress} → ${account.address} (primary=${saPrimaryName})`)
     } catch (err) {
       // Make this loud — without these three writes the person agent
       // cannot route A2A traffic, and the symptom appears far downstream
