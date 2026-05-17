@@ -246,7 +246,19 @@ export async function POST(request: Request) {
     revocationEpoch,
   }
   try {
-    await insertSessionRecord(record)
+    // Hardening §1.3 (Stream B Task B3) — thread the just-completed
+    // passkey assertion through to person-mcp so it can re-verify the
+    // ERC-1271 signature against the smart account BEFORE writing the
+    // row. The web→a2a HMAC envelope (Task B1) is the first gate; this
+    // is the second. Person-mcp reconstructs the challenge from the
+    // record's `grantHash` plus `serverNonce` and rejects on mismatch.
+    await insertSessionRecord(record, {
+      credentialIdBase64Url: body.credentialIdBase64Url,
+      authenticatorDataBase64Url: body.authenticatorDataBase64Url,
+      clientDataJSONBase64Url: body.clientDataJSONBase64Url,
+      signatureBase64Url: body.signatureBase64Url,
+      serverNonce,
+    })
   } catch (err) {
     return NextResponse.json({ error: `session persist failed: ${(err as Error).message}` }, { status: 502 })
   }

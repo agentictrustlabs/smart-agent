@@ -4,7 +4,7 @@ import { createPublicClient, http } from 'viem'
 import { localhost } from 'viem/chains'
 import { privateKeyToAccount } from 'viem/accounts'
 import {
-  decryptPayload, mintDelegationToken,
+  mintDelegationToken,
   agentRelationshipAbi, DATA_ACCESS_DELEGATION,
 } from '@smart-agent/sdk'
 import type { DelegationTokenClaims } from '@smart-agent/sdk'
@@ -12,6 +12,7 @@ import { db } from '../db'
 import { sessions } from '../db/schema'
 import { config } from '../config'
 import { requireSession } from '../middleware/require-session'
+import { decryptSessionPackage } from '../auth/encryption'
 
 const PERSON_MCP_URL = process.env.PERSON_MCP_URL ?? 'http://localhost:3200'
 
@@ -46,10 +47,22 @@ async function callMcpTool(
   if (!active) return { ok: false, error: 'No active agent session' }
   if (new Date(active.expiresAt) < new Date()) return { ok: false, error: 'Session expired' }
 
-  // Decrypt session package
-  const pkg = await decryptPayload<StoredSessionPackage>(
-    { ciphertext: active.encryptedPackage!, iv: active.iv! },
-    config.A2A_SESSION_SECRET,
+  // Decrypt session package via the KMS-aware helper (AAD bound on both
+  // the KMS aadContext and the AES-GCM additionalData layers).
+  const pkg = await decryptSessionPackage<StoredSessionPackage>(
+    {
+      encryptedPackage: active.encryptedPackage,
+      iv: active.iv,
+      encryptedDataKey: active.encryptedDataKey,
+      keyVersion: active.keyVersion,
+      kmsKeyId: active.kmsKeyId,
+    },
+    {
+      sessionId: active.id,
+      accountAddress: active.accountAddress,
+      chainId: config.CHAIN_ID,
+      expiresAt: active.expiresAt,
+    },
   )
 
   // Build + sign delegation token

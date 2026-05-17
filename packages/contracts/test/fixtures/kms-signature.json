@@ -1,0 +1,9 @@
+{
+  "description": "KMS-K4-PR-2 fixture: real secp256k1 signature from a deterministic test key; byte-semantically equivalent to AWS KMS Sign output over ECC_SECG_P256K1 + ECDSA_SHA_256 + MessageType=DIGEST.",
+  "seed": "kms-signer-fixture-v1",
+  "address": "0x3c2a25dc26382dcfa8cee3e41d1ca7b721754f68",
+  "wrongAddress": "0x5700fa725d1971b4c825f24cd572ee4f6e1bd670",
+  "messageHash": "0xbc45405866060f7a10072d53ffa5130ce891e57576cfac2c21a370f1e4c719b7",
+  "signature": "0x9145b9189c0e8917f2198e08c05a1a2b053190e627f9098e2e7a27f1e27f434b2064bffc98581a39ce47a4e1fb2d7064743a28ed6ba5e1235e0697705f2f23531c",
+  "v": 28
+}

@@ -41,4 +41,9 @@ export const config = {
   agentRelationshipAddress: process.env.AGENT_RELATIONSHIP_ADDRESS as
     | `0x${string}`
     | undefined,
+
+  /** AgentAssertion contract address (for assertion:make tool) */
+  agentAssertionAddress: process.env.AGENT_ASSERTION_ADDRESS as
+    | `0x${string}`
+    | undefined,
 } as const

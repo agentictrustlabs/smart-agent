@@ -9,19 +9,3 @@
 [people-group-mcp] listening on http://localhost:3300
 <-- GET /health
 --> GET /health [32m200[0m 0ms
-<-- POST /tools/list_segments
---> POST /tools/list_segments [32m200[0m 13ms
-<-- POST /tools/list_segments
---> POST /tools/list_segments [32m200[0m 2ms
-<-- POST /tools/list_segments
---> POST /tools/list_segments [32m200[0m 2ms
-<-- POST /tools/list_segments
---> POST /tools/list_segments [32m200[0m 2ms
-<-- POST /tools/list_segments
---> POST /tools/list_segments [32m200[0m 1ms
-<-- POST /tools/list_segments
---> POST /tools/list_segments [32m200[0m 1ms
-<-- POST /tools/list_segments
---> POST /tools/list_segments [32m200[0m 1ms
-<-- POST /tools/list_segments
---> POST /tools/list_segments [32m200[0m 1ms

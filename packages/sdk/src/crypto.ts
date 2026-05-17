@@ -2,7 +2,20 @@
  * Cryptographic utilities for session package encryption.
  * Uses AES-GCM for at-rest encryption of session packages
  * containing private key material.
+ *
+ * AAD (Additional Authenticated Data) binding:
+ *   `encryptPayload` and `decryptPayload` accept an optional AAD byte
+ *   string. When provided, the AAD is bound into the AES-GCM tag — a
+ *   ciphertext encrypted under one AAD will fail to decrypt under any
+ *   other. Session callers MUST construct an AAD from session metadata
+ *   (sessionId, accountAddress, chainId, expiresAt) so a leaked
+ *   ciphertext + key cannot be replayed against a different session row.
+ *
+ *   For backward compatibility the AAD parameter is optional; rows
+ *   encrypted without AAD only decrypt when AAD is omitted on decrypt.
+ *   See HARDENING-PLAN §1.5 #8 for the migration trip-wire.
  */
+import { keccak256, encodePacked } from 'viem'
 
 const ALGORITHM = 'AES-GCM'
 const KEY_LENGTH = 256
@@ -26,14 +39,14 @@ async function deriveKey(secret: string): Promise<CryptoKey> {
 }
 
 /** Encode bytes to base64url */
-function toBase64Url(bytes: Uint8Array): string {
+export function toBase64Url(bytes: Uint8Array): string {
   let binary = ''
   for (const byte of bytes) binary += String.fromCharCode(byte)
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 }
 
 /** Decode base64url to bytes */
-function fromBase64Url(str: string): Uint8Array {
+export function fromBase64Url(str: string): Uint8Array {
   const base64 = str.replace(/-/g, '+').replace(/_/g, '/')
   const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4)
   const binary = atob(padded)
@@ -50,10 +63,15 @@ export interface EncryptedPayload {
 /**
  * Encrypt a JSON-serializable value with AES-GCM.
  * The secret should be stored securely (env var, not in code).
+ *
+ * Pass `aad` to bind the ciphertext to a specific session/account/chain
+ * context — see `buildSessionAAD()`. Rows written without AAD can ONLY
+ * be decrypted by calling `decryptPayload` without AAD.
  */
 export async function encryptPayload(
   data: unknown,
   secret: string,
+  aad?: Uint8Array,
 ): Promise<EncryptedPayload> {
   const key = await deriveKey(secret)
   const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH))
@@ -64,8 +82,12 @@ export async function encryptPayload(
   )
   const plaintext = encoder.encode(jsonStr)
 
+  const algorithm: AesGcmParams = aad
+    ? { name: ALGORITHM, iv: iv.buffer as ArrayBuffer, additionalData: aad.buffer as ArrayBuffer }
+    : { name: ALGORITHM, iv: iv.buffer as ArrayBuffer }
+
   const ciphertext = await crypto.subtle.encrypt(
-    { name: ALGORITHM, iv: iv.buffer as ArrayBuffer },
+    algorithm,
     key,
     plaintext.buffer as ArrayBuffer,
   )
@@ -78,23 +100,65 @@ export async function encryptPayload(
 
 /**
  * Decrypt an AES-GCM encrypted payload back to its original value.
+ *
+ * Pass the SAME `aad` used at encrypt time. A mismatch (including
+ * absent-vs-present) causes AES-GCM tag verification to fail and the
+ * call to throw. That's the intended trip-wire when a session row's
+ * binding context (sessionId/account/chain/expiry) has been tampered
+ * with.
  */
 export async function decryptPayload<T = unknown>(
   encrypted: EncryptedPayload,
   secret: string,
+  aad?: Uint8Array,
 ): Promise<T> {
   const key = await deriveKey(secret)
   const iv = fromBase64Url(encrypted.iv)
   const ciphertext = fromBase64Url(encrypted.ciphertext)
 
+  const algorithm: AesGcmParams = aad
+    ? { name: ALGORITHM, iv: iv.buffer as ArrayBuffer, additionalData: aad.buffer as ArrayBuffer }
+    : { name: ALGORITHM, iv: iv.buffer as ArrayBuffer }
+
   const plaintext = await crypto.subtle.decrypt(
-    { name: ALGORITHM, iv: iv.buffer as ArrayBuffer },
+    algorithm,
     key,
     ciphertext.buffer as ArrayBuffer,
   )
 
   const decoder = new TextDecoder()
   return JSON.parse(decoder.decode(plaintext)) as T
+}
+
+/**
+ * Build a canonical AAD for a session-package encryption.
+ *
+ * Binds the ciphertext to `(sessionId, accountAddress, chainId, expiresAt)`
+ * via `keccak256(abi.encodePacked(...))`. Callers should reconstruct the
+ * AAD on read by passing the SAME values from the session row.
+ *
+ * `expiresAt` is the ISO timestamp string from the DB row. Strings are
+ * packed as bytes so any drift causes decrypt to fail (the trip-wire).
+ */
+export function buildSessionAAD(input: {
+  sessionId: string
+  accountAddress: string
+  chainId: number
+  expiresAt: string
+}): Uint8Array {
+  const hash = keccak256(
+    encodePacked(
+      ['string', 'string', 'uint256', 'string'],
+      [input.sessionId, input.accountAddress.toLowerCase(), BigInt(input.chainId), input.expiresAt],
+    ),
+  )
+  // Strip 0x and decode hex → bytes
+  const hex = hash.slice(2)
+  const bytes = new Uint8Array(hex.length / 2)
+  for (let i = 0; i < bytes.length; i++) {
+    bytes[i] = parseInt(hex.substring(i * 2, i * 2 + 2), 16)
+  }
+  return bytes
 }
 
 /**

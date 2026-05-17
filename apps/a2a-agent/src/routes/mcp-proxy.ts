@@ -1,17 +1,17 @@
 import { Hono } from 'hono'
 import { eq } from 'drizzle-orm'
 import { privateKeyToAccount } from 'viem/accounts'
-import { decryptPayload, mintDelegationToken } from '@smart-agent/sdk'
+import { mintDelegationToken } from '@smart-agent/sdk'
 import type { DelegationTokenClaims } from '@smart-agent/sdk'
 import { db } from '../db'
 import { sessions } from '../db/schema'
 import { config } from '../config'
 import { requireSession } from '../middleware/require-session'
+import { decryptSessionPackage } from '../auth/encryption'
 
 const PERSON_MCP_URL = process.env.PERSON_MCP_URL ?? 'http://localhost:3200'
 const ORG_MCP_URL = process.env.ORG_MCP_URL ?? 'http://localhost:3400'
 const PEOPLE_GROUP_MCP_URL = process.env.PEOPLE_GROUP_MCP_URL ?? 'http://localhost:3300'
-const HUB_MCP_URL = process.env.HUB_MCP_URL ?? 'http://localhost:3900'
 
 interface StoredSessionPackage {
   sessionPrivateKey: string
@@ -34,11 +34,6 @@ const SERVERS = {
   'people-group': { url: PEOPLE_GROUP_MCP_URL, audience: 'urn:mcp:server:people-groups' as const },
 } as const
 
-// hub-mcp is system-level (no per-user delegation). Routed separately
-// below — see the `/hub/:tool` handler that bypasses requireSession.
-const HUB_AUDIENCE = 'urn:mcp:server:hub' as const
-void HUB_AUDIENCE // reserved for future request-signing if needed
-
 type ServerKey = keyof typeof SERVERS
 
 /**
@@ -50,7 +45,7 @@ type ServerKey = keyof typeof SERVERS
  * minting code. The route registers as /mcp/:server/:tool — see below.
  */
 async function callMcpTool(
-  sessionId: string,
+  accountAddress: string,
   serverKey: ServerKey,
   toolName: string,
   args: Record<string, unknown>,
@@ -58,24 +53,28 @@ async function callMcpTool(
   const server = SERVERS[serverKey]
   if (!server) return { ok: false, error: `Unknown MCP server: ${serverKey}` }
 
-  // Look up the SPECIFIC session referenced by the bearer token, not any
-  // session for the account. Picking the first session by account was the
-  // source of "Tool not permitted by delegation scope" after tool-policy
-  // updates — the user's old sessions (with stale tool lists) shadowed
-  // the freshly-bootstrapped one. Cookie session id is the authoritative
-  // identifier; respect it.
-  const rows = await db.select().from(sessions).where(eq(sessions.id, sessionId))
-  const active = rows[0]
-  if (!active || active.status !== 'active' || !active.encryptedPackage || !active.iv) {
-    return { ok: false, status: 401, error: 'No active agent session' }
-  }
+  const rows = await db.select().from(sessions).where(eq(sessions.accountAddress, accountAddress))
+  const active = rows.find(r => r.encryptedPackage && r.iv && r.status === 'active')
+  if (!active) return { ok: false, status: 401, error: 'No active agent session' }
   if (new Date(active.expiresAt) < new Date()) return { ok: false, status: 401, error: 'Session expired' }
 
-  const a2aSessionId = active.id
-
-  const pkg = await decryptPayload<StoredSessionPackage>(
-    { ciphertext: active.encryptedPackage!, iv: active.iv! },
-    config.A2A_SESSION_SECRET,
+  // Decrypt via the KMS-aware helper. AAD trip-wires on both the KMS
+  // provider's aadContext and the AES-GCM additionalData — any drift in
+  // (id, account, chain, expiresAt, keyVersion) throws.
+  const pkg = await decryptSessionPackage<StoredSessionPackage>(
+    {
+      encryptedPackage: active.encryptedPackage,
+      iv: active.iv,
+      encryptedDataKey: active.encryptedDataKey,
+      keyVersion: active.keyVersion,
+      kmsKeyId: active.kmsKeyId,
+    },
+    {
+      sessionId: active.id,
+      accountAddress: active.accountAddress,
+      chainId: config.CHAIN_ID,
+      expiresAt: active.expiresAt,
+    },
   )
 
   const claims: DelegationTokenClaims = {
@@ -108,15 +107,10 @@ async function callMcpTool(
     async (msg) => sessionAccount.signMessage({ message: msg }),
   )
 
-  // Phase 1: forward the a2a-agent session id so the MCP tool can call back
-  // into /session/:id/redeem-tx for on-chain redemption. The MCP must NOT
-  // treat _a2aSessionId as user-controlled — it's injected here and the
-  // inbound bearer token is already verified above (the rows lookup is
-  // keyed by the principal smart-account address derived from the cookie).
   const mcpRes = await fetch(`${server.url}/tools/${toolName}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ tool: toolName, args: { ...args, token, _a2aSessionId: a2aSessionId } }),
+    body: JSON.stringify({ tool: toolName, args: { ...args, token } }),
   })
 
   if (!mcpRes.ok) {
@@ -147,37 +141,6 @@ const mcpProxy = new Hono()
  *     body: JSON.stringify({}),
  *   })
  */
-// ── Hub-mcp proxy — system-level, no session required ──────────────
-//
-// hub-mcp serves public knowledge-base reads (DiscoveryService over
-// GraphDB) and on-chain → KB sync writes. It is NOT bound to any
-// user's smart account, so we deliberately skip `requireSession` and
-// the per-agent host check here. Cache invalidation lives inside
-// hub-mcp itself (`sync:*` tools call `cacheInvalidateFamily` after
-// successful writes), so the read-after-write fence is preserved.
-//
-// The host-context middleware allows the `system.<base>` subdomain
-// without requiring a slug→agent resolution; that's how web clients
-// reach this route (via `callMcp('hub', …)` with Host: system.agent.localhost).
-mcpProxy.post('/hub/:tool', async (c) => {
-  const toolName = c.req.param('tool')
-  const args = await c.req.json().catch(() => ({}))
-  try {
-    const res = await fetch(`${HUB_MCP_URL}/tools/${toolName}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(args ?? {}),
-    })
-    if (!res.ok) {
-      const body = await res.text().catch(() => '')
-      return c.json({ error: `hub-mcp ${toolName} failed: ${res.status} ${body.slice(0, 200)}` }, 502)
-    }
-    return c.json(await res.json())
-  } catch (e) {
-    return c.json({ error: `hub-mcp ${toolName} unreachable: ${e instanceof Error ? e.message : String(e)}` }, 502)
-  }
-})
-
 mcpProxy.post('/:server/:tool', requireSession, async (c) => {
   const sess = c.get('session')
   const serverKey = c.req.param('server') as ServerKey
@@ -189,7 +152,7 @@ mcpProxy.post('/:server/:tool', requireSession, async (c) => {
 
   const args = await c.req.json().catch(() => ({}))
 
-  const result = await callMcpTool(sess.id, serverKey, toolName, args ?? {})
+  const result = await callMcpTool(sess.accountAddress, serverKey, toolName, args ?? {})
   if (!result.ok) return c.json({ error: result.error }, (result.status ?? 502) as 400 | 401 | 403 | 404 | 500 | 502)
   return c.json(result.data)
 })

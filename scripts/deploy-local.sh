@@ -223,6 +223,7 @@ sed -i '/^USDC_ADDRESS=/d' "$WEB_ENV"
 sed -i '/^AGENT_NAME_ATTRIBUTE_RESOLVER_ADDRESS=/d' "$WEB_ENV"
 sed -i '/^RPC_URL=/d' "$WEB_ENV"
 sed -i '/^DEPLOYER_PRIVATE_KEY=/d' "$WEB_ENV"
+sed -i '/^DEPLOYER_ADDRESS=/d' "$WEB_ENV"
 # Phase 1 (delegation refactor) — ORG_MCP_EOA / D_onchain retired. No EOA
 # is held by org-mcp anymore. On-chain redeems flow through a2a-agent's
 # session EOA, which redeems the user's signed root delegation directly.
@@ -232,22 +233,45 @@ sed -i '/^ORG_MCP_EOA_ADDRESS=/d' "$WEB_ENV"
 sed -i '/^ORG_MCP_EOA_PRIVATE_KEY=/d' "$WEB_ENV"
 sed -i '/^A2A_INTERSERVICE_HMAC_KEY_ORG=/d' "$WEB_ENV"
 sed -i '/^A2A_SESSION_SECRET=/d' "$WEB_ENV"
+sed -i '/^WEB_TO_A2A_HMAC_KEY=/d' "$WEB_ENV"
 
 # Phase 1 — shared HMAC secret between a2a-agent and org-mcp. Same value
 # goes to both apps so HMAC verification works. Hardcoded for dev.
 A2A_INTERSERVICE_HMAC_KEY_ORG="0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+# Hardening §1.3 (Stream B Task B1) — web → a2a-agent service auth.
+# Signs `/session-store/insert|revoke|bump-epoch` and
+# `/wallet-action/dispatch` envelopes between the Next.js web server and
+# the a2a-agent edge. Same secret on both ends; canonical-string format
+# lives in apps/a2a-agent/src/auth/service-auth-web.ts.
+WEB_TO_A2A_HMAC_KEY="0xb7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7"
 # A2A session encryption secret (required by a2a-agent for session-package
 # encryption). Hardcoded for dev so fresh-start always has a valid value.
 A2A_SESSION_SECRET="0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+
+# Derive the deployer's address up-front so we can surface it as the
+# production-correct `DEPLOYER_ADDRESS` env var alongside the private
+# key (K6).
+DEPLOYER_ADDRESS_VALUE=$(cast wallet address "$ANVIL_KEY")
 
 # Append new addresses
 cat >> "$WEB_ENV" << EOF
 
 # ─── Deployed Contract Addresses (local Anvil) ──────────────────────
 RPC_URL=$ANVIL_RPC
+# DEPLOYER_PRIVATE_KEY (K6): kept in local dev .env as a relayer
+# fallback for the bootstrap-auth handlers (siwe-verify, passkey-signup,
+# google-callback). In production the key MUST NOT be in runtime env —
+# see docs/operations/kms-signer-setup.md § "Deployer key (K6 — CI/CD
+# only)" and the K6 invariant in scripts/check-no-bypass.sh.
 DEPLOYER_PRIVATE_KEY=$ANVIL_KEY
+# DEPLOYER_ADDRESS (K6): production-correct way to surface the
+# deployer identity at runtime. Routes that only need the deployer's
+# address (e.g. counterfactual smart-account preview in
+# /api/auth/check-agent-name) read this and never touch the private key.
+DEPLOYER_ADDRESS=$DEPLOYER_ADDRESS_VALUE
 A2A_INTERSERVICE_HMAC_KEY_ORG=$A2A_INTERSERVICE_HMAC_KEY_ORG
 A2A_SESSION_SECRET=$A2A_SESSION_SECRET
+WEB_TO_A2A_HMAC_KEY=$WEB_TO_A2A_HMAC_KEY
 ENTRYPOINT_ADDRESS=$ENTRYPOINT
 AGENT_FACTORY_ADDRESS=$FACTORY
 DELEGATION_MANAGER_ADDRESS=$DELEGATION
@@ -420,11 +444,18 @@ update_env_var "$A2A_ENV_FILE" REVOCATION_MODULE_ADDRESS "$REVOCATION_MODULE"
 # initial setup tx via SessionAgentAccountFactory.deploySession). For local
 # dev, use anvil account #1 (deterministic, well-known dev key). For
 # production this should be a per-instance hot wallet.
-A2A_MASTER_EOA_PRIVATE_KEY="0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"
-update_env_var "$A2A_ENV_FILE" A2A_MASTER_EOA_PRIVATE_KEY "$A2A_MASTER_EOA_PRIVATE_KEY"
+#
+# KMS K4 PR-1: renamed A2A_MASTER_EOA_PRIVATE_KEY → A2A_MASTER_PRIVATE_KEY.
+# The old name remains readable as a fallback for one release cycle (config.ts
+# emits a deprecation warning); PR-5 removes the legacy plumbing entirely.
+A2A_MASTER_PRIVATE_KEY="0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"
+update_env_var "$A2A_ENV_FILE" A2A_MASTER_PRIVATE_KEY "$A2A_MASTER_PRIVATE_KEY"
 update_env_var "$A2A_ENV_FILE" ENTRYPOINT_ADDRESS "$ENTRYPOINT"
 update_env_var "$A2A_ENV_FILE" A2A_INTERSERVICE_HMAC_KEY_ORG "$A2A_INTERSERVICE_HMAC_KEY_ORG"
 update_env_var "$A2A_ENV_FILE" A2A_SESSION_SECRET "$A2A_SESSION_SECRET"
+# Hardening §1.3 (Stream B Task B1) — shared secret for web → a2a-agent
+# session-store + wallet-action envelopes. Same value as in WEB_ENV.
+update_env_var "$A2A_ENV_FILE" WEB_TO_A2A_HMAC_KEY "$WEB_TO_A2A_HMAC_KEY"
 # Phase 2 — per-tool executor private keys. anvil accounts #5-#8 (deterministic,
 # unfunded by default — we anvil_setBalance them below). Each family has a
 # distinct address so a compromised key blast-radius is bounded by its policy
@@ -459,7 +490,7 @@ echo "  GRANT_AWARDS:    $TOOL_EXEC_GRANT_AWARDS_ADDR"
 
 # Phase 3 — fund the a2a-agent master EOA so it can deploy SessionAgentAccounts
 # and submit UserOps as the self-bundler.
-A2A_MASTER_EOA_ADDR=$(cast wallet address "$A2A_MASTER_EOA_PRIVATE_KEY")
+A2A_MASTER_EOA_ADDR=$(cast wallet address "$A2A_MASTER_PRIVATE_KEY")
 TEN_ETH_HEX="0x8ac7230489e80000" # 10 ETH
 cast rpc --rpc-url "$ANVIL_RPC" anvil_setBalance "$A2A_MASTER_EOA_ADDR" "$TEN_ETH_HEX" > /dev/null
 echo "Funded a2a-master EOA (10 ETH): $A2A_MASTER_EOA_ADDR"

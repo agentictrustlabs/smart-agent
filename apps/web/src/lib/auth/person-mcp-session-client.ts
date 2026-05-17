@@ -1,44 +1,105 @@
 /**
- * Client for person-mcp's SessionRecord HTTP API.
+ * Client for person-mcp's SessionRecord storage.
  *
- * Routing rule (phase 3 of A2A-first consolidation):
- *   - Every function in this file currently performs a direct HTTP call
- *     against person-mcp's non-`/tools/` `/session-store/*` routes
- *     (`/epoch/<addr>`, `/insert`, `/by-cookie/<value>`, `/active/<addr>`,
- *     `/revoke`, `/bump-epoch`). These are part of person-mcp's Hono app
- *     but live OUTSIDE the MCP tool surface, so the A2A proxy at
- *     `/mcp/<server>/<tool>` cannot currently target them.
- *   - TODO(phase-4): person-mcp owner should expose this state through
- *     MCP tools (e.g. `ssi_session_epoch`, `ssi_session_insert`,
- *     `ssi_session_by_cookie`, `ssi_session_list_active`,
- *     `ssi_session_revoke`, `ssi_session_bump_epoch`) so this entire
- *     module can flip to `callMcp('person', …)`. Tracked as the last
- *     PERSON_MCP_URL holdout in apps/web/src/lib/auth/.
- *   - Some entry points (`fetchSessionByCookie`) intentionally key off
- *     a cookie value that the A2A proxy's per-session auth path doesn't
- *     yet know how to forward — wrapping those tools also requires
- *     extending the A2A delegation-token contract to carry the cookie's
- *     opaque session id. Phase 4 should design that.
+ * Routing: every operation flows through a2a-agent's `/session-store/*`
+ * passthrough (Phase 2 of A2A+MCP consolidation + Hardening §1.3 Stream
+ * B Task B1). The web app does NOT open a direct PERSON_MCP_URL
+ * connection for any session-store operation — person-mcp remains the
+ * storage owner, a2a-agent forwards untouched.
  *
- * Person-mcp owns the canonical session/revocation/audit state. The web
- * app reads/writes through these endpoints instead of touching SQLite
- * directly — keeps a single owner per design doc §5.
+ * Hardening §1.3 (Stream B Task B1): the WRITE routes (`/insert`,
+ * `/revoke`, `/bump-epoch`) carry a signed envelope verified at the a2a
+ * edge via `requireServiceAuth('web')`. The web app signs every write
+ * with `WEB_TO_A2A_HMAC_KEY` over a canonical string that includes the
+ * timestamp, fresh per-request nonce, request path, and sha256 of the
+ * body. The READ routes (`/epoch/:account`, `/by-cookie/:cookieValue`,
+ * `/active/:account`) are unauthenticated at the a2a edge for now —
+ * they're read-only and idempotent; the broader route-classification
+ * sweep in Phase 1B will give them their own service-auth tier.
+ *
+ * Hardening §1.3 (Stream B Task B3): `insertSessionRecord` also threads
+ * the just-completed passkey assertion through to person-mcp so the
+ * storage owner can re-verify the ERC-1271 signature against the smart
+ * account BEFORE writing the row.
  */
 
+import { toBase64Url, buildWebMacProvider, type KmsMacProvider } from '@smart-agent/sdk'
+import { createHash, randomUUID } from 'node:crypto'
 import type { SessionRecord } from '@smart-agent/privacy-creds/session-grant'
 
-function baseUrl(): string {
-  return process.env.PERSON_MCP_URL ?? 'http://localhost:3200'
+let cachedMacProvider: KmsMacProvider | null = null
+function macProvider(): KmsMacProvider {
+  if (!cachedMacProvider) {
+    cachedMacProvider = buildWebMacProvider(process.env)
+  }
+  return cachedMacProvider
+}
+
+function a2aBaseUrl(): string {
+  // Internal-only — the session-store passthrough is system-scoped (no
+  // host-based routing needed). Use A2A_AGENT_URL which points at the
+  // bare loopback host. Avoids the Node-fetch ENOTFOUND on
+  // `agent.localhost` (undici's resolver can't follow the *.localhost
+  // spec the way curl/libcurl does).
+  return process.env.A2A_AGENT_URL ?? 'http://127.0.0.1:3100'
+}
+
+/**
+ * Build signed headers for the web → a2a-agent service-auth envelope
+ * (Hardening §1.3 / Task B1). Mirrors
+ * `apps/a2a-agent/src/auth/service-auth-web.ts::buildWebCanonical`:
+ *
+ *   canonical = `${ts}|${nonce}|${path}|${sha256_hex(body)}`
+ *
+ * `path` is the request path portion only (no host, no query).
+ */
+async function signedHeadersFor(path: string, bodyJson: string): Promise<Record<string, string>> {
+  const timestamp = Math.floor(Date.now() / 1000)
+  const nonce = randomUUID()
+  const bodyHash = createHash('sha256').update(bodyJson, 'utf8').digest('hex')
+  const canonical = `${timestamp}|${nonce}|${path}|${bodyHash}`
+  const canonicalMessage = new TextEncoder().encode(canonical)
+  const { mac } = await macProvider().generateMac({ canonicalMessage })
+  const signature = toBase64Url(mac)
+  return {
+    'content-type': 'application/json',
+    'x-sa-service': 'web',
+    'x-sa-timestamp': String(timestamp),
+    'x-sa-nonce': nonce,
+    'x-sa-signature': signature,
+  }
 }
 
 export async function fetchRevocationEpoch(account: `0x${string}`): Promise<number> {
-  const res = await fetch(`${baseUrl()}/session-store/epoch/${account}`)
+  const res = await fetch(`${a2aBaseUrl()}/session-store/epoch/${account}`)
   if (!res.ok) throw new Error(`epoch fetch failed: ${res.status}`)
   const data = await res.json() as { epoch: number }
   return data.epoch
 }
 
-export async function insertSessionRecord(record: SessionRecord): Promise<void> {
+/**
+ * Passkey assertion bundle the web's /session-grant/finalize route just
+ * verified locally — person-mcp re-verifies the SAME assertion via
+ * ERC-1271 against the smart account before writing the row (Task B3).
+ *
+ * `serverNonce` is the random bytes that anchored the original
+ * challenge `sha256("SessionGrant:v1" || grantHash || serverNonce)`.
+ * Person-mcp reconstructs the challenge from `record.grantHash` plus
+ * this nonce and verifies that the passkey signed it. Without this
+ * bundle, person-mcp's verifier rejects the insert.
+ */
+export interface InsertPasskeyAssertion {
+  credentialIdBase64Url: string
+  authenticatorDataBase64Url: string
+  clientDataJSONBase64Url: string
+  signatureBase64Url: string
+  serverNonce: string
+}
+
+export async function insertSessionRecord(
+  record: SessionRecord,
+  passkeyAssertion?: InsertPasskeyAssertion,
+): Promise<void> {
   const wire = {
     sessionId: record.sessionId,
     sessionIdHash: record.sessionIdHash,
@@ -52,41 +113,54 @@ export async function insertSessionRecord(record: SessionRecord): Promise<void> 
     createdAtMs: record.createdAt.getTime(),
     revocationEpoch: record.revocationEpoch,
   }
-  const res = await fetch(`${baseUrl()}/session-store/insert`, {
+  const path = '/session-store/insert'
+  const payload: Record<string, unknown> = { record: wire }
+  if (passkeyAssertion) {
+    payload.passkeyAssertion = passkeyAssertion
+  }
+  const bodyJson = JSON.stringify(payload)
+  const headers = await signedHeadersFor(path, bodyJson)
+  const res = await fetch(`${a2aBaseUrl()}${path}`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ record: wire }),
+    headers,
+    body: bodyJson,
   })
   if (!res.ok) throw new Error(`session insert failed: ${res.status} ${await res.text()}`)
 }
 
 export async function fetchSessionByCookie(cookieValue: string): Promise<SessionRecord | null> {
-  const res = await fetch(`${baseUrl()}/session-store/by-cookie/${encodeURIComponent(cookieValue)}`)
+  const res = await fetch(`${a2aBaseUrl()}/session-store/by-cookie/${encodeURIComponent(cookieValue)}`)
   if (!res.ok) return null
   const data = await res.json() as { record: SessionRecord | null }
   return data.record
 }
 
 export async function listActiveSessions(account: `0x${string}`): Promise<SessionRecord[]> {
-  const res = await fetch(`${baseUrl()}/session-store/active/${account}`)
+  const res = await fetch(`${a2aBaseUrl()}/session-store/active/${account}`)
   if (!res.ok) return []
   const data = await res.json() as { records: SessionRecord[] }
   return data.records
 }
 
 export async function revokeSessionByCookie(sessionId: string): Promise<void> {
-  await fetch(`${baseUrl()}/session-store/revoke`, {
+  const path = '/session-store/revoke'
+  const bodyJson = JSON.stringify({ sessionId })
+  const headers = await signedHeadersFor(path, bodyJson)
+  await fetch(`${a2aBaseUrl()}${path}`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ sessionId }),
+    headers,
+    body: bodyJson,
   })
 }
 
 export async function bumpRevocationEpoch(account: `0x${string}`): Promise<number> {
-  const res = await fetch(`${baseUrl()}/session-store/bump-epoch`, {
+  const path = '/session-store/bump-epoch'
+  const bodyJson = JSON.stringify({ smartAccountAddress: account })
+  const headers = await signedHeadersFor(path, bodyJson)
+  const res = await fetch(`${a2aBaseUrl()}${path}`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ smartAccountAddress: account }),
+    headers,
+    body: bodyJson,
   })
   if (!res.ok) throw new Error(`bump-epoch failed: ${res.status}`)
   const data = await res.json() as { epoch: number }

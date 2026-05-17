@@ -1,30 +1,19 @@
 import { Hono } from 'hono'
 import { eq } from 'drizzle-orm'
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts'
-import {
-  createPublicClient,
-  createWalletClient,
-  encodeAbiParameters,
-  http,
-  keccak256,
-  toBytes,
-  toHex,
-  type Address,
-  type Hex,
-} from 'viem'
+import { createPublicClient, http } from 'viem'
 import { localhost } from 'viem/chains'
 import {
-  encryptPayload,
-  decryptPayload,
-  randomHex,
   hashDelegation,
   agentAccountAbi,
-  sessionAgentAccountFactoryAbi,
+  clampSessionTtl,
+  type SessionRiskTier,
 } from '@smart-agent/sdk'
 import { db } from '../db'
 import { sessions } from '../db/schema'
 import { config } from '../config'
 import { requireSession } from '../middleware/require-session'
+import { encryptSessionPackage, decryptSessionPackage } from '../auth/encryption'
 
 const ERC1271_MAGIC_VALUE = '0x1626ba7e'
 
@@ -36,34 +25,24 @@ const session = new Hono()
 // with a valid delegation signature (which IS the authentication).
 // Only returns the session ID and public key — no sensitive data.
 
-interface StatefulSessionPolicy {
-  /** Per-asset ETH/ERC-20 budget. Asset `address(0)` for native ETH. */
-  spendCap?: { asset: Address; max: string }[]
-  /** Rolling-window call cap. */
-  rateLimit?: { windowSeconds: number; maxCalls: number }
-  /** (target, selector) tuples to seed the allowlist hook. */
-  allowedCalls?: { target: Address; selector: Hex }[]
-}
-
 session.post('/init', async (c) => {
   const body = await c.req.json<{
     accountAddress: string
     durationSeconds?: number
-    /** Phase 3 — when true, deploy a SessionAgentAccount and route the
-     *  session through `executionPath='session-account'`. The user's root
-     *  delegation in /session/package is then expected to target the
-     *  deployed account address rather than the session-key EOA. */
-    stateful?: boolean
-    /** Required iff `stateful=true`. Configures the first-party modules
-     *  installed on the SessionAgentAccount at deploy time. */
-    policy?: StatefulSessionPolicy
+    /** Risk tier — caps `durationSeconds` per `MAX_SESSION_TTL_SEC`. Defaults
+     *  to `medium` (7 days). High-value or admin flows should pass 'high'
+     *  or 'sensitive'. */
+    tier?: SessionRiskTier
   }>()
 
   if (!body.accountAddress) {
     return c.json({ error: 'accountAddress is required' }, 400)
   }
 
-  const durationSeconds = body.durationSeconds ?? 86400
+  // Clamp requested duration to the cap for the requested risk tier.
+  // An attacker passing a 10-year `durationSeconds` is reduced to the
+  // tier cap; the default tier ('medium') caps at 7 days.
+  const durationSeconds = clampSessionTtl(body.durationSeconds ?? 86400, body.tier ?? 'medium')
 
   // Generate ephemeral session keypair
   const sessionPrivateKey = generatePrivateKey()
@@ -71,47 +50,21 @@ session.post('/init', async (c) => {
 
   const sessionId = `sa_${crypto.randomUUID().replace(/-/g, '')}`
   const expiresAt = new Date(Date.now() + durationSeconds * 1000)
+  const expiresAtISO = expiresAt.toISOString()
 
-  // Dev-only: fund the ephemeral session key with anvil ETH so it can pay
-  // gas when redeeming user delegations on-chain (pool/round create, etc.).
-  // Production: replace with a paymaster (ERC-4337) or session funding flow.
-  if (config.CHAIN_ID === 31337) {
-    try {
-      await fetch(config.RPC_URL, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          jsonrpc: '2.0', id: 1,
-          method: 'anvil_setBalance',
-          params: [sessionAccount.address, '0xDE0B6B3A7640000'], // 1 ETH
-        }),
-      })
-    } catch { /* best-effort; if it fails, the deploy-agent call will surface OOG */ }
-  }
-
-  // ─── Optionally deploy a stateful SessionAgentAccount ───────────────
-  let sessionAgentAccount: Address | null = null
-  if (body.stateful) {
-    try {
-      sessionAgentAccount = await deploySessionAgentAccount({
-        sessionId,
-        userOwner: body.accountAddress as Address,
-        sessionKeyAddress: sessionAccount.address,
-        durationSeconds,
-        policy: body.policy ?? {},
-      })
-    } catch (err) {
-      return c.json(
-        { error: `failed to deploy SessionAgentAccount: ${err instanceof Error ? err.message : 'unknown'}` },
-        500,
-      )
-    }
-  }
-
-  // Encrypt and store the session private key
-  const encrypted = await encryptPayload(
+  // Envelope-encrypt the session private key under a fresh per-row data key
+  // (KMS migration K0+K1). `encryptSessionPackage` binds the AES-GCM tag to
+  // the (sessionId, accountAddress, chainId, expiresAt) tuple via AAD AND
+  // returns the wrapped data key + provider tag for persistence. See
+  // KMS-IMPLEMENTATION-PLAN.md §5.
+  const encrypted = await encryptSessionPackage(
     { sessionPrivateKey },
-    config.A2A_SESSION_SECRET,
+    {
+      sessionId,
+      accountAddress: body.accountAddress,
+      chainId: config.CHAIN_ID,
+      expiresAt: expiresAtISO,
+    },
   )
 
   await db.insert(sessions).values({
@@ -120,131 +73,21 @@ session.post('/init', async (c) => {
     sessionKeyAddress: sessionAccount.address,
     encryptedPackage: encrypted.ciphertext,
     iv: encrypted.iv,
+    encryptedDataKey: encrypted.encryptedDataKey,
+    keyVersion: encrypted.keyVersion,
+    kmsKeyId: encrypted.kmsKeyId,
     status: 'pending',
-    expiresAt: expiresAt.toISOString(),
+    expiresAt: expiresAtISO,
     createdAt: new Date().toISOString(),
-    sessionAgentAccount: sessionAgentAccount ?? undefined,
   })
 
   return c.json({
     sessionId,
     sessionKeyAddress: sessionAccount.address,
-    sessionAgentAccount,
     durationSeconds,
-    expiresAt: expiresAt.toISOString(),
+    expiresAt: expiresAtISO,
   })
 })
-
-// ─── Stateful session-account deploy helper ──────────────────────────
-//
-// Calls SessionAgentAccountFactory.deploySession with:
-//   - validators: [ECDSASessionValidator] keyed to the session EOA
-//   - hooks:      [SpendCapHook?, RateLimitHook?, TargetSelectorAllowlistHook?]
-//                 depending on which fields are present in the policy
-// Signed from the a2a-agent master EOA (config.A2A_MASTER_EOA_PRIVATE_KEY).
-// Returns the deployed account address.
-async function deploySessionAgentAccount(input: {
-  sessionId: string
-  userOwner: Address
-  sessionKeyAddress: Address
-  durationSeconds: number
-  policy: StatefulSessionPolicy
-}): Promise<Address> {
-  const masterEoa = privateKeyToAccount(config.A2A_MASTER_EOA_PRIVATE_KEY)
-  const chain = { ...localhost, id: config.CHAIN_ID }
-  const wallet = createWalletClient({ account: masterEoa, chain, transport: http(config.RPC_URL) })
-  const pub = createPublicClient({ chain, transport: http(config.RPC_URL) })
-
-  const validators: Address[] = []
-  const validatorInits: Hex[] = []
-  const hooks: Address[] = []
-  const hookInits: Hex[] = []
-
-  // Always install the ECDSASessionValidator pinned to this session EOA.
-  if (config.ECDSA_SESSION_VALIDATOR_ADDRESS !== '0x0000000000000000000000000000000000000000') {
-    validators.push(config.ECDSA_SESSION_VALIDATOR_ADDRESS)
-    const expiresAt = BigInt(Math.floor(Date.now() / 1000) + input.durationSeconds)
-    validatorInits.push(
-      encodeAbiParameters(
-        [
-          { type: 'bytes32' },
-          { type: 'address' },
-          { type: 'uint256' },
-        ],
-        [keccak256(toBytes(input.sessionId)), input.sessionKeyAddress, expiresAt],
-      ),
-    )
-  }
-
-  // Optional hooks.
-  if (input.policy.spendCap && input.policy.spendCap.length > 0) {
-    if (config.SPEND_CAP_HOOK_ADDRESS !== '0x0000000000000000000000000000000000000000') {
-      hooks.push(config.SPEND_CAP_HOOK_ADDRESS)
-      const assets = input.policy.spendCap.map((s) => s.asset)
-      const budgets = input.policy.spendCap.map((s) => BigInt(s.max))
-      hookInits.push(
-        encodeAbiParameters(
-          [{ type: 'address[]' }, { type: 'uint256[]' }],
-          [assets, budgets],
-        ),
-      )
-    }
-  }
-  if (input.policy.rateLimit) {
-    if (config.RATE_LIMIT_HOOK_ADDRESS !== '0x0000000000000000000000000000000000000000') {
-      hooks.push(config.RATE_LIMIT_HOOK_ADDRESS)
-      hookInits.push(
-        encodeAbiParameters(
-          [{ type: 'uint256' }, { type: 'uint256' }],
-          [BigInt(input.policy.rateLimit.windowSeconds), BigInt(input.policy.rateLimit.maxCalls)],
-        ),
-      )
-    }
-  }
-  if (input.policy.allowedCalls && input.policy.allowedCalls.length > 0) {
-    if (config.TARGET_SELECTOR_ALLOWLIST_HOOK_ADDRESS !== '0x0000000000000000000000000000000000000000') {
-      hooks.push(config.TARGET_SELECTOR_ALLOWLIST_HOOK_ADDRESS)
-      const targets = input.policy.allowedCalls.map((c) => c.target)
-      const selectors = input.policy.allowedCalls.map((c) => c.selector)
-      hookInits.push(
-        encodeAbiParameters(
-          [{ type: 'address[]' }, { type: 'bytes4[]' }],
-          [targets, selectors],
-        ),
-      )
-    }
-  }
-
-  // Salt = keccak256(userOwner, sessionId) for deterministic, collision-free deploys.
-  const salt = keccak256(
-    encodeAbiParameters(
-      [{ type: 'address' }, { type: 'bytes32' }],
-      [input.userOwner, keccak256(toBytes(input.sessionId))],
-    ),
-  )
-
-  const txHash = await wallet.writeContract({
-    address: config.SESSION_AGENT_ACCOUNT_FACTORY_ADDRESS,
-    abi: sessionAgentAccountFactoryAbi,
-    functionName: 'deploySession',
-    args: [input.userOwner, salt, validators, validatorInits, hooks, hookInits],
-    account: masterEoa,
-    chain: wallet.chain ?? null,
-  })
-  const receipt = await pub.waitForTransactionReceipt({ hash: txHash })
-  if (receipt.status !== 'success') {
-    throw new Error('deploySession reverted')
-  }
-  // Read counterfactual address — matches deployed address.
-  const account = (await pub.readContract({
-    address: config.SESSION_AGENT_ACCOUNT_FACTORY_ADDRESS,
-    abi: sessionAgentAccountFactoryAbi,
-    functionName: 'getAddress',
-    args: [input.userOwner, salt],
-  })) as Address
-  void toHex
-  return account
-}
 
 // ─── POST /session/package ──────────────────────────────────────────
 // SELF-AUTHENTICATING — the delegation signature proves the caller
@@ -380,13 +223,27 @@ session.post('/package', async (c) => {
     return c.json({ error: 'Session missing encrypted data' }, 500)
   }
 
-  // Decrypt stored session private key
-  const storedData = await decryptPayload<{ sessionPrivateKey: string }>(
-    { ciphertext: pendingSession.encryptedPackage, iv: pendingSession.iv },
-    config.A2A_SESSION_SECRET,
+  // Decrypt the pending row (the trip-wire fires on tampered metadata).
+  // KMS migration K0+K1 — routes through `decryptSessionPackage` which
+  // binds aadContext on the KMS layer AND aesAad on the AES-GCM layer.
+  const sessionMeta = {
+    sessionId: pendingSession.id,
+    accountAddress: pendingSession.accountAddress,
+    chainId: config.CHAIN_ID,
+    expiresAt: pendingSession.expiresAt,
+  }
+  const storedData = await decryptSessionPackage<{ sessionPrivateKey: string }>(
+    {
+      encryptedPackage: pendingSession.encryptedPackage,
+      iv: pendingSession.iv,
+      encryptedDataKey: pendingSession.encryptedDataKey,
+      keyVersion: pendingSession.keyVersion,
+      kmsKeyId: pendingSession.kmsKeyId,
+    },
+    sessionMeta,
   )
 
-  // Build full session package and re-encrypt
+  // Build full session package and re-encrypt under a fresh data key.
   const fullPackage = {
     sessionPrivateKey: storedData.sessionPrivateKey,
     sessionKeyAddress: pendingSession.sessionKeyAddress,
@@ -395,7 +252,7 @@ session.post('/package', async (c) => {
     expiresAt: pendingSession.expiresAt,
   }
 
-  const encrypted = await encryptPayload(fullPackage, config.A2A_SESSION_SECRET)
+  const encrypted = await encryptSessionPackage(fullPackage, sessionMeta)
 
   // Activate
   await db
@@ -403,6 +260,9 @@ session.post('/package', async (c) => {
     .set({
       encryptedPackage: encrypted.ciphertext,
       iv: encrypted.iv,
+      encryptedDataKey: encrypted.encryptedDataKey,
+      keyVersion: encrypted.keyVersion,
+      kmsKeyId: encrypted.kmsKeyId,
       status: 'active',
     })
     .where(eq(sessions.id, body.sessionId))

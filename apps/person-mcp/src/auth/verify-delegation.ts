@@ -2,12 +2,11 @@ import {
   verifyDelegationToken,
   hashDelegation,
   decodeTimestampTerms,
-  decodeMcpToolScopeTerms,
   decodeDataScopeTerms,
-  MCP_TOOL_SCOPE_ENFORCER,
   DATA_SCOPE_ENFORCER,
   agentAccountAbi,
   delegationManagerAbi,
+  evaluateCaveats,
 } from '@smart-agent/sdk'
 import type { DataScopeGrant } from '@smart-agent/sdk'
 import { recoverMessageAddress, createPublicClient, http } from 'viem'
@@ -115,38 +114,24 @@ export async function verifyDelegationAndExtractPrincipal(
     }
   }
 
-  // ─── Layer 7: Caveat enforcement ──────────────────────────────
-  const timestampEnforcerAddr = (process.env.TIMESTAMP_ENFORCER_ADDRESS ?? '').toLowerCase()
-  for (const caveat of claims.delegation.caveats) {
-    // Timestamp enforcer — validate time window. ONLY decode if this caveat
-    // IS the TimestampEnforcer; otherwise (AllowedTargets / AllowedMethods /
-    // Value / McpToolScope) decodeTimestampTerms returns garbage values.
-    if (timestampEnforcerAddr && caveat.enforcer.toLowerCase() === timestampEnforcerAddr) {
-      try {
-        const { validAfter, validUntil } = decodeTimestampTerms(caveat.terms)
-        const now = Math.floor(Date.now() / 1000)
-        if (now < validAfter) {
-          return { error: `Delegation not yet valid (validAfter: ${validAfter}, now: ${now})` }
-        }
-        if (now >= validUntil) {
-          return { error: `Delegation expired (validUntil: ${validUntil}, now: ${now})` }
-        }
-      } catch {
-        return { error: 'Failed to decode timestamp caveat' }
-      }
-      continue
-    }
-
-    // MCP tool scope enforcer — validate tool name against allowed list
-    const mcpScopeEnforcerAddr = (process.env.MCP_TOOL_SCOPE_ENFORCER_ADDRESS ?? MCP_TOOL_SCOPE_ENFORCER).toLowerCase()
-    if (caveat.enforcer.toLowerCase() === mcpScopeEnforcerAddr) {
-      try {
-        const { allowedTools } = decodeMcpToolScopeTerms(caveat.terms)
-        if (toolName && !allowedTools.includes(toolName)) {
-          return { error: `Tool '${toolName}' not permitted by delegation scope. Allowed: ${allowedTools.join(', ')}` }
-        }
-      } catch {
-        return { error: 'Failed to decode MCP tool scope caveat' }
+  // ─── Layer 7: Caveat enforcement (fail-closed dispatcher) ─────
+  // The off-chain twin of `packages/contracts/src/enforcers/`. Unknown
+  // enforcers reject the request — previously they fell through
+  // silently and `mcp-only` tools were effectively un-caveat-scoped.
+  // See packages/sdk/src/policy/caveat-evaluator.ts.
+  {
+    const verdicts = evaluateCaveats(
+      claims.delegation.caveats,
+      {
+        mcpTool: toolName ?? '',
+        principal: claims.delegation.delegator,
+        sessionId: claims.jti,
+        timestamp: Math.floor(Date.now() / 1000),
+      },
+    )
+    for (const v of verdicts) {
+      if (!v.allowed) {
+        return { error: `Caveat denied (enforcer ${v.enforcer}): ${v.reason ?? 'no reason'}` }
       }
     }
   }

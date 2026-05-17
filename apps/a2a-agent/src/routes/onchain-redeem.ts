@@ -44,11 +44,16 @@ import {
   type Hex,
 } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
+// KMS K4 PR-1 — master EOA now routes through the signer wrapper. The
+// surrounding viem call shape (walletClient.writeContract /
+// signMessage / signTransaction) is unchanged — `getMasterSigner()`
+// returns a viem `LocalAccount` indistinguishable from
+// `privateKeyToAccount(...)`.
+import { getMasterSigner } from '../auth/a2a-signer'
 import { localhost } from 'viem/chains'
 import {
   agentAccountAbi,
   buildCaveat,
-  decryptPayload,
   delegationManagerAbi,
   agentAccountFactoryAbi,
   poolRegistryAbi,
@@ -78,6 +83,8 @@ import { sessions, executionAudit } from '../db/schema'
 import { config } from '../config'
 import { requireInterServiceAuth } from '../auth/inter-service'
 import { getExecutorForTool } from '../lib/tool-executors'
+import { decryptSessionPackage } from '../auth/encryption'
+import { auditFinalize, readCorrelationId, auditDeny } from '../lib/audit'
 
 const onchainRedeem = new Hono()
 
@@ -207,9 +214,24 @@ async function loadActiveSessionPackage(
   if (row.status !== 'active') return { error: `session not active (status=${row.status})`, status: 401 }
   if (new Date(row.expiresAt) < new Date()) return { error: 'session expired', status: 401 }
   if (!row.encryptedPackage || !row.iv) return { error: 'session missing encrypted package', status: 400 }
-  const pkg = await decryptPayload<StoredSessionPackage>(
-    { ciphertext: row.encryptedPackage, iv: row.iv },
-    config.A2A_SESSION_SECRET,
+  // KMS migration K0+K1 — `decryptSessionPackage` binds AAD on both the
+  // KMS provider's aadContext and the AES-GCM additionalData (Hardening
+  // §1.5 #8 trip-wire preserved). Pre-existing legacy rows route via the
+  // 'legacy' keyVersion fallback.
+  const pkg = await decryptSessionPackage<StoredSessionPackage>(
+    {
+      encryptedPackage: row.encryptedPackage,
+      iv: row.iv,
+      encryptedDataKey: row.encryptedDataKey,
+      keyVersion: row.keyVersion,
+      kmsKeyId: row.kmsKeyId,
+    },
+    {
+      sessionId: row.id,
+      accountAddress: row.accountAddress,
+      chainId: config.CHAIN_ID,
+      expiresAt: row.expiresAt,
+    },
   )
   return { pkg, row }
 }
@@ -226,26 +248,59 @@ onchainRedeem.post('/:id/redeem-tx', requireInterServiceAuth(), async (c) => {
   const sessionId = c.req.param('id')
   const ctx = c.get('interService' as never) as { service: string; bodyRaw: string } | undefined
   const bodyRaw = ctx?.bodyRaw ?? (await c.req.text())
+  const mcpServer = ctx?.service ?? 'unknown'
   let body: RedeemTxBody
   try {
     body = JSON.parse(bodyRaw) as RedeemTxBody
   } catch {
+    await auditDeny(c, {
+      route: '/session/:id/redeem-tx',
+      executionPath: 'stateless-redeem',
+      sessionId,
+      mcpServer,
+      reason: 'invalid JSON body',
+    })
     return c.json({ error: 'invalid JSON body' }, 400)
   }
-  const mcpServer = ctx?.service ?? 'unknown'
 
   // ─── Policy lookup ─────────────────────────────────────────────────
   const policy = TOOL_POLICIES[body.mcpTool]
   if (!policy) {
+    await auditDeny(c, {
+      route: '/session/:id/redeem-tx',
+      executionPath: 'stateless-redeem',
+      sessionId,
+      mcpServer,
+      reason: `unknown tool: ${body.mcpTool}`,
+      mcpCallId: body.mcpCallId,
+    })
     return c.json({ error: `unknown tool: ${body.mcpTool}` }, 403)
   }
   if (policy.executionPath !== 'stateless-redeem') {
+    await auditDeny(c, {
+      route: '/session/:id/redeem-tx',
+      executionPath: 'stateless-redeem',
+      sessionId,
+      mcpServer,
+      reason: `tool ${body.mcpTool} requires path ${policy.executionPath}, not stateless-redeem`,
+      mcpCallId: body.mcpCallId,
+    })
     return c.json({ error: `tool ${body.mcpTool} requires path ${policy.executionPath}, not stateless-redeem` }, 403)
   }
 
   // ─── Resolve session ───────────────────────────────────────────────
   const sess = await loadActiveSessionPackage(sessionId)
-  if ('error' in sess) return c.json({ error: sess.error }, sess.status)
+  if ('error' in sess) {
+    await auditDeny(c, {
+      route: '/session/:id/redeem-tx',
+      executionPath: 'stateless-redeem',
+      sessionId,
+      mcpServer,
+      reason: sess.error,
+      mcpCallId: body.mcpCallId,
+    })
+    return c.json({ error: sess.error }, sess.status)
+  }
   const { pkg } = sess
 
   // ─── Validate target / selector against policy ────────────────────
@@ -254,6 +309,7 @@ onchainRedeem.post('/:id/redeem-tx', requireInterServiceAuth(), async (c) => {
   const targetLower = body.target.toLowerCase() as Address
   if (!allowedTargets.includes(targetLower)) {
     await writeReceipt({
+      c,
       pkg,
       sessionId,
       mcpServer,
@@ -272,8 +328,9 @@ onchainRedeem.post('/:id/redeem-tx', requireInterServiceAuth(), async (c) => {
     return c.json({ error: (e as Error).message }, 400)
   }
   const allowedSelectors = policyAllowedSelectors(body.mcpTool, policy)
-  if (allowedSelectors.size > 0 && !allowedSelectors.has(selector)) {
+  if (!allowedSelectors.has(selector)) {
     await writeReceipt({
+      c,
       pkg,
       sessionId,
       mcpServer,
@@ -285,8 +342,31 @@ onchainRedeem.post('/:id/redeem-tx', requireInterServiceAuth(), async (c) => {
     return c.json({ error: `selector ${selector} not allowed for ${body.mcpTool}` }, 403)
   }
 
+  // ─── Enforce policy.maxValueWei (off-chain twin of ValueEnforcer) ──
+  // The ToolPolicy carries a per-tool wei cap. Until now it was only
+  // declared, never read by redeem handlers. Defense in depth — the
+  // on-chain ValueEnforcer also bounds value via the user's signed
+  // delegation, but policy.maxValueWei reflects the operator's intent.
+  {
+    const requestedValue = BigInt(body.value)
+    if (policy.maxValueWei !== undefined && requestedValue > policy.maxValueWei) {
+      await writeReceipt({
+        c,
+        pkg,
+        sessionId,
+        mcpServer,
+        body,
+        executionPath: 'stateless-redeem',
+        status: 'denied',
+        errorReason: `value ${requestedValue} exceeds tool maxValueWei ${policy.maxValueWei}`,
+      })
+      return c.json({ error: `value ${requestedValue} exceeds tool maxValueWei ${policy.maxValueWei}` }, 400)
+    }
+  }
+
   // ─── Insert pending receipt ────────────────────────────────────────
   const receiptId = await writeReceipt({
+    c,
     pkg,
     sessionId,
     mcpServer,
@@ -331,26 +411,17 @@ onchainRedeem.post('/:id/redeem-tx', requireInterServiceAuth(), async (c) => {
     const receipt = await pub.waitForTransactionReceipt({ hash: txHash })
     const ok = receipt.status === 'success'
 
-    await db.update(executionAudit)
-      .set({
-        status: ok ? 'completed' : 'reverted',
-        txHash,
-        finalizedAt: new Date().toISOString(),
-        errorReason: ok ? '' : 'transaction reverted',
-      })
-      .where(eq(executionAudit.id, receiptId))
+    await auditFinalize(receiptId, {
+      status: ok ? 'completed' : 'reverted',
+      txHash,
+      errorReason: ok ? '' : 'transaction reverted',
+    })
 
     if (!ok) return c.json({ error: 'tx reverted', txHash, executionReceiptId: receiptId }, 502)
     return c.json({ txHash, executionReceiptId: receiptId })
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
-    await db.update(executionAudit)
-      .set({
-        status: 'reverted',
-        errorReason: msg.slice(0, 1000),
-        finalizedAt: new Date().toISOString(),
-      })
-      .where(eq(executionAudit.id, receiptId))
+    await auditFinalize(receiptId, { status: 'reverted', errorReason: msg.slice(0, 1000) })
     return c.json({ error: `redeem failed: ${msg}` }, 500)
   }
 })
@@ -384,6 +455,7 @@ onchainRedeem.post('/:id/deploy-agent', requireInterServiceAuth(), async (c) => 
   const callDataPreviewHash: Hex = keccak256(toBytes(`deploy-agent:${body.owner}:${body.salt}`))
 
   const receiptId = await writeReceipt({
+    c,
     pkg,
     sessionId,
     mcpServer,
@@ -429,26 +501,17 @@ onchainRedeem.post('/:id/deploy-agent', requireInterServiceAuth(), async (c) => 
     }) as Address
 
     const ok = receipt.status === 'success'
-    await db.update(executionAudit)
-      .set({
-        status: ok ? 'completed' : 'reverted',
-        txHash,
-        finalizedAt: new Date().toISOString(),
-        errorReason: ok ? '' : 'transaction reverted',
-      })
-      .where(eq(executionAudit.id, receiptId))
+    await auditFinalize(receiptId, {
+      status: ok ? 'completed' : 'reverted',
+      txHash,
+      errorReason: ok ? '' : 'transaction reverted',
+    })
 
     if (!ok) return c.json({ error: 'tx reverted', txHash, executionReceiptId: receiptId }, 502)
     return c.json({ address: deployedAddress, txHash, executionReceiptId: receiptId })
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
-    await db.update(executionAudit)
-      .set({
-        status: 'reverted',
-        errorReason: msg.slice(0, 1000),
-        finalizedAt: new Date().toISOString(),
-      })
-      .where(eq(executionAudit.id, receiptId))
+    await auditFinalize(receiptId, { status: 'reverted', errorReason: msg.slice(0, 1000) })
     return c.json({ error: `deploy-agent failed: ${msg}` }, 500)
   }
 })
@@ -569,12 +632,38 @@ onchainRedeem.post('/:id/redeem-with-chain', requireInterServiceAuth(), async (c
     return c.json({ error: (e as Error).message }, 400)
   }
   const allowedSelectors = policyAllowedSelectors(body.mcpTool, policy)
-  if (allowedSelectors.size > 0 && !allowedSelectors.has(selector)) {
+  if (!allowedSelectors.has(selector)) {
     return c.json({ error: `selector ${selector} not allowed for ${body.mcpTool}` }, 403)
+  }
+
+  // Enforce policy.maxValueWei (off-chain twin of ValueEnforcer).
+  {
+    const requestedValue = BigInt(body.value)
+    if (policy.maxValueWei !== undefined && requestedValue > policy.maxValueWei) {
+      await writeReceipt({
+        c,
+        pkg,
+        sessionId,
+        mcpServer,
+        body: {
+          mcpTool: body.mcpTool,
+          mcpCallId: body.mcpCallId,
+          a2aTaskId: body.a2aTaskId ?? '',
+          target: body.target,
+          value: body.value,
+          callData: body.callData,
+        },
+        executionPath: 'stateless-redeem',
+        status: 'denied',
+        errorReason: `value ${requestedValue} exceeds tool maxValueWei ${policy.maxValueWei}`,
+      })
+      return c.json({ error: `value ${requestedValue} exceeds tool maxValueWei ${policy.maxValueWei}` }, 400)
+    }
   }
 
   // Receipt.
   const receiptId = await writeReceipt({
+    c,
     pkg,
     sessionId,
     mcpServer,
@@ -628,26 +717,17 @@ onchainRedeem.post('/:id/redeem-with-chain', requireInterServiceAuth(), async (c
     const receipt = await pub.waitForTransactionReceipt({ hash: txHash })
     const ok = receipt.status === 'success'
 
-    await db.update(executionAudit)
-      .set({
-        status: ok ? 'completed' : 'reverted',
-        txHash,
-        finalizedAt: new Date().toISOString(),
-        errorReason: ok ? '' : 'transaction reverted',
-      })
-      .where(eq(executionAudit.id, receiptId))
+    await auditFinalize(receiptId, {
+      status: ok ? 'completed' : 'reverted',
+      txHash,
+      errorReason: ok ? '' : 'transaction reverted',
+    })
 
     if (!ok) return c.json({ error: 'tx reverted', txHash, executionReceiptId: receiptId }, 502)
     return c.json({ txHash, executionReceiptId: receiptId })
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
-    await db.update(executionAudit)
-      .set({
-        status: 'reverted',
-        errorReason: msg.slice(0, 1000),
-        finalizedAt: new Date().toISOString(),
-      })
-      .where(eq(executionAudit.id, receiptId))
+    await auditFinalize(receiptId, { status: 'reverted', errorReason: msg.slice(0, 1000) })
     return c.json({ error: `redeem-with-chain failed: ${msg}` }, 500)
   }
 })
@@ -725,6 +805,7 @@ onchainRedeem.post('/:id/redeem-subdelegated', requireInterServiceAuth(), async 
   const targetLower = body.target.toLowerCase() as Address
   if (!allowedTargets.includes(targetLower)) {
     await writeReceipt({
+      c,
       pkg,
       sessionId,
       mcpServer,
@@ -743,8 +824,9 @@ onchainRedeem.post('/:id/redeem-subdelegated', requireInterServiceAuth(), async 
     return c.json({ error: (e as Error).message }, 400)
   }
   const allowedSelectors = policyAllowedSelectors(body.mcpTool, policy)
-  if (allowedSelectors.size > 0 && !allowedSelectors.has(selector)) {
+  if (!allowedSelectors.has(selector)) {
     await writeReceipt({
+      c,
       pkg,
       sessionId,
       mcpServer,
@@ -756,12 +838,35 @@ onchainRedeem.post('/:id/redeem-subdelegated', requireInterServiceAuth(), async 
     return c.json({ error: `selector ${selector} not allowed for ${body.mcpTool}` }, 403)
   }
 
+  // ─── Enforce policy.maxValueWei (off-chain twin of ValueEnforcer) ──
+  {
+    const requestedValue = BigInt(body.value)
+    if (policy.maxValueWei !== undefined && requestedValue > policy.maxValueWei) {
+      await writeReceipt({
+        c,
+        pkg,
+        sessionId,
+        mcpServer,
+        body,
+        executionPath: 'sub-delegated',
+        status: 'denied',
+        errorReason: `value ${requestedValue} exceeds tool maxValueWei ${policy.maxValueWei}`,
+      })
+      return c.json({ error: `value ${requestedValue} exceeds tool maxValueWei ${policy.maxValueWei}` }, 400)
+    }
+  }
+
   // ─── Resolve executor identity ─────────────────────────────────────
-  let executor: { address: Address; privateKey: Hex; family: string }
+  // K5 — `getExecutorForTool` now returns a viem `LocalAccount` backed
+  // by either the dev hex key (local-aes) or the per-tool AWS KMS key
+  // (aws-kms). The `account` field replaces the legacy
+  // `privateKeyToAccount(executor.privateKey)` construction below.
+  let executor: Awaited<ReturnType<typeof getExecutorForTool>>
   try {
-    executor = getExecutorForTool(body.mcpTool)
+    executor = await getExecutorForTool(body.mcpTool)
   } catch (e) {
     await writeReceipt({
+      c,
       pkg,
       sessionId,
       mcpServer,
@@ -812,6 +917,7 @@ onchainRedeem.post('/:id/redeem-subdelegated', requireInterServiceAuth(), async 
 
   // Receipt prefill (before submit so we always have a row on revert).
   const receiptId = await writeReceipt({
+    c,
     pkg,
     sessionId,
     mcpServer,
@@ -826,7 +932,9 @@ onchainRedeem.post('/:id/redeem-subdelegated', requireInterServiceAuth(), async 
 
   // ─── Submit redeem chain ───────────────────────────────────────────
   try {
-    const executorAccount = privateKeyToAccount(executor.privateKey)
+    // K5 — `executor.account` is the K5-built viem `LocalAccount`
+    // (signed by AWS KMS in prod, by the local hex key in dev).
+    const executorAccount = executor.account
     const wallet = createWalletClient({
       account: executorAccount,
       chain: getChain(),
@@ -908,16 +1016,13 @@ onchainRedeem.post('/:id/redeem-subdelegated', requireInterServiceAuth(), async 
       }
     }
 
-    await db.update(executionAudit)
-      .set({
-        status: ok ? 'completed' : 'reverted',
-        txHash,
-        finalizedAt: new Date().toISOString(),
-        errorReason: ok
-          ? (revokeError ? `submit-ok; revoke-failed: ${revokeError.slice(0, 500)}` : '')
-          : 'transaction reverted',
-      })
-      .where(eq(executionAudit.id, receiptId))
+    await auditFinalize(receiptId, {
+      status: ok ? 'completed' : 'reverted',
+      txHash,
+      errorReason: ok
+        ? (revokeError ? `submit-ok; revoke-failed: ${revokeError.slice(0, 500)}` : '')
+        : 'transaction reverted',
+    })
 
     if (!ok) {
       return c.json({ error: 'tx reverted', txHash, executionReceiptId: receiptId }, 502)
@@ -931,13 +1036,7 @@ onchainRedeem.post('/:id/redeem-subdelegated', requireInterServiceAuth(), async 
     })
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
-    await db.update(executionAudit)
-      .set({
-        status: 'reverted',
-        errorReason: msg.slice(0, 1000),
-        finalizedAt: new Date().toISOString(),
-      })
-      .where(eq(executionAudit.id, receiptId))
+    await auditFinalize(receiptId, { status: 'reverted', errorReason: msg.slice(0, 1000) })
     return c.json({ error: `redeem-subdelegated failed: ${msg}` }, 500)
   }
 })
@@ -955,6 +1054,16 @@ interface ReceiptInput {
   overrideCallDataHash?: Hex | null
   toolGrantHash?: Hex | null
   toolExecutor?: Address | null
+  /**
+   * Hardening Phase 1D — cross-service correlation id. Either passed
+   * explicitly OR resolved via `c` (Hono context) if that field is
+   * provided. Every audit row carries the same id from the web edge
+   * down to the chain receipt so a security investigator can join
+   * web → a2a → chain on a single value.
+   */
+  correlationId?: string | null
+  /** Hono context — used to default `correlationId` when not explicit. */
+  c?: import('hono').Context
 }
 
 async function writeReceipt(input: ReceiptInput): Promise<number> {
@@ -968,6 +1077,12 @@ async function writeReceipt(input: ReceiptInput): Promise<number> {
     try { callDataHash = keccak256(body.callData) } catch { callDataHash = null }
   }
   const rootGrantHash = rootGrantHashFromPkg(pkg)
+  // Hardening Phase 1D — every audit row carries the correlation id set
+  // at the web edge so the full web→a2a→chain trail joins on a single
+  // value. Reads from `c.var.correlationId` when present (see
+  // middleware/correlation-id.ts).
+  const correlationId =
+    input.correlationId ?? (input.c ? readCorrelationId(input.c) : null) ?? null
   const inserted = await db.insert(executionAudit).values({
     rootGrantHash,
     sessionId,
@@ -989,6 +1104,7 @@ async function writeReceipt(input: ReceiptInput): Promise<number> {
     errorReason: input.errorReason ?? '',
     receivedAt: new Date().toISOString(),
     finalizedAt: null,
+    correlationId,
   }).returning({ id: executionAudit.id })
   return inserted[0]!.id
 }
@@ -1060,7 +1176,7 @@ onchainRedeem.post('/:id/redeem-via-account', requireInterServiceAuth(), async (
   const targetLower = body.target.toLowerCase() as Address
   if (allowedTargets.length > 0 && !allowedTargets.includes(targetLower)) {
     await writeReceipt({
-      pkg, sessionId, mcpServer, body,
+      c, pkg, sessionId, mcpServer, body,
       executionPath: 'session-account', status: 'denied',
       errorReason: `target ${body.target} not in policy allowed targets`,
     })
@@ -1071,13 +1187,26 @@ onchainRedeem.post('/:id/redeem-via-account', requireInterServiceAuth(), async (
     return c.json({ error: (e as Error).message }, 400)
   }
   const allowedSelectors = policyAllowedSelectors(body.mcpTool, policy)
-  if (allowedSelectors.size > 0 && !allowedSelectors.has(selector)) {
+  if (!allowedSelectors.has(selector)) {
     await writeReceipt({
-      pkg, sessionId, mcpServer, body,
+      c, pkg, sessionId, mcpServer, body,
       executionPath: 'session-account', status: 'denied',
       errorReason: `selector ${selector} not in policy allowed selectors`,
     })
     return c.json({ error: `selector ${selector} not allowed for ${body.mcpTool}` }, 403)
+  }
+
+  // ─── Enforce policy.maxValueWei (off-chain twin of ValueEnforcer) ──
+  {
+    const requestedValue = BigInt(body.value)
+    if (policy.maxValueWei !== undefined && requestedValue > policy.maxValueWei) {
+      await writeReceipt({
+        c, pkg, sessionId, mcpServer, body,
+        executionPath: 'session-account', status: 'denied',
+        errorReason: `value ${requestedValue} exceeds tool maxValueWei ${policy.maxValueWei}`,
+      })
+      return c.json({ error: `value ${requestedValue} exceeds tool maxValueWei ${policy.maxValueWei}` }, 400)
+    }
   }
 
   // ─── Build the inner execute() callData ────────────────────────────
@@ -1140,7 +1269,7 @@ onchainRedeem.post('/:id/redeem-via-account', requireInterServiceAuth(), async (
 
   // ─── Submit via the self-bundler (master EOA pays gas) ────────────
   const receiptId = await writeReceipt({
-    pkg, sessionId, mcpServer, body,
+    c, pkg, sessionId, mcpServer, body,
     executionPath: 'session-account', status: 'pending',
     overrideSelector: selector,
     overrideCallDataHash: keccak256(body.callData),
@@ -1148,7 +1277,7 @@ onchainRedeem.post('/:id/redeem-via-account', requireInterServiceAuth(), async (
   })
 
   try {
-    const masterEoa = privateKeyToAccount(config.A2A_MASTER_EOA_PRIVATE_KEY)
+    const masterEoa = await getMasterSigner()
     const wallet = createWalletClient({
       account: masterEoa,
       chain: getChain(),
@@ -1165,15 +1294,12 @@ onchainRedeem.post('/:id/redeem-via-account', requireInterServiceAuth(), async (
     const r = await pub.waitForTransactionReceipt({ hash: txHash })
     const ok = r.status === 'success'
 
-    await db.update(executionAudit)
-      .set({
-        status: ok ? 'completed' : 'reverted',
-        txHash,
-        userOpHash,
-        finalizedAt: new Date().toISOString(),
-        errorReason: ok ? '' : 'handleOps reverted',
-      })
-      .where(eq(executionAudit.id, receiptId))
+    await auditFinalize(receiptId, {
+      status: ok ? 'completed' : 'reverted',
+      txHash,
+      userOpHash,
+      errorReason: ok ? '' : 'handleOps reverted',
+    })
 
     if (!ok) return c.json({ error: 'handleOps reverted', txHash, userOpHash, executionReceiptId: receiptId }, 502)
     return c.json({
@@ -1184,13 +1310,7 @@ onchainRedeem.post('/:id/redeem-via-account', requireInterServiceAuth(), async (
     })
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
-    await db.update(executionAudit)
-      .set({
-        status: 'reverted',
-        errorReason: msg.slice(0, 1000),
-        finalizedAt: new Date().toISOString(),
-      })
-      .where(eq(executionAudit.id, receiptId))
+    await auditFinalize(receiptId, { status: 'reverted', errorReason: msg.slice(0, 1000) })
     return c.json({ error: `redeem-via-account failed: ${msg}` }, 500)
   }
 })

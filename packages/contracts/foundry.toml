@@ -13,5 +13,11 @@ remappings = [
     "forge-std/=lib/forge-std/src/",
 ]
 
+# KMS K4 PR-2: KmsSigning.t.sol reads a pre-computed signature fixture via
+# `vm.readFile`. Permission is scoped to the test fixtures directory only.
+fs_permissions = [
+    { access = "read", path = "./test/fixtures" }
+]
+
 [fuzz]
 runs = 256

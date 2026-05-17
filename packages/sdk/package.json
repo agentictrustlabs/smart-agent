@@ -4,18 +4,34 @@
   "private": true,
   "main": "./src/index.ts",
   "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./key-custody": {
+      "types": "./src/key-custody/index.ts",
+      "default": "./src/key-custody/index.ts"
+    }
+  },
   "scripts": {
     "typecheck": "tsc --noEmit",
     "lint": "echo 'no lint configured'",
-    "test": "echo 'no tests yet'",
+    "test": "tsx --test src/__tests__/*.test.ts src/__tests__/key-custody/*.test.ts src/policy/__tests__/*.test.ts",
     "clean": "rm -rf dist"
   },
   "dependencies": {
     "@smart-agent/discovery": "workspace:*",
     "@smart-agent/types": "workspace:*",
+    "@aws-sdk/client-kms": "^3.700.0",
+    "@noble/curves": "^1.9.1",
+    "@noble/hashes": "^1.8.0",
+    "@vercel/oidc-aws-credentials-provider": "^3.1.0",
     "viem": "^2.21.0"
   },
   "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.0.0",
     "typescript": "^5.5.0"
   }
 }

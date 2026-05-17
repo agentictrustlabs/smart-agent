@@ -2,7 +2,6 @@ import { Hono } from 'hono'
 import { eq } from 'drizzle-orm'
 import { privateKeyToAccount } from 'viem/accounts'
 import {
-  decryptPayload,
   mintDelegationToken,
 } from '@smart-agent/sdk'
 import type { DelegationTokenClaims } from '@smart-agent/sdk'
@@ -10,6 +9,7 @@ import { db } from '../db'
 import { sessions } from '../db/schema'
 import { config } from '../config'
 import { requireSession } from '../middleware/require-session'
+import { decryptSessionPackage } from '../auth/encryption'
 
 /** Shape of our encrypted session package (from /session/package) */
 interface StoredSessionPackage {
@@ -52,10 +52,21 @@ delegation.post('/mint', requireSession, async (c) => {
     return c.json({ error: 'Agent session expired' }, 400)
   }
 
-  // Decrypt the session package
-  const pkg = await decryptPayload<StoredSessionPackage>(
-    { ciphertext: activeSession.encryptedPackage!, iv: activeSession.iv! },
-    config.A2A_SESSION_SECRET,
+  // Decrypt via the KMS-aware helper — same AAD trip-wire on both layers.
+  const pkg = await decryptSessionPackage<StoredSessionPackage>(
+    {
+      encryptedPackage: activeSession.encryptedPackage,
+      iv: activeSession.iv,
+      encryptedDataKey: activeSession.encryptedDataKey,
+      keyVersion: activeSession.keyVersion,
+      kmsKeyId: activeSession.kmsKeyId,
+    },
+    {
+      sessionId: activeSession.id,
+      accountAddress: activeSession.accountAddress,
+      chainId: config.CHAIN_ID,
+      expiresAt: activeSession.expiresAt,
+    },
   )
 
   // Build delegation token claims

@@ -104,8 +104,82 @@ export type { DelegationClientConfig } from './delegation'
 export { createAgentSession, isSessionValid } from './session'
 
 // ─── Crypto (session encryption, HMAC) ──────────────────────────────
-export { encryptPayload, decryptPayload, randomHex, hmacSign, hmacVerify } from './crypto'
+export {
+  encryptPayload,
+  decryptPayload,
+  buildSessionAAD,
+  randomHex,
+  hmacSign,
+  hmacVerify,
+  toBase64Url,
+  fromBase64Url,
+} from './crypto'
 export type { EncryptedPayload } from './crypto'
+
+// ─── Key custody (KMS migration K0+K1+K2) ────────────────────────────
+// Re-exported here so callers can `import { ... } from '@smart-agent/sdk'`
+// in addition to the subpath `from '@smart-agent/sdk/key-custody'`.
+// See `packages/sdk/src/key-custody/types.ts` for the rationale.
+export {
+  createLocalAesProvider,
+  createAwsKmsProvider,
+  createVaultTransitProvider,
+  canonicalContextBytes,
+  extractKmsKeyUuid,
+  // K4 PR-1 — local-secp256k1 master-EOA signer + viem LocalAccount adapter.
+  createLocalSecp256k1Signer,
+  buildCanonicalDigest,
+  createKmsAccount,
+  // K4 PR-2 — AWS KMS asymmetric ECC_SECG_P256K1 signer (prod target).
+  createAwsKmsSigner,
+  // K5 — per-tool-family executor signer registry (round-awards,
+  // disbursement, pool-lifecycle, grant-awards). Same primitives as K4
+  // parameterized by tool id.
+  createToolExecutorSigner,
+  isToolExecutorId,
+  listToolExecutorIds,
+  toolEnvKeyName,
+  TOOL_EXECUTOR_IDS,
+  // K3-extension — AWS KMS HMAC provider + local dev counterpart + factories.
+  createAwsKmsMacProvider,
+  createLocalHmacProvider,
+  buildMcpMacProvider,
+  buildWebMacProvider,
+  envKeyForMacKeyId,
+  MAC_KEY_IDS,
+  MCP_TO_MAC_KEY_ID,
+} from './key-custody'
+export type {
+  A2AKeyProvider,
+  LocalAesProviderEnv,
+  AwsKmsEnv,
+  AwsKmsDeps,
+  VaultTransitEnv,
+  VaultTransitDeps,
+  LocalSecp256k1Env,
+  LocalSecp256k1Signer,
+  KmsAccountBackend,
+  CreateKmsAccountOptions,
+  AwsKmsSignerEnv,
+  AwsKmsSignerDeps,
+  AwsKmsSigner,
+  ToolExecutorId,
+  ToolExecutorSignerBackend,
+  ToolExecutorSignerEnv,
+  ToolExecutorSignerDeps,
+  // K3-extension types.
+  KmsMacProvider,
+  AwsKmsMacEnv,
+  AwsKmsMacDeps,
+  LocalHmacEnv,
+  MacKeyId,
+  McpName,
+  McpMacProviderEnv,
+} from './key-custody'
+
+// ─── Session TTL policy (risk-tier-based caps) ───────────────────────
+export { MAX_SESSION_TTL_SEC, clampSessionTtl } from './policy/session-ttl'
+export type { SessionRiskTier } from './policy/session-ttl'
 
 // ─── Challenge Authentication ───────────────────────────────────────
 export { createChallenge, isChallengeExpired, hashChallenge, A2A_AUTH_DOMAIN, CHALLENGE_TYPES } from './challenge'
@@ -495,6 +569,18 @@ export type {
   RoundStatus,
   RoundVisibility,
 } from './onchain/attributes/fundRegistry'
+
+// ─── Caveat evaluator (off-chain twin of on-chain enforcers) ─────────
+export {
+  evaluateCaveats,
+  firstDenial,
+} from './policy/caveat-evaluator'
+export type {
+  CaveatContext,
+  CaveatVerdict,
+  CaveatLike,
+  EnforcerAddressMap,
+} from './policy/caveat-evaluator'
 
 // ─── ToolPolicyRegistry (Phase 0 — delegation architecture) ──────────
 export {

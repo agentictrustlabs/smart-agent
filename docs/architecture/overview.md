@@ -756,3 +756,63 @@ process in cleartext and is never exposed to the Web server.
 - Governance proposal flow: [agent-control.md](./agent-control.md)
 - Relationship lifecycle (propose → confirm → active → revoke): [relationship-protocol.md](./relationship-protocol.md)
 - Roadmap: [../specs/roadmap.md](../specs/roadmap.md)
+
+## Production hardening (Phase 1)
+
+Body-size and per-IP rate limits are applied at the a2a-agent and web
+edges (HARDENING-PLAN §1.5 #9):
+
+- a2a-agent: 256 KB global body cap, 1 MB on `/session/package`, 60
+  req/min/IP globally, 10 req/min/IP on `/session/init` and `/auth/*`.
+  See `apps/a2a-agent/src/middleware/rate-limit.ts`.
+- web: 10 req/min/IP on `/api/auth/{passkey,siwe}-{challenge,verify}`
+  and `/api/a2a/bootstrap/complete`. See `apps/web/src/middleware.ts`.
+
+Both rate limiters use **in-process Map state** — correct only on a
+single instance. Multi-instance production deployments MUST migrate
+to a Redis-backed sliding window before going live.
+
+### Session AAD migration
+
+Session packages encrypted by a2a-agent are now AES-GCM AAD-bound to
+`keccak256(packed(sessionId, accountAddress, chainId, expiresAt))` via
+`buildSessionAAD()` in `@smart-agent/sdk` (HARDENING-PLAN §1.5 #8).
+A leaked ciphertext + secret cannot be replayed against any other
+session row because each row's AAD differs.
+
+**Trip-wire**: pre-AAD ciphertexts cannot be decrypted by the new code
+(which now passes AAD on read for every session path). Operators MUST
+run `./scripts/fresh-start.sh` once after deploying this change so the
+session table is re-seeded.
+
+### Dev-route production gate
+
+Routes that exist only for local development or one-shot demo seeding
+return 404 in production via `requireDev()` from
+`apps/web/src/lib/env-guard.ts`. Currently gated:
+
+- `/api/boot-seed`
+- `/api/dev-membership-check`
+- `/api/dev-patch-hannah`
+- `/api/ontology-sync/turtle`
+- `/api/explorer/edit`
+
+Each gated route also carries a `@sa-route dev-only @sa-prod-gate
+requireDev` JSDoc tag for the future route-classification parser
+(Phase 1A).
+
+### Session TTL caps
+
+`/session/init` clamps the requested `durationSeconds` to a risk-tier
+cap (HARDENING-PLAN §1.5 #7). Tiers and caps live in
+`packages/sdk/src/policy/session-ttl.ts`:
+
+| Tier        | Cap     |
+| ----------- | ------- |
+| `low`       | 30 days |
+| `medium`    | 7 days  |
+| `high`      | 1 day   |
+| `sensitive` | 4 hours |
+
+The default tier is `medium`. Callers should pass `tier: 'high'` or
+`'sensitive'` for write-paths that touch org or treasury state.

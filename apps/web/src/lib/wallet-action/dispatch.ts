@@ -1,30 +1,25 @@
 /**
  * Server-side WalletActionV1 dispatch.
  *
- * Routing rule (phase 3 of A2A-first consolidation):
- *   - The session-record lookup at step 1 is performed via
- *     `fetchSessionByCookie`, which lives in
- *     `apps/web/src/lib/auth/person-mcp-session-client.ts` — that file is
- *     itself a direct-HTTP module against person-mcp's `/session-store/*`
- *     routes (TODO phase-4 there).
- *   - Step 5 (`POST /wallet-action/dispatch` on person-mcp) is ALSO direct
- *     HTTP because the route is a non-`/tools/` Hono endpoint that the
- *     A2A proxy cannot currently target. TODO(phase-4): wrap as an MCP
- *     tool (e.g. `ssi_dispatch_wallet_action`) so this whole module can
- *     route through `callMcp('person', …)` and drop PERSON_MCP_URL.
+ * Phase 3 of A2A+MCP consolidation — every step now flows through
+ * a2a-agent. The web app no longer opens a direct PERSON_MCP_URL
+ * connection:
  *
- * Replaces the legacy passkey-prompted flow (signWalletActionClient +
- * submitWalletProvision/store/present) with a single server-side path:
- *
- *   1. Read grant cookie (session-id) → look up SessionRecord on person-mcp.
+ *   1. Read grant cookie (session-id) → look up SessionRecord via
+ *      `fetchSessionByCookie`, which routes through a2a-agent's
+ *      `/session-store/by-cookie/<cookie>` passthrough.
  *   2. Re-derive the session-EOA via the configured custody backend.
  *   3. Build WalletActionV1 (canonicalized payload hash, action type, etc.).
  *   4. Sign the canonical action hash with the session-EOA.
- *   5. POST { action, signature, payload } to person-mcp /wallet-action/dispatch.
- *      Person-mcp verifies (verifyDelegatedWalletAction) AND executes.
+ *   5. POST { action, signature, payload } to a2a-agent's
+ *      `/wallet-action/dispatch` passthrough. Person-mcp verifies
+ *      (verifyDelegatedWalletAction) AND executes.
  *
- * No passkey prompt. No client-side keys. The user already proved consent
- * by signing the SessionGrant at signin (design doc §3.4 audit C3).
+ * The WalletAction signature is the cryptographic authority that
+ * person-mcp re-verifies on receipt. Hardening §1.3 (Stream B Task B1)
+ * adds a defense-in-depth web→a2a HMAC envelope at the a2a edge so an
+ * in-process langchain runtime (or anyone else on the loopback
+ * interface) can't forge dispatches without going through the web app.
  */
 
 import { cookies } from 'next/headers'
@@ -36,9 +31,24 @@ import {
 import { grantCookieName } from '@/lib/auth/session-cookie'
 import { fetchSessionByCookie } from '@/lib/auth/person-mcp-session-client'
 import { getKeyCustody } from '@/lib/key-custody'
-import { randomUUID } from 'node:crypto'
+import { toBase64Url, buildWebMacProvider, type KmsMacProvider } from '@smart-agent/sdk'
+import { createHash, randomUUID } from 'node:crypto'
 
-const PERSON_MCP_URL = process.env.PERSON_MCP_URL ?? 'http://localhost:3200'
+let cachedDispatchMacProvider: KmsMacProvider | null = null
+function dispatchMacProvider(): KmsMacProvider {
+  if (!cachedDispatchMacProvider) {
+    cachedDispatchMacProvider = buildWebMacProvider(process.env)
+  }
+  return cachedDispatchMacProvider
+}
+
+function a2aBaseUrl(): string {
+  // System-scoped passthrough — no host-based routing. Hit the bare
+  // loopback host directly. Avoids Node-fetch ENOTFOUND on
+  // `agent.localhost` (undici's resolver can't follow the *.localhost
+  // spec).
+  return process.env.A2A_AGENT_URL ?? 'http://127.0.0.1:3100'
+}
 
 export class DispatchError extends Error {
   constructor(public readonly code: string, public readonly status: number, public readonly detail: string) {
@@ -113,20 +123,23 @@ export async function dispatchWalletAction<T = unknown>(input: DispatchInput): P
     throw new DispatchError('signer_drift', 500, `derived ${address} but session expects ${session.sessionSignerAddress}`)
   }
 
-  // 5. Dispatch to person-mcp.
-  //    TODO(phase-4): replace with `callMcp('person', 'ssi_dispatch_wallet_action',
-  //    { action, actionSignature: signature, sessionId, payload })` once person-mcp
-  //    exposes the dispatch handler as an MCP tool. The current direct HTTP
-  //    POST is a deferred carve-out from the A2A-first routing rule.
-  const res = await fetch(`${PERSON_MCP_URL}/wallet-action/dispatch`, {
+  // 5. Dispatch through a2a-agent's `/wallet-action/dispatch` passthrough.
+  //    Person-mcp re-verifies the action signature on receipt. The a2a
+  //    edge also verifies the web→a2a HMAC envelope (Hardening §1.3 /
+  //    Stream B Task B1) — defense-in-depth against an in-process
+  //    langchain runtime forging dispatches.
+  const dispatchPath = '/wallet-action/dispatch'
+  const bodyJson = JSON.stringify({
+    action,
+    actionSignature: signature,
+    sessionId: session.sessionId,
+    payload: input.payload,
+  })
+  const headers = await dispatchSignedHeaders(dispatchPath, bodyJson)
+  const res = await fetch(`${a2aBaseUrl()}${dispatchPath}`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      action,
-      actionSignature: signature,
-      sessionId: session.sessionId,
-      payload: input.payload,
-    }),
+    headers,
+    body: bodyJson,
   })
 
   if (!res.ok) {
@@ -139,4 +152,26 @@ export async function dispatchWalletAction<T = unknown>(input: DispatchInput): P
   }
 
   return await res.json() as T
+}
+
+/**
+ * Sign a web → a2a-agent service-auth envelope for the wallet-action
+ * dispatch path. Mirrors the same canonical-string format as
+ * `apps/a2a-agent/src/auth/service-auth-web.ts::buildWebCanonical`.
+ */
+async function dispatchSignedHeaders(path: string, bodyJson: string): Promise<Record<string, string>> {
+  const timestamp = Math.floor(Date.now() / 1000)
+  const nonce = randomUUID()
+  const bodyHash = createHash('sha256').update(bodyJson, 'utf8').digest('hex')
+  const canonical = `${timestamp}|${nonce}|${path}|${bodyHash}`
+  const canonicalMessage = new TextEncoder().encode(canonical)
+  const { mac } = await dispatchMacProvider().generateMac({ canonicalMessage })
+  const signature = toBase64Url(mac)
+  return {
+    'content-type': 'application/json',
+    'x-sa-service': 'web',
+    'x-sa-timestamp': String(timestamp),
+    'x-sa-nonce': nonce,
+    'x-sa-signature': signature,
+  }
 }

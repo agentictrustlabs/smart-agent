@@ -32,6 +32,7 @@ import {
   listActiveSessionsForAccount,
 } from '../session-store/index.js'
 import type { SessionRecord } from '@smart-agent/privacy-creds/session-grant'
+import { verifyInsertPasskey, type InsertPasskeyAssertion } from './verify-insert-passkey.js'
 
 export const walletActionRoutes = new Hono()
 
@@ -118,8 +119,58 @@ walletActionRoutes.post('/session-store/insert', async (c) => {
       expiresAtMs: number
       createdAtMs: number
     }
+    /**
+     * Hardening §1.3 (Stream B Task B3) — the same passkey assertion
+     * that the web's /session-grant/finalize already verified. Person-mcp
+     * re-verifies it against the smart account via ERC-1271 BEFORE
+     * writing the row. Without this bundle, the insert is rejected:
+     * fail-closed defense against forged bootstrap calls.
+     */
+    passkeyAssertion?: InsertPasskeyAssertion
   }>()
   const r = body.record
+
+  // ─── Hardening §1.3 (Task B3) — passkey re-verification ────────────
+  if (!body.passkeyAssertion) {
+    // Audit the denial so a probing attacker leaves a trail.
+    try {
+      appendAuditEntry({
+        ts: new Date(),
+        smartAccountAddress: r.smartAccountAddress,
+        sessionId: r.sessionId,
+        grantHash: r.grantHash,
+        actionId: 'grant-insert-deny-' + r.sessionId,
+        actionType: 'GrantMinted',
+        actionHash: r.grantHash,
+        decision: 'denied',
+        reason: 'missing passkeyAssertion',
+      })
+    } catch { /* audit best-effort */ }
+    return c.json({ ok: false, code: 'missing_passkey_assertion', detail: 'insert requires passkeyAssertion (Hardening §1.3)' }, 401)
+  }
+
+  const verify = await verifyInsertPasskey({
+    smartAccountAddress: r.smartAccountAddress,
+    grantHash: r.grantHash,
+    assertion: body.passkeyAssertion,
+  })
+  if (!verify.ok) {
+    try {
+      appendAuditEntry({
+        ts: new Date(),
+        smartAccountAddress: r.smartAccountAddress,
+        sessionId: r.sessionId,
+        grantHash: r.grantHash,
+        actionId: 'grant-insert-deny-' + r.sessionId,
+        actionType: 'GrantMinted',
+        actionHash: r.grantHash,
+        decision: 'denied',
+        reason: `passkey-reverify-failed: ${verify.reason}`,
+      })
+    } catch { /* audit best-effort */ }
+    return c.json({ ok: false, code: 'passkey_reverify_failed', detail: verify.reason }, 401)
+  }
+
   const fullRecord: SessionRecord = {
     sessionId: r.sessionId,
     sessionIdHash: r.sessionIdHash,

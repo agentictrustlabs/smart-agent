@@ -7,20 +7,26 @@
  * smart-account session (web action layer); a2a-agent redeems the user's
  * root delegation against the tool's TOOL_POLICIES-gated target.
  *
- * Authentication is the standard inter-service HMAC handshake — same wire
- * format as org-mcp; only the env var key differs
- * (A2A_INTERSERVICE_HMAC_KEY_PERSON).
+ * Authentication is the standard inter-service HMAC handshake. After KMS
+ * migration K3-extension, signing routes through `buildMcpMacProvider`
+ * which uses AWS KMS `kms:GenerateMac` against the `a2a-to-person` HMAC
+ * key in production (or the local-hmac dev provider reading
+ * `A2A_INTERSERVICE_HMAC_KEY_PERSON` in dev). The canonical message
+ * format is UNCHANGED — only the signing primitive swaps.
  */
-import { hmacSign } from '@smart-agent/sdk'
+import { toBase64Url, buildMcpMacProvider, type KmsMacProvider } from '@smart-agent/sdk'
+import { randomUUID } from 'node:crypto'
 import type { Address, Hex } from 'viem'
 
 const A2A_AGENT_URL = process.env.A2A_AGENT_URL ?? 'http://127.0.0.1:3100'
 const SERVICE_NAME = 'person-mcp'
 
-function getHmacSecret(): string {
-  const s = process.env.A2A_INTERSERVICE_HMAC_KEY_PERSON
-  if (!s) throw new Error('person-mcp: A2A_INTERSERVICE_HMAC_KEY_PERSON not set')
-  return s
+let cachedMacProvider: KmsMacProvider | null = null
+function macProvider(): KmsMacProvider {
+  if (!cachedMacProvider) {
+    cachedMacProvider = buildMcpMacProvider('person', process.env)
+  }
+  return cachedMacProvider
 }
 
 async function signedFetch(
@@ -31,7 +37,12 @@ async function signedFetch(
   const bodyJson = JSON.stringify(body)
   const timestamp = Math.floor(Date.now() / 1000)
   const canonical = `${bodyJson}:${timestamp}:${sessionId}`
-  const signature = await hmacSign(canonical, getHmacSecret())
+  const canonicalMessage = new TextEncoder().encode(canonical)
+  const { mac } = await macProvider().generateMac({ canonicalMessage })
+  const signature = toBase64Url(mac)
+  // Hardening §1.10 — fresh per-request nonce so a captured envelope
+  // can't be replayed within the 60s timestamp window.
+  const nonce = randomUUID()
   return fetch(`${A2A_AGENT_URL}${path}`, {
     method: 'POST',
     headers: {
@@ -39,6 +50,7 @@ async function signedFetch(
       'x-a2a-service': SERVICE_NAME,
       'x-a2a-timestamp': String(timestamp),
       'x-a2a-signature': signature,
+      'x-a2a-nonce': nonce,
     },
     body: bodyJson,
   })

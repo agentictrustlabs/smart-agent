@@ -14,6 +14,7 @@
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,css}\" --ignore-path .gitignore",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,css}\" --ignore-path .gitignore",
     "typecheck": "pnpm -r typecheck",
+    "check:bypass": "bash scripts/check-no-bypass.sh",
     "clean": "pnpm -r clean && rm -rf node_modules"
   },
   "devDependencies": {

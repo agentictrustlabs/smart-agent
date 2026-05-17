@@ -20,13 +20,13 @@
 import { Hono } from 'hono'
 import { desc, eq } from 'drizzle-orm'
 import {
-  decryptPayload,
   hashDelegation,
   type ExecutionReceiptSummary,
 } from '@smart-agent/sdk'
 import { db } from '../db'
 import { sessions, executionAudit } from '../db/schema'
 import { config } from '../config'
+import { decryptSessionPackage } from '../auth/encryption'
 
 interface StoredSessionPackage {
   sessionPrivateKey: `0x${string}`
@@ -88,9 +88,23 @@ sessionMeta.get('/:id/status', async (c) => {
     rootGrantHash = latest.rootGrantHash as `0x${string}`
   } else if (row.encryptedPackage && row.iv) {
     try {
-      const pkg = await decryptPayload<StoredSessionPackage>(
-        { ciphertext: row.encryptedPackage, iv: row.iv },
-        config.A2A_SESSION_SECRET,
+      // KMS migration K0+K1 — routes through `decryptSessionPackage` which
+      // binds AAD on both the KMS aadContext and the AES-GCM additionalData
+      // (Hardening §1.5 #8 trip-wire preserved).
+      const pkg = await decryptSessionPackage<StoredSessionPackage>(
+        {
+          encryptedPackage: row.encryptedPackage,
+          iv: row.iv,
+          encryptedDataKey: row.encryptedDataKey,
+          keyVersion: row.keyVersion,
+          kmsKeyId: row.kmsKeyId,
+        },
+        {
+          sessionId: row.id,
+          accountAddress: row.accountAddress,
+          chainId: config.CHAIN_ID,
+          expiresAt: row.expiresAt,
+        },
       )
       if (pkg?.delegation) {
         rootGrantHash = hashDelegation(

@@ -1,5 +1,19 @@
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core'
 
+// ─── Inter-service replay-nonce cache ────────────────────────────────
+// Shared across inter-service-auth (`x-a2a-service` envelope from MCPs)
+// AND service-auth-web (`X-SA-Service: web` envelope from the web app).
+// Both envelopes generate a fresh per-request nonce; first INSERT wins,
+// duplicates fail on the UNIQUE constraint and the verifier returns
+// 401 "replay detected". A periodic GC job in `src/index.ts` removes
+// rows older than 2 * MAX_CLOCK_SKEW_SECONDS (Hardening §1.10).
+export const interServiceNonce = sqliteTable('inter_service_nonce', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  nonce: text('nonce').notNull().unique(),
+  service: text('service').notNull(),
+  usedAt: text('used_at').notNull().$defaultFn(() => new Date().toISOString()),
+})
+
 // ─── Challenges ──────────────────────────────────────────────────────
 
 export const challenges = sqliteTable('challenges', {
@@ -36,6 +50,18 @@ export const sessions = sqliteTable('sessions', {
   // ERC-7579 SessionAgentAccount (executionPath='session-account').
   // Null for the standard stateless EOA session principal.
   sessionAgentAccount: text('session_agent_account'),
+  // ─── KMS migration K0+K1 — session envelope encryption columns ─────
+  // See KMS-IMPLEMENTATION-PLAN.md §4.
+  /** Base64 of the KMS-wrapped data key (aws-kms) OR the HKDF salt (local-aes).
+   *  Null for legacy rows written before the K3 cutover. */
+  encryptedDataKey: text('encrypted_data_key'),
+  /** Provider tag — e.g. 'aws-kms:<uuid>' or 'local-v1'. 'legacy' means the row
+   *  was sealed with the pre-K3 path (single CryptoKey from A2A_SESSION_SECRET).
+   *  Drives provider selection on decrypt — see auth/encryption.ts. */
+  keyVersion: text('key_version').notNull().default('legacy'),
+  /** Informational; the KMS keyId/ARN (or 'local') at encryption time. Passed
+   *  back into decryptSessionDataKey so the KMS knows which key to use. */
+  kmsKeyId: text('kms_key_id'),
 })
 
 // ─── Handles ─────────────────────────────────────────────────────────
@@ -76,4 +102,24 @@ export const executionAudit = sqliteTable('execution_audit', {
   errorReason: text('error_reason').notNull().default(''),
   receivedAt: text('received_at').notNull(),
   finalizedAt: text('finalized_at'),
+  // ─── Hardening Phase 1D — cross-service correlation id ───────────────
+  // Set at the web request edge (`apps/web/src/lib/audit/correlation-id.ts`),
+  // propagated through the `X-SA-Correlation-Id` HTTP header on every
+  // hop (web → a2a-agent → MCP). Persisted here so a single user action
+  // can be traced across all three planes. Nullable — pre-1D rows have
+  // no correlation id; the migration in `db/index.ts` adds the column
+  // with NULL default.
+  correlationId: text('correlation_id'),
 })
+
+// ─── Append-only invariant ──────────────────────────────────────────
+//
+// The `executionAudit` table is append-only at the application layer
+// (Hardening Phase 1D #3). Writes go through `apps/a2a-agent/src/lib/audit.ts`
+// `auditAppend()` (INSERT only) and the single sanctioned outcome-update
+// helper `auditFinalize()` (UPDATE pending → completed/reverted only).
+//
+// `scripts/check-no-bypass.sh` rejects any direct `db.update(executionAudit)`
+// or `db.delete(executionAudit)` call site outside `lib/audit.ts`. Any
+// future schema change that adds a column should preserve this invariant
+// — never add a code path that mutates row state once it's been finalized.

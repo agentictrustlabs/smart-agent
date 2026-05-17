@@ -1,9 +1,8 @@
 /**
  * Org-mcp ↔ a2a-agent inter-service client.
  *
- * Signs requests with the shared HMAC secret (A2A_INTERSERVICE_HMAC_KEY_ORG)
- * so a2a-agent's privileged session endpoints can verify the caller is an
- * enrolled MCP server.
+ * Signs requests with the `a2a-to-org` HMAC key so a2a-agent's privileged
+ * session endpoints can verify the caller is an enrolled MCP server.
  *
  * Used by every org-mcp tool that needs to:
  *   - deploy a smart account (pool agent creation)
@@ -14,17 +13,26 @@
  * by mcp-proxy when MCP calls arrive. Inter-service auth proves the MCP
  * server's identity to a2a-agent; user-delegation auth proves the user's
  * authorization to the MCP server.
+ *
+ * After KMS migration K3-extension, signing routes through
+ * `buildMcpMacProvider('org', ...)` which uses AWS KMS `kms:GenerateMac`
+ * against the `a2a-to-org` HMAC key in production (or the local-hmac dev
+ * provider reading `A2A_INTERSERVICE_HMAC_KEY_ORG` in dev). The canonical
+ * message format is UNCHANGED.
  */
-import { hmacSign } from '@smart-agent/sdk'
+import { toBase64Url, buildMcpMacProvider, type KmsMacProvider } from '@smart-agent/sdk'
+import { randomUUID } from 'node:crypto'
 import type { Address, Hex } from 'viem'
 
 const A2A_AGENT_URL = process.env.A2A_AGENT_URL ?? 'http://127.0.0.1:3100'
 const SERVICE_NAME = 'org-mcp'
 
-function getHmacSecret(): string {
-  const s = process.env.A2A_INTERSERVICE_HMAC_KEY_ORG
-  if (!s) throw new Error('org-mcp: A2A_INTERSERVICE_HMAC_KEY_ORG not set')
-  return s
+let cachedMacProvider: KmsMacProvider | null = null
+function macProvider(): KmsMacProvider {
+  if (!cachedMacProvider) {
+    cachedMacProvider = buildMcpMacProvider('org', process.env)
+  }
+  return cachedMacProvider
 }
 
 async function signedFetch(
@@ -35,7 +43,12 @@ async function signedFetch(
   const bodyJson = JSON.stringify(body)
   const timestamp = Math.floor(Date.now() / 1000)
   const canonical = `${bodyJson}:${timestamp}:${sessionId}`
-  const signature = await hmacSign(canonical, getHmacSecret())
+  const canonicalMessage = new TextEncoder().encode(canonical)
+  const { mac } = await macProvider().generateMac({ canonicalMessage })
+  const signature = toBase64Url(mac)
+  // Hardening §1.10 — fresh per-request nonce so a captured envelope
+  // can't be replayed within the 60s timestamp window.
+  const nonce = randomUUID()
   return fetch(`${A2A_AGENT_URL}${path}`, {
     method: 'POST',
     headers: {
@@ -43,6 +56,7 @@ async function signedFetch(
       'x-a2a-service': SERVICE_NAME,
       'x-a2a-timestamp': String(timestamp),
       'x-a2a-signature': signature,
+      'x-a2a-nonce': nonce,
     },
     body: bodyJson,
   })

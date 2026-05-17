@@ -1,3 +1,4 @@
+/** @sa-route dev-only @sa-prod-gate requireDev */
 import { NextResponse } from 'next/server'
 import { getPersonAgentForUser } from '@/lib/agent-registry'
 import {
@@ -9,6 +10,7 @@ import {
   HAS_MEMBER, ORGANIZATION_MEMBERSHIP, ROLE_MEMBER, NAMESPACE_CONTAINS,
 } from '@smart-agent/sdk'
 import { keccak256, toBytes, getAddress } from 'viem'
+import { requireDev } from '@/lib/env-guard'
 
 /**
  * Dev-only one-shot: patch Hannah's on-chain registration after she was
@@ -34,6 +36,8 @@ async function safeEdge(
 }
 
 export async function POST() {
+  const denied = requireDev()
+  if (denied) return denied
   try {
     const personAgent = await getPersonAgentForUser('cat-user-013') as `0x${string}` | null
     if (!personAgent) return NextResponse.json({ error: 'cat-user-013 not provisioned' }, { status: 400 })

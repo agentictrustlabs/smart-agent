@@ -1,11 +1,15 @@
+/** @sa-route dev-only @sa-prod-gate requireDev */
 import { NextRequest, NextResponse } from 'next/server'
 import { listHubsForOnboarding } from '@/lib/actions/onboarding/setup-agent.action'
 import { getEdgesBySubject, getEdge } from '@/lib/contracts'
 import { HAS_MEMBER } from '@smart-agent/sdk'
+import { requireDev } from '@/lib/env-guard'
 
 /** Diagnostic: are HAS_MEMBER edges from the catalyst hub pointing at the
  * given person agent? Hits the chain directly — no DB / cookies. */
 export async function GET(req: NextRequest) {
+  const denied = requireDev()
+  if (denied) return denied
   const personAgent = req.nextUrl.searchParams.get('agent') as `0x${string}` | null
   if (!personAgent) return NextResponse.json({ error: 'missing agent param' }, { status: 400 })
 

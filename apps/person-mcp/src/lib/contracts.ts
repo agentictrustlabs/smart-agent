@@ -45,3 +45,10 @@ export function requireAgentAccountResolverAddress(): Address {
   }
   return config.agentAccountResolverAddress
 }
+
+export function requireAgentAssertionAddress(): Address {
+  if (!config.agentAssertionAddress) {
+    throw new Error('person-mcp: AGENT_ASSERTION_ADDRESS not set')
+  }
+  return config.agentAssertionAddress
+}
