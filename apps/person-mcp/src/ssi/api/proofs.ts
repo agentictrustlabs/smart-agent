@@ -32,6 +32,14 @@ export const proofRoutes = new Hono()
  *   5. load raw credentials from Askar
  *   6. anoncreds-rs createPresentation
  *   7. return presentation JSON + reveal/predicate summary for audit
+ *
+ * @sa-route delegation-verified
+ * @sa-auth wallet-action-signature
+ * @sa-rate-limit none
+ * @sa-prod-gate always
+ * @sa-validation wallet-action-canonical
+ * @sa-risk-tier sensitive
+ * @sa-owner security
  */
 proofRoutes.post('/proofs/present', async (c) => {
   const body = await c.req.json<{

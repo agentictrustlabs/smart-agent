@@ -18,6 +18,15 @@ interface SignedDelegation {
 
 export const receivedDelegationsTools = {
   // ─────────────────────────────────────────────────────────────────────
+  /**
+   * @sa-tool delegation-verified
+   * @sa-auth delegation-token
+   * @sa-rate-limit none
+   * @sa-prod-gate always
+   * @sa-validation json-schema
+   * @sa-risk-tier high
+   * @sa-owner security
+   */
   register_received_delegation: {
     name: 'register_received_delegation',
     description:
@@ -104,6 +113,14 @@ export const receivedDelegationsTools = {
   },
 
   // ─────────────────────────────────────────────────────────────────────
+  /**
+   * @sa-tool delegation-verified
+   * @sa-auth delegation-token
+   * @sa-rate-limit none
+   * @sa-prod-gate always
+   * @sa-risk-tier low
+   * @sa-owner security
+   */
   list_received_delegations: {
     name: 'list_received_delegations',
     description:
@@ -143,6 +160,15 @@ export const receivedDelegationsTools = {
   },
 
   // ─────────────────────────────────────────────────────────────────────
+  /**
+   * @sa-tool delegation-verified
+   * @sa-auth delegation-token
+   * @sa-rate-limit none
+   * @sa-prod-gate always
+   * @sa-validation json-schema
+   * @sa-risk-tier high
+   * @sa-owner security
+   */
   revoke_received_delegation: {
     name: 'revoke_received_delegation',
     description:

@@ -7,6 +7,14 @@ import { requirePrincipal } from '../auth/principal-context.js'
 const mcpText = <T>(v: T) => ({ content: [{ type: 'text' as const, text: JSON.stringify(v) }] })
 
 export const workItemsTools = {
+  /**
+   * @sa-tool delegation-verified
+   * @sa-auth delegation-token
+   * @sa-rate-limit none
+   * @sa-prod-gate always
+   * @sa-risk-tier low
+   * @sa-owner developer
+   */
   list_work_items: {
     name: 'list_work_items',
     description: 'List work items assigned to the authenticated principal.',
@@ -30,6 +38,15 @@ export const workItemsTools = {
 
   // System-callable: create a work item against a person assignee. Must be
   // gated by a system delegation scope; for now uses the same gate.
+  /**
+   * @sa-tool delegation-verified
+   * @sa-auth delegation-token
+   * @sa-rate-limit none
+   * @sa-prod-gate always
+   * @sa-validation json-schema
+   * @sa-risk-tier medium
+   * @sa-owner security
+   */
   create_work_item: {
     name: 'create_work_item',
     description: 'Create a work item assigned to the authenticated principal (system-callable via delegation).',
@@ -69,6 +86,15 @@ export const workItemsTools = {
     },
   },
 
+  /**
+   * @sa-tool delegation-verified
+   * @sa-auth delegation-token
+   * @sa-rate-limit none
+   * @sa-prod-gate always
+   * @sa-validation json-schema
+   * @sa-risk-tier medium
+   * @sa-owner developer
+   */
   resolve_work_item: {
     name: 'resolve_work_item',
     description: 'Mark a work item resolved (optionally linked to an activity log entry).',

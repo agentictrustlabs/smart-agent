@@ -7,6 +7,14 @@ import { requirePrincipal } from '../auth/principal-context.js'
 const mcpText = <T>(v: T) => ({ content: [{ type: 'text' as const, text: JSON.stringify(v) }] })
 
 export const pinnedTools = {
+  /**
+   * @sa-tool delegation-verified
+   * @sa-auth delegation-token
+   * @sa-rate-limit none
+   * @sa-prod-gate always
+   * @sa-risk-tier low
+   * @sa-owner developer
+   */
   list_pinned_items: {
     name: 'list_pinned_items',
     description: 'List the authenticated principal\'s pinned items.',
@@ -22,6 +30,15 @@ export const pinnedTools = {
     },
   },
 
+  /**
+   * @sa-tool delegation-verified
+   * @sa-auth delegation-token
+   * @sa-rate-limit none
+   * @sa-prod-gate always
+   * @sa-validation json-schema
+   * @sa-risk-tier medium
+   * @sa-owner developer
+   */
   pin_item: {
     name: 'pin_item',
     description: 'Pin an item (node, org, agent reference) for quick access.',
@@ -54,6 +71,15 @@ export const pinnedTools = {
     },
   },
 
+  /**
+   * @sa-tool delegation-verified
+   * @sa-auth delegation-token
+   * @sa-rate-limit none
+   * @sa-prod-gate always
+   * @sa-validation json-schema
+   * @sa-risk-tier medium
+   * @sa-owner developer
+   */
   unpin_item: {
     name: 'unpin_item',
     description: 'Unpin an item by ref.',

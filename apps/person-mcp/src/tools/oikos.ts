@@ -7,6 +7,14 @@ import { requirePrincipal } from '../auth/principal-context.js'
 const mcpText = <T>(v: T) => ({ content: [{ type: 'text' as const, text: JSON.stringify(v) }] })
 
 export const oikosTools = {
+  /**
+   * @sa-tool delegation-verified
+   * @sa-auth delegation-token
+   * @sa-rate-limit none
+   * @sa-prod-gate always
+   * @sa-risk-tier low
+   * @sa-owner developer
+   */
   list_oikos_contacts: {
     name: 'list_oikos_contacts',
     description: 'List the authenticated principal\'s oikos contacts.',
@@ -22,6 +30,15 @@ export const oikosTools = {
     },
   },
 
+  /**
+   * @sa-tool delegation-verified
+   * @sa-auth delegation-token
+   * @sa-rate-limit none
+   * @sa-prod-gate always
+   * @sa-validation json-schema
+   * @sa-risk-tier medium
+   * @sa-owner developer
+   */
   add_oikos_contact: {
     name: 'add_oikos_contact',
     description: 'Add an oikos contact for the authenticated principal.',
@@ -67,6 +84,15 @@ export const oikosTools = {
     },
   },
 
+  /**
+   * @sa-tool delegation-verified
+   * @sa-auth delegation-token
+   * @sa-rate-limit none
+   * @sa-prod-gate always
+   * @sa-validation json-schema
+   * @sa-risk-tier medium
+   * @sa-owner developer
+   */
   update_oikos_contact: {
     name: 'update_oikos_contact',
     description: 'Update an oikos contact owned by the authenticated principal.',
@@ -113,6 +139,15 @@ export const oikosTools = {
     },
   },
 
+  /**
+   * @sa-tool delegation-verified
+   * @sa-auth delegation-token
+   * @sa-rate-limit none
+   * @sa-prod-gate always
+   * @sa-validation json-schema
+   * @sa-risk-tier medium
+   * @sa-owner developer
+   */
   delete_oikos_contact: {
     name: 'delete_oikos_contact',
     description: 'Delete an oikos contact owned by the authenticated principal.',
@@ -130,6 +165,15 @@ export const oikosTools = {
     },
   },
 
+  /**
+   * @sa-tool delegation-verified
+   * @sa-auth delegation-token
+   * @sa-rate-limit none
+   * @sa-prod-gate always
+   * @sa-validation json-schema
+   * @sa-risk-tier medium
+   * @sa-owner developer
+   */
   toggle_planned_conversation: {
     name: 'toggle_planned_conversation',
     description: 'Toggle the plannedConversation flag on an oikos contact.',

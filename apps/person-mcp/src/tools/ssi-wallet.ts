@@ -44,7 +44,16 @@ let _publicClient: ReturnType<typeof createPublicClient> | null = null
 function getPublicClient() {
   if (!_publicClient) {
     _publicClient = createPublicClient({
-      chain: { id: CHAIN_ID, name: 'sa', nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 }, rpcUrls: { default: { http: [RPC_URL] } } },
+      chain: { id: CHAIN_ID, name: 'sa', /**
+   * @sa-tool delegation-verified
+   * @sa-auth delegation-token
+   * @sa-rate-limit none
+   * @sa-prod-gate always
+   * @sa-validation json-schema
+   * @sa-risk-tier medium
+   * @sa-owner developer
+   */
+  nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 }, rpcUrls: { default: { http: [RPC_URL] } } },
       transport: http(RPC_URL),
     })
   }
@@ -86,6 +95,15 @@ interface CreateWalletActionArgs {
   lifetimeSec?: number                    // default 120
 }
 
+/**
+ * @sa-tool bootstrap
+ * @sa-auth none-system-scoped
+ * @sa-rate-limit none
+ * @sa-prod-gate always
+ * @sa-validation json-schema
+ * @sa-risk-tier low
+ * @sa-owner security
+ */
 const createWalletAction = {
   name: 'ssi_create_wallet_action',
   description: 'Build an unsigned WalletAction envelope for the UI to hand to a wallet for EIP-712 signing.',
@@ -153,6 +171,15 @@ interface ProvisionArgs {
   signature: `0x${string}`
   expectedSigner: `0x${string}`
 }
+/**
+ * @sa-tool delegation-verified
+ * @sa-auth delegation-token
+ * @sa-rate-limit none
+ * @sa-prod-gate always
+ * @sa-validation json-schema
+ * @sa-risk-tier medium
+ * @sa-owner developer
+ */
 const provisionWallet = {
   name: 'ssi_provision_wallet',
   description: 'Forward a signed ProvisionHolderWallet action to ssi-wallet-mcp and record the mapping.',
@@ -191,6 +218,15 @@ interface StartExchangeArgs {
   credentialOfferJson: string
   credDefId: string
 }
+/**
+ * @sa-tool delegation-verified
+ * @sa-auth delegation-token
+ * @sa-rate-limit none
+ * @sa-prod-gate always
+ * @sa-validation json-schema
+ * @sa-risk-tier medium
+ * @sa-owner developer
+ */
 const startCredentialExchange = {
   name: 'ssi_start_credential_exchange',
   description: 'Forward a signed AcceptCredentialOffer to ssi-wallet-mcp /credentials/request and return the credential request body for the issuer.',
@@ -229,6 +265,15 @@ interface FinishExchangeArgs {
   /** Spec 004 (b2) — registry address the admin delegation gates. */
   adminDelegationTarget?: string
 }
+/**
+ * @sa-tool delegation-verified
+ * @sa-auth delegation-token
+ * @sa-rate-limit none
+ * @sa-prod-gate always
+ * @sa-validation json-schema
+ * @sa-risk-tier medium
+ * @sa-owner developer
+ */
 const finishCredentialExchange = {
   name: 'ssi_finish_credential_exchange',
   description: 'Complete a credential exchange by forwarding the issued credential to ssi-wallet-mcp /credentials/store and recording metadata.',
@@ -281,6 +326,15 @@ interface CreatePresentationArgs {
     predicateReferents: string[]
   }>
 }
+/**
+ * @sa-tool delegation-verified
+ * @sa-auth delegation-token
+ * @sa-rate-limit none
+ * @sa-prod-gate always
+ * @sa-validation json-schema
+ * @sa-risk-tier medium
+ * @sa-owner developer
+ */
 const createPresentation = {
   name: 'ssi_create_presentation',
   description: 'Forward a signed CreatePresentation action to ssi-wallet-mcp /proofs/present, then write an audit row.',
@@ -382,6 +436,15 @@ const createPresentation = {
 
 // ─── 6. ssi_list_my_credentials ─────────────────────────────────────────────
 
+/**
+ * @sa-tool delegation-verified
+ * @sa-auth delegation-token
+ * @sa-rate-limit none
+ * @sa-prod-gate always
+ * @sa-validation json-schema
+ * @sa-risk-tier medium
+ * @sa-owner developer
+ */
 const listMyCredentials = {
   name: 'ssi_list_my_credentials',
   description: 'List credential metadata (no blobs, no attribute values) for a principal. Optionally filter by walletContext.',
@@ -419,6 +482,15 @@ const listMyCredentials = {
 
 // ─── 6b. ssi_list_wallets ───────────────────────────────────────────────────
 
+/**
+ * @sa-tool delegation-verified
+ * @sa-auth delegation-token
+ * @sa-rate-limit none
+ * @sa-prod-gate always
+ * @sa-validation json-schema
+ * @sa-risk-tier medium
+ * @sa-owner developer
+ */
 const listWallets = {
   name: 'ssi_list_wallets',
   description: 'List all holder-wallet contexts for a principal.',
@@ -448,6 +520,15 @@ interface RotateLinkSecretArgs {
   action: WalletAction & { expiresAt: string | number | bigint }
   signature: `0x${string}`
 }
+/**
+ * @sa-tool delegation-verified
+ * @sa-auth delegation-token
+ * @sa-rate-limit none
+ * @sa-prod-gate always
+ * @sa-validation json-schema
+ * @sa-risk-tier medium
+ * @sa-owner developer
+ */
 const rotateLinkSecret = {
   name: 'ssi_rotate_link_secret',
   description: 'Forward a signed RotateLinkSecret action to ssi-wallet-mcp. New link secret replaces the old; existing credentials marked stale.',
@@ -478,6 +559,15 @@ interface MatchAgainstPublicSetArgs {
   }
 }
 
+/**
+ * @sa-tool delegation-verified
+ * @sa-auth delegation-token
+ * @sa-rate-limit none
+ * @sa-prod-gate always
+ * @sa-validation json-schema
+ * @sa-risk-tier medium
+ * @sa-owner developer
+ */
 const matchAgainstPublicSet = {
   name: 'ssi_match_against_public_set',
   description: 'Forward a signed MatchAgainstPublicSet action + candidate body to ssi-wallet-mcp. Returns score-only hits and writes an audit row per candidate.',
@@ -516,6 +606,15 @@ const matchAgainstPublicSet = {
 
 // ─── 7. ssi_list_proof_audit ────────────────────────────────────────────────
 
+/**
+ * @sa-tool delegation-verified
+ * @sa-auth delegation-token
+ * @sa-rate-limit none
+ * @sa-prod-gate always
+ * @sa-validation json-schema
+ * @sa-risk-tier medium
+ * @sa-owner developer
+ */
 const listProofAudit = {
   name: 'ssi_list_proof_audit',
   description: 'List proof audit rows for a principal (recent first).',
@@ -558,6 +657,15 @@ interface GetCredentialDetailsArgs {
   principal: string
   credentialId: string
 }
+/**
+ * @sa-tool delegation-verified
+ * @sa-auth delegation-token
+ * @sa-rate-limit none
+ * @sa-prod-gate always
+ * @sa-validation json-schema
+ * @sa-risk-tier medium
+ * @sa-owner developer
+ */
 const getCredentialDetails = {
   name: 'ssi_get_credential_details',
   description: "Return a single credential's parsed AnonCreds attribute values plus its public metadata. Holder-only — principal must own the credential.",
@@ -615,6 +723,15 @@ const getCredentialDetails = {
 // directly; routing through this MCP tool keeps every web→person-mcp call
 // on the A2A proxy and removes the last `PERSON_MCP_URL` direct fetch in
 // `apps/web/src`. Read-only — no signature required.
+/**
+ * @sa-tool delegation-verified
+ * @sa-auth delegation-token
+ * @sa-rate-limit none
+ * @sa-prod-gate always
+ * @sa-validation json-schema
+ * @sa-risk-tier medium
+ * @sa-owner developer
+ */
 const getHolderWallet = {
   name: 'ssi_get_holder_wallet',
   description:
@@ -648,6 +765,15 @@ const getHolderWallet = {
 // bound to a given target registry (= AllowedTargets caveat of the
 // admin→holder delegation). The action layer calls this before
 // invoking a marketplace MCP tool so it can rebuild the redeem chain.
+/**
+ * @sa-tool delegation-verified
+ * @sa-auth delegation-token
+ * @sa-rate-limit none
+ * @sa-prod-gate always
+ * @sa-validation json-schema
+ * @sa-risk-tier medium
+ * @sa-owner developer
+ */
 const getMarketplaceDelegation = {
   name: 'ssi_get_marketplace_delegation',
   description:

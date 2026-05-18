@@ -66,6 +66,14 @@ async function emitOnChainAssertion(
 }
 
 export const intentsTools = {
+  /**
+   * @sa-tool delegation-verified
+   * @sa-auth delegation-token
+   * @sa-rate-limit none
+   * @sa-prod-gate always
+   * @sa-risk-tier low
+   * @sa-owner developer
+   */
   list_intents: {
     name: 'list_intents',
     description: 'List intents for the authenticated principal (sees all visibilities).',
@@ -83,6 +91,14 @@ export const intentsTools = {
     },
   },
 
+  /**
+   * @sa-tool delegation-verified
+   * @sa-auth delegation-token
+   * @sa-rate-limit none
+   * @sa-prod-gate always
+   * @sa-risk-tier low
+   * @sa-owner developer
+   */
   get_intent: {
     name: 'get_intent',
     description: 'Get an intent by id (must be owned by the authenticated principal).',
@@ -119,6 +135,15 @@ export const intentsTools = {
     },
   },
 
+  /**
+   * @sa-tool delegation-verified
+   * @sa-auth delegation-token
+   * @sa-rate-limit none
+   * @sa-prod-gate always
+   * @sa-validation json-schema
+   * @sa-risk-tier medium
+   * @sa-owner developer
+   */
   express_intent: {
     name: 'express_intent',
     description: 'Express an intent (with visibility-driven on-chain mint for public/public-coarse).',
@@ -234,6 +259,15 @@ export const intentsTools = {
     },
   },
 
+  /**
+   * @sa-tool delegation-verified
+   * @sa-auth delegation-token
+   * @sa-rate-limit none
+   * @sa-prod-gate always
+   * @sa-validation json-schema
+   * @sa-risk-tier medium
+   * @sa-owner developer
+   */
   withdraw_intent: {
     name: 'withdraw_intent',
     description: 'Withdraw (set status=withdrawn) an intent owned by the authenticated principal.',
@@ -258,6 +292,15 @@ export const intentsTools = {
   // person-tenanted intent. Issued by the artifact-creator's MCP at submit /
   // withdraw time (spec 001 MatchInitiation, spec 003 GrantProposal). Tool
   // name IS the scope string (see packages/sdk/src/marketplace-scopes.ts).
+  /**
+   * @sa-tool delegation-verified
+   * @sa-auth delegation-token
+   * @sa-rate-limit none
+   * @sa-prod-gate always
+   * @sa-validation json-schema
+   * @sa-risk-tier high
+   * @sa-owner developer
+   */
   'intent:bump_ack_count': {
     name: 'intent:bump_ack_count',
     description: "Apply a signed delta (+1 / -1) to an intent's live_acknowledgement_count and (de)transition its status across the 0↔1 boundary. System-delegation scope.",

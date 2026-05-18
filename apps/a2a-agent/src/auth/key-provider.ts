@@ -40,6 +40,7 @@ import type {
   A2AKeyProvider,
   AwsKmsSignerAuditEvent,
   GcpAuthEnv,
+  GcpKmsSignerAuditEvent,
   KmsAccountBackend,
   LocalSecp256k1SignerAuditEvent,
   ToolExecutorId,
@@ -49,6 +50,8 @@ import {
   createAwsKmsProvider,
   createAwsKmsSigner,
   createGcpAuthClient,
+  createGcpKmsProvider,
+  createGcpKmsSigner,
   createLocalAesProvider,
   createLocalSecp256k1Signer,
   createToolExecutorSigner,
@@ -65,6 +68,7 @@ import {
  */
 export type SignerAuditEvent =
   | AwsKmsSignerAuditEvent
+  | GcpKmsSignerAuditEvent
   | LocalSecp256k1SignerAuditEvent
 
 export type SignerAuditFn = (event: SignerAuditEvent) => Promise<void> | void
@@ -97,6 +101,10 @@ export interface KeyProviderEnv {
   // full GCP resource path (e.g. `projects/.../cryptoKeys/...`). Validated at
   // the matching factory.
   GCP_KMS_SESSION_KEK?: string
+  // Optional pin to a specific KEK version for the session-envelope
+  // provider. When unset, Cloud KMS routes to the primary version
+  // (see GCP-KMS-IMPLEMENTATION-PLAN.md § G2). G-PR-2.
+  GCP_KMS_SESSION_KEK_VERSION?: string
   GCP_KMS_MASTER_SIGNER_VERSION?: string
   // K5 — per-tool executor signer env vars. Read by name via
   // `toolEnvKeyName(toolId, backend)`. Both forms are accepted:
@@ -110,62 +118,112 @@ export interface KeyProviderEnv {
   [key: string]: string | undefined
 }
 
-// ─── GCP-KMS G-PR-1 — shared production-guard + env-validation helpers ───
+// ─── Shared production-guard + env-validation helpers ───────────────
 //
 // These are call-site shared by buildKeyProvider, buildSignerBackend,
 // buildToolExecutorBackend, and (via re-import) the MAC factory in
 // `mac-provider.ts`. Keeping them in one place means the four factories
 // can't drift on the "what counts as a forbidden static key in prod"
 // invariant.
+//
+// `assertNoForbiddenStaticKeys(env, backend)` serves both the AWS and
+// GCP prod paths. The shared set covers every static-key forensics
+// liability regardless of which managed KMS backend is in use; the
+// backend label only widens the set with backend-specific credential
+// files (e.g.
+// `GOOGLE_APPLICATION_CREDENTIALS` for GCP).
 
 /**
- * Env vars that MUST NOT be set when `NODE_ENV='production'` AND
- * `A2A_KMS_BACKEND='gcp-kms'`. Any of these present in production refuses
- * boot — the GCP backend uses Workload Identity Federation; static cloud
- * credentials and per-process static signing/MAC keys are forensics
- * liabilities with no operational value.
+ * Backend label accepted by `assertNoForbiddenStaticKeys`. The
+ * `local-aes` backend is refused outright in production by the
+ * provider factories before this helper would even be reached; only
+ * the two production-grade managed-KMS backends pass through here.
+ */
+export type ProductionKeyBackend = 'aws-kms' | 'gcp-kms'
+
+/**
+ * Env vars that MUST NOT be set when `NODE_ENV='production'` regardless
+ * of which managed-KMS backend is selected. Any per-process static
+ * signing or HMAC key is a forensics liability with no operational
+ * value — managed-KMS deployments use KMS for signing and the
+ * inter-service HMAC keys live in the same KMS / Secrets Manager.
  *
- * Pattern-form variables (TOOL_EXECUTOR_*_PRIVATE_KEY,
- * A2A_INTERSERVICE_HMAC_KEY_*) are matched via `assertNoForbiddenStaticKeys`
+ * Pattern-form variables (`TOOL_EXECUTOR_*_PRIVATE_KEY`,
+ * `A2A_INTERSERVICE_HMAC_KEY_*`) are matched via the prefix table
  * below.
  *
+ * Backend-specific entries (e.g. `GOOGLE_APPLICATION_CREDENTIALS` for
+ * GCP) sit in `BACKEND_SPECIFIC_FORBIDDEN_ENV_KEYS`.
+ *
  * The operator runbook at `docs/operator/gcp-kms-provisioning.md`
- * (forthcoming — G10 in the GCP plan) is the canonical reference.
+ * (forthcoming — G10 in the GCP plan) and the AWS equivalent
+ * (`docs/operations/kms-signer-setup.md`) are the canonical references.
  */
-const GCP_FORBIDDEN_STATIC_ENV_KEYS = [
-  // GCP-side static credentials (Workload Identity Federation must be used).
-  'GOOGLE_APPLICATION_CREDENTIALS',
-  'GCP_SERVICE_ACCOUNT_KEY_JSON',
+const SHARED_FORBIDDEN_STATIC_ENV_KEYS = [
   // Legacy per-process secrets.
   'A2A_SESSION_SECRET',
   'A2A_MASTER_EOA_PRIVATE_KEY',
   'WEB_TO_A2A_HMAC_KEY',
 ] as const
 
+/**
+ * Backend-specific forbidden keys. Only flagged when the matching
+ * backend label is passed. AWS uses STS (assumed via OIDC) so there is
+ * no AWS analog to `GOOGLE_APPLICATION_CREDENTIALS`; the presence of
+ * `AWS_SECRET_ACCESS_KEY` on a production deploy IS a static-credential
+ * signal and is refused for the AWS backend.
+ */
+const BACKEND_SPECIFIC_FORBIDDEN_ENV_KEYS: Record<
+  ProductionKeyBackend,
+  readonly string[]
+> = {
+  'gcp-kms': [
+    'GOOGLE_APPLICATION_CREDENTIALS',
+    'GCP_SERVICE_ACCOUNT_KEY_JSON',
+  ],
+  // AWS uses STS via @vercel/oidc-aws-credentials-provider. A static
+  // access key in the deploy env defeats the OIDC model.
+  'aws-kms': ['AWS_SECRET_ACCESS_KEY'],
+}
+
 /** Prefix patterns: any env var starting with one of these is forbidden. */
-const GCP_FORBIDDEN_STATIC_ENV_PREFIXES = [
+const FORBIDDEN_STATIC_ENV_PREFIXES = [
   'TOOL_EXECUTOR_', // any TOOL_EXECUTOR_*_PRIVATE_KEY
   'A2A_INTERSERVICE_HMAC_KEY_', // any per-MCP HMAC key
 ] as const
 
 /**
- * Refuse boot when `NODE_ENV='production'` AND `A2A_KMS_BACKEND='gcp-kms'`
- * AND any forbidden static-key env var is set. The error message lists
- * the offending variable(s) by name so the operator can search the
- * deployment env.
+ * Refuse boot when `NODE_ENV='production'` AND the selected managed-KMS
+ * backend is in use AND any forbidden static-key env var is set. The
+ * error message lists the offending variable(s) by name so the operator
+ * can search the deployment env.
  *
- * Exported only for test access via re-import (`assertNoForbiddenGcpStaticKeys`).
+ * Exported for test access. Backend label widens the forbidden set
+ * with backend-specific entries.
  *
  * @throws if any forbidden static env var is present.
  */
-export function assertNoForbiddenGcpStaticKeys(env: KeyProviderEnv): void {
+export function assertNoForbiddenStaticKeys(
+  env: KeyProviderEnv,
+  backend: ProductionKeyBackend,
+): void {
   const offenders: string[] = []
-  for (const key of GCP_FORBIDDEN_STATIC_ENV_KEYS) {
+
+  // Shared set.
+  for (const key of SHARED_FORBIDDEN_STATIC_ENV_KEYS) {
     if (env[key] !== undefined && env[key] !== '') offenders.push(key)
   }
+
+  // Backend-specific set.
+  const backendSpecific = BACKEND_SPECIFIC_FORBIDDEN_ENV_KEYS[backend]
+  for (const key of backendSpecific) {
+    if (env[key] !== undefined && env[key] !== '') offenders.push(key)
+  }
+
+  // Prefix patterns.
   for (const envKey of Object.keys(env)) {
     if (env[envKey] === undefined || env[envKey] === '') continue
-    for (const prefix of GCP_FORBIDDEN_STATIC_ENV_PREFIXES) {
+    for (const prefix of FORBIDDEN_STATIC_ENV_PREFIXES) {
       // Pattern keys: only flag PRIVATE_KEY suffixes for TOOL_EXECUTOR_;
       // the AnyName_HMAC_KEY suffix is the only legitimate completion of
       // A2A_INTERSERVICE_HMAC_KEY_, so any match there is forbidden.
@@ -183,11 +241,16 @@ export function assertNoForbiddenGcpStaticKeys(env: KeyProviderEnv): void {
   }
   if (offenders.length > 0) {
     const unique = Array.from(new Set(offenders)).sort()
+    const runbook =
+      backend === 'gcp-kms'
+        ? 'docs/operator/gcp-kms-provisioning.md'
+        : 'docs/operations/kms-signer-setup.md'
     throw new Error(
-      "production guard: A2A_KMS_BACKEND='gcp-kms' with NODE_ENV='production' " +
+      `production guard: A2A_KMS_BACKEND='${backend}' with NODE_ENV='production' ` +
         `refuses to start — forbidden static-key env var(s) set: ${unique.join(', ')}. ` +
-        'GCP backend uses Workload Identity Federation; static credentials must be removed. ' +
-        'See docs/operator/gcp-kms-provisioning.md for the operator runbook.',
+        'Managed-KMS backends use cloud-provider auth (OIDC/STS or Workload ' +
+        'Identity Federation); static credentials and per-process signing/HMAC ' +
+        `keys must be removed. See ${runbook} for the operator runbook.`,
     )
   }
 }
@@ -217,7 +280,7 @@ function validateGcpEnvAndBuildAuthClient(
     }
   }
   if (env.NODE_ENV === 'production') {
-    assertNoForbiddenGcpStaticKeys(env)
+    assertNoForbiddenStaticKeys(env, 'gcp-kms')
   }
   // Construct the auth client now so auth-env errors fire BEFORE the
   // staged "not yet implemented" marker. Per the plan G-PR-1: identifier
@@ -254,6 +317,14 @@ export function buildKeyProvider(env: KeyProviderEnv): A2AKeyProvider {
       return createLocalAesProvider({ A2A_SESSION_SECRET: env.A2A_SESSION_SECRET })
     }
     case 'aws-kms': {
+      // Sprint 5 W3 P0-7 — production key-hygiene guard. Refuses boot
+      // when forbidden static-key env vars are present in production.
+      // Mirrors the GCP arm (which has called `validateGcpEnvAndBuildAuthClient`
+      // since G-PR-1); this brings AWS to parity with the broader
+      // forensics-liability set that the docs have always claimed.
+      if (env.NODE_ENV === 'production') {
+        assertNoForbiddenStaticKeys(env, 'aws-kms')
+      }
       if (!env.AWS_REGION) {
         throw new Error("buildKeyProvider: AWS_REGION is required for 'aws-kms' backend")
       }
@@ -270,11 +341,11 @@ export function buildKeyProvider(env: KeyProviderEnv): A2AKeyProvider {
       })
     }
     case 'gcp-kms': {
-      // GCP-KMS G-PR-1 stub. Validate identifier env + production
-      // invariants, then construct the auth client (so an auth-config
-      // error surfaces FIRST), then throw the staged marker. The session
-      // KEK identifier (`GCP_KMS_SESSION_KEK`) is the buildKeyProvider-
-      // specific additional requirement.
+      // GCP-KMS G-PR-2 — session envelope provider live.
+      //
+      // Validate identifier env + production invariants and construct
+      // the auth client (so an auth-config error surfaces FIRST), then
+      // require the session KEK before constructing the provider.
       validateGcpEnvAndBuildAuthClient('buildKeyProvider', env)
       if (!env.GCP_KMS_SESSION_KEK) {
         throw new Error(
@@ -282,10 +353,18 @@ export function buildKeyProvider(env: KeyProviderEnv): A2AKeyProvider {
             '(GCP-KMS-IMPLEMENTATION-PLAN.md § G2).',
         )
       }
-      throw new Error(
-        'GCP backend not yet implemented for session provider (G-PR-2). ' +
-          'See output/GCP-KMS-IMPLEMENTATION-PLAN.md § G2.',
-      )
+      return createGcpKmsProvider({
+        GCP_PROJECT_ID: env.GCP_PROJECT_ID as string,
+        GCP_PROJECT_NUMBER: env.GCP_PROJECT_NUMBER as string,
+        GCP_WORKLOAD_IDENTITY_POOL_ID: env.GCP_WORKLOAD_IDENTITY_POOL_ID as string,
+        GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID:
+          env.GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID as string,
+        GCP_SERVICE_ACCOUNT_EMAIL: env.GCP_SERVICE_ACCOUNT_EMAIL as string,
+        GCP_KMS_SESSION_KEK: env.GCP_KMS_SESSION_KEK,
+        ...(env.GCP_KMS_SESSION_KEK_VERSION
+          ? { GCP_KMS_SESSION_KEK_VERSION: env.GCP_KMS_SESSION_KEK_VERSION }
+          : {}),
+      })
     }
     default:
       throw new Error(`buildKeyProvider: unknown A2A_KMS_BACKEND: ${backend}`)
@@ -310,9 +389,10 @@ export function buildKeyProvider(env: KeyProviderEnv): A2AKeyProvider {
  *                       and `AWS_KMS_SIGNER_KEY_ID` (separate from
  *                       `AWS_KMS_KEY_ID`, the K2 envelope-encryption key).
  *   - 'gcp-kms'       → GCP Cloud KMS asymmetric `EC_SIGN_SECP256K1_SHA256`
- *                       signer (GCP-KMS-IMPLEMENTATION-PLAN § G3). G-PR-1
- *                       wires env validation + auth client; implementation
- *                       lands in G-PR-3.
+ *                       signer (GCP-KMS-IMPLEMENTATION-PLAN § G3 — live as
+ *                       of G-PR-3). Requires every GCP auth identifier
+ *                       plus `GCP_KMS_MASTER_SIGNER_VERSION`
+ *                       (`projects/.../cryptoKeyVersions/<n>`).
  *
  * The production guard (`NODE_ENV='production'` + `'local-aes'`) matches
  * `buildKeyProvider`. If the envelope backend is rejected in prod the
@@ -382,8 +462,8 @@ export function buildSignerBackend(
       )
     }
     case 'gcp-kms': {
-      // GCP-KMS G-PR-1 stub for the master EOA signer. Same validate →
-      // build-auth-client → throw pattern as buildKeyProvider; the
+      // GCP-KMS G-PR-3 — master-EOA signer live. Same validate →
+      // build-auth-client → construct pattern as the AWS arm; the
       // signer-specific identifier is `GCP_KMS_MASTER_SIGNER_VERSION`.
       validateGcpEnvAndBuildAuthClient('buildSignerBackend', env)
       if (!env.GCP_KMS_MASTER_SIGNER_VERSION) {
@@ -392,9 +472,17 @@ export function buildSignerBackend(
             '(GCP-KMS-IMPLEMENTATION-PLAN.md § G3).',
         )
       }
-      throw new Error(
-        'GCP backend not yet implemented for master-EOA signer (G-PR-3). ' +
-          'See output/GCP-KMS-IMPLEMENTATION-PLAN.md § G3.',
+      return createGcpKmsSigner(
+        {
+          GCP_PROJECT_ID: env.GCP_PROJECT_ID as string,
+          GCP_PROJECT_NUMBER: env.GCP_PROJECT_NUMBER as string,
+          GCP_WORKLOAD_IDENTITY_POOL_ID: env.GCP_WORKLOAD_IDENTITY_POOL_ID as string,
+          GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID:
+            env.GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID as string,
+          GCP_SERVICE_ACCOUNT_EMAIL: env.GCP_SERVICE_ACCOUNT_EMAIL as string,
+          GCP_KMS_MASTER_SIGNER_VERSION: env.GCP_KMS_MASTER_SIGNER_VERSION,
+        },
+        { audit: opts.audit },
       )
     }
     default:

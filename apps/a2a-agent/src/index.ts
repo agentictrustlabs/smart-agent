@@ -20,6 +20,8 @@ import {
   assertPolicyCompleteness,
   assertMarketplacePolicy,
   assertDeployerKeyPolicy,
+  assertLegacySessionPolicy,
+  assertProductionKeyHygiene,
   assertAuditSinkConfigured,
 } from './lib/policy-startup'
 import { cleanupOldNonces } from './auth/replay-nonce'
@@ -114,6 +116,16 @@ assertPolicyCompleteness()
 // the error message can point at the marketplace-specific tables.
 assertMarketplacePolicy()
 
+// Sprint 5 W3 P0-7 — production key-hygiene guard. When A2A_KMS_BACKEND
+// is a managed-KMS backend ('aws-kms' or 'gcp-kms') in production, refuse
+// to boot if any per-process static signing/HMAC key or backend-specific
+// static credential is present in the env. Mirrors what the GCP arm has
+// always enforced and brings AWS to parity with the broader forensics-
+// liability set the docs claim. Defense in depth: `buildKeyProvider`
+// also calls the shared helper from the AWS arm so lazy code paths
+// can't miss the check.
+assertProductionKeyHygiene()
+
 // Sprint 5 P0-9 — DEPLOYER_PRIVATE_KEY hard-fails in production. The
 // `assertDeployerKeyPolicy` helper replaces the prior WARN-only path:
 // production startup refuses if the key is present, unless the operator
@@ -133,6 +145,13 @@ assertMarketplacePolicy()
 // top-level; only the audit-row write + sink probe need awaiting.
 async function runAsyncStartupInvariants(): Promise<void> {
   await assertDeployerKeyPolicy()
+  // Sprint 5 W3 P0-7 — when an operator explicitly opts into the legacy
+  // a2a-sessions fallback in production via ALLOW_LEGACY_A2A_SESSIONS=true,
+  // emit a structured WARN and write a `system:break-glass-legacy-a2a-sessions`
+  // audit row so the chain head reflects the operator-known posture at boot.
+  // Mirrors `assertDeployerKeyPolicy`. The middleware behavior is unchanged
+  // (the audit row is purely observability; Path B still works when enabled).
+  await assertLegacySessionPolicy()
   await assertAuditSinkConfigured()
 }
 

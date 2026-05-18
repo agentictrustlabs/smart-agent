@@ -5,6 +5,15 @@ import { chatThreads, chatMessages } from '../db/schema.js'
 import { requirePrincipal } from '../auth/principal-context.js'
 
 export const chatTools = {
+  /**
+   * @sa-tool delegation-verified
+   * @sa-auth delegation-token
+   * @sa-rate-limit none
+   * @sa-prod-gate always
+   * @sa-validation json-schema
+   * @sa-risk-tier medium
+   * @sa-owner developer
+   */
   create_thread: {
     name: 'create_thread',
     description: 'Create a new chat thread for the authenticated principal.',
@@ -35,6 +44,15 @@ export const chatTools = {
     },
   },
 
+  /**
+   * @sa-tool delegation-verified
+   * @sa-auth delegation-token
+   * @sa-rate-limit none
+   * @sa-prod-gate always
+   * @sa-validation json-schema
+   * @sa-risk-tier medium
+   * @sa-owner developer
+   */
   add_message: {
     name: 'add_message',
     description: 'Add a message to a chat thread (verifies thread belongs to the authenticated principal).',
@@ -105,6 +123,14 @@ export const chatTools = {
     },
   },
 
+  /**
+   * @sa-tool delegation-verified
+   * @sa-auth delegation-token
+   * @sa-rate-limit none
+   * @sa-prod-gate always
+   * @sa-risk-tier low
+   * @sa-owner developer
+   */
   list_threads: {
     name: 'list_threads',
     description: 'List all chat threads for the authenticated principal.',
@@ -128,6 +154,14 @@ export const chatTools = {
     },
   },
 
+  /**
+   * @sa-tool delegation-verified
+   * @sa-auth delegation-token
+   * @sa-rate-limit none
+   * @sa-prod-gate always
+   * @sa-risk-tier low
+   * @sa-owner developer
+   */
   get_thread: {
     name: 'get_thread',
     description: 'Get a chat thread with all its messages (verifies ownership).',

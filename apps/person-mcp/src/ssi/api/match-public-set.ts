@@ -59,6 +59,19 @@ interface MatchHit {
   evidenceCommit: `0x${string}`
 }
 
+/**
+ * POST /wallet/match-against-public-set — consent-gated trust-overlap
+ * match. Each call carries a signed MatchAgainstPublicSet WalletAction
+ * whose proofRequestHash commits to the request body.
+ *
+ * @sa-route delegation-verified
+ * @sa-auth wallet-action-signature
+ * @sa-rate-limit none
+ * @sa-prod-gate always
+ * @sa-validation wallet-action-canonical
+ * @sa-risk-tier sensitive
+ * @sa-owner security
+ */
 matchPublicSetRoutes.post('/wallet/match-against-public-set', async (c) => {
   const req = await c.req.json<MatchRequestBody>()
 

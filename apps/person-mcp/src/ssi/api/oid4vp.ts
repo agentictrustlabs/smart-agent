@@ -146,6 +146,14 @@ function buildAnonCredsRequest(def: PresentationDefinition, nonce: string): {
  *
  * Body: { presentation_definition, nonce }
  * Returns: { presentationRequest, proofRequestHash, referentMap }
+ *
+ * @sa-route bootstrap
+ * @sa-auth none-system-scoped
+ * @sa-rate-limit none
+ * @sa-prod-gate always
+ * @sa-validation shape-check
+ * @sa-risk-tier low
+ * @sa-owner security
  */
 oid4vpRoutes.post('/oid4vp/preview', async (c) => {
   const body = await c.req.json<{
@@ -161,6 +169,19 @@ oid4vpRoutes.post('/oid4vp/preview', async (c) => {
   })
 })
 
+/**
+ * POST /oid4vp/authorize — wallet-side OID4VP authorize. Builds an AnonCreds
+ * presentation for the supplied DIF-PE presentation_definition + signed
+ * WalletAction (CreatePresentation type). Returns vp_token + submission.
+ *
+ * @sa-route delegation-verified
+ * @sa-auth wallet-action-signature
+ * @sa-rate-limit none
+ * @sa-prod-gate always
+ * @sa-validation wallet-action-canonical
+ * @sa-risk-tier sensitive
+ * @sa-owner security
+ */
 oid4vpRoutes.post('/oid4vp/authorize', async (c) => {
   const body = await c.req.json<{
     presentation_definition: PresentationDefinition

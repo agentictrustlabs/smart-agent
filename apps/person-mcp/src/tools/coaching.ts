@@ -8,6 +8,14 @@ import { verifyCrossDelegation } from '../auth/verify-delegation.js'
 const mcpText = <T>(v: T) => ({ content: [{ type: 'text' as const, text: JSON.stringify(v) }] })
 
 export const coachingTools = {
+  /**
+   * @sa-tool delegation-verified
+   * @sa-auth delegation-token
+   * @sa-rate-limit none
+   * @sa-prod-gate always
+   * @sa-risk-tier low
+   * @sa-owner developer
+   */
   list_coaching_notes: {
     name: 'list_coaching_notes',
     description: 'List coaching notes authored by the authenticated principal (the coach).',
@@ -27,6 +35,15 @@ export const coachingTools = {
     },
   },
 
+  /**
+   * @sa-tool delegation-verified
+   * @sa-auth delegation-token
+   * @sa-rate-limit none
+   * @sa-prod-gate always
+   * @sa-validation json-schema
+   * @sa-risk-tier medium
+   * @sa-owner developer
+   */
   upsert_coaching_note: {
     name: 'upsert_coaching_note',
     description: 'Create or update a coaching note owned by the authenticated principal.',
@@ -75,6 +92,15 @@ export const coachingTools = {
     },
   },
 
+  /**
+   * @sa-tool delegation-verified
+   * @sa-auth delegation-token
+   * @sa-rate-limit none
+   * @sa-prod-gate always
+   * @sa-validation json-schema
+   * @sa-risk-tier medium
+   * @sa-owner developer
+   */
   delete_coaching_note: {
     name: 'delete_coaching_note',
     description: 'Delete a coaching note owned by the authenticated principal.',
@@ -94,6 +120,14 @@ export const coachingTools = {
 
   // Disciple-side: read coaching notes shared with me. The disciple presents a
   // cross-delegation from the coach granting `coaching_notes` resource read.
+  /**
+   * @sa-tool delegation-verified
+   * @sa-auth delegation-token
+   * @sa-rate-limit none
+   * @sa-prod-gate always
+   * @sa-risk-tier medium
+   * @sa-owner security
+   */
   get_shared_coaching_notes: {
     name: 'get_shared_coaching_notes',
     description: 'Read coaching notes the coach has shared with the authenticated subject (cross-delegation).',

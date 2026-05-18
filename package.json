@@ -17,8 +17,11 @@
     "check:bypass": "bash scripts/check-no-bypass.sh",
     "check:route-classification": "tsx scripts/check-route-classification.ts",
     "check:route-inventory": "tsx scripts/generate-route-inventory.ts --check",
-    "check:all": "pnpm check:bypass && pnpm check:route-classification && pnpm check:route-inventory",
+    "check:person-mcp-classification": "tsx scripts/check-person-mcp-classification.ts",
+    "check:person-mcp-inventory": "tsx scripts/generate-person-mcp-inventory.ts --check",
+    "check:all": "pnpm check:bypass && pnpm check:route-classification && pnpm check:route-inventory && pnpm check:person-mcp-classification && pnpm check:person-mcp-inventory",
     "generate:route-inventory": "tsx scripts/generate-route-inventory.ts",
+    "generate:person-mcp-inventory": "tsx scripts/generate-person-mcp-inventory.ts",
     "clean": "pnpm -r clean && rm -rf node_modules"
   },
   "devDependencies": {

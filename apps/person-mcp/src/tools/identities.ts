@@ -5,6 +5,15 @@ import { externalIdentities } from '../db/schema.js'
 import { requirePrincipal } from '../auth/principal-context.js'
 
 export const identityTools = {
+  /**
+   * @sa-tool delegation-verified
+   * @sa-auth delegation-token
+   * @sa-rate-limit none
+   * @sa-prod-gate always
+   * @sa-validation json-schema
+   * @sa-risk-tier medium
+   * @sa-owner developer
+   */
   add_external_identity: {
     name: 'add_external_identity',
     description: 'Add an external identity (e.g. email, social account) for the authenticated principal.',
@@ -37,6 +46,14 @@ export const identityTools = {
     },
   },
 
+  /**
+   * @sa-tool delegation-verified
+   * @sa-auth delegation-token
+   * @sa-rate-limit none
+   * @sa-prod-gate always
+   * @sa-risk-tier low
+   * @sa-owner developer
+   */
   list_external_identities: {
     name: 'list_external_identities',
     description: 'List all external identities for the authenticated principal.',
@@ -60,6 +77,15 @@ export const identityTools = {
     },
   },
 
+  /**
+   * @sa-tool delegation-verified
+   * @sa-auth delegation-token
+   * @sa-rate-limit none
+   * @sa-prod-gate always
+   * @sa-validation json-schema
+   * @sa-risk-tier medium
+   * @sa-owner developer
+   */
   remove_external_identity: {
     name: 'remove_external_identity',
     description: 'Remove an external identity by ID (only if owned by the authenticated principal).',

@@ -28,6 +28,14 @@ export const credentialRoutes = new Hono()
  *   credDefId                 // used to look up creddef JSON in registry
  * }
  * Returns: { requestId, credentialRequestJson }
+ *
+ * @sa-route delegation-verified
+ * @sa-auth wallet-action-signature
+ * @sa-rate-limit none
+ * @sa-prod-gate always
+ * @sa-validation wallet-action-canonical
+ * @sa-risk-tier sensitive
+ * @sa-owner security
  */
 credentialRoutes.post('/credentials/request', async (c) => {
   const body = await c.req.json<{
@@ -94,6 +102,14 @@ credentialRoutes.post('/credentials/request', async (c) => {
  * Note: this endpoint does NOT require a new signed WalletAction — the signed
  * AcceptCredentialOffer that started the exchange is the authorization. The
  * requestId is a one-shot token removed from Askar on use.
+ *
+ * @sa-route bootstrap
+ * @sa-auth none-system-scoped
+ * @sa-rate-limit none
+ * @sa-prod-gate always
+ * @sa-validation shape-check
+ * @sa-risk-tier high
+ * @sa-owner security
  */
 credentialRoutes.post('/credentials/store', async (c) => {
   const body = await c.req.json<{
@@ -162,7 +178,17 @@ credentialRoutes.post('/credentials/store', async (c) => {
   return c.json({ credentialId: credId, metadata: metaRow })
 })
 
-/** GET /credentials/:holderWalletId — metadata only (no blobs, no attrs). */
+/**
+ * GET /credentials/:holderWalletId — metadata only (no blobs, no attrs).
+ *
+ * @sa-route public
+ * @sa-auth none-system-scoped
+ * @sa-rate-limit none
+ * @sa-prod-gate always
+ * @sa-validation none-path-params
+ * @sa-risk-tier medium
+ * @sa-owner security
+ */
 credentialRoutes.get('/credentials/:holderWalletId', (c) => {
   const rows = listCredentialMetadata(c.req.param('holderWalletId'))
   return c.json({ credentials: rows })

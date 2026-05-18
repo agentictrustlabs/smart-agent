@@ -7,6 +7,14 @@ import { requirePrincipal } from '../auth/principal-context.js'
 const mcpText = <T>(v: T) => ({ content: [{ type: 'text' as const, text: JSON.stringify(v) }] })
 
 export const prayersTools = {
+  /**
+   * @sa-tool delegation-verified
+   * @sa-auth delegation-token
+   * @sa-rate-limit none
+   * @sa-prod-gate always
+   * @sa-risk-tier low
+   * @sa-owner developer
+   */
   list_prayers: {
     name: 'list_prayers',
     description: 'List the authenticated principal\'s prayer entries.',
@@ -22,6 +30,15 @@ export const prayersTools = {
     },
   },
 
+  /**
+   * @sa-tool delegation-verified
+   * @sa-auth delegation-token
+   * @sa-rate-limit none
+   * @sa-prod-gate always
+   * @sa-validation json-schema
+   * @sa-risk-tier medium
+   * @sa-owner developer
+   */
   upsert_prayer: {
     name: 'upsert_prayer',
     description: 'Create or update a prayer entry for the authenticated principal. Pass id to update; omit to create.',
@@ -83,6 +100,15 @@ export const prayersTools = {
     },
   },
 
+  /**
+   * @sa-tool delegation-verified
+   * @sa-auth delegation-token
+   * @sa-rate-limit none
+   * @sa-prod-gate always
+   * @sa-validation json-schema
+   * @sa-risk-tier medium
+   * @sa-owner developer
+   */
   delete_prayer: {
     name: 'delete_prayer',
     description: 'Delete a prayer entry owned by the authenticated principal.',
@@ -100,6 +126,15 @@ export const prayersTools = {
     },
   },
 
+  /**
+   * @sa-tool delegation-verified
+   * @sa-auth delegation-token
+   * @sa-rate-limit none
+   * @sa-prod-gate always
+   * @sa-validation json-schema
+   * @sa-risk-tier medium
+   * @sa-owner developer
+   */
   mark_prayer_response: {
     name: 'mark_prayer_response',
     description: 'Update a prayer\'s response state and bump lastPrayedAt.',

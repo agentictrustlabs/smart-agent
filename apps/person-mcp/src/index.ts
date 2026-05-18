@@ -147,7 +147,26 @@ app.use('*', logger())
 // `/health` is similarly open.
 const toolsAuth = requireInboundServiceAuth()
 
-// POST /tools/:toolName — HTTP endpoint for tool calls
+/**
+ * POST /tools/:toolName — HTTP entry point for MCP tool invocation.
+ *
+ * Gated on `requireInboundServiceAuth()` — the caller (a2a-agent mcp-proxy)
+ * signs each forwarded request with the `a2a-to-person` MAC key. Each
+ * underlying tool then runs its own delegation-token check via
+ * `requirePrincipal()`, so this route doesn't peek at the body's `token`.
+ *
+ * Validation: `shape-check` — the request body is parsed into a thin
+ * `{ tool?, args? }` envelope; the tool's own JSON Schema (`inputSchema`)
+ * is enforced by each tool handler downstream.
+ *
+ * @sa-route service-only
+ * @sa-auth service-hmac
+ * @sa-rate-limit none
+ * @sa-prod-gate always
+ * @sa-validation shape-check
+ * @sa-risk-tier high
+ * @sa-owner developer
+ */
 app.post('/tools/:toolName', toolsAuth, async (c) => {
   const toolName = c.req.param('toolName')
   const body = await c.req.json<{ tool?: string; args?: Record<string, unknown> }>()
@@ -177,12 +196,31 @@ app.post('/tools/:toolName', toolsAuth, async (c) => {
   }
 })
 
-// GET /tools — list available tools
+/**
+ * GET /tools — operator-debug surface listing tool descriptors only.
+ * No PII is exposed (just the same `inputSchema` metadata an MCP client
+ * would see over stdio). Left open intentionally so an operator can curl
+ * the port to verify the tool registry without holding the HMAC key.
+ *
+ * @sa-route public
+ * @sa-auth none-system-scoped
+ * @sa-rate-limit none
+ * @sa-prod-gate always
+ * @sa-owner developer
+ */
 app.get('/tools', (c) => {
   return c.json({ tools: toolDefinitions })
 })
 
-// Health check
+/**
+ * GET /health — liveness probe. Returns OK status + tool count; no PII.
+ *
+ * @sa-route public
+ * @sa-auth none-system-scoped
+ * @sa-rate-limit none
+ * @sa-prod-gate always
+ * @sa-owner infra
+ */
 app.get('/health', (c) => c.json({ status: 'ok', tools: Object.keys(toolHandlers).length }))
 
 // ---------------------------------------------------------------------------
@@ -220,6 +258,17 @@ app.route('/', matchPublicSetRoutes)
 app.route('/', walletActionRoutes)
 app.route('/', dispatchRoutes)
 
+/**
+ * GET /.well-known/ssi-wallet.json — discovery manifest for OID4VCI /
+ * OID4VP clients. Public per the well-known convention; reveals only the
+ * endpoint paths + supported credential formats (no PII).
+ *
+ * @sa-route public
+ * @sa-auth none-system-scoped
+ * @sa-rate-limit none
+ * @sa-prod-gate always
+ * @sa-owner security
+ */
 app.get('/.well-known/ssi-wallet.json', (c) =>
   c.json({
     name: 'Smart Agent SSI Wallet (in-process within person-mcp)',

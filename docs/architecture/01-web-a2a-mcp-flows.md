@@ -269,12 +269,13 @@ Two new boot-time gates in `apps/a2a-agent/src/config.ts` and `apps/a2a-agent/sr
 - `A2A_KMS_BACKEND=aws-kms` + `NODE_ENV=production` → `A2A_SESSION_SECRET` MUST NOT be set. Process refuses to boot. The reasoning: an unused env-resident master secret in a prod environment adds a forensics liability ("could the env secret have leaked too?") with no operational value.
 - `A2A_KMS_BACKEND=aws-kms` + non-prod → `A2A_SESSION_SECRET` tolerated but ignored; `config.ts` logs `[config] A2A_SESSION_SECRET is set but unused` so a developer who switched backends notices the leftover.
 
-**S1.6 — `ALLOW_LEGACY_A2A_SESSIONS` controls the legacy session-table fallback.** `apps/a2a-agent/src/middleware/require-session.ts` has two paths: Path A (SessionGrant.v1 lookup on person-mcp) and Path B (legacy a2a `sessions` table). Path B held rows from demo-login and other pre-migration paths that minted A2A sessions without going through the SessionGrant ceremony — those paths should not exist in production. The kill switch:
+**S1.6 — `ALLOW_LEGACY_A2A_SESSIONS` controls the legacy session-table fallback (Path B — legacy decrypt-and-sign).** `apps/a2a-agent/src/middleware/require-session.ts` has two paths: Path A (SessionGrant.v1 lookup on person-mcp) and Path B (legacy a2a `sessions` table whose rows the agent decrypts and signs with the per-session key). Path B held rows from demo-login and other pre-migration paths that minted A2A sessions without going through the SessionGrant ceremony — those paths should not exist in production. The canonical posture is:
 
-- Default: `true` in dev / `false` in prod.
-- When false, Path B is short-circuited with a 401 and an `audit-deny` row tagged `legacy-session-fallback-disabled`. Path A is unaffected.
-- Explicit `ALLOW_LEGACY_A2A_SESSIONS=true` in production is honoured as an operator-controlled escape hatch for incident response or staged migration; the audit log captures every legacy reach either way so the override is always visible.
-- Garbage values (`ALLOW_LEGACY_A2A_SESSIONS=maybe`) throw at startup rather than silently defaulting.
+- **Env var**: `ALLOW_LEGACY_A2A_SESSIONS`.
+- **Default in dev** (`NODE_ENV !== 'production'`): `true`. Path B fires for legacy session bearers — required for the demo-login + delegation-bootstrapped flow during migration.
+- **Default in prod** (`NODE_ENV === 'production'`): `false`. Path B is rejected with a 401 and an `audit-deny` row tagged `legacy-session-fallback-disabled`. Path A is unaffected. Path B is *only* refused when BOTH `NODE_ENV === 'production'` AND `ALLOW_LEGACY_A2A_SESSIONS !== 'true'` — either condition alone is not sufficient.
+- **Operator break-glass**: setting `ALLOW_LEGACY_A2A_SESSIONS=true` in production explicitly restores Path B for incident response or staged migration. The override surfaces in the boot-log "startup posture" line; it does NOT currently emit a startup audit row (unlike the deployer-key break-glass via `ALLOW_RUNTIME_DEPLOYER_KEY_UNTIL`, which writes `system:break-glass-deployer-key` via `assertDeployerKeyPolicy`). A symmetric `system:break-glass-legacy-a2a-sessions` startup audit row is planned (Sprint 5 W3 follow-up); until it ships, the only audit signal is the `audit-deny` row written when Path B is *refused*, not when it is permitted. Operators relying on the override must remove the env var before the next compliance window.
+- **Garbage values** (`ALLOW_LEGACY_A2A_SESSIONS=maybe`) throw at startup rather than silently defaulting.
 
 **Boot-log line.** `apps/a2a-agent/src/index.ts` prints one summary line per startup so an operator can confirm the posture at a glance:
 

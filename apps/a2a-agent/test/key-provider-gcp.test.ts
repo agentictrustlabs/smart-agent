@@ -45,19 +45,34 @@ function gcpEnv(extra: Partial<KeyProviderEnv> = {}): KeyProviderEnv {
   }
 }
 
-// ─── buildKeyProvider ─ session envelope encryption (G-PR-2 target) ──
+// ─── buildKeyProvider ─ session envelope encryption (G-PR-2 LIVE) ────
 
-test("buildKeyProvider('gcp-kms') with valid GCP env + session KEK throws G-PR-2 marker", () => {
-  assert.throws(
-    () =>
-      buildKeyProvider(
-        gcpEnv({
-          GCP_KMS_SESSION_KEK:
-            'projects/smart-agent-prod/locations/global/keyRings/a2a/cryptoKeys/session-kek',
-        }),
-      ),
-    /GCP backend not yet implemented for session provider \(G-PR-2\)/,
+test("buildKeyProvider('gcp-kms') with valid GCP env + session KEK returns a real GcpKmsProvider", () => {
+  const provider = buildKeyProvider(
+    gcpEnv({
+      GCP_KMS_SESSION_KEK:
+        'projects/smart-agent-prod/locations/global/keyRings/a2a/cryptoKeys/session-kek',
+    }),
+  ) as unknown as { backend?: string; keyVersion: string }
+  // G-PR-2 lights up `createGcpKmsProvider`. The returned object exposes
+  // both the `A2AKeyProvider` shape and the `backend: 'gcp-kms'` tag.
+  assert.equal(provider.backend, 'gcp-kms')
+  assert.ok(
+    provider.keyVersion.startsWith('gcp-kms:'),
+    `keyVersion '${provider.keyVersion}' must start with 'gcp-kms:'`,
   )
+})
+
+test("buildKeyProvider('gcp-kms') with GCP_KMS_SESSION_KEK_VERSION pin surfaces the pinned version in keyVersion", () => {
+  const provider = buildKeyProvider(
+    gcpEnv({
+      GCP_KMS_SESSION_KEK:
+        'projects/smart-agent-prod/locations/global/keyRings/a2a/cryptoKeys/session-kek',
+      GCP_KMS_SESSION_KEK_VERSION:
+        'projects/smart-agent-prod/locations/global/keyRings/a2a/cryptoKeys/session-kek/cryptoKeyVersions/3',
+    }),
+  ) as unknown as { keyVersion: string }
+  assert.equal(provider.keyVersion, 'gcp-kms:3')
 })
 
 test("buildKeyProvider('gcp-kms') missing GCP_PROJECT_NUMBER throws clean error naming the field", () => {
@@ -79,24 +94,28 @@ test("buildKeyProvider('gcp-kms') missing GCP_KMS_SESSION_KEK throws clean error
   )
 })
 
-// ─── buildSignerBackend ─ master-EOA signer (G-PR-3 target) ──────────
+// ─── buildSignerBackend ─ master-EOA signer (G-PR-3 LIVE) ────────────
 
-test("buildSignerBackend('gcp-kms') with valid GCP env + master version throws G-PR-3 marker", () => {
-  assert.throws(
-    () =>
-      buildSignerBackend(
-        gcpEnv({
-          GCP_KMS_MASTER_SIGNER_VERSION:
-            'projects/smart-agent-prod/locations/global/keyRings/a2a/cryptoKeys/master-signer/cryptoKeyVersions/1',
-        }),
-      ),
-    /GCP backend not yet implemented for master-EOA signer \(G-PR-3\)/,
-  )
+test("buildSignerBackend('gcp-kms') with valid GCP env + master version returns a real GcpKmsSigner", () => {
+  const backend = buildSignerBackend(
+    gcpEnv({
+      GCP_KMS_MASTER_SIGNER_VERSION:
+        'projects/smart-agent-prod/locations/global/keyRings/a2a/cryptoKeys/master-signer/cryptoKeyVersions/1',
+    }),
+  ) as unknown as { backend?: string; keyVersion: string; keyId: string }
+  // G-PR-3 lights up `createGcpKmsSigner`. The returned object exposes
+  // the `KmsAccountBackend` shape PLUS the backend/keyId/keyVersion
+  // tag-fields so callers can identify the backend without an
+  // `instanceof` check.
+  assert.equal(backend.backend, 'gcp-kms')
+  assert.equal(backend.keyVersion, 'gcp-kms:1')
+  assert.ok(backend.keyId.endsWith('/cryptoKeyVersions/1'))
 })
 
 test("buildSignerBackend('gcp-kms') missing GCP_PROJECT_NUMBER throws clean error", () => {
   const env = gcpEnv({
-    GCP_KMS_MASTER_SIGNER_VERSION: 'projects/x/cryptoKeyVersions/1',
+    GCP_KMS_MASTER_SIGNER_VERSION:
+      'projects/p/locations/l/keyRings/r/cryptoKeys/k/cryptoKeyVersions/1',
   })
   delete env.GCP_PROJECT_NUMBER
   assert.throws(
@@ -105,10 +124,25 @@ test("buildSignerBackend('gcp-kms') missing GCP_PROJECT_NUMBER throws clean erro
   )
 })
 
-test("buildSignerBackend('gcp-kms') missing GCP_KMS_MASTER_SIGNER_VERSION throws clean error", () => {
+test("buildSignerBackend('gcp-kms') missing GCP_KMS_MASTER_SIGNER_VERSION throws clean error naming the env var", () => {
   assert.throws(
     () => buildSignerBackend(gcpEnv()),
     /GCP_KMS_MASTER_SIGNER_VERSION is required/,
+  )
+})
+
+test("buildSignerBackend('gcp-kms') with malformed GCP_KMS_MASTER_SIGNER_VERSION throws format error", () => {
+  // Parent-key path (no /cryptoKeyVersions/ suffix). The signer pins to
+  // a specific version because each version has its own public key.
+  assert.throws(
+    () =>
+      buildSignerBackend(
+        gcpEnv({
+          GCP_KMS_MASTER_SIGNER_VERSION:
+            'projects/p/locations/l/keyRings/r/cryptoKeys/k',
+        }),
+      ),
+    /must match.*cryptoKeyVersions/,
   )
 })
 
@@ -255,17 +289,15 @@ test("production guard fires from buildMacProvider too", () => {
 
 test("production guard allows clean prod env (all forbidden vars absent)", () => {
   // Sanity: with NODE_ENV='production' + 'gcp-kms' + all GCP env present
-  // + every forbidden static key ABSENT, the factory must reach the
-  // staged "not yet implemented" throw (not the production guard).
-  assert.throws(
-    () =>
-      buildKeyProvider(
-        gcpEnv({
-          NODE_ENV: 'production',
-          GCP_KMS_SESSION_KEK:
-            'projects/x/cryptoKeys/y',
-        }),
-      ),
-    /GCP backend not yet implemented for session provider \(G-PR-2\)/,
-  )
+  // + every forbidden static key ABSENT, the factory must successfully
+  // return a real `GcpKmsProvider` (G-PR-2 — provider live).
+  const provider = buildKeyProvider(
+    gcpEnv({
+      NODE_ENV: 'production',
+      GCP_KMS_SESSION_KEK:
+        'projects/smart-agent-prod/locations/global/keyRings/a2a/cryptoKeys/session-kek',
+    }),
+  ) as unknown as { backend?: string; keyVersion: string }
+  assert.equal(provider.backend, 'gcp-kms')
+  assert.ok(provider.keyVersion.startsWith('gcp-kms:'))
 })

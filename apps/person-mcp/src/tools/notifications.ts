@@ -7,6 +7,14 @@ import { requirePrincipal } from '../auth/principal-context.js'
 const mcpText = <T>(v: T) => ({ content: [{ type: 'text' as const, text: JSON.stringify(v) }] })
 
 export const notificationsTools = {
+  /**
+   * @sa-tool delegation-verified
+   * @sa-auth delegation-token
+   * @sa-rate-limit none
+   * @sa-prod-gate always
+   * @sa-risk-tier low
+   * @sa-owner developer
+   */
   list_notifications: {
     name: 'list_notifications',
     description: 'List notifications for the authenticated principal.',
@@ -23,6 +31,15 @@ export const notificationsTools = {
     },
   },
 
+  /**
+   * @sa-tool delegation-verified
+   * @sa-auth delegation-token
+   * @sa-rate-limit none
+   * @sa-prod-gate always
+   * @sa-validation json-schema
+   * @sa-risk-tier medium
+   * @sa-owner developer
+   */
   mark_notification_read: {
     name: 'mark_notification_read',
     description: 'Mark a notification as read.',
@@ -45,6 +62,15 @@ export const notificationsTools = {
   // scope; for now this is just the same delegation gate as user-owned tools.
   // The org-mcp / a2a-agent / etc. call this via cross-delegation when they
   // need to drop a notification into a person's inbox.
+  /**
+   * @sa-tool delegation-verified
+   * @sa-auth delegation-token
+   * @sa-rate-limit none
+   * @sa-prod-gate always
+   * @sa-validation json-schema
+   * @sa-risk-tier medium
+   * @sa-owner security
+   */
   create_notification: {
     name: 'create_notification',
     description: 'Insert a notification for the authenticated principal (system-callable via cross-delegation).',

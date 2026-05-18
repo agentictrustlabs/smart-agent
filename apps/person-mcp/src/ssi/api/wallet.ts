@@ -27,6 +27,14 @@ export const walletRoutes = new Hono()
  * means cross-context correlation is impossible at the crypto layer.
  *
  * Idempotent: if a wallet for that (principal, context) already exists, return it.
+ *
+ * @sa-route delegation-verified
+ * @sa-auth wallet-action-signature
+ * @sa-rate-limit none
+ * @sa-prod-gate always
+ * @sa-validation wallet-action-canonical
+ * @sa-risk-tier sensitive
+ * @sa-owner security
  */
 walletRoutes.post('/wallet/provision', async (c) => {
   const body = await c.req.json<{
@@ -97,6 +105,14 @@ walletRoutes.post('/wallet/provision', async (c) => {
  *
  * Returns the list of wallets (contexts) this principal owns.
  * Kept plural — the UI wallet-switcher needs all of them.
+ *
+ * @sa-route public
+ * @sa-auth none-system-scoped
+ * @sa-rate-limit none
+ * @sa-prod-gate always
+ * @sa-validation none-path-params
+ * @sa-risk-tier medium
+ * @sa-owner security
  */
 walletRoutes.get('/wallet/:principal', async (c) => {
   const principal = c.req.param('principal')
@@ -122,6 +138,14 @@ walletRoutes.get('/wallet/:principal', async (c) => {
  * every credential bound to the old secret as 'stale' (needs re-issuance).
  * The old link secret is kept in Askar for forensic purposes but is no longer
  * used for new credential requests or presentations.
+ *
+ * @sa-route delegation-verified
+ * @sa-auth wallet-action-signature
+ * @sa-rate-limit none
+ * @sa-prod-gate always
+ * @sa-validation wallet-action-canonical
+ * @sa-risk-tier sensitive
+ * @sa-owner security
  */
 walletRoutes.post('/wallet/rotate-link-secret', async (c) => {
   const body = await c.req.json<{
@@ -158,6 +182,14 @@ walletRoutes.post('/wallet/rotate-link-secret', async (c) => {
  *
  * Convenience lookup for a single (principal, context) pair.
  * 404 if the wallet doesn't exist.
+ *
+ * @sa-route public
+ * @sa-auth none-system-scoped
+ * @sa-rate-limit none
+ * @sa-prod-gate always
+ * @sa-validation none-path-params
+ * @sa-risk-tier medium
+ * @sa-owner security
  */
 walletRoutes.get('/wallet/:principal/:context', async (c) => {
   const principal = c.req.param('principal')

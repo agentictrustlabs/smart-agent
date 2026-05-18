@@ -25,7 +25,7 @@ import {
   MAC_KEY_IDS,
 } from '@smart-agent/sdk/key-custody'
 import {
-  assertNoForbiddenGcpStaticKeys,
+  assertNoForbiddenStaticKeys,
   type KeyProviderEnv,
 } from './key-provider'
 import { createGcpAuthClient, GCP_AUTH_ENV_KEYS } from '@smart-agent/sdk/key-custody'
@@ -107,7 +107,7 @@ export function buildMacProvider(
         // KeyProviderEnv used by the other three factories — coerce via
         // an indexed read so the shared production-guard helper still
         // works.
-        assertNoForbiddenGcpStaticKeys(env as KeyProviderEnv)
+        assertNoForbiddenStaticKeys(env as KeyProviderEnv, 'gcp-kms')
       }
       // Build the auth client so auth-env errors surface before the
       // staged marker.

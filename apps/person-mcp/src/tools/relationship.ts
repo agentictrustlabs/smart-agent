@@ -51,6 +51,15 @@ interface EmitEdgeArgs {
   _a2aSessionId?: string
 }
 
+/**
+ * @sa-tool delegation-verified
+ * @sa-auth delegation-token
+ * @sa-rate-limit none
+ * @sa-prod-gate always
+ * @sa-validation json-schema
+ * @sa-risk-tier medium
+ * @sa-owner developer
+ */
 const emitEdgeTool = {
   name: 'relationship:emit_edge',
   description:
@@ -147,6 +156,15 @@ interface SetEdgeStatusArgs {
   _a2aSessionId?: string
 }
 
+/**
+ * @sa-tool delegation-verified
+ * @sa-auth delegation-token
+ * @sa-rate-limit none
+ * @sa-prod-gate always
+ * @sa-validation json-schema
+ * @sa-risk-tier medium
+ * @sa-owner developer
+ */
 const setEdgeStatusTool = {
   name: 'relationship:set_edge_status',
   description:
@@ -189,6 +207,14 @@ interface ListOutgoingArgs {
   relationshipType?: Hex
 }
 
+/**
+ * @sa-tool delegation-verified
+ * @sa-auth delegation-token
+ * @sa-rate-limit none
+ * @sa-prod-gate always
+ * @sa-risk-tier low
+ * @sa-owner developer
+ */
 const listOutgoingTool = {
   name: 'relationship:list_outgoing',
   description:

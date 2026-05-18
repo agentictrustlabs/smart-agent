@@ -22,6 +22,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-kms": "^3.700.0",
+    "@google-cloud/kms": "^5.5.0",
     "@noble/curves": "^1.9.1",
     "@noble/hashes": "^1.8.0",
     "@smart-agent/discovery": "workspace:*",

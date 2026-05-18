@@ -441,12 +441,16 @@ with either present.
 
 Both are integers >= 0. Garbage values throw at startup rather than silently defaulting. No secrets — these are budget knobs, safe to set in plain env. Multi-instance rate sharing is out of scope until Sprint 3 (SQLite → Postgres); within a single person-mcp process the check-and-increment is atomic (`better-sqlite3` synchronous transaction).
 
-**Legacy session fallback (Sprint 1 W2.2 S1.6).** `apps/a2a-agent/src/middleware/require-session.ts` has a dev-era fallback (Path B) that accepted bearers tied to rows in the legacy `sessions` table — including demo-login rows. In production this path is closed by default. The env var:
+**Legacy session fallback — Path B / legacy decrypt-and-sign (Sprint 1 W2.2 S1.6).** `apps/a2a-agent/src/middleware/require-session.ts` has a dev-era fallback (Path B) that accepts bearers tied to rows in the legacy `sessions` table — including demo-login rows — and decrypts-and-signs them with the per-session key. Path B is dev-on / prod-off by default. The canonical rules:
 
-| Variable | Production value | Effect |
+| Variable | Environment | Effect |
 |---|---|---|
-| `ALLOW_LEGACY_A2A_SESSIONS` | unset (recommended) | `false` by default in `NODE_ENV=production`. Path B short-circuits with 401 + audit-deny row tagged `legacy-session-fallback-disabled`. |
-| `ALLOW_LEGACY_A2A_SESSIONS=true` | explicit opt-in | Restores Path B as a temporary escape hatch (incident response, staged migration). Every legacy reach still emits an audit-deny row so the override is always visible. |
+| `ALLOW_LEGACY_A2A_SESSIONS` unset | `NODE_ENV` ≠ `'production'` | Defaults to `true`. Path B fires for legacy session bearers (backward compatibility during migration). |
+| `ALLOW_LEGACY_A2A_SESSIONS` unset | `NODE_ENV=production` | Defaults to `false`. Path B is rejected with 401 + `audit-deny` row tagged `legacy-session-fallback-disabled`. |
+| `ALLOW_LEGACY_A2A_SESSIONS=true` | `NODE_ENV=production` | **Operator break-glass.** Explicit opt-in restores Path B for incident response or staged migration. The override appears in the boot-log `startup posture` line below. A startup `system:break-glass-legacy-a2a-sessions` audit row (paralleling the deployer-key break-glass which writes `system:break-glass-deployer-key` via `assertDeployerKeyPolicy`) is planned but NOT yet implemented — until that lands, the only audit signal is the `audit-deny` row written when Path B is *refused*, not when it is permitted. Remove the env var before the next compliance window. |
+| `ALLOW_LEGACY_A2A_SESSIONS=false` | any | Path B is rejected even in dev. Useful for staging environments that mimic prod posture. |
+
+Path B refusal requires BOTH `NODE_ENV === 'production'` AND `ALLOW_LEGACY_A2A_SESSIONS !== 'true'` — either condition alone is not sufficient.
 
 Garbage values (`maybe`, `0.5`) throw at startup rather than silently defaulting.
 

@@ -92,3 +92,22 @@ export type {
 // GCP-KMS provider/signer/MAC implementations land in G-PR-2..G-PR-5.
 export { createGcpAuthClient, GCP_AUTH_ENV_KEYS } from './gcp-auth'
 export type { GcpAuthEnv, GcpAuthDeps } from './gcp-auth'
+// GCP-KMS G-PR-2 — session envelope provider (local DEK + KEK-wrap).
+export { createGcpKmsProvider } from './gcp-kms-provider'
+export type {
+  GcpKmsEnv,
+  GcpKmsDeps,
+  GcpKmsProvider,
+  GcpKmsAuditEvent,
+  KmsClientLike,
+} from './gcp-kms-provider'
+// GCP-KMS G-PR-3 — master-EOA secp256k1 signer (KmsAccountBackend impl).
+export { createGcpKmsSigner } from './gcp-kms-signer'
+export type {
+  GcpKmsSignerEnv,
+  GcpKmsSignerDeps,
+  GcpKmsSigner,
+  GcpKmsSignerAuditEvent,
+  SignerKmsClientLike,
+} from './gcp-kms-signer'
+export { crc32c } from './crc32c'

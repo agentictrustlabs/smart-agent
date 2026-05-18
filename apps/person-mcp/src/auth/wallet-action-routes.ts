@@ -61,6 +61,18 @@ const auth = requireInboundServiceAuth()
 
 export const walletActionRoutes = new Hono()
 
+/**
+ * POST /wallet-action/verify — verify a session-signer-signed WalletAction.
+ * Used by web/a2a-agent to delegate the verifier authority to person-mcp.
+ *
+ * @sa-route service-only
+ * @sa-auth service-hmac
+ * @sa-rate-limit none
+ * @sa-prod-gate always
+ * @sa-validation shape-check
+ * @sa-risk-tier high
+ * @sa-owner security
+ */
 walletActionRoutes.post('/wallet-action/verify', auth, async (c) => {
   const body = await c.req.json<{
     action: unknown
@@ -98,6 +110,18 @@ walletActionRoutes.post('/wallet-action/verify', auth, async (c) => {
   }
 })
 
+/**
+ * POST /audit/append — append a row to the hash-chained audit log. Used by
+ * the web for action types it executes itself (e.g. presentation creation).
+ *
+ * @sa-route service-only
+ * @sa-auth service-hmac
+ * @sa-rate-limit none
+ * @sa-prod-gate always
+ * @sa-validation shape-check
+ * @sa-risk-tier high
+ * @sa-owner security
+ */
 walletActionRoutes.post('/audit/append', auth, async (c) => {
   const body = await c.req.json<{
     smartAccountAddress: `0x${string}`
@@ -129,6 +153,17 @@ walletActionRoutes.post('/audit/append', auth, async (c) => {
   return c.json({ entryHash: entry.entryHash, prevEntryHash: entry.prevEntryHash })
 })
 
+/**
+ * GET /audit/log/:account — read the audit chain for a given smart account.
+ *
+ * @sa-route service-only
+ * @sa-auth service-hmac
+ * @sa-rate-limit none
+ * @sa-prod-gate always
+ * @sa-validation none-path-params
+ * @sa-risk-tier high
+ * @sa-owner security
+ */
 walletActionRoutes.get('/audit/log/:account', auth, (c) => {
   const account = c.req.param('account') as `0x${string}`
   const limitParam = c.req.query('limit')
@@ -139,12 +174,37 @@ walletActionRoutes.get('/audit/log/:account', auth, (c) => {
 
 // ─── SessionRecord lifecycle (called by web app) ────────────────────
 
+/**
+ * GET /session-store/epoch/:account — read the smart account's current
+ * revocation epoch. Used by callers building session grants.
+ *
+ * @sa-route service-only
+ * @sa-auth service-hmac
+ * @sa-rate-limit none
+ * @sa-prod-gate always
+ * @sa-validation none-path-params
+ * @sa-risk-tier medium
+ * @sa-owner security
+ */
 walletActionRoutes.get('/session-store/epoch/:account', auth, (c) => {
   const account = c.req.param('account') as `0x${string}`
   const epoch = getRevocationEpoch(account)
   return c.json({ epoch })
 })
 
+/**
+ * POST /session-store/insert — persist a SessionRecord. Body MUST carry a
+ * passkey assertion that re-verifies via ERC-1271 against the smart
+ * account before the row is written (Hardening §1.3).
+ *
+ * @sa-route service-only
+ * @sa-auth service-hmac
+ * @sa-rate-limit none
+ * @sa-prod-gate always
+ * @sa-validation shape-check
+ * @sa-risk-tier sensitive
+ * @sa-owner security
+ */
 walletActionRoutes.post('/session-store/insert', auth, async (c) => {
   const body = await c.req.json<{
     record: Omit<SessionRecord, 'idleExpiresAt' | 'expiresAt' | 'createdAt' | 'revokedAt'> & {
@@ -236,24 +296,71 @@ walletActionRoutes.post('/session-store/insert', auth, async (c) => {
   return c.json({ ok: true })
 })
 
+/**
+ * GET /session-store/by-cookie/:cookieValue — resolve a session record
+ * from its public cookie value.
+ *
+ * @sa-route service-only
+ * @sa-auth service-hmac
+ * @sa-rate-limit none
+ * @sa-prod-gate always
+ * @sa-validation none-path-params
+ * @sa-risk-tier high
+ * @sa-owner security
+ */
 walletActionRoutes.get('/session-store/by-cookie/:cookieValue', auth, (c) => {
   const cookieValue = c.req.param('cookieValue')
   const record = getSessionByCookieValue(cookieValue)
   return c.json({ record })
 })
 
+/**
+ * GET /session-store/active/:account — list active session records for a
+ * given smart account.
+ *
+ * @sa-route service-only
+ * @sa-auth service-hmac
+ * @sa-rate-limit none
+ * @sa-prod-gate always
+ * @sa-validation none-path-params
+ * @sa-risk-tier high
+ * @sa-owner security
+ */
 walletActionRoutes.get('/session-store/active/:account', auth, (c) => {
   const account = c.req.param('account') as `0x${string}`
   const records = listActiveSessionsForAccount(account)
   return c.json({ records })
 })
 
+/**
+ * POST /session-store/revoke — revoke a session by id.
+ *
+ * @sa-route service-only
+ * @sa-auth service-hmac
+ * @sa-rate-limit none
+ * @sa-prod-gate always
+ * @sa-validation shape-check
+ * @sa-risk-tier high
+ * @sa-owner security
+ */
 walletActionRoutes.post('/session-store/revoke', auth, async (c) => {
   const body = await c.req.json<{ sessionId: string }>()
   revokeSession(body.sessionId)
   return c.json({ ok: true })
 })
 
+/**
+ * POST /session-store/bump-epoch — increment the smart account's revocation
+ * epoch (kills all open sessions in one shot).
+ *
+ * @sa-route service-only
+ * @sa-auth service-hmac
+ * @sa-rate-limit none
+ * @sa-prod-gate always
+ * @sa-validation shape-check
+ * @sa-risk-tier sensitive
+ * @sa-owner security
+ */
 walletActionRoutes.post('/session-store/bump-epoch', auth, async (c) => {
   const body = await c.req.json<{ smartAccountAddress: `0x${string}` }>()
   const epoch = bumpRevocationEpoch(body.smartAccountAddress)

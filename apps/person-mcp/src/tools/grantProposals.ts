@@ -172,6 +172,15 @@ function issueReadForReviewGrant(opts: {
 // Tool: grant_proposal:submit
 // ───────────────────────────────────────────────────────────────────────
 
+/**
+ * @sa-tool delegation-verified
+ * @sa-auth delegation-token
+ * @sa-rate-limit none
+ * @sa-prod-gate always
+ * @sa-validation json-schema
+ * @sa-risk-tier medium
+ * @sa-owner developer
+ */
 const submitTool = {
   name: 'grant_proposal:submit',
   description:
@@ -329,6 +338,15 @@ const submitTool = {
 // Tool: grant_proposal:draft
 // ───────────────────────────────────────────────────────────────────────
 
+/**
+ * @sa-tool delegation-verified
+ * @sa-auth delegation-token
+ * @sa-rate-limit none
+ * @sa-prod-gate always
+ * @sa-validation json-schema
+ * @sa-risk-tier medium
+ * @sa-owner developer
+ */
 const draftTool = {
   name: 'grant_proposal:draft',
   description: 'Create or mutate a draft GrantProposal row in place (status stays draft).',
@@ -432,6 +450,14 @@ const draftTool = {
 // Tool: grant_proposal:read_self
 // ───────────────────────────────────────────────────────────────────────
 
+/**
+ * @sa-tool delegation-verified
+ * @sa-auth delegation-token
+ * @sa-rate-limit none
+ * @sa-prod-gate always
+ * @sa-risk-tier low
+ * @sa-owner developer
+ */
 const readSelfTool = {
   name: 'grant_proposal:read_self',
   description: "List all GrantProposals owned by the authenticated principal.",
@@ -457,6 +483,14 @@ const readSelfTool = {
 // Tool: grant_proposal:list_for_member (T056)
 // ───────────────────────────────────────────────────────────────────────
 
+/**
+ * @sa-tool delegation-verified
+ * @sa-auth delegation-token
+ * @sa-rate-limit none
+ * @sa-prod-gate always
+ * @sa-risk-tier low
+ * @sa-owner developer
+ */
 const listForMemberTool = {
   name: 'grant_proposal:list_for_member',
   description:
@@ -501,6 +535,15 @@ interface EditableFields {
   organisationalBackground?: OrganisationalBackground
 }
 
+/**
+ * @sa-tool delegation-verified
+ * @sa-auth delegation-token
+ * @sa-rate-limit none
+ * @sa-prod-gate always
+ * @sa-validation json-schema
+ * @sa-risk-tier medium
+ * @sa-owner developer
+ */
 const editPreDeadlineTool = {
   name: 'grant_proposal:edit_pre_deadline',
   description:
@@ -562,6 +605,15 @@ const editPreDeadlineTool = {
 // Tool: grant_proposal:withdraw (T054)
 // ───────────────────────────────────────────────────────────────────────
 
+/**
+ * @sa-tool delegation-verified
+ * @sa-auth delegation-token
+ * @sa-rate-limit none
+ * @sa-prod-gate always
+ * @sa-validation json-schema
+ * @sa-risk-tier medium
+ * @sa-owner developer
+ */
 const withdrawTool = {
   name: 'grant_proposal:withdraw',
   description:
@@ -638,6 +690,15 @@ const withdrawTool = {
 // Tool: grant_proposal:clone (T055)
 // ───────────────────────────────────────────────────────────────────────
 
+/**
+ * @sa-tool delegation-verified
+ * @sa-auth delegation-token
+ * @sa-rate-limit none
+ * @sa-prod-gate always
+ * @sa-validation json-schema
+ * @sa-risk-tier medium
+ * @sa-owner developer
+ */
 const cloneTool = {
   name: 'grant_proposal:clone',
   description:

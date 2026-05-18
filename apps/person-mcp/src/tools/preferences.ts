@@ -6,6 +6,14 @@ import { requirePrincipal } from '../auth/principal-context.js'
 const mcpText = <T>(v: T) => ({ content: [{ type: 'text' as const, text: JSON.stringify(v) }] })
 
 export const preferencesTools = {
+  /**
+   * @sa-tool delegation-verified
+   * @sa-auth delegation-token
+   * @sa-rate-limit none
+   * @sa-prod-gate always
+   * @sa-risk-tier low
+   * @sa-owner developer
+   */
   get_user_preferences: {
     name: 'get_user_preferences',
     description: 'Get the authenticated principal\'s preferences (language, home church, location, theme, notifications).',
@@ -21,6 +29,15 @@ export const preferencesTools = {
     },
   },
 
+  /**
+   * @sa-tool delegation-verified
+   * @sa-auth delegation-token
+   * @sa-rate-limit none
+   * @sa-prod-gate always
+   * @sa-validation json-schema
+   * @sa-risk-tier medium
+   * @sa-owner developer
+   */
   update_user_preferences: {
     name: 'update_user_preferences',
     description: 'Create or update the authenticated principal\'s preferences.',

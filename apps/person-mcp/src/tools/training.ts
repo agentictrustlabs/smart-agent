@@ -8,6 +8,14 @@ import { verifyCrossDelegation } from '../auth/verify-delegation.js'
 const mcpText = <T>(v: T) => ({ content: [{ type: 'text' as const, text: JSON.stringify(v) }] })
 
 export const trainingTools = {
+  /**
+   * @sa-tool delegation-verified
+   * @sa-auth delegation-token
+   * @sa-rate-limit none
+   * @sa-prod-gate always
+   * @sa-risk-tier low
+   * @sa-owner developer
+   */
   list_training_progress: {
     name: 'list_training_progress',
     description: 'List training-progress rows for the authenticated principal.',
@@ -23,6 +31,15 @@ export const trainingTools = {
     },
   },
 
+  /**
+   * @sa-tool delegation-verified
+   * @sa-auth delegation-token
+   * @sa-rate-limit none
+   * @sa-prod-gate always
+   * @sa-validation json-schema
+   * @sa-risk-tier medium
+   * @sa-owner developer
+   */
   toggle_training_module: {
     name: 'toggle_training_module',
     description: 'Toggle a training module\'s completion state for the authenticated principal.',
@@ -81,6 +98,14 @@ export const trainingTools = {
     },
   },
 
+  /**
+   * @sa-tool delegation-verified
+   * @sa-auth delegation-token
+   * @sa-rate-limit none
+   * @sa-prod-gate always
+   * @sa-risk-tier low
+   * @sa-owner developer
+   */
   get_delegated_training_progress: {
     name: 'get_delegated_training_progress',
     description: 'Read another principal\'s training progress via a cross-principal delegation (e.g., coach reads disciple).',

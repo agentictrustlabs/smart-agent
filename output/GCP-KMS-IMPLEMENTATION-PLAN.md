@@ -273,7 +273,15 @@ Also: remove the existing `'vault-transit'` deferred-stub case (or keep it — o
 
 ## G7 — Production startup invariants
 
-`apps/a2a-agent/src/lib/policy-startup.ts` already enforces "no static secrets in prod when `A2A_KMS_BACKEND=aws-kms`". Extend to symmetric `'gcp-kms'` checks:
+Today the production startup guard is narrower than the "no static keys in production" shorthand suggests. The actual code-enforced set is:
+
+- `apps/a2a-agent/src/config.ts:validateSessionSecret` — refuses boot when `A2A_KMS_BACKEND='aws-kms'` AND `NODE_ENV='production'` AND `A2A_SESSION_SECRET` is set (forensics-liability rule).
+- `apps/a2a-agent/src/lib/policy-startup.ts:validateDeployerKey` — refuses boot when `NODE_ENV='production'` AND `DEPLOYER_PRIVATE_KEY` is set, regardless of KMS backend, unless `ALLOW_RUNTIME_DEPLOYER_KEY_UNTIL=<ISO-8601>` (future-dated) is also set as a time-boxed break-glass; when active, `assertDeployerKeyPolicy` writes a `system:break-glass-deployer-key` audit row at boot.
+- `apps/a2a-agent/src/lib/policy-startup.ts:assertAuditSinkConfigured` — refuses boot when `NODE_ENV='production'` AND `AUDIT_CHECKPOINT_SINK_URL` is unset or unreachable.
+
+Nothing else in the startup path currently rejects a master EOA key, a tool executor key, or an HMAC key when KMS is the configured backend — those are planned hardening additions, not in-tree gates.
+
+Extend the AWS check to the symmetric `'gcp-kms'` posture AND fill in the missing AWS-side rejections:
 
 When `NODE_ENV=production` AND `A2A_KMS_BACKEND=gcp-kms`, **refuse to start** if any of these are set:
 - `GOOGLE_APPLICATION_CREDENTIALS`
@@ -283,6 +291,8 @@ When `NODE_ENV=production` AND `A2A_KMS_BACKEND=gcp-kms`, **refuse to start** if
 - `TOOL_EXECUTOR_*_PRIVATE_KEY` (pattern)
 - `WEB_TO_A2A_HMAC_KEY`
 - `A2A_INTERSERVICE_HMAC_KEY_*` (pattern)
+
+The symmetric AWS-side list (when `A2A_KMS_BACKEND=aws-kms` AND `NODE_ENV=production`) should reject the same union minus the GCP-specific entries — currently only `A2A_SESSION_SECRET` is rejected; the master EOA / tool executor / HMAC entries are gaps to close in the same PR.
 
 And **require** all of:
 - `GCP_PROJECT_ID`, `GCP_PROJECT_NUMBER`, `GCP_SERVICE_ACCOUNT_EMAIL`

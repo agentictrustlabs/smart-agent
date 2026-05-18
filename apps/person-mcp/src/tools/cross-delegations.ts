@@ -7,6 +7,14 @@ import { requirePrincipal } from '../auth/principal-context.js'
 const mcpText = <T>(v: T) => ({ content: [{ type: 'text' as const, text: JSON.stringify(v) }] })
 
 export const crossDelegationsTools = {
+  /**
+   * @sa-tool delegation-verified
+   * @sa-auth delegation-token
+   * @sa-rate-limit none
+   * @sa-prod-gate always
+   * @sa-risk-tier low
+   * @sa-owner developer
+   */
   list_cross_delegation_grants: {
     name: 'list_cross_delegation_grants',
     description: 'List active cross-delegation grants issued by the authenticated principal.',
@@ -23,6 +31,15 @@ export const crossDelegationsTools = {
     },
   },
 
+  /**
+   * @sa-tool delegation-verified
+   * @sa-auth delegation-token
+   * @sa-rate-limit none
+   * @sa-prod-gate always
+   * @sa-validation json-schema
+   * @sa-risk-tier medium
+   * @sa-owner developer
+   */
   grant_cross_delegation: {
     name: 'grant_cross_delegation',
     description: 'Record a cross-principal delegation grant issued by the authenticated principal.',
@@ -63,6 +80,15 @@ export const crossDelegationsTools = {
     },
   },
 
+  /**
+   * @sa-tool delegation-verified
+   * @sa-auth delegation-token
+   * @sa-rate-limit none
+   * @sa-prod-gate always
+   * @sa-validation json-schema
+   * @sa-risk-tier medium
+   * @sa-owner developer
+   */
   revoke_cross_delegation: {
     name: 'revoke_cross_delegation',
     description: 'Revoke a cross-delegation grant by id.',

@@ -87,6 +87,20 @@ const auth = requireInboundServiceAuth()
 
 export const dispatchRoutes = new Hono()
 
+/**
+ * POST /wallet-action/dispatch — verify-and-execute entry point for the
+ * session-grant signing system. Two-factor gating: inbound HMAC
+ * (`requireInboundServiceAuth`) at the wire AND a session-signer-signed
+ * `WalletActionV1` whose `payloadHash` commits to the body.
+ *
+ * @sa-route delegation-verified
+ * @sa-auth service-hmac
+ * @sa-rate-limit none
+ * @sa-prod-gate always
+ * @sa-validation wallet-action-canonical
+ * @sa-risk-tier sensitive
+ * @sa-owner security
+ */
 dispatchRoutes.post('/wallet-action/dispatch', auth, async (c) => {
   const body = await c.req.json<{
     action: WalletActionV1

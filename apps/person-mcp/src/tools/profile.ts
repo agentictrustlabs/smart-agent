@@ -30,6 +30,14 @@ interface ProfileUpdate {
 }
 
 export const profileTools = {
+  /**
+   * @sa-tool delegation-verified
+   * @sa-auth delegation-token
+   * @sa-rate-limit none
+   * @sa-prod-gate always
+   * @sa-risk-tier low
+   * @sa-owner developer
+   */
   get_profile: {
     name: 'get_profile',
     description: 'Get the full profile (including PII) for the authenticated principal. Requires a valid delegation token.',
@@ -57,6 +65,15 @@ export const profileTools = {
     },
   },
 
+  /**
+   * @sa-tool delegation-verified
+   * @sa-auth delegation-token
+   * @sa-rate-limit none
+   * @sa-prod-gate always
+   * @sa-validation json-schema
+   * @sa-risk-tier medium
+   * @sa-owner developer
+   */
   update_profile: {
     name: 'update_profile',
     description: 'Create or update the profile for the authenticated principal. Only fields provided will be updated. Requires a valid delegation token.',
@@ -153,6 +170,14 @@ export const profileTools = {
     },
   },
 
+  /**
+   * @sa-tool delegation-verified
+   * @sa-auth delegation-token
+   * @sa-rate-limit none
+   * @sa-prod-gate always
+   * @sa-risk-tier low
+   * @sa-owner developer
+   */
   get_delegated_profile: {
     name: 'get_delegated_profile',
     description: 'Read another principal\'s profile via a cross-principal delegation. The caller must have a valid delegation from the data owner granting access to specific fields.',

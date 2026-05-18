@@ -65,6 +65,11 @@ import {
   PROPOSAL_REGISTRY_SELECTORS_BY_TOOL,
   type ToolPolicy,
 } from '@smart-agent/sdk'
+import {
+  assertNoForbiddenStaticKeys,
+  type KeyProviderEnv,
+  type ProductionKeyBackend,
+} from '../auth/key-provider'
 import { auditAppend } from './audit'
 
 /**
@@ -433,6 +438,193 @@ export async function assertDeployerKeyPolicy(
     }
   }
   return result.decision
+}
+
+// ─── Sprint 5 W3 P0-7 — Production key-hygiene guard ────────────────
+
+/**
+ * Sprint 5 W3 P0-7 — top-level production key-hygiene assert.
+ *
+ * Wraps `assertNoForbiddenStaticKeys` in a startup-friendly shape:
+ *   - non-production → no-op
+ *   - `local-aes` backend in production → no-op here (the provider factory
+ *     refuses local-aes in prod separately; see `buildKeyProvider`).
+ *   - `aws-kms` or `gcp-kms` in production → forbidden-key check.
+ *
+ * Call from `apps/a2a-agent/src/index.ts` at boot so a misconfigured
+ * deployment refuses to start BEFORE the listener binds — the per-arm
+ * call in `buildKeyProvider` is the defense-in-depth fallback for the
+ * lazy code paths (e.g. encryption singleton instantiated on first
+ * request).
+ *
+ * Pure helper-style: takes `env`, throws on offense. Tests can pin every
+ * branch via the shared `assertNoForbiddenStaticKeys` directly, but the
+ * startup-call wrapper is exercised here so `index.ts` has a single
+ * import to wire.
+ */
+export interface ProductionKeyHygieneEnv extends KeyProviderEnv {
+  NODE_ENV?: string
+  A2A_KMS_BACKEND?: string
+}
+
+export function assertProductionKeyHygiene(
+  envIn: ProductionKeyHygieneEnv = process.env as ProductionKeyHygieneEnv,
+): void {
+  if (envIn.NODE_ENV !== 'production') return
+  const backend = envIn.A2A_KMS_BACKEND ?? 'local-aes'
+  if (backend !== 'aws-kms' && backend !== 'gcp-kms') return
+  assertNoForbiddenStaticKeys(envIn, backend as ProductionKeyBackend)
+}
+
+// ─── Sprint 5 W3 P0-7 — Legacy session-bearer break-glass audit ─────
+
+/**
+ * Sprint 5 W3 P0-7 — pure resolver for the legacy-session-bearer policy.
+ *
+ * Companion to `validateAllowLegacySessions` in `apps/a2a-agent/src/config.ts`:
+ * that helper returns the boolean flag the middleware reads; this one returns
+ * the FULL policy posture so the startup side (audit row, structured WARN)
+ * and any future telemetry call site can ask one question instead of
+ * re-deriving state from env vars.
+ *
+ * Returns:
+ *   - `enabled`     true iff Path B (legacy a2a `sessions` table fallback)
+ *                   is permitted at runtime. Matches the `config.ALLOW_LEGACY_A2A_SESSIONS`
+ *                   resolution (env override wins; defaults dev=true / prod=false).
+ *   - `breakGlass`  true iff the policy is enabled BY EXPLICIT OPERATOR OVERRIDE
+ *                   in production — i.e. `NODE_ENV='production'` AND
+ *                   `ALLOW_LEGACY_A2A_SESSIONS='true'`. This is the only branch
+ *                   that warrants a `system:break-glass-legacy-a2a-sessions`
+ *                   audit row at boot. The dev default (`enabled=true` because
+ *                   NODE_ENV is not production) is NOT a break-glass.
+ *   - `reason`      a short, structured description of how the policy was
+ *                   resolved — surfaced into the audit row's `errorReason`
+ *                   field and the structured WARN's `reason` field.
+ *
+ * Pure: takes the env map, returns the decision. Tests pin every branch
+ * without mutating global `process.env`.
+ */
+export interface LegacySessionEnv {
+  NODE_ENV?: string
+  ALLOW_LEGACY_A2A_SESSIONS?: string
+}
+
+export interface LegacySessionPolicy {
+  enabled: boolean
+  breakGlass: boolean
+  reason: string
+}
+
+export function resolveLegacySessionPolicy(
+  envIn: LegacySessionEnv,
+): LegacySessionPolicy {
+  const isProd = envIn.NODE_ENV === 'production'
+  const raw = envIn.ALLOW_LEGACY_A2A_SESSIONS
+  const explicit = raw !== undefined && raw !== ''
+
+  let enabled: boolean
+  if (explicit) {
+    const v = raw!.trim().toLowerCase()
+    if (v === 'true' || v === '1') enabled = true
+    else if (v === 'false' || v === '0') enabled = false
+    else
+      throw new Error(
+        `policy-startup: ALLOW_LEGACY_A2A_SESSIONS must be 'true' or 'false' (got '${raw}')`,
+      )
+  } else {
+    // Dev default: legacy fallback ON (preserves demo-login). Prod
+    // default: legacy fallback OFF.
+    enabled = !isProd
+  }
+
+  // Break-glass = the operator EXPLICITLY enabled the legacy path in
+  // production. The dev default-on case is NOT a break-glass — it's
+  // the expected developer posture.
+  const breakGlass = isProd && enabled && explicit
+
+  let reason: string
+  if (breakGlass) {
+    reason =
+      "operator override: ALLOW_LEGACY_A2A_SESSIONS='true' set in NODE_ENV='production'"
+  } else if (isProd && enabled) {
+    // Shouldn't happen given the logic above, but kept for completeness.
+    reason = 'production default with legacy fallback enabled'
+  } else if (isProd) {
+    reason = 'production default (legacy fallback refused)'
+  } else if (explicit) {
+    reason = `development with explicit ALLOW_LEGACY_A2A_SESSIONS='${raw}'`
+  } else {
+    reason = 'development default (legacy fallback permitted)'
+  }
+
+  return { enabled, breakGlass, reason }
+}
+
+/**
+ * Sprint 5 W3 P0-7 — top-level helper. When the legacy session policy
+ * resolves to a production break-glass (operator set
+ * `ALLOW_LEGACY_A2A_SESSIONS='true'` in `NODE_ENV='production'`), emit a
+ * structured WARN AND write the `system:break-glass-legacy-a2a-sessions`
+ * audit row so the chain head reflects the operator-known posture at
+ * boot. Mirrors `assertDeployerKeyPolicy` exactly — same function
+ * placement, same naming, same body shape.
+ *
+ * The middleware behavior is unchanged: when the flag is on, Path B
+ * still works. This helper is purely observability — without it, the
+ * operator escape hatch leaves no startup evidence in the audit log.
+ *
+ * The audit write is best-effort: an audit failure logs but does NOT
+ * abort startup (the break-glass is already operator-authorised; making
+ * a transient SQLite hiccup block boot would be worse).
+ */
+export async function assertLegacySessionPolicy(
+  envIn: LegacySessionEnv = process.env,
+): Promise<LegacySessionPolicy> {
+  const policy = resolveLegacySessionPolicy(envIn)
+  if (policy.breakGlass) {
+    const rawValue = envIn.ALLOW_LEGACY_A2A_SESSIONS ?? ''
+    const bootTimestamp = new Date().toISOString()
+    console.warn(
+      JSON.stringify({
+        event: 'break-glass-legacy-a2a-sessions',
+        level: 'warn',
+        msg:
+          "ALLOW_LEGACY_A2A_SESSIONS='true' is permitted in production. " +
+          'This is an operator-controlled escape hatch — the legacy ' +
+          '`a2a.sessions` table fallback bypasses the SessionGrant ceremony. ' +
+          'Remove the env var as soon as staged migration / incident response permits.',
+        envVar: 'ALLOW_LEGACY_A2A_SESSIONS',
+        envValue: rawValue,
+        bootTimestamp,
+        reason: policy.reason,
+        nodeEnv: 'production',
+      }),
+    )
+    const auditBody = {
+      envVar: 'ALLOW_LEGACY_A2A_SESSIONS',
+      envValue: rawValue,
+      bootTimestamp,
+      reason: policy.reason,
+    }
+    try {
+      await auditAppend({
+        rootGrantHash: '',
+        sessionId: '',
+        sessionPrincipal: '',
+        mcpServer: 'system',
+        mcpTool: 'system:break-glass-legacy-a2a-sessions',
+        executionPath: 'mcp-only',
+        status: 'completed',
+        errorReason: JSON.stringify(auditBody),
+      })
+    } catch (err) {
+      console.error(
+        '[assertLegacySessionPolicy] failed to write break-glass audit row:',
+        err,
+      )
+    }
+  }
+  return policy
 }
 
 // ─── P1-5 — Audit sink policy ───────────────────────────────────────
