@@ -56,6 +56,7 @@ AgentNameRegistry:        0xb7278A61aa25c888815aFC32Ad3cC52fF24fE575
 AgentNameResolver:        0xCD8a1C3ba11CF5ECfa6267617243239504a98d90
 AgentNameUniversalRes:    0x2bdCC0de6bE1f7D2ee689a0342D76F52E8EFABa3
 NameScopeEnforcer:        0x7969c5eD335650692Bc04293B07F5BF2e7A673C0
+/home/barb/smart-agent/scripts/deploy-local.sh: line 289: kid:secret: command not found
 
 === Updated /home/barb/smart-agent/apps/web/.env ===
 Updated /home/barb/smart-agent/apps/org-mcp/.env
@@ -70,8 +71,11 @@ Funded tool-executor EOAs (1 ETH each):
   DISBURSEMENT:    0x6306616960f1F26409B384c399bc8d39Ef6763D8
   POOL_LIFECYCLE:  0xFD434576cf3cC2b27A3E6bc0D404A900EC9ea1d2
   GRANT_AWARDS:    0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f
+  AUTH_BOOTSTRAP:  0xa0Ee7A142d267C1f36714E4a8F75612F20a79720 (10 ETH)
+Transferring .agent root ownership to auth-bootstrap executor…
+  .agent root owner → 0xa0Ee7A142d267C1f36714E4a8F75612F20a79720
 Funded a2a-master EOA (10 ETH): 0x70997970C51812dc3A010C7d01b50e0d17dc79C8
 Funded org issuer 0xe8acf143AFbF8B1371A20ea934D334180190Eac1, family issuer 0xA84585fb6728f413d4d89eC972c45E94686bf38e, and geo issuer 0x46a23E25df9A0F6c18729ddA9Ad1aF3b6A131160 with 10 ETH each
 
 === Seeding ontology predicates ===
-/home/barb/smart-agent/scripts/deploy-local.sh: line 525: /home/barb/smart-agent/scripts/seed-ontology.sh: Permission denied
+/home/barb/smart-agent/scripts/deploy-local.sh: line 616: /home/barb/smart-agent/scripts/seed-ontology.sh: Permission denied

@@ -61,6 +61,17 @@ async function signedFetch(
   const canonicalMessage = new TextEncoder().encode(canonical)
   const { mac } = await macProvider().generateMac({ canonicalMessage })
   const signature = toBase64Url(mac)
+  // TEMP DEBUG (remove after demo): dump sender canonical so we can diff vs
+  // a2a-agent's inter-service verifier.
+  console.error('[org-mcp a2a-client] OUTBOUND', {
+    path,
+    timestamp,
+    nonce,
+    bodyLen: bodyJson.length,
+    bodyHead: bodyJson.slice(0, 200),
+    bodySha256: sha256Hex(bodyJson),
+    canonical,
+  })
   return fetch(`${A2A_AGENT_URL}${path}`, {
     method: 'POST',
     headers: {

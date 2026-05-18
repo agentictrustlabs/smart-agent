@@ -2,230 +2,338 @@
 > @smart-agent/a2a-agent@0.0.1 dev /home/barb/smart-agent/apps/a2a-agent
 > tsx watch src/index.ts
 
+[audit-checkpoint] no external sink (AUDIT_CHECKPOINT_SINK_URL unset) — local-only archive
 Smart Agent A2A server starting on port 3100
   Chain ID:    31337
   RPC URL:     http://127.0.0.1:8545
   host routing: *.agent.localhost:3100
   Agent card:  http://<slug>.agent.localhost:3100/.well-known/agent.json
+  startup posture: NODE_ENV=development A2A_KMS_BACKEND=local-aes ALLOW_LEGACY_A2A_SESSIONS=true
 Smart Agent A2A server listening on http://localhost:3100
+<-- GET /health
+--> GET /health [32m200[0m 2ms
 <-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 3ms
-<-- POST /session/init
---> POST /session/init [32m200[0m 59ms
-<-- POST /session/package
---> POST /session/package [32m200[0m 8ms
-<-- POST /mcp/person/list_oikos_contacts
---> POST /mcp/person/list_oikos_contacts [33m400[0m 0ms
-<-- POST /mcp/person/add_oikos_contact
---> POST /mcp/person/add_oikos_contact [33m400[0m 0ms
-<-- POST /mcp/person/add_oikos_contact
---> POST /mcp/person/add_oikos_contact [33m400[0m 0ms
-<-- POST /mcp/person/add_oikos_contact
---> POST /mcp/person/add_oikos_contact [33m400[0m 0ms
-<-- POST /mcp/person/add_oikos_contact
---> POST /mcp/person/add_oikos_contact [33m400[0m 0ms
-<-- POST /mcp/person/add_oikos_contact
---> POST /mcp/person/add_oikos_contact [33m400[0m 0ms
-<-- POST /mcp/person/add_oikos_contact
---> POST /mcp/person/add_oikos_contact [33m400[0m 0ms
-<-- POST /mcp/person/list_prayers
---> POST /mcp/person/list_prayers [33m400[0m 0ms
-<-- POST /mcp/person/upsert_prayer
---> POST /mcp/person/upsert_prayer [33m400[0m 0ms
-<-- POST /mcp/person/upsert_prayer
---> POST /mcp/person/upsert_prayer [33m400[0m 0ms
-<-- POST /mcp/person/upsert_prayer
---> POST /mcp/person/upsert_prayer [33m400[0m 0ms
-<-- POST /mcp/person/upsert_prayer
---> POST /mcp/person/upsert_prayer [33m400[0m 0ms
-<-- POST /mcp/person/upsert_prayer
---> POST /mcp/person/upsert_prayer [33m400[0m 0ms
-<-- POST /mcp/person/upsert_prayer
---> POST /mcp/person/upsert_prayer [33m400[0m 1ms
-<-- POST /mcp/person/toggle_training_module
---> POST /mcp/person/toggle_training_module [33m400[0m 0ms
-<-- POST /mcp/person/toggle_training_module
---> POST /mcp/person/toggle_training_module [33m400[0m 0ms
-<-- POST /mcp/person/toggle_training_module
---> POST /mcp/person/toggle_training_module [33m400[0m 0ms
-<-- POST /mcp/person/toggle_training_module
---> POST /mcp/person/toggle_training_module [33m400[0m 0ms
-<-- POST /mcp/person/toggle_training_module
---> POST /mcp/person/toggle_training_module [33m400[0m 0ms
-<-- POST /mcp/person/toggle_training_module
---> POST /mcp/person/toggle_training_module [33m400[0m 1ms
-<-- POST /mcp/person/toggle_training_module
---> POST /mcp/person/toggle_training_module [33m400[0m 1ms
-<-- POST /mcp/person/toggle_training_module
---> POST /mcp/person/toggle_training_module [33m400[0m 0ms
-<-- POST /mcp/person/toggle_training_module
---> POST /mcp/person/toggle_training_module [33m400[0m 0ms
-<-- POST /mcp/person/toggle_training_module
---> POST /mcp/person/toggle_training_module [33m400[0m 0ms
-<-- POST /mcp/person/toggle_training_module
---> POST /mcp/person/toggle_training_module [33m400[0m 0ms
-<-- POST /mcp/person/toggle_training_module
---> POST /mcp/person/toggle_training_module [33m400[0m 0ms
-<-- POST /mcp/person/toggle_training_module
---> POST /mcp/person/toggle_training_module [33m400[0m 0ms
-<-- POST /mcp/person/toggle_training_module
---> POST /mcp/person/toggle_training_module [33m400[0m 0ms
-<-- POST /mcp/person/toggle_training_module
---> POST /mcp/person/toggle_training_module [33m400[0m 0ms
-<-- POST /mcp/person/toggle_training_module
---> POST /mcp/person/toggle_training_module [33m400[0m 0ms
-<-- POST /mcp/person/update_user_preferences
---> POST /mcp/person/update_user_preferences [33m400[0m 0ms
-<-- POST /mcp/person/list_notifications
---> POST /mcp/person/list_notifications [33m400[0m 1ms
-<-- POST /mcp/person/create_notification
---> POST /mcp/person/create_notification [33m400[0m 0ms
-<-- POST /mcp/person/create_notification
---> POST /mcp/person/create_notification [33m400[0m 0ms
-<-- POST /mcp/person/create_notification
---> POST /mcp/person/create_notification [33m400[0m 0ms
-<-- POST /session/init
---> POST /session/init [32m200[0m 62ms
-<-- POST /session/package
---> POST /session/package [32m200[0m 6ms
-<-- POST /mcp/person/list_oikos_contacts
---> POST /mcp/person/list_oikos_contacts [33m400[0m 0ms
-<-- POST /mcp/person/add_oikos_contact
---> POST /mcp/person/add_oikos_contact [33m400[0m 0ms
-<-- POST /mcp/person/add_oikos_contact
---> POST /mcp/person/add_oikos_contact [33m400[0m 0ms
-<-- POST /mcp/person/add_oikos_contact
---> POST /mcp/person/add_oikos_contact [33m400[0m 0ms
-<-- POST /mcp/person/add_oikos_contact
---> POST /mcp/person/add_oikos_contact [33m400[0m 0ms
-<-- POST /mcp/person/add_oikos_contact
---> POST /mcp/person/add_oikos_contact [33m400[0m 0ms
-<-- POST /mcp/person/list_prayers
---> POST /mcp/person/list_prayers [33m400[0m 1ms
-<-- POST /mcp/person/upsert_prayer
---> POST /mcp/person/upsert_prayer [33m400[0m 0ms
-<-- POST /mcp/person/upsert_prayer
---> POST /mcp/person/upsert_prayer [33m400[0m 0ms
-<-- POST /mcp/person/upsert_prayer
---> POST /mcp/person/upsert_prayer [33m400[0m 0ms
-<-- POST /mcp/person/upsert_prayer
---> POST /mcp/person/upsert_prayer [33m400[0m 0ms
-<-- POST /mcp/person/upsert_prayer
---> POST /mcp/person/upsert_prayer [33m400[0m 0ms
-<-- POST /mcp/person/toggle_training_module
---> POST /mcp/person/toggle_training_module [33m400[0m 0ms
-<-- POST /mcp/person/toggle_training_module
---> POST /mcp/person/toggle_training_module [33m400[0m 0ms
-<-- POST /mcp/person/toggle_training_module
---> POST /mcp/person/toggle_training_module [33m400[0m 0ms
-<-- POST /mcp/person/toggle_training_module
---> POST /mcp/person/toggle_training_module [33m400[0m 0ms
-<-- POST /mcp/person/toggle_training_module
---> POST /mcp/person/toggle_training_module [33m400[0m 1ms
-<-- POST /mcp/person/toggle_training_module
---> POST /mcp/person/toggle_training_module [33m400[0m 0ms
-<-- POST /mcp/person/toggle_training_module
---> POST /mcp/person/toggle_training_module [33m400[0m 0ms
-<-- POST /mcp/person/toggle_training_module
---> POST /mcp/person/toggle_training_module [33m400[0m 0ms
-<-- POST /mcp/person/toggle_training_module
---> POST /mcp/person/toggle_training_module [33m429[0m 0ms
-<-- POST /mcp/person/toggle_training_module
---> POST /mcp/person/toggle_training_module [33m429[0m 0ms
-<-- POST /mcp/person/toggle_training_module
---> POST /mcp/person/toggle_training_module [33m429[0m 0ms
-<-- POST /mcp/person/toggle_training_module
---> POST /mcp/person/toggle_training_module [33m429[0m 0ms
-<-- POST /mcp/person/toggle_training_module
---> POST /mcp/person/toggle_training_module [33m429[0m 0ms
-<-- POST /mcp/person/toggle_training_module
---> POST /mcp/person/toggle_training_module [33m429[0m 0ms
-<-- POST /mcp/person/toggle_training_module
---> POST /mcp/person/toggle_training_module [33m429[0m 0ms
-<-- POST /mcp/person/toggle_training_module
---> POST /mcp/person/toggle_training_module [33m429[0m 0ms
-<-- POST /mcp/person/toggle_training_module
---> POST /mcp/person/toggle_training_module [33m429[0m 0ms
-<-- POST /mcp/person/update_user_preferences
---> POST /mcp/person/update_user_preferences [33m429[0m 0ms
-<-- POST /mcp/person/list_notifications
---> POST /mcp/person/list_notifications [33m429[0m 0ms
-<-- POST /mcp/person/create_notification
---> POST /mcp/person/create_notification [33m429[0m 0ms
-<-- POST /mcp/person/create_notification
---> POST /mcp/person/create_notification [33m429[0m 0ms
-<-- POST /mcp/person/create_notification
---> POST /mcp/person/create_notification [33m429[0m 0ms
-<-- POST /session/init
---> POST /session/init [33m429[0m 0ms
-<-- POST /session/init
---> POST /session/init [33m429[0m 0ms
-<-- POST /session/init
---> POST /session/init [33m429[0m 0ms
-<-- POST /session/init
---> POST /session/init [33m429[0m 0ms
-<-- POST /session/init
---> POST /session/init [33m429[0m 0ms
-<-- POST /session/init
---> POST /session/init [33m429[0m 0ms
-<-- POST /session/init
---> POST /session/init [33m429[0m 0ms
-<-- POST /session/init
---> POST /session/init [33m429[0m 0ms
-<-- POST /session/init
---> POST /session/init [33m429[0m 0ms
-<-- POST /mcp/person/list_coaching_notes
---> POST /mcp/person/list_coaching_notes [33m429[0m 0ms
-<-- POST /mcp/person/upsert_coaching_note
---> POST /mcp/person/upsert_coaching_note [33m429[0m 0ms
-<-- POST /mcp/person/list_coaching_notes
---> POST /mcp/person/list_coaching_notes [33m429[0m 0ms
-<-- POST /mcp/person/upsert_coaching_note
---> POST /mcp/person/upsert_coaching_note [33m429[0m 1ms
-<-- POST /mcp/person/list_coaching_notes
---> POST /mcp/person/list_coaching_notes [33m429[0m 0ms
-<-- POST /mcp/person/upsert_coaching_note
---> POST /mcp/person/upsert_coaching_note [33m429[0m 0ms
-<-- POST /session/init
---> POST /session/init [33m429[0m 0ms
-<-- POST /mcp/person/register_received_delegation
---> POST /mcp/person/register_received_delegation [33m429[0m 1ms
-<-- POST /mcp/person/list_intents
---> POST /mcp/person/list_intents [33m429[0m 0ms
-<-- POST /mcp/person/express_intent
---> POST /mcp/person/express_intent [33m429[0m 0ms
-<-- POST /mcp/person/list_intents
---> POST /mcp/person/list_intents [33m429[0m 0ms
-<-- POST /mcp/person/express_intent
---> POST /mcp/person/express_intent [33m429[0m 1ms
-<-- POST /mcp/person/list_intents
---> POST /mcp/person/list_intents [33m429[0m 0ms
-<-- POST /mcp/person/express_intent
---> POST /mcp/person/express_intent [33m429[0m 0ms
-<-- POST /session/init
---> POST /session/init [33m429[0m 1ms
-<-- POST /session/init
---> POST /session/init [33m429[0m 0ms
-<-- POST /session/init
---> POST /session/init [33m429[0m 0ms
-<-- POST /session/init
---> POST /session/init [33m429[0m 0ms
-<-- POST /session/init
---> POST /session/init [33m429[0m 1ms
-<-- POST /session/init
---> POST /session/init [33m429[0m 0ms
-<-- POST /session/init
---> POST /session/init [33m429[0m 0ms
-<-- POST /session/init
---> POST /session/init [33m429[0m 0ms
-<-- POST /session/init
---> POST /session/init [33m429[0m 1ms
-<-- POST /session/init
---> POST /session/init [33m429[0m 0ms
-<-- POST /session/init
---> POST /session/init [33m429[0m 0ms
-<-- POST /mcp/hub/sync:schedule
---> POST /mcp/hub/sync:schedule [33m429[0m 0ms
-<-- POST /session/init
---> POST /session/init [33m429[0m 0ms
-[nonce-gc] evicted 18 expired replay-nonce rows
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+[kms-signer] address=0x70997970c51812dc3a010c7d01b50e0d17dc79c8 keyId=local-secp256k1
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- POST /auth/sign-checkpoint
+--> POST /auth/sign-checkpoint [33m400[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- POST /auth/sign-checkpoint
+--> POST /auth/sign-checkpoint [33m400[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- POST /auth/sign-checkpoint
+--> POST /auth/sign-checkpoint [33m400[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- POST /auth/sign-checkpoint
+--> POST /auth/sign-checkpoint [33m400[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- POST /auth/sign-checkpoint
+--> POST /auth/sign-checkpoint [33m400[0m 0ms
+<-- POST /mcp/hub/sync:all
+--> POST /mcp/hub/sync:all [33m401[0m 1ms
+<-- POST /mcp/hub/sync:all
+--> POST /mcp/hub/sync:all [33m401[0m 1ms
+<-- POST /auth/sign-checkpoint
+--> POST /auth/sign-checkpoint [33m400[0m 1ms
+<-- POST /auth/sign-checkpoint
+--> POST /auth/sign-checkpoint [33m400[0m 0ms
+<-- POST /auth/sign-checkpoint
+--> POST /auth/sign-checkpoint [33m400[0m 0ms
+<-- POST /auth/sign-checkpoint
+--> POST /auth/sign-checkpoint [33m400[0m 0ms
+<-- POST /auth/sign-checkpoint
+--> POST /auth/sign-checkpoint [33m400[0m 0ms
+<-- POST /auth/sign-checkpoint
+--> POST /auth/sign-checkpoint [33m400[0m 0ms
+<-- POST /auth/sign-checkpoint
+--> POST /auth/sign-checkpoint [33m400[0m 0ms
+<-- POST /auth/sign-checkpoint
+--> POST /auth/sign-checkpoint [33m400[0m 1ms
+<-- POST /auth/sign-checkpoint
+--> POST /auth/sign-checkpoint [33m400[0m 0ms
+<-- POST /auth/sign-checkpoint
+--> POST /auth/sign-checkpoint [33m400[0m 0ms
+<-- POST /auth/sign-checkpoint
+--> POST /auth/sign-checkpoint [33m400[0m 0ms
+<-- POST /auth/sign-checkpoint
+--> POST /auth/sign-checkpoint [33m400[0m 0ms
+<-- POST /auth/sign-checkpoint
+--> POST /auth/sign-checkpoint [33m400[0m 1ms
+<-- POST /auth/sign-checkpoint
+--> POST /auth/sign-checkpoint [33m400[0m 0ms
+<-- POST /auth/sign-checkpoint
+--> POST /auth/sign-checkpoint [33m400[0m 1ms
+<-- POST /auth/sign-checkpoint
+--> POST /auth/sign-checkpoint [33m400[0m 1ms
+<-- POST /auth/sign-checkpoint
+--> POST /auth/sign-checkpoint [33m400[0m 0ms
+<-- POST /auth/sign-checkpoint
+--> POST /auth/sign-checkpoint [33m400[0m 0ms
+<-- POST /auth/sign-checkpoint
+--> POST /auth/sign-checkpoint [33m400[0m 0ms
+<-- POST /auth/sign-checkpoint
+--> POST /auth/sign-checkpoint [33m400[0m 1ms
+<-- POST /auth/sign-checkpoint
+--> POST /auth/sign-checkpoint [33m400[0m 0ms
+<-- POST /auth/sign-checkpoint
+--> POST /auth/sign-checkpoint [33m400[0m 0ms
+<-- POST /auth/sign-checkpoint
+--> POST /auth/sign-checkpoint [33m400[0m 0ms
+<-- POST /auth/sign-checkpoint
+--> POST /auth/sign-checkpoint [33m400[0m 1ms
+<-- POST /auth/sign-checkpoint
+--> POST /auth/sign-checkpoint [33m400[0m 0ms
+<-- POST /auth/sign-checkpoint
+--> POST /auth/sign-checkpoint [33m400[0m 1ms
+<-- POST /auth/sign-checkpoint
+--> POST /auth/sign-checkpoint [33m400[0m 0ms
+<-- POST /auth/sign-checkpoint
+--> POST /auth/sign-checkpoint [33m400[0m 0ms
+<-- POST /auth/sign-checkpoint
+--> POST /auth/sign-checkpoint [33m400[0m 0ms
+<-- POST /auth/sign-checkpoint
+--> POST /auth/sign-checkpoint [33m400[0m 1ms
+<-- POST /auth/sign-checkpoint
+--> POST /auth/sign-checkpoint [33m400[0m 0ms
+<-- POST /auth/sign-checkpoint
+--> POST /auth/sign-checkpoint [33m400[0m 1ms
+<-- POST /auth/sign-checkpoint
+--> POST /auth/sign-checkpoint [33m400[0m 1ms
+<-- GET /.well-known/agent.json
+--> GET /.well-known/agent.json [32m200[0m 0ms
+<-- POST /auth/sign-checkpoint
+--> POST /auth/sign-checkpoint [33m400[0m 1ms

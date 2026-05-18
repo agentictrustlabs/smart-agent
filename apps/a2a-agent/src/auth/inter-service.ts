@@ -218,6 +218,18 @@ export function requireInterServiceAuth(): MiddlewareHandler {
       mac: macBytes,
     })
     if (!valid) {
+      // TEMP DEBUG (remove after demo): dump the canonical so we can diff
+      // against the sender's canonical.
+      console.error('[inter-service] MAC VERIFY FAIL', {
+        service,
+        path,
+        timestamp,
+        nonce,
+        bodyLen: bodyRaw.length,
+        bodyHead: bodyRaw.slice(0, 200),
+        bodySha256: sha256Hex(bodyRaw),
+        canonicalString: `${timestamp}|${nonce}|${path}|${sha256Hex(bodyRaw)}`,
+      })
       await auditDeny(c, {
         ...denyFields,
         mcpServer: service,
