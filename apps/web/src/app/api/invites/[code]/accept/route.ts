@@ -1,3 +1,4 @@
+/** @sa-route web-auth @sa-auth session-cookie @sa-audit-event invite.accept @sa-validation none-path-params @sa-owner developer */
 import { NextResponse } from 'next/server'
 import { eq, and } from 'drizzle-orm'
 import { db, schema } from '@/db'

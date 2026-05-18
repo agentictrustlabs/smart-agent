@@ -1,4 +1,4 @@
-/** @sa-route dev-only @sa-prod-gate requireDev */
+/** @sa-route dev-only @sa-auth none @sa-prod-gate requireDev @sa-validation none-no-body @sa-owner developer */
 import { NextResponse } from 'next/server'
 import { getPersonAgentForUser } from '@/lib/agent-registry'
 import {

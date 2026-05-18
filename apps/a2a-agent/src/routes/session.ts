@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { eq } from 'drizzle-orm'
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts'
-import { createPublicClient, http } from 'viem'
+import { createPublicClient, http, sha256, toHex } from 'viem'
 import { localhost } from 'viem/chains'
 import {
   hashDelegation,
@@ -14,6 +14,8 @@ import { sessions } from '../db/schema'
 import { config } from '../config'
 import { requireSession } from '../middleware/require-session'
 import { encryptSessionPackage, decryptSessionPackage } from '../auth/encryption'
+import { errorResponse } from '../lib/error-response'
+import { auditAppend, readCorrelationId } from '../lib/audit'
 
 const ERC1271_MAGIC_VALUE = '0x1626ba7e'
 
@@ -80,6 +82,28 @@ session.post('/init', async (c) => {
     expiresAt: expiresAtISO,
     createdAt: new Date().toISOString(),
   })
+
+  // Sprint 3 S3.2 — session-create audit row. The session is pending
+  // until /session/package activates it; this row records that an
+  // ephemeral session key was minted under this account address. Best-
+  // effort: audit failure must not block the session-init response.
+  try {
+    await auditAppend({
+      rootGrantHash: '',
+      sessionId,
+      sessionPrincipal: sessionAccount.address,
+      mcpServer: 'a2a-agent',
+      mcpTool: 'session:init',
+      eventType: 'session-create',
+      executionPath: 'mcp-only',
+      target: body.accountAddress,
+      status: 'completed',
+      correlationId: readCorrelationId(c),
+      mcpCallId: `session-create:${sessionId}`,
+    })
+  } catch (err) {
+    console.error('[session/init audit] failed:', err)
+  }
 
   return c.json({
     sessionId,
@@ -168,17 +192,35 @@ session.post('/package', async (c) => {
     })
 
     if (result !== ERC1271_MAGIC_VALUE) {
-      // Detailed diagnostics so we can see WHY a passkey signature is
-      // rejected. Helpful when the OS picker offered a credential whose
-      // digest isn't in the account's _passkeys mapping, or when the
-      // clientDataJSON challenge doesn't decode to the delegation hash.
+      // Detailed diagnostics so an operator can see WHY a passkey
+      // signature is rejected. Helpful when the OS picker offered a
+      // credential whose digest isn't in the account's _passkeys
+      // mapping, or when the clientDataJSON challenge doesn't decode
+      // to the delegation hash. These fields live in the SERVER LOG
+      // only — the HTTP response is the generic public message. See
+      // `apps/a2a-agent/src/lib/error-response.ts` for the policy
+      // and `docs/architecture/01-web-a2a-mcp-flows.md` § Error
+      // response policy.
       const sig = body.delegation.signature as `0x${string}`
       const sigPrefix = sig.slice(0, 4) // '0x01' for WebAuthn, plain for ECDSA
-      let diag = ''
+      const logFields: Record<string, unknown> = {
+        sessionId: body.sessionId,
+        // Hash the account address so logs join to the audit row via
+        // the address-hash column without exposing the raw address on
+        // every error line in shared log indexers.
+        accountAddressHash: sha256(body.delegation.delegator.toLowerCase() as `0x${string}`),
+        errorCode: 'erc1271-rejected',
+        delegationHash,             // hash, not a secret — safe in logs
+        passkeyPath: sigPrefix === '0x01' ? 'webauthn' : 'ecdsa',
+        sigPrefix,
+      }
       if (sigPrefix === '0x01') {
         try {
-          // Decode the WebAuthn assertion struct to see which digest the
-          // client submitted vs what's actually registered on the account.
+          // Decode the WebAuthn assertion struct to see which digest
+          // the client submitted vs what's actually registered on the
+          // account. NOTE: we deliberately do NOT log raw
+          // clientDataJSON — it's operator-controlled bytes that we
+          // don't want flowing into log indexers.
           const { decodeAbiParameters } = await import('viem')
           const [a] = decodeAbiParameters(
             [{ type: 'tuple', components: [
@@ -203,18 +245,41 @@ session.post('/package', async (c) => {
             functionName: 'getPasskey',
             args: [a.credentialIdDigest as `0x${string}`],
           }) as readonly [bigint, bigint]
-          diag = ` (sig path=passkey, account passkeyCount=${passkeyCount}, submitted digest=${a.credentialIdDigest}, getPasskey(digest)=(${stored[0]}, ${stored[1]}), clientDataJSON=${a.clientDataJSON.slice(0, 80)}…, hash=${delegationHash})`
+          logFields.passkeyCount = passkeyCount.toString()
+          logFields.credentialDigest = a.credentialIdDigest
+          logFields.storedX = stored[0].toString()
+          logFields.storedY = stored[1].toString()
+          // Hash the clientDataJSON so we can detect repeat-failures
+          // (same challenge resubmitted) without logging the raw
+          // operator-controlled bytes.
+          logFields.clientDataJSONHash = sha256(toHex(new TextEncoder().encode(a.clientDataJSON)))
         } catch (e) {
-          diag = ` (assertion decode failed: ${(e as Error).message})`
+          logFields.assertionDecodeError = (e as Error).message
         }
-      } else {
-        diag = ` (sig path=ECDSA, prefix=${sigPrefix})`
       }
-      console.warn('[session/package] ERC-1271 rejected', diag)
-      return c.json({ error: `Delegation signature invalid — ERC-1271 rejected${diag}` }, 401)
+      return errorResponse(c, {
+        publicMessage: 'Delegation signature invalid',
+        logMessage: '[session/package] ERC-1271 rejected',
+        logFields,
+        status: 401,
+      })
     }
   } catch (err) {
-    return c.json({ error: `ERC-1271 verification failed: ${err instanceof Error ? err.message : 'unknown'}` }, 401)
+    return errorResponse(c, {
+      publicMessage: 'Delegation signature invalid',
+      logMessage: '[session/package] ERC-1271 verification threw',
+      logFields: {
+        sessionId: body.sessionId,
+        accountAddressHash: sha256(body.delegation.delegator.toLowerCase() as `0x${string}`),
+        errorCode: 'erc1271-threw',
+        delegationHash,
+        // `err.message` from a contract call may include calldata or
+        // upstream RPC URL — fine in server logs, must not leak to the
+        // caller via the HTTP body.
+        errorMessage: err instanceof Error ? err.message : 'unknown',
+      },
+      status: 401,
+    })
   }
 
   // ─── Signature verified — activate the session ──────────────────
@@ -266,6 +331,28 @@ session.post('/package', async (c) => {
       status: 'active',
     })
     .where(eq(sessions.id, body.sessionId))
+
+  // Sprint 3 S3.2 — session-package audit row. The delegation signature
+  // has been verified via ERC-1271; this row marks the activation
+  // ceremony as complete with the delegation hash recorded for cross-
+  // service join with on-chain redeem rows.
+  try {
+    await auditAppend({
+      rootGrantHash: delegationHash,
+      sessionId: body.sessionId,
+      sessionPrincipal: pendingSession.sessionKeyAddress ?? '',
+      mcpServer: 'a2a-agent',
+      mcpTool: 'session:package',
+      eventType: 'session-package',
+      executionPath: 'mcp-only',
+      target: pendingSession.accountAddress,
+      status: 'completed',
+      correlationId: readCorrelationId(c),
+      mcpCallId: `session-package:${body.sessionId}`,
+    })
+  } catch (err) {
+    console.error('[session/package audit] failed:', err)
+  }
 
   return c.json({ status: 'active', sessionId: body.sessionId })
 })

@@ -1,7 +1,7 @@
 /**
  * KMS migration K3-extension — per-side MAC provider factory.
  *
- * The eight inter-service HMAC keys today are static env secrets:
+ * The nine HMAC keys in the system today are static env secrets:
  *   - `WEB_TO_A2A_HMAC_KEY`              — web → a2a-agent
  *   - `A2A_INTERSERVICE_HMAC_KEY_PERSON` — person-mcp → a2a-agent
  *   - `A2A_INTERSERVICE_HMAC_KEY_ORG`    — org-mcp → a2a-agent
@@ -10,6 +10,9 @@
  *   - `A2A_INTERSERVICE_HMAC_KEY_VERIFIER`
  *   - `A2A_INTERSERVICE_HMAC_KEY_SKILL`
  *   - `A2A_INTERSERVICE_HMAC_KEY_GEO`
+ *   - `OAUTH_SALT_HMAC_KEY`              — google-oauth email → smart-account
+ *                                          deterministic salt (Sprint S2.6;
+ *                                          web-internal, no inter-service hop)
  *
  * After K3-extension lands, each is an INDEPENDENT AWS KMS HMAC key
  * (`KeySpec=HMAC_256`, `KeyUsage=GENERATE_VERIFY_MAC`). The canonical
@@ -43,8 +46,15 @@ import { createAwsKmsMacProvider, type KmsMacProvider } from './aws-kms-mac'
 import { createLocalHmacProvider } from './local-hmac'
 
 /**
- * The eight MAC keys in the system. The string identifiers are stable —
+ * The nine MAC keys in the system. The string identifiers are stable —
  * they appear in env var names, IAM policy resource conditions, and logs.
+ *
+ * The first eight are the inter-service K3-extension keys. The ninth,
+ * `oauth-salt`, is a web-internal MAC key introduced by Sprint S2.6:
+ * it replaces the legacy `SERVER_PEPPER` symmetric env secret that
+ * deterministically salted google-oauth email → smart-account derivation.
+ * Same shape (HMAC_SHA_256, kms:GenerateMac / kms:VerifyMac), same env
+ * conventions; not used for any inter-service hop.
  */
 export const MAC_KEY_IDS = [
   'web-to-a2a',
@@ -55,6 +65,7 @@ export const MAC_KEY_IDS = [
   'a2a-to-verifier',
   'a2a-to-skill',
   'a2a-to-geo',
+  'oauth-salt',
 ] as const
 
 export type MacKeyId = (typeof MAC_KEY_IDS)[number]
@@ -112,6 +123,11 @@ export function envKeyForMacKeyId(macKeyId: MacKeyId): {
       return { legacy: 'A2A_INTERSERVICE_HMAC_KEY_SKILL', awsKms: 'AWS_KMS_MAC_KEY_ID_A2A_TO_SKILL' }
     case 'a2a-to-geo':
       return { legacy: 'A2A_INTERSERVICE_HMAC_KEY_GEO', awsKms: 'AWS_KMS_MAC_KEY_ID_A2A_TO_GEO' }
+    case 'oauth-salt':
+      // Sprint S2.6 — replaces the legacy `SERVER_PEPPER` symmetric env
+      // secret. Dev path reads `OAUTH_SALT_HMAC_KEY` (hex); prod path
+      // reads `AWS_KMS_MAC_KEY_ID_OAUTH_SALT` (KMS HMAC key ARN).
+      return { legacy: 'OAUTH_SALT_HMAC_KEY', awsKms: 'AWS_KMS_MAC_KEY_ID_OAUTH_SALT' }
     default: {
       // Exhaustiveness check.
       const _exhaustive: never = macKeyId
@@ -202,9 +218,24 @@ export function buildMcpMacProvider(
 }
 
 /**
- * Build the MAC provider scoped to web → a2a-agent. Used in the web app's
- * signing clients (session-store, wallet-action dispatch).
+ * Build the MAC provider scoped to one of the web-side MAC keys.
+ *
+ * Two callers today:
+ *   - `'web-to-a2a'` (default) — session-store + wallet-action dispatch
+ *     envelopes between Next.js and a2a-agent.
+ *   - `'oauth-salt'` (S2.6) — deterministic salt for google-oauth email →
+ *     smart-account derivation (`apps/web/src/lib/auth/oauth-salt.ts`).
+ *     A web-internal MAC, never traverses the wire.
+ *
+ * The `macKeyId` parameter is restricted to the web-side keys at the type
+ * level so an MCP key id can't accidentally be requested through this
+ * factory. Adding a new web-side MAC means extending this union here.
  */
-export function buildWebMacProvider(env: McpMacProviderEnv): KmsMacProvider {
-  return buildProviderForMacKeyId('web-to-a2a', env)
+export type WebMacKeyId = Extract<MacKeyId, 'web-to-a2a' | 'oauth-salt'>
+
+export function buildWebMacProvider(
+  env: McpMacProviderEnv,
+  macKeyId: WebMacKeyId = 'web-to-a2a',
+): KmsMacProvider {
+  return buildProviderForMacKeyId(macKeyId, env)
 }

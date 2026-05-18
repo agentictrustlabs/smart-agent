@@ -1,5 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server'
+/** @sa-route web-auth @sa-auth session-cookie @sa-validation zod @sa-owner developer */
+import { NextResponse } from 'next/server'
+import { z } from 'zod'
 import { bootstrapA2ASession } from '@/lib/actions/a2a-session.action'
+import { validateRequest } from '@/lib/auth/validate-request'
 
 const DURATION_KEYS = ['h1', 'h24', 'h168'] as const
 type DurationKey = typeof DURATION_KEYS[number]
@@ -9,6 +12,11 @@ const DURATION_SECONDS: Record<DurationKey, number> = {
   h24:  60 * 60 * 24,
   h168: 60 * 60 * 24 * 7,
 }
+
+// Tiny body: an optional enum. Anything else is a misuse.
+const BodySchema = z.object({
+  duration: z.enum(DURATION_KEYS).optional(),
+})
 
 /**
  * POST /api/a2a/bootstrap
@@ -23,15 +31,11 @@ const DURATION_SECONDS: Record<DurationKey, number> = {
  * Called automatically by AuthGate after login, and manually from the
  * `/sessions/permissions` page (Grant / Re-grant button).
  */
-export async function POST(request: NextRequest) {
-  let durationSeconds: number | undefined
-  try {
-    const body = await request.json().catch(() => ({}))
-    const key = body?.duration as string | undefined
-    if (key && (DURATION_KEYS as readonly string[]).includes(key)) {
-      durationSeconds = DURATION_SECONDS[key as DurationKey]
-    }
-  } catch { /* ignore — empty body is fine */ }
+export async function POST(request: Request) {
+  const parsed = await validateRequest(request, { schema: BodySchema })
+  if (!parsed.ok) return parsed.response
+  const key = parsed.data.duration
+  const durationSeconds = key ? DURATION_SECONDS[key as DurationKey] : undefined
 
   const result = await bootstrapA2ASession({ durationSeconds })
   return NextResponse.json(result, { status: result.success ? 200 : 400 })

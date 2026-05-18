@@ -1,4 +1,4 @@
-/** @sa-route dev-only @sa-prod-gate requireDev */
+/** @sa-route dev-only @sa-auth none @sa-prod-gate requireDev @sa-validation none-no-body @sa-owner infra */
 import { NextResponse } from 'next/server'
 import { getBootState, triggerBootSeed } from '@/lib/boot-seed'
 import { requireDev } from '@/lib/env-guard'

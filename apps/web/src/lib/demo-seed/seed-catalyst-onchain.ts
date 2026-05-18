@@ -852,22 +852,41 @@ async function doSeed() {
   console.log('[catalyst-seed] Naming hierarchy created')
 
   // ─── Helper: Build and sign a data access delegation ──────────────
+  // Sprint 2 S2.3 — also commits the recipient's smart-account +
+  // person-agent into a DelegateBinding caveat so person-mcp (or
+  // org-mcp) can verify the caller's session subject matches the bound
+  // delegate at verify time. In single-account mode (the catalyst
+  // demo's default) `granteeAgent === granteeSmartAccount`; the
+  // binding is still emitted for cryptographic completeness.
   async function buildSignedDelegation(
     grantorAgent: `0x${string}`,
     granteeAgent: `0x${string}`,
     grantorUserId: string,
     grants: Array<{ server: string; resources: string[]; fields: string[] }>,
+    granteeUserId?: string,
   ) {
     const {
       DATA_ACCESS_DELEGATION: DAD, ROLE_DATA_GRANTOR, ROLE_DATA_GRANTEE,
       hashDelegation: hashDel, encodeTimestampTerms: encTimestamp,
       buildCaveat: bCaveat, buildDataScopeCaveat: bDataScope,
+      buildDelegateBindingCaveat: bDelegateBinding,
       ROOT_AUTHORITY: ROOT,
     } = await import('@smart-agent/sdk')
     const { privateKeyToAccount } = await import('viem/accounts')
 
     const grantorUser = db.select().from(schema.localUserAccounts).where(eq(schema.localUserAccounts.id, grantorUserId)).get()
     if (!grantorUser?.privateKey) return null
+
+    // Resolve the grantee's smart-account for the binding caveat. In
+    // single-account mode this equals `granteeAgent`; we look it up
+    // when `granteeUserId` is provided.
+    let granteeSmartAccount = granteeAgent
+    if (granteeUserId) {
+      const granteeUser = db.select().from(schema.localUserAccounts).where(eq(schema.localUserAccounts.id, granteeUserId)).get()
+      if (granteeUser?.smartAccountAddress) {
+        granteeSmartAccount = granteeUser.smartAccountAddress.toLowerCase() as `0x${string}`
+      }
+    }
 
     const now = Math.floor(Date.now() / 1000)
     const expiresAt = now + 90 * 24 * 60 * 60
@@ -879,6 +898,7 @@ async function doSeed() {
     const caveats = [
       bCaveat(timestampAddr, encTimestamp(now, expiresAt)),
       bDataScope(grants),
+      bDelegateBinding(granteeSmartAccount, granteeAgent),
     ]
 
     const delegation = {
@@ -916,7 +936,7 @@ async function doSeed() {
       fields: ['email', 'phone', 'city', 'stateProvince', 'country', 'displayName'],
     }]
 
-    const result = await buildSignedDelegation(paAna, paMaria, 'cat-user-006', piiGrants)
+    const result = await buildSignedDelegation(paAna, paMaria, 'cat-user-006', piiGrants, 'cat-user-001')
     if (result) {
       await createEdge(paAna, paMaria, result.DAD as `0x${string}`, [result.ROLE_DATA_GRANTOR as `0x${string}`, result.ROLE_DATA_GRANTEE as `0x${string}`], result.metadataURI)
       console.log('[catalyst-seed] Data delegation created: Ana → Maria (on-chain)')
@@ -938,7 +958,7 @@ async function doSeed() {
       fields: ['email', 'phone', 'displayName', 'language', 'city', 'stateProvince'],
     }]
 
-    const result = await buildSignedDelegation(paAna, paDavid, 'cat-user-006', coachGrants)
+    const result = await buildSignedDelegation(paAna, paDavid, 'cat-user-006', coachGrants, 'cat-user-002')
     if (result) {
       await createEdge(paAna, paDavid, result.DAD as `0x${string}`, [result.ROLE_DATA_GRANTOR as `0x${string}`, result.ROLE_DATA_GRANTEE as `0x${string}`], result.metadataURI)
       console.log('[catalyst-seed] Coaching delegation created: Ana → David (on-chain)')

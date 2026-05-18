@@ -12,6 +12,10 @@
 
 import 'server-only'
 import { Agent, fetch as undiciFetch } from 'undici'
+import { CORRELATION_HEADER, newCorrelationId } from '../audit/correlation-id'
+
+// Re-export so callers can build the header manually when needed.
+export { CORRELATION_HEADER } from '../audit/correlation-id'
 
 const a2aPort = (() => {
   const base = process.env.NEXT_PUBLIC_A2A_HOST_BASE ?? 'agent.localhost:3100'
@@ -54,5 +58,16 @@ export async function a2aFetch(url: string, init?: Parameters<typeof undiciFetch
   // Force the URL onto the right port so fetch builds the right Host
   // header (Host: <slug>.agent.localhost:<port>).
   const final = norm.replace(/(\.agent\.localhost)/, `$1:${a2aPort}`)
-  return undiciFetch(final, { ...init, dispatcher: a2aAgent })
+
+  // Hardening Phase 1D — always thread a correlation id through so the
+  // a2a-side audit row (and any downstream MCP / chain step) can be
+  // joined back to this user-facing action. If the caller already set
+  // the header (e.g. from a Next.js request scope), preserve it; else
+  // generate a fresh one.
+  const headers = new Headers(init?.headers as HeadersInit | undefined)
+  if (!headers.has(CORRELATION_HEADER)) {
+    headers.set(CORRELATION_HEADER, newCorrelationId())
+  }
+
+  return undiciFetch(final, { ...init, headers, dispatcher: a2aAgent })
 }

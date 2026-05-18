@@ -1,3 +1,4 @@
+/** @sa-route web-auth @sa-auth session-cookie @sa-audit-event commitment.release @sa-risk-tier high @sa-validation zod @sa-owner developer */
 /**
  * Spec 006 — POST /api/commitments/release
  *
@@ -6,47 +7,39 @@
  * `canManageAgent` before signing the executeBatch delegation.
  */
 
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
+import { z } from 'zod'
 import type { Hex } from 'viem'
 import { releaseTranche } from '@/lib/actions/commitments.action'
+import { validateRequest } from '@/lib/auth/validate-request'
 
 export const dynamic = 'force-dynamic'
 
-interface Body {
-  commitmentSubject?: string
-  milestoneId?: string
-  /** bigint encoded as a decimal string — preserves precision across JSON. */
-  tokenAmount?: string
-  commitmentScaleAmount?: string
-}
+const positiveBigintString = z
+  .string()
+  .min(1)
+  .max(80)
+  .refine((s) => {
+    try { return BigInt(s) > 0n } catch { return false }
+  }, { message: 'must parse as positive bigint' })
 
-export async function POST(req: NextRequest) {
-  let body: Body
-  try { body = await req.json() } catch {
-    return NextResponse.json({ ok: false, error: 'invalid-json' }, { status: 400 })
-  }
-  if (!body.commitmentSubject || !body.milestoneId || !body.tokenAmount || !body.commitmentScaleAmount) {
-    return NextResponse.json({ ok: false, error: 'missing-required-fields' }, { status: 400 })
-  }
-  if (!/^0x[0-9a-fA-F]{64}$/.test(body.commitmentSubject)) {
-    return NextResponse.json({ ok: false, error: 'commitmentSubject must be 32-byte hex' }, { status: 400 })
-  }
-  let tokenAmount: bigint
-  let commitmentScaleAmount: bigint
-  try {
-    tokenAmount = BigInt(body.tokenAmount)
-    commitmentScaleAmount = BigInt(body.commitmentScaleAmount)
-  } catch {
-    return NextResponse.json({ ok: false, error: 'amounts must parse as bigint' }, { status: 400 })
-  }
-  if (tokenAmount <= 0n || commitmentScaleAmount <= 0n) {
-    return NextResponse.json({ ok: false, error: 'amount must be positive' }, { status: 400 })
-  }
+const BodySchema = z.object({
+  commitmentSubject: z.string().regex(/^0x[0-9a-fA-F]{64}$/, 'commitmentSubject must be 32-byte hex'),
+  milestoneId: z.string().min(1).max(256),
+  /** bigint encoded as a decimal string — preserves precision across JSON. */
+  tokenAmount: positiveBigintString,
+  commitmentScaleAmount: positiveBigintString,
+})
+
+export async function POST(req: Request) {
+  const parsed = await validateRequest(req, { schema: BodySchema })
+  if (!parsed.ok) return parsed.response
+  const body = parsed.data
   const result = await releaseTranche({
     commitmentSubject: body.commitmentSubject as Hex,
     milestoneId: body.milestoneId,
-    tokenAmount,
-    commitmentScaleAmount,
+    tokenAmount: BigInt(body.tokenAmount),
+    commitmentScaleAmount: BigInt(body.commitmentScaleAmount),
   })
   if (!result.ok) {
     console.error('[api/commitments/release] failed:', { input: body, result })

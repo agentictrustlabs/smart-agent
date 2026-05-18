@@ -1,7 +1,27 @@
-/** @sa-route dev-only @sa-prod-gate requireDev */
+/** @sa-route dev-only @sa-auth none @sa-prod-gate requireDev @sa-validation zod @sa-owner developer */
 import { NextResponse } from 'next/server'
+import { z } from 'zod'
 import { setAgentStringProperty, updateAgentCore } from '@/lib/actions/explorer-edit.action'
 import { requireDev } from '@/lib/env-guard'
+import { validateRequest } from '@/lib/auth/validate-request'
+
+const AddressSchema = z.string().regex(/^0x[0-9a-fA-F]{40}$/, 'invalid address')
+
+const SetPropertySchema = z.object({
+  action: z.literal('setProperty'),
+  agentAddress: AddressSchema,
+  key: z.string().min(1).max(256),
+  value: z.string().max(8192).optional(),
+})
+
+const UpdateCoreSchema = z.object({
+  action: z.literal('updateCore'),
+  agentAddress: AddressSchema,
+  displayName: z.string().min(1).max(256),
+  description: z.string().max(2048).optional(),
+})
+
+const BodySchema = z.discriminatedUnion('action', [SetPropertySchema, UpdateCoreSchema])
 
 /**
  * Explorer edit route — writes on-chain agent properties.
@@ -14,20 +34,16 @@ export async function POST(request: Request) {
   const denied = requireDev()
   if (denied) return denied
 
-  const body = await request.json()
-  const { action, agentAddress, key, value, displayName, description } = body
+  const parsed = await validateRequest(request, { schema: BodySchema })
+  if (!parsed.ok) return parsed.response
+  const body = parsed.data
 
-  if (action === 'setProperty') {
-    if (!agentAddress || !key) return NextResponse.json({ success: false, error: 'Missing fields' })
-    const result = await setAgentStringProperty(agentAddress, key, value ?? '')
+  if (body.action === 'setProperty') {
+    const result = await setAgentStringProperty(body.agentAddress, body.key, body.value ?? '')
     return NextResponse.json(result)
   }
 
-  if (action === 'updateCore') {
-    if (!agentAddress || !displayName) return NextResponse.json({ success: false, error: 'Missing fields' })
-    const result = await updateAgentCore(agentAddress, displayName, description ?? '')
-    return NextResponse.json(result)
-  }
-
-  return NextResponse.json({ success: false, error: 'Unknown action' })
+  // body.action === 'updateCore'
+  const result = await updateAgentCore(body.agentAddress, body.displayName, body.description ?? '')
+  return NextResponse.json(result)
 }

@@ -1,3 +1,4 @@
+/** @sa-route web-auth @sa-auth session-cookie @sa-validation none-no-body @sa-owner ontologist */
 import { NextResponse } from 'next/server'
 import { hubSyncAll } from '@/lib/clients/hub-client'
 

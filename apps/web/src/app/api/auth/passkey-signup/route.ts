@@ -1,3 +1,4 @@
+/** @sa-route bootstrap @sa-auth none-with-csrf @sa-rate-limit 10/min @sa-risk-tier high @sa-validation zod @sa-owner security */
 /**
  * POST /api/auth/passkey-signup
  *
@@ -31,14 +32,27 @@ import {
 } from '@smart-agent/sdk'
 
 const ZERO_HASH = '0x0000000000000000000000000000000000000000000000000000000000000000' as `0x${string}`
+import { z } from 'zod'
 import { mintSession, SESSION_COOKIE } from '@/lib/auth/native-session'
-import { getWalletClient } from '@/lib/contracts'
+import { getAuthBootstrapSigner } from '@/lib/key-custody/tool-executor'
+import { webErrorResponse } from '@/lib/auth/error-response'
+import { requireOriginAllowed } from '@/lib/auth/csrf'
+import { validateRequest } from '@/lib/auth/validate-request'
+
+// Public keys are 32-byte bigints serialised as decimal strings;
+// credentialIdBase64Url is a few hundred bytes max. Generous-but-bounded
+// caps so a malformed client can't ship megabytes through.
+const BodySchema = z.object({
+  agentLabel: z.string().min(1).max(64),
+  credentialIdBase64Url: z.string().min(1).max(4096),
+  pubKeyX: z.string().min(1).max(128),
+  pubKeyY: z.string().min(1).max(128),
+})
 
 const RPC_URL = process.env.RPC_URL ?? 'http://127.0.0.1:8545'
 const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? '31337')
 const ENTRYPOINT = (process.env.ENTRYPOINT_ADDRESS ?? '') as `0x${string}`
 const FACTORY = (process.env.AGENT_FACTORY_ADDRESS ?? '') as `0x${string}`
-const DEPLOYER_KEY = process.env.DEPLOYER_PRIVATE_KEY as `0x${string}` | undefined
 const RELAYER_KEY = (process.env.PASSKEY_RELAYER_KEY ?? '0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d') as `0x${string}`
 
 const entryPointAbi = [
@@ -63,14 +77,6 @@ const entryPointAbi = [
   },
 ] as const
 
-interface SignupBody {
-  /** Bare label the user typed, e.g. "richp". Server appends ".agent". */
-  agentLabel: string
-  credentialIdBase64Url: string
-  pubKeyX: string  // decimal string (bigint)
-  pubKeyY: string
-}
-
 /** Lowercase letters/digits/hyphens, 1–32 chars, no leading/trailing hyphen,
  *  no double hyphens. Mirrors a conservative DNS-style label rule so the
  *  resulting `<label>.agent` is a sane on-chain name. */
@@ -83,20 +89,16 @@ function isValidLabel(label: string): boolean {
 
 export async function POST(request: Request) {
   try {
-  if (!ENTRYPOINT || !FACTORY || !DEPLOYER_KEY) {
+  if (!ENTRYPOINT || !FACTORY) {
     return NextResponse.json({ error: 'auth chain config missing' }, { status: 500 })
   }
-  // CSRF guard
-  const origin = request.headers.get('origin')
-  const host = request.headers.get('host')
-  if (origin && host && !origin.includes(host.split(':')[0])) {
-    return NextResponse.json({ error: 'CSRF rejected' }, { status: 403 })
-  }
+  // S2.2 — CSRF guard via parsed-URL exact-allowlist.
+  const csrfDenied = requireOriginAllowed(request)
+  if (csrfDenied) return csrfDenied
 
-  const body = await request.json() as SignupBody
-  if (!body.agentLabel || !body.credentialIdBase64Url || !body.pubKeyX || !body.pubKeyY) {
-    return NextResponse.json({ error: 'agentLabel, credentialIdBase64Url, pubKeyX, pubKeyY required' }, { status: 400 })
-  }
+  const parsed = await validateRequest(request, { schema: BodySchema })
+  if (!parsed.ok) return parsed.response
+  const body = parsed.data
   const label = body.agentLabel.toLowerCase().trim()
   if (!isValidLabel(label)) {
     return NextResponse.json({ error: 'invalid label — use 1–32 chars: lowercase letters, digits, hyphens (no leading/trailing/double hyphens)' }, { status: 400 })
@@ -134,13 +136,23 @@ export async function POST(request: Request) {
   // (deployer, namehash-salt), so the same `<label>.agent` always lands
   // on the same address. No local table needed.
 
-  const deployer = privateKeyToAccount(DEPLOYER_KEY)
+  // K6 S1.5 — sign bootstrap operations with the dedicated `auth-bootstrap`
+  // tool-executor key (separate KMS slot in prod). This signer:
+  //   - becomes the initial owner of the new AgentAccount (via the salt
+  //     deterministic factory call), so it can sign the addPasskey UserOp
+  //     and resolver writes via ERC-1271 / onlyAgentOwner;
+  //   - is the owner of the `.agent` root (transferred in deploy-local.sh
+  //     post-deploy), so `register` of `<label>.agent` succeeds.
+  // The deployer key is no longer referenced in this route — its only
+  // legitimate runtime role is the boot-seed / demo-seed deploy-time
+  // helpers, which keep their own lock against the deployer EOA.
+  const deployer = await getAuthBootstrapSigner()
   const relayer = privateKeyToAccount(RELAYER_KEY)
-  // Use the shared wallet client — its writeContract is wrapped with the
-  // process-wide deployer-lock so this createAccount can't race with the
-  // boot-seed loop's setStringProperty/setEdgeStatus writes (which would
-  // produce a "nonce too low" since both use the same EOA).
-  const deployerWallet = getWalletClient()
+  const deployerWallet = createWalletClient({
+    account: deployer,
+    chain: { ...localhost, id: CHAIN_ID },
+    transport: http(RPC_URL),
+  })
 
   // 1. Deploy smart account — owner=deployer, salt = keccak(fullName).
   // Using the name as the salt seed makes the address counterfactual and
@@ -189,6 +201,13 @@ export async function POST(request: Request) {
   const userOpHash = getUserOperationHash({
     userOperation: userOp, entryPointAddress: ENTRYPOINT, entryPointVersion: '0.8', chainId: CHAIN_ID,
   })
+  // The KMS / local-secp256k1 backend always provides `sign` (see
+  // packages/sdk/src/key-custody/viem-kms-account.ts:155). It's marked
+  // optional on viem's `LocalAccount` type but is guaranteed present
+  // for our backend; assert non-null for the typechecker.
+  if (!deployer.sign) {
+    return NextResponse.json({ error: 'auth-bootstrap signer missing sign() — backend misconfigured' }, { status: 500 })
+  }
   const signature = await deployer.sign({ hash: userOpHash })
   const packed = toPackedUserOperation({ ...userOp, signature })
   const relayerWallet = createWalletClient({ account: relayer, chain: { ...localhost, id: CHAIN_ID }, transport: http(RPC_URL) })
@@ -234,11 +253,20 @@ export async function POST(request: Request) {
     }
   } catch (err) {
     // Name registration failure shouldn't strand a deployed account, but
-    // it does mean the user can't sign in by name. Surface explicitly.
-    return NextResponse.json({
-      error: `name registration failed: ${(err as Error).message}`,
-      detail: 'account is deployed but the .agent name was not registered',
-    }, { status: 500 })
+    // it does mean the user can't sign in by name. Public response is
+    // generic; full upstream error stays in the server log.
+    return webErrorResponse({
+      publicMessage: 'Name registration failed (account is deployed but the .agent name was not registered)',
+      logMessage: '[passkey-signup] name registration failed',
+      logFields: {
+        accountAddr,
+        fullName,
+        errorCode: 'name-register-failed',
+        errorMessage: (err as Error).message,
+      },
+      status: 500,
+      request,
+    })
   }
 
   // 4. Register the smart account itself in the AgentAccountResolver so

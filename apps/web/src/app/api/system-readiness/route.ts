@@ -1,3 +1,4 @@
+/** @sa-route public @sa-auth none @sa-rate-limit 60/min @sa-owner infra */
 import { NextResponse } from 'next/server'
 import { createPublicClient, http } from 'viem'
 import { foundry } from 'viem/chains'

@@ -54,12 +54,14 @@
 import {
   MCP_TOOL_SCOPE_ENFORCER,
   DATA_SCOPE_ENFORCER,
+  DELEGATE_BINDING_ENFORCER,
   decodeTimestampTerms,
   decodeMcpToolScopeTerms,
   decodeAllowedTargetsTerms,
   decodeAllowedMethodsTerms,
   decodeValueTerms,
   decodeDataScopeTerms,
+  decodeDelegateBindingTerms,
 } from '../delegation'
 
 export interface CaveatLike {
@@ -117,6 +119,7 @@ export interface EnforcerAddressMap {
   taskBinding?: `0x${string}`
   mcpToolScope?: `0x${string}`
   dataScope?: `0x${string}`
+  delegateBinding?: `0x${string}`
 }
 
 const ZERO_ADDR = '0x0000000000000000000000000000000000000000'
@@ -135,7 +138,7 @@ function fromEnv(envName: string): `0x${string}` | undefined {
  *  tool scope + data scope enforcers fall back to their SDK sentinel
  *  constants when no env override is set. */
 function resolveAddresses(overrides?: EnforcerAddressMap): Required<
-  Pick<EnforcerAddressMap, 'mcpToolScope' | 'dataScope'>
+  Pick<EnforcerAddressMap, 'mcpToolScope' | 'dataScope' | 'delegateBinding'>
 > &
   EnforcerAddressMap {
   return {
@@ -147,6 +150,7 @@ function resolveAddresses(overrides?: EnforcerAddressMap): Required<
     taskBinding:     overrides?.taskBinding     ?? fromEnv('TASK_BINDING_ENFORCER_ADDRESS'),
     mcpToolScope:    (overrides?.mcpToolScope   ?? fromEnv('MCP_TOOL_SCOPE_ENFORCER_ADDRESS') ?? MCP_TOOL_SCOPE_ENFORCER).toLowerCase() as `0x${string}`,
     dataScope:       (overrides?.dataScope      ?? fromEnv('DATA_SCOPE_ENFORCER_ADDRESS')     ?? DATA_SCOPE_ENFORCER).toLowerCase() as `0x${string}`,
+    delegateBinding: (overrides?.delegateBinding ?? fromEnv('DELEGATE_BINDING_ENFORCER_ADDRESS') ?? DELEGATE_BINDING_ENFORCER).toLowerCase() as `0x${string}`,
   }
 }
 
@@ -259,6 +263,24 @@ function evalDataScope(caveat: CaveatLike): CaveatVerdict {
 }
 
 /**
+ * DelegateBinding enforcer (Sprint 2 S2.3) carries the dual-address
+ * binding for cross-principal delegations: `(delegateSmartAccount,
+ * delegatePersonAgent)`. At the standard verifier we just sanity-check
+ * the encoding — the cross-delegation verifier
+ * (`apps/person-mcp/src/auth/verify-delegation.ts::verifyCrossDelegation`)
+ * decodes the terms and asserts the binding against the session subject
+ * + on-chain resolution.
+ */
+function evalDelegateBinding(caveat: CaveatLike): CaveatVerdict {
+  try {
+    decodeDelegateBindingTerms(caveat.terms)
+    return { allowed: true, enforcer: caveat.enforcer }
+  } catch (e) {
+    return { allowed: false, reason: `failed to decode DelegateBinding terms: ${(e as Error).message}`, enforcer: caveat.enforcer }
+  }
+}
+
+/**
  * TaskBindingEnforcer is informational on-chain (just records the taskId).
  * CallDataHashEnforcer locks a sub-delegation to one exact callData and
  * reverts on mismatch at on-chain redeem.
@@ -298,9 +320,11 @@ export function evaluateCaveats(
   if (addrs.value)          table.set(addrs.value.toLowerCase(),          evalValue)
   if (addrs.callDataHash)   table.set(addrs.callDataHash.toLowerCase(),   evalTrustedOnChain)
   if (addrs.taskBinding)    table.set(addrs.taskBinding.toLowerCase(),    evalTrustedOnChain)
-  // MCP tool scope + data scope sentinels are always defined (SDK constants).
-  table.set(addrs.mcpToolScope.toLowerCase(), evalMcpToolScope)
-  table.set(addrs.dataScope.toLowerCase(),    evalDataScope)
+  // MCP tool scope + data scope + delegate-binding sentinels are always
+  // defined (SDK constants).
+  table.set(addrs.mcpToolScope.toLowerCase(),    evalMcpToolScope)
+  table.set(addrs.dataScope.toLowerCase(),       evalDataScope)
+  table.set(addrs.delegateBinding.toLowerCase(), evalDelegateBinding)
 
   return caveats.map((caveat) => {
     const key = caveat.enforcer.toLowerCase()

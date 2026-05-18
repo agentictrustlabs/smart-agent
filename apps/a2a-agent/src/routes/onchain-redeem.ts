@@ -216,8 +216,7 @@ async function loadActiveSessionPackage(
   if (!row.encryptedPackage || !row.iv) return { error: 'session missing encrypted package', status: 400 }
   // KMS migration K0+K1 — `decryptSessionPackage` binds AAD on both the
   // KMS provider's aadContext and the AES-GCM additionalData (Hardening
-  // §1.5 #8 trip-wire preserved). Pre-existing legacy rows route via the
-  // 'legacy' keyVersion fallback.
+  // §1.5 #8 trip-wire preserved).
   const pkg = await decryptSessionPackage<StoredSessionPackage>(
     {
       encryptedPackage: row.encryptedPackage,

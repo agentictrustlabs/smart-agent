@@ -8,6 +8,11 @@ const sqliteHandle: DatabaseType = new Database(DB_PATH)
 
 // Enable WAL mode for better concurrent read performance
 sqliteHandle.pragma('journal_mode = WAL')
+// Short busy_timeout so transient writer contention (e.g. another node
+// process touching the same DB during dev) waits briefly instead of
+// failing fast. Keeps SQLITE_BUSY off hot paths like the session
+// action-counter transaction.
+sqliteHandle.pragma('busy_timeout = 5000')
 
 // Drop legacy person-mcp tables that moved to canonical sources. Runs
 // idempotently on every boot so existing local DBs get cleaned up.

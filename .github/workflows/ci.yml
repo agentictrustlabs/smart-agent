@@ -1,0 +1,78 @@
+# Sprint 3 S3.5 — CI quality gate
+#
+# This is the *composite* required-checks workflow. It runs the
+# language-level guards that block merge:
+#   - pnpm typecheck (all packages)
+#   - pnpm test (all packages)
+#   - pnpm check:all (bypass + route-classification + route-inventory)
+#   - forge build + forge test (Solidity)
+#
+# The supply-chain workflows (pnpm-audit, codeql, secret-scan,
+# dependency-review, contracts-static) live in their own files
+# and are also wired as required checks via branch protection
+# (operator action — see docs/operations/ci-setup.md).
+
+name: ci
+
+on:
+  pull_request:
+    branches: [master, main]
+  push:
+    branches: [master, main]
+
+permissions:
+  contents: read
+
+jobs:
+  typescript:
+    name: typescript (typecheck + test + check:all)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck (all packages)
+        run: pnpm -r typecheck
+
+      - name: Test (all packages)
+        run: pnpm -r test
+
+      - name: Bypass + route-classification + route-inventory
+        run: pnpm check:all
+
+  contracts:
+    name: contracts (forge build + test)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/contracts
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Forge build
+        run: forge build --sizes
+
+      - name: Forge test
+        run: forge test -vvv

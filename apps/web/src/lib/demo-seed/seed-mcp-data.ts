@@ -698,6 +698,7 @@ const PRIVATE_PROFILE_FIELDS = [
 async function seedPrivateCoaching(): Promise<number> {
   const {
     hashDelegation, encodeTimestampTerms, buildCaveat, buildDataScopeCaveat,
+    buildDelegateBindingCaveat,
     ROOT_AUTHORITY,
   } = await import('@smart-agent/sdk')
   const { privateKeyToAccount } = await import('viem/accounts')
@@ -726,6 +727,11 @@ async function seedPrivateCoaching(): Promise<number> {
 
     const discipleSA = disciple.smartAccountAddress.toLowerCase() as `0x${string}`
     const coachSA = coach.smartAccountAddress.toLowerCase() as `0x${string}`
+    // Sprint 2 S2.3 — the binding caveat commits to the coach's
+    // person-agent. Many demo users are single-account (personAgent ===
+    // smartAccount); when no separate personAgent exists, the smart
+    // account stands in.
+    const coachPA = (coach.personAgentAddress ?? coachSA).toLowerCase() as `0x${string}`
 
     const now = Math.floor(Date.now() / 1000)
     const expiresAt = now + 365 * 24 * 60 * 60
@@ -743,6 +749,7 @@ async function seedPrivateCoaching(): Promise<number> {
     const caveats = [
       buildCaveat(timestampEnforcerAddr, encodeTimestampTerms(now, expiresAt)),
       buildDataScopeCaveat(grants),
+      buildDelegateBindingCaveat(coachSA, coachPA),
     ]
 
     const delegation = {

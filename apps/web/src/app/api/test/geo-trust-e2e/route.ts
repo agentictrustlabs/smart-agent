@@ -1,3 +1,4 @@
+/** @sa-route dev-only @sa-auth none @sa-prod-gate requireDev @sa-validation none-no-body @sa-owner tester */
 /**
  * Test-only E2E for the geo-trust-overlap fix.
  *

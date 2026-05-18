@@ -26,6 +26,7 @@ import { privateKeyToAccount } from 'viem/accounts'
 import { keccak256, toBytes, encodePacked } from 'viem'
 import {
   hashDelegation, encodeTimestampTerms, buildCaveat, buildDataScopeCaveat,
+  buildDelegateBindingCaveat,
   DATA_ACCESS_DELEGATION, ROLE_DATA_GRANTOR, ROLE_DATA_GRANTEE, ROOT_AUTHORITY,
   agentRelationshipAbi,
 } from '@smart-agent/sdk'
@@ -117,9 +118,14 @@ export async function seedOrgCrossDelegations(pairs: OrgGovernancePair[]): Promi
     const expiresAt = now + 365 * 24 * 60 * 60 // 1 year
     const salt = BigInt(keccak256(encodePacked(['address', 'address', 'string'], [orgLower, userSmartAccount, saltLabel])))
 
+    // Sprint 2 S2.3 — bind the cross-delegation to the recipient user's
+    // BOTH smart-account AND person-agent. Org-mcp's verifier (and
+    // person-mcp's, when this delegation is presented there) asserts
+    // both addresses match the session subject.
     const caveats = [
       buildCaveat(timestampEnforcerAddr, encodeTimestampTerms(now, expiresAt)),
       buildDataScopeCaveat(grants),
+      buildDelegateBindingCaveat(userSmartAccount, personLower),
     ]
 
     const delegation = {

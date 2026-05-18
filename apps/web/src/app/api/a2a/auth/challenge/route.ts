@@ -1,3 +1,4 @@
+/** @sa-route web-auth @sa-auth session-cookie @sa-validation none-no-body @sa-owner developer */
 import { NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth/session'
 

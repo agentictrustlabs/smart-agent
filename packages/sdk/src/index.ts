@@ -86,12 +86,17 @@ export {
   encodeDataScopeTerms,
   decodeDataScopeTerms,
   buildDataScopeCaveat,
+  // Delegate-binding caveat (Sprint 2 S2.3 — cross-delegation dual-address binding)
+  DELEGATE_BINDING_ENFORCER,
+  encodeDelegateBindingTerms,
+  decodeDelegateBindingTerms,
+  buildDelegateBindingCaveat,
   // MCP audience constants (SEC-17)
   PERSON_MCP_AUDIENCE,
   ORG_MCP_AUDIENCE,
   PEOPLE_GROUPS_MCP_AUDIENCE,
 } from './delegation'
-export type { DataScopeGrant } from './delegation'
+export type { DataScopeGrant, DelegateBindingTerms } from './delegation'
 
 // ─── Data scope field registry (SEC-18 / ADR-PG-4 forward compat) ───
 export {
@@ -116,46 +121,26 @@ export {
 } from './crypto'
 export type { EncryptedPayload } from './crypto'
 
-// ─── Key custody (KMS migration K0+K1+K2) ────────────────────────────
-// Re-exported here so callers can `import { ... } from '@smart-agent/sdk'`
-// in addition to the subpath `from '@smart-agent/sdk/key-custody'`.
-// See `packages/sdk/src/key-custody/types.ts` for the rationale.
-export {
-  createLocalAesProvider,
-  createAwsKmsProvider,
-  createVaultTransitProvider,
-  canonicalContextBytes,
-  extractKmsKeyUuid,
-  // K4 PR-1 — local-secp256k1 master-EOA signer + viem LocalAccount adapter.
-  createLocalSecp256k1Signer,
-  buildCanonicalDigest,
-  createKmsAccount,
-  // K4 PR-2 — AWS KMS asymmetric ECC_SECG_P256K1 signer (prod target).
-  createAwsKmsSigner,
-  // K5 — per-tool-family executor signer registry (round-awards,
-  // disbursement, pool-lifecycle, grant-awards). Same primitives as K4
-  // parameterized by tool id.
-  createToolExecutorSigner,
-  isToolExecutorId,
-  listToolExecutorIds,
-  toolEnvKeyName,
-  TOOL_EXECUTOR_IDS,
-  // K3-extension — AWS KMS HMAC provider + local dev counterpart + factories.
-  createAwsKmsMacProvider,
-  createLocalHmacProvider,
-  buildMcpMacProvider,
-  buildWebMacProvider,
-  envKeyForMacKeyId,
-  MAC_KEY_IDS,
-  MCP_TO_MAC_KEY_ID,
-} from './key-custody'
+// ─── Key custody (KMS migration K0+K1+K2+K3-ext+K4+K5) ───────────────
+// SERVER-ONLY runtime modules are NOT re-exported from this barrel — they
+// pull in `node:crypto` and other Node built-ins which webpack cannot bundle
+// for client components. Server callers MUST import from the dedicated
+// `@smart-agent/sdk/key-custody` subpath. Types are safe to re-export here
+// because TypeScript erases them at compile time.
+//
+// ✗ DO NOT add `createLocalHmacProvider`, `createLocalAesProvider`, etc. back
+//   to this barrel. They'd break `apps/web` client bundling.
+// ✓ Server callers: `import { createLocalAesProvider } from '@smart-agent/sdk/key-custody'`
+// ✓ Client callers: only types are available here (and that's intentional).
 export type {
   A2AKeyProvider,
   LocalAesProviderEnv,
   AwsKmsEnv,
   AwsKmsDeps,
-  VaultTransitEnv,
-  VaultTransitDeps,
+  // VaultTransit env/deps types were removed when the vault-transit
+  // provider was deleted from packages/sdk/src/key-custody/ — the
+  // selector branch in `buildKeyProvider` / `buildSignerBackend` still
+  // throws "not yet implemented" so existing API surface is unchanged.
   LocalSecp256k1Env,
   LocalSecp256k1Signer,
   KmsAccountBackend,
@@ -167,7 +152,6 @@ export type {
   ToolExecutorSignerBackend,
   ToolExecutorSignerEnv,
   ToolExecutorSignerDeps,
-  // K3-extension types.
   KmsMacProvider,
   AwsKmsMacEnv,
   AwsKmsMacDeps,

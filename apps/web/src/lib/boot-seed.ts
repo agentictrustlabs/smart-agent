@@ -16,6 +16,7 @@
  *   and each per-hub seed inside `ensureDemoCommunitySeeded`.
  */
 
+import { isNotNull } from 'drizzle-orm'
 import { ensureCommunityUsers } from '@/lib/demo-seed/lookup-users'
 import { seedCILOnChain } from '@/lib/demo-seed/seed-cil-onchain'
 import { seedCatalystOnChain } from '@/lib/demo-seed/seed-catalyst-onchain'
@@ -91,6 +92,12 @@ export function triggerBootSeed(): Promise<void> {
 
   const inflight = (async () => {
     try {
+      // -2. S2.5(a) — production invariant: refuse to start a seed if any
+      //     demo private key has slipped into the prod DB. Errors here
+      //     propagate to the boot-seed state.error so operators see it
+      //     loudly on the readiness banner.
+      await assertNoDemoPrivateKeysInProd()
+
       // -1. If the chain already has all three hub agents registered, an
       //     earlier seed run completed and the in-memory flag was cleared
       //     by an HMR reload. Mark complete and exit before doing any
@@ -250,4 +257,73 @@ export function triggerBootSeed(): Promise<void> {
 
 export function getBootState(): BootState {
   return { ...state }
+}
+
+/**
+ * S2.5(a) — production invariant: no demo private keys may live in the
+ * `local_user_accounts.private_key` column when the app is running with
+ * `NODE_ENV=production` (and no `SMART_AGENT_ENV=dev` override).
+ *
+ * Demo personas carry a stored EOA private key so the action layer can
+ * sign on their behalf without a passkey ceremony. That's a giant
+ * footgun in production: if any row leaks into a prod DB, the
+ * `demo-login` flow (separately gated by `requireDev()`, but defence
+ * in depth) or any helper that reads `users.privateKey` could
+ * trivially impersonate that user.
+ *
+ * This guard runs at module-import time of `boot-seed.ts` (the very
+ * first thing any boot-seed-aware path imports) and at the top of
+ * `triggerBootSeed()` so it's impossible to start the app with such a
+ * row present. Operators see a clear error and the process should be
+ * stopped at deploy time.
+ *
+ * Throws (instead of `process.exit`) so it composes with the Next.js
+ * boot lifecycle — Next surfaces module-load errors as 500s during
+ * dev, which is the visible-failure mode we want.
+ */
+export class DemoPrivateKeyInProductionError extends Error {
+  constructor(rowCount: number) {
+    super(
+      `[S2.5] Refusing to start: ${rowCount} row(s) in local_user_accounts ` +
+      'have a non-null private_key while NODE_ENV=production. Demo-stored ' +
+      'private keys are dev-only — they must NEVER reach a production ' +
+      'database. Wipe the column, restore from a clean snapshot, or use ' +
+      'SMART_AGENT_ENV=dev if you genuinely need this on a staging box.',
+    )
+    this.name = 'DemoPrivateKeyInProductionError'
+  }
+}
+
+export async function assertNoDemoPrivateKeysInProd(): Promise<void> {
+  // Only the strict-production case is a hard error. `SMART_AGENT_ENV=dev`
+  // (staging boxes where Next.js forces NODE_ENV=production) and any
+  // non-production NODE_ENV bypass the check.
+  if (process.env.NODE_ENV !== 'production') return
+  if (process.env.SMART_AGENT_ENV === 'dev') return
+
+  // Lazy import so test files that DON'T touch the DB can still import
+  // this module to exercise the prod-invariant helper.
+  const { db, schema } = await import('@/db')
+  const rows = await db
+    .select({ id: schema.localUserAccounts.id })
+    .from(schema.localUserAccounts)
+    .where(isNotNull(schema.localUserAccounts.privateKey))
+    .limit(1)
+
+  if (rows.length > 0) {
+    throw new DemoPrivateKeyInProductionError(rows.length)
+  }
+}
+
+/**
+ * Helper for any data-access path that reads `users.privateKey`. Call
+ * BEFORE returning the column to a caller. Throws in production when
+ * the caller is about to hand back a non-null value — defence in depth
+ * even if a demo row somehow survived the boot-time invariant.
+ */
+export function assertPrivateKeyAccessAllowed(privateKey: string | null | undefined): void {
+  if (privateKey === null || privateKey === undefined) return
+  if (process.env.NODE_ENV !== 'production') return
+  if (process.env.SMART_AGENT_ENV === 'dev') return
+  throw new DemoPrivateKeyInProductionError(1)
 }

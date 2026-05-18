@@ -48,6 +48,9 @@ const DEV_KEYS: Record<ToolExecutorId, `0x${string}`> = {
     '0x4bbbf85ce3377467afe5d46f804f221813b2bb87f24d81f60f1fcdbf7cbb4ccf',
   'grant-awards':
     '0xdbda1821b80551c9d65939329250298aa3472ba22feea921c0cf5d620ea67b97',
+  // K6 S1.5 — web-tier bootstrap-auth signer (anvil account #9).
+  'auth-bootstrap':
+    '0x2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6',
 }
 
 function clearAllToolEnvs() {
@@ -67,10 +70,17 @@ beforeEach(() => {
 
 // ─── Constants / type helpers ────────────────────────────────────────
 
-test('TOOL_EXECUTOR_IDS contains the canonical four tool families', () => {
+test('TOOL_EXECUTOR_IDS contains the canonical tool families (K5 + K6 S1.5)', () => {
   assert.deepEqual(
     [...TOOL_EXECUTOR_IDS],
-    ['round-awards', 'disbursement', 'pool-lifecycle', 'grant-awards'],
+    [
+      'round-awards',
+      'disbursement',
+      'pool-lifecycle',
+      'grant-awards',
+      // K6 S1.5 — web bootstrap-auth signer.
+      'auth-bootstrap',
+    ],
   )
 })
 

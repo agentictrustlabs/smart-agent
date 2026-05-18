@@ -8,6 +8,8 @@ import { sessions } from '../db/schema'
 import { config } from '../config'
 import { requireSession } from '../middleware/require-session'
 import { decryptSessionPackage } from '../auth/encryption'
+import { buildOutboundAuthHeaders } from '../auth/sign-outbound'
+import type { MacKeyId } from '../auth/mac-provider'
 
 const PERSON_MCP_URL = process.env.PERSON_MCP_URL ?? 'http://localhost:3200'
 const ORG_MCP_URL = process.env.ORG_MCP_URL ?? 'http://localhost:3400'
@@ -28,10 +30,16 @@ interface StoredSessionPackage {
   expiresAt: string
 }
 
+// Sprint 1 W2.1 — each downstream MCP gets its own MAC key id for the
+// a2a→MCP signing hop. Person-mcp's `require-inbound-service-auth.ts`
+// rejects unsigned tool calls; the other MCPs do not yet enforce this
+// (`macKeyId` is `null` for them and the call goes unsigned, preserving
+// the pre-W2.1 behavior). When org-mcp/people-group-mcp adopt the same
+// inbound verifier, flip those to their respective `a2a-to-*` keys.
 const SERVERS = {
-  person:        { url: PERSON_MCP_URL,       audience: 'urn:mcp:server:person'        as const },
-  org:           { url: ORG_MCP_URL,          audience: 'urn:mcp:server:org'           as const },
-  'people-group': { url: PEOPLE_GROUP_MCP_URL, audience: 'urn:mcp:server:people-groups' as const },
+  person:        { url: PERSON_MCP_URL,       audience: 'urn:mcp:server:person'        as const, macKeyId: 'a2a-to-person'        as MacKeyId | null },
+  org:           { url: ORG_MCP_URL,          audience: 'urn:mcp:server:org'           as const, macKeyId: null as MacKeyId | null },
+  'people-group': { url: PEOPLE_GROUP_MCP_URL, audience: 'urn:mcp:server:people-groups' as const, macKeyId: null as MacKeyId | null },
 } as const
 
 type ServerKey = keyof typeof SERVERS
@@ -107,10 +115,18 @@ async function callMcpTool(
     async (msg) => sessionAccount.signMessage({ message: msg }),
   )
 
-  const mcpRes = await fetch(`${server.url}/tools/${toolName}`, {
+  const mcpPath = `/tools/${toolName}`
+  const mcpBodyJson = JSON.stringify({ tool: toolName, args: { ...args, token } })
+  const authHeaders = server.macKeyId
+    ? await buildOutboundAuthHeaders(server.macKeyId, mcpPath, mcpBodyJson)
+    : {}
+  const mcpRes = await fetch(`${server.url}${mcpPath}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ tool: toolName, args: { ...args, token } }),
+    headers: {
+      'Content-Type': 'application/json',
+      ...authHeaders,
+    },
+    body: mcpBodyJson,
   })
 
   if (!mcpRes.ok) {

@@ -1,6 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server'
+/** @sa-route web-auth @sa-auth session-cookie @sa-audit-event treasury.fund @sa-validation zod @sa-owner developer */
+import { NextResponse } from 'next/server'
+import { z } from 'zod'
 import { getSession } from '@/lib/auth/session'
 import { fundLocalTreasury } from '@/lib/treasury/provision'
+import { validateRequest } from '@/lib/auth/validate-request'
+
+const BodySchema = z.object({
+  smartAccountAddress: z.string().regex(/^0x[0-9a-fA-F]{40}$/).optional(),
+})
 
 /**
  * Spec 005 — dev-only treasury top-up endpoint.
@@ -12,20 +19,16 @@ import { fundLocalTreasury } from '@/lib/treasury/provision'
  * account, and chainId === 31337 (enforced inside fundLocalTreasury).
  * Returns { ok, newBalance } as a decimal string (1e6-scaled USDC).
  */
-export async function POST(req: NextRequest) {
+export async function POST(req: Request) {
   const session = await getSession()
   if (!session?.smartAccountAddress) {
     return NextResponse.json({ ok: false, error: 'not signed in' }, { status: 401 })
   }
   const sessionAddr = session.smartAccountAddress.toLowerCase()
 
-  let body: { smartAccountAddress?: string } = {}
-  try {
-    body = await req.json()
-  } catch {
-    /* empty body is fine — default to session's smart account */
-  }
-  const requested = (body.smartAccountAddress ?? sessionAddr).toLowerCase()
+  const parsed = await validateRequest(req, { schema: BodySchema })
+  if (!parsed.ok) return parsed.response
+  const requested = (parsed.data.smartAccountAddress ?? sessionAddr).toLowerCase()
   if (requested !== sessionAddr) {
     return NextResponse.json(
       { ok: false, error: 'can only fund your own treasury' },

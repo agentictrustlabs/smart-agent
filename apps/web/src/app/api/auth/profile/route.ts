@@ -1,8 +1,18 @@
+/** @sa-route web-auth @sa-auth session-cookie @sa-validation zod @sa-owner developer */
 import { NextResponse } from 'next/server'
+import { z } from 'zod'
 import { db, schema } from '@/db'
 import { eq } from 'drizzle-orm'
 import { getSession } from '@/lib/auth/session'
 import { getPersonAgentForUser } from '@/lib/agent-registry'
+import { validateRequest } from '@/lib/auth/validate-request'
+
+// Profile edit body — keep narrow. Email is RFC-5321 bounded (320 chars);
+// name is generous but capped.
+const PutBodySchema = z.object({
+  name: z.string().max(256).optional(),
+  email: z.string().max(320).optional(),
+})
 
 export async function GET() {
   const session = await getSession()
@@ -113,8 +123,9 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
   }
 
-  const body = await request.json()
-  const { name, email } = body as { name?: string; email?: string }
+  const parsed = await validateRequest(request, { schema: PutBodySchema })
+  if (!parsed.ok) return parsed.response
+  const { name, email } = parsed.data
 
   if (!name?.trim()) {
     return NextResponse.json({ error: 'Name is required' }, { status: 400 })

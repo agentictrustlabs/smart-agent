@@ -1,0 +1,14 @@
+{
+  "_comment": "Sprint 3 S3.5 — Slither config. Detector skips MUST be justified inline.",
+  "filter_paths": "lib/",
+  "exclude_informational": true,
+  "exclude_low": false,
+  "detectors_to_exclude": "naming-convention,solc-version,pragma,assembly,low-level-calls",
+  "_detector_notes": {
+    "naming-convention": "Style-only; Solidity 0.8.28 naming differs from Slither's old rules.",
+    "solc-version": "Pinned to ^0.8.28 in foundry.toml; redundant Slither warnings.",
+    "pragma": "Same as above.",
+    "assembly": "Intentional in ERC-4337 entry-point + ERC-1271 paths.",
+    "low-level-calls": "Required for account-abstraction execute() / delegation redemption."
+  }
+}

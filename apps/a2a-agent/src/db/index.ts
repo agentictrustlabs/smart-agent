@@ -1,4 +1,4 @@
-import Database from 'better-sqlite3'
+import Database, { type Database as DatabaseType } from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
 import * as schema from './schema'
 
@@ -6,6 +6,15 @@ const sqlite = new Database('local.db')
 
 // Enable WAL mode for better concurrent access
 sqlite.pragma('journal_mode = WAL')
+// Sprint 3 S3.1 — busy_timeout for write contention. The audit
+// hash-chain `auditAppend` helper runs a SELECT-head + INSERT inside a
+// transaction; under heavy parallelism (multiple test files, multiple
+// concurrent requests) the second writer's `BEGIN IMMEDIATE` would
+// otherwise return SQLITE_BUSY immediately. With this set the SQLite
+// engine waits up to 5 s for the lock before giving up — long enough
+// for typical request bursts, short enough that a genuinely-stuck DB
+// surfaces as an error rather than a hang.
+sqlite.pragma('busy_timeout = 5000')
 
 // ─── Auto-create tables ─────────────────────────────────────────────
 
@@ -36,11 +45,11 @@ sqlite.exec(`
     session_agent_account TEXT,
     -- KMS migration K0+K1 — session envelope encryption columns.
     -- encrypted_data_key: base64 of the KMS-wrapped data key (aws-kms) or
-    --   the HKDF salt (local-aes). Null only for legacy pre-K3 rows.
-    -- key_version: provider tag ('local-v1', 'aws-kms:<uuid>', or 'legacy').
+    --   the HKDF salt (local-aes).
+    -- key_version: provider tag ('local-v1' or 'aws-kms:<uuid>').
     -- kms_key_id: the KMS keyId / ARN at encryption time ('local' for the dev shim).
     encrypted_data_key TEXT,
-    key_version TEXT NOT NULL DEFAULT 'legacy',
+    key_version TEXT NOT NULL DEFAULT 'local-v1',
     kms_key_id TEXT
   );
 
@@ -125,8 +134,6 @@ try {
 
 // KMS migration K0+K1 — best-effort migration for older DBs that pre-date
 // the envelope-encryption columns. See KMS-IMPLEMENTATION-PLAN.md §4.
-// Existing rows are stamped `key_version='legacy'` and decrypt via the
-// rollback path in `auth/encryption.ts`.
 try {
   const cols = sqlite.prepare(`PRAGMA table_info(sessions)`).all() as Array<{ name: string }>
   const colNames = new Set(cols.map((c) => c.name))
@@ -135,9 +142,8 @@ try {
   }
   if (!colNames.has('key_version')) {
     // SQLite cannot add a NOT NULL column without a default; the literal
-    // default 'legacy' is what tags every pre-cutover row for the rollback
-    // decrypt path. Explicit DEFAULT keeps the column NOT NULL.
-    sqlite.exec(`ALTER TABLE sessions ADD COLUMN key_version TEXT NOT NULL DEFAULT 'legacy'`)
+    // default 'local-v1' tags every new row with the active dev provider.
+    sqlite.exec(`ALTER TABLE sessions ADD COLUMN key_version TEXT NOT NULL DEFAULT 'local-v1'`)
   }
   if (!colNames.has('kms_key_id')) {
     sqlite.exec(`ALTER TABLE sessions ADD COLUMN kms_key_id TEXT`)
@@ -159,4 +165,55 @@ try {
   sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_execution_audit_correlation ON execution_audit(correlation_id)`)
 } catch { /* column already exists or table missing — both fine */ }
 
+// Sprint 3 S3.1 + S3.2 — best-effort migration for the hash-chain
+// columns (`prev_entry_hash`, `entry_hash`) and the event-type tag
+// (`event_type`) on `execution_audit`. All three are nullable for
+// forward-compat with pre-S3 rows; new inserts always populate them.
+try {
+  const cols = sqlite.prepare(`PRAGMA table_info(execution_audit)`).all() as Array<{ name: string }>
+  const colNames = new Set(cols.map((c) => c.name))
+  if (!colNames.has('event_type')) {
+    sqlite.exec(`ALTER TABLE execution_audit ADD COLUMN event_type TEXT`)
+  }
+  if (!colNames.has('prev_entry_hash')) {
+    sqlite.exec(`ALTER TABLE execution_audit ADD COLUMN prev_entry_hash TEXT`)
+  }
+  if (!colNames.has('entry_hash')) {
+    sqlite.exec(`ALTER TABLE execution_audit ADD COLUMN entry_hash TEXT`)
+  }
+  sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_execution_audit_event_type ON execution_audit(event_type)`)
+} catch { /* column already exists or table missing — both fine */ }
+
+// Sprint 3 S3.1 — audit-checkpoint ledger. Signed periodic snapshots of
+// the executionAudit chain head. Trimmed to the last 30 days by the
+// periodic GC in `src/index.ts` (the chain itself lives in
+// executionAudit; we only need recent checkpoints to anchor it).
+sqlite.exec(`
+  CREATE TABLE IF NOT EXISTS audit_checkpoint (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    latest_entry_id INTEGER NOT NULL,
+    latest_entry_hash TEXT NOT NULL,
+    timestamp       TEXT NOT NULL,
+    chain_id        INTEGER NOT NULL,
+    signature       TEXT NOT NULL,
+    signer_address  TEXT NOT NULL,
+    sink_status     TEXT NOT NULL DEFAULT 'not-configured',
+    sink_attempts   INTEGER NOT NULL DEFAULT 0
+  );
+  CREATE INDEX IF NOT EXISTS idx_audit_checkpoint_timestamp ON audit_checkpoint(timestamp);
+`)
+
 export const db = drizzle(sqlite, { schema })
+
+/**
+ * Raw better-sqlite3 handle. Exposed for the audit hash-chain helper
+ * (`lib/audit.ts::auditAppend`) which needs `sqlite.transaction` for
+ * the atomic SELECT-head-and-INSERT pattern. Drizzle's async wrapper
+ * doesn't expose transactions at this layer.
+ *
+ * DO NOT introduce new call sites without coordinating with the
+ * `execution_audit` append-only invariant — direct mutation of the
+ * audit table from anywhere except `lib/audit.ts` is forbidden (see
+ * `scripts/check-no-bypass.sh`).
+ */
+export const sqliteHandle: DatabaseType = sqlite

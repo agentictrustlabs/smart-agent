@@ -135,8 +135,20 @@ const PORT = parseInt(process.env.PERSON_MCP_PORT ?? '3200', 10)
 const app = new Hono()
 app.use('*', logger())
 
+// Sprint 1 W2.1 — inbound service-auth on tool invocations. The MCP
+// tool surface used to accept any caller that could reach the HTTP
+// port; now every tool call must carry a valid `X-SA-Service: a2a-agent`
+// HMAC envelope. The mcp-proxy in a2a-agent re-signs each forwarded
+// request with the `a2a-to-person` MAC key before calling person-mcp.
+//
+// Applied per-route (not via `app.use('/tools/*')`) because Hono's
+// wildcard pattern also catches the bare `GET /tools` listing route,
+// which is an operator-debug surface that leaks no PII and stays open.
+// `/health` is similarly open.
+const toolsAuth = requireInboundServiceAuth()
+
 // POST /tools/:toolName — HTTP endpoint for tool calls
-app.post('/tools/:toolName', async (c) => {
+app.post('/tools/:toolName', toolsAuth, async (c) => {
   const toolName = c.req.param('toolName')
   const body = await c.req.json<{ tool?: string; args?: Record<string, unknown> }>()
 
@@ -188,6 +200,11 @@ import { oid4vpRoutes } from './ssi/api/oid4vp.js'
 import { matchPublicSetRoutes } from './ssi/api/match-public-set.js'
 import { walletActionRoutes } from './auth/wallet-action-routes.js'
 import { dispatchRoutes } from './auth/dispatch-routes.js'
+import {
+  requireInboundServiceAuth,
+  MAX_CLOCK_SKEW_SECONDS as INBOUND_MAX_CLOCK_SKEW_SECONDS,
+} from './auth/require-inbound-service-auth.js'
+import { cleanupOldNonces as cleanupInboundNonces } from './auth/replay-nonce.js'
 
 app.route('/', walletRoutes)
 app.route('/', credentialRoutes)
@@ -223,6 +240,21 @@ async function main() {
   serve({ fetch: app.fetch, port: PORT })
   console.log(`[person-mcp] HTTP server on http://localhost:${PORT}`)
   console.log(`[person-mcp] Tools: ${Object.keys(toolHandlers).join(', ')}`)
+
+  // Sprint 1 W2.1 — replay-nonce cache GC. Nonces older than 2× the
+  // timestamp-skew window are safe to evict (the timestamp check alone
+  // would reject any envelope that old). 5-minute interval; .unref() so
+  // the timer never holds the process open.
+  const NONCE_GC_INTERVAL_MS = 5 * 60 * 1000
+  const NONCE_MAX_AGE_SECONDS = 2 * INBOUND_MAX_CLOCK_SKEW_SECONDS
+  setInterval(() => {
+    try {
+      const deleted = cleanupInboundNonces(NONCE_MAX_AGE_SECONDS)
+      if (deleted > 0) console.log(`[person-mcp nonce-gc] evicted ${deleted} expired replay-nonce rows`)
+    } catch (err) {
+      console.error('[person-mcp nonce-gc] failed:', err)
+    }
+  }, NONCE_GC_INTERVAL_MS).unref()
 
   // Start MCP stdio server if stdin is a pipe (not a terminal)
   if (!process.stdin.isTTY) {

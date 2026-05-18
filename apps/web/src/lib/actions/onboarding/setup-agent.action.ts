@@ -188,7 +188,8 @@ export async function startFreshAccount(): Promise<{ success: boolean; error?: s
     const serverEOA = privateKeyToAccount(deployerKey).address as `0x${string}`
 
     const newRotation = (user.accountSaltRotation ?? 0) + 1
-    const newSalt = deriveSaltFromEmail(user.email, newRotation)
+    // S2.6: deriveSaltFromEmail is async now (KMS-HMAC backed).
+    const newSalt = await deriveSaltFromEmail(user.email, newRotation)
     const newAddr = await getSmartAccountAddress(serverEOA, newSalt)
     const newAddrLower = newAddr.toLowerCase() as `0x${string}`
 

@@ -37,7 +37,54 @@ import {
   buildSignerBackend,
   buildToolExecutorBackend,
   type KeyProviderEnv,
+  type SignerAuditEvent,
 } from './key-provider'
+import { auditAppend } from '../lib/audit'
+
+/**
+ * Sprint 3 S3.2 — write a `kms-sign` audit row for every successful
+ * `signA2AAction` call. Best-effort: failures are logged but never
+ * cancel the signature (the call already committed at the KMS side).
+ *
+ * `toolId` is the per-tool family identifier when the audit comes from
+ * a tool-executor signer; `master` (the literal string) when it comes
+ * from the master EOA signer. Both end up in the `mcpTool` column.
+ */
+function makeSignerAudit(toolId: ToolExecutorId | 'master'): (event: SignerAuditEvent) => Promise<void> {
+  return async (event) => {
+    // Sprint 3 S3.1 — the audit-checkpoint signing path is internal
+    // observability, not an authority-bearing action. The checkpoint
+    // module marks its signs with a `checkpoint:` actionId prefix so
+    // the hook can skip them. Without this guard every checkpoint
+    // emit would write a kms-sign row, which would in turn shift the
+    // chain head and force the next checkpoint to attest a different
+    // head than the one we intended to anchor.
+    if (event.actionId.startsWith('checkpoint:')) return
+    try {
+      await auditAppend({
+        rootGrantHash: '',
+        sessionId: event.sessionId,
+        sessionPrincipal: event.accountAddress,
+        mcpServer: 'a2a-agent',
+        mcpTool: toolId === 'master' ? 'kms:sign:master' : `kms:sign:${toolId}`,
+        eventType: 'kms-sign',
+        executionPath: 'mcp-only',
+        target: event.keyId,
+        toolExecutor: event.signerAddress,
+        status: 'completed',
+        // The audit chain needs a deterministic unique mcpCallId per row.
+        // Construct one from the actionId so it's chase-able from a chain
+        // receipt without colliding with the parent execution row's
+        // mcpCallId. Note: the parent execution row uses the raw actionId;
+        // we suffix this row so the UNIQUE constraint on mcp_call_id
+        // doesn't fight us.
+        mcpCallId: `kms-sign:${event.actionId}:${event.signerAddress.toLowerCase()}:${Date.now()}`,
+      })
+    } catch (err) {
+      console.error('[a2a-signer audit] kms-sign row insert failed:', err)
+    }
+  }
+}
 
 let backendSingleton: KmsAccountBackend | null = null
 let accountSingleton: LocalAccount | null = null
@@ -55,7 +102,9 @@ const toolExecutorAccountCache = new Map<ToolExecutorId, LocalAccount>()
  */
 export function getMasterSignerBackend(): KmsAccountBackend {
   if (!backendSingleton) {
-    backendSingleton = buildSignerBackend(process.env as KeyProviderEnv)
+    backendSingleton = buildSignerBackend(process.env as KeyProviderEnv, {
+      audit: makeSignerAudit('master'),
+    })
   }
   return backendSingleton
 }
@@ -126,7 +175,11 @@ export function getToolExecutorSignerBackend(
 ): ToolExecutorSignerBackend {
   const cached = toolExecutorBackendCache.get(toolId)
   if (cached) return cached
-  const backend = buildToolExecutorBackend(toolId, process.env as KeyProviderEnv)
+  const backend = buildToolExecutorBackend(
+    toolId,
+    process.env as KeyProviderEnv,
+    { audit: makeSignerAudit(toolId) },
+  )
   toolExecutorBackendCache.set(toolId, backend)
   return backend
 }

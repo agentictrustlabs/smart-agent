@@ -1,3 +1,4 @@
+/** @sa-route web-auth @sa-auth session-cookie @sa-owner developer */
 import { NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth/session'
 import { db, schema } from '@/db'
@@ -53,7 +54,17 @@ export async function GET(request: Request) {
     console.log('[delegated-profile] A2A response:', JSON.stringify(data).slice(0, 200))
     return NextResponse.json({ success: true, profile: data.profile ?? null, allowedFields: data.allowedFields })
   } catch (err) {
-    console.error('[delegated-profile] Error:', err)
-    return NextResponse.json({ success: false, error: err instanceof Error ? err.message : 'Unknown error' })
+    // Log the full error server-side; respond with a generic message
+    // (production hides `err.message` because it may include calldata
+    // or upstream URLs).
+    console.error('[delegated-profile] Error:', {
+      errorCode: 'delegated-profile-threw',
+      errorMessage: err instanceof Error ? err.message : 'Unknown error',
+    })
+    const isProd = process.env.NODE_ENV === 'production'
+    return NextResponse.json({
+      success: false,
+      error: isProd ? 'delegated profile fetch failed' : (err instanceof Error ? err.message : 'Unknown error'),
+    })
   }
 }

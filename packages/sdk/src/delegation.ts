@@ -445,3 +445,105 @@ export function decodeDataScopeTerms(terms: `0x${string}`): DataScopeGrant[] {
 export function buildDataScopeCaveat(grants: DataScopeGrant[]): Caveat {
   return buildCaveat(DATA_SCOPE_ENFORCER, encodeDataScopeTerms(grants))
 }
+
+// ─── Delegate Binding Caveat (Sprint 2 S2.3) ──────────────────────
+//
+// Background
+// ----------
+// Cross-principal delegations historically committed only to the
+// `delegate` address in the EIP-712 hash. In the dual-account model
+// (where a user's smart-account address differs from their person-agent
+// address) this left a binding gap: the MCP verifier could not assert
+// that the caller's session smart-account was actually associated with
+// the person-agent named in `delegate`. The A2A agent was the only
+// link between the two — a bug in that pairing was a cross-principal
+// data-access exposure.
+//
+// The senior security review flagged this as the comment in
+// `apps/person-mcp/src/auth/verify-delegation.ts` that said "The A2A
+// agent ensures the correct cross-delegation is paired with the
+// correct session."
+//
+// Fix (Option C — in-caveat binding)
+// ----------------------------------
+// When a data owner signs a cross-delegation, they include a
+// DelegateBinding caveat whose terms commit to BOTH addresses of the
+// recipient:
+//
+//   - `delegateSmartAccount` — the recipient's smart-account address
+//     (the address that signs the SESSION delegation via ERC-1271).
+//   - `delegatePersonAgent`  — the recipient's person-agent address
+//     (the on-chain graph identity used in the relationship edge).
+//
+// The signer commits to both addresses at sign time (both are derivable
+// from the recipient user). Because the caveat is part of the EIP-712
+// `caveatsHash`, the binding is covered by the data owner's signature.
+//
+// Person-mcp's verifier (`verifyCrossDelegation`) asserts:
+//
+//   1. `delegateSmartAccount === callerPrincipal`
+//      (the session's smart-account, recovered from the session
+//      delegation's `delegator` field)
+//   2. `delegatePersonAgent === resolvePersonAgent(callerPrincipal)`
+//      (defense in depth — Option A — using the AgentAccountResolver)
+//   3. (legacy compat) `delegation.delegate === delegatePersonAgent`
+//      OR `delegation.delegate === delegateSmartAccount` — the legacy
+//      `delegate` field can carry either flavor depending on issuance
+//      path; the binding caveat is the authoritative source.
+//
+// Single-account users (smart-account == person-agent) get both fields
+// equal — the binding still applies and is cheap to compute.
+//
+// Sentinel enforcer address: keccak256("urn:smart-agent:delegate-binding")[0..20].
+
+/** Sentinel enforcer address for the delegate-binding caveat (Sprint 2 S2.3). */
+export const DELEGATE_BINDING_ENFORCER = keccak256(
+  toBytes('urn:smart-agent:delegate-binding'),
+).slice(0, 42) as `0x${string}`
+
+export interface DelegateBindingTerms {
+  /** Recipient's smart-account address — must match the caller's session subject. */
+  delegateSmartAccount: `0x${string}`
+  /** Recipient's person-agent address — must match the on-chain graph identity. */
+  delegatePersonAgent: `0x${string}`
+}
+
+/**
+ * Encode delegate-binding terms as ABI(address, address). Lower-cased on the
+ * wire so JSON.stringify in `metadataURI` round-trips deterministically.
+ */
+export function encodeDelegateBindingTerms(
+  delegateSmartAccount: `0x${string}`,
+  delegatePersonAgent: `0x${string}`,
+): `0x${string}` {
+  return encodeAbiParameters(
+    [{ type: 'address' }, { type: 'address' }],
+    [
+      delegateSmartAccount.toLowerCase() as `0x${string}`,
+      delegatePersonAgent.toLowerCase() as `0x${string}`,
+    ],
+  )
+}
+
+/** Decode delegate-binding terms → { delegateSmartAccount, delegatePersonAgent } */
+export function decodeDelegateBindingTerms(terms: `0x${string}`): DelegateBindingTerms {
+  const [sa, pa] = decodeAbiParameters(
+    [{ type: 'address' }, { type: 'address' }],
+    terms,
+  )
+  return {
+    delegateSmartAccount: (sa as string).toLowerCase() as `0x${string}`,
+    delegatePersonAgent: (pa as string).toLowerCase() as `0x${string}`,
+  }
+}
+
+/** Build a caveat binding the cross-delegation to BOTH addresses of the recipient. */
+export function buildDelegateBindingCaveat(
+  delegateSmartAccount: `0x${string}`,
+  delegatePersonAgent: `0x${string}`,
+): Caveat {
+  return buildCaveat(
+    DELEGATE_BINDING_ENFORCER,
+    encodeDelegateBindingTerms(delegateSmartAccount, delegatePersonAgent),
+  )
+}

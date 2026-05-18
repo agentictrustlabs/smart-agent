@@ -28,6 +28,8 @@ import {
   verifyDelegatedWalletAction,
   DelegatedActionDenied,
 } from './verify-delegated-action.js'
+import { requireInboundServiceAuth } from './require-inbound-service-auth.js'
+import { auditDeny } from '../lib/audit.js'
 import {
   hashCanonical,
   type WalletActionV1,
@@ -71,9 +73,21 @@ import { resolver } from '../ssi/registry/resolver.js'
 import { getOnChainOrgsForPrincipal } from '../ssi/registry/on-chain-orgs.js'
 import { db } from '../ssi/db/index.js'
 
+// Sprint 1 W2.1 — every dispatch route requires an inbound a2a-agent
+// HMAC envelope. Before this change, anyone reachable on person-mcp's
+// HTTP port could call /wallet-action/dispatch with a forged action;
+// the verifier (verifyDelegatedWalletAction) was the only authority
+// gate. We now require service identity at the wire, too.
+//
+// Applied per-route (not via `use('*')`) so that when this sub-app is
+// mounted alongside others under `/` the middleware doesn't fire twice
+// for paths that live in the other sub-app (which would double-burn
+// the replay nonce).
+const auth = requireInboundServiceAuth()
+
 export const dispatchRoutes = new Hono()
 
-dispatchRoutes.post('/wallet-action/dispatch', async (c) => {
+dispatchRoutes.post('/wallet-action/dispatch', auth, async (c) => {
   const body = await c.req.json<{
     action: WalletActionV1
     actionSignature: `0x${string}`
@@ -97,6 +111,15 @@ dispatchRoutes.post('/wallet-action/dispatch', async (c) => {
     )
   } catch (err) {
     if (err instanceof DelegatedActionDenied) {
+      // Phase 1D parity — emit an audit-deny row before returning 403.
+      auditDeny(c, {
+        route: '/wallet-action/dispatch',
+        mcpServer: 'a2a-agent',
+        reason: `${err.code}: ${err.detail}`,
+        sessionId: body.sessionId,
+        actionId: body.action.actionId,
+        actionType: body.action.action.type,
+      })
       return c.json({ ok: false, code: err.code, detail: err.detail }, 403)
     }
     return c.json({ ok: false, code: 'verifier_error', detail: (err as Error).message }, 500)

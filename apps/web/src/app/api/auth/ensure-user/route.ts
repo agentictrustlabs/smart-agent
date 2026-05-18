@@ -1,7 +1,16 @@
+/** @sa-route web-auth @sa-auth session-cookie @sa-validation zod @sa-owner developer */
 import { NextResponse } from 'next/server'
+import { z } from 'zod'
 import { db, schema } from '@/db'
 import { eq } from 'drizzle-orm'
 import { getSession } from '@/lib/auth/session'
+import { validateRequest } from '@/lib/auth/validate-request'
+
+const BodySchema = z.object({
+  walletAddress: z.string().min(2).max(64),
+  email: z.string().max(320).nullable(),
+  name: z.string().max(256),
+})
 
 export async function POST(request: Request) {
   const session = await getSession()
@@ -9,12 +18,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const body = await request.json()
-  const { walletAddress, email, name } = body as {
-    walletAddress: string
-    email: string | null
-    name: string
-  }
+  const parsed = await validateRequest(request, { schema: BodySchema })
+  if (!parsed.ok) return parsed.response
+  const { walletAddress, email, name } = parsed.data
 
   // Check if user exists by DID
   const existing = await db

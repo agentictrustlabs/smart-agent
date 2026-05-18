@@ -20,7 +20,8 @@
  * provider reading `A2A_INTERSERVICE_HMAC_KEY_ORG` in dev). The canonical
  * message format is UNCHANGED.
  */
-import { toBase64Url, buildMcpMacProvider, type KmsMacProvider } from '@smart-agent/sdk'
+import { toBase64Url } from '@smart-agent/sdk'
+import { buildMcpMacProvider, type KmsMacProvider } from '@smart-agent/sdk/key-custody'
 import { randomUUID } from 'node:crypto'
 import type { Address, Hex } from 'viem'
 

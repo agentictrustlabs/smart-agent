@@ -2,9 +2,8 @@
  * @smart-agent/sdk/key-custody — KMS migration K0+K1+K2 barrel.
  *
  * Re-exports the `A2AKeyProvider` interface, the local-aes dev provider,
- * the AWS KMS prod provider (K2 v1 — primary implementation target), the
- * HCP Vault Transit provider (K2-alt — documented sibling for the future),
- * and the shared `canonicalContextBytes` helper.
+ * the AWS KMS prod provider (K2 v1 — implementation target), and the
+ * shared `canonicalContextBytes` helper.
  *
  * The application depends on `A2AKeyProvider`, not on any specific
  * provider. Which provider gets instantiated is decided by `buildKeyProvider`
@@ -16,8 +15,6 @@ export { createLocalAesProvider } from './local-aes-provider'
 export type { LocalAesProviderEnv } from './local-aes-provider'
 export { createAwsKmsProvider, extractKmsKeyUuid } from './aws-kms-provider'
 export type { AwsKmsEnv, AwsKmsDeps } from './aws-kms-provider'
-export { createVaultTransitProvider } from './vault-transit-provider'
-export type { VaultTransitEnv, VaultTransitDeps } from './vault-transit-provider'
 // K4 PR-1 — local-secp256k1 master-EOA signer + viem LocalAccount adapter.
 // The AWS KMS signer (K4 PR-2) lands as a sibling export here.
 export {
@@ -29,6 +26,8 @@ export {
 export type {
   LocalSecp256k1Env,
   LocalSecp256k1Signer,
+  LocalSecp256k1SignerDeps,
+  LocalSecp256k1SignerAuditEvent,
 } from './local-secp256k1-signer'
 export { createKmsAccount } from './viem-kms-account'
 export type { KmsAccountBackend, CreateKmsAccountOptions } from './viem-kms-account'
@@ -38,6 +37,7 @@ export type {
   AwsKmsSignerEnv,
   AwsKmsSignerDeps,
   AwsKmsSigner,
+  AwsKmsSignerAuditEvent,
 } from './aws-kms-signer'
 // K5 — per-tool-family executor signer registry. Same primitives as K4
 // (createLocalSecp256k1Signer / createAwsKmsSigner) parameterized by
@@ -86,4 +86,5 @@ export type {
   MacKeyId,
   McpName,
   McpMacProviderEnv,
+  WebMacKeyId,
 } from './mac-provider-factory'

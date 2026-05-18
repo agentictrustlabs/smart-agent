@@ -1,21 +1,34 @@
+/** @sa-route dev-only @sa-auth none-with-csrf @sa-prod-gate requireDev @sa-rate-limit 10/min @sa-validation zod @sa-owner pm */
 import { NextResponse } from 'next/server'
+import { z } from 'zod'
 import { cookies } from 'next/headers'
 import { DEMO_USER_META } from '@/lib/auth/session'
 import { db, schema } from '@/db'
 import { eq } from 'drizzle-orm'
 import { signCookie, verifyCookie } from '@/lib/cookie-signing'
 import { mintSession, SESSION_COOKIE } from '@/lib/auth/native-session'
+import { requireDev } from '@/lib/env-guard'
+import { requireOriginAllowed } from '@/lib/auth/csrf'
+import { validateRequest } from '@/lib/auth/validate-request'
+
+// Demo user keys are short identifiers like `cat-001`.
+const BodySchema = z.object({
+  userId: z.string().min(1).max(64),
+})
 
 export async function POST(request: Request) {
-  // CSRF protection: verify the request comes from our own origin
-  const origin = request.headers.get('origin')
-  const host = request.headers.get('host')
-  if (origin && host && !origin.includes(host.split(':')[0])) {
-    return NextResponse.json({ error: 'CSRF rejected' }, { status: 403 })
-  }
+  // S2.5 — demo login is dev-only. A real production environment must
+  // never accept demo personas backed by stored EOA private keys.
+  const devDenied = requireDev()
+  if (devDenied) return devDenied
+  // S2.2 — CSRF protection via parsed-URL exact-allowlist (replaces the
+  // substring check that admitted `evil-foo.com` against `foo.com`).
+  const csrfDenied = requireOriginAllowed(request)
+  if (csrfDenied) return csrfDenied
 
-  const body = await request.json()
-  const userId = body.userId as string
+  const parsed = await validateRequest(request, { schema: BodySchema })
+  if (!parsed.ok) return parsed.response
+  const userId = parsed.data.userId
 
   const meta = DEMO_USER_META[userId]
   if (!meta) {
@@ -250,6 +263,11 @@ export async function POST(request: Request) {
 }
 
 export async function GET() {
+  // S2.5 — demo cookie read path is dev-only too; the demo-user signed
+  // cookie is meaningless in production once the POST handler is
+  // 404'd (no way to mint it).
+  const devDenied = requireDev()
+  if (devDenied) return devDenied
   const cookieStore = await cookies()
   const rawCookie = cookieStore.get('demo-user')?.value ?? null
 

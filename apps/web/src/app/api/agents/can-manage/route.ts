@@ -1,3 +1,4 @@
+/** @sa-route web-auth @sa-auth session-cookie @sa-owner developer */
 import { NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { getPersonAgentForUser, canManageAgent } from '@/lib/agent-registry'

@@ -4,7 +4,6 @@
  *
  * Covers:
  *   - Round-trip via local-aes provider returns the original payload.
- *   - Legacy decrypt path returns the original payload for a pre-K3 row.
  *   - keyVersion mismatch rejected by the provider (e.g. claiming a row
  *     was 'aws-kms' when it's actually 'local-v1').
  *   - Plaintext data key is zeroised after the helper returns.
@@ -24,11 +23,9 @@ import assert from 'node:assert/strict'
 import {
   encryptSessionPackage,
   decryptSessionPackage,
-  decryptLegacy,
   __resetKeyProviderForTests,
   __setKeyProviderForTests,
 } from '../src/auth/encryption'
-import { encryptPayload, buildSessionAAD } from '@smart-agent/sdk'
 import { createLocalAesProvider } from '@smart-agent/sdk/key-custody'
 import type { A2AKeyProvider } from '@smart-agent/sdk/key-custody'
 
@@ -94,41 +91,6 @@ test('decryptSessionPackage rejects missing encryptedDataKey on a non-legacy row
     ),
     /missing encryptedDataKey/,
   )
-})
-
-test('legacy decrypt path returns the original payload', async () => {
-  // Write a row exactly the way the pre-K3 code path did: AES-GCM under
-  // config.A2A_SESSION_SECRET with the same buildSessionAAD AAD.
-  const secret = process.env.A2A_SESSION_SECRET!
-  const aad = buildSessionAAD(META)
-  const payload = { legacy: true, secret: '0xfeedface' }
-  const enc = await encryptPayload(payload, secret, aad)
-
-  // The decryptSessionPackage dispatcher routes by keyVersion === 'legacy'.
-  const back = await decryptSessionPackage<typeof payload>(
-    {
-      encryptedPackage: enc.ciphertext,
-      iv: enc.iv,
-      encryptedDataKey: null,
-      keyVersion: 'legacy',
-      kmsKeyId: null,
-    },
-    META,
-  )
-  assert.deepEqual(back, payload)
-})
-
-test('decryptLegacy (direct) returns the original payload', async () => {
-  const secret = process.env.A2A_SESSION_SECRET!
-  const aad = buildSessionAAD(META)
-  const payload = { legacy: 'direct' }
-  const enc = await encryptPayload(payload, secret, aad)
-
-  const back = await decryptLegacy<typeof payload>(
-    { encryptedPackage: enc.ciphertext, iv: enc.iv },
-    META,
-  )
-  assert.deepEqual(back, payload)
 })
 
 test('plaintext data key is zeroised by encryptSessionPackage in `finally`', async () => {

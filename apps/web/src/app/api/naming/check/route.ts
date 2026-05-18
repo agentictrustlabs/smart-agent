@@ -1,3 +1,4 @@
+/** @sa-route public @sa-auth none @sa-rate-limit 60/min @sa-owner developer */
 import { NextResponse } from 'next/server'
 import { getPublicClient } from '@/lib/contracts'
 import { agentNameRegistryAbi, namehash } from '@smart-agent/sdk'

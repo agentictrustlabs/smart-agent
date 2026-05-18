@@ -1,3 +1,4 @@
+/** @sa-route bootstrap @sa-auth none @sa-rate-limit 10/min @sa-owner security */
 import { NextResponse } from 'next/server'
 import { randomBytes } from 'crypto'
 import { signJwt } from '@/lib/auth/jwt'

@@ -23,7 +23,8 @@
  * account BEFORE writing the row.
  */
 
-import { toBase64Url, buildWebMacProvider, type KmsMacProvider } from '@smart-agent/sdk'
+import { toBase64Url } from '@smart-agent/sdk'
+import { buildWebMacProvider, type KmsMacProvider } from '@smart-agent/sdk/key-custody'
 import { createHash, randomUUID } from 'node:crypto'
 import type { SessionRecord } from '@smart-agent/privacy-creds/session-grant'
 

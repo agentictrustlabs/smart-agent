@@ -234,6 +234,24 @@ sed -i '/^ORG_MCP_EOA_PRIVATE_KEY=/d' "$WEB_ENV"
 sed -i '/^A2A_INTERSERVICE_HMAC_KEY_ORG=/d' "$WEB_ENV"
 sed -i '/^A2A_SESSION_SECRET=/d' "$WEB_ENV"
 sed -i '/^WEB_TO_A2A_HMAC_KEY=/d' "$WEB_ENV"
+# Sprint S2.6 — `oauth-salt` MAC key (replaces SERVER_PEPPER for the
+# google-oauth salt derivation path). Note: SERVER_PEPPER itself is NOT
+# stripped here because the dev-only `dev-pepper` session-signer custody
+# backend (apps/web/src/lib/key-custody/dev-pepper.ts) still reads it for
+# in-process HKDF; that backend is unrelated to OAuth.
+sed -i '/^OAUTH_SALT_HMAC_KEY=/d' "$WEB_ENV"
+# Sprint S1.1 — session-signer custody backend selector. Local dev uses
+# dev-pepper (HKDF over SERVER_PEPPER). Production sets aws-kms + the three
+# AWS_* vars below. Clean up before re-writing so reruns don't accumulate.
+sed -i '/^SESSION_SIGNER_BACKEND=/d' "$WEB_ENV"
+sed -i '/^AWS_REGION=/d' "$WEB_ENV"
+sed -i '/^AWS_ROLE_ARN=/d' "$WEB_ENV"
+sed -i '/^AWS_WEB_SESSION_SIGNER_KEY_ID=/d' "$WEB_ENV"
+# Sprint S2.4 — multi-key session-JWT signing. Local dev seeds a single
+# kid; rotation is an operator's prod concern (see kms-signer-setup.md
+# § "Session JWT signing key (Sprint 2 S2.4)").
+sed -i '/^SESSION_JWT_SECRETS=/d' "$WEB_ENV"
+sed -i '/^SESSION_JWT_SECRET=/d' "$WEB_ENV"
 
 # Phase 1 — shared HMAC secret between a2a-agent and org-mcp. Same value
 # goes to both apps so HMAC verification works. Hardcoded for dev.
@@ -244,9 +262,23 @@ A2A_INTERSERVICE_HMAC_KEY_ORG="0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 # the a2a-agent edge. Same secret on both ends; canonical-string format
 # lives in apps/a2a-agent/src/auth/service-auth-web.ts.
 WEB_TO_A2A_HMAC_KEY="0xb7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7"
+# Sprint S2.6 — `oauth-salt` MAC key replaces the legacy SERVER_PEPPER
+# symmetric env secret used for google-oauth email → smart-account
+# deterministic salt derivation. Local dev: hex secret read by the
+# `local-hmac` provider (apps/web/src/lib/auth/oauth-salt.ts).
+# Production: aws-kms with AWS_KMS_MAC_KEY_ID_OAUTH_SALT pointing at a
+# dedicated KMS HMAC key — see docs/operations/kms-signer-setup.md
+# § "OAuth salt MAC key (S2.6)".
+OAUTH_SALT_HMAC_KEY="0xc8c8c8c8c8c8c8c8c8c8c8c8c8c8c8c8c8c8c8c8c8c8c8c8c8c8c8c8c8c8c8c8"
 # A2A session encryption secret (required by a2a-agent for session-package
 # encryption). Hardcoded for dev so fresh-start always has a valid value.
 A2A_SESSION_SECRET="0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+# Sprint S2.4 — session-JWT signing secret. Single kid in dev; operators
+# rotate in prod by prepending a new kid to SESSION_JWT_SECRETS. Generate
+# a fresh secret every fresh-start so dev cookies don't survive resets.
+SESSION_JWT_SECRETS_KID="2026-05-v1"
+SESSION_JWT_SECRETS_HEX=$(openssl rand -hex 32)
+SESSION_JWT_SECRETS_VALUE="${SESSION_JWT_SECRETS_KID}:${SESSION_JWT_SECRETS_HEX}"
 
 # Derive the deployer's address up-front so we can surface it as the
 # production-correct `DEPLOYER_ADDRESS` env var alongside the private
@@ -272,6 +304,20 @@ DEPLOYER_ADDRESS=$DEPLOYER_ADDRESS_VALUE
 A2A_INTERSERVICE_HMAC_KEY_ORG=$A2A_INTERSERVICE_HMAC_KEY_ORG
 A2A_SESSION_SECRET=$A2A_SESSION_SECRET
 WEB_TO_A2A_HMAC_KEY=$WEB_TO_A2A_HMAC_KEY
+OAUTH_SALT_HMAC_KEY=$OAUTH_SALT_HMAC_KEY
+# Sprint S2.4 — session-JWT signing keys (multi-key, key-id rotation).
+# First entry is ACTIVE for signing; subsequent entries (if any) remain
+# valid for verification during rotation windows. Rotation in prod:
+# prepend a new `kid:secret` and wait the cookie TTL (24h) before
+# dropping the old kid. See docs/operations/kms-signer-setup.md
+# § "Session JWT signing key (Sprint 2 S2.4)".
+SESSION_JWT_SECRETS=$SESSION_JWT_SECRETS_VALUE
+# Sprint S1.1 — session-signer custody backend selector.
+# Local dev: dev-pepper (HKDF over SERVER_PEPPER, signs in process).
+# Production: aws-kms with AWS_REGION + AWS_ROLE_ARN +
+# AWS_WEB_SESSION_SIGNER_KEY_ID set in Vercel env vars (NOT here).
+# See docs/operations/kms-signer-setup.md § "Web session-grant signer key (S1.1)".
+SESSION_SIGNER_BACKEND=dev-pepper
 ENTRYPOINT_ADDRESS=$ENTRYPOINT
 AGENT_FACTORY_ADDRESS=$FACTORY
 DELEGATION_MANAGER_ADDRESS=$DELEGATION
@@ -443,11 +489,7 @@ update_env_var "$A2A_ENV_FILE" REVOCATION_MODULE_ADDRESS "$REVOCATION_MODULE"
 # SessionAgentAccounts deployed by this a2a-agent instance (it signs the
 # initial setup tx via SessionAgentAccountFactory.deploySession). For local
 # dev, use anvil account #1 (deterministic, well-known dev key). For
-# production this should be a per-instance hot wallet.
-#
-# KMS K4 PR-1: renamed A2A_MASTER_EOA_PRIVATE_KEY → A2A_MASTER_PRIVATE_KEY.
-# The old name remains readable as a fallback for one release cycle (config.ts
-# emits a deprecation warning); PR-5 removes the legacy plumbing entirely.
+# production this is an AWS KMS asymmetric ECC_SECG_P256K1 key (K4 PR-2).
 A2A_MASTER_PRIVATE_KEY="0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"
 update_env_var "$A2A_ENV_FILE" A2A_MASTER_PRIVATE_KEY "$A2A_MASTER_PRIVATE_KEY"
 update_env_var "$A2A_ENV_FILE" ENTRYPOINT_ADDRESS "$ENTRYPOINT"
@@ -464,10 +506,22 @@ TOOL_EXECUTOR_ROUND_AWARDS_PRIVATE_KEY="0x8b3a350cf5c34c9194ca85829a2df0ec3153be
 TOOL_EXECUTOR_DISBURSEMENT_PRIVATE_KEY="0x92db14e403b83dfe3df233f83dfa3a0d7096f21ca9b0d6d6b8d88b2b341e916b"
 TOOL_EXECUTOR_POOL_LIFECYCLE_PRIVATE_KEY="0x4bbbf85ce3377467afe5d46f804f221813b2bb87f24d81f60f1fcdbf7cbb4ccf"
 TOOL_EXECUTOR_GRANT_AWARDS_PRIVATE_KEY="0xdbda1821b80551c9d65939329250298aa3472ba22feea921c0cf5d620ea67b97"
+# K6 S1.5 — bootstrap-auth tool-executor. Signs system operations the
+# user can't (no wallet yet): smart-account deploy, .agent name register,
+# resolver bootstrap, deterministic account derivation. Anvil account #9
+# (deterministic dev key). In prod this is a SEPARATE AWS KMS ARN — see
+# docs/operations/kms-signer-setup.md § "Tool-executor signer keys (K5)"
+# row for `auth-bootstrap`.
+TOOL_EXECUTOR_AUTH_BOOTSTRAP_PRIVATE_KEY="0x2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6"
 update_env_var "$A2A_ENV_FILE" TOOL_EXECUTOR_ROUND_AWARDS_PRIVATE_KEY "$TOOL_EXECUTOR_ROUND_AWARDS_PRIVATE_KEY"
 update_env_var "$A2A_ENV_FILE" TOOL_EXECUTOR_DISBURSEMENT_PRIVATE_KEY "$TOOL_EXECUTOR_DISBURSEMENT_PRIVATE_KEY"
 update_env_var "$A2A_ENV_FILE" TOOL_EXECUTOR_POOL_LIFECYCLE_PRIVATE_KEY "$TOOL_EXECUTOR_POOL_LIFECYCLE_PRIVATE_KEY"
 update_env_var "$A2A_ENV_FILE" TOOL_EXECUTOR_GRANT_AWARDS_PRIVATE_KEY "$TOOL_EXECUTOR_GRANT_AWARDS_PRIVATE_KEY"
+update_env_var "$A2A_ENV_FILE" TOOL_EXECUTOR_AUTH_BOOTSTRAP_PRIVATE_KEY "$TOOL_EXECUTOR_AUTH_BOOTSTRAP_PRIVATE_KEY"
+# K6 S1.5 — the auth-bootstrap key is read by the WEB tier (3
+# bootstrap-auth route handlers) — not the a2a-agent. Mirror it into
+# apps/web/.env too so the web Next.js process sees it.
+update_env_var "$WEB_ENV" TOOL_EXECUTOR_AUTH_BOOTSTRAP_PRIVATE_KEY "$TOOL_EXECUTOR_AUTH_BOOTSTRAP_PRIVATE_KEY"
 echo "Updated $A2A_ENV_FILE"
 
 # ─── Fund tool-executor EOAs ──────────────────────────────────────────
@@ -477,16 +531,37 @@ TOOL_EXEC_ROUND_AWARDS_ADDR=$(cast wallet address "$TOOL_EXECUTOR_ROUND_AWARDS_P
 TOOL_EXEC_DISBURSEMENT_ADDR=$(cast wallet address "$TOOL_EXECUTOR_DISBURSEMENT_PRIVATE_KEY")
 TOOL_EXEC_POOL_LIFECYCLE_ADDR=$(cast wallet address "$TOOL_EXECUTOR_POOL_LIFECYCLE_PRIVATE_KEY")
 TOOL_EXEC_GRANT_AWARDS_ADDR=$(cast wallet address "$TOOL_EXECUTOR_GRANT_AWARDS_PRIVATE_KEY")
+# K6 S1.5 — auth-bootstrap address signs bootstrap operations from web
+# tier (createAccount during siwe-verify / passkey-signup / google-callback,
+# plus the .agent register / setAddr / resolver writes in passkey-signup).
+# Fund it generously since every new user signup spends gas from this EOA.
+TOOL_EXEC_AUTH_BOOTSTRAP_ADDR=$(cast wallet address "$TOOL_EXECUTOR_AUTH_BOOTSTRAP_PRIVATE_KEY")
 ONE_ETH_HEX="0xde0b6b3a7640000"   # 1 ETH
+TEN_ETH_HEX_AUTH_BOOTSTRAP="0x8ac7230489e80000" # 10 ETH
 cast rpc --rpc-url "$ANVIL_RPC" anvil_setBalance "$TOOL_EXEC_ROUND_AWARDS_ADDR" "$ONE_ETH_HEX" > /dev/null
 cast rpc --rpc-url "$ANVIL_RPC" anvil_setBalance "$TOOL_EXEC_DISBURSEMENT_ADDR" "$ONE_ETH_HEX" > /dev/null
 cast rpc --rpc-url "$ANVIL_RPC" anvil_setBalance "$TOOL_EXEC_POOL_LIFECYCLE_ADDR" "$ONE_ETH_HEX" > /dev/null
 cast rpc --rpc-url "$ANVIL_RPC" anvil_setBalance "$TOOL_EXEC_GRANT_AWARDS_ADDR" "$ONE_ETH_HEX" > /dev/null
+cast rpc --rpc-url "$ANVIL_RPC" anvil_setBalance "$TOOL_EXEC_AUTH_BOOTSTRAP_ADDR" "$TEN_ETH_HEX_AUTH_BOOTSTRAP" > /dev/null
 echo "Funded tool-executor EOAs (1 ETH each):"
 echo "  ROUND_AWARDS:    $TOOL_EXEC_ROUND_AWARDS_ADDR"
 echo "  DISBURSEMENT:    $TOOL_EXEC_DISBURSEMENT_ADDR"
 echo "  POOL_LIFECYCLE:  $TOOL_EXEC_POOL_LIFECYCLE_ADDR"
 echo "  GRANT_AWARDS:    $TOOL_EXEC_GRANT_AWARDS_ADDR"
+echo "  AUTH_BOOTSTRAP:  $TOOL_EXEC_AUTH_BOOTSTRAP_ADDR (10 ETH)"
+
+# K6 S1.5 — transfer .agent root ownership from deployer to the
+# auth-bootstrap executor address. The passkey-signup handler calls
+# `nameRegistry.register(.agent root, label, …)` to mint `<label>.agent`;
+# that call's `_requireNodeAuth` resolves against the root's owner.
+# Pre-K6 the deployer was the owner (Deploy.s.sol § "Initialize .agent
+# root"); post-K6 the auth-bootstrap signer is. The deployer key never
+# touches a request handler again — see scripts/check-no-bypass.sh § K6.
+echo "Transferring .agent root ownership to auth-bootstrap executor…"
+AGENT_ROOT_NODE=$(cast keccak "$(cast abi-encode 'f(bytes32,bytes32)' 0x0000000000000000000000000000000000000000000000000000000000000000 "$(cast keccak agent)")")
+cast send --private-key "$ANVIL_KEY" --rpc-url "$ANVIL_RPC" "$NAME_REGISTRY" \
+  "setOwner(bytes32,address)" "$AGENT_ROOT_NODE" "$TOOL_EXEC_AUTH_BOOTSTRAP_ADDR" > /dev/null
+echo "  .agent root owner → $TOOL_EXEC_AUTH_BOOTSTRAP_ADDR"
 
 # Phase 3 — fund the a2a-agent master EOA so it can deploy SessionAgentAccounts
 # and submit UserOps as the self-bundler.

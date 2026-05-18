@@ -1,0 +1,83 @@
+# Sprint 3 S3.5 — pnpm audit
+#
+# Fails the build on HIGH or CRITICAL advisories from `pnpm audit`.
+# MODERATE / LOW advisories are emitted as warnings only.
+#
+# See docs/operations/ci-setup.md for failure-mode runbook.
+
+name: pnpm-audit
+
+on:
+  pull_request:
+    branches: [master, main]
+  push:
+    branches: [master, main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  audit:
+    name: pnpm audit (high+critical)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Audit (informational — moderate+low)
+        id: audit-info
+        continue-on-error: true
+        run: |
+          set +e
+          pnpm audit --audit-level=moderate --json > audit-moderate.json
+          echo "exit=$?" >> "$GITHUB_OUTPUT"
+          set -e
+
+      - name: Audit (gating — high+critical)
+        id: audit-high
+        run: |
+          # `pnpm audit` exit code: 0 = clean; nonzero = vulnerabilities at or
+          # above the requested severity. We fail the job on high+critical.
+          pnpm audit --audit-level=high
+
+      - name: Comment audit summary on PR
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let body = '## pnpm audit summary\n\n';
+            try {
+              const raw = fs.readFileSync('audit-moderate.json', 'utf8');
+              const json = JSON.parse(raw);
+              const meta = json.metadata?.vulnerabilities || {};
+              body += `- critical: ${meta.critical ?? 0}\n`;
+              body += `- high:     ${meta.high ?? 0}\n`;
+              body += `- moderate: ${meta.moderate ?? 0}\n`;
+              body += `- low:      ${meta.low ?? 0}\n`;
+              body += `- info:     ${meta.info ?? 0}\n\n`;
+              body += '_Gating threshold: **high**. Moderate/low are informational._';
+            } catch (e) {
+              body += `_Could not parse audit output: ${e.message}_`;
+            }
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });

@@ -1,3 +1,4 @@
+/** @sa-route bootstrap @sa-auth none-with-csrf @sa-rate-limit 10/min @sa-risk-tier high @sa-validation zod @sa-owner security */
 /**
  * POST /api/auth/siwe-verify
  *
@@ -15,34 +16,44 @@ import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { verifyMessage, getAddress, createPublicClient, createWalletClient, http, parseEther } from 'viem'
 import { localhost } from 'viem/chains'
-import { privateKeyToAccount } from 'viem/accounts'
 import { agentAccountFactoryAbi } from '@smart-agent/sdk'
 import { mintSession, SESSION_COOKIE } from '@/lib/auth/native-session'
 import { verifySiweChallengeToken } from '@/lib/auth/passkey-challenge'
+import { getAuthBootstrapSigner } from '@/lib/key-custody/tool-executor'
+import { requireOriginAllowed } from '@/lib/auth/csrf'
+import { z } from 'zod'
+import { validateRequest } from '@/lib/auth/validate-request'
 
 const RPC_URL = process.env.RPC_URL ?? 'http://127.0.0.1:8545'
 const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? '31337')
 const FACTORY = (process.env.AGENT_FACTORY_ADDRESS ?? '') as `0x${string}`
-const DEPLOYER_KEY = process.env.DEPLOYER_PRIVATE_KEY as `0x${string}` | undefined
 
-interface VerifyBody {
-  token: string
-  message: string
-  signature: `0x${string}`
-  address: `0x${string}`
-}
+// SIWE messages are a few hundred bytes; signatures are 65 bytes →
+// 132 hex chars. 8 KiB cap on the message is generous and stops a
+// caller flooding `viem.verifyMessage` with a multi-MB payload.
+const BodySchema = z.object({
+  token: z.string().min(1).max(8192),
+  message: z.string().min(1).max(8192),
+  signature: z.string().regex(/^0x[0-9a-fA-F]+$/).max(512),
+  address: z.string().regex(/^0x[0-9a-fA-F]{40}$/),
+})
 
 export async function POST(request: Request) {
-  if (!FACTORY || !DEPLOYER_KEY) {
+  if (!FACTORY) {
     return NextResponse.json({ error: 'auth chain config missing' }, { status: 500 })
   }
-  const origin = request.headers.get('origin')
-  const host = request.headers.get('host')
-  if (origin && host && !origin.includes(host.split(':')[0])) {
-    return NextResponse.json({ error: 'CSRF rejected' }, { status: 403 })
-  }
+  // S2.2 — CSRF guard via parsed-URL exact-allowlist.
+  const csrfDenied = requireOriginAllowed(request)
+  if (csrfDenied) return csrfDenied
 
-  const body = await request.json() as VerifyBody
+  const parsed = await validateRequest(request, { schema: BodySchema })
+  if (!parsed.ok) return parsed.response
+  const body = parsed.data as {
+    token: string
+    message: string
+    signature: `0x${string}`
+    address: `0x${string}`
+  }
   const nonce = extractNonce(body.message)
   if (!nonce) return NextResponse.json({ error: 'message missing nonce' }, { status: 400 })
   if (!verifySiweChallengeToken(body.token, nonce)) {
@@ -77,8 +88,13 @@ export async function POST(request: Request) {
 
   const code = await publicClient.getCode({ address: smartAcct })
   if (!code || code === '0x') {
-    const deployer = privateKeyToAccount(DEPLOYER_KEY)
-    const wallet = createWalletClient({ account: deployer, chain: { ...localhost, id: CHAIN_ID }, transport: http(RPC_URL) })
+    // K6 S1.5 — sign with the dedicated `auth-bootstrap` tool-executor key
+    // (separate KMS slot in prod), NOT the deployer private key. The
+    // factory cares about gas + signature; the EOA owner of the new
+    // smart account is `eoa` (the user's SIWE wallet), so the bootstrap
+    // signer is a pure relayer here.
+    const bootstrap = await getAuthBootstrapSigner()
+    const wallet = createWalletClient({ account: bootstrap, chain: { ...localhost, id: CHAIN_ID }, transport: http(RPC_URL) })
     await fetch(RPC_URL, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },

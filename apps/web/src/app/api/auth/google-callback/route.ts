@@ -1,7 +1,9 @@
+/** @sa-route bootstrap @sa-auth none-with-csrf @sa-risk-tier high @sa-owner security */
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
-import { privateKeyToAccount } from 'viem/accounts'
-import { getAddress } from 'viem'
+import { getAddress, createWalletClient, http } from 'viem'
+import { foundry, sepolia } from 'viem/chains'
+import { agentAccountFactoryAbi } from '@smart-agent/sdk'
 import {
   decodeAndVerifyIdToken,
   deriveSaltFromEmail,
@@ -16,7 +18,8 @@ import {
 import { mintSession, SESSION_COOKIE } from '@/lib/auth/native-session'
 import { db, schema } from '@/db'
 import { eq } from 'drizzle-orm'
-import { deploySmartAccount, getSmartAccountAddress, getPublicClient } from '@/lib/contracts'
+import { getSmartAccountAddress, getPublicClient, getDeployedContracts } from '@/lib/contracts'
+import { getAuthBootstrapSigner } from '@/lib/key-custody/tool-executor'
 import { agentAccountAbi, agentAccountResolverAbi, ATL_PRIMARY_NAME } from '@smart-agent/sdk'
 import { resolveUserHomePath } from '@/lib/post-login-redirect'
 
@@ -59,7 +62,13 @@ export async function GET(request: Request) {
 
   let env
   try { env = getGoogleEnv() } catch (e) {
-    return NextResponse.redirect(new URL(`/sign-in?error=${encodeURIComponent((e as Error).message)}`, url))
+    // Don't leak internal env-var names / OAuth client IDs into the
+    // URL bar; log the detail and redirect with a generic code.
+    console.error('[google-callback] env load failed', {
+      errorCode: 'google-env-failed',
+      errorMessage: (e as Error).message,
+    })
+    return NextResponse.redirect(new URL('/sign-in?error=oauth_config_unavailable', url))
   }
 
   let claims
@@ -67,14 +76,22 @@ export async function GET(request: Request) {
     const tok = await exchangeCode(env, code)
     claims = decodeAndVerifyIdToken(tok.id_token, env, nonceCookie)
   } catch (e) {
-    return NextResponse.redirect(new URL(`/sign-in?error=${encodeURIComponent((e as Error).message)}`, url))
+    // Don't leak token-exchange / id-token verification internals.
+    console.error('[google-callback] token exchange or id_token verification failed', {
+      errorCode: 'google-token-failed',
+      errorMessage: (e as Error).message,
+    })
+    return NextResponse.redirect(new URL('/sign-in?error=oauth_verification_failed', url))
   }
 
-  const deployerKey = process.env.DEPLOYER_PRIVATE_KEY as `0x${string}` | undefined
-  if (!deployerKey) {
-    return NextResponse.redirect(new URL('/sign-in?error=deployer_key_unset', url))
-  }
-  const serverEOA = privateKeyToAccount(deployerKey).address as `0x${string}`
+  // K6 S1.5 — sign bootstrap operations with the dedicated `auth-bootstrap`
+  // tool-executor key (separate KMS slot in prod). The signer is also the
+  // initial owner of the freshly-deployed smart account; that gives the
+  // server the ability to send the addPasskey UserOp on /passkey-enroll
+  // before the user has any other on-chain owner. The deployer key is no
+  // longer read in this route.
+  const bootstrap = await getAuthBootstrapSigner()
+  const serverEOA = bootstrap.address
 
   // Look up existing user FIRST so we can pick up their salt rotation. New
   // users default to rotation=0; users who pressed "Start fresh" have a
@@ -85,10 +102,12 @@ export async function GET(request: Request) {
   const rotation = existing?.accountSaltRotation ?? 0
 
   // Derive the smart-account address deterministically from the verified
-  // email + rotation.
-  const salt = deriveSaltFromEmail(claims.email, rotation)
+  // email + rotation. The MAC primitive is provider-backed (Sprint S2.6 —
+  // `oauth-salt` KMS HMAC key); the call is async because `kms:GenerateMac`
+  // is a network round-trip in production.
+  const salt = await deriveSaltFromEmail(claims.email, rotation)
   const counterfactual = await getSmartAccountAddress(serverEOA, salt)
-  const smartAcct = await deploySmartAccount(serverEOA, salt)
+  const smartAcct = await deploySmartAccountWithBootstrap(serverEOA, salt, bootstrap)
   if (smartAcct.toLowerCase() !== counterfactual.toLowerCase()) {
     // Sanity: the deployed address should equal the counterfactual.
     return NextResponse.redirect(new URL('/sign-in?error=address_mismatch', url))
@@ -207,4 +226,50 @@ export async function GET(request: Request) {
   res.cookies.set(INTENT_COOKIE, '', { path: '/', maxAge: 0 })
   res.cookies.set(RETURN_TO_COOKIE, '', { path: '/', maxAge: 0 })
   return res
+}
+
+/**
+ * K6 S1.5 — local helper that mirrors `deploySmartAccount()` from
+ * `@/lib/contracts` but signs with the supplied bootstrap `LocalAccount`
+ * instead of the shared deployer wallet. We don't share the deployer's
+ * process-wide nonce lock here because the bootstrap signer is a
+ * DIFFERENT EOA (separate KMS slot in prod) — its nonce space is
+ * independent of the deployer's. Viem's default nonce handling per
+ * wallet-client is sufficient for the one write this route performs.
+ */
+async function deploySmartAccountWithBootstrap(
+  owner: `0x${string}`,
+  salt: bigint,
+  bootstrap: Awaited<ReturnType<typeof getAuthBootstrapSigner>>,
+): Promise<`0x${string}`> {
+  const publicClient = getPublicClient()
+  const contracts = getDeployedContracts()
+
+  const RPC_URL = process.env.RPC_URL ?? 'http://127.0.0.1:8545'
+  const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? '31337')
+  const chain = CHAIN_ID === 11155111 ? sepolia : foundry
+
+  // Already deployed? Return early.
+  const address = (await publicClient.readContract({
+    address: contracts.agentAccountFactory,
+    abi: agentAccountFactoryAbi,
+    functionName: 'getAddress',
+    args: [owner, salt],
+  })) as `0x${string}`
+  const code = await publicClient.getCode({ address })
+  if (code && code !== '0x') return address
+
+  const wallet = createWalletClient({
+    account: bootstrap,
+    chain,
+    transport: http(RPC_URL),
+  })
+  const hash = await wallet.writeContract({
+    address: contracts.agentAccountFactory,
+    abi: agentAccountFactoryAbi,
+    functionName: 'createAccount',
+    args: [owner, salt],
+  })
+  await publicClient.waitForTransactionReceipt({ hash })
+  return address
 }

@@ -423,6 +423,7 @@ config drift early).
 - `AWS_ACCESS_KEY_ID`
 - `AWS_SECRET_ACCESS_KEY`
 - `A2A_MASTER_PRIVATE_KEY` / `A2A_MASTER_EOA_PRIVATE_KEY`
+- `A2A_SESSION_SECRET` (Sprint 1 W2.2 S1.3 — config.ts REFUSES to start production with both `A2A_KMS_BACKEND=aws-kms` and this env var present. The secret is HKDF input keying material for the dev `local-aes` provider; AWS KMS does not need it, and an unused master secret in a production env is a forensics liability with no operational value.)
 
 The OIDC + IAM trust handles credentials (the `@vercel/oidc-aws-credentials-provider`
 exchanges the per-invocation Vercel OIDC token for short-lived AWS STS creds).
@@ -430,6 +431,30 @@ The KMS handles keys. Any long-lived AWS access key or in-env private key in
 the production environment is a regression — the CI guard
 (`scripts/check-no-bypass.sh`, extended in K4 PR-5) refuses to land a deploy
 with either present.
+
+**Session action-counter defaults (Sprint 2 S2.1).** Person-mcp's WalletAction verifier enforces both `SessionGrant.v1.scope.maxActions` and `scope.maxActionsPerMinute`. Per-grant values always win when present; when the minted grant omits either field, the verifier applies defense-in-depth defaults from `apps/person-mcp/src/config.ts`. Operators who want a tighter posture per environment can override:
+
+| Variable | Default | Effect |
+|---|---|---|
+| `SESSION_DEFAULT_MAX_ACTIONS` | `1000` | Total action ceiling per session when the grant omits `scope.maxActions`. |
+| `SESSION_DEFAULT_MAX_ACTIONS_PER_MINUTE` | `60` | Sliding 60-second window cap when the grant omits `scope.maxActionsPerMinute`. |
+
+Both are integers >= 0. Garbage values throw at startup rather than silently defaulting. No secrets — these are budget knobs, safe to set in plain env. Multi-instance rate sharing is out of scope until Sprint 3 (SQLite → Postgres); within a single person-mcp process the check-and-increment is atomic (`better-sqlite3` synchronous transaction).
+
+**Legacy session fallback (Sprint 1 W2.2 S1.6).** `apps/a2a-agent/src/middleware/require-session.ts` has a dev-era fallback (Path B) that accepted bearers tied to rows in the legacy `sessions` table — including demo-login rows. In production this path is closed by default. The env var:
+
+| Variable | Production value | Effect |
+|---|---|---|
+| `ALLOW_LEGACY_A2A_SESSIONS` | unset (recommended) | `false` by default in `NODE_ENV=production`. Path B short-circuits with 401 + audit-deny row tagged `legacy-session-fallback-disabled`. |
+| `ALLOW_LEGACY_A2A_SESSIONS=true` | explicit opt-in | Restores Path B as a temporary escape hatch (incident response, staged migration). Every legacy reach still emits an audit-deny row so the override is always visible. |
+
+Garbage values (`maybe`, `0.5`) throw at startup rather than silently defaulting.
+
+The startup posture is summarized in a single boot-log line so an operator can confirm both invariants at a glance:
+
+```
+  startup posture: NODE_ENV=production A2A_KMS_BACKEND=aws-kms ALLOW_LEGACY_A2A_SESSIONS=false
+```
 
 ---
 
@@ -853,6 +878,198 @@ the codebase as the local-aes dev fallback only.
 
 ---
 
+## OAuth salt MAC key (S2.6)
+
+Sprint 2 item S2.6 migrates the legacy `SERVER_PEPPER` symmetric env
+secret — used to deterministically salt `google-oauth email →
+smart-account` derivation — to the K3-extension MAC family. The new
+key id is `oauth-salt`, the canonical-message format is
+`oauth-salt:v1:${lower(email)}:${rotation}`, and the primitive is
+`kms:GenerateMac` over an `HMAC_SHA_256` KMS HMAC key — identical to
+the eight inter-service MAC keys above. Total MAC key count after S2.6:
+**9** (8 K3-ext inter-service + 1 web-internal).
+
+### Why a separate key
+
+`oauth-salt` is **web-internal**: the MAC bytes never traverse the
+wire. They're consumed inside `/api/auth/google-callback` to compute a
+CREATE2 salt for `AgentAccountFactory.createAccount(serverEOA, salt)`.
+Conceptually closer to "key wrap" than to "service auth", but the same
+KMS primitive applies: a 32-byte deterministic output that cannot be
+predicted without the CMK, with CloudTrail visibility on every
+derivation.
+
+Keeping it in its **own** CMK matches the per-key blast-radius posture
+of the K3-ext family: a compromise of the `oauth-salt` key lets an
+attacker enumerate user smart-account addresses (which they could
+already do given the public KMS API call audit, but not predict new
+ones), but DOES NOT pivot to MAC keys protecting service auth.
+
+| MAC key id | env var (legacy / dev) | env var (AWS KMS / prod) | Who SIGNS | Who VERIFIES |
+|---|---|---|---|---|
+| `oauth-salt` | `OAUTH_SALT_HMAC_KEY` | `AWS_KMS_MAC_KEY_ID_OAUTH_SALT` | web role | n/a — never verified (output is consumed as a CREATE2 salt) |
+
+### Step 1 — Create the KMS HMAC key
+
+AWS Console path: **KMS → Customer managed keys → Create key**. Use the
+same wizard fields as the K3-ext inter-service keys:
+
+| Field | Value |
+|---|---|
+| Key type | **Symmetric** |
+| Key usage | **Generate and verify MAC** |
+| Key spec | **HMAC_256** |
+| MAC algorithms | **HMAC_SHA_256** |
+| Regionality | **Single-region** (same region as the K2/K3-ext/K4 keys) |
+| Alias | `alias/smart-agent-mac-oauth-salt` |
+| Description | "OAuth deterministic-salt HMAC for google-oauth email → smart-account. Sprint S2.6." |
+| Key administrators | The human admin (you) — same as K3-ext / K4. |
+| Key users | None at the wizard layer; the per-key policy below pins them. |
+
+Record the new CMK's ARN.
+
+### Step 2 — Per-key policy
+
+Only the web role calls `kms:GenerateMac` on this key. No other principal
+needs `kms:VerifyMac` — the output is consumed locally.
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "EnableRootAccountForKeyAdmin",
+      "Effect": "Allow",
+      "Principal": { "AWS": "arn:aws:iam::111122223333:root" },
+      "Action": "kms:*",
+      "Resource": "*"
+    },
+    {
+      "Sid": "AllowAdminToManageKey",
+      "Effect": "Allow",
+      "Principal": { "AWS": "arn:aws:iam::111122223333:user/<YOUR_ADMIN_USER>" },
+      "Action": [
+        "kms:Describe*", "kms:Get*", "kms:List*",
+        "kms:EnableKey", "kms:DisableKey",
+        "kms:ScheduleKeyDeletion", "kms:CancelKeyDeletion",
+        "kms:PutKeyPolicy", "kms:UpdateAlias"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "AllowWebToGenerateOauthSaltMac",
+      "Effect": "Allow",
+      "Principal": { "AWS": "arn:aws:iam::111122223333:role/SmartAgentWeb" },
+      "Action": ["kms:GenerateMac", "kms:DescribeKey"],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": { "kms:MacAlgorithm": "HMAC_SHA_256" }
+      }
+    },
+    {
+      "Sid": "DenyAllOtherPrincipals",
+      "Effect": "Deny",
+      "NotPrincipal": {
+        "AWS": [
+          "arn:aws:iam::111122223333:role/SmartAgentWeb",
+          "arn:aws:iam::111122223333:user/<YOUR_ADMIN_USER>",
+          "arn:aws:iam::111122223333:root"
+        ]
+      },
+      "Action": ["kms:GenerateMac", "kms:VerifyMac"],
+      "Resource": "*"
+    }
+  ]
+}
+```
+
+Note the deny statement intentionally lists `kms:VerifyMac` too — even
+though no principal needs it, the explicit deny tightens audit posture
+(any future caller asking for VerifyMac on this key is denied at the
+policy boundary, not just by absent allow).
+
+### Step 3 — Extend the web role's identity policy
+
+Append ONE statement to the `SmartAgentWeb` role's permission policy
+(alongside the `WebSessionSignerKey` from S1.1 and the
+`InterServiceMACGenerate` from K3-ext):
+
+```json
+{
+  "Sid": "OauthSaltMACGenerate",
+  "Effect": "Allow",
+  "Action": ["kms:GenerateMac", "kms:DescribeKey"],
+  "Resource": "arn:aws:kms:us-east-1:111122223333:key/<OAUTH_SALT_UUID>",
+  "Condition": {
+    "StringEquals": { "kms:MacAlgorithm": "HMAC_SHA_256" }
+  }
+}
+```
+
+a2a-agent's role does NOT need `kms:VerifyMac` on this key — the salt
+output is never verified.
+
+### Step 4 — Vercel env vars
+
+| App | Variables (additions to the K3-ext set) |
+|---|---|
+| web | `AWS_KMS_MAC_KEY_ID_OAUTH_SALT` |
+| a2a-agent | (none — never reads this key) |
+| any MCP | (none — never reads this key) |
+
+Set `A2A_KMS_BACKEND=aws-kms` on the web deployment (already required by
+K3-ext + S1.1).
+
+**Do NOT set** the legacy `SERVER_PEPPER` env var on the web Vercel
+project for the oauth-salt purpose. The variable is still consumed by
+the dev-only `dev-pepper` session-signer custody backend
+(`apps/web/src/lib/key-custody/dev-pepper.ts`) in local dev, which is
+unrelated to oauth — `SESSION_SIGNER_BACKEND=aws-kms` is required in
+production, at which point `SERVER_PEPPER` is never read.
+
+### Migration compatibility decision
+
+The user has explicitly stated that there is nothing in production yet
+and no need for a deprecated-mode fallback. The new derivation produces
+a DIFFERENT 32-byte salt than the legacy
+`sha256(SERVER_PEPPER ‖ email ‖ rotation)` for the same inputs.
+Consequence:
+
+- **Local dev / demo**: every existing google-derived smart account
+  shifts to a NEW counterfactual address on the next login. `./scripts/
+  fresh-start.sh` re-deploys onboarding state from scratch; existing
+  per-account artifacts (delegations, AnonCreds rows) at the old address
+  become unreferenced. `localUserAccounts` rows survive but their
+  `smartAccountAddress` will be re-written by the callback's deploy
+  step on next login.
+- **Production**: not applicable (no production users).
+
+If a future deployment ever needs to preserve existing google-derived
+addresses across a `SERVER_PEPPER` → KMS migration, the operator can
+seed the new `oauth-salt` KMS HMAC key's bytes with the legacy
+`SERVER_PEPPER` material and accept the (small) precondition that the
+canonical-message wire format differs from the legacy sha256 layout —
+which would require keeping the old derivation as a v0 fallback. Not
+implemented in this PR.
+
+### Audit + rotation
+
+- **CloudTrail** captures every `kms:GenerateMac` call with timestamp,
+  IAM principal, key ARN, and `kms:MacAlgorithm`. A google-login
+  derivation is exactly one `GenerateMac` call per `/api/auth/google-
+  callback` hit.
+- **Rotation**: rotating the KMS HMAC key changes every google user's
+  smart-account address. Treat as immutable. For an emergency rotation
+  (key compromise), the per-user `accountSaltRotation` field on
+  `localUserAccounts` lets an operator force individual users to a new
+  address without rotating the global key — same escape hatch the
+  "Start fresh" button already drives.
+- **CloudWatch alarms** (recommended):
+  - `kms:GenerateMac` rate spike on `oauth-salt` ≥ 10× normal baseline
+    — possible attempt to enumerate user addresses by sweeping emails.
+
+---
+
 ## Tool-executor signer keys (K5)
 
 K5 extends the K4 pattern to the per-tool executor identities that sign
@@ -873,6 +1090,38 @@ Canonical list lives in `@smart-agent/sdk/key-custody` →
 | `disbursement`   | `disbursement:claim`                                          | `TOOL_EXECUTOR_DISBURSEMENT_PRIVATE_KEY`     | `AWS_KMS_TOOL_EXECUTOR_DISBURSEMENT_KEY_ID`        |
 | `pool-lifecycle` | `pool:close`                                                  | `TOOL_EXECUTOR_POOL_LIFECYCLE_PRIVATE_KEY`   | `AWS_KMS_TOOL_EXECUTOR_POOL_LIFECYCLE_KEY_ID`      |
 | `grant-awards`   | `grant_proposal:award`, `grant_proposal:revoke_award`         | `TOOL_EXECUTOR_GRANT_AWARDS_PRIVATE_KEY`     | `AWS_KMS_TOOL_EXECUTOR_GRANT_AWARDS_KEY_ID`        |
+| `auth-bootstrap` | Web bootstrap-auth handlers (`/api/auth/siwe-verify`, `/api/auth/passkey-signup`, `/api/auth/google-callback`): smart-account deploy, `.agent` name register, resolver bootstrap, deterministic account derivation. Signs operations the user can't perform themselves — they have no wallet yet at first sign-in. | `TOOL_EXECUTOR_AUTH_BOOTSTRAP_PRIVATE_KEY` | `AWS_KMS_TOOL_EXECUTOR_AUTH_BOOTSTRAP_KEY_ID`     |
+
+Note: `auth-bootstrap` is the only tool-executor signer currently
+consumed by the **web tier** (the other four run inside a2a-agent).
+Web reads it via the lazy singleton in
+`apps/web/src/lib/key-custody/tool-executor.ts` →
+`getAuthBootstrapSigner()`, which calls
+`createToolExecutorSigner('auth-bootstrap', process.env)` from the SDK
+and wraps it with `createKmsAccount()`. The one-shot boot banner is
+
+```
+[auth-bootstrap-signer] address=<addr> backend=<aws-kms|local-aes>
+```
+
+emitted on first use (not at process start). Operators verify the
+address matches the runbook record before flipping production traffic
+to the new signer.
+
+This signer ALSO owns the `.agent` root in the on-chain
+`AgentNameRegistry` so it can `register` new `<label>.agent` names
+during passkey signup. `scripts/deploy-local.sh` transfers ownership
+from the deployer to this address post-deploy; in production the
+transfer happens as a one-shot operator action with the
+auth-bootstrap KMS-derived address (no deployer key needed in
+deployments after that point — the `.agent` root is owned by a key
+whose private material lives only in KMS).
+
+Provisioning follows the same Step 1 / Step 4 sequence as the other
+tool families above — create a per-tool KMS CMK with alias
+`alias/smart-agent-tool-executor-auth-bootstrap`, derive the EVM
+address via `scripts/kms-signer-address.ts`, then run the on-chain
+`AgentNameRegistry.setOwner(.agent_root, <addr>)` transfer.
 
 Adding a new sensitive tool family requires updating `TOOL_EXECUTOR_IDS`,
 `TOOL_TO_FAMILY` in `apps/a2a-agent/src/lib/tool-executors.ts`, the dev
@@ -1301,13 +1550,19 @@ usage. The current K6 PR adds:
   `DEPLOYER_ADDRESS` (Category C-trivial — read-only counterfactual
   preview).
 
+K6-D1 RESOLVED in Sprint 1 item S1.5 — the three bootstrap-auth route
+handlers (`/api/auth/siwe-verify`, `/api/auth/passkey-signup`,
+`/api/auth/google-callback`) now sign via the dedicated `auth-bootstrap`
+tool-executor signer (Category D); the deployer key is no longer
+referenced in any of them. They have been removed from
+`K6_ROUTE_HANDLER_ALLOWLIST` in `scripts/check-no-bypass.sh` so any
+future regression is caught at CI.
+
 Remaining route-handler debt (allowlisted in the bypass script):
 
 | Site | Category | Migration target |
 |---|---|---|
-| `apps/web/src/app/api/auth/siwe-verify/route.ts` | D | `auth-bootstrap` tool-executor signer |
-| `apps/web/src/app/api/auth/passkey-signup/route.ts` | D | `auth-bootstrap` tool-executor signer |
-| `apps/web/src/app/api/auth/google-callback/route.ts` | D | `auth-bootstrap` tool-executor signer |
+| `apps/web/src/app/api/auth/check-agent-name/route.ts` | C | Read-only counterfactual preview; migrate to `DEPLOYER_ADDRESS` env var only (no key needed). |
 
 Remaining action-layer / library debt (NOT allowlisted because they
 are not under `apps/*/src/{app/api,routes}/**`, but documented here
@@ -1328,3 +1583,364 @@ Treat these as Phase 1B/1C follow-up work; each individual migration
 is in scope but the cross-cutting `getWalletClient()` refactor is the
 long pole and should land alongside the A2A+MCP consolidation Phase 6
 work (memory `project_a2a_mcp_consolidation_phase7`).
+
+---
+
+## Web session-grant signer key (S1.1)
+
+The **web app** (`apps/web`) mints a session-EOA on every passkey/SIWE
+login. The EOA is the delegate inside the `SessionGrantV1` (design doc
+§3.4) and signs every subsequent `WalletAction` payload routed through
+`/api/wallet-action/*`. Prior to Sprint S1.1 the dev path
+(`SESSION_SIGNER_BACKEND=dev-pepper`) was the only working backend —
+session keys were derived from `SERVER_PEPPER` via HKDF and signed in
+process. S1.1 replaces that with an AWS KMS asymmetric key for
+production.
+
+### Architectural model — one KMS key, all sessions
+
+KMS asymmetric keys are immutable; the address is fixed per CMK. The
+web app uses **one shared KMS asymmetric key** as the session signer
+for every browser session. Per-session uniqueness is enforced by the
+protocol — not by the key:
+
+- `sessionId` (random UUID) salts the passkey assertion + SessionGrant
+  hash chain.
+- `SessionGrantV1` carries its own nonce + issued-at + expires-at so
+  two sessions with the same delegate are still distinct grants.
+- `WalletAction` payloads carry their own binding tuple (account,
+  chainId, sessionId, actionId) so replay across sessions is rejected.
+
+This matches the pattern used by the a2a-agent's master EOA (one KMS
+key, many sub-delegations / sessions; see Step 1 of this runbook).
+
+### Same KMS spec as the master signer
+
+The web session-grant key is provisioned with the SAME shape as the
+a2a-agent master signer (Step 1 of this runbook):
+
+```bash
+aws kms create-key \
+  --key-spec ECC_SECG_P256K1 \
+  --key-usage SIGN_VERIFY \
+  --description "Smart Agent web session-grant signer"
+```
+
+It is a **SEPARATE CMK** from `AWS_KMS_SIGNER_KEY_ID` (the a2a-agent's
+master EOA signer). The two keys MUST be distinct so:
+
+- Each runtime (web vs a2a-agent) has its own IAM scope and can be
+  audited independently in CloudTrail.
+- The web key and a2a master key rotate on independent cadences.
+- A compromise of one runtime cannot move funds owned by the other
+  runtime's signer.
+
+Record the new CMK's ARN; we'll need it for Step 2 below.
+
+### IAM additions
+
+Extend the existing `SmartAgentA2A` runtime role's permission policy
+(Step 3 of this runbook) with a third statement scoped to the web
+session-grant key. The web app uses the SAME role — the runtime IAM
+boundary already pins `sub` to the production Vercel deployment.
+
+Append to the permission policy:
+
+```json
+{
+  "Sid": "WebSessionSignerKey",
+  "Effect": "Allow",
+  "Action": [
+    "kms:Sign",
+    "kms:GetPublicKey",
+    "kms:DescribeKey"
+  ],
+  "Resource": "arn:aws:kms:us-east-1:111122223333:key/<WEB_SESSION_SIGNER_KEY_UUID>",
+  "Condition": {
+    "StringEquals": {
+      "kms:SigningAlgorithm": "ECDSA_SHA_256",
+      "kms:MessageType": "DIGEST"
+    }
+  }
+}
+```
+
+The existing `DenyKeyMaterialExfiltration` statement (Step 3) is
+already `Resource: "*"` and therefore covers this new key too — the
+runtime role cannot disable / delete / re-policy it.
+
+If you prefer to scope the web app to its OWN IAM role (recommended
+for stricter blast-radius bounds at the cost of an extra trust policy
+to maintain), provision a `SmartAgentWeb` role with the trust policy
+from Step 3 (substituting the web project's Vercel `sub` claim) and
+attach ONLY the `WebSessionSignerKey` statement above. The web app
+does NOT need K2 envelope-key access (only the a2a-agent encrypts
+session packages).
+
+### Env vars
+
+In the **web** Vercel project: **Settings → Environment Variables**.
+Set for Production (and Preview if you want preview deployments to
+exercise the prod path):
+
+| Variable | Value |
+|---|---|
+| `SESSION_SIGNER_BACKEND` | `aws-kms` |
+| `AWS_REGION` | `us-east-1` (or wherever the web session signer key lives) |
+| `AWS_ROLE_ARN` | `arn:aws:iam::111122223333:role/SmartAgentA2A` (or `SmartAgentWeb` if you provisioned a dedicated role) |
+| `AWS_WEB_SESSION_SIGNER_KEY_ID` | `arn:aws:kms:us-east-1:111122223333:key/<WEB_SESSION_SIGNER_KEY_UUID>` |
+
+**Do NOT set these in the web Vercel project:**
+
+- `SERVER_PEPPER` (S2.6 removed the OAuth-salt consumer; the only
+  remaining reader is the dev-only `dev-pepper` session-signer custody
+  backend, which the S1.4 production guard refuses to boot in
+  production anyway).
+- `AWS_KMS_SIGNER_KEY_ID` (that's the a2a-agent's master signer,
+  unrelated to web session-grant signing).
+
+### S1.4 production guard
+
+`apps/web/src/lib/key-custody/index.ts` enforces a hard fail when
+`NODE_ENV=production` AND the selected backend is `dev-pepper`. The
+factory throws at first use rather than at module load so the error
+surface lives at the request boundary where Next.js will log it to
+Vercel runtime logs. The error message includes the URL of this
+runbook section so an on-call engineer can land here directly.
+
+### Rotation
+
+KMS asymmetric keys are immutable, so rotation is an **on-chain**
+operation — same shape as the master EOA rotation (Step "Rotation
+procedure" earlier in this runbook):
+
+1. Create a NEW asymmetric KMS key with the same spec.
+2. Pre-fund the new derived address if the web session signer is set
+   as an owner on any contract (it is NOT today; the session EOA is a
+   delegate, not an owner, on user smart accounts). If you've added
+   it as an owner anywhere in the future, the rotation needs the
+   `addOwner(newAddress)` → grace → `removeOwner(oldAddress)`
+   ceremony from Step 4–8 above.
+3. Update `AWS_WEB_SESSION_SIGNER_KEY_ID` in the web Vercel project.
+   Trigger redeploy.
+4. Observe ≥ 24h of clean operation; for emergency rotation, collapse
+   the soak to "as soon as new key works".
+5. `aws kms disable-key --key-id <OLD_ARN>`. Hold ≥ 30 days for audit
+   trail, then schedule deletion if desired.
+
+The web session signer is a **session delegate**, not a smart-account
+owner. The user's actual on-chain ownership comes from their passkey
+(verified by `AgentAccount.isValidSignature` against the WebAuthn
+credential). Rotating the web session signer therefore does NOT
+require any user-visible step — existing sessions remain valid until
+they hit their `expiresAt` and the browser re-runs the passkey + grant
+ceremony.
+
+### Local dev
+
+`scripts/deploy-local.sh` writes `SESSION_SIGNER_BACKEND=dev-pepper`
+into `apps/web/.env` so every fresh-start runs against the in-process
+HKDF path. No AWS credentials are needed locally.
+
+---
+
+## Session JWT signing key (Sprint 2 S2.4)
+
+The `smart-agent-session` cookie is an HS256 JWT signed with a
+symmetric secret. Before S2.4, that secret was a single
+`SESSION_JWT_SECRET` env var with no key-id and no rotation hook: if
+the secret leaked, every issued token was forgeable for the full TTL
+window (which was 30 days, also reduced as part of this work).
+
+S2.4 introduces **multi-key signing** at the env-var layer — same
+shape as the K3-ext KMS rotation pattern, but for HS256 secrets the
+runtime owns directly. One key is active for signing; multiple are
+valid for verification; rotation is a re-deploy with a new env value.
+
+### Env-var format
+
+```
+SESSION_JWT_SECRETS=<kid_1>:<secret_hex_1>,<kid_2>:<secret_hex_2>,...
+```
+
+- Comma-separated `kid:secret_hex` pairs.
+- `kid` is an arbitrary opaque label; a date-stamped scheme like
+  `2026-05-v1` works well so on-call engineers can read the rotation
+  history off the env var.
+- `secret_hex` is a 32-byte (64-char) hex string. Generate with
+  `openssl rand -hex 32`.
+- The **first entry is the ACTIVE signing key**. `signJwt()` uses it
+  exclusively. All entries — first and beyond — are valid for
+  verification.
+- Whitespace around entries is tolerated. Duplicate kids are rejected
+  at parse time (operator error that would silently lose a key).
+
+The verifier reads the `kid` header off the incoming token and looks
+up the matching secret. A token whose `kid` is **not** in the list is
+rejected — that's how a rotated-out key becomes immediately useless
+even before its TTL would have elapsed.
+
+### Rotation procedure
+
+1. **Generate** a new 32-byte secret and a new kid label:
+   ```
+   NEW_SECRET=$(openssl rand -hex 32)
+   NEW_KID=2026-05-v2
+   ```
+2. **Prepend** to `SESSION_JWT_SECRETS` in the Vercel project env
+   (Production + Preview):
+   ```
+   SESSION_JWT_SECRETS=2026-05-v2:<new_secret>,2026-05-v1:<old_secret>
+   ```
+   Save → redeploy. As soon as the new build is live, every new
+   session JWT is signed with `2026-05-v2`. In-flight cookies signed
+   with `2026-05-v1` continue to verify because that kid is still in
+   the list.
+3. **Wait** at least the cookie TTL (currently 24h, see
+   `SESSION_TTL_SECONDS` in
+   `apps/web/src/lib/auth/native-session.ts`). Past that point, no
+   live token can still carry the old kid.
+4. **Drop** the old entry from `SESSION_JWT_SECRETS`:
+   ```
+   SESSION_JWT_SECRETS=2026-05-v2:<new_secret>
+   ```
+   Save → redeploy. Any leaked copy of `<old_secret>` is now inert —
+   tokens forged under it will fail verification (their kid is no
+   longer in the registry).
+
+Emergency rotation (suspected leak): skip the 24h wait. Drop the old
+kid immediately; every legitimate live session is invalidated, every
+forged token is also invalidated, users re-authenticate. This is the
+"break glass" path and is the reason we cut the TTL from 30 days to
+24h — a 30-day forced re-auth event would be operationally painful;
+24h is acceptable.
+
+### Production guards
+
+`apps/web/src/lib/auth/jwt.ts → loadJwtKeys()` throws at first use
+when:
+
+- `NODE_ENV=production` AND **no** `SESSION_JWT_SECRETS` (or legacy
+  `SESSION_JWT_SECRET`) is configured. The error message points back
+  to this section.
+- `NODE_ENV=production` AND the active (first) kid is the well-known
+  dev fallback label `dev-fallback`. Catches the failure mode where
+  an operator copies the dev `.env` shape into production unchanged.
+
+Both fire at the request boundary (where Next.js surfaces them as
+Vercel runtime errors), not at module-load time — by design, so the
+error surface lives where on-call engineers will see it in logs.
+
+### Backward compat: legacy `SESSION_JWT_SECRET`
+
+If `SESSION_JWT_SECRETS` is **unset** and the legacy singular
+`SESSION_JWT_SECRET` IS set, the verifier accepts header-less (no
+`kid`) tokens signed under the pre-S2.4 scheme. **Signing under this
+mode is refused** — `signJwt()` throws, forcing operators to opt into
+multi-key by switching to the plural env var.
+
+This compat path exists so a deploy that introduces S2.4 doesn't
+immediately invalidate every in-flight cookie on the system. Plan to
+remove the singular env from the deployment within one cookie-TTL
+window after switching to `SESSION_JWT_SECRETS`; the codebase will
+keep honoring it on read until the next sweep removes the fallback
+branch from `loadJwtKeys()`.
+
+### Cookie TTL reduction (S2.4)
+
+The session cookie TTL was reduced from **30 days → 24 hours**
+(`SESSION_TTL_SECONDS` in `apps/web/src/lib/auth/native-session.ts`).
+The previous 30-day TTL was a blast-radius amplifier: a leaked secret
+could forge tokens for a month before the rotation forced
+re-authentication.
+
+**Open follow-up** (Sprint 3 territory): build a session-refresh
+endpoint so a 24h TTL doesn't translate to "user re-runs the passkey
++ grant ceremony every day". The shape is straightforward — a token
+whose `iat` is within some sliding-window threshold can be exchanged
+for a fresh token without a full ceremony — but it's out of scope for
+S2.4 since the security gain (bounded blast radius) lands without it.
+Track as a TODO in the issue/Linear board, linked from
+`apps/web/src/lib/auth/native-session.ts`.
+
+### Local dev
+
+`scripts/deploy-local.sh` writes a single freshly-generated
+`SESSION_JWT_SECRETS=2026-05-v1:<random-hex>` into `apps/web/.env` on
+every fresh-start. No rotation is exercised in local dev; rotation is
+purely an operator concern in prod.
+
+### Future work — KMS-backed JWT signing (Sprint 3 territory)
+
+Today S2.4 keeps the HMAC secret as a runtime env var. The natural
+next step is to move it behind AWS KMS HMAC keys (`kms:GenerateMac`
+/ `kms:VerifyMac` with `MacAlgorithm=HMAC_SHA_256`), same posture as
+the K3-ext family. That eliminates the "secret is in process memory"
+risk class entirely — a compromised Vercel runtime would only get
+`kms:VerifyMac` access for the duration of the IAM session, not the
+key material. Tracking ideas:
+
+- One KMS HMAC key per kid; rotation is provisioning a new key and
+  prepending to a `SESSION_JWT_KMS_KEY_IDS` env (same multi-key
+  pattern, KMS arn-valued instead of hex-valued).
+- `signJwt` calls `kms:GenerateMac`; `verifyJwt` calls `kms:VerifyMac`
+  against the kid-matched key.
+- IAM policy pins `MacAlgorithm=HMAC_SHA_256` and denies
+  `kms:Encrypt` / `kms:Decrypt` on the MAC keys (defense-in-depth
+  mirror of the K4 signer policy).
+
+Defer until S2.4 has bake-in time and we've decided whether server-
+side opaque session ids (with a DB lookup) are a better long-term
+direction than stateless JWTs altogether.
+
+## Audit checkpoint sink (S3.1)
+
+Sprint 3 introduces an **external anchor** for the a2a-agent's `execution_audit` hash chain (`docs/architecture/01-web-a2a-mcp-flows.md` § "Audit completeness + external anchor"). On a periodic interval (15 min prod / 1 min dev), the agent signs a small JSON payload — `{ latestEntryId, latestEntryHash, timestamp, chainId, signature, signerAddress }` — using the **master signer** (the same KMS key documented above) and:
+
+1. Always: writes the row to the local `audit_checkpoint` SQLite table (last 30 days, daily GC).
+2. If `AUDIT_CHECKPOINT_SINK_URL` is set: POSTs the same payload to that URL.
+
+The sink is **the** external witness. An attacker who mutates the agent's local DB cannot also rewrite the sink's history — the next operator-run `scripts/verify-audit-chain.ts` walks the local chain, recomputes every hash, and compares to the last sink-anchored checkpoint. Any divergence is forensic evidence of tampering.
+
+### Env vars
+
+| Variable                       | Required | Default | Purpose                                                                 |
+|--------------------------------|----------|---------|-------------------------------------------------------------------------|
+| `AUDIT_CHECKPOINT_SINK_URL`    | optional | unset   | HTTP(S) URL the agent POSTs each checkpoint JSON to.                    |
+| `AUDIT_CHECKPOINT_SINK_AUTH`   | optional | unset   | Value attached as the `Authorization` header on every sink POST. Empty → no auth header. |
+
+If `AUDIT_CHECKPOINT_SINK_URL` is unset, the agent only writes to the local SQLite archive — there is NO external witness and the chain integrity is only as strong as the local DB. Dev / smoke-test environments may leave it unset; **production deployments MUST configure a sink.**
+
+### Recipe — Azure Monitor Log Analytics (Data Collection Rule)
+
+1. Create a Log Analytics workspace + a custom table (one column per checkpoint field, plus the standard `TimeGenerated`).
+2. Create a Data Collection Rule (DCR) pointing at the workspace. The DCR provisions a Data Collection Endpoint (DCE) URL.
+3. The DCE URL has the shape `https://<dce-name>.<region>.ingest.monitor.azure.com/dataCollectionRules/dcr-<id>/streams/Custom-<table-name>?api-version=2023-01-01`.
+4. Set `AUDIT_CHECKPOINT_SINK_URL` to that URL.
+5. Set `AUDIT_CHECKPOINT_SINK_AUTH=Bearer <oauth2-token>`. The token comes from an Entra ID app registration with `Monitoring Metrics Publisher` role on the DCR; refresh-token rotation is operator-owned (the agent does not refresh tokens).
+
+### Recipe — S3 immutable blob (Object Lock)
+
+1. Create an S3 bucket with **Object Lock** enabled in compliance mode, retention period ≥ your audit retention (e.g. 7 years).
+2. Set the bucket policy to deny `s3:DeleteObject` + `s3:PutObjectRetention` from anyone but a designated audit role.
+3. Use a small relay (Lambda + API Gateway, or operator-run container) that:
+   - Accepts `POST /checkpoints` with a Bearer-token header.
+   - Writes the body to `s3://<bucket>/<YYYY>/<MM>/<DD>/<timestamp>-<sha256(body)>.json` with `ObjectLockMode=COMPLIANCE` + `ObjectLockRetainUntilDate=<retention end>`.
+4. Set `AUDIT_CHECKPOINT_SINK_URL=https://<api-gateway-url>/checkpoints` + `AUDIT_CHECKPOINT_SINK_AUTH=Bearer <relay-token>`.
+
+### Recipe — generic JSON webhook (SIEM)
+
+Any service that accepts `POST <url>` with `Content-Type: application/json` + an optional `Authorization` header works. Splunk HEC, Datadog, PagerDuty, Sentry, custom SIEM — same shape. The body is the checkpoint JSON exactly; no Smart-Agent-specific framing.
+
+### Retry + failure handling
+
+- Per attempt: 5 s timeout (HTTP + connect).
+- Per checkpoint: 3 attempts, exponential backoff (500ms, 1.5s, 3.5s).
+- After 3 failures: the local row's `sink_status` column reads `failed:<reason>`, the agent logs `[audit-checkpoint] sink POST failed after 3 attempts: <reason>`, and the NEXT checkpoint still attempts to POST (no permanent backoff or circuit breaker — checkpoints are independent units of work).
+- The local INSERT always succeeds (or surfaces the SQLite error directly to the agent log). A failing sink does NOT roll back the local write.
+
+### Verification
+
+Run `pnpm exec tsx scripts/verify-audit-chain.ts` periodically (e.g. nightly cron in production) and check the exit code. A `0` means the chain is intact AND every checkpoint signature verifies. A `1` is a hard alert — escalate to the on-call.
+
+The CLI also accepts `--signer 0xMASTER_SIGNER_ADDRESS` to pin the expected signer; rotating the master signer (K4 rotation runbook above) requires updating the operator-pinned address on the next run.

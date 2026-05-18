@@ -67,6 +67,24 @@ sqlite.exec(`
     entry_hash             TEXT NOT NULL
   );
   CREATE INDEX IF NOT EXISTS idx_audit_log_account ON audit_log(smart_account_address, seq);
+
+  -- Sprint 2 S2.1 — per-session action-counter state. Enforces
+  -- grant.scope.maxActions (total) + grant.scope.maxActionsPerMinute
+  -- (sliding 60-second window).
+  --
+  -- total_actions      monotonic count of successful verifies
+  -- recent_timestamps  JSON array of action-accept timestamps (ms);
+  --                    trimmed to last 60s on every update so the row
+  --                    stays bounded.
+  -- updated_at_ms      last write; informational, indexed for GC.
+  CREATE TABLE IF NOT EXISTS session_action_count (
+    session_id         TEXT PRIMARY KEY,
+    total_actions      INTEGER NOT NULL DEFAULT 0,
+    recent_timestamps  TEXT NOT NULL DEFAULT '[]',
+    updated_at_ms      INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_session_action_count_updated
+    ON session_action_count(updated_at_ms);
 `)
 
 // ─── SessionRecord ──────────────────────────────────────────────────
@@ -201,6 +219,142 @@ export function consumeActionNonce(
   }
   // Opportunistic GC.
   sqlite.prepare(`DELETE FROM action_nonces_v2 WHERE expires_at_ms < ?`).run(now)
+}
+
+// ─── Action counter (Sprint 2 S2.1) ─────────────────────────────────
+//
+// Enforces grant.scope.maxActions + grant.scope.maxActionsPerMinute. The
+// counter row is created lazily on first consume; missing == count 0.
+//
+// `consumeAction` is the single sanctioned mutator: it runs SELECT +
+// UPDATE inside a `better-sqlite3` synchronous transaction so the
+// check-and-increment is atomic. Two concurrent verifies for the same
+// session serialize on the sqlite write lock — the second sees the
+// first's increment before deciding, closing the TOCTOU race.
+
+const RECENT_WINDOW_MS = 60 * 1000
+
+export interface ActionCounterDecision {
+  /** Whether the increment succeeded (false = limit hit, no row update). */
+  allowed: boolean
+  /** Total actions consumed (after increment if allowed, else current). */
+  totalActions: number
+  /** Actions in the last 60s (after increment if allowed, else projected). */
+  windowCount: number
+  /** Limit that was tripped when allowed=false. */
+  exceeded?: 'total' | 'rate'
+  /** The cap that was tripped (the effective limit, after defaults). */
+  cap?: number
+}
+
+export interface ConsumeActionInput {
+  sessionId: string
+  maxActions: number
+  maxActionsPerMinute: number
+  /** Wall clock at the moment of the decision (ms since epoch). */
+  now: number
+}
+
+/**
+ * Atomically check-and-increment the action counter for a session.
+ *
+ * Behavior:
+ *   - Row is created on demand (count=0, empty window).
+ *   - Reads recent_timestamps, drops anything older than now-60s.
+ *   - If incrementing would exceed either cap, the transaction is a no-op
+ *     and `allowed: false` is returned with the offending counter.
+ *   - Otherwise total_actions += 1 and current timestamp is appended.
+ *
+ * Caller-supplied caps win when present; defense-in-depth defaults live
+ * in `apps/person-mcp/src/config.ts` and are passed in by the verifier.
+ */
+export function consumeAction(input: ConsumeActionInput): ActionCounterDecision {
+  const tx = sqlite.transaction((args: ConsumeActionInput): ActionCounterDecision => {
+    const row = sqlite.prepare(
+      `SELECT total_actions, recent_timestamps FROM session_action_count WHERE session_id = ?`,
+    ).get(args.sessionId) as { total_actions: number; recent_timestamps: string } | undefined
+
+    const total = row?.total_actions ?? 0
+    let recent: number[] = []
+    if (row?.recent_timestamps) {
+      try {
+        const parsed = JSON.parse(row.recent_timestamps) as unknown
+        if (Array.isArray(parsed)) {
+          recent = parsed.filter((v): v is number => typeof v === 'number')
+        }
+      } catch { /* corrupt JSON → treat as empty */ }
+    }
+    // Trim to the live window before any decision.
+    const cutoff = args.now - RECENT_WINDOW_MS
+    recent = recent.filter(ts => ts > cutoff)
+
+    const nextTotal = total + 1
+    const nextWindow = recent.length + 1
+
+    if (nextTotal > args.maxActions) {
+      return {
+        allowed: false,
+        totalActions: total,
+        windowCount: recent.length,
+        exceeded: 'total',
+        cap: args.maxActions,
+      }
+    }
+    if (nextWindow > args.maxActionsPerMinute) {
+      return {
+        allowed: false,
+        totalActions: total,
+        windowCount: recent.length,
+        exceeded: 'rate',
+        cap: args.maxActionsPerMinute,
+      }
+    }
+
+    recent.push(args.now)
+    const recentJson = JSON.stringify(recent)
+    if (row === undefined) {
+      sqlite.prepare(
+        `INSERT INTO session_action_count
+           (session_id, total_actions, recent_timestamps, updated_at_ms)
+         VALUES (?, ?, ?, ?)`,
+      ).run(args.sessionId, nextTotal, recentJson, args.now)
+    } else {
+      sqlite.prepare(
+        `UPDATE session_action_count
+            SET total_actions = ?, recent_timestamps = ?, updated_at_ms = ?
+          WHERE session_id = ?`,
+      ).run(nextTotal, recentJson, args.now, args.sessionId)
+    }
+
+    return {
+      allowed: true,
+      totalActions: nextTotal,
+      windowCount: nextWindow,
+    }
+  })
+
+  return tx(input)
+}
+
+/** Inspector for tests + diagnostics. Read-only; does not increment. */
+export function getActionCounter(sessionId: string, now: number = Date.now()): {
+  totalActions: number
+  windowCount: number
+} {
+  const row = sqlite.prepare(
+    `SELECT total_actions, recent_timestamps FROM session_action_count WHERE session_id = ?`,
+  ).get(sessionId) as { total_actions: number; recent_timestamps: string } | undefined
+  if (!row) return { totalActions: 0, windowCount: 0 }
+  let recent: number[] = []
+  try {
+    const parsed = JSON.parse(row.recent_timestamps) as unknown
+    if (Array.isArray(parsed)) {
+      recent = parsed.filter((v): v is number => typeof v === 'number')
+    }
+  } catch { /* ignore */ }
+  const cutoff = now - RECENT_WINDOW_MS
+  recent = recent.filter(ts => ts > cutoff)
+  return { totalActions: row.total_actions, windowCount: recent.length }
 }
 
 // ─── Audit log (append-only with prevEntryHash chain) ───────────────

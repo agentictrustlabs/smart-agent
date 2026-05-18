@@ -14,10 +14,6 @@
  *      causes a hard failure — two independent trip-wires.
  *   3. Plaintext data keys live in heap only for the duration of the
  *      call; we zeroise them in a finally block.
- *   4. The legacy decrypt path (`keyVersion === 'legacy'`) routes through
- *      `config.A2A_SESSION_SECRET` directly — the rollback safety net for
- *      pre-K3 rows. Stays alive in this PR; removed T+30 days post-K3
- *      cutover (plan §7).
  */
 import {
   encryptPayload,
@@ -27,6 +23,7 @@ import {
 } from '@smart-agent/sdk'
 import type { A2AKeyProvider } from '@smart-agent/sdk/key-custody'
 import { buildKeyProvider } from './key-provider'
+import { auditAppend } from '../lib/audit'
 
 /** Lazy singleton — instantiated on first use so tests can set env before import. */
 let providerSingleton: A2AKeyProvider | null = null
@@ -175,76 +172,176 @@ export async function encryptSessionPackage<T>(
 }
 
 /**
- * Decrypt a session row. Routes by `row.keyVersion`:
- *   - 'legacy' → `decryptLegacy` (pre-K3 rows; uses `config.A2A_SESSION_SECRET`).
- *   - anything else → unwrap data key via provider, then AES-GCM with the
- *     bound `buildSessionAAD(meta)` AAD.
+ * Optional audit-trace context passed by callers that want the
+ * KMS-decrypt / key-version-rejected events to carry their correlation
+ * id and an expected key-version baseline. Decoupled from `SessionMeta`
+ * because the trace is observability-only and not in the AAD.
+ */
+export interface DecryptAuditContext {
+  /** Hardening §1D — cross-service correlation id from the request edge. */
+  correlationId?: string
+  /**
+   * Sprint 3 S3.2 — when set, a decrypt that finds a stored
+   * `keyVersion` not matching this allow-list emits a
+   * `key-version-rejected` audit row before the underlying provider
+   * decrypt throws. The decrypt is NOT short-circuited — we still let
+   * the provider reject the cipher-text so the cryptographic deny is
+   * authoritative. The audit row is purely the operator-visible signal.
+   */
+  expectedKeyVersions?: ReadonlyArray<string>
+  /** Service that triggered the decrypt — defaults to 'a2a-agent'. */
+  source?: string
+}
+
+/**
+ * Decrypt a session row. Unwraps the data key via the configured KMS
+ * provider, then AES-GCM with the bound `buildSessionAAD(meta)` AAD.
  *
  * Throws if any binding field has been tampered with — the AAD trip-wire.
+ *
+ * Sprint 3 S3.2 — emits one of three audit events:
+ *   - `kms-decrypt`           on success
+ *   - `kms-decrypt-failed`    on every throw (provider error, AAD mismatch, bad blob)
+ *   - `key-version-rejected`  when the stored keyVersion doesn't match
+ *                             `audit.expectedKeyVersions` (in addition to
+ *                             whatever the provider does — we let the
+ *                             cryptographic deny remain authoritative)
+ *
+ * Audit writes are best-effort: failures are logged but never block the
+ * decrypt path.
  */
 export async function decryptSessionPackage<T>(
   row: DecryptableRow,
   meta: SessionMeta,
+  audit: DecryptAuditContext = {},
 ): Promise<T> {
   if (!row.encryptedPackage || !row.iv) {
+    await safeAudit({
+      eventType: 'kms-decrypt-failed',
+      meta,
+      keyVersion: row.keyVersion,
+      keyId: row.kmsKeyId,
+      audit,
+      reason: 'missing ciphertext/iv',
+    })
     throw new Error('decryptSessionPackage: session row missing ciphertext/iv')
   }
 
-  if (row.keyVersion === 'legacy') {
-    return decryptLegacy<T>(row, meta)
+  if (!row.encryptedDataKey || !row.kmsKeyId) {
+    await safeAudit({
+      eventType: 'kms-decrypt-failed',
+      meta,
+      keyVersion: row.keyVersion,
+      keyId: row.kmsKeyId,
+      audit,
+      reason: 'missing encryptedDataKey/kmsKeyId',
+    })
+    throw new Error(
+      'decryptSessionPackage: session row missing encryptedDataKey/kmsKeyId',
+    )
   }
 
-  if (!row.encryptedDataKey || !row.kmsKeyId) {
-    throw new Error(
-      'decryptSessionPackage: session row missing encryptedDataKey/kmsKeyId (post-cutover row)',
-    )
+  // Sprint 3 S3.2 — key-version allow-list check. Audit BEFORE the
+  // provider decrypt so an operator sees the row even if the AWS call
+  // fails for an unrelated reason. We still call the provider so the
+  // cryptographic reject (AAD mismatch on a wrong-version blob) is the
+  // authoritative deny.
+  if (audit.expectedKeyVersions && audit.expectedKeyVersions.length > 0) {
+    if (!audit.expectedKeyVersions.includes(row.keyVersion)) {
+      await safeAudit({
+        eventType: 'key-version-rejected',
+        meta,
+        keyVersion: row.keyVersion,
+        keyId: row.kmsKeyId,
+        audit,
+        reason: `keyVersion '${row.keyVersion}' not in expected set [${audit.expectedKeyVersions.join(',')}]`,
+        status: 'denied',
+      })
+    }
   }
 
   const provider = getProvider()
   const aadContext = buildAadContext(meta)
-  const dataKey = await provider.decryptSessionDataKey({
-    encryptedDataKey: fromB64(row.encryptedDataKey),
-    aadContext,
-    keyId: row.kmsKeyId,
-    keyVersion: row.keyVersion,
-  })
+  let dataKey: Uint8Array
+  try {
+    dataKey = await provider.decryptSessionDataKey({
+      encryptedDataKey: fromB64(row.encryptedDataKey),
+      aadContext,
+      keyId: row.kmsKeyId,
+      keyVersion: row.keyVersion,
+    })
+  } catch (err) {
+    await safeAudit({
+      eventType: 'kms-decrypt-failed',
+      meta,
+      keyVersion: row.keyVersion,
+      keyId: row.kmsKeyId,
+      audit,
+      reason: (err as Error).message ?? 'provider decrypt threw',
+    })
+    throw err
+  }
   try {
     const aesAad = buildSessionAAD(meta)
     const dataKeyHex = bytesToHex(dataKey)
-    return await decryptPayload<T>(
+    const out = await decryptPayload<T>(
       { ciphertext: row.encryptedPackage, iv: row.iv },
       dataKeyHex,
       aesAad,
     )
+    await safeAudit({
+      eventType: 'kms-decrypt',
+      meta,
+      keyVersion: row.keyVersion,
+      keyId: row.kmsKeyId,
+      audit,
+    })
+    return out
+  } catch (err) {
+    await safeAudit({
+      eventType: 'kms-decrypt-failed',
+      meta,
+      keyVersion: row.keyVersion,
+      keyId: row.kmsKeyId,
+      audit,
+      reason: (err as Error).message ?? 'AES-GCM decrypt threw',
+    })
+    throw err
   } finally {
     zeroise(dataKey)
   }
 }
 
 /**
- * Legacy decrypt path for pre-K3 session rows (`keyVersion === 'legacy'`).
- * Routes through `config.A2A_SESSION_SECRET` exactly like the old code,
- * preserving the AAD binding from Hardening §1.5 #8. Removed T+30 days
- * post-cutover (plan §7).
- *
- * Exported for explicit testability — production callers go through
- * `decryptSessionPackage`.
+ * Best-effort audit writer for the KMS-decrypt completeness sweep
+ * (Sprint 3 S3.2). Never throws — a failing audit must not block the
+ * cryptographic decision.
  */
-export async function decryptLegacy<T>(
-  row: { encryptedPackage: string | null; iv: string | null },
-  meta: SessionMeta,
-): Promise<T> {
-  if (!row.encryptedPackage || !row.iv) {
-    throw new Error('decryptLegacy: session row missing ciphertext/iv')
+async function safeAudit(args: {
+  eventType: 'kms-decrypt' | 'kms-decrypt-failed' | 'key-version-rejected'
+  meta: SessionMeta
+  keyVersion: string
+  keyId: string | null
+  audit: DecryptAuditContext
+  reason?: string
+  status?: 'completed' | 'denied'
+}): Promise<void> {
+  try {
+    const status = args.status ?? (args.eventType === 'kms-decrypt' ? 'completed' : 'denied')
+    await auditAppend({
+      rootGrantHash: '',
+      sessionId: args.meta.sessionId,
+      sessionPrincipal: args.meta.accountAddress,
+      mcpServer: args.audit.source ?? 'a2a-agent',
+      mcpTool: `kms:${args.eventType}`,
+      eventType: args.eventType,
+      executionPath: 'mcp-only',
+      target: args.keyId ?? null,
+      status,
+      errorReason: args.reason ?? '',
+      correlationId: args.audit.correlationId ?? null,
+    })
+  } catch (err) {
+    console.error('[kms-decrypt audit] failed:', err)
   }
-  // Dynamically import config so the helper is testable without booting
-  // the full config (which reads .env at module load). Production calls
-  // pay the import cost once per process.
-  const { config } = await import('../config')
-  const aad = buildSessionAAD(meta)
-  return decryptPayload<T>(
-    { ciphertext: row.encryptedPackage, iv: row.iv },
-    config.A2A_SESSION_SECRET,
-    aad,
-  )
 }

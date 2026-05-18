@@ -1,0 +1,52 @@
+# Sprint 3 S3.5 — CodeQL static analysis
+#
+# Runs GitHub's CodeQL engine against TypeScript + JavaScript.
+# Default queries + security-extended pack. Results upload to the
+# repo's Code Scanning view.
+#
+# Weekly schedule catches advisories that land in the CodeQL DB
+# between PRs.
+
+name: codeql
+
+on:
+  pull_request:
+    branches: [master, main]
+  push:
+    branches: [master, main]
+  schedule:
+    # Mondays 06:17 UTC — early enough that results are visible
+    # before the team's working day in most timezones.
+    - cron: '17 6 * * 1'
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+jobs:
+  analyze:
+    name: Analyze ${{ matrix.language }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [javascript-typescript]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-extended
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Analyze
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: '/language:${{ matrix.language }}'

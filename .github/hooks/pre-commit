@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# Sprint 3 S3.5 — recommended pre-commit hook.
+#
+# Install:
+#   ln -s ../../.github/hooks/pre-commit .git/hooks/pre-commit
+#   chmod +x .github/hooks/pre-commit
+#
+# Or via git config:
+#   git config core.hooksPath .github/hooks
+#
+# This hook runs the same fast guardrails that CI runs, so you catch
+# them locally before pushing. Slow checks (forge test, full pnpm test,
+# CodeQL) are deliberately NOT here — those belong to CI.
+
+set -euo pipefail
+
+# Color helpers
+if [ -t 1 ]; then
+  RED='\033[0;31m'
+  GREEN='\033[0;32m'
+  YELLOW='\033[0;33m'
+  NC='\033[0m'
+else
+  RED=''
+  GREEN=''
+  YELLOW=''
+  NC=''
+fi
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+cd "$REPO_ROOT"
+
+echo -e "${YELLOW}[pre-commit]${NC} running bypass check..."
+pnpm check:bypass
+
+echo -e "${YELLOW}[pre-commit]${NC} running route classification..."
+pnpm check:route-classification
+
+echo -e "${GREEN}[pre-commit]${NC} all guardrails passed."

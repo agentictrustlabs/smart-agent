@@ -1,3 +1,4 @@
+/** @sa-route web-auth @sa-auth session-cookie @sa-risk-tier medium @sa-validation none-no-body @sa-owner security */
 import { NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth/session'
 import { db, schema } from '@/db'
@@ -23,6 +24,7 @@ import {
   A2AUrlResolverError,
 } from '@/lib/clients/a2a-url-resolver'
 import { a2aFetch } from '@/lib/clients/a2a-fetch'
+import { webErrorResponse } from '@/lib/auth/error-response'
 
 /**
  * POST /api/a2a/bootstrap/client
@@ -63,7 +65,19 @@ export async function POST() {
         .where(eq(schema.localUserAccounts.id, user.id))
       user = { ...user, smartAccountAddress: smartAcct }
     } catch (err) {
-      return NextResponse.json({ error: `Smart account deployment failed: ${err instanceof Error ? err.message : 'unknown'}` }, { status: 500 })
+      return webErrorResponse({
+        publicMessage: 'Smart account deployment failed',
+        logMessage: '[a2a/bootstrap/client] smart account deployment failed',
+        logFields: {
+          walletAddress,
+          userId: user?.id,
+          errorCode: 'sa-deploy-failed',
+          // Contract revert messages often include calldata or
+          // upstream RPC URL — log only.
+          errorMessage: err instanceof Error ? err.message : 'unknown',
+        },
+        status: 500,
+      })
     }
   }
 

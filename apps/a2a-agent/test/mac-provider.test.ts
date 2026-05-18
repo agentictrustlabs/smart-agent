@@ -41,6 +41,10 @@ function localEnv(extra: Record<string, string> = {}): Record<string, string> {
     A2A_INTERSERVICE_HMAC_KEY_VERIFIER: HEX_SECRET,
     A2A_INTERSERVICE_HMAC_KEY_SKILL: HEX_SECRET,
     A2A_INTERSERVICE_HMAC_KEY_GEO: HEX_SECRET,
+    // S2.6 — `oauth-salt` MAC key. web-internal; not used for an
+    // inter-service hop. The factory still has to be able to construct
+    // a provider for it through the standard selector.
+    OAUTH_SALT_HMAC_KEY: HEX_SECRET,
     ...extra,
   }
 }
@@ -61,6 +65,12 @@ test('envKeyForMacKeyId maps a2a-to-person → the legacy person key', () => {
   const { legacy, awsKms } = envKeyForMacKeyId('a2a-to-person')
   assert.equal(legacy, 'A2A_INTERSERVICE_HMAC_KEY_PERSON')
   assert.equal(awsKms, 'AWS_KMS_MAC_KEY_ID_A2A_TO_PERSON')
+})
+
+test('envKeyForMacKeyId maps oauth-salt → OAUTH_SALT_HMAC_KEY / AWS_KMS_MAC_KEY_ID_OAUTH_SALT (S2.6)', () => {
+  const { legacy, awsKms } = envKeyForMacKeyId('oauth-salt')
+  assert.equal(legacy, 'OAUTH_SALT_HMAC_KEY')
+  assert.equal(awsKms, 'AWS_KMS_MAC_KEY_ID_OAUTH_SALT')
 })
 
 test('envKeyForMacKeyId covers every MacKeyId without throwing', () => {
@@ -221,6 +231,24 @@ test('buildMcpMacProvider returns the same shape as buildMacProvider', async () 
   const msg = new TextEncoder().encode('hello')
   const { mac } = await provider.generateMac({ canonicalMessage: msg })
   assert.equal(mac.length, 32)
+})
+
+test('buildWebMacProvider(env, "oauth-salt") selects the oauth-salt key (S2.6)', async () => {
+  // The S2.6 web-internal MAC key path: same factory, different key id.
+  const env = localEnv({
+    WEB_TO_A2A_HMAC_KEY: '0x' + '1'.repeat(64),
+    OAUTH_SALT_HMAC_KEY: '0x' + '2'.repeat(64),
+  })
+  const webDefault = buildWebMacProvider(env)
+  const oauthSalt = buildWebMacProvider(env, 'oauth-salt')
+  const msg = new TextEncoder().encode('hello')
+  const { mac: macDefault } = await webDefault.generateMac({ canonicalMessage: msg })
+  const { mac: macOauth } = await oauthSalt.generateMac({ canonicalMessage: msg })
+  // Same message under different keys → different MAC bytes.
+  assert.notDeepEqual(Array.from(macDefault), Array.from(macOauth))
+  // And the default-keyed mac must NOT verify under the oauth-salt provider.
+  const { valid } = await oauthSalt.verifyMac({ canonicalMessage: msg, mac: macDefault })
+  assert.equal(valid, false)
 })
 
 test('buildWebMacProvider uses the web-to-a2a key', async () => {

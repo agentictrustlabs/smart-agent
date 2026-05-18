@@ -28,27 +28,135 @@ function env(key: string, defaultValue?: string): string {
   return value
 }
 
-function requireSecret(key: string): string {
-  const value = process.env[key]
-  if (!value) {
-    throw new Error(`Missing required secret: ${key}. The A2A agent will not start without it.`)
+/**
+ * Sprint 1 W2.2 S1.3 — conditional `A2A_SESSION_SECRET` validation.
+ *
+ * The env-resident master secret is ONLY meaningful for the `local-aes`
+ * envelope-encryption backend (HKDF input keying material). When the
+ * backend is `aws-kms`, AWS KMS generates and unwraps the data key —
+ * `A2A_SESSION_SECRET` is unused, and leaving it present in a production
+ * env adds a forensics liability ("did the env secret leak too?") without
+ * any operational value.
+ *
+ * Rules:
+ *   - backend='local-aes'         → secret REQUIRED, ≥64 hex chars
+ *   - backend='aws-kms' + prod    → secret MUST NOT be set
+ *   - backend='aws-kms' + non-prod → secret tolerated but ignored (warn)
+ *
+ * Mirrored downstream by `createLocalAesProvider` in
+ * `packages/sdk/src/key-custody/local-aes-provider.ts` (which performs
+ * the same shape check on its own input — same secret value flows in
+ * via `buildKeyProvider`).
+ *
+ * Exported (alongside its pure counterpart `validateSessionSecret`) so
+ * test/config-invariants.test.ts can exercise every branch without
+ * having to re-import the whole config module under fresh
+ * `process.env`.
+ */
+export interface StartupEnv {
+  A2A_KMS_BACKEND?: string
+  NODE_ENV?: string
+  A2A_SESSION_SECRET?: string
+  ALLOW_LEGACY_A2A_SESSIONS?: string
+}
+
+export function validateSessionSecret(envIn: StartupEnv): string {
+  const backend = envIn.A2A_KMS_BACKEND ?? 'local-aes'
+  const nodeEnv = envIn.NODE_ENV ?? 'development'
+  const raw = envIn.A2A_SESSION_SECRET
+
+  if (backend === 'local-aes') {
+    if (!raw) {
+      throw new Error(
+        "config: A2A_SESSION_SECRET required and must be ≥32 bytes hex (64 hex chars) " +
+          "when A2A_KMS_BACKEND='local-aes'",
+      )
+    }
+    if (raw.includes('change-in-production') || raw.length < 16) {
+      throw new Error(
+        'config: weak A2A_SESSION_SECRET. Use a strong random value (32+ hex chars).',
+      )
+    }
+    const hex = raw.startsWith('0x') ? raw.slice(2) : raw
+    if (hex.length < 64) {
+      throw new Error(
+        "config: A2A_SESSION_SECRET required and must be ≥32 bytes hex (64 hex chars) " +
+          "when A2A_KMS_BACKEND='local-aes'",
+      )
+    }
+    return raw
   }
-  if (value.includes('change-in-production') || value.length < 16) {
-    throw new Error(`Weak secret detected for ${key}. Use a strong random value (32+ hex chars).`)
+
+  if (backend === 'aws-kms') {
+    if (raw) {
+      if (nodeEnv === 'production') {
+        throw new Error(
+          "config: A2A_SESSION_SECRET must NOT be set in production when A2A_KMS_BACKEND='aws-kms'. " +
+            'AWS KMS generates the envelope data key; an env-resident master secret adds a forensics ' +
+            'liability with no operational value. Remove it from your deployment env.',
+        )
+      }
+      // Non-prod tolerated — warn so a developer who switched their env
+      // notices the unused value.
+      console.warn(
+        '[config] A2A_SESSION_SECRET is set but unused — A2A_KMS_BACKEND=aws-kms uses KMS for data-key generation.',
+      )
+    }
+    return ''
   }
-  return value
+
+  // Other backends (vault-transit etc.) — pass-through without
+  // validation. The provider factory throws on unknown backends so we
+  // don't need to duplicate the gate here.
+  return raw ?? ''
+}
+
+function resolveSessionSecret(): string {
+  return validateSessionSecret({
+    A2A_KMS_BACKEND: process.env.A2A_KMS_BACKEND,
+    NODE_ENV: process.env.NODE_ENV,
+    A2A_SESSION_SECRET: process.env.A2A_SESSION_SECRET,
+  })
+}
+
+/**
+ * Sprint 1 W2.2 S1.6 — resolver for `ALLOW_LEGACY_A2A_SESSIONS`.
+ *
+ * Reads the explicit env var when set ('true' / 'false' /
+ * '1' / '0'); otherwise defaults to `true` in dev / `false` in prod.
+ *
+ * Exported so test/config-invariants.test.ts can pin the dev/prod
+ * defaulting behaviour without depending on global `process.env` state.
+ */
+export function validateAllowLegacySessions(envIn: StartupEnv): boolean {
+  const raw = envIn.ALLOW_LEGACY_A2A_SESSIONS
+  if (raw !== undefined) {
+    const v = raw.trim().toLowerCase()
+    if (v === 'true' || v === '1') return true
+    if (v === 'false' || v === '0') return false
+    throw new Error(
+      `config: ALLOW_LEGACY_A2A_SESSIONS must be 'true' or 'false' (got '${raw}')`,
+    )
+  }
+  return (envIn.NODE_ENV ?? 'development') !== 'production'
+}
+
+function resolveAllowLegacySessions(): boolean {
+  return validateAllowLegacySessions({
+    NODE_ENV: process.env.NODE_ENV,
+    ALLOW_LEGACY_A2A_SESSIONS: process.env.ALLOW_LEGACY_A2A_SESSIONS,
+  })
 }
 
 export const config = {
   PORT: parseInt(env('PORT', '3100'), 10),
   RPC_URL: env('RPC_URL', 'http://127.0.0.1:8545'),
   CHAIN_ID: parseInt(env('CHAIN_ID', '31337'), 10),
-  A2A_SESSION_SECRET: requireSecret('A2A_SESSION_SECRET'),
+  A2A_SESSION_SECRET: resolveSessionSecret(),
   // KMS migration K0+K1+K2 — backend selector for the session-package
   // data-key provider. Defaults to 'local-aes' for dev. Production must
-  // set this to 'aws-kms' (K2 v1 target; KMS-IMPLEMENTATION-PLAN.md §3.2a)
-  // or, when adopted, 'vault-transit' (§3.2b sibling). `buildKeyProvider`
-  // refuses 'local-aes' when NODE_ENV=production.
+  // set this to 'aws-kms' (K2 v1 target; KMS-IMPLEMENTATION-PLAN.md §3.2a).
+  // `buildKeyProvider` refuses 'local-aes' when NODE_ENV=production.
   A2A_KMS_BACKEND: env('A2A_KMS_BACKEND', 'local-aes'),
   // K2 v1 — AWS KMS routing identifiers. Read here but validated lazily
   // by `buildKeyProvider` on first use so dev/test runs without these set
@@ -94,34 +202,30 @@ export const config = {
   // For production, this is the AWS KMS asymmetric `ECC_SECG_P256K1` key
   // (K4 PR-2) — the env var is only the dev fallback, read by
   // `createLocalSecp256k1Signer` when `A2A_KMS_BACKEND='local-aes'`.
-  //
-  // KMS K4 PR-1: renamed from `A2A_MASTER_EOA_PRIVATE_KEY` to
-  // `A2A_MASTER_PRIVATE_KEY`. The "EOA" suffix is misleading once the key
-  // lives in KMS (KMS-resident keys are still EOAs on-chain). The old name
-  // is read as a fallback for one release cycle; PR-5 removes it. Deploys
-  // running only the old name receive a deprecation warning on boot.
   A2A_MASTER_PRIVATE_KEY: (process.env.A2A_MASTER_PRIVATE_KEY
-    ?? process.env.A2A_MASTER_EOA_PRIVATE_KEY
     ?? '0x0000000000000000000000000000000000000000000000000000000000000000') as `0x${string}`,
+  // Mirror NODE_ENV onto the resolved config so downstream modules (e.g.
+  // require-session middleware) don't have to read process.env directly.
+  NODE_ENV: process.env.NODE_ENV ?? 'development',
+  // Sprint 1 W2.2 S1.6 — legacy session-table fallback kill switch.
+  // When false, `apps/a2a-agent/src/middleware/require-session.ts`
+  // refuses to fall back to the legacy a2a `sessions` table (Path B)
+  // after the SessionGrant lookup (Path A) returns no match. Defaults to
+  // `true` in dev (preserves the demo-login + delegation-bootstrapped
+  // session flow), `false` in production (forces every prod-grade
+  // session through the SessionGrant ceremony). Explicit
+  // `ALLOW_LEGACY_A2A_SESSIONS=true` in prod is honoured as an
+  // operator-controlled escape hatch (incident response, staged
+  // migration); the middleware writes an audit-deny row in either
+  // direction so the legacy reach is always visible in the audit log.
+  ALLOW_LEGACY_A2A_SESSIONS: resolveAllowLegacySessions(),
 } as const
 
-// ─── Deprecation: A2A_MASTER_EOA_PRIVATE_KEY → A2A_MASTER_PRIVATE_KEY ─
-// One-cycle backwards-compat. PR-5 of the K4 migration removes the old
-// name from the codebase entirely. Emit a single warning at boot so
-// operators can update their .env files before the next cutover.
-if (process.env.A2A_MASTER_EOA_PRIVATE_KEY && !process.env.A2A_MASTER_PRIVATE_KEY) {
-  console.warn(
-    '[config] A2A_MASTER_EOA_PRIVATE_KEY is deprecated; rename to A2A_MASTER_PRIVATE_KEY ' +
-      '(K4 PR-1; the old name is removed in PR-5).',
-  )
-}
-
 // ─── KMS backend fail-fast validation ────────────────────────────────
-// When A2A_KMS_BACKEND='aws-kms' (or 'vault-transit' once adopted), every
-// required env var must be present and well-formed at process boot.
-// `buildKeyProvider` performs the same checks lazily on first use, but
-// failing here gives the operator a clean startup error rather than a
-// runtime 503 on the first /session/init call.
+// When A2A_KMS_BACKEND='aws-kms', every required env var must be present
+// and well-formed at process boot. `buildKeyProvider` performs the same
+// checks lazily on first use, but failing here gives the operator a clean
+// startup error rather than a runtime 503 on the first /session/init call.
 if (config.A2A_KMS_BACKEND === 'aws-kms') {
   if (!config.AWS_REGION) {
     throw new Error("config: AWS_REGION is required when A2A_KMS_BACKEND='aws-kms'")

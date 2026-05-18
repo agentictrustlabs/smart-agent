@@ -31,7 +31,8 @@ import {
 import { grantCookieName } from '@/lib/auth/session-cookie'
 import { fetchSessionByCookie } from '@/lib/auth/person-mcp-session-client'
 import { getKeyCustody } from '@/lib/key-custody'
-import { toBase64Url, buildWebMacProvider, type KmsMacProvider } from '@smart-agent/sdk'
+import { toBase64Url } from '@smart-agent/sdk'
+import { buildWebMacProvider, type KmsMacProvider } from '@smart-agent/sdk/key-custody'
 import { createHash, randomUUID } from 'node:crypto'
 
 let cachedDispatchMacProvider: KmsMacProvider | null = null

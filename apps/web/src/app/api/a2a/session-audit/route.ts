@@ -1,3 +1,4 @@
+/** @sa-route web-auth @sa-auth session-cookie @sa-owner security */
 /**
  * GET /api/a2a/session-audit?sessionId=<id>&limit=<n>
  *

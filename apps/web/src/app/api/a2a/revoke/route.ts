@@ -1,3 +1,4 @@
+/** @sa-route web-auth @sa-auth session-cookie @sa-audit-event session.revoke @sa-validation none-no-body @sa-owner security */
 /**
  * POST /api/a2a/revoke
  *

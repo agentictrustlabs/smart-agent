@@ -2,6 +2,8 @@ import { createMiddleware } from 'hono/factory'
 import { eq, and } from 'drizzle-orm'
 import { db } from '../db'
 import { sessions } from '../db/schema'
+import { config } from '../config'
+import { auditDeny } from '../lib/audit'
 
 type SessionRow = typeof sessions.$inferSelect
 
@@ -37,6 +39,16 @@ interface GrantRecord {
  * principal (`agentHostContext.agentAddress`). A session minted for one
  * agent cannot be replayed against another agent's subdomain — that would
  * defeat the whole point of host-scoped routing.
+ *
+ * Sprint 1 W2.2 S1.6 — legacy session-table fallback (Path B) is
+ * controlled by `config.ALLOW_LEGACY_A2A_SESSIONS` (env
+ * `ALLOW_LEGACY_A2A_SESSIONS`, defaults to `true` in dev / `false` in
+ * prod). When disabled, a Bearer that doesn't resolve via Path A is
+ * rejected with a 401 and an `audit-deny` row tagged
+ * `legacy-session-fallback-disabled`. The escape hatch
+ * (`ALLOW_LEGACY_A2A_SESSIONS=true` in prod) is preserved for incident
+ * response and staged migration; the audit log captures every legacy
+ * reach either way.
  */
 export const requireSession = createMiddleware(async (c, next) => {
   const authHeader = c.req.header('Authorization')
@@ -72,6 +84,22 @@ export const requireSession = createMiddleware(async (c, next) => {
   } catch { /* fall through to legacy lookup */ }
 
   if (!resolvedSession) {
+    // Sprint 1 W2.2 S1.6 — Path B kill switch. The legacy a2a `sessions`
+    // table holds rows from demo-login and any other paths that mint
+    // A2A sessions WITHOUT going through the SessionGrant ceremony. In
+    // production those paths should not exist (demo-login is dev-only),
+    // so the default is to refuse Path B and write an audit-deny row.
+    // The `ALLOW_LEGACY_A2A_SESSIONS=true` opt-in lets an operator
+    // re-enable the fallback for incident response.
+    if (!config.ALLOW_LEGACY_A2A_SESSIONS) {
+      await auditDeny(c, {
+        route: new URL(c.req.url).pathname,
+        reason: 'legacy-session-fallback-disabled',
+        executionPath: 'mcp-only',
+        mcpServer: 'a2a-agent',
+      })
+      return c.json({ error: 'Invalid or expired session token' }, 401)
+    }
     // Path B — legacy a2a sessions table.
     const [sessionRow] = await db
       .select()

@@ -1,3 +1,4 @@
+/** @sa-route web-auth @sa-auth session-cookie @sa-owner developer */
 import { NextResponse } from 'next/server'
 import { getExplorerRecords, getExplorerRelationships } from '@/lib/actions/explorer.action'
 

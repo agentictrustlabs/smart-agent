@@ -1,7 +1,19 @@
+/** @sa-route web-auth @sa-auth session-cookie @sa-validation zod @sa-owner developer */
 import { NextResponse } from 'next/server'
+import { z } from 'zod'
 import { cookies } from 'next/headers'
 import { getSession } from '@/lib/auth/session'
 import { grantCookieName } from '@/lib/auth/session-cookie'
+import { webErrorResponse } from '@/lib/auth/error-response'
+import { validateRequest } from '@/lib/auth/validate-request'
+
+// Profile is free-form key/value. Cap individual string values so a
+// malicious user can't ship a 64 KB display-name.
+const PutBodySchema = z.object({
+  displayName: z.string().max(256).optional(),
+  email: z.string().max(320).optional(),  // RFC 5321 limit
+  bio: z.string().max(2048).optional(),
+}).catchall(z.string().max(2048))
 
 const A2A_AGENT_URL = process.env.A2A_AGENT_URL ?? 'http://localhost:3100'
 
@@ -45,7 +57,20 @@ export async function GET(request: Request) {
 
     if (!mintRes.ok) {
       const err = await mintRes.json()
-      return NextResponse.json({ error: 'Failed to mint delegation token', detail: err }, { status: 502 })
+      return webErrorResponse({
+        publicMessage: 'Failed to mint delegation token',
+        logMessage: '[a2a/profile GET] delegation mint upstream failure',
+        logFields: {
+          walletAddress: session.walletAddress,
+          upstreamStatus: mintRes.status,
+          // Upstream body may include token fields / internal URLs —
+          // log only, never leak to the caller.
+          upstreamError: err,
+          errorCode: 'delegation-mint-failed',
+        },
+        status: 502,
+        request,
+      })
     }
 
     const { token: delegationToken } = await mintRes.json()
@@ -55,10 +80,17 @@ export async function GET(request: Request) {
     // For now, return the delegation token so the client can use it.
     return NextResponse.json({ delegationToken, accountAddress: session.walletAddress })
   } catch (error) {
-    return NextResponse.json(
-      { error: 'Profile fetch failed', detail: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 },
-    )
+    return webErrorResponse({
+      publicMessage: 'Profile fetch failed',
+      logMessage: '[a2a/profile GET] threw',
+      logFields: {
+        walletAddress: session.walletAddress,
+        errorCode: 'profile-fetch-threw',
+        errorMessage: error instanceof Error ? error.message : 'Unknown error',
+      },
+      status: 500,
+      request,
+    })
   }
 }
 
@@ -77,7 +109,9 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: 'No A2A session' }, { status: 401 })
   }
 
-  const body = await request.json()
+  const parsed = await validateRequest(request, { schema: PutBodySchema })
+  if (!parsed.ok) return parsed.response
+  const body = parsed.data
 
   try {
     const mintRes = await fetch(`${A2A_AGENT_URL}/delegation/mint`, {
@@ -90,7 +124,18 @@ export async function PUT(request: Request) {
 
     if (!mintRes.ok) {
       const err = await mintRes.json()
-      return NextResponse.json({ error: 'Failed to mint delegation token', detail: err }, { status: 502 })
+      return webErrorResponse({
+        publicMessage: 'Failed to mint delegation token',
+        logMessage: '[a2a/profile PUT] delegation mint upstream failure',
+        logFields: {
+          walletAddress: session.walletAddress,
+          upstreamStatus: mintRes.status,
+          upstreamError: err,
+          errorCode: 'delegation-mint-failed',
+        },
+        status: 502,
+        request,
+      })
     }
 
     const { token: delegationToken } = await mintRes.json()
@@ -98,9 +143,16 @@ export async function PUT(request: Request) {
     // Return the delegation token + profile data for the client to use
     return NextResponse.json({ delegationToken, profileData: body, accountAddress: session.walletAddress })
   } catch (error) {
-    return NextResponse.json(
-      { error: 'Profile update failed', detail: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 },
-    )
+    return webErrorResponse({
+      publicMessage: 'Profile update failed',
+      logMessage: '[a2a/profile PUT] threw',
+      logFields: {
+        walletAddress: session.walletAddress,
+        errorCode: 'profile-update-threw',
+        errorMessage: error instanceof Error ? error.message : 'Unknown error',
+      },
+      status: 500,
+      request,
+    })
   }
 }

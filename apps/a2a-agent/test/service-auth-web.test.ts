@@ -27,7 +27,8 @@ import assert from 'node:assert/strict'
 import { Hono } from 'hono'
 import { createHash, randomUUID } from 'node:crypto'
 import { requireServiceAuth, buildWebCanonical } from '../src/auth/service-auth-web'
-import { buildWebMacProvider, toBase64Url } from '@smart-agent/sdk'
+import { toBase64Url } from '@smart-agent/sdk'
+import { buildWebMacProvider } from '@smart-agent/sdk/key-custody'
 
 function mountApp() {
   const app = new Hono()

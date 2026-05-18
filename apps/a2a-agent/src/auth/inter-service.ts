@@ -173,7 +173,14 @@ export function requireInterServiceAuth(): MiddlewareHandler {
     try {
       macBytes = fromBase64Url(signature)
     } catch {
-      await auditDeny(c, { ...denyFields, mcpServer: service, reason: 'signature mismatch (bad base64url)' })
+      // Sprint 3 S3.2 — tag MAC verify failures so the operator can
+      // join across the inter-service and web-service planes.
+      await auditDeny(c, {
+        ...denyFields,
+        mcpServer: service,
+        reason: 'signature mismatch (bad base64url)',
+        eventType: 'kms-mac-verify-failed',
+      })
       return c.json({ error: 'signature mismatch' }, 401)
     }
 
@@ -182,7 +189,12 @@ export function requireInterServiceAuth(): MiddlewareHandler {
       mac: macBytes,
     })
     if (!valid) {
-      await auditDeny(c, { ...denyFields, mcpServer: service, reason: 'signature mismatch' })
+      await auditDeny(c, {
+        ...denyFields,
+        mcpServer: service,
+        reason: 'signature mismatch',
+        eventType: 'kms-mac-verify-failed',
+      })
       return c.json({ error: 'signature mismatch' }, 401)
     }
 

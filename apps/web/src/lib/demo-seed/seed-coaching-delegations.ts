@@ -31,6 +31,7 @@ import { privateKeyToAccount } from 'viem/accounts'
 import { keccak256, encodePacked } from 'viem'
 import {
   hashDelegation, encodeTimestampTerms, buildCaveat, buildDataScopeCaveat,
+  buildDelegateBindingCaveat,
   DATA_ACCESS_DELEGATION, ROLE_DATA_GRANTOR, ROLE_DATA_GRANTEE, ROOT_AUTHORITY,
   agentRelationshipAbi,
 } from '@smart-agent/sdk'
@@ -140,9 +141,15 @@ export async function seedCoachingCrossDelegations(pairs: CoachingPair[]): Promi
       fields: COACHING_PROFILE_FIELDS,
     }]
 
+    // Sprint 2 S2.3 — bind the cross-delegation to BOTH the recipient's
+    // smart-account AND their person-agent so person-mcp can assert the
+    // session subject matches the bound delegate at verify time. In the
+    // single-account model these are equal; in dual-account mode they
+    // differ but both are committed to the data owner's EIP-712 signature.
     const caveats = [
       buildCaveat(timestampEnforcerAddr, encodeTimestampTerms(now, expiresAt)),
       buildDataScopeCaveat(grants),
+      buildDelegateBindingCaveat(coachSA, coachPALower),
     ]
 
     const delegation = {

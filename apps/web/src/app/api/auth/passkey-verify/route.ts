@@ -1,3 +1,4 @@
+/** @sa-route bootstrap @sa-auth none-with-csrf @sa-rate-limit 10/min @sa-risk-tier high @sa-validation zod @sa-owner security */
 /**
  * POST /api/auth/passkey-verify
  *
@@ -51,36 +52,44 @@ import {
   normaliseLowS,
   namehash,
 } from '@smart-agent/sdk'
+import { z } from 'zod'
 import { mintSession, SESSION_COOKIE } from '@/lib/auth/native-session'
 import { verifyPasskeyChallenge as verifyChallenge } from '@/lib/auth/passkey-challenge'
+import { webErrorResponse } from '@/lib/auth/error-response'
+import { requireOriginAllowed } from '@/lib/auth/csrf'
+import { validateRequest, DELEGATION_BODY_LIMIT_BYTES } from '@/lib/auth/validate-request'
+
+// WebAuthn assertion payloads can be several KB once the
+// authenticator data + DER signature + clientDataJSON are base64-
+// encoded. We accept the larger DELEGATION cap (1 MiB) — same class
+// as session-grant/finalize, the other route that carries WebAuthn.
+const BodySchema = z.object({
+  name: z.string().max(256).optional(),
+  accountAddress: z.string().max(64).optional(),
+  token: z.string().min(1).max(8192),
+  challenge: z.string().min(1).max(2048),
+  credentialIdBase64Url: z.string().min(1).max(4096),
+  authenticatorDataBase64Url: z.string().min(1).max(16384),
+  clientDataJSONBase64Url: z.string().min(1).max(16384),
+  signatureBase64Url: z.string().min(1).max(4096),
+})
 
 const RPC_URL = process.env.RPC_URL ?? 'http://127.0.0.1:8545'
 const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? '31337')
 
 const ERC1271_MAGIC = '0x1626ba7e'
 
-interface VerifyBody {
-  /** .agent name to resolve (preferred). e.g. "richp.agent". */
-  name?: string
-  /** Explicit smart-account address (skips name resolution). */
-  accountAddress?: string
-  token: string
-  challenge: string                 // base64url of the 32-byte server-issued challenge
-  credentialIdBase64Url: string
-  authenticatorDataBase64Url: string
-  clientDataJSONBase64Url: string
-  signatureBase64Url: string
-}
-
 export async function POST(request: Request) {
-  // CSRF guard.
-  const origin = request.headers.get('origin')
-  const host = request.headers.get('host')
-  if (origin && host && !origin.includes(host.split(':')[0])) {
-    return NextResponse.json({ error: 'CSRF rejected' }, { status: 403 })
-  }
+  // S2.2 — CSRF guard via parsed-URL exact-allowlist.
+  const csrfDenied = requireOriginAllowed(request)
+  if (csrfDenied) return csrfDenied
 
-  const body = await request.json() as VerifyBody
+  const parsed = await validateRequest(request, {
+    schema: BodySchema,
+    maxBytes: DELEGATION_BODY_LIMIT_BYTES,
+  })
+  if (!parsed.ok) return parsed.response
+  const body = parsed.data
   if (!verifyChallenge(body.token, body.challenge)) {
     return NextResponse.json({ error: 'invalid or expired challenge' }, { status: 401 })
   }
@@ -109,7 +118,17 @@ export async function POST(request: Request) {
       }
       accountAddr = getAddress(resolved)
     } catch (err) {
-      return NextResponse.json({ error: `name resolution failed: ${(err as Error).message}` }, { status: 400 })
+      return webErrorResponse({
+        publicMessage: 'Name resolution failed',
+        logMessage: '[passkey-verify] name resolution failed',
+        logFields: {
+          name: body.name?.trim(),
+          errorCode: 'name-resolve-failed',
+          errorMessage: (err as Error).message,
+        },
+        status: 400,
+        request,
+      })
     }
   } else if (body.accountAddress && isAddress(body.accountAddress)) {
     accountAddr = getAddress(body.accountAddress as `0x${string}`)
@@ -177,7 +196,19 @@ export async function POST(request: Request) {
     })) as `0x${string}`
     isValid = result.toLowerCase() === ERC1271_MAGIC
   } catch (err) {
-    return NextResponse.json({ error: `signature check reverted: ${(err as Error).message}` }, { status: 401 })
+    return webErrorResponse({
+      publicMessage: 'Invalid passkey signature',
+      logMessage: '[passkey-verify] signature check reverted',
+      logFields: {
+        accountAddr,
+        errorCode: 'erc1271-threw',
+        // `err.message` from a failed contract call can include
+        // calldata fragments — keep in server log only.
+        errorMessage: (err as Error).message,
+      },
+      status: 401,
+      request,
+    })
   }
 
   if (!isValid) {

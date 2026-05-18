@@ -20,7 +20,12 @@ import {
   consumeActionNonce,
   appendAuditEntry,
   bumpIdleDeadline,
+  consumeAction,
 } from '../session-store/index.js'
+import {
+  sessionDefaultMaxActions,
+  sessionDefaultMaxActionsPerMinute,
+} from '../config.js'
 
 export interface VerifyDelegatedInput {
   action: WalletActionV1
@@ -117,6 +122,40 @@ export async function verifyDelegatedWalletAction(
 
   // 11. Replay protection — nonce burned even if downstream tool fails.
   consumeActionNonce(session.smartAccountAddress, action.replayProtection.actionNonce)
+
+  // 11b. Action-count + rate-limit caps (Sprint 2 S2.1).
+  //
+  // SessionGrant.v1 carries `scope.maxActions` (total over session lifetime)
+  // and `scope.maxActionsPerMinute` (sliding 60s window). Pre-S2.1 these
+  // fields were declared but the verifier ignored them — a compromised
+  // session could replay actions up to the TTL window with no ceiling.
+  // The check-and-increment is atomic (better-sqlite3 sync transaction
+  // in consumeAction); two concurrent verifies for the same session
+  // serialize on the sqlite write lock so the second sees the first's
+  // increment before deciding. When the grant omits either field we fall
+  // back to defense-in-depth defaults from config (env-overridable).
+  const effectiveMaxActions = session.grant.scope.maxActions ?? sessionDefaultMaxActions()
+  const effectiveMaxPerMinute =
+    session.grant.scope.maxActionsPerMinute ?? sessionDefaultMaxActionsPerMinute()
+  const counterDecision = consumeAction({
+    sessionId: session.sessionId,
+    maxActions: effectiveMaxActions,
+    maxActionsPerMinute: effectiveMaxPerMinute,
+    now,
+  })
+  if (!counterDecision.allowed) {
+    if (counterDecision.exceeded === 'total') {
+      throw deny(
+        'action-cap-exceeded',
+        `total actions ${counterDecision.totalActions + 1} would exceed cap ${counterDecision.cap}`,
+      )
+    }
+    // 'rate'
+    throw deny(
+      'rate-cap-exceeded',
+      `window actions ${counterDecision.windowCount + 1} would exceed per-minute cap ${counterDecision.cap}`,
+    )
+  }
 
   // 12. Slide the idle deadline forward.
   bumpIdleDeadline(session.sessionId, new Date(now + SESSION_GRANT_DEFAULTS.idleSeconds * 1000))

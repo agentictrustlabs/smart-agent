@@ -1,4 +1,4 @@
-/** @sa-route dev-only @sa-prod-gate requireDev */
+/** @sa-route dev-only @sa-auth none @sa-prod-gate requireDev @sa-owner ontologist */
 import { NextResponse } from 'next/server'
 import { emitAgentsTurtle } from '@/lib/ontology/graphdb-sync'
 import { requireDev } from '@/lib/env-guard'

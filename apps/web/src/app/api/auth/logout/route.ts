@@ -1,3 +1,4 @@
+/** @sa-route web-auth @sa-auth session-cookie @sa-validation none-no-body @sa-owner security */
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { SESSION_COOKIE } from '@/lib/auth/native-session'

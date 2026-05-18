@@ -14,6 +14,22 @@
  *
  *   GET  /audit/log/:account    — read back the audit chain for a given
  *                                 smart account.
+ *
+ *   /session-store/*            — SessionRecord lifecycle (insert/by-cookie/
+ *                                 active/revoke/bump-epoch). Called by the
+ *                                 web app via a2a-agent's passthrough.
+ *
+ * Sprint 1 W2.1 — inbound service-auth: every route below requires a
+ * valid `X-SA-Service: a2a-agent` HMAC envelope (`requireInboundServiceAuth`).
+ * Before this change, person-mcp's HTTP port was unauthenticated at the
+ * wire — a network-adjacent caller could mint sessions, append audit
+ * rows, or invoke wallet-action dispatch for any victim. The HMAC key
+ * (`a2a-to-person`) is shared with a2a-agent's outbound signer; only
+ * the two services hold it.
+ *
+ * Sprint 1 W2.1 also adds audit-deny parity: every `DelegatedActionDenied`
+ * catch writes a `decision: 'denied'` row before returning 403 so a
+ * probing attacker leaves a trail.
  */
 
 import { Hono } from 'hono'
@@ -33,10 +49,19 @@ import {
 } from '../session-store/index.js'
 import type { SessionRecord } from '@smart-agent/privacy-creds/session-grant'
 import { verifyInsertPasskey, type InsertPasskeyAssertion } from './verify-insert-passkey.js'
+import { requireInboundServiceAuth } from './require-inbound-service-auth.js'
+import { auditDeny } from '../lib/audit.js'
+
+// Sprint 1 W2.1 — every route on this Hono instance is gated on
+// inbound service-auth. Applied per-route (not via `use('*')`) so that
+// when this sub-app is mounted alongside others under `/` the
+// middleware doesn't fire twice for paths that live in the other
+// sub-app (which would double-burn the replay nonce).
+const auth = requireInboundServiceAuth()
 
 export const walletActionRoutes = new Hono()
 
-walletActionRoutes.post('/wallet-action/verify', async (c) => {
+walletActionRoutes.post('/wallet-action/verify', auth, async (c) => {
   const body = await c.req.json<{
     action: unknown
     actionSignature: `0x${string}`
@@ -59,13 +84,21 @@ walletActionRoutes.post('/wallet-action/verify', async (c) => {
     return c.json({ ok: true })
   } catch (err) {
     if (err instanceof DelegatedActionDenied) {
+      // Phase 1D parity — emit an audit-deny row before returning 403
+      // so a probing attacker's failed verify attempts leave a trail.
+      auditDeny(c, {
+        route: '/wallet-action/verify',
+        mcpServer: 'a2a-agent',
+        reason: `${err.code}: ${err.detail}`,
+        sessionId: body.sessionId,
+      })
       return c.json({ ok: false, code: err.code, detail: err.detail }, 403)
     }
     return c.json({ ok: false, code: 'verifier_error', detail: err instanceof Error ? err.message : String(err) }, 500)
   }
 })
 
-walletActionRoutes.post('/audit/append', async (c) => {
+walletActionRoutes.post('/audit/append', auth, async (c) => {
   const body = await c.req.json<{
     smartAccountAddress: `0x${string}`
     sessionId: string
@@ -96,7 +129,7 @@ walletActionRoutes.post('/audit/append', async (c) => {
   return c.json({ entryHash: entry.entryHash, prevEntryHash: entry.prevEntryHash })
 })
 
-walletActionRoutes.get('/audit/log/:account', (c) => {
+walletActionRoutes.get('/audit/log/:account', auth, (c) => {
   const account = c.req.param('account') as `0x${string}`
   const limitParam = c.req.query('limit')
   const limit = limitParam ? Math.min(500, Math.max(1, parseInt(limitParam, 10))) : 100
@@ -106,13 +139,13 @@ walletActionRoutes.get('/audit/log/:account', (c) => {
 
 // ─── SessionRecord lifecycle (called by web app) ────────────────────
 
-walletActionRoutes.get('/session-store/epoch/:account', (c) => {
+walletActionRoutes.get('/session-store/epoch/:account', auth, (c) => {
   const account = c.req.param('account') as `0x${string}`
   const epoch = getRevocationEpoch(account)
   return c.json({ epoch })
 })
 
-walletActionRoutes.post('/session-store/insert', async (c) => {
+walletActionRoutes.post('/session-store/insert', auth, async (c) => {
   const body = await c.req.json<{
     record: Omit<SessionRecord, 'idleExpiresAt' | 'expiresAt' | 'createdAt' | 'revokedAt'> & {
       idleExpiresAtMs: number
@@ -203,25 +236,25 @@ walletActionRoutes.post('/session-store/insert', async (c) => {
   return c.json({ ok: true })
 })
 
-walletActionRoutes.get('/session-store/by-cookie/:cookieValue', (c) => {
+walletActionRoutes.get('/session-store/by-cookie/:cookieValue', auth, (c) => {
   const cookieValue = c.req.param('cookieValue')
   const record = getSessionByCookieValue(cookieValue)
   return c.json({ record })
 })
 
-walletActionRoutes.get('/session-store/active/:account', (c) => {
+walletActionRoutes.get('/session-store/active/:account', auth, (c) => {
   const account = c.req.param('account') as `0x${string}`
   const records = listActiveSessionsForAccount(account)
   return c.json({ records })
 })
 
-walletActionRoutes.post('/session-store/revoke', async (c) => {
+walletActionRoutes.post('/session-store/revoke', auth, async (c) => {
   const body = await c.req.json<{ sessionId: string }>()
   revokeSession(body.sessionId)
   return c.json({ ok: true })
 })
 
-walletActionRoutes.post('/session-store/bump-epoch', async (c) => {
+walletActionRoutes.post('/session-store/bump-epoch', auth, async (c) => {
   const body = await c.req.json<{ smartAccountAddress: `0x${string}` }>()
   const epoch = bumpRevocationEpoch(body.smartAccountAddress)
   return c.json({ epoch })

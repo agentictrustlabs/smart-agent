@@ -19,6 +19,7 @@ import { correlationId } from './middleware/correlation-id'
 import { assertPolicyCompleteness } from './lib/policy-startup'
 import { cleanupOldNonces } from './auth/replay-nonce'
 import { MAX_CLOCK_SKEW_SECONDS } from './auth/inter-service'
+import { scheduleCheckpoints } from './lib/audit-checkpoint'
 
 const app = new Hono()
 
@@ -131,12 +132,34 @@ setInterval(() => {
   }
 }, NONCE_GC_INTERVAL_MS).unref()
 
+// ─── Sprint 3 S3.1 — Audit checkpoint scheduler ─────────────────────
+// Sign and persist a chain-head snapshot on a periodic interval (15 min
+// in prod / 1 min in dev). When `AUDIT_CHECKPOINT_SINK_URL` is set the
+// checkpoint is also POSTed to the external sink so an attacker who
+// tampers with local SQLite cannot also rewrite the external history.
+// See `apps/a2a-agent/src/lib/audit-checkpoint.ts` + the operator
+// runbook (`docs/operations/kms-signer-setup.md` § AUDIT_CHECKPOINT_SINK_URL).
+scheduleCheckpoints()
+if (process.env.AUDIT_CHECKPOINT_SINK_URL) {
+  console.log(`[audit-checkpoint] sink configured: ${process.env.AUDIT_CHECKPOINT_SINK_URL}`)
+} else {
+  console.log('[audit-checkpoint] no external sink (AUDIT_CHECKPOINT_SINK_URL unset) — local-only archive')
+}
+
 // ─── Start Server ───────────────────────────────────────────────────
 console.log(`Smart Agent A2A server starting on port ${config.PORT}`)
 console.log(`  Chain ID:    ${config.CHAIN_ID}`)
 console.log(`  RPC URL:     ${config.RPC_URL}`)
 console.log(`  host routing: *.${config.A2A_HOST_BASE}:${config.PORT}`)
 console.log(`  Agent card:  http://<slug>.${config.A2A_HOST_BASE}:${config.PORT}/.well-known/agent.json`)
+// Sprint 1 W2.2 — startup invariants summary line. Surfaces both the
+// envelope-encryption backend and the legacy-session kill-switch state
+// in the boot log so an operator inspecting a deploy can confirm the
+// posture at a glance.
+console.log(
+  `  startup posture: NODE_ENV=${config.NODE_ENV} A2A_KMS_BACKEND=${config.A2A_KMS_BACKEND} ` +
+    `ALLOW_LEGACY_A2A_SESSIONS=${config.ALLOW_LEGACY_A2A_SESSIONS}`,
+)
 
 serve({
   fetch: app.fetch,

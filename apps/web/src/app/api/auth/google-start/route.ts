@@ -1,3 +1,4 @@
+/** @sa-route bootstrap @sa-auth none @sa-owner security */
 import { NextResponse } from 'next/server'
 import {
   buildAuthorizeUrl,
@@ -9,6 +10,7 @@ import {
   RETURN_TO_COOKIE,
   type OAuthIntent,
 } from '@/lib/auth/google-oauth'
+import { webErrorResponse } from '@/lib/auth/error-response'
 
 /**
  * GET /api/auth/google-start[?intent=recover]
@@ -26,7 +28,16 @@ export async function GET(request: Request) {
   try {
     env = getGoogleEnv()
   } catch (e) {
-    return NextResponse.json({ error: (e as Error).message }, { status: 500 })
+    return webErrorResponse({
+      publicMessage: 'OAuth not configured',
+      logMessage: '[google-start] env load failed',
+      logFields: {
+        errorCode: 'google-env-failed',
+        errorMessage: (e as Error).message,
+      },
+      status: 500,
+      request,
+    })
   }
 
   const url = new URL(request.url)

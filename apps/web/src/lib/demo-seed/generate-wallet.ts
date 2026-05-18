@@ -4,6 +4,12 @@
  *
  * After this, the user is indistinguishable from a legacy-connected user
  * who completed onboarding — no fallbacks needed anywhere.
+ *
+ * DEPLOY/SEED-TIME ONLY (K6). This module is invoked from the boot-seed
+ * driver (`apps/web/src/lib/boot-seed.ts`) on fresh-start; it is NEVER
+ * called from a request handler. Its `DEPLOYER_PRIVATE_KEY` use is on
+ * the K6 allowlist by virtue of `apps/web/src/lib/demo-seed/**` being
+ * exempt in `scripts/check-no-bypass.sh`.
  */
 
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts'

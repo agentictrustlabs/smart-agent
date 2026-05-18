@@ -1,4 +1,4 @@
-/** @sa-route dev-only @sa-prod-gate requireDev */
+/** @sa-route dev-only @sa-auth none @sa-prod-gate requireDev @sa-owner developer */
 import { NextRequest, NextResponse } from 'next/server'
 import { listHubsForOnboarding } from '@/lib/actions/onboarding/setup-agent.action'
 import { getEdgesBySubject, getEdge } from '@/lib/contracts'

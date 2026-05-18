@@ -22,6 +22,18 @@ function requireEnv(name: string): string {
   return value
 }
 
+/**
+ * Defense-in-depth defaults applied by the WalletAction verifier when the
+ * minted SessionGrant.v1 omits `scope.maxActions` / `scope.maxActionsPerMinute`.
+ *
+ * Sprint 2 S2.1 — `SessionGrant.v1` declares these fields but the verifier
+ * used to ignore them. A compromised session could replay actions up to the
+ * TTL window with no ceiling. We now enforce the field's value when present,
+ * and these conservative defaults when absent.
+ */
+const DEFAULT_MAX_ACTIONS = 1000
+const DEFAULT_MAX_ACTIONS_PER_MINUTE = 60
+
 export const config = {
   /** DelegationManager contract address — REQUIRED for on-chain delegation verification */
   delegationManagerAddress: requireEnv('DELEGATION_MANAGER_ADDRESS') as `0x${string}`,
@@ -47,3 +59,32 @@ export const config = {
     | `0x${string}`
     | undefined,
 } as const
+
+function parseIntEnv(name: string, fallback: number): number {
+  const raw = process.env[name]
+  if (!raw) return fallback
+  const n = parseInt(raw, 10)
+  if (!Number.isFinite(n) || n < 0) {
+    throw new Error(`Invalid integer for env ${name}: "${raw}"`)
+  }
+  return n
+}
+
+/**
+ * Sprint 2 S2.1 — action-counter defaults. Read at call time (not at
+ * module-init) so test harnesses that mutate process.env before
+ * invoking the verifier see fresh values. Per-grant fields in
+ * `SessionGrant.v1.scope` always win when present.
+ *
+ * @returns The default total-action cap (env `SESSION_DEFAULT_MAX_ACTIONS`).
+ */
+export function sessionDefaultMaxActions(): number {
+  return parseIntEnv('SESSION_DEFAULT_MAX_ACTIONS', DEFAULT_MAX_ACTIONS)
+}
+
+/**
+ * @returns The default per-minute action cap (env `SESSION_DEFAULT_MAX_ACTIONS_PER_MINUTE`).
+ */
+export function sessionDefaultMaxActionsPerMinute(): number {
+  return parseIntEnv('SESSION_DEFAULT_MAX_ACTIONS_PER_MINUTE', DEFAULT_MAX_ACTIONS_PER_MINUTE)
+}

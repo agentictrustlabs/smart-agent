@@ -15,6 +15,10 @@
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,css}\" --ignore-path .gitignore",
     "typecheck": "pnpm -r typecheck",
     "check:bypass": "bash scripts/check-no-bypass.sh",
+    "check:route-classification": "tsx scripts/check-route-classification.ts",
+    "check:route-inventory": "tsx scripts/generate-route-inventory.ts --check",
+    "check:all": "pnpm check:bypass && pnpm check:route-classification && pnpm check:route-inventory",
+    "generate:route-inventory": "tsx scripts/generate-route-inventory.ts",
     "clean": "pnpm -r clean && rm -rf node_modules"
   },
   "devDependencies": {
@@ -25,6 +29,7 @@
     "ffmpeg-static": "^5.3.0",
     "ffprobe-static": "^3.1.0",
     "prettier": "^3.3.0",
+    "tsx": "^4.21.0",
     "typescript": "^5.5.0"
   },
   "engines": {

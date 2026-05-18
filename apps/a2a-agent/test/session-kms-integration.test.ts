@@ -9,7 +9,6 @@
  *   3. Tamper `account_address`        → AAD trip-wire on AES-GCM tag (401).
  *   4. Tamper `expires_at`             → AAD trip-wire on AES-GCM tag (401).
  *   5. Tamper `encrypted_data_key`     → HKDF re-derives wrong key; AES-GCM tag fails.
- *   6. Legacy row decryptable          → preserved rollback safety net.
  *
  * The /session/init → /session/package → MCP tool call HTTP flow itself is
  * exercised in `scripts/fresh-start.sh` (smoke test step at the end of the
@@ -36,7 +35,6 @@ import {
   decryptSessionPackage,
   __resetKeyProviderForTests,
 } from '../src/auth/encryption'
-import { encryptPayload, buildSessionAAD } from '@smart-agent/sdk'
 
 function newSession(): { id: string; accountAddress: string; chainId: number; expiresAt: string } {
   return {
@@ -188,35 +186,4 @@ test('tamper encrypted_data_key → HKDF re-derives wrong key; downstream tag fa
   const wrongSaltB64 = Buffer.from(new Uint8Array(16).fill(0xff)).toString('base64')
   db.update(sessions).set({ encryptedDataKey: wrongSaltB64 }).where(eq(sessions.id, meta.id)).run()
   await assert.rejects(() => loadAndDecrypt(meta))
-})
-
-test('legacy row (key_version=legacy) still decryptable through the helper', async () => {
-  // Write a row exactly as the pre-K3 code would, then route through the
-  // helper and confirm it falls through to `decryptLegacy`.
-  const meta = newSession()
-  const secret = process.env.A2A_SESSION_SECRET!
-  const aad = buildSessionAAD({
-    sessionId: meta.id,
-    accountAddress: meta.accountAddress,
-    chainId: meta.chainId,
-    expiresAt: meta.expiresAt,
-  })
-  const payload = { sessionPrivateKey: '0xlegacy' }
-  const enc = await encryptPayload(payload, secret, aad)
-
-  db.insert(sessions).values({
-    id: meta.id,
-    accountAddress: meta.accountAddress,
-    encryptedPackage: enc.ciphertext,
-    iv: enc.iv,
-    encryptedDataKey: null,
-    keyVersion: 'legacy',
-    kmsKeyId: null,
-    status: 'active',
-    expiresAt: meta.expiresAt,
-    createdAt: new Date().toISOString(),
-  }).run()
-
-  const back = await loadAndDecrypt(meta)
-  assert.deepEqual(back, payload)
 })

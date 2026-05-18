@@ -1,3 +1,4 @@
+/** @sa-route web-auth @sa-auth session-cookie @sa-owner developer */
 import { NextRequest, NextResponse } from 'next/server'
 import { listDisbursementsForProposal } from '@/lib/actions/disbursements.action'
 

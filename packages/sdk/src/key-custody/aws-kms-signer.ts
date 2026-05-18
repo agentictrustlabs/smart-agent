@@ -106,6 +106,31 @@ export interface AwsKmsSignerEnv {
 export interface AwsKmsSignerDeps {
   client?: KMSClient
   requestTimeoutMs?: number
+  /**
+   * Sprint 3 S3.2 — optional audit callback. When provided, a single
+   * audit event is emitted on every successful `signA2AAction` call
+   * carrying the keyId, signer address, and the caller's actionId /
+   * sessionId. Failures are NOT routed here — the SDK never owns the
+   * audit-table writes; the a2a-agent caller traps the throw and
+   * decides whether the failure is itself audit-worthy (today: yes,
+   * but as a deny row written by the caller).
+   */
+  audit?: (event: AwsKmsSignerAuditEvent) => Promise<void> | void
+}
+
+/**
+ * Sprint 3 S3.2 — payload handed to the optional `audit` callback after
+ * a successful `kms:Sign` call. The SDK does NOT depend on the
+ * audit-table schema — the callback receives a plain record and the
+ * a2a-agent caller writes the corresponding `execution_audit` row.
+ */
+export interface AwsKmsSignerAuditEvent {
+  keyId: string
+  signerAddress: `0x${string}`
+  sessionId: string
+  actionId: string
+  accountAddress: string
+  chainId: string
 }
 
 /** Public shape returned by `createAwsKmsSigner`. Mirrors `LocalSecp256k1Signer`. */
@@ -353,6 +378,26 @@ export function createAwsKmsSigner(
       sig.set(bigIntTo32Bytes(r), 0)
       sig.set(bigIntTo32Bytes(s), 32)
       sig[64] = recovery + 27
+
+      // Sprint 3 S3.2 — emit the audit event AFTER the signature is
+      // fully derived. We do this best-effort: a failing audit must not
+      // cancel a returned signature (the call already committed at AWS).
+      if (deps.audit) {
+        try {
+          await deps.audit({
+            keyId: env.AWS_KMS_SIGNER_KEY_ID,
+            signerAddress: cachedAddress!,
+            sessionId,
+            actionId,
+            accountAddress,
+            chainId,
+          })
+        } catch (err) {
+          // Swallow — log to stderr so an operator can see broken audit
+          // plumbing in the agent logs without breaking signing.
+          console.error('[aws-kms-signer audit] callback threw:', err)
+        }
+      }
 
       return {
         signature: sig,

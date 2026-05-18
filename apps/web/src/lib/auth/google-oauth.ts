@@ -11,7 +11,8 @@
  *   6. Caller takes the verified email and derives a smart-account address.
  */
 
-import { createHash, randomBytes } from 'node:crypto'
+import { randomBytes } from 'node:crypto'
+import { deriveOauthSaltBigInt } from './oauth-salt'
 
 const AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth'
 const TOKEN_URL = 'https://oauth2.googleapis.com/token'
@@ -137,24 +138,29 @@ export function decodeAndVerifyIdToken(idToken: string, env: GoogleEnv, expected
 /**
  * Derive the deterministic smart-account salt for a Google identity.
  *
- *   salt = sha256(SERVER_PEPPER ‖ lowercase(email) ‖ rotation)
+ *   salt = HMAC_SHA_256(oauthSaltKey, "oauth-salt:v1:" + lower(email) + ":" + rotation)
  *
  * Same email + rotation → same salt → same counterfactual smart-account
  * address forever (assuming the same factory + serverSigner +
- * delegationManager triplet). `rotation` is a per-user counter that the
- * "Start fresh" escape hatch bumps so users can abandon a stuck account and
- * re-deploy at a new address.
+ * delegationManager triplet AND the same `oauth-salt` KMS HMAC key).
+ * `rotation` is a per-user counter that the "Start fresh" escape hatch
+ * bumps so users can abandon a stuck account and re-deploy at a new
+ * address.
+ *
+ * Sprint S2.6: this used to be `sha256(SERVER_PEPPER ‖ email ‖ rotation)`
+ * using a long-lived symmetric env secret. The pepper is replaced by a
+ * KMS HMAC key id (`oauth-salt`) — locally a hex key in
+ * `OAUTH_SALT_HMAC_KEY`, in production an AWS KMS HMAC CMK referenced
+ * by `AWS_KMS_MAC_KEY_ID_OAUTH_SALT`. See
+ * `apps/web/src/lib/auth/oauth-salt.ts` and
+ * `docs/operations/kms-signer-setup.md` § "OAuth salt MAC key (S2.6)".
+ *
+ * The function is async because `kms:GenerateMac` is a network call in
+ * production; the local-hmac dev path resolves synchronously but returns
+ * a Promise for interface parity.
  */
-export function deriveSaltFromEmail(email: string, rotation: number = 0): bigint {
-  const pepper = process.env.SERVER_PEPPER
-  if (!pepper) throw new Error('SERVER_PEPPER not configured')
-  const h = createHash('sha256') // sha256 is fine here; we only need 32 bytes of pseudo-random salt
-  h.update(pepper)
-  h.update('|')
-  h.update(email.toLowerCase().trim())
-  h.update('|')
-  h.update(String(rotation))
-  return BigInt('0x' + h.digest('hex'))
+export async function deriveSaltFromEmail(email: string, rotation: number = 0): Promise<bigint> {
+  return deriveOauthSaltBigInt(email, rotation)
 }
 
 /** Stable DID for a Google identity (used as users.did / JWT sub). */

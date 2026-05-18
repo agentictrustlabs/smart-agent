@@ -1,0 +1,71 @@
+# Sprint 3 S3.5 — Solidity static analysis (Slither)
+#
+# Runs Slither against packages/contracts. Fails on HIGH severity
+# findings; MEDIUM findings are reported but do not fail the job.
+#
+# Detector tuning lives in packages/contracts/.slither.json.
+# Add new detector skips there with a comment explaining why
+# (known false-positive family, intentional pattern, etc.).
+#
+# Path filter: only runs when Solidity sources or Foundry config
+# change. Speeds up PRs that only touch TypeScript / docs.
+
+name: contracts-static
+
+on:
+  pull_request:
+    branches: [master, main]
+    paths:
+      - 'packages/contracts/src/**'
+      - 'packages/contracts/script/**'
+      - 'packages/contracts/test/**'
+      - 'packages/contracts/foundry.toml'
+      - 'packages/contracts/remappings.txt'
+      - 'packages/contracts/.slither.json'
+      - '.github/workflows/contracts-static.yml'
+  push:
+    branches: [master, main]
+    paths:
+      - 'packages/contracts/**'
+      - '.github/workflows/contracts-static.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  slither:
+    name: slither
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/contracts
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Slither
+        run: pip install slither-analyzer
+
+      - name: Forge build (Slither uses the compiled artifacts)
+        run: forge build --skip test
+
+      - name: Run Slither (fail on HIGH)
+        run: |
+          # Slither exits non-zero when findings >= the configured
+          # severity threshold are present. .slither.json pins the
+          # detector list + known false-positive skips.
+          slither . \
+            --config-file .slither.json \
+            --fail-high

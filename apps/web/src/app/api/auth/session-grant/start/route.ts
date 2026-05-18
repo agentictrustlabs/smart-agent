@@ -1,3 +1,4 @@
+/** @sa-route bootstrap @sa-auth none-with-csrf @sa-rate-limit 10/min @sa-risk-tier high @sa-validation zod @sa-owner security */
 /**
  * POST /api/auth/session-grant/start
  *
@@ -44,24 +45,31 @@ import { getKeyCustody } from '@/lib/key-custody'
 import { newSessionId } from '@/lib/key-custody/dev-pepper'
 import { buildDefaultSessionGrant } from '@/lib/auth/session-grant-defaults'
 import { fetchRevocationEpoch } from '@/lib/auth/person-mcp-session-client'
+import { webErrorResponse } from '@/lib/auth/error-response'
+import { requireOriginAllowed } from '@/lib/auth/csrf'
+import { z } from 'zod'
+import { validateRequest } from '@/lib/auth/validate-request'
 
 const RPC_URL = process.env.RPC_URL ?? 'http://127.0.0.1:8545'
 const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? '31337')
 const TOKEN_TTL_S = 300  // 5 min — must outlive the user's passkey prompt
 
-interface StartBody {
-  name?: string
-  accountAddress?: string
-}
+const StartBodySchema = z.object({
+  // Either `name` or `accountAddress` is required — the route enforces
+  // that below. Cap to "plausible name / address" lengths so an
+  // attacker can't flood the resolver call with megabyte inputs.
+  name: z.string().max(256).optional(),
+  accountAddress: z.string().max(64).optional(),
+})
 
 export async function POST(request: Request) {
-  const origin = request.headers.get('origin')
-  const host = request.headers.get('host')
-  if (origin && host && !origin.includes(host.split(':')[0])) {
-    return NextResponse.json({ error: 'CSRF rejected' }, { status: 403 })
-  }
+  // S2.2 — CSRF guard via parsed-URL exact-allowlist.
+  const csrfDenied = requireOriginAllowed(request)
+  if (csrfDenied) return csrfDenied
 
-  const body = await request.json() as StartBody
+  const parsed = await validateRequest(request, { schema: StartBodySchema })
+  if (!parsed.ok) return parsed.response
+  const body = parsed.data
   let accountAddr: `0x${string}` | null = null
 
   if (body.name && body.name.trim().length > 0) {
@@ -81,7 +89,17 @@ export async function POST(request: Request) {
       }
       accountAddr = getAddress(resolved)
     } catch (err) {
-      return NextResponse.json({ error: `name resolution failed: ${(err as Error).message}` }, { status: 400 })
+      return webErrorResponse({
+        publicMessage: 'Name resolution failed',
+        logMessage: '[session-grant/start] name resolution failed',
+        logFields: {
+          name: body.name,
+          errorCode: 'name-resolve-failed',
+          errorMessage: (err as Error).message,
+        },
+        status: 400,
+        request,
+      })
     }
   } else if (body.accountAddress && isAddress(body.accountAddress)) {
     accountAddr = getAddress(body.accountAddress as `0x${string}`)
@@ -103,7 +121,18 @@ export async function POST(request: Request) {
   try {
     revocationEpoch = await fetchRevocationEpoch(accountAddr)
   } catch (err) {
-    return NextResponse.json({ error: `epoch read failed: ${(err as Error).message}` }, { status: 502 })
+    return webErrorResponse({
+      publicMessage: 'Upstream registry unavailable',
+      logMessage: '[session-grant/start] epoch read failed',
+      logFields: {
+        accountAddr,
+        sessionId,
+        errorCode: 'epoch-read-failed',
+        errorMessage: (err as Error).message,
+      },
+      status: 502,
+      request,
+    })
   }
 
   const grant = buildDefaultSessionGrant({

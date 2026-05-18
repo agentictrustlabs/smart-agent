@@ -159,15 +159,11 @@ ROUTE_HANDLER_PATHS=(
 # either the user's session signer (Category C) or a new tool-executor
 # identity registered in `TOOL_EXECUTOR_IDS` (Category D).
 K6_ROUTE_HANDLER_ALLOWLIST=(
-  # TODO(K6-D1): migrate to a dedicated `auth-bootstrap` tool-executor
-  # signer (Category D). The deployer-as-initial-owner factory pattern
-  # is correct architecturally; the KEY just needs to leave runtime
-  # env and live in a per-tool KMS slot. See
-  # docs/operations/kms-signer-setup.md § "Deployer key" and
-  # docs/architecture/01-web-a2a-mcp-flows.md § K6.
-  "apps/web/src/app/api/auth/siwe-verify/route.ts"
-  "apps/web/src/app/api/auth/passkey-signup/route.ts"
-  "apps/web/src/app/api/auth/google-callback/route.ts"
+  # K6-D1 RESOLVED (S1.5): the three bootstrap-auth routes
+  # (siwe-verify, passkey-signup, google-callback) migrated to the
+  # `auth-bootstrap` tool-executor signer registered in TOOL_EXECUTOR_IDS.
+  # The deployer key MUST NOT reappear in those handlers — this guard
+  # now catches any regression.
   # TODO(K6-C1): check-agent-name only needs the deployer ADDRESS to
   # derive a counterfactual smart-account address for UX preview.
   # Migrate to read `DEPLOYER_ADDRESS` env var (Category C-trivial).
@@ -264,5 +260,5 @@ if [[ -d "$AUDIT_A2A_SRC" ]]; then
   fi
 fi
 
-echo "[check-no-bypass] OK — no direct-MCP bypasses in apps/web/src, no direct KMS SDK imports in a2a-agent routes, no DEPLOYER_PRIVATE_KEY in route handlers outside K6 allowlist, execution_audit append-only invariant holds."
+echo "[check-no-bypass] OK — no direct-MCP bypasses in apps/web/src, no direct KMS SDK imports in a2a-agent routes, no DEPLOYER_PRIVATE_KEY in route handlers outside K6 allowlist (${#K6_ROUTE_HANDLER_ALLOWLIST[@]} entr$([ ${#K6_ROUTE_HANDLER_ALLOWLIST[@]} -eq 1 ] && echo y || echo ies)), execution_audit append-only invariant holds."
 exit 0

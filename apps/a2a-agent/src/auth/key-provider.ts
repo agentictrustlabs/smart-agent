@@ -31,7 +31,9 @@
  */
 import type {
   A2AKeyProvider,
+  AwsKmsSignerAuditEvent,
   KmsAccountBackend,
+  LocalSecp256k1SignerAuditEvent,
   ToolExecutorId,
   ToolExecutorSignerBackend,
 } from '@smart-agent/sdk/key-custody'
@@ -43,6 +45,19 @@ import {
   createToolExecutorSigner,
   toolEnvKeyName,
 } from '@smart-agent/sdk/key-custody'
+
+/**
+ * Sprint 3 S3.2 — audit callback shape for the master + tool-executor
+ * signers. The two SDK signer audit-event types have the SAME field
+ * layout (intentional — dev/prod parity), so the union here covers both
+ * paths uniformly. The caller (a2a-signer.ts) writes one
+ * `execution_audit` row per event.
+ */
+export type SignerAuditEvent =
+  | AwsKmsSignerAuditEvent
+  | LocalSecp256k1SignerAuditEvent
+
+export type SignerAuditFn = (event: SignerAuditEvent) => Promise<void> | void
 
 export interface KeyProviderEnv {
   A2A_KMS_BACKEND?: string
@@ -146,7 +161,10 @@ export function buildKeyProvider(env: KeyProviderEnv): A2AKeyProvider {
  * `buildKeyProvider`. If the envelope backend is rejected in prod the
  * signer backend must be too.
  */
-export function buildSignerBackend(env: KeyProviderEnv): KmsAccountBackend {
+export function buildSignerBackend(
+  env: KeyProviderEnv,
+  opts: { audit?: SignerAuditFn } = {},
+): KmsAccountBackend {
   const backend = env.A2A_KMS_BACKEND ?? 'local-aes'
 
   if (env.NODE_ENV === 'production' && backend === 'local-aes') {
@@ -164,10 +182,13 @@ export function buildSignerBackend(env: KeyProviderEnv): KmsAccountBackend {
             "(A2A_KMS_BACKEND='local-aes')",
         )
       }
-      return createLocalSecp256k1Signer({
-        A2A_MASTER_PRIVATE_KEY: env.A2A_MASTER_PRIVATE_KEY,
-        NODE_ENV: env.NODE_ENV,
-      })
+      return createLocalSecp256k1Signer(
+        {
+          A2A_MASTER_PRIVATE_KEY: env.A2A_MASTER_PRIVATE_KEY,
+          NODE_ENV: env.NODE_ENV,
+        },
+        { audit: opts.audit },
+      )
     }
     case 'aws-kms': {
       // K4 PR-2 — AWS KMS asymmetric secp256k1 signer (prod target).
@@ -194,11 +215,14 @@ export function buildSignerBackend(env: KeyProviderEnv): KmsAccountBackend {
             'this is a SEPARATE KMS key from AWS_KMS_KEY_ID (the K2 envelope-encryption key).',
         )
       }
-      return createAwsKmsSigner({
-        AWS_REGION: env.AWS_REGION,
-        AWS_ROLE_ARN: env.AWS_ROLE_ARN,
-        AWS_KMS_SIGNER_KEY_ID: env.AWS_KMS_SIGNER_KEY_ID,
-      })
+      return createAwsKmsSigner(
+        {
+          AWS_REGION: env.AWS_REGION,
+          AWS_ROLE_ARN: env.AWS_ROLE_ARN,
+          AWS_KMS_SIGNER_KEY_ID: env.AWS_KMS_SIGNER_KEY_ID,
+        },
+        { audit: opts.audit },
+      )
     }
     case 'vault-transit':
       throw new Error(
@@ -239,6 +263,7 @@ export function buildSignerBackend(env: KeyProviderEnv): KmsAccountBackend {
 export function buildToolExecutorBackend(
   toolId: ToolExecutorId,
   env: KeyProviderEnv,
+  opts: { audit?: SignerAuditFn } = {},
 ): ToolExecutorSignerBackend {
   const backend = env.A2A_KMS_BACKEND ?? 'local-aes'
 
@@ -260,11 +285,15 @@ export function buildToolExecutorBackend(
             "(A2A_KMS_BACKEND='local-aes')",
         )
       }
-      return createToolExecutorSigner(toolId, {
-        A2A_KMS_BACKEND: 'local-aes',
-        NODE_ENV: env.NODE_ENV,
-        [envName]: raw,
-      })
+      return createToolExecutorSigner(
+        toolId,
+        {
+          A2A_KMS_BACKEND: 'local-aes',
+          NODE_ENV: env.NODE_ENV,
+          [envName]: raw,
+        },
+        { audit: opts.audit },
+      )
     }
     case 'aws-kms': {
       // K5 prod target. NO local fallback — same blast-radius logic as
@@ -288,12 +317,16 @@ export function buildToolExecutorBackend(
             'each tool family has its OWN KMS key for defense in depth.',
         )
       }
-      return createToolExecutorSigner(toolId, {
-        A2A_KMS_BACKEND: 'aws-kms',
-        AWS_REGION: env.AWS_REGION,
-        AWS_ROLE_ARN: env.AWS_ROLE_ARN,
-        [envName]: keyId,
-      })
+      return createToolExecutorSigner(
+        toolId,
+        {
+          A2A_KMS_BACKEND: 'aws-kms',
+          AWS_REGION: env.AWS_REGION,
+          AWS_ROLE_ARN: env.AWS_ROLE_ARN,
+          [envName]: keyId,
+        },
+        { audit: opts.audit },
+      )
     }
     case 'vault-transit':
       throw new Error(

@@ -56,6 +56,30 @@ export interface LocalSecp256k1Signer {
   getSignerAddress(): Promise<`0x${string}`>
 }
 
+/**
+ * Sprint 3 S3.2 — audit payload shape shared with the AWS KMS signer so
+ * dev/prod parity is exact. The local signer's `keyId` is the constant
+ * sentinel `local-secp256k1` (the dev-only key has no ARN); the
+ * `signerAddress` is the address derived from `A2A_MASTER_PRIVATE_KEY`.
+ */
+export interface LocalSecp256k1SignerAuditEvent {
+  keyId: string
+  signerAddress: `0x${string}`
+  sessionId: string
+  actionId: string
+  accountAddress: string
+  chainId: string
+}
+
+/**
+ * Sprint 3 S3.2 — optional dependencies for the local signer. Mirrors
+ * the `AwsKmsSignerDeps.audit` shape so dev-trace parity is one-to-one
+ * with prod.
+ */
+export interface LocalSecp256k1SignerDeps {
+  audit?: (event: LocalSecp256k1SignerAuditEvent) => Promise<void> | void
+}
+
 // ─── Hex helpers ────────────────────────────────────────────────────
 function hexToBytes(hex: string): Uint8Array {
   const clean = hex.startsWith('0x') ? hex.slice(2) : hex
@@ -153,7 +177,10 @@ function bigIntTo32Bytes(v: bigint): Uint8Array {
  * Synchronously validates the env (hex parse + `NODE_ENV !== 'production'`)
  * so misconfigurations fail at module load rather than first request.
  */
-export function createLocalSecp256k1Signer(env: LocalSecp256k1Env): LocalSecp256k1Signer {
+export function createLocalSecp256k1Signer(
+  env: LocalSecp256k1Env,
+  deps: LocalSecp256k1SignerDeps = {},
+): LocalSecp256k1Signer {
   if (env.NODE_ENV === 'production') {
     throw new Error(
       "createLocalSecp256k1Signer: refusing to instantiate in production " +
@@ -213,6 +240,24 @@ export function createLocalSecp256k1Signer(env: LocalSecp256k1Env): LocalSecp256
       out.set(bigIntTo32Bytes(sig.r), 0)
       out.set(bigIntTo32Bytes(s), 32)
       out[64] = recovery + 27
+
+      // Sprint 3 S3.2 — best-effort audit hook. Mirrors AWS KMS signer
+      // shape for dev/prod parity.
+      if (deps.audit) {
+        try {
+          await deps.audit({
+            keyId,
+            signerAddress: address,
+            sessionId,
+            actionId,
+            accountAddress,
+            chainId,
+          })
+        } catch (err) {
+          console.error('[local-secp256k1-signer audit] callback threw:', err)
+        }
+      }
+
       return {
         signature: out,
         keyId,

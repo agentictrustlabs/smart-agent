@@ -217,8 +217,8 @@ test.describe('Connect + onboarding', () => {
   //
   // We can't drive Google's consent screen from Playwright, but we can
   // assert the contract that every Google user's smart-account address is
-  // a deterministic function of (SERVER_PEPPER, email, salt rotation) by
-  // calling the deriveSaltFromEmail helper indirectly via a server route
+  // a deterministic function of (oauth-salt MAC key, email, salt rotation)
+  // by calling the deriveSaltFromEmail helper indirectly via a server route
   // OR by validating the route returns the same redirect for the same
   // params. Since we don't have a token, we just confirm the start route
   // is reachable and produces a redirect URL with state + nonce cookies.

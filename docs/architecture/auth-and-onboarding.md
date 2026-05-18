@@ -29,7 +29,7 @@ What differs across paths is **which EOA becomes the smart account's first `_own
 
 | Method | Initial owner EOA | Salt source | `walletAddress` in DB | User-controlled EOA? |
 |---|---|---|---|---|
-| Google | server deployer (`DEPLOYER_PRIVATE_KEY`) | `sha256(SERVER_PEPPER ‖ lower(email) ‖ rotation)` | = smart account | no |
+| Google | server deployer (`DEPLOYER_PRIVATE_KEY`) | `HMAC_SHA_256(oauth-salt MAC key, "oauth-salt:v1:" ‖ lower(email) ‖ ":" ‖ rotation)` (S2.6) | = smart account | no |
 | Passkey | server deployer | `keccak256(credIdHex ‖ now).slice(0,18)` (random per signup) | = smart account | no |
 | MetaMask (SIWE) | **user's actual EOA** | `0` (constant) | = user's EOA | yes |
 
@@ -62,10 +62,10 @@ What differs across paths is **which EOA becomes the smart account's first `_own
    - Verify `state` cookie matches Google's echo (CSRF defense).
    - `exchangeCode` POSTs the code to Google's `/token` with `client_secret`. TLS + `client_secret` authenticates Google to us. Response includes `id_token`.
    - `decodeAndVerifyIdToken`: base64url-decode JWT body, check `iss ∈ {accounts.google.com, https://accounts.google.com}`, `aud === GOOGLE_CLIENT_ID`, `exp > now`, `nonce === nonceCookie`, `email_verified !== false`. Signature is **not** verified locally because TLS+client_secret already authenticated the issuer.
-   - **Derive deterministic salt**: `salt = BigInt(sha256(SERVER_PEPPER ‖ lower(email) ‖ rotation))`. Same email + same rotation ⇒ same smart account address forever.
+   - **Derive deterministic salt** (Sprint S2.6): `salt = BigInt(HMAC_SHA_256(oauthSaltKey, "oauth-salt:v1:" ‖ lower(email) ‖ ":" ‖ rotation))`, computed via `kms:GenerateMac` against the `oauth-salt` KMS HMAC key (or the `OAUTH_SALT_HMAC_KEY` local-hmac dev shim). Same email + same rotation ⇒ same smart account address forever (assuming the same KMS HMAC key). Replaces the legacy `SERVER_PEPPER` symmetric env secret — see `docs/operations/kms-signer-setup.md` § "OAuth salt MAC key (S2.6)".
    - **Deploy smart account**: `factory.createAccount(serverEOA, salt)`. Idempotent — `deploySmartAccount` checks `getCode` first.
    - **Upsert user row**: `users.id = "gsub:${sub}"`, `privyUserId = "did:google:${sub}"`, `walletAddress = smartAccountAddress`, `privateKey = null`.
-   - **Mint session JWT** with `via='google'`, set `smart-agent-session` cookie (HS256 with `SESSION_JWT_SECRET`, 30-day TTL, `httpOnly + sameSite=lax`).
+   - **Mint session JWT** with `via='google'`, set `smart-agent-session` cookie (HS256 signed by the active key in `SESSION_JWT_SECRETS` with `kid` header, 24h TTL, `httpOnly + sameSite=lax`). Sprint 2 S2.4 introduced multi-key signing + rotation — see `docs/operations/kms-signer-setup.md` § "Session JWT signing key (Sprint 2 S2.4)".
    - **Redirect**:
      - `intent=recover` → `/recover-device`
      - `!onboardingComplete` → `/onboarding`
@@ -312,7 +312,7 @@ Two modes:
 
 All three paths converge on the same session model:
 
-- **Cookie**: `smart-agent-session`, HS256 JWT signed with `SESSION_JWT_SECRET`, 30-day TTL, `httpOnly + sameSite=lax`. Defined in `apps/web/src/lib/auth/native-session.ts`.
+- **Cookie**: `smart-agent-session`, HS256 JWT signed with the active key in `SESSION_JWT_SECRETS` (multi-key with `kid` header, rotation-capable), 24h TTL, `httpOnly + sameSite=lax`. Defined in `apps/web/src/lib/auth/native-session.ts`; key registry + rotation runbook in `docs/operations/kms-signer-setup.md` § "Session JWT signing key (Sprint 2 S2.4)".
 - **Claims**: `{ sub, walletAddress, smartAccountAddress, name, email, via, kind: 'session' }` where `via ∈ {google, passkey, siwe, demo}`.
 - **Server-side resolution**: `requireSession()` → `getCurrentUser()` → DB lookup by `users.privyUserId === session.userId`.
 
@@ -419,7 +419,7 @@ User           Browser           web (Next.js)        chain                 Goog
 
 ## 11. Operational notes
 
-- **`SERVER_PEPPER` change**: rotates every Google user's account address. There is no migration. Treat as immutable in production.
+- **`oauth-salt` MAC key rotation** (S2.6): rotates every Google user's account address. There is no migration. Treat as immutable in production. The per-user `accountSaltRotation` field on `localUserAccounts` is the escape hatch for forcing individual users to a new address without rotating the global key.
 - **`DEPLOYER_PRIVATE_KEY` rotation**: every account's `_owners` would point to the old deployer; new deployer can't write resolver records. Need a per-account `addOwner(newDeployer); removeOwner(oldDeployer)` migration via UserOps signed by something the user controls.
 - **Bundler-less environments**: `passkey-signup` and `enroll-oauth` use a server-held relayer EOA + `EntryPoint.handleOps` directly (no bundler). Production needs either real bundler infra or this same self-relay pattern.
 - **Anvil-only fast paths**: `anvil_setBalance` is used to top up smart accounts in dev. On real chains the user (or paymaster) must fund the account before its first UserOp.

@@ -1,3 +1,4 @@
+/** @sa-route bootstrap @sa-auth none-with-csrf @sa-rate-limit 10/min @sa-risk-tier high @sa-validation zod @sa-owner security */
 /**
  * POST /api/auth/session-grant/finalize
  *
@@ -57,28 +58,37 @@ import {
   fetchRevocationEpoch,
   insertSessionRecord,
 } from '@/lib/auth/person-mcp-session-client'
+import { webErrorResponse } from '@/lib/auth/error-response'
+import { requireOriginAllowed } from '@/lib/auth/csrf'
+import { z } from 'zod'
+import { validateRequest, DELEGATION_BODY_LIMIT_BYTES } from '@/lib/auth/validate-request'
 
 const RPC_URL = process.env.RPC_URL ?? 'http://127.0.0.1:8545'
 const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? '31337')
 const ERC1271_MAGIC = '0x1626ba7e'
 
-interface FinalizeBody {
-  signedToken: string
-  credentialIdBase64Url: string
-  authenticatorDataBase64Url: string
-  clientDataJSONBase64Url: string
-  signatureBase64Url: string
-}
+// Big body: the signedToken (JWT carrying the whole SessionGrant) plus
+// the four base64url'd WebAuthn fields can hit a few KB. We accept the
+// larger DELEGATION cap — same class as passkey-verify.
+const BodySchema = z.object({
+  signedToken: z.string().min(1).max(16384),
+  credentialIdBase64Url: z.string().min(1).max(4096),
+  authenticatorDataBase64Url: z.string().min(1).max(16384),
+  clientDataJSONBase64Url: z.string().min(1).max(16384),
+  signatureBase64Url: z.string().min(1).max(4096),
+})
 
 export async function POST(request: Request) {
-  // CSRF guard.
-  const origin = request.headers.get('origin')
-  const host = request.headers.get('host')
-  if (origin && host && !origin.includes(host.split(':')[0])) {
-    return NextResponse.json({ error: 'CSRF rejected' }, { status: 403 })
-  }
+  // S2.2 — CSRF guard via parsed-URL exact-allowlist.
+  const csrfDenied = requireOriginAllowed(request)
+  if (csrfDenied) return csrfDenied
 
-  const body = await request.json() as FinalizeBody
+  const parsed = await validateRequest(request, {
+    schema: BodySchema,
+    maxBytes: DELEGATION_BODY_LIMIT_BYTES,
+  })
+  if (!parsed.ok) return parsed.response
+  const body = parsed.data
 
   // 1. Decode the pending-grant token.
   const claims = verifyJwt(body.signedToken)
@@ -100,7 +110,18 @@ export async function POST(request: Request) {
   try {
     revocationEpoch = await fetchRevocationEpoch(accountAddr)
   } catch (err) {
-    return NextResponse.json({ error: `epoch read failed: ${(err as Error).message}` }, { status: 502 })
+    return webErrorResponse({
+      publicMessage: 'Upstream registry unavailable',
+      logMessage: '[session-grant/finalize] epoch read failed',
+      logFields: {
+        accountAddr,
+        sessionId,
+        errorCode: 'epoch-read-failed',
+        errorMessage: (err as Error).message,
+      },
+      status: 502,
+      request,
+    })
   }
 
   // The grant is rebuilt from the same {accountAddr, sessionId, epoch}
@@ -221,7 +242,20 @@ export async function POST(request: Request) {
     })) as `0x${string}`
     isValid = result.toLowerCase() === ERC1271_MAGIC
   } catch (err) {
-    return NextResponse.json({ error: `signature check reverted: ${(err as Error).message}` }, { status: 401 })
+    return webErrorResponse({
+      publicMessage: 'Invalid passkey signature',
+      logMessage: '[session-grant/finalize] signature check reverted',
+      logFields: {
+        accountAddr,
+        sessionId,
+        errorCode: 'erc1271-threw',
+        // `err.message` may include calldata from the failing
+        // contract call — fine in logs, must not leak to the caller.
+        errorMessage: (err as Error).message,
+      },
+      status: 401,
+      request,
+    })
   }
   if (!isValid) return NextResponse.json({ error: 'invalid passkey signature' }, { status: 401 })
 
@@ -260,7 +294,20 @@ export async function POST(request: Request) {
       serverNonce,
     })
   } catch (err) {
-    return NextResponse.json({ error: `session persist failed: ${(err as Error).message}` }, { status: 502 })
+    return webErrorResponse({
+      publicMessage: 'Could not persist session',
+      logMessage: '[session-grant/finalize] session persist failed',
+      logFields: {
+        accountAddr,
+        sessionId,
+        errorCode: 'persist-failed',
+        // Upstream MCP error message may include a schema fragment or
+        // internal URL — log only.
+        errorMessage: (err as Error).message,
+      },
+      status: 502,
+      request,
+    })
   }
 
   // 7. Mint the legacy session JWT. Passkey auth is stateless — no `users`

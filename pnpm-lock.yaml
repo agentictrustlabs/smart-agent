@@ -29,6 +29,9 @@ importers:
       prettier:
         specifier: ^3.3.0
         version: 3.8.1
+      tsx:
+        specifier: ^4.21.0
+        version: 4.21.0
       typescript:
         specifier: ^5.5.0
         version: 5.9.3
@@ -425,6 +428,15 @@ importers:
 
   apps/web:
     dependencies:
+      '@aws-sdk/client-kms':
+        specifier: ^3.700.0
+        version: 3.1048.0
+      '@noble/curves':
+        specifier: ^1.9.1
+        version: 1.9.7
+      '@noble/hashes':
+        specifier: ^1.8.0
+        version: 1.8.0
       '@radix-ui/react-avatar':
         specifier: ^1.1.11
         version: 1.1.11(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
@@ -473,6 +485,9 @@ importers:
       '@smart-agent/types':
         specifier: workspace:*
         version: link:../../packages/types
+      '@vercel/oidc-aws-credentials-provider':
+        specifier: ^3.1.0
+        version: 3.1.1
       better-sqlite3:
         specifier: ^11.0.0
         version: 11.10.0
@@ -512,6 +527,9 @@ importers:
       viem:
         specifier: ^2.21.0
         version: 2.47.10(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76)
+      zod:
+        specifier: ^3.25.76
+        version: 3.25.76
     devDependencies:
       '@types/better-sqlite3':
         specifier: ^7.6.0
@@ -531,6 +549,9 @@ importers:
       autoprefixer:
         specifier: ^10.5.0
         version: 10.5.0(postcss@8.5.10)
+      aws-sdk-client-mock:
+        specifier: ^4.0.0
+        version: 4.1.0
       drizzle-kit:
         specifier: ^0.30.0
         version: 0.30.6
@@ -546,6 +567,9 @@ importers:
       tailwindcss:
         specifier: '3'
         version: 3.4.19(tsx@4.21.0)
+      tsx:
+        specifier: ^4.0.0
+        version: 4.21.0
       typescript:
         specifier: ^5.5.0
         version: 5.9.3

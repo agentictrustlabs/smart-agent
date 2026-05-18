@@ -148,13 +148,22 @@ export function requireServiceAuth(expectedService: 'web'): MiddlewareHandler {
     try {
       macBytes = fromBase64Url(signature)
     } catch {
-      await auditDeny(c, { ...denyFields, reason: 'signature mismatch (bad base64url)' })
+      // Sprint 3 S3.2 — tag MAC verify failures.
+      await auditDeny(c, {
+        ...denyFields,
+        reason: 'signature mismatch (bad base64url)',
+        eventType: 'kms-mac-verify-failed',
+      })
       return c.json({ error: 'signature mismatch' }, 401)
     }
 
     const { valid } = await provider.verifyMac({ canonicalMessage, mac: macBytes })
     if (!valid) {
-      await auditDeny(c, { ...denyFields, reason: 'signature mismatch' })
+      await auditDeny(c, {
+        ...denyFields,
+        reason: 'signature mismatch',
+        eventType: 'kms-mac-verify-failed',
+      })
       return c.json({ error: 'signature mismatch' }, 401)
     }
 

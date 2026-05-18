@@ -30,6 +30,7 @@
  *   disbursement       TOOL_EXECUTOR_DISBURSEMENT_PRIVATE_KEY      AWS_KMS_TOOL_EXECUTOR_DISBURSEMENT_KEY_ID
  *   pool-lifecycle     TOOL_EXECUTOR_POOL_LIFECYCLE_PRIVATE_KEY    AWS_KMS_TOOL_EXECUTOR_POOL_LIFECYCLE_KEY_ID
  *   grant-awards       TOOL_EXECUTOR_GRANT_AWARDS_PRIVATE_KEY      AWS_KMS_TOOL_EXECUTOR_GRANT_AWARDS_KEY_ID
+ *   auth-bootstrap     TOOL_EXECUTOR_AUTH_BOOTSTRAP_PRIVATE_KEY    AWS_KMS_TOOL_EXECUTOR_AUTH_BOOTSTRAP_KEY_ID
  *
  * The legacy `tool-executors.ts` registry uses SCREAMING_SNAKE_CASE
  * "family" names (e.g. `ROUND_AWARDS`). K5 introduces a lowercase-with-
@@ -48,10 +49,12 @@
 import {
   createLocalSecp256k1Signer,
   type LocalSecp256k1Signer,
+  type LocalSecp256k1SignerAuditEvent,
 } from './local-secp256k1-signer'
 import {
   createAwsKmsSigner,
   type AwsKmsSigner,
+  type AwsKmsSignerAuditEvent,
   type AwsKmsSignerDeps,
 } from './aws-kms-signer'
 
@@ -68,6 +71,13 @@ export const TOOL_EXECUTOR_IDS = [
   'disbursement',
   'pool-lifecycle',
   'grant-awards',
+  // K6 S1.5 — bootstrap-auth executor. Signs system operations during
+  // user signup / first sign-in (smart-account deploy, `.agent` name
+  // registration, resolver bootstrap, deterministic account derivation).
+  // The user can't perform these themselves — they don't have a wallet
+  // yet — so the system signs on their behalf. Holds `.agent` root
+  // ownership in deploy-time setup so it can `register` new child names.
+  'auth-bootstrap',
 ] as const
 
 export type ToolExecutorId = (typeof TOOL_EXECUTOR_IDS)[number]
@@ -122,9 +132,16 @@ export interface ToolExecutorSignerEnv {
 /**
  * Optional dependencies passed through to the aws-kms-signer (test-injectable
  * `KMSClient`). The local-aes path has no dependencies.
+ *
+ * Sprint 3 S3.2 — `audit` mirrors the master-signer's audit-callback
+ * shape. Wired into both the local-aes and aws-kms construction paths
+ * so dev/prod parity is exact.
  */
 export interface ToolExecutorSignerDeps {
   awsKmsDeps?: AwsKmsSignerDeps
+  audit?: (
+    event: AwsKmsSignerAuditEvent | LocalSecp256k1SignerAuditEvent,
+  ) => Promise<void> | void
 }
 
 /**
@@ -191,10 +208,13 @@ export function createToolExecutorSigner(
       // Re-use the K4 local signer. The "A2A_MASTER_PRIVATE_KEY" field
       // name is generic — the local signer doesn't know or care that it's
       // for a tool executor rather than the master EOA.
-      return createLocalSecp256k1Signer({
-        A2A_MASTER_PRIVATE_KEY: raw,
-        NODE_ENV: env.NODE_ENV,
-      })
+      return createLocalSecp256k1Signer(
+        {
+          A2A_MASTER_PRIVATE_KEY: raw,
+          NODE_ENV: env.NODE_ENV,
+        },
+        { audit: deps.audit },
+      )
     }
     case 'aws-kms': {
       const envName = toolEnvKeyName(toolId, 'aws-kms')
@@ -223,7 +243,7 @@ export function createToolExecutorSigner(
           AWS_ROLE_ARN: env.AWS_ROLE_ARN,
           AWS_KMS_SIGNER_KEY_ID: keyId,
         },
-        deps.awsKmsDeps,
+        { ...deps.awsKmsDeps, audit: deps.audit },
       )
     }
     case 'vault-transit':

@@ -8,97 +8,18 @@ Smart Agent A2A server starting on port 3100
   host routing: *.agent.localhost:3100
   Agent card:  http://<slug>.agent.localhost:3100/.well-known/agent.json
 Smart Agent A2A server listening on http://localhost:3100
-<-- GET /health
---> GET /health [32m200[0m 2ms
-<-- POST /mcp/hub/sync:all
---> POST /mcp/hub/sync:all [33m401[0m 3ms
-<-- POST /mcp/hub/sync:all
---> POST /mcp/hub/sync:all [33m401[0m 1ms
 <-- GET /.well-known/agent.json
---> GET /.well-known/agent.json [32m200[0m 1ms
-[nonce-gc] evicted 7 expired replay-nonce rows
+--> GET /.well-known/agent.json [32m200[0m 3ms
 <-- POST /session/init
---> POST /session/init [32m200[0m 56ms
+--> POST /session/init [32m200[0m 59ms
 <-- POST /session/package
---> POST /session/package [32m200[0m 14ms
+--> POST /session/package [32m200[0m 8ms
 <-- POST /mcp/person/list_oikos_contacts
 --> POST /mcp/person/list_oikos_contacts [33m400[0m 0ms
 <-- POST /mcp/person/add_oikos_contact
---> POST /mcp/person/add_oikos_contact [33m400[0m 1ms
-<-- POST /mcp/person/add_oikos_contact
---> POST /mcp/person/add_oikos_contact [33m400[0m 1ms
-<-- POST /mcp/person/add_oikos_contact
 --> POST /mcp/person/add_oikos_contact [33m400[0m 0ms
 <-- POST /mcp/person/add_oikos_contact
 --> POST /mcp/person/add_oikos_contact [33m400[0m 0ms
-<-- POST /mcp/person/add_oikos_contact
---> POST /mcp/person/add_oikos_contact [33m400[0m 0ms
-<-- POST /mcp/person/add_oikos_contact
---> POST /mcp/person/add_oikos_contact [33m400[0m 0ms
-<-- POST /mcp/person/list_prayers
---> POST /mcp/person/list_prayers [33m400[0m 1ms
-<-- POST /mcp/person/upsert_prayer
---> POST /mcp/person/upsert_prayer [33m400[0m 1ms
-<-- POST /mcp/person/upsert_prayer
---> POST /mcp/person/upsert_prayer [33m400[0m 1ms
-<-- POST /mcp/person/upsert_prayer
---> POST /mcp/person/upsert_prayer [33m400[0m 1ms
-<-- POST /mcp/person/upsert_prayer
---> POST /mcp/person/upsert_prayer [33m400[0m 0ms
-<-- POST /mcp/person/upsert_prayer
---> POST /mcp/person/upsert_prayer [33m400[0m 0ms
-<-- POST /mcp/person/upsert_prayer
---> POST /mcp/person/upsert_prayer [33m400[0m 0ms
-<-- POST /mcp/person/toggle_training_module
---> POST /mcp/person/toggle_training_module [33m400[0m 0ms
-<-- POST /mcp/person/toggle_training_module
---> POST /mcp/person/toggle_training_module [33m400[0m 0ms
-<-- POST /mcp/person/toggle_training_module
---> POST /mcp/person/toggle_training_module [33m400[0m 0ms
-<-- POST /mcp/person/toggle_training_module
---> POST /mcp/person/toggle_training_module [33m400[0m 1ms
-<-- POST /mcp/person/toggle_training_module
---> POST /mcp/person/toggle_training_module [33m400[0m 0ms
-<-- POST /mcp/person/toggle_training_module
---> POST /mcp/person/toggle_training_module [33m400[0m 0ms
-<-- POST /mcp/person/toggle_training_module
---> POST /mcp/person/toggle_training_module [33m400[0m 0ms
-<-- POST /mcp/person/toggle_training_module
---> POST /mcp/person/toggle_training_module [33m400[0m 0ms
-<-- POST /mcp/person/toggle_training_module
---> POST /mcp/person/toggle_training_module [33m400[0m 0ms
-<-- POST /mcp/person/toggle_training_module
---> POST /mcp/person/toggle_training_module [33m400[0m 0ms
-<-- POST /mcp/person/toggle_training_module
---> POST /mcp/person/toggle_training_module [33m400[0m 0ms
-<-- POST /mcp/person/toggle_training_module
---> POST /mcp/person/toggle_training_module [33m400[0m 1ms
-<-- POST /mcp/person/toggle_training_module
---> POST /mcp/person/toggle_training_module [33m400[0m 0ms
-<-- POST /mcp/person/toggle_training_module
---> POST /mcp/person/toggle_training_module [33m400[0m 0ms
-<-- POST /mcp/person/toggle_training_module
---> POST /mcp/person/toggle_training_module [33m400[0m 0ms
-<-- POST /mcp/person/toggle_training_module
---> POST /mcp/person/toggle_training_module [33m400[0m 0ms
-<-- POST /mcp/person/update_user_preferences
---> POST /mcp/person/update_user_preferences [33m400[0m 0ms
-<-- POST /mcp/person/list_notifications
---> POST /mcp/person/list_notifications [33m400[0m 0ms
-<-- POST /mcp/person/create_notification
---> POST /mcp/person/create_notification [33m400[0m 0ms
-<-- POST /mcp/person/create_notification
---> POST /mcp/person/create_notification [33m400[0m 1ms
-<-- POST /mcp/person/create_notification
---> POST /mcp/person/create_notification [33m400[0m 0ms
-<-- POST /session/init
---> POST /session/init [32m200[0m 50ms
-<-- POST /session/package
---> POST /session/package [32m200[0m 7ms
-<-- POST /mcp/person/list_oikos_contacts
---> POST /mcp/person/list_oikos_contacts [33m400[0m 0ms
-<-- POST /mcp/person/add_oikos_contact
---> POST /mcp/person/add_oikos_contact [33m400[0m 1ms
 <-- POST /mcp/person/add_oikos_contact
 --> POST /mcp/person/add_oikos_contact [33m400[0m 0ms
 <-- POST /mcp/person/add_oikos_contact
@@ -119,12 +40,8 @@ Smart Agent A2A server listening on http://localhost:3100
 --> POST /mcp/person/upsert_prayer [33m400[0m 0ms
 <-- POST /mcp/person/upsert_prayer
 --> POST /mcp/person/upsert_prayer [33m400[0m 0ms
-<-- POST /mcp/person/toggle_training_module
---> POST /mcp/person/toggle_training_module [33m400[0m 0ms
-<-- POST /mcp/person/toggle_training_module
---> POST /mcp/person/toggle_training_module [33m400[0m 0ms
-<-- POST /mcp/person/toggle_training_module
---> POST /mcp/person/toggle_training_module [33m400[0m 0ms
+<-- POST /mcp/person/upsert_prayer
+--> POST /mcp/person/upsert_prayer [33m400[0m 1ms
 <-- POST /mcp/person/toggle_training_module
 --> POST /mcp/person/toggle_training_module [33m400[0m 0ms
 <-- POST /mcp/person/toggle_training_module
@@ -137,6 +54,82 @@ Smart Agent A2A server listening on http://localhost:3100
 --> POST /mcp/person/toggle_training_module [33m400[0m 0ms
 <-- POST /mcp/person/toggle_training_module
 --> POST /mcp/person/toggle_training_module [33m400[0m 1ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [33m400[0m 1ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [33m400[0m 0ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [33m400[0m 0ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [33m400[0m 0ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [33m400[0m 0ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [33m400[0m 0ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [33m400[0m 0ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [33m400[0m 0ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [33m400[0m 0ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [33m400[0m 0ms
+<-- POST /mcp/person/update_user_preferences
+--> POST /mcp/person/update_user_preferences [33m400[0m 0ms
+<-- POST /mcp/person/list_notifications
+--> POST /mcp/person/list_notifications [33m400[0m 1ms
+<-- POST /mcp/person/create_notification
+--> POST /mcp/person/create_notification [33m400[0m 0ms
+<-- POST /mcp/person/create_notification
+--> POST /mcp/person/create_notification [33m400[0m 0ms
+<-- POST /mcp/person/create_notification
+--> POST /mcp/person/create_notification [33m400[0m 0ms
+<-- POST /session/init
+--> POST /session/init [32m200[0m 62ms
+<-- POST /session/package
+--> POST /session/package [32m200[0m 6ms
+<-- POST /mcp/person/list_oikos_contacts
+--> POST /mcp/person/list_oikos_contacts [33m400[0m 0ms
+<-- POST /mcp/person/add_oikos_contact
+--> POST /mcp/person/add_oikos_contact [33m400[0m 0ms
+<-- POST /mcp/person/add_oikos_contact
+--> POST /mcp/person/add_oikos_contact [33m400[0m 0ms
+<-- POST /mcp/person/add_oikos_contact
+--> POST /mcp/person/add_oikos_contact [33m400[0m 0ms
+<-- POST /mcp/person/add_oikos_contact
+--> POST /mcp/person/add_oikos_contact [33m400[0m 0ms
+<-- POST /mcp/person/add_oikos_contact
+--> POST /mcp/person/add_oikos_contact [33m400[0m 0ms
+<-- POST /mcp/person/list_prayers
+--> POST /mcp/person/list_prayers [33m400[0m 1ms
+<-- POST /mcp/person/upsert_prayer
+--> POST /mcp/person/upsert_prayer [33m400[0m 0ms
+<-- POST /mcp/person/upsert_prayer
+--> POST /mcp/person/upsert_prayer [33m400[0m 0ms
+<-- POST /mcp/person/upsert_prayer
+--> POST /mcp/person/upsert_prayer [33m400[0m 0ms
+<-- POST /mcp/person/upsert_prayer
+--> POST /mcp/person/upsert_prayer [33m400[0m 0ms
+<-- POST /mcp/person/upsert_prayer
+--> POST /mcp/person/upsert_prayer [33m400[0m 0ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [33m400[0m 0ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [33m400[0m 0ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [33m400[0m 0ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [33m400[0m 0ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [33m400[0m 1ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [33m400[0m 0ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [33m400[0m 0ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [33m400[0m 0ms
+<-- POST /mcp/person/toggle_training_module
+--> POST /mcp/person/toggle_training_module [33m429[0m 0ms
 <-- POST /mcp/person/toggle_training_module
 --> POST /mcp/person/toggle_training_module [33m429[0m 0ms
 <-- POST /mcp/person/toggle_training_module
@@ -156,7 +149,7 @@ Smart Agent A2A server listening on http://localhost:3100
 <-- POST /mcp/person/update_user_preferences
 --> POST /mcp/person/update_user_preferences [33m429[0m 0ms
 <-- POST /mcp/person/list_notifications
---> POST /mcp/person/list_notifications [33m429[0m 1ms
+--> POST /mcp/person/list_notifications [33m429[0m 0ms
 <-- POST /mcp/person/create_notification
 --> POST /mcp/person/create_notification [33m429[0m 0ms
 <-- POST /mcp/person/create_notification
@@ -176,11 +169,11 @@ Smart Agent A2A server listening on http://localhost:3100
 <-- POST /session/init
 --> POST /session/init [33m429[0m 0ms
 <-- POST /session/init
---> POST /session/init [33m429[0m 1ms
+--> POST /session/init [33m429[0m 0ms
 <-- POST /session/init
 --> POST /session/init [33m429[0m 0ms
 <-- POST /session/init
---> POST /session/init [33m429[0m 1ms
+--> POST /session/init [33m429[0m 0ms
 <-- POST /mcp/person/list_coaching_notes
 --> POST /mcp/person/list_coaching_notes [33m429[0m 0ms
 <-- POST /mcp/person/upsert_coaching_note
@@ -188,7 +181,7 @@ Smart Agent A2A server listening on http://localhost:3100
 <-- POST /mcp/person/list_coaching_notes
 --> POST /mcp/person/list_coaching_notes [33m429[0m 0ms
 <-- POST /mcp/person/upsert_coaching_note
---> POST /mcp/person/upsert_coaching_note [33m429[0m 0ms
+--> POST /mcp/person/upsert_coaching_note [33m429[0m 1ms
 <-- POST /mcp/person/list_coaching_notes
 --> POST /mcp/person/list_coaching_notes [33m429[0m 0ms
 <-- POST /mcp/person/upsert_coaching_note
@@ -204,21 +197,11 @@ Smart Agent A2A server listening on http://localhost:3100
 <-- POST /mcp/person/list_intents
 --> POST /mcp/person/list_intents [33m429[0m 0ms
 <-- POST /mcp/person/express_intent
---> POST /mcp/person/express_intent [33m429[0m 0ms
-<-- POST /mcp/person/list_intents
---> POST /mcp/person/list_intents [33m429[0m 1ms
-<-- POST /mcp/person/express_intent
 --> POST /mcp/person/express_intent [33m429[0m 1ms
-<-- POST /session/init
---> POST /session/init [33m429[0m 0ms
-<-- POST /session/init
---> POST /session/init [33m429[0m 1ms
-<-- POST /session/init
---> POST /session/init [33m429[0m 0ms
-<-- POST /session/init
---> POST /session/init [33m429[0m 0ms
-<-- POST /session/init
---> POST /session/init [33m429[0m 1ms
+<-- POST /mcp/person/list_intents
+--> POST /mcp/person/list_intents [33m429[0m 0ms
+<-- POST /mcp/person/express_intent
+--> POST /mcp/person/express_intent [33m429[0m 0ms
 <-- POST /session/init
 --> POST /session/init [33m429[0m 1ms
 <-- POST /session/init
@@ -231,7 +214,18 @@ Smart Agent A2A server listening on http://localhost:3100
 --> POST /session/init [33m429[0m 1ms
 <-- POST /session/init
 --> POST /session/init [33m429[0m 0ms
-[nonce-gc] evicted 21 expired replay-nonce rows
-<-- POST /mcp/hub/sync:all
---> POST /mcp/hub/sync:all [33m429[0m 0ms
-[nonce-gc] evicted 7 expired replay-nonce rows
+<-- POST /session/init
+--> POST /session/init [33m429[0m 0ms
+<-- POST /session/init
+--> POST /session/init [33m429[0m 0ms
+<-- POST /session/init
+--> POST /session/init [33m429[0m 1ms
+<-- POST /session/init
+--> POST /session/init [33m429[0m 0ms
+<-- POST /session/init
+--> POST /session/init [33m429[0m 0ms
+<-- POST /mcp/hub/sync:schedule
+--> POST /mcp/hub/sync:schedule [33m429[0m 0ms
+<-- POST /session/init
+--> POST /session/init [33m429[0m 0ms
+[nonce-gc] evicted 18 expired replay-nonce rows
