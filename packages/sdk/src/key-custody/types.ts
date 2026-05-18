@@ -1,6 +1,32 @@
 /**
  * KMS migration K0 — provider interface + canonical AAD context encoder.
  *
+ * IMPORTANT — node:crypto isolation contract (read before adding exports):
+ * This file is the ONLY key-custody module the SDK main barrel
+ * (`packages/sdk/src/index.ts`) is allowed to re-export from. Sibling
+ * runtime files (`local-hmac.ts`, `local-aes-provider.ts`,
+ * `local-secp256k1-signer.ts`, …) import `node:crypto` or pull in
+ * server-only SDKs (`@aws-sdk/client-kms`, `@google-cloud/kms`, …) which
+ * webpack cannot bundle for Next.js client components. The barrel re-exporting
+ * those files (even via `export type`) historically dragged `node:crypto`
+ * into `apps/web` client bundles (`use-a2a-session.ts` regression).
+ *
+ * Contract for this file:
+ *   1. Only `export type { … } from './sibling'` re-exports are allowed for
+ *      types defined in sibling runtime files. `export type` is erased by
+ *      TypeScript/SWC before webpack sees the graph, so no runtime edge to
+ *      the sibling is emitted.
+ *   2. NO runtime `export { … } from './sibling'` re-exports here. If you
+ *      need a runtime value, import it directly from the
+ *      `@smart-agent/sdk/key-custody` subpath (server-only).
+ *   3. NO `import` of any sibling that itself imports `node:crypto` or a
+ *      Node-only SDK. Types may be pulled via `import type` only.
+ *
+ * Anti-patterns that would re-break client bundling:
+ *   - `export { foo } from './local-hmac'`
+ *   - `import { createHmac } from 'node:crypto'`
+ *   - `export * from './aws-kms-provider'` (would include runtime exports)
+ *
  * `A2AKeyProvider` is the cloud-agnostic abstraction that lets a2a-agent
  * source session-package data keys from any KMS-class backend (local-aes
  * for dev, AWS KMS in prod, Vault Transit in the future). The interface
@@ -137,6 +163,48 @@ export interface A2AKeyProvider {
  *
  * Empty contexts are valid — yield an empty Uint8Array.
  */
+// ─── Sibling type re-exports ─────────────────────────────────────────
+// These are pure `export type` re-exports. TypeScript / SWC erase them
+// before webpack sees the module graph, so the SDK main barrel can pull
+// these types via `./key-custody/types` without dragging the sibling
+// runtime modules (and their `node:crypto` / Node-SDK imports) into the
+// client bundle.
+//
+// If you add a sibling type that the main barrel needs, add it here —
+// NOT to `./key-custody/index.ts` (that barrel is server-only).
+export type { LocalAesProviderEnv } from './local-aes-provider'
+export type { AwsKmsEnv, AwsKmsDeps } from './aws-kms-provider'
+export type {
+  LocalSecp256k1Env,
+  LocalSecp256k1Signer,
+} from './local-secp256k1-signer'
+export type {
+  KmsAccountBackend,
+  CreateKmsAccountOptions,
+} from './viem-kms-account'
+export type {
+  AwsKmsSignerEnv,
+  AwsKmsSignerDeps,
+  AwsKmsSigner,
+} from './aws-kms-signer'
+export type {
+  ToolExecutorId,
+  ToolExecutorSignerBackend,
+  ToolExecutorSignerEnv,
+  ToolExecutorSignerDeps,
+} from './tool-executor-signer'
+export type {
+  KmsMacProvider,
+  AwsKmsMacEnv,
+  AwsKmsMacDeps,
+} from './aws-kms-mac'
+export type { LocalHmacEnv } from './local-hmac'
+export type {
+  MacKeyId,
+  McpName,
+  McpMacProviderEnv,
+} from './mac-provider-factory'
+
 export function canonicalContextBytes(ctx: Record<string, string>): Uint8Array {
   const keys = Object.keys(ctx).sort()
   const parts: string[] = []

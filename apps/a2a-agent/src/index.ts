@@ -14,7 +14,7 @@ import { sessionStore } from './routes/session-store'
 import { walletAction } from './routes/wallet-action'
 import { a2a } from './routes/a2a'
 import { hostContext } from './middleware/host-context'
-import { rateLimit } from './middleware/rate-limit'
+import { rateLimit, resolveRateLimit } from './middleware/rate-limit'
 import { correlationId } from './middleware/correlation-id'
 import {
   assertPolicyCompleteness,
@@ -60,9 +60,52 @@ app.use(
 // Per-IP sliding-window rate limit (HARDENING-PLAN §1.5 #9). 60 req/min
 // global; tightened on auth + session-init bootstrap surfaces. In-memory
 // store; multi-instance deployments MUST migrate to Redis.
-app.use('*', rateLimit({ windowMs: 60_000, max: 60 }))
-app.use('/session/init', rateLimit({ windowMs: 60_000, max: 10 }))
-app.use('/auth/*', rateLimit({ windowMs: 60_000, max: 10 }))
+//
+// Thresholds are env-tunable per call site via `resolveRateLimit` — the
+// prod defaults stay tight; dev defaults raise the ceiling ~5x so tight
+// Playwright sign-in loops + post-write `mcp/hub/sync:schedule` bursts
+// don't flap on 429. See `middleware/rate-limit.ts` header for the
+// canonical env-var prefix list and `.env.example` for documentation.
+app.use(
+  '*',
+  rateLimit(
+    resolveRateLimit(
+      'GENERAL',
+      { max: 60, windowMs: 60_000 },
+      { max: 300, windowMs: 60_000 },
+    ),
+  ),
+)
+app.use(
+  '/session/init',
+  rateLimit(
+    resolveRateLimit(
+      'SESSION_INIT',
+      { max: 10, windowMs: 60_000 },
+      { max: 60, windowMs: 60_000 },
+    ),
+  ),
+)
+app.use(
+  '/auth/*',
+  rateLimit(
+    resolveRateLimit(
+      'AUTH',
+      { max: 10, windowMs: 60_000 },
+      { max: 60, windowMs: 60_000 },
+    ),
+  ),
+)
+app.use(
+  '/mcp/*',
+  rateLimit(
+    resolveRateLimit(
+      'MCP_PROXY',
+      { max: 60, windowMs: 60_000 },
+      { max: 300, windowMs: 60_000 },
+    ),
+  ),
+)
 
 // Host-context MUST sit before every route. It binds the request to a
 // specific agent principal based on the subdomain in the Host header and

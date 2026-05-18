@@ -118,7 +118,16 @@ async function callMcpTool(
   )
 
   const mcpPath = `/tools/${toolName}`
-  const mcpBodyJson = JSON.stringify({ tool: toolName, args: { ...args, token } })
+  // Inject _a2aSessionId so MCP tools that route on-chain redemption + deploy
+  // calls back through this a2a-agent's /session/<id>/* endpoints can find
+  // their session. Several org-mcp tools call requireA2aSessionId(args)
+  // and throw if absent — see apps/org-mcp/src/tools/{pools,rounds,
+  // proposal_registry,commitment,agent_deploy,agent_resolver}.ts and
+  // apps/person-mcp/src/tools/relationship.ts.
+  const mcpBodyJson = JSON.stringify({
+    tool: toolName,
+    args: { ...args, token, _a2aSessionId: active.id },
+  })
   const authHeaders = server.macKeyId
     ? await buildOutboundAuthHeaders(server.macKeyId, mcpPath, mcpBodyJson)
     : {}

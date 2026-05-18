@@ -128,8 +128,18 @@ export type { EncryptedPayload } from './crypto'
 // `@smart-agent/sdk/key-custody` subpath. Types are safe to re-export here
 // because TypeScript erases them at compile time.
 //
+// IMPORTANT: re-export from `./key-custody/types` (the pure-type module),
+// NOT from `./key-custody` (the runtime barrel). Re-exporting from the
+// runtime barrel — even with `export type` — has historically leaked
+// `node:crypto` into `apps/web` client bundles (`use-a2a-session.ts`
+// regression) because the runtime barrel transitively pulls
+// `local-hmac.ts` → `node:crypto`. The `./key-custody/types` module is
+// a pure-type re-export hub specifically to keep that edge severed.
+//
 // ✗ DO NOT add `createLocalHmacProvider`, `createLocalAesProvider`, etc. back
 //   to this barrel. They'd break `apps/web` client bundling.
+// ✗ DO NOT change the source to `'./key-custody'` — that would re-introduce
+//   the regression.
 // ✓ Server callers: `import { createLocalAesProvider } from '@smart-agent/sdk/key-custody'`
 // ✓ Client callers: only types are available here (and that's intentional).
 export type {
@@ -162,7 +172,7 @@ export type {
   MacKeyId,
   McpName,
   McpMacProviderEnv,
-} from './key-custody'
+} from './key-custody/types'
 
 // ─── Session TTL policy (risk-tier-based caps) ───────────────────────
 export { MAX_SESSION_TTL_SEC, clampSessionTtl } from './policy/session-ttl'
