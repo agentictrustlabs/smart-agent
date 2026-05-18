@@ -146,9 +146,16 @@ test("buildSignerBackend('gcp-kms') with malformed GCP_KMS_MASTER_SIGNER_VERSION
   )
 })
 
-// ─── buildToolExecutorBackend ─ per-tool signers (G-PR-4 target) ─────
+// ─── buildToolExecutorBackend ─ per-tool signers (G-PR-4) ────────────
 
-test("buildToolExecutorBackend('gcp-kms') with valid env + per-tool version throws G-PR-4 marker", () => {
+test("buildToolExecutorBackend('gcp-kms') with malformed version path rejects via signer format validation (G-PR-4)", () => {
+  // The signer pins to a specific version (each version has its own
+  // public key). A non-fully-qualified path now reaches the underlying
+  // `createGcpKmsSigner` constructor which enforces the canonical
+  // `projects/.../cryptoKeyVersions/<n>` format. Pre-G-PR-4 this branch
+  // threw the staged "not yet implemented" marker; G-PR-4 wires the
+  // signer and surfaces the same format-validation error the master
+  // signer test asserts.
   assert.throws(
     () =>
       buildToolExecutorBackend(
@@ -158,8 +165,21 @@ test("buildToolExecutorBackend('gcp-kms') with valid env + per-tool version thro
             'projects/x/cryptoKeys/round-awards/cryptoKeyVersions/1',
         }),
       ),
-    /GCP backend not yet implemented for tool-executor signer "round-awards" \(G-PR-4\)/,
+    /must match.*cryptoKeyVersions/,
   )
+})
+
+test("buildToolExecutorBackend('gcp-kms') with valid env + fully-qualified per-tool version constructs a signer (G-PR-4)", () => {
+  const backend = buildToolExecutorBackend(
+    'round-awards',
+    gcpEnv({
+      GCP_KMS_TOOL_EXECUTOR_ROUND_AWARDS_VERSION:
+        'projects/p/locations/global/keyRings/r/cryptoKeys/tool-round-awards/cryptoKeyVersions/1',
+    }),
+  )
+  // Signer is constructed lazily; method surface is the contract.
+  assert.equal(typeof backend.signA2AAction, 'function')
+  assert.equal(typeof backend.getSignerAddress, 'function')
 })
 
 test("buildToolExecutorBackend('gcp-kms') missing GCP_PROJECT_NUMBER throws clean error", () => {
@@ -181,17 +201,41 @@ test("buildToolExecutorBackend('gcp-kms') missing per-tool version throws clean 
   )
 })
 
-// ─── buildMacProvider ─ inter-service MAC (G-PR-5 target) ────────────
+// ─── buildMacProvider ─ inter-service MAC (G-PR-5 LIVE) ──────────────
 
-test("buildMacProvider('gcp-kms') with valid env + per-MAC-key version throws G-PR-5 marker", () => {
+test("buildMacProvider('gcp-kms') with valid GCP env + per-MAC-key version returns a real GcpKmsMacProvider", () => {
+  const provider = buildMacProvider('web-to-a2a', {
+    ...gcpEnv(),
+    GCP_KMS_MAC_WEB_TO_A2A_VERSION:
+      'projects/smart-agent-prod/locations/global/keyRings/a2a/cryptoKeys/mac-web-to-a2a/cryptoKeyVersions/1',
+  }) as unknown as {
+    backend?: string
+    macKeyId?: string
+    keyVersionPath?: string
+  }
+  // G-PR-5 lights up `createGcpKmsMacProvider`. The returned object
+  // exposes the KmsMacProvider shape PLUS the backend/macKeyId/keyVersionPath
+  // tag-fields so callers can identify the backend.
+  assert.equal(provider.backend, 'gcp-kms')
+  assert.equal(provider.macKeyId, 'web-to-a2a')
+  assert.ok(
+    provider.keyVersionPath?.endsWith('/cryptoKeyVersions/1'),
+    `keyVersionPath '${provider.keyVersionPath}' must end with /cryptoKeyVersions/1`,
+  )
+})
+
+test("buildMacProvider('gcp-kms') with malformed GCP_KMS_MAC_<...>_VERSION throws format error", () => {
+  // Parent-key path (no /cryptoKeyVersions/ suffix). The MAC provider
+  // pins to a specific version because each version is an independent
+  // secret.
   assert.throws(
     () =>
       buildMacProvider('web-to-a2a', {
         ...gcpEnv(),
         GCP_KMS_MAC_WEB_TO_A2A_VERSION:
-          'projects/x/cryptoKeys/mac-web-to-a2a/cryptoKeyVersions/1',
+          'projects/p/locations/l/keyRings/r/cryptoKeys/k',
       }),
-    /GCP backend not yet implemented for MAC provider "web-to-a2a" \(G-PR-5\)/,
+    /must match.*cryptoKeyVersions/,
   )
 })
 

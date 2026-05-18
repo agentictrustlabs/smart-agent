@@ -178,6 +178,154 @@ test("assertLegacySessionPolicy: dev + ALLOW_LEGACY_A2A_SESSIONS='true' → no b
   assert.equal(afterId, beforeId, 'no break-glass row in development')
 })
 
+// ─── P1-4 — Deployer-key-parity break-glass (validUntil + reason) ───
+
+test("P1-4: prod + ALLOW_LEGACY_A2A_SESSIONS='true' + ALLOW_LEGACY_A2A_SESSIONS_UNTIL future → permitted; audit row binds validUntil + reason", async () => {
+  const futureIso = new Date(Date.now() + 86_400_000).toISOString()
+  const beforeId = await getLatestBreakGlassRowId()
+  const policy = await assertLegacySessionPolicy({
+    NODE_ENV: 'production',
+    ALLOW_LEGACY_A2A_SESSIONS: 'true',
+    ALLOW_LEGACY_A2A_SESSIONS_UNTIL: futureIso,
+    ALLOW_LEGACY_A2A_SESSIONS_REASON: 'incident-response-INC-2026-042',
+  })
+  assert.equal(policy.enabled, true)
+  assert.equal(policy.breakGlass, true)
+  assert.ok(policy.validUntil, 'validUntil parsed')
+  assert.equal(policy.validUntil!.toISOString(), futureIso)
+  assert.equal(policy.operatorReason, 'incident-response-INC-2026-042')
+
+  const row = await getLatestBreakGlassRow()
+  assert.ok(row, 'break-glass audit row was written')
+  assert.ok(row!.id > beforeId, 'new break-glass row id is greater than before')
+  const body = JSON.parse(row!.errorReason ?? '{}') as Record<string, string>
+  assert.equal(body.envVar, 'ALLOW_LEGACY_A2A_SESSIONS')
+  assert.equal(body.envValue, 'true')
+  assert.equal(body.validUntil, futureIso, 'validUntil bound into audit body')
+  assert.equal(
+    body.operatorReason,
+    'incident-response-INC-2026-042',
+    'operatorReason bound into audit body',
+  )
+})
+
+test("P1-4: prod + ALLOW_LEGACY_A2A_SESSIONS='true' + ALLOW_LEGACY_A2A_SESSIONS_UNTIL past → throws", () => {
+  const pastIso = new Date(Date.now() - 86_400_000).toISOString()
+  assert.throws(
+    () =>
+      resolveLegacySessionPolicy({
+        NODE_ENV: 'production',
+        ALLOW_LEGACY_A2A_SESSIONS: 'true',
+        ALLOW_LEGACY_A2A_SESSIONS_UNTIL: pastIso,
+      }),
+    (err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err)
+      assert.match(msg, /ALLOW_LEGACY_A2A_SESSIONS_UNTIL/)
+      assert.match(msg, /in the past/)
+      return true
+    },
+  )
+})
+
+test("P1-4: prod + ALLOW_LEGACY_A2A_SESSIONS='true' + ALLOW_LEGACY_A2A_SESSIONS_UNTIL malformed → throws naming format", () => {
+  assert.throws(
+    () =>
+      resolveLegacySessionPolicy({
+        NODE_ENV: 'production',
+        ALLOW_LEGACY_A2A_SESSIONS: 'true',
+        ALLOW_LEGACY_A2A_SESSIONS_UNTIL: 'not-a-timestamp',
+      }),
+    (err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err)
+      assert.match(msg, /ALLOW_LEGACY_A2A_SESSIONS_UNTIL/)
+      assert.match(msg, /malformed/)
+      assert.match(msg, /ISO-8601/)
+      return true
+    },
+  )
+})
+
+test("P1-4: prod + ALLOW_LEGACY_A2A_SESSIONS='true' + no _UNTIL set → permitted (back-compat); audit row validUntil is 'none'", async () => {
+  const beforeId = await getLatestBreakGlassRowId()
+  const policy = await assertLegacySessionPolicy({
+    NODE_ENV: 'production',
+    ALLOW_LEGACY_A2A_SESSIONS: 'true',
+  })
+  assert.equal(policy.enabled, true)
+  assert.equal(policy.breakGlass, true)
+  assert.equal(policy.validUntil, null, 'validUntil is null when env unset')
+  assert.equal(policy.operatorReason, null, 'operatorReason is null when env unset')
+
+  const row = await getLatestBreakGlassRow()
+  assert.ok(row && row.id > beforeId, 'break-glass row was written')
+  const body = JSON.parse(row!.errorReason ?? '{}') as Record<string, string>
+  assert.equal(body.validUntil, 'none', "validUntil field is the string 'none'")
+  assert.equal(
+    body.operatorReason,
+    'no reason provided',
+    'operatorReason field has fallback string',
+  )
+})
+
+test("P1-4: break-glass row entry_hash binds validUntil + reason (hash-chain integrity)", async () => {
+  const futureIso = new Date(Date.now() + 86_400_000).toISOString()
+  await assertLegacySessionPolicy({
+    NODE_ENV: 'production',
+    ALLOW_LEGACY_A2A_SESSIONS: 'true',
+    ALLOW_LEGACY_A2A_SESSIONS_UNTIL: futureIso,
+    ALLOW_LEGACY_A2A_SESSIONS_REASON: 'staged-migration-2026-Q2',
+  })
+  const row = await getLatestBreakGlassRow()
+  assert.ok(row, 'break-glass row exists')
+
+  const rowForHash = {
+    rootGrantHash: row!.rootGrantHash ?? '',
+    sessionId: row!.sessionId,
+    sessionPrincipal: row!.sessionPrincipal,
+    a2aTaskId: row!.a2aTaskId ?? '',
+    mcpServer: row!.mcpServer,
+    mcpTool: row!.mcpTool,
+    mcpCallId: row!.mcpCallId,
+    eventType: row!.eventType ?? 'execution',
+    eventKind: row!.eventKind ?? 'request_received',
+    requestReceivedRowId: row!.requestReceivedRowId ?? null,
+    executionPath: row!.executionPath,
+    toolGrantHash: row!.toolGrantHash ?? null,
+    toolExecutor: row!.toolExecutor ?? null,
+    target: row!.target ?? null,
+    selector: row!.selector ?? null,
+    callDataHash: row!.callDataHash ?? null,
+    valueWei: row!.valueWei ?? '0',
+    txHash: row!.txHash ?? null,
+    userOpHash: row!.userOpHash ?? null,
+    status: row!.status,
+    errorReason: row!.errorReason ?? '',
+    receivedAt: row!.receivedAt,
+    finalizedAt: row!.finalizedAt ?? null,
+    correlationId: row!.correlationId ?? null,
+  }
+  const recomputed = computeEntryHash(rowForHash, row!.prevEntryHash ?? null)
+  assert.equal(recomputed, row!.entryHash, 'recomputed entry_hash matches stored hash')
+
+  // Tamper validUntil → hash must change.
+  const tamperedBody = JSON.parse(rowForHash.errorReason) as Record<string, string>
+  tamperedBody.validUntil = new Date(Date.now() + 2 * 86_400_000).toISOString()
+  const tamperedRow = { ...rowForHash, errorReason: JSON.stringify(tamperedBody) }
+  const tamperedHash = computeEntryHash(tamperedRow, row!.prevEntryHash ?? null)
+  assert.notEqual(tamperedHash, row!.entryHash, 'tampering with validUntil breaks the chain')
+
+  // Tamper operatorReason → hash must change.
+  const tamperedBody2 = JSON.parse(rowForHash.errorReason) as Record<string, string>
+  tamperedBody2.operatorReason = 'something-different'
+  const tamperedRow2 = { ...rowForHash, errorReason: JSON.stringify(tamperedBody2) }
+  const tamperedHash2 = computeEntryHash(tamperedRow2, row!.prevEntryHash ?? null)
+  assert.notEqual(
+    tamperedHash2,
+    row!.entryHash,
+    'tampering with operatorReason breaks the chain',
+  )
+})
+
 test("assertLegacySessionPolicy: break-glass row entry_hash binds the env var name + value (hash-chain integrity)", async () => {
   // Pin chain state first by writing a fresh row.
   await assertLegacySessionPolicy({

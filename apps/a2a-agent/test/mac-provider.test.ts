@@ -174,6 +174,100 @@ test('buildMacProvider aws-kms constructs a provider when env is well-formed', (
   assert.equal(typeof provider.verifyMac, 'function')
 })
 
+// ─── gcp-kms backend ─────────────────────────────────────────────────
+
+const VALID_GCP_AUTH_ENV = {
+  GCP_PROJECT_ID: 'smart-agent-prod',
+  GCP_PROJECT_NUMBER: '123456789012',
+  GCP_WORKLOAD_IDENTITY_POOL_ID: 'vercel-pool',
+  GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID: 'vercel-oidc',
+  GCP_SERVICE_ACCOUNT_EMAIL:
+    'a2a-agent@smart-agent-prod.iam.gserviceaccount.com',
+}
+
+const VALID_GCP_MAC_VERSION =
+  'projects/smart-agent-prod/locations/global/keyRings/a2a/cryptoKeys/mac-web-to-a2a/cryptoKeyVersions/1'
+
+test("buildMacProvider gcp-kms requires every GCP auth env field", () => {
+  for (const key of Object.keys(VALID_GCP_AUTH_ENV) as Array<
+    keyof typeof VALID_GCP_AUTH_ENV
+  >) {
+    const env: Record<string, string> = {
+      A2A_KMS_BACKEND: 'gcp-kms',
+      ...VALID_GCP_AUTH_ENV,
+      GCP_KMS_MAC_WEB_TO_A2A_VERSION: VALID_GCP_MAC_VERSION,
+    }
+    delete env[key]
+    assert.throws(
+      () => buildMacProvider('web-to-a2a', env),
+      new RegExp(`${key} is required for 'gcp-kms'`),
+      `expected throw naming ${key}`,
+    )
+  }
+})
+
+test("buildMacProvider gcp-kms requires GCP_KMS_MAC_<MAC_KEY_ID>_VERSION", () => {
+  assert.throws(
+    () =>
+      buildMacProvider('web-to-a2a', {
+        A2A_KMS_BACKEND: 'gcp-kms',
+        ...VALID_GCP_AUTH_ENV,
+        // missing GCP_KMS_MAC_WEB_TO_A2A_VERSION
+      }),
+    /GCP_KMS_MAC_WEB_TO_A2A_VERSION is required/,
+  )
+})
+
+test('buildMacProvider gcp-kms constructs a real GcpKmsMacProvider when env is well-formed', () => {
+  // Constructor doesn't contact Google (lazy auth-client). Shape check only.
+  const provider = buildMacProvider('web-to-a2a', {
+    A2A_KMS_BACKEND: 'gcp-kms',
+    ...VALID_GCP_AUTH_ENV,
+    GCP_KMS_MAC_WEB_TO_A2A_VERSION: VALID_GCP_MAC_VERSION,
+  }) as unknown as {
+    backend?: string
+    macKeyId?: string
+    keyVersionPath?: string
+    generateMac: unknown
+    verifyMac: unknown
+  }
+  assert.equal(provider.backend, 'gcp-kms')
+  assert.equal(provider.macKeyId, 'web-to-a2a')
+  assert.equal(provider.keyVersionPath, VALID_GCP_MAC_VERSION)
+  assert.equal(typeof provider.generateMac, 'function')
+  assert.equal(typeof provider.verifyMac, 'function')
+})
+
+test('buildMacProvider gcp-kms rejects malformed GCP_KMS_MAC_<...>_VERSION (no cryptoKeyVersions suffix)', () => {
+  assert.throws(
+    () =>
+      buildMacProvider('web-to-a2a', {
+        A2A_KMS_BACKEND: 'gcp-kms',
+        ...VALID_GCP_AUTH_ENV,
+        GCP_KMS_MAC_WEB_TO_A2A_VERSION:
+          'projects/p/locations/l/keyRings/r/cryptoKeys/k',
+      }),
+    /must match.*cryptoKeyVersions/,
+  )
+})
+
+test('buildMacProvider gcp-kms covers every MAC key id via the envKeyForMacKeyId mapping', () => {
+  // Exhaustive sweep: every MacKeyId must resolve through the GCP arm
+  // when its per-key version env var is set. Catches drift when a new
+  // MacKeyId is added without the matching `gcpKms` field.
+  for (const id of MAC_KEY_IDS) {
+    const { gcpKms } = envKeyForMacKeyId(id)
+    const path = `projects/p/locations/l/keyRings/r/cryptoKeys/k-${id}/cryptoKeyVersions/1`
+    const provider = buildMacProvider(id, {
+      A2A_KMS_BACKEND: 'gcp-kms',
+      ...VALID_GCP_AUTH_ENV,
+      [gcpKms]: path,
+    }) as unknown as { backend?: string; macKeyId?: string }
+    assert.equal(provider.backend, 'gcp-kms', `${id} backend tag`)
+    assert.equal(provider.macKeyId, id, `${id} macKeyId tag`)
+  }
+})
+
 // ─── vault-transit removed (GCP-KMS G-PR-1) ──────────────────────────
 
 test("buildMacProvider 'vault-transit' now falls into the unknown-backend branch", () => {

@@ -24,13 +24,13 @@
  * `apps/a2a-agent/src/lib/tool-executors.ts:51-66` and
  * `scripts/deploy-local.sh:447-454`):
  *
- *   tool id            env var (local-aes / dev)                   env var (aws-kms / prod)
- *   -----------        ------------------------------------------  ----------------------------------------------
- *   round-awards       TOOL_EXECUTOR_ROUND_AWARDS_PRIVATE_KEY      AWS_KMS_TOOL_EXECUTOR_ROUND_AWARDS_KEY_ID
- *   disbursement       TOOL_EXECUTOR_DISBURSEMENT_PRIVATE_KEY      AWS_KMS_TOOL_EXECUTOR_DISBURSEMENT_KEY_ID
- *   pool-lifecycle     TOOL_EXECUTOR_POOL_LIFECYCLE_PRIVATE_KEY    AWS_KMS_TOOL_EXECUTOR_POOL_LIFECYCLE_KEY_ID
- *   grant-awards       TOOL_EXECUTOR_GRANT_AWARDS_PRIVATE_KEY      AWS_KMS_TOOL_EXECUTOR_GRANT_AWARDS_KEY_ID
- *   auth-bootstrap     TOOL_EXECUTOR_AUTH_BOOTSTRAP_PRIVATE_KEY    AWS_KMS_TOOL_EXECUTOR_AUTH_BOOTSTRAP_KEY_ID
+ *   tool id            env var (local-aes / dev)                   env var (aws-kms / prod)                       env var (gcp-kms / prod)
+ *   -----------        ------------------------------------------  ----------------------------------------------  -------------------------------------------------
+ *   round-awards       TOOL_EXECUTOR_ROUND_AWARDS_PRIVATE_KEY      AWS_KMS_TOOL_EXECUTOR_ROUND_AWARDS_KEY_ID       GCP_KMS_TOOL_EXECUTOR_ROUND_AWARDS_VERSION
+ *   disbursement       TOOL_EXECUTOR_DISBURSEMENT_PRIVATE_KEY      AWS_KMS_TOOL_EXECUTOR_DISBURSEMENT_KEY_ID       GCP_KMS_TOOL_EXECUTOR_DISBURSEMENT_VERSION
+ *   pool-lifecycle     TOOL_EXECUTOR_POOL_LIFECYCLE_PRIVATE_KEY    AWS_KMS_TOOL_EXECUTOR_POOL_LIFECYCLE_KEY_ID     GCP_KMS_TOOL_EXECUTOR_POOL_LIFECYCLE_VERSION
+ *   grant-awards       TOOL_EXECUTOR_GRANT_AWARDS_PRIVATE_KEY      AWS_KMS_TOOL_EXECUTOR_GRANT_AWARDS_KEY_ID       GCP_KMS_TOOL_EXECUTOR_GRANT_AWARDS_VERSION
+ *   auth-bootstrap     TOOL_EXECUTOR_AUTH_BOOTSTRAP_PRIVATE_KEY    AWS_KMS_TOOL_EXECUTOR_AUTH_BOOTSTRAP_KEY_ID     GCP_KMS_TOOL_EXECUTOR_AUTH_BOOTSTRAP_VERSION
  *
  * The legacy `tool-executors.ts` registry uses SCREAMING_SNAKE_CASE
  * "family" names (e.g. `ROUND_AWARDS`). K5 introduces a lowercase-with-
@@ -57,6 +57,13 @@ import {
   type AwsKmsSignerAuditEvent,
   type AwsKmsSignerDeps,
 } from './aws-kms-signer'
+import {
+  createGcpKmsSigner,
+  type GcpKmsSigner,
+  type GcpKmsSignerAuditEvent,
+  type GcpKmsSignerDeps,
+} from './gcp-kms-signer'
+import type { GcpAuthEnv } from './gcp-auth'
 
 /**
  * Canonical list of tool executor identities. New entries here must be
@@ -96,6 +103,7 @@ export function isToolExecutorId(id: string): id is ToolExecutorId {
  *
  *   - `'local-aes'`  → `TOOL_EXECUTOR_<UPPER>_PRIVATE_KEY`
  *   - `'aws-kms'`    → `AWS_KMS_TOOL_EXECUTOR_<UPPER>_KEY_ID`
+ *   - `'gcp-kms'`    → `GCP_KMS_TOOL_EXECUTOR_<UPPER>_VERSION`
  *
  * Pass the `backend` argument to disambiguate. No-backend variant
  * returns just the upper fragment for callers that want to compose
@@ -103,18 +111,20 @@ export function isToolExecutorId(id: string): id is ToolExecutorId {
  */
 export function toolEnvKeyName(
   toolId: ToolExecutorId,
-  backend?: 'local-aes' | 'aws-kms',
+  backend?: 'local-aes' | 'aws-kms' | 'gcp-kms',
 ): string {
   const upper = toolId.replace(/-/g, '_').toUpperCase()
   if (backend === 'local-aes') return `TOOL_EXECUTOR_${upper}_PRIVATE_KEY`
   if (backend === 'aws-kms') return `AWS_KMS_TOOL_EXECUTOR_${upper}_KEY_ID`
+  if (backend === 'gcp-kms') return `GCP_KMS_TOOL_EXECUTOR_${upper}_VERSION`
   return upper
 }
 
 /**
  * Env shape consumed by `createToolExecutorSigner`. Same selector
  * (`A2A_KMS_BACKEND`) as the master signer / envelope encryption — one
- * deployment switch controls all three.
+ * deployment switch controls all four backends (local-aes, aws-kms,
+ * gcp-kms — see G-PR-4).
  *
  * Per-tool env vars are read by name (constructed via
  * `toolEnvKeyName`). The env object MAY include extra keys; only the
@@ -127,20 +137,27 @@ export interface ToolExecutorSignerEnv {
   [key: string]: string | undefined
   // aws-kms path — read at AWS_KMS_TOOL_EXECUTOR_<TOOL_ID>_KEY_ID, plus
   // shared role / region (same values as K4 master signer).
+  // gcp-kms path — read at GCP_KMS_TOOL_EXECUTOR_<TOOL_ID>_VERSION, plus
+  // the five GCP auth identifiers (same values as G-PR-3 master signer).
 }
 
 /**
- * Optional dependencies passed through to the aws-kms-signer (test-injectable
- * `KMSClient`). The local-aes path has no dependencies.
+ * Optional dependencies passed through to the underlying signer
+ * (test-injectable `KMSClient` / `SignerKmsClientLike` stubs). The
+ * local-aes path has no dependencies.
  *
  * Sprint 3 S3.2 — `audit` mirrors the master-signer's audit-callback
- * shape. Wired into both the local-aes and aws-kms construction paths
- * so dev/prod parity is exact.
+ * shape. Wired into all three construction paths (local-aes, aws-kms,
+ * gcp-kms) so dev/prod parity is exact.
  */
 export interface ToolExecutorSignerDeps {
   awsKmsDeps?: AwsKmsSignerDeps
+  gcpKmsDeps?: GcpKmsSignerDeps
   audit?: (
-    event: AwsKmsSignerAuditEvent | LocalSecp256k1SignerAuditEvent,
+    event:
+      | AwsKmsSignerAuditEvent
+      | GcpKmsSignerAuditEvent
+      | LocalSecp256k1SignerAuditEvent,
   ) => Promise<void> | void
 }
 
@@ -149,7 +166,10 @@ export interface ToolExecutorSignerDeps {
  * master signer's `KmsAccountBackend` so the viem `LocalAccount`
  * adapter (`createKmsAccount`) wraps it identically.
  */
-export type ToolExecutorSignerBackend = LocalSecp256k1Signer | AwsKmsSigner
+export type ToolExecutorSignerBackend =
+  | LocalSecp256k1Signer
+  | AwsKmsSigner
+  | GcpKmsSigner
 
 /**
  * Construct the signer backend for a specific tool family.
@@ -166,14 +186,19 @@ export type ToolExecutorSignerBackend = LocalSecp256k1Signer | AwsKmsSigner
  *                         signer; the role's identity policy adds one
  *                         statement per tool key with that key's ARN
  *                         pinned as `Resource` for least-privilege.
- *   - `'gcp-kms'`       → wired only on the a2a-agent side (see
- *                         `apps/a2a-agent/src/auth/key-provider.ts`
- *                         `buildToolExecutorBackend`). The SDK-level
- *                         signer factory here intentionally falls
- *                         through to "unknown backend" until G-PR-4
- *                         lands the GCP implementation. The
- *                         `'vault-transit'` deferred-sibling case was
- *                         removed in G-PR-1.
+ *   - `'gcp-kms'`       → `createGcpKmsSigner` reading
+ *                         `GCP_KMS_TOOL_EXECUTOR_<TOOL_ID>_VERSION` for
+ *                         the per-tool cryptoKeyVersion resource path.
+ *                         Same five GCP auth identifiers
+ *                         (`GCP_PROJECT_ID`, `GCP_PROJECT_NUMBER`,
+ *                         `GCP_WORKLOAD_IDENTITY_POOL_ID`,
+ *                         `GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID`,
+ *                         `GCP_SERVICE_ACCOUNT_EMAIL`) as the G-PR-3
+ *                         master signer; the service account's IAM
+ *                         binding adds one `roles/cloudkms.signer`
+ *                         entry per tool key for least-privilege.
+ *                         G-PR-4 implementation. The `'vault-transit'`
+ *                         deferred-sibling case was removed in G-PR-1.
  *
  * Thrown errors are operator-actionable strings — the env var name
  * appears verbatim so the operator can search their deployment for
@@ -253,13 +278,53 @@ export function createToolExecutorSigner(
         { ...deps.awsKmsDeps, audit: deps.audit },
       )
     }
-    // The 'gcp-kms' branch is wired by the a2a-agent-side
-    // `buildToolExecutorBackend` (see `apps/a2a-agent/src/auth/key-provider.ts`)
-    // and currently throws "GCP backend not yet implemented for tool-executor
-    // signer (G-PR-4)". The SDK-level factory here doesn't enumerate gcp-kms
-    // — it falls through to "unknown backend" until G-PR-4 lands the
-    // implementation. The vault-transit deferred-sibling case was removed
-    // in G-PR-1.
+    case 'gcp-kms': {
+      // G-PR-4 — per-tool GCP KMS asymmetric secp256k1 signer.
+      // Same five GCP auth identifiers as the master signer; the
+      // per-tool key is pinned to a SPECIFIC cryptoKeyVersion (the
+      // `_VERSION` env var follows the `cryptoKeyVersions/<n>` shape
+      // validated inside `createGcpKmsSigner`).
+      const envName = toolEnvKeyName(toolId, 'gcp-kms')
+      const versionPath = env[envName]
+      if (!versionPath) {
+        throw new Error(
+          `createToolExecutorSigner: ${envName} is required for tool "${toolId}" ` +
+            "when A2A_KMS_BACKEND='gcp-kms'",
+        )
+      }
+      // Per-tool env-var enforcement for the five GCP auth identifiers.
+      // We surface a per-tool error message so operators see WHICH tool
+      // construction failed when a deployment is missing the shared
+      // GCP auth env.
+      const requiredGcpAuthKeys: readonly (keyof GcpAuthEnv)[] = [
+        'GCP_PROJECT_ID',
+        'GCP_PROJECT_NUMBER',
+        'GCP_WORKLOAD_IDENTITY_POOL_ID',
+        'GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID',
+        'GCP_SERVICE_ACCOUNT_EMAIL',
+      ]
+      for (const key of requiredGcpAuthKeys) {
+        if (!env[key]) {
+          throw new Error(
+            `createToolExecutorSigner: ${key} is required for tool "${toolId}" ` +
+              "when A2A_KMS_BACKEND='gcp-kms'",
+          )
+        }
+      }
+      return createGcpKmsSigner(
+        {
+          GCP_PROJECT_ID: env.GCP_PROJECT_ID as string,
+          GCP_PROJECT_NUMBER: env.GCP_PROJECT_NUMBER as string,
+          GCP_WORKLOAD_IDENTITY_POOL_ID: env.GCP_WORKLOAD_IDENTITY_POOL_ID as string,
+          GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID:
+            env.GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID as string,
+          GCP_SERVICE_ACCOUNT_EMAIL: env.GCP_SERVICE_ACCOUNT_EMAIL as string,
+          GCP_KMS_MASTER_SIGNER_VERSION: versionPath,
+        },
+        { ...deps.gcpKmsDeps, audit: deps.audit },
+      )
+    }
+    // The vault-transit deferred-sibling case was removed in G-PR-1.
     default:
       throw new Error(
         `createToolExecutorSigner: unknown A2A_KMS_BACKEND: ${backend}`,

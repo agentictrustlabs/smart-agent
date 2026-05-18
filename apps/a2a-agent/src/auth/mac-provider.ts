@@ -20,6 +20,7 @@
 import type { KmsMacProvider, MacKeyId } from '@smart-agent/sdk/key-custody'
 import {
   createAwsKmsMacProvider,
+  createGcpKmsMacProvider,
   createLocalHmacProvider,
   envKeyForMacKeyId,
   MAC_KEY_IDS,
@@ -28,7 +29,7 @@ import {
   assertNoForbiddenStaticKeys,
   type KeyProviderEnv,
 } from './key-provider'
-import { createGcpAuthClient, GCP_AUTH_ENV_KEYS } from '@smart-agent/sdk/key-custody'
+import { GCP_AUTH_ENV_KEYS } from '@smart-agent/sdk/key-custody'
 
 export type { MacKeyId }
 export { MAC_KEY_IDS }
@@ -54,7 +55,7 @@ export function buildMacProvider(
   env: MacProviderEnv,
 ): KmsMacProvider {
   const backend = env.A2A_KMS_BACKEND ?? 'local-aes'
-  const { legacy, awsKms } = envKeyForMacKeyId(macKeyId)
+  const { legacy, awsKms, gcpKms } = envKeyForMacKeyId(macKeyId)
 
   if (env.NODE_ENV === 'production' && backend === 'local-aes') {
     throw new Error(
@@ -90,10 +91,10 @@ export function buildMacProvider(
       })
     }
     case 'gcp-kms': {
-      // GCP-KMS G-PR-1 stub for the per-side inter-service MAC provider.
-      // Same validate → build-auth-client → throw pattern as the other
-      // factories. The MAC-specific identifier is per MacKeyId:
-      // `GCP_KMS_MAC_<MAC_KEY_ID>_VERSION`. Implementation lands in G-PR-5.
+      // GCP-KMS G-PR-5 — production-live GCP MAC provider. Same
+      // validate-env → assertNoForbiddenStaticKeys → construct provider
+      // pattern as `buildKeyProvider` / `buildSignerBackend` /
+      // `buildToolExecutorBackend`'s GCP arms.
       for (const key of GCP_AUTH_ENV_KEYS) {
         if (!env[key]) {
           throw new Error(
@@ -109,28 +110,24 @@ export function buildMacProvider(
         // works.
         assertNoForbiddenStaticKeys(env as KeyProviderEnv, 'gcp-kms')
       }
-      // Build the auth client so auth-env errors surface before the
-      // staged marker.
-      createGcpAuthClient({
-        GCP_PROJECT_ID: env.GCP_PROJECT_ID as string,
-        GCP_PROJECT_NUMBER: env.GCP_PROJECT_NUMBER as string,
-        GCP_WORKLOAD_IDENTITY_POOL_ID: env.GCP_WORKLOAD_IDENTITY_POOL_ID as string,
-        GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID:
-          env.GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID as string,
-        GCP_SERVICE_ACCOUNT_EMAIL: env.GCP_SERVICE_ACCOUNT_EMAIL as string,
-      })
-      const gcpVersionEnvName = `GCP_KMS_MAC_${macKeyId
-        .replace(/-/g, '_')
-        .toUpperCase()}_VERSION`
-      if (!env[gcpVersionEnvName]) {
+      const keyVersionPath = env[gcpKms]
+      if (!keyVersionPath) {
         throw new Error(
-          `buildMacProvider(${macKeyId}): ${gcpVersionEnvName} is required for 'gcp-kms' backend ` +
+          `buildMacProvider(${macKeyId}): ${gcpKms} is required for 'gcp-kms' backend ` +
             '(GCP-KMS-IMPLEMENTATION-PLAN.md § G5).',
         )
       }
-      throw new Error(
-        `GCP backend not yet implemented for MAC provider "${macKeyId}" (G-PR-5). ` +
-          'See output/GCP-KMS-IMPLEMENTATION-PLAN.md § G5.',
+      return createGcpKmsMacProvider(
+        {
+          GCP_PROJECT_ID: env.GCP_PROJECT_ID as string,
+          GCP_PROJECT_NUMBER: env.GCP_PROJECT_NUMBER as string,
+          GCP_WORKLOAD_IDENTITY_POOL_ID: env.GCP_WORKLOAD_IDENTITY_POOL_ID as string,
+          GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID:
+            env.GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID as string,
+          GCP_SERVICE_ACCOUNT_EMAIL: env.GCP_SERVICE_ACCOUNT_EMAIL as string,
+          keyVersionPath,
+        },
+        macKeyId,
       )
     }
     default:

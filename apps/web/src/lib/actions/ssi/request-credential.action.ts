@@ -8,10 +8,8 @@
  *   - Issuer-side calls (`org` / `family` / `geo` / `skill` `offer`
  *     and `issue`) hit the issuer's protocol endpoints directly via
  *     the `clients.ts` SDK. Not user-authenticated.
- *   - `POST ${walletUrl}/credentials/store` (in `issueCredentialViaSession`)
- *     is a direct HTTP call on person-mcp's non-tool surface, gated by
- *     the one-shot `requestId` issued by the dispatch handler. Stays
- *     direct for now — TODO(phase-4) to wrap as MCP tool.
+ *   - Credential storage routes via `ssi_finish_credential_exchange`
+ *     (Sprint 5 W3 P1-2 — no direct POST on /credentials/store).
  *
  * Generic AnonCreds issuance flow — replaces per-credential-type actions
  * (`anon-org.action.ts`, `geo-attestation.action.ts`). Adding a new
@@ -39,7 +37,6 @@ import {
 import { loadSignerForCurrentUser } from '@/lib/ssi/signer'
 import { org, family, geo, skill } from '@/lib/ssi/clients'
 import { callMcp } from '@/lib/clients/mcp-client'
-import { ssiConfig } from '@/lib/ssi/config'
 import { getSignerContext } from './wallet-provision.action'
 import { hashWalletAction, type SignerContext } from '@/lib/credentials/wallet-helpers'
 import { dispatchWalletAction, DispatchError } from '@/lib/wallet-action/dispatch'
@@ -257,14 +254,16 @@ export async function issueCredentialViaSession(input: {
       attributes: input.attributes,
     })
 
-    // /credentials/store is authenticated by the one-shot requestId issued
-    // by the dispatch handler — no separate signature needed.
-    // TODO(phase-4): direct POST on person-mcp non-tool route. Wrap as
-    // `ssi_credentials_store` MCP tool so this can ride the A2A proxy.
-    const storeRes = await fetch(`${ssiConfig.walletUrl}/credentials/store`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
+    // Sprint 5 W3 P1-2: routed via ssi_finish_credential_exchange (a2a→person
+    // hop signed). The one-shot requestId is still the application-layer
+    // authorisation; the MCP tool drives the same storage path the HTTP
+    // route exposes (now wire-auth gated). Direct POST on /credentials/store
+    // is no longer accepted by person-mcp.
+    const fin = await callMcp<{ credentialId?: string; error?: string }>(
+      'person',
+      'ssi_finish_credential_exchange',
+      {
+        principal,
         holderWalletId: input.holderWalletId,
         requestId: dispatched.requestId,
         credentialJson: issuance.credentialJson,
@@ -274,15 +273,12 @@ export async function issueCredentialViaSession(input: {
         ...(input.extraIssueArgs?.targetOrgAddress
           ? { targetOrgAddress: input.extraIssueArgs.targetOrgAddress }
           : {}),
-      }),
-    })
-    if (!storeRes.ok) {
-      const e = await storeRes.json().catch(() => ({})) as { error?: string }
-      return { success: false, error: e.error ?? `store failed: HTTP ${storeRes.status}` }
+      },
+    )
+    if (fin.error || !fin.credentialId) {
+      return { success: false, error: fin.error ?? 'store failed' }
     }
-    const { credentialId } = await storeRes.json() as { credentialId: string }
-    void principal
-    return { success: true, credentialId }
+    return { success: true, credentialId: fin.credentialId }
   } catch (err) {
     if (err instanceof DispatchError) {
       return { success: false, error: err.detail, errorCode: err.code }

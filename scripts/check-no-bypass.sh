@@ -165,9 +165,15 @@ K6_ROUTE_HANDLER_ALLOWLIST=(
   # `auth-bootstrap` tool-executor signer registered in TOOL_EXECUTOR_IDS.
   # The deployer key MUST NOT reappear in those handlers — this guard
   # now catches any regression.
-  # TODO(K6-C1): check-agent-name only needs the deployer ADDRESS to
-  # derive a counterfactual smart-account address for UX preview.
-  # Migrate to read `DEPLOYER_ADDRESS` env var (Category C-trivial).
+  #
+  # EXEMPT: check-agent-name needs the deployer ADDRESS (not the private
+  # key) to compute a counterfactual smart-account address preview for
+  # the passkey-signup UI. The route prefers `DEPLOYER_ADDRESS` env var
+  # and falls back to deriving the address from `DEPLOYER_PRIVATE_KEY`
+  # ONLY in local-dev where both vars co-exist. In production the K6
+  # hard-fail (`assertDeployerKeyPolicy`) refuses startup if the private
+  # key is present, so the fallback is unreachable in prod. This is a
+  # permanent local-dev exemption, not a migration debt.
   "apps/web/src/app/api/auth/check-agent-name/route.ts"
 )
 
@@ -406,5 +412,5 @@ if [[ ${#P0_4_VIOLATIONS[@]} -ne 0 ]]; then
   exit 1
 fi
 
-echo "[check-no-bypass] OK — no direct-MCP bypasses in apps/web/src, no direct KMS SDK imports in a2a-agent routes, no @google-cloud/kms or google-auth-library imports outside packages/sdk/src/key-custody, no DEPLOYER_PRIVATE_KEY in route handlers outside K6 allowlist (${#K6_ROUTE_HANDLER_ALLOWLIST[@]} entr$([ ${#K6_ROUTE_HANDLER_ALLOWLIST[@]} -eq 1 ] && echo y || echo ies)), all /session-store/* fetches in apps/web/src go through signed-envelope helper, execution_audit append-only invariant holds, P0-4 denyAndAudit invariant holds in ${#P0_4_FILES[@]} file(s)."
+echo "[check-no-bypass] OK — no direct-MCP bypasses in apps/web/src, no direct KMS SDK imports in a2a-agent routes, no @google-cloud/kms or google-auth-library imports outside packages/sdk/src/key-custody, no DEPLOYER_PRIVATE_KEY in route handlers outside K6 deployer-name exemption (${#K6_ROUTE_HANDLER_ALLOWLIST[@]} entr$([ ${#K6_ROUTE_HANDLER_ALLOWLIST[@]} -eq 1 ] && echo y || echo ies)), all /session-store/* fetches in apps/web/src go through signed-envelope helper, execution_audit append-only invariant holds, P0-4 denyAndAudit invariant holds in ${#P0_4_FILES[@]} file(s)."
 exit 0

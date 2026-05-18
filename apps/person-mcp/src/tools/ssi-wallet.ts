@@ -28,6 +28,7 @@ import { listHolderWalletsForPrincipal, getHolderWalletById, getHolderWalletByCo
 import { listCredentialMetadata, getCredentialMetadataById, findMarketplaceCredentialForRegistry } from '../ssi/storage/cred-metadata.js'
 import { getCredential } from '../ssi/storage/askar.js'
 import { listProofAuditByPrincipal } from '../ssi/storage/proof-audit.js'
+import { storeCredentialInternal } from '../ssi/api/credentials.js'
 
 // After the merge, the ssi-wallet routes live in this same Hono server
 // (port = PERSON_MCP_PORT). The forward() helper still uses HTTP rather than
@@ -293,23 +294,28 @@ const finishCredentialExchange = {
     required: ['principal', 'holderWalletId', 'requestId', 'credentialJson', 'credentialType', 'issuerId', 'schemaId'],
   },
   handler: async (args: FinishExchangeArgs) => {
-    // /credentials/store persists the canonical credential_metadata row
-    // (keyed on holderWalletId). The previous mirror table in person-mcp's
+    // Sprint 5 W3 P1-2 — call the internal store helper directly instead
+    // of looping back through HTTP. /credentials/store now requires the
+    // `a2a-to-person` wire-auth envelope; the MCP tool already runs
+    // inside person-mcp, so the storage path is invoked in-process.
+    // Persists the canonical credential_metadata row keyed on
+    // holderWalletId; the previous mirror table in person-mcp's
     // drizzle DB is gone post-merge.
     console.log('[ssi_finish_credential_exchange] adminDelegationJson present=%s target=%s',
       !!args.adminDelegationJson, args.adminDelegationTarget)
-    const res = await forward('/credentials/store', {
+    const result = await storeCredentialInternal({
       holderWalletId: args.holderWalletId,
       requestId: args.requestId,
       credentialJson: args.credentialJson,
       credentialType: args.credentialType,
       issuerId: args.issuerId,
       schemaId: args.schemaId,
-      ...(args.targetOrgAddress ? { targetOrgAddress: args.targetOrgAddress } : {}),
-      ...(args.adminDelegationJson ? { adminDelegationJson: args.adminDelegationJson } : {}),
-      ...(args.adminDelegationTarget ? { adminDelegationTarget: args.adminDelegationTarget } : {}),
+      targetOrgAddress: args.targetOrgAddress,
+      adminDelegationJson: args.adminDelegationJson,
+      adminDelegationTarget: args.adminDelegationTarget,
     })
-    return mcpText(res)
+    if (!result.ok) return mcpText({ error: result.error })
+    return mcpText({ credentialId: result.credentialId, metadata: result.metadata })
   },
 }
 

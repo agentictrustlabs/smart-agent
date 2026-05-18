@@ -210,13 +210,16 @@ export async function getToolExecutorSigner(
   const account = await createKmsAccount(backend, { sessionId: `tool-executor:${toolId}` })
   toolExecutorAccountCache.set(toolId, account)
   // Resolve the logged keyId from the active backend. AWS path reports
-  // the per-tool ARN env var; local-aes path reports the stable sentinel
-  // so logs differentiate cleanly.
+  // the per-tool ARN env var; GCP path reports the per-tool
+  // cryptoKeyVersion resource path; local-aes path reports the stable
+  // sentinel so logs differentiate cleanly.
   const activeBackend = process.env.A2A_KMS_BACKEND ?? 'local-aes'
   const keyId =
     activeBackend === 'aws-kms'
       ? (process.env[toolEnvKeyName(toolId, 'aws-kms')] ?? '(unset)')
-      : 'local-secp256k1'
+      : activeBackend === 'gcp-kms'
+        ? (process.env[toolEnvKeyName(toolId, 'gcp-kms')] ?? '(unset)')
+        : 'local-secp256k1'
   console.log(
     '[tool-executor-signer] toolId=%s address=%s keyId=%s',
     toolId,

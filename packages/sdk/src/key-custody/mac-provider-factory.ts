@@ -38,17 +38,18 @@
  *   - `local-aes`     → `createLocalHmacProvider` reading the legacy env var
  *   - `aws-kms`       → `createAwsKmsMacProvider` reading the per-MAC-key
  *                       AWS env var (e.g. `AWS_KMS_MAC_KEY_ID_WEB_TO_A2A`)
- *   - `gcp-kms`       → wired only on the a2a-agent side (see
- *                       `apps/a2a-agent/src/auth/mac-provider.ts`); MCPs +
- *                       web fall through to "unknown backend" until G-PR-5
- *                       lands the GCP HMAC implementation. The
- *                       `'vault-transit'` deferred-sibling case was removed
- *                       in G-PR-1 (orchestrator decision: AWS + GCP only).
+ *   - `gcp-kms`       → `createGcpKmsMacProvider` reading the per-MAC-key
+ *                       GCP env var (e.g. `GCP_KMS_MAC_WEB_TO_A2A_VERSION`)
+ *                       (G-PR-5). The `'vault-transit'` deferred-sibling
+ *                       case was removed in G-PR-1 (orchestrator decision:
+ *                       AWS + GCP only).
  *
  * Production guard mirrors the rest of the family: `local-aes` in prod throws.
  */
 import { createAwsKmsMacProvider, type KmsMacProvider } from './aws-kms-mac'
+import { createGcpKmsMacProvider } from './gcp-kms-mac'
 import { createLocalHmacProvider } from './local-hmac'
+import type { GcpAuthEnv } from './gcp-auth'
 
 /**
  * The nine MAC keys in the system. The string identifiers are stable —
@@ -100,39 +101,81 @@ export const MCP_TO_MAC_KEY_ID: Record<McpName, MacKeyId> = {
 }
 
 /**
- * Map a `MacKeyId` to its env-var name pair.
+ * Map a `MacKeyId` to its env-var name triple.
  *
  *   - Legacy (`local-aes`): the existing static-secret env var
  *     (`WEB_TO_A2A_HMAC_KEY`, `A2A_INTERSERVICE_HMAC_KEY_<MCP>`).
  *   - AWS KMS (`aws-kms`):  the per-key `AWS_KMS_MAC_KEY_ID_<MAC_KEY_ID>`
  *     env var (e.g. `AWS_KMS_MAC_KEY_ID_WEB_TO_A2A`).
+ *   - GCP KMS (`gcp-kms`):  the per-key `GCP_KMS_MAC_<MAC_KEY_ID>_VERSION`
+ *     env var (e.g. `GCP_KMS_MAC_WEB_TO_A2A_VERSION`). Carries a
+ *     fully-versioned cryptoKeyVersion resource path because GCP MAC
+ *     versions are independent secrets (see G-PR-5).
  */
 export function envKeyForMacKeyId(macKeyId: MacKeyId): {
   legacy: string
   awsKms: string
+  gcpKms: string
 } {
   switch (macKeyId) {
     case 'web-to-a2a':
-      return { legacy: 'WEB_TO_A2A_HMAC_KEY', awsKms: 'AWS_KMS_MAC_KEY_ID_WEB_TO_A2A' }
+      return {
+        legacy: 'WEB_TO_A2A_HMAC_KEY',
+        awsKms: 'AWS_KMS_MAC_KEY_ID_WEB_TO_A2A',
+        gcpKms: 'GCP_KMS_MAC_WEB_TO_A2A_VERSION',
+      }
     case 'a2a-to-person':
-      return { legacy: 'A2A_INTERSERVICE_HMAC_KEY_PERSON', awsKms: 'AWS_KMS_MAC_KEY_ID_A2A_TO_PERSON' }
+      return {
+        legacy: 'A2A_INTERSERVICE_HMAC_KEY_PERSON',
+        awsKms: 'AWS_KMS_MAC_KEY_ID_A2A_TO_PERSON',
+        gcpKms: 'GCP_KMS_MAC_A2A_TO_PERSON_VERSION',
+      }
     case 'a2a-to-org':
-      return { legacy: 'A2A_INTERSERVICE_HMAC_KEY_ORG', awsKms: 'AWS_KMS_MAC_KEY_ID_A2A_TO_ORG' }
+      return {
+        legacy: 'A2A_INTERSERVICE_HMAC_KEY_ORG',
+        awsKms: 'AWS_KMS_MAC_KEY_ID_A2A_TO_ORG',
+        gcpKms: 'GCP_KMS_MAC_A2A_TO_ORG_VERSION',
+      }
     case 'a2a-to-family':
-      return { legacy: 'A2A_INTERSERVICE_HMAC_KEY_FAMILY', awsKms: 'AWS_KMS_MAC_KEY_ID_A2A_TO_FAMILY' }
+      return {
+        legacy: 'A2A_INTERSERVICE_HMAC_KEY_FAMILY',
+        awsKms: 'AWS_KMS_MAC_KEY_ID_A2A_TO_FAMILY',
+        gcpKms: 'GCP_KMS_MAC_A2A_TO_FAMILY_VERSION',
+      }
     case 'a2a-to-people-group':
-      return { legacy: 'A2A_INTERSERVICE_HMAC_KEY_PEOPLE_GROUP', awsKms: 'AWS_KMS_MAC_KEY_ID_A2A_TO_PEOPLE_GROUP' }
+      return {
+        legacy: 'A2A_INTERSERVICE_HMAC_KEY_PEOPLE_GROUP',
+        awsKms: 'AWS_KMS_MAC_KEY_ID_A2A_TO_PEOPLE_GROUP',
+        gcpKms: 'GCP_KMS_MAC_A2A_TO_PEOPLE_GROUP_VERSION',
+      }
     case 'a2a-to-verifier':
-      return { legacy: 'A2A_INTERSERVICE_HMAC_KEY_VERIFIER', awsKms: 'AWS_KMS_MAC_KEY_ID_A2A_TO_VERIFIER' }
+      return {
+        legacy: 'A2A_INTERSERVICE_HMAC_KEY_VERIFIER',
+        awsKms: 'AWS_KMS_MAC_KEY_ID_A2A_TO_VERIFIER',
+        gcpKms: 'GCP_KMS_MAC_A2A_TO_VERIFIER_VERSION',
+      }
     case 'a2a-to-skill':
-      return { legacy: 'A2A_INTERSERVICE_HMAC_KEY_SKILL', awsKms: 'AWS_KMS_MAC_KEY_ID_A2A_TO_SKILL' }
+      return {
+        legacy: 'A2A_INTERSERVICE_HMAC_KEY_SKILL',
+        awsKms: 'AWS_KMS_MAC_KEY_ID_A2A_TO_SKILL',
+        gcpKms: 'GCP_KMS_MAC_A2A_TO_SKILL_VERSION',
+      }
     case 'a2a-to-geo':
-      return { legacy: 'A2A_INTERSERVICE_HMAC_KEY_GEO', awsKms: 'AWS_KMS_MAC_KEY_ID_A2A_TO_GEO' }
+      return {
+        legacy: 'A2A_INTERSERVICE_HMAC_KEY_GEO',
+        awsKms: 'AWS_KMS_MAC_KEY_ID_A2A_TO_GEO',
+        gcpKms: 'GCP_KMS_MAC_A2A_TO_GEO_VERSION',
+      }
     case 'oauth-salt':
       // Sprint S2.6 — replaces the legacy `SERVER_PEPPER` symmetric env
       // secret. Dev path reads `OAUTH_SALT_HMAC_KEY` (hex); prod path
-      // reads `AWS_KMS_MAC_KEY_ID_OAUTH_SALT` (KMS HMAC key ARN).
-      return { legacy: 'OAUTH_SALT_HMAC_KEY', awsKms: 'AWS_KMS_MAC_KEY_ID_OAUTH_SALT' }
+      // reads `AWS_KMS_MAC_KEY_ID_OAUTH_SALT` (KMS HMAC key ARN) or
+      // `GCP_KMS_MAC_OAUTH_SALT_VERSION` (GCP MAC key version path).
+      return {
+        legacy: 'OAUTH_SALT_HMAC_KEY',
+        awsKms: 'AWS_KMS_MAC_KEY_ID_OAUTH_SALT',
+        gcpKms: 'GCP_KMS_MAC_OAUTH_SALT_VERSION',
+      }
     default: {
       // Exhaustiveness check.
       const _exhaustive: never = macKeyId
@@ -159,7 +202,7 @@ function buildProviderForMacKeyId(
   env: McpMacProviderEnv,
 ): KmsMacProvider {
   const backend = env.A2A_KMS_BACKEND ?? 'local-aes'
-  const { legacy, awsKms } = envKeyForMacKeyId(macKeyId)
+  const { legacy, awsKms, gcpKms } = envKeyForMacKeyId(macKeyId)
 
   if (env.NODE_ENV === 'production' && backend === 'local-aes') {
     throw new Error(
@@ -194,13 +237,45 @@ function buildProviderForMacKeyId(
         AWS_KMS_MAC_KEY_ID: keyId,
       })
     }
-    // 'gcp-kms' branch is wired by the a2a-agent-side `buildMacProvider`
-    // in `apps/a2a-agent/src/auth/mac-provider.ts`. The MCP-side caller
-    // here intentionally does NOT yet support gcp-kms — MCPs ship with
-    // their own outbound MAC key and we won't add GCP-KMS HMAC support
-    // for them until G-PR-5 lands the underlying implementation. Until
-    // then any MCP env that tries `A2A_KMS_BACKEND='gcp-kms'` falls
-    // through to the unknown-backend branch and fails closed.
+    case 'gcp-kms': {
+      // GCP-KMS G-PR-5 — sibling cloud arm. The MCP/web factories on this
+      // side perform identifier-only env validation (the production
+      // forbidden-static-keys guard lives in the a2a-agent factory at
+      // `apps/a2a-agent/src/auth/mac-provider.ts`, which is the only
+      // process that holds the union of all keys + auth env).
+      const requiredAuth: Array<keyof GcpAuthEnv> = [
+        'GCP_PROJECT_ID',
+        'GCP_PROJECT_NUMBER',
+        'GCP_WORKLOAD_IDENTITY_POOL_ID',
+        'GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID',
+        'GCP_SERVICE_ACCOUNT_EMAIL',
+      ]
+      for (const key of requiredAuth) {
+        if (!env[key]) {
+          throw new Error(
+            `buildMacProvider(${macKeyId}): ${key} is required for 'gcp-kms' backend`,
+          )
+        }
+      }
+      const keyVersionPath = env[gcpKms]
+      if (!keyVersionPath) {
+        throw new Error(
+          `buildMacProvider(${macKeyId}): ${gcpKms} is required for 'gcp-kms' backend`,
+        )
+      }
+      return createGcpKmsMacProvider(
+        {
+          GCP_PROJECT_ID: env.GCP_PROJECT_ID as string,
+          GCP_PROJECT_NUMBER: env.GCP_PROJECT_NUMBER as string,
+          GCP_WORKLOAD_IDENTITY_POOL_ID: env.GCP_WORKLOAD_IDENTITY_POOL_ID as string,
+          GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID:
+            env.GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID as string,
+          GCP_SERVICE_ACCOUNT_EMAIL: env.GCP_SERVICE_ACCOUNT_EMAIL as string,
+          keyVersionPath,
+        },
+        macKeyId,
+      )
+    }
     default:
       throw new Error(`buildMacProvider: unknown A2A_KMS_BACKEND: ${backend}`)
   }

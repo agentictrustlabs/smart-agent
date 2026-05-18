@@ -25,14 +25,19 @@ const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? '31337')
 /**
  * K6 — Address-only deployer identity.
  *
- * This route only needs the deployer's ADDRESS to compute a
- * counterfactual smart-account preview (`factory.getAddress(eoa, salt)`).
- * Reading the private key just to derive its address is wasteful and
- * keeps the key in runtime env unnecessarily. Prefer the explicit
- * `DEPLOYER_ADDRESS` env var; fall back to deriving from
- * `DEPLOYER_PRIVATE_KEY` only when the explicit var is missing (local
- * dev compatibility). In production, only `DEPLOYER_ADDRESS` should be
- * set — the private key MUST NOT be in runtime env.
+ * EXEMPT (permanent, local-dev only): this route needs the deployer's
+ * ADDRESS — not the private key — to compute a counterfactual
+ * smart-account preview (`factory.getAddress(eoa, salt)`) for the
+ * passkey-signup UI. The route prefers the explicit `DEPLOYER_ADDRESS`
+ * env var. The `DEPLOYER_PRIVATE_KEY` fallback exists ONLY for local-dev
+ * convenience (where the dev `.env` already carries the private key and
+ * deriving the address from it avoids a second env var). In production
+ * the K6 `assertDeployerKeyPolicy` startup hard-fail refuses to boot
+ * when `DEPLOYER_PRIVATE_KEY` is present, so the fallback branch is
+ * unreachable in prod — `DEPLOYER_ADDRESS` is the only viable value.
+ *
+ * Listed in `K6_ROUTE_HANDLER_ALLOWLIST` of `scripts/check-no-bypass.sh`
+ * as the K6 deployer-name exemption.
  */
 function getDeployerAddress(): `0x${string}` | null {
   const explicit = process.env.DEPLOYER_ADDRESS as `0x${string}` | undefined

@@ -14,8 +14,17 @@ import {
 import { createProfile, putLinkSecret } from '../storage/askar.js'
 import { markCredentialsStaleForLinkSecret } from '../storage/cred-metadata.js'
 import { gateExistingWalletAction, gateProvisionAction } from '../auth/verify-wallet-action.js'
+import { requireInboundServiceAuth } from '../../auth/require-inbound-service-auth.js'
 
 export const walletRoutes = new Hono()
+
+// Sprint 5 W3 P1-2 — wire-auth gate for the SSI HTTP surfaces that
+// expose holder-wallet metadata. These endpoints surface PII (wallet
+// ids, link-secret ids, status, createdAt) keyed on a smart-account
+// principal; any caller able to reach person-mcp's HTTP port could
+// previously dump them. Every inbound GET request must now carry the
+// `a2a-to-person` HMAC envelope.
+const ssiInboundAuth = requireInboundServiceAuth()
 
 /**
  * POST /wallet/provision
@@ -106,15 +115,19 @@ walletRoutes.post('/wallet/provision', async (c) => {
  * Returns the list of wallets (contexts) this principal owns.
  * Kept plural — the UI wallet-switcher needs all of them.
  *
- * @sa-route public
- * @sa-auth none-system-scoped
+ * Sprint 5 W3 P1-2: now requires the `a2a-to-person` HMAC envelope.
+ * The response surfaces holder-wallet PII (wallet ids, link-secret
+ * ids, status), so unauthenticated access is no longer permitted.
+ *
+ * @sa-route service-only
+ * @sa-auth service-hmac
  * @sa-rate-limit none
  * @sa-prod-gate always
  * @sa-validation none-path-params
  * @sa-risk-tier medium
  * @sa-owner security
  */
-walletRoutes.get('/wallet/:principal', async (c) => {
+walletRoutes.get('/wallet/:principal', ssiInboundAuth, async (c) => {
   const principal = c.req.param('principal')
   const wallets = listHolderWalletsForPrincipal(principal)
   if (wallets.length === 0) return c.json({ wallets: [] })
@@ -183,15 +196,19 @@ walletRoutes.post('/wallet/rotate-link-secret', async (c) => {
  * Convenience lookup for a single (principal, context) pair.
  * 404 if the wallet doesn't exist.
  *
- * @sa-route public
- * @sa-auth none-system-scoped
+ * Sprint 5 W3 P1-2: now requires the `a2a-to-person` HMAC envelope.
+ * The response surfaces holder-wallet PII (wallet ids, link-secret
+ * ids, status), so unauthenticated access is no longer permitted.
+ *
+ * @sa-route service-only
+ * @sa-auth service-hmac
  * @sa-rate-limit none
  * @sa-prod-gate always
  * @sa-validation none-path-params
  * @sa-risk-tier medium
  * @sa-owner security
  */
-walletRoutes.get('/wallet/:principal/:context', async (c) => {
+walletRoutes.get('/wallet/:principal/:context', ssiInboundAuth, async (c) => {
   const principal = c.req.param('principal')
   const context   = c.req.param('context')
   const hw = getHolderWalletByContext(principal, context)

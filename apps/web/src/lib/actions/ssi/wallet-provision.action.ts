@@ -5,9 +5,9 @@
  *   - Person-mcp tool calls (`ssi_create_wallet_action`,
  *     `ssi_provision_wallet`) go through `callMcp('person', …)` —
  *     signed-in user IS the principal being provisioned.
- *   - `GET ${walletUrl}/wallet/<principal>/<context>` (idempotency check)
- *     is a direct HTTP call on person-mcp's non-tool surface; TODO(phase-4)
- *     wrap as `ssi_get_holder_wallet`.
+ *   - Idempotency lookup for (principal, context) routes through
+ *     the `ssi_get_holder_wallet` MCP tool (Sprint 5 W3 P1-2 —
+ *     no direct GET on /wallet/<principal>/<context>).
  *   - `dispatchWalletAction` flows through the session-grant path
  *     (TODO(phase-4) for wrapping `/wallet-action/dispatch` as MCP tool).
  */
@@ -90,21 +90,20 @@ export async function prepareWalletProvisionIfNeeded(): Promise<{
 
     // Idempotent check — person-mcp may already have a holder wallet for
     // this (principal, walletContext) pair from an earlier session.
-    // TODO(phase-4): direct GET on person-mcp non-tool route. Wrap as
-    // `ssi_get_holder_wallet` so this can route via callMcp.
+    // Sprint 5 W3 P1-2: routed via ssi_get_holder_wallet (a2a→person hop
+    // signed). Direct GET on /wallet/<principal>/<context> is no longer
+    // accepted by person-mcp.
     try {
-      const res = await fetch(
-        `${ssiConfig.walletUrl}/wallet/${encodeURIComponent(principal)}/${encodeURIComponent(WALLET_CONTEXT)}`,
-        { cache: 'no-store' },
+      const r = await callMcp<{ found: boolean; holderWalletId?: string }>(
+        'person',
+        'ssi_get_holder_wallet',
+        { principal, walletContext: WALLET_CONTEXT },
       )
-      if (res.ok) {
-        const j = (await res.json()) as { holderWalletId?: string }
-        if (j.holderWalletId) {
-          return {
-            success: true,
-            signer,
-            alreadyProvisioned: { holderWalletId: j.holderWalletId, walletContext: WALLET_CONTEXT },
-          }
+      if (r.found && r.holderWalletId) {
+        return {
+          success: true,
+          signer,
+          alreadyProvisioned: { holderWalletId: r.holderWalletId, walletContext: WALLET_CONTEXT },
         }
       }
     } catch { /* fall through */ }
@@ -182,22 +181,21 @@ export async function provisionHolderWalletViaSession(): Promise<{
     const principal = ctx.principal
 
     // Idempotent: skip dispatch if already provisioned.
-    // TODO(phase-4): direct GET on person-mcp non-tool route. Wrap as
-    // `ssi_get_holder_wallet` so this can route via callMcp.
+    // Sprint 5 W3 P1-2: routed via ssi_get_holder_wallet (a2a→person hop
+    // signed). Direct GET on /wallet/<principal>/<context> is no longer
+    // accepted by person-mcp.
     try {
-      const res = await fetch(
-        `${ssiConfig.walletUrl}/wallet/${encodeURIComponent(principal)}/${encodeURIComponent(WALLET_CONTEXT)}`,
-        { cache: 'no-store' },
+      const r = await callMcp<{ found: boolean; holderWalletId?: string }>(
+        'person',
+        'ssi_get_holder_wallet',
+        { principal, walletContext: WALLET_CONTEXT },
       )
-      if (res.ok) {
-        const j = (await res.json()) as { holderWalletId?: string }
-        if (j.holderWalletId) {
-          return {
-            success: true,
-            holderWalletId: j.holderWalletId,
-            walletContext: WALLET_CONTEXT,
-            idempotent: true,
-          }
+      if (r.found && r.holderWalletId) {
+        return {
+          success: true,
+          holderWalletId: r.holderWalletId,
+          walletContext: WALLET_CONTEXT,
+          idempotent: true,
         }
       }
     } catch { /* fall through */ }

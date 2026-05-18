@@ -3,18 +3,16 @@
 /**
  * Routing rule (phase 3 of A2A-first consolidation):
  *   - Person-mcp tool calls (`ssi_create_wallet_action`,
- *     `ssi_rotate_link_secret`) go through `callMcp('person', …)` —
- *     signed-in user IS the principal whose link secret is rotating.
- *   - `GET ${walletUrl}/wallet/<principal>/<context>` is a direct HTTP
- *     check on person-mcp's non-tool surface; TODO(phase-4) wrap as
- *     `ssi_get_holder_wallet`.
+ *     `ssi_rotate_link_secret`, `ssi_get_holder_wallet`) go through
+ *     `callMcp('person', …)` — signed-in user IS the principal whose
+ *     link secret is rotating. Sprint 5 W3 P1-2: no direct GET on
+ *     /wallet/<principal>/<context>.
  */
 
 import { revalidatePath } from 'next/cache'
 import type { WalletAction } from '@smart-agent/privacy-creds'
 import { loadSignerForCurrentUser, signWalletAction } from '@/lib/ssi/signer'
 import { callMcp } from '@/lib/clients/mcp-client'
-import { ssiConfig } from '@/lib/ssi/config'
 
 export async function rotateLinkSecretAction(args: {
   walletContext: string
@@ -30,14 +28,18 @@ export async function rotateLinkSecretAction(args: {
     const { principal } = await loadSignerForCurrentUser()
 
     // Resolve holderWalletId for (principal, context).
-    // TODO(phase-4): direct GET on person-mcp non-tool route. Wrap as
-    // `ssi_get_holder_wallet` so this can route via callMcp.
-    const res = await fetch(
-      `${ssiConfig.walletUrl}/wallet/${encodeURIComponent(principal)}/${encodeURIComponent(args.walletContext)}`,
-      { cache: 'no-store' },
+    // Sprint 5 W3 P1-2: routed via ssi_get_holder_wallet (a2a→person hop
+    // signed). Direct GET on /wallet/<principal>/<context> is no longer
+    // accepted by person-mcp.
+    const lookup = await callMcp<{ found: boolean; holderWalletId?: string }>(
+      'person',
+      'ssi_get_holder_wallet',
+      { principal, walletContext: args.walletContext },
     )
-    if (!res.ok) return { success: false, error: `no wallet for context '${args.walletContext}'` }
-    const { holderWalletId } = (await res.json()) as { holderWalletId: string }
+    if (!lookup.found || !lookup.holderWalletId) {
+      return { success: false, error: `no wallet for context '${args.walletContext}'` }
+    }
+    const holderWalletId = lookup.holderWalletId
 
     const built = await callMcp<{ action: WalletAction & { expiresAt: string } }>(
       'person',

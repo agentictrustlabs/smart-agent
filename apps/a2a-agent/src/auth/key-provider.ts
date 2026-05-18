@@ -589,24 +589,40 @@ export function buildToolExecutorBackend(
       )
     }
     case 'gcp-kms': {
-      // GCP-KMS G-PR-1 stub for the per-tool executor signer.
+      // GCP-KMS G-PR-4 — per-tool executor signer live.
+      //
+      // Same validate → build-auth-client → construct pattern as the
+      // master signer arm. Per-tool identifier is
+      // `GCP_KMS_TOOL_EXECUTOR_<TOOL_ID>_VERSION` (a fully-qualified
+      // cryptoKeyVersion resource path). Each tool family has its OWN
+      // KMS key version for defense in depth; the service account's
+      // IAM binding adds one `roles/cloudkms.signer` entry per tool key.
       validateGcpEnvAndBuildAuthClient(
         `buildToolExecutorBackend(${toolId})`,
         env,
       )
-      const versionEnvName = `GCP_KMS_TOOL_EXECUTOR_${toolId
-        .replace(/-/g, '_')
-        .toUpperCase()}_VERSION`
-      if (!env[versionEnvName]) {
+      const versionEnvName = toolEnvKeyName(toolId, 'gcp-kms')
+      const versionPath = env[versionEnvName]
+      if (!versionPath) {
         throw new Error(
           `buildToolExecutorBackend: ${versionEnvName} is required for tool "${toolId}" ` +
             "when A2A_KMS_BACKEND='gcp-kms' " +
             '(GCP-KMS-IMPLEMENTATION-PLAN.md § G4).',
         )
       }
-      throw new Error(
-        `GCP backend not yet implemented for tool-executor signer "${toolId}" (G-PR-4). ` +
-          'See output/GCP-KMS-IMPLEMENTATION-PLAN.md § G4.',
+      return createToolExecutorSigner(
+        toolId,
+        {
+          A2A_KMS_BACKEND: 'gcp-kms',
+          GCP_PROJECT_ID: env.GCP_PROJECT_ID as string,
+          GCP_PROJECT_NUMBER: env.GCP_PROJECT_NUMBER as string,
+          GCP_WORKLOAD_IDENTITY_POOL_ID: env.GCP_WORKLOAD_IDENTITY_POOL_ID as string,
+          GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID:
+            env.GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID as string,
+          GCP_SERVICE_ACCOUNT_EMAIL: env.GCP_SERVICE_ACCOUNT_EMAIL as string,
+          [versionEnvName]: versionPath,
+        },
+        { audit: opts.audit },
       )
     }
     default:

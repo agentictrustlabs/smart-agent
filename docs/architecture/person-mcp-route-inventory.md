@@ -1,6 +1,6 @@
 # Person-MCP Route + Tool Inventory
 
-_Generated: 2026-05-18T02:19:36.441Z_  
+_Generated: 2026-05-18T02:47:03.028Z_  
 _Source: `apps/person-mcp/src/{index.ts, ssi/api/**, auth/**, tools/**}`_  
 _Regenerate: `pnpm generate:person-mcp-inventory`_  
 _Drift-check: `pnpm generate:person-mcp-inventory --check` (CI gate)_
@@ -13,10 +13,10 @@ Why this exists: person-mcp owns PII, the AnonCreds wallet, and session storage.
 
 | Section | Count |
 |---------|-------|
-| Public HTTP routes | 7 |
-| Service-only HTTP routes (require inbound HMAC) | 10 |
+| Public HTTP routes | 3 |
+| Service-only HTTP routes (require inbound HMAC) | 15 |
 | Delegation-verified HTTP routes | 7 |
-| Bootstrap HTTP routes | 2 |
+| Bootstrap HTTP routes | 1 |
 | Dev-only HTTP routes | 0 |
 | **HTTP routes total** | **26** |
 | Delegation-verified MCP tools | 76 |
@@ -35,12 +35,8 @@ Unauthenticated by design (health, operator debug). MUST disclose no PII and rat
 | Route | Method | Auth | Rate Limit | Validation | Prod Gate | Risk | Source |
 |-------|--------|------|------------|------------|-----------|------|--------|
 | `/.well-known/ssi-wallet.json` | GET | none-system-scoped | none | — | always | — | [`index.ts`](../../apps/person-mcp/src/index.ts) |
-| `/audit/:holderWalletId/credentials` | GET | none-system-scoped | none | none-path-params | always | medium | [`ssi/api/audit.ts`](../../apps/person-mcp/src/ssi/api/audit.ts) |
-| `/credentials/:holderWalletId` | GET | none-system-scoped | none | none-path-params | always | medium | [`ssi/api/credentials.ts`](../../apps/person-mcp/src/ssi/api/credentials.ts) |
 | `/health` | GET | none-system-scoped | none | — | always | — | [`index.ts`](../../apps/person-mcp/src/index.ts) |
 | `/tools` | GET | none-system-scoped | none | — | always | — | [`index.ts`](../../apps/person-mcp/src/index.ts) |
-| `/wallet/:principal` | GET | none-system-scoped | none | none-path-params | always | medium | [`ssi/api/wallet.ts`](../../apps/person-mcp/src/ssi/api/wallet.ts) |
-| `/wallet/:principal/:context` | GET | none-system-scoped | none | none-path-params | always | medium | [`ssi/api/wallet.ts`](../../apps/person-mcp/src/ssi/api/wallet.ts) |
 
 ### Service-only HTTP routes (require inbound HMAC)
 
@@ -48,8 +44,11 @@ Gated on `requireInboundServiceAuth()` — caller signs with the shared `a2a-to-
 
 | Route | Method | Auth | Rate Limit | Validation | Prod Gate | Risk | Source |
 |-------|--------|------|------------|------------|-----------|------|--------|
+| `/audit/:holderWalletId/credentials` | GET | service-hmac | none | none-path-params | always | high | [`ssi/api/audit.ts`](../../apps/person-mcp/src/ssi/api/audit.ts) |
 | `/audit/append` | POST | service-hmac | none | shape-check | always | high | [`auth/wallet-action-routes.ts`](../../apps/person-mcp/src/auth/wallet-action-routes.ts) |
 | `/audit/log/:account` | GET | service-hmac | none | none-path-params | always | high | [`auth/wallet-action-routes.ts`](../../apps/person-mcp/src/auth/wallet-action-routes.ts) |
+| `/credentials/:holderWalletId` | GET | service-hmac | none | none-path-params | always | high | [`ssi/api/credentials.ts`](../../apps/person-mcp/src/ssi/api/credentials.ts) |
+| `/credentials/store` | POST | service-hmac | none | shape-check | always | high | [`ssi/api/credentials.ts`](../../apps/person-mcp/src/ssi/api/credentials.ts) |
 | `/session-store/active/:account` | GET | service-hmac | none | none-path-params | always | high | [`auth/wallet-action-routes.ts`](../../apps/person-mcp/src/auth/wallet-action-routes.ts) |
 | `/session-store/bump-epoch` | POST | service-hmac | none | shape-check | always | sensitive | [`auth/wallet-action-routes.ts`](../../apps/person-mcp/src/auth/wallet-action-routes.ts) |
 | `/session-store/by-cookie/:cookieValue` | GET | service-hmac | none | none-path-params | always | high | [`auth/wallet-action-routes.ts`](../../apps/person-mcp/src/auth/wallet-action-routes.ts) |
@@ -58,6 +57,8 @@ Gated on `requireInboundServiceAuth()` — caller signs with the shared `a2a-to-
 | `/session-store/revoke` | POST | service-hmac | none | shape-check | always | high | [`auth/wallet-action-routes.ts`](../../apps/person-mcp/src/auth/wallet-action-routes.ts) |
 | `/tools/:toolName` | POST | service-hmac | none | shape-check | always | high | [`index.ts`](../../apps/person-mcp/src/index.ts) |
 | `/wallet-action/verify` | POST | service-hmac | none | shape-check | always | high | [`auth/wallet-action-routes.ts`](../../apps/person-mcp/src/auth/wallet-action-routes.ts) |
+| `/wallet/:principal` | GET | service-hmac | none | none-path-params | always | medium | [`ssi/api/wallet.ts`](../../apps/person-mcp/src/ssi/api/wallet.ts) |
+| `/wallet/:principal/:context` | GET | service-hmac | none | none-path-params | always | medium | [`ssi/api/wallet.ts`](../../apps/person-mcp/src/ssi/api/wallet.ts) |
 
 ### Delegation-verified HTTP routes
 
@@ -79,7 +80,6 @@ Special-purpose unauthenticated entry points (e.g. provisioning idempotency prob
 
 | Route | Method | Auth | Rate Limit | Validation | Prod Gate | Risk | Source |
 |-------|--------|------|------------|------------|-----------|------|--------|
-| `/credentials/store` | POST | none-system-scoped | none | shape-check | always | high | [`ssi/api/credentials.ts`](../../apps/person-mcp/src/ssi/api/credentials.ts) |
 | `/oid4vp/preview` | POST | none-system-scoped | none | shape-check | always | low | [`ssi/api/oid4vp.ts`](../../apps/person-mcp/src/ssi/api/oid4vp.ts) |
 
 ### Dev-only HTTP routes

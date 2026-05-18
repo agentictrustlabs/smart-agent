@@ -8,9 +8,9 @@
  *     `family.issue`) hit the issuer's protocol endpoints directly via
  *     the `clients.ts` SDK — these are not /tools/ MCP calls and not
  *     user-authenticated.
- *   - `GET ${walletUrl}/wallet/<principal>/<context>` is a direct HTTP
- *     check against person-mcp's non-tool surface; TODO(phase-4) wrap
- *     as `ssi_get_holder_wallet`.
+ *   - Idempotent (principal, context) lookup now routes via the
+ *     `ssi_get_holder_wallet` MCP tool (Sprint 5 W3 P1-2 — no direct
+ *     GET on /wallet/<principal>/<context>).
  */
 
 import { revalidatePath } from 'next/cache'
@@ -18,7 +18,6 @@ import type { WalletAction } from '@smart-agent/privacy-creds'
 import { loadSignerForCurrentUser, signWalletAction } from '@/lib/ssi/signer'
 import { org, family } from '@/lib/ssi/clients'
 import { callMcp } from '@/lib/clients/mcp-client'
-import { ssiConfig } from '@/lib/ssi/config'
 
 type IssuerKey = 'org' | 'family'
 type CredentialType = 'OrgMembershipCredential' | 'GuardianOfMinorCredential'
@@ -36,18 +35,17 @@ export async function acceptCredentialAction(args: {
     const { principal } = await loadSignerForCurrentUser()
 
     // ── 0. Ensure a holder wallet exists for this (principal, context) ─────
-    // TODO(phase-4): direct GET on person-mcp non-tool route. Wrap as
-    // an `ssi_get_holder_wallet` MCP tool so this can ride the A2A proxy.
+    // Sprint 5 W3 P1-2: routed via callMcp('ssi_get_holder_wallet') so the
+    // a2a→person hop carries the wire-auth envelope. Direct GET on
+    // /wallet/<principal>/<context> is no longer accepted by person-mcp.
     let holderWalletId: string | undefined
     try {
-      const res = await fetch(
-        `${ssiConfig.walletUrl}/wallet/${encodeURIComponent(principal)}/${encodeURIComponent(walletContext)}`,
-        { cache: 'no-store' },
+      const r = await callMcp<{ found: boolean; holderWalletId?: string }>(
+        'person',
+        'ssi_get_holder_wallet',
+        { principal, walletContext },
       )
-      if (res.ok) {
-        const j = (await res.json()) as { holderWalletId?: string }
-        holderWalletId = j.holderWalletId
-      }
+      if (r.found && r.holderWalletId) holderWalletId = r.holderWalletId
     } catch { /* fall through to provision */ }
     if (!holderWalletId) {
       const { provisionHolderWalletAction } = await import('./provision.action')

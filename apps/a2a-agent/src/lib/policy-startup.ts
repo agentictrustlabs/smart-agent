@@ -507,16 +507,46 @@ export function assertProductionKeyHygiene(
 export interface LegacySessionEnv {
   NODE_ENV?: string
   ALLOW_LEGACY_A2A_SESSIONS?: string
+  /**
+   * Sprint 5 W3 P1-4 — ISO-8601 timestamp deadline mirroring the
+   * deployer-key break-glass shape (`ALLOW_RUNTIME_DEPLOYER_KEY_UNTIL`).
+   * When set in production AND `ALLOW_LEGACY_A2A_SESSIONS='true'`, the
+   * `now` instant must be earlier than this deadline or startup refuses.
+   * Optional in production for back-compat — when omitted, the legacy
+   * break-glass remains permitted but the audit row records
+   * `validUntil: 'none'` so a reviewer sees an open-ended escape hatch.
+   */
+  ALLOW_LEGACY_A2A_SESSIONS_UNTIL?: string
+  /**
+   * Sprint 5 W3 P1-4 — human-readable operator justification bound into
+   * the break-glass audit row body. Defaults to `'no reason provided'`
+   * when unset so the field is always present in the row.
+   */
+  ALLOW_LEGACY_A2A_SESSIONS_REASON?: string
 }
 
 export interface LegacySessionPolicy {
   enabled: boolean
   breakGlass: boolean
   reason: string
+  /**
+   * P1-4 — Parsed deadline from `ALLOW_LEGACY_A2A_SESSIONS_UNTIL`, or
+   * `null` when the env var was unset (open-ended break-glass for
+   * back-compat). The validity check (future-vs-past, malformed format)
+   * happens inside `resolveLegacySessionPolicy` and throws on offence.
+   */
+  validUntil: Date | null
+  /**
+   * P1-4 — Operator-supplied human reason from
+   * `ALLOW_LEGACY_A2A_SESSIONS_REASON`. `null` when unset; the audit row
+   * substitutes `'no reason provided'` in that case.
+   */
+  operatorReason: string | null
 }
 
 export function resolveLegacySessionPolicy(
   envIn: LegacySessionEnv,
+  now: Date = new Date(),
 ): LegacySessionPolicy {
   const isProd = envIn.NODE_ENV === 'production'
   const raw = envIn.ALLOW_LEGACY_A2A_SESSIONS
@@ -542,6 +572,35 @@ export function resolveLegacySessionPolicy(
   // the expected developer posture.
   const breakGlass = isProd && enabled && explicit
 
+  // P1-4 — parse + validate the optional ALLOW_LEGACY_A2A_SESSIONS_UNTIL
+  // deadline. Only meaningful on the break-glass branch; in other
+  // branches the value is recorded but not enforced.
+  let validUntil: Date | null = null
+  const rawUntil = envIn.ALLOW_LEGACY_A2A_SESSIONS_UNTIL
+  if (rawUntil && rawUntil.length > 0) {
+    const parsed = new Date(rawUntil)
+    if (Number.isNaN(parsed.getTime())) {
+      throw new Error(
+        `policy-startup: ALLOW_LEGACY_A2A_SESSIONS_UNTIL has malformed value '${rawUntil}'. ` +
+          'Must be an ISO-8601 timestamp (e.g. "2026-06-01T00:00:00Z"). ' +
+          'Refusing to start.',
+      )
+    }
+    if (breakGlass && parsed.getTime() <= now.getTime()) {
+      throw new Error(
+        `policy-startup: ALLOW_LEGACY_A2A_SESSIONS_UNTIL='${rawUntil}' is in the past ` +
+          `(now=${now.toISOString()}). The break-glass has expired; remove ` +
+          'ALLOW_LEGACY_A2A_SESSIONS (or extend the deadline) before starting the agent. ' +
+          'Mirrors ALLOW_RUNTIME_DEPLOYER_KEY_UNTIL behaviour.',
+      )
+    }
+    validUntil = parsed
+  }
+
+  const rawOperatorReason = envIn.ALLOW_LEGACY_A2A_SESSIONS_REASON
+  const operatorReason =
+    rawOperatorReason && rawOperatorReason.length > 0 ? rawOperatorReason : null
+
   let reason: string
   if (breakGlass) {
     reason =
@@ -557,7 +616,7 @@ export function resolveLegacySessionPolicy(
     reason = 'development default (legacy fallback permitted)'
   }
 
-  return { enabled, breakGlass, reason }
+  return { enabled, breakGlass, reason, validUntil, operatorReason }
 }
 
 /**
@@ -584,6 +643,15 @@ export async function assertLegacySessionPolicy(
   if (policy.breakGlass) {
     const rawValue = envIn.ALLOW_LEGACY_A2A_SESSIONS ?? ''
     const bootTimestamp = new Date().toISOString()
+    // P1-4 — mirror the deployer-key break-glass shape: bind the
+    // operator-supplied deadline (or 'none' when unset for back-compat)
+    // and the human reason (or 'no reason provided' fallback) into BOTH
+    // the structured WARN and the audit row body. The validUntil /
+    // reason fields participate in the audit row's entry_hash via the
+    // errorReason column so any post-hoc tampering breaks the chain.
+    const validUntilField =
+      policy.validUntil !== null ? policy.validUntil.toISOString() : 'none'
+    const reasonField = policy.operatorReason ?? 'no reason provided'
     console.warn(
       JSON.stringify({
         event: 'break-glass-legacy-a2a-sessions',
@@ -597,6 +665,8 @@ export async function assertLegacySessionPolicy(
         envValue: rawValue,
         bootTimestamp,
         reason: policy.reason,
+        validUntil: validUntilField,
+        operatorReason: reasonField,
         nodeEnv: 'production',
       }),
     )
@@ -605,6 +675,8 @@ export async function assertLegacySessionPolicy(
       envValue: rawValue,
       bootTimestamp,
       reason: policy.reason,
+      validUntil: validUntilField,
+      operatorReason: reasonField,
     }
     try {
       await auditAppend({

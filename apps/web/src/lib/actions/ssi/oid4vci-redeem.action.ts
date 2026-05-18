@@ -9,11 +9,10 @@
  *     pre-authorized_code + AnonCreds blinding ceremony, not by a
  *     session token.
  *   - Person-mcp tool calls (`ssi_create_wallet_action`,
- *     `ssi_start_credential_exchange`, `ssi_finish_credential_exchange`)
- *     route through `callMcp('person', …)` — signed-in user is the
- *     redeeming holder.
- *   - `GET ${walletUrl}/wallet/<principal>/<context>` is a direct HTTP
- *     check against person-mcp's non-tool surface; TODO(phase-4).
+ *     `ssi_start_credential_exchange`, `ssi_finish_credential_exchange`,
+ *     `ssi_get_holder_wallet`) route through `callMcp('person', …)` —
+ *     signed-in user is the redeeming holder. Sprint 5 W3 P1-2: no
+ *     direct GET on /wallet/<principal>/<context>.
  */
 
 import { revalidatePath } from 'next/cache'
@@ -70,15 +69,17 @@ export async function redeemOid4vciOfferAction(args: {
     const walletContext = (args as { walletContext?: string }).walletContext ?? 'default'
 
     // Ensure wallet exists for this (principal, context).
-    // TODO(phase-4): direct GET on person-mcp non-tool route. Wrap as
-    // `ssi_get_holder_wallet` so this can route via callMcp.
+    // Sprint 5 W3 P1-2: routed via ssi_get_holder_wallet (a2a→person hop
+    // signed). Direct GET on /wallet/<principal>/<context> is no longer
+    // accepted by person-mcp.
     let holderWalletId: string | undefined
     try {
-      const r = await fetch(
-        `${ssiConfig.walletUrl}/wallet/${encodeURIComponent(principal)}/${encodeURIComponent(walletContext)}`,
-        { cache: 'no-store' },
+      const r = await callMcp<{ found: boolean; holderWalletId?: string }>(
+        'person',
+        'ssi_get_holder_wallet',
+        { principal, walletContext },
       )
-      if (r.ok) holderWalletId = (await r.json() as { holderWalletId?: string }).holderWalletId
+      if (r.found) holderWalletId = r.holderWalletId
     } catch { /* fall through */ }
     if (!holderWalletId) {
       const { provisionHolderWalletAction } = await import('./provision.action')

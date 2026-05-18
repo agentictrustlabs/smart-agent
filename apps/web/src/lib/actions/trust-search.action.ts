@@ -548,14 +548,15 @@ async function hashWalletAction(
 }
 
 async function fetchHolderWalletId(principal: string): Promise<string | null> {
+  // Sprint 5 W3 P1-2: routed via ssi_get_holder_wallet (a2a→person hop
+  // signed). Direct GET on /wallet/<principal>/<context> is no longer
+  // accepted by person-mcp.
   try {
-    const res = await fetch(
-      `${ssiConfig.walletUrl}/wallet/${encodeURIComponent(principal)}/${encodeURIComponent(WALLET_CONTEXT)}`,
-      { cache: 'no-store' },
+    const r = await person.callTool<{ found: boolean; holderWalletId?: string }>(
+      'ssi_get_holder_wallet',
+      { principal, walletContext: WALLET_CONTEXT },
     )
-    if (!res.ok) return null
-    const j = (await res.json()) as { holderWalletId?: string }
-    return j.holderWalletId ?? null
+    return r.found ? (r.holderWalletId ?? null) : null
   } catch { return null }
 }
 

@@ -110,4 +110,25 @@ export type {
   GcpKmsSignerAuditEvent,
   SignerKmsClientLike,
 } from './gcp-kms-signer'
+// GCP-KMS G-PR-5 — inter-service MAC provider (KmsMacProvider impl).
+export { createGcpKmsMacProvider } from './gcp-kms-mac'
+export type {
+  GcpKmsMacEnv,
+  GcpKmsMacDeps,
+  GcpKmsMacProvider,
+  MacKmsClientLike,
+} from './gcp-kms-mac'
 export { crc32c } from './crc32c'
+// Sprint 5 W3 P1-3 — out-of-band raw-key AES-256-GCM helpers (test
+// fixtures, proposal-body DEK, future migrations). The normal A2A
+// session path uses `A2AKeyProvider` instead — see `raw-aes-helpers.ts`
+// JSDoc.
+export {
+  encryptPayloadWithRawKey,
+  decryptPayloadWithRawKey,
+} from './raw-aes-helpers'
+export type {
+  RawAesEncryptInput,
+  RawAesEncryptOutput,
+  RawAesDecryptInput,
+} from './raw-aes-helpers'

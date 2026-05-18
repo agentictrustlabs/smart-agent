@@ -25,15 +25,15 @@ export async function provisionHolderWalletForDemoUser(input: {
   const walletContext = input.walletContext ?? 'default'
   try {
     // Idempotent check — bail out if a holder wallet already exists.
+    // Sprint 5 W3 P1-2: routed via ssi_get_holder_wallet (a2a→person hop
+    // signed). Direct GET on /wallet/<principal>/<context> is no longer
+    // accepted by person-mcp.
     try {
-      const res = await fetch(
-        `${ssiConfig.walletUrl}/wallet/${encodeURIComponent(input.principal)}/${encodeURIComponent(walletContext)}`,
-        { cache: 'no-store' },
+      const r = await person.callTool<{ found: boolean; holderWalletId?: string }>(
+        'ssi_get_holder_wallet',
+        { principal: input.principal, walletContext },
       )
-      if (res.ok) {
-        const j = (await res.json()) as { holderWalletId?: string }
-        if (j.holderWalletId) return { ok: true, holderWalletId: j.holderWalletId }
-      }
+      if (r.found && r.holderWalletId) return { ok: true, holderWalletId: r.holderWalletId }
     } catch { /* fall through to provision */ }
 
     const built = await person.callTool<{ action: WalletAction & { expiresAt: string } }>(
