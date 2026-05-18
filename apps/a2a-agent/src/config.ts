@@ -105,9 +105,11 @@ export function validateSessionSecret(envIn: StartupEnv): string {
     return ''
   }
 
-  // Other backends (vault-transit etc.) — pass-through without
-  // validation. The provider factory throws on unknown backends so we
-  // don't need to duplicate the gate here.
+  // Other backends ('gcp-kms' G-PR-1+ and forward-compatible names) —
+  // pass-through without validation here. The provider factory throws on
+  // unknown backends so we don't need to duplicate the gate. The
+  // 'vault-transit' selector branch was removed in GCP-KMS G-PR-1
+  // (orchestrator decision per GCP-KMS-IMPLEMENTATION-PLAN § G6).
   return raw ?? ''
 }
 

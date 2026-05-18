@@ -66,6 +66,14 @@ sqlite.exec(`
   -- Every action (MCP-only, redeem, sub-delegated, session-account) flowing
   -- through a2a-agent writes one row here. See packages/sdk/src/audit/types.ts
   -- for the canonical ExecutionReceipt schema.
+  --
+  -- P0-5 — outcome-binding two-row model: a single user action yields
+  -- TWO (or more) rows — one event_kind='request_received' written at
+  -- request time and one event_kind='request_finalized' (or
+  -- request_denied) written at outcome time. The outcome row's
+  -- request_received_row_id points back at the origin's PK. The
+  -- hash chain binds both rows; the table is strictly append-only —
+  -- no UPDATE site exists.
   CREATE TABLE IF NOT EXISTS execution_audit (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     -- identity
@@ -97,7 +105,11 @@ sqlite.exec(`
     -- Hardening Phase 1D — cross-service correlation id (web→a2a→mcp→chain).
     -- Nullable: pre-1D rows have NULL; the migration block below adds the
     -- column for older DBs.
-    correlation_id TEXT
+    correlation_id TEXT,
+    -- P0-5 — row-kind tag and origin-row link for the two-row outcome
+    -- model. Nullable so pre-P0-5 rows are treated as request_received.
+    event_kind TEXT,
+    request_received_row_id INTEGER
   );
   -- idx_execution_audit_correlation is created in the migration block
   -- below (after ALTER TABLE adds the column for older DBs). Creating
@@ -169,6 +181,11 @@ try {
 // columns (`prev_entry_hash`, `entry_hash`) and the event-type tag
 // (`event_type`) on `execution_audit`. All three are nullable for
 // forward-compat with pre-S3 rows; new inserts always populate them.
+//
+// P0-5 — outcome-binding two-row model adds two more columns:
+//   `event_kind`              ('request_received' | 'request_finalized' | 'request_denied')
+//   `request_received_row_id` (FK-by-value back to the origin row's PK; NULL on origin rows)
+// Both are nullable on pre-P0-5 rows (treated as `request_received`).
 try {
   const cols = sqlite.prepare(`PRAGMA table_info(execution_audit)`).all() as Array<{ name: string }>
   const colNames = new Set(cols.map((c) => c.name))
@@ -181,7 +198,15 @@ try {
   if (!colNames.has('entry_hash')) {
     sqlite.exec(`ALTER TABLE execution_audit ADD COLUMN entry_hash TEXT`)
   }
+  if (!colNames.has('event_kind')) {
+    sqlite.exec(`ALTER TABLE execution_audit ADD COLUMN event_kind TEXT`)
+  }
+  if (!colNames.has('request_received_row_id')) {
+    sqlite.exec(`ALTER TABLE execution_audit ADD COLUMN request_received_row_id INTEGER`)
+  }
   sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_execution_audit_event_type ON execution_audit(event_type)`)
+  sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_execution_audit_event_kind ON execution_audit(event_kind)`)
+  sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_execution_audit_request_received_row_id ON execution_audit(request_received_row_id)`)
 } catch { /* column already exists or table missing — both fine */ }
 
 // Sprint 3 S3.1 — audit-checkpoint ledger. Signed periodic snapshots of

@@ -205,6 +205,11 @@ import {
   MAX_CLOCK_SKEW_SECONDS as INBOUND_MAX_CLOCK_SKEW_SECONDS,
 } from './auth/require-inbound-service-auth.js'
 import { cleanupOldNonces as cleanupInboundNonces } from './auth/replay-nonce.js'
+// Sprint 4 A.3 — audit hash-chain external anchor for person-mcp (mirrors
+// the a2a-agent scheduler that Sprint 3 S3.1 installed). Person-mcp signs
+// its checkpoints by calling a2a-agent's `/auth/sign-checkpoint`; person-
+// mcp itself holds no signing key.
+import { schedulePersonMcpCheckpoints } from './lib/audit-checkpoint.js'
 
 app.route('/', walletRoutes)
 app.route('/', credentialRoutes)
@@ -255,6 +260,25 @@ async function main() {
       console.error('[person-mcp nonce-gc] failed:', err)
     }
   }, NONCE_GC_INTERVAL_MS).unref()
+
+  // ─── Sprint 4 A.3 — Audit checkpoint scheduler ───────────────────
+  // Sign and persist a chain-head snapshot of person-mcp's audit_log on
+  // a periodic interval (15 min prod / 1 min dev). When
+  // `AUDIT_CHECKPOINT_SINK_URL` is set the checkpoint is also POSTed to
+  // the external sink so an attacker who tampers with person-mcp's local
+  // SQLite cannot also rewrite the external history. Signing routes
+  // through a2a-agent's master signer (see
+  // `apps/person-mcp/src/lib/audit-checkpoint.ts`).
+  schedulePersonMcpCheckpoints()
+  if (process.env.AUDIT_CHECKPOINT_SINK_URL) {
+    console.log(
+      `[person-mcp audit-checkpoint] sink configured: ${process.env.AUDIT_CHECKPOINT_SINK_URL}`,
+    )
+  } else {
+    console.log(
+      '[person-mcp audit-checkpoint] no external sink (AUDIT_CHECKPOINT_SINK_URL unset) — local-only archive',
+    )
+  }
 
   // Start MCP stdio server if stdin is a pipe (not a terminal)
   if (!process.stdin.isTTY) {

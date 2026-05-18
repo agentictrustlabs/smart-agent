@@ -15,6 +15,7 @@
  *   3. Plaintext data keys live in heap only for the duration of the
  *      call; we zeroise them in a finally block.
  */
+import { createHash } from 'node:crypto'
 import {
   encryptPayload,
   decryptPayload,
@@ -80,33 +81,79 @@ interface DecryptableRow {
 }
 
 /**
- * Build the KMS-layer aadContext bound to this session's metadata.
+ * Build the KMS-layer aadContext bound to this session's metadata + key version.
  *
- * Includes (sessionId, accountAddress, chainId, expiresAt). `keyVersion`
- * is NOT included here — for local-aes the keyVersion is statically known
- * ('local-v1') and the provider asserts it directly; for AWS KMS (K2) the
- * keyVersion is `aws-kms:<uuid>` derived from `KeyId`, which the IAM
- * `kms:EncryptionContext:keyVersion` `Null` condition (plan §8.2) enforces
- * as a separate trip-wire. Including keyVersion here is intentionally
- * deferred to K2 because we don't know the AWS KMS key UUID synchronously
- * before calling `GenerateDataKey`.
+ * Shape (reviewer P0-6 — keyVersion now in BOTH layers):
+ *   {
+ *     session_id_h:     sha256(sessionId).hex.slice(0, 32),  // 16-byte hash
+ *     account_address:  meta.accountAddress.toLowerCase(),
+ *     chain_id:         String(meta.chainId),
+ *     expires_at:       meta.expiresAt,                       // ISO timestamp
+ *     key_version:      keyVersion,                            // provider tag
+ *   }
  *
- * Tamper-detection coverage in K0+K1:
- *   - sessionId/accountAddress/chainId/expiresAt tamper → KMS context
- *     mismatch (local-aes: HKDF re-derives wrong key → downstream AES-GCM
- *     fails; aws-kms K2: `InvalidCiphertextException`).
- *   - keyVersion tamper → caught by the explicit `if (keyVersion !== ...)` check
- *     inside `decryptSessionDataKey` on both providers.
- *   - same fields ALSO bind into the AES-GCM AAD via `buildSessionAAD` — two
- *     independent trip-wires per spec §13.
+ * Notes on the shape:
+ *
+ *   - The keys use snake_case so they line up 1:1 with the IAM policy's
+ *     `kms:EncryptionContext:<key>` ARNs in `KMS-IMPLEMENTATION-PLAN.md`
+ *     §8.1. They are deterministic so encrypt-time and decrypt-time
+ *     contexts byte-match.
+ *
+ *   - `session_id_h`: KMS `EncryptionContext` is logged verbatim in
+ *     CloudTrail. SessionIds are bearer-ish (they appear in cookies on
+ *     the client) so we don't ship them raw into operator telemetry —
+ *     instead the AAD carries a SHA-256 hash truncated to 16 bytes /
+ *     32 hex chars. The hash is deterministic, so decrypt-time
+ *     re-computes the same value from `meta.sessionId`. Per-session
+ *     binding is preserved cryptographically (different sessionIds
+ *     still hash to different contexts), but raw sessionIds never bleed
+ *     into KMS audit logs.
+ *
+ *   - `key_version`: bound into BOTH the KMS EncryptionContext AND the
+ *     AES-GCM AAD (`buildSessionAAD`). AWS KMS rejects a `Decrypt`
+ *     whose context bytes don't match what was used at
+ *     `GenerateDataKey` time; on the AES-GCM layer the same mismatch
+ *     fails the tag. This is the substantive P0-6 fix: a row written
+ *     under one keyVersion can NEVER be replayed against a verifier
+ *     told the row is a different version, on either layer.
+ *
+ * Tamper-detection coverage:
+ *   - any of (sessionId, accountAddress, chainId, expiresAt, keyVersion)
+ *     differs at decrypt time → KMS context mismatch + AES-GCM tag
+ *     failure (two independent trip-wires).
+ *   - keyVersion mismatch is ALSO caught by the explicit
+ *     `if (keyVersion !== ...)` check inside the provider's
+ *     `decryptSessionDataKey` (third trip-wire — defense in depth).
  */
-function buildAadContext(meta: SessionMeta): Record<string, string> {
+function buildAadContext(meta: SessionMeta, keyVersion: string): Record<string, string> {
   return {
-    sessionId: meta.sessionId,
-    accountAddress: meta.accountAddress.toLowerCase(),
-    chainId: String(meta.chainId),
-    expiresAt: meta.expiresAt,
+    session_id_h: hashSessionId(meta.sessionId),
+    account_address: meta.accountAddress.toLowerCase(),
+    chain_id: String(meta.chainId),
+    expires_at: meta.expiresAt,
+    key_version: keyVersion,
   }
+}
+
+/**
+ * SHA-256 the sessionId and return the first 32 hex chars (16 bytes).
+ * Deterministic — both encrypt and decrypt re-derive the same value from
+ * `meta.sessionId`. Keeping raw sessionIds out of KMS `EncryptionContext`
+ * (and therefore CloudTrail) avoids accidental PII / bearer-token bleed
+ * into operator telemetry.
+ *
+ * Why only 16 bytes: KMS EncryptionContext entry values have a 128-char
+ * UTF-8 ceiling but operators read these in CloudTrail JSON; 32 hex
+ * chars is a comfortable size and has 2^128 collision resistance which
+ * is plenty for per-session binding (we'd need the full hash for
+ * pre-image resistance against a determined attacker, but here the
+ * point is JUST that the value be deterministically bound and not equal
+ * to any sessionId of another session).
+ */
+function hashSessionId(sessionId: string): string {
+  const bytes = new TextEncoder().encode(sessionId)
+  const digest = createHash('sha256').update(bytes).digest('hex')
+  return digest.slice(0, 32)
 }
 
 function zeroise(buf: Uint8Array): void {
@@ -151,12 +198,27 @@ export async function encryptSessionPackage<T>(
 ): Promise<EncryptedSessionRow> {
   const provider = getProvider()
 
-  const dk = await provider.generateSessionDataKey({
-    aadContext: buildAadContext(meta),
-  })
+  // P0-6 — `key_version` is bound into BOTH the KMS EncryptionContext
+  // AND the AES-GCM AAD. Provider's `keyVersion` is synchronously
+  // knowable at construction time so we can build the context upfront.
+  const keyVersion = provider.keyVersion
+  const aadContext = buildAadContext(meta, keyVersion)
+
+  const dk = await provider.generateSessionDataKey({ aadContext })
+
+  // Defense in depth: the provider's runtime keyVersion must equal the
+  // sync property we used to build the AAD. A drift would silently
+  // bind the AES-GCM tag to a key-version label different from what
+  // KMS bound into the ciphertext MAC — fail loudly here.
+  if (dk.keyVersion !== keyVersion) {
+    zeroise(dk.plaintextDataKey)
+    throw new Error(
+      `encryptSessionPackage: provider keyVersion drift (sync='${keyVersion}', generated='${dk.keyVersion}')`,
+    )
+  }
 
   try {
-    const aesAad = buildSessionAAD(meta)
+    const aesAad = buildSessionAAD({ ...meta, keyVersion })
     const dataKeyHex = bytesToHex(dk.plaintextDataKey)
     const enc: EncryptedPayload = await encryptPayload(payload, dataKeyHex, aesAad)
     return {
@@ -261,7 +323,12 @@ export async function decryptSessionPackage<T>(
   }
 
   const provider = getProvider()
-  const aadContext = buildAadContext(meta)
+  // P0-6 — use the STORED `row.keyVersion` (not the provider's current
+  // sync tag) when building the aadContext. KMS will detect any
+  // mismatch against the actual ciphertext's bound context via
+  // InvalidCiphertextException; the provider's own `keyVersion !==`
+  // check is the third (post-IAM, pre-network) trip-wire.
+  const aadContext = buildAadContext(meta, row.keyVersion)
   let dataKey: Uint8Array
   try {
     dataKey = await provider.decryptSessionDataKey({
@@ -282,7 +349,10 @@ export async function decryptSessionPackage<T>(
     throw err
   }
   try {
-    const aesAad = buildSessionAAD(meta)
+    // AES-GCM AAD binds the stored keyVersion too — a row whose
+    // `key_version` column was tampered to a different label fails the
+    // tag here even if the provider somehow returned a valid data key.
+    const aesAad = buildSessionAAD({ ...meta, keyVersion: row.keyVersion })
     const dataKeyHex = bytesToHex(dataKey)
     const out = await decryptPayload<T>(
       { ciphertext: row.encryptedPackage, iv: row.iv },

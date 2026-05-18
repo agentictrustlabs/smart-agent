@@ -4,6 +4,7 @@ import { db } from '../db'
 import { sessions } from '../db/schema'
 import { config } from '../config'
 import { auditDeny } from '../lib/audit'
+import { buildOutboundAuthHeaders } from '../auth/sign-outbound'
 
 type SessionRow = typeof sessions.$inferSelect
 
@@ -59,9 +60,15 @@ export const requireSession = createMiddleware(async (c, next) => {
 
   let resolvedSession: SessionRow | null = null
 
-  // Path A — SessionGrant.v1 lookup on person-mcp.
+  // Path A — SessionGrant.v1 lookup on person-mcp. Sign the call with
+  // the `a2a-to-person` HMAC key so person-mcp's
+  // `require-inbound-service-auth` middleware accepts it. Without this
+  // the request 401s in any deployment that enforces inbound service
+  // auth (which is now the default per Sprint 1 W2.1).
   try {
-    const res = await fetch(`${PERSON_MCP_URL}/session-store/by-cookie/${encodeURIComponent(token)}`)
+    const lookupPath = `/session-store/by-cookie/${encodeURIComponent(token)}`
+    const authHeaders = await buildOutboundAuthHeaders('a2a-to-person', lookupPath, '')
+    const res = await fetch(`${PERSON_MCP_URL}${lookupPath}`, { headers: authHeaders })
     if (res.ok) {
       const data = await res.json() as { record: GrantRecord | null }
       const r = data.record

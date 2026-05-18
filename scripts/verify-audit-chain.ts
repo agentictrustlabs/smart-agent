@@ -49,6 +49,11 @@ import { recoverMessageAddress, keccak256, concat, toBytes } from 'viem'
 // `audit-checkpoint.test.ts`) drive both call sites end-to-end so any
 // drift trips a test.
 
+// Mirrors `apps/a2a-agent/src/lib/audit.ts::ENTRY_HASH_BINDING_FIELDS`.
+// P0-5 — extended to bind outcome columns (status, txHash, userOpHash,
+// errorReason, finalizedAt), the row-kind tag (eventKind), and the
+// origin-row link (requestReceivedRowId). Pre-P0-5 rows are skipped at
+// the chain walk (they have NULL prev/entry hash).
 const ENTRY_HASH_BINDING_FIELDS = [
   'rootGrantHash',
   'sessionId',
@@ -58,6 +63,8 @@ const ENTRY_HASH_BINDING_FIELDS = [
   'mcpTool',
   'mcpCallId',
   'eventType',
+  'eventKind',
+  'requestReceivedRowId',
   'executionPath',
   'toolGrantHash',
   'toolExecutor',
@@ -65,7 +72,12 @@ const ENTRY_HASH_BINDING_FIELDS = [
   'selector',
   'callDataHash',
   'valueWei',
+  'txHash',
+  'userOpHash',
+  'status',
+  'errorReason',
   'receivedAt',
+  'finalizedAt',
   'correlationId',
 ] as const
 
@@ -99,13 +111,32 @@ function buildCheckpointDigest(input: {
   return keccak256(concat([tag, hash, ts, cid]))
 }
 
+type ServiceTag = 'a2a-agent' | 'person-mcp'
+
 interface CliArgs {
+  service: ServiceTag
   dbPath: string
   expectedSigner?: string
 }
 
+/**
+ * Default DB path per service. The CLI is happy with either:
+ *   --service a2a-agent   → apps/a2a-agent/local.db (executionAudit + audit_checkpoint)
+ *   --service person-mcp  → apps/person-mcp/person-mcp.db (audit_log + audit_checkpoint)
+ *
+ * Operator can always override with `--db <path>` when running against a
+ * snapshot copy of the production DB.
+ */
+function defaultDbPath(service: ServiceTag): string {
+  if (service === 'person-mcp') {
+    return resolve(process.cwd(), 'apps/person-mcp/person-mcp.db')
+  }
+  return resolve(process.cwd(), 'apps/a2a-agent/local.db')
+}
+
 function parseArgs(): CliArgs {
-  let dbPath = resolve(process.cwd(), 'apps/a2a-agent/local.db')
+  let service: ServiceTag = 'a2a-agent'
+  let dbPath: string | undefined
   let expectedSigner: string | undefined
   for (let i = 2; i < process.argv.length; i++) {
     const a = process.argv[i]
@@ -113,14 +144,26 @@ function parseArgs(): CliArgs {
       dbPath = resolve(process.argv[++i]!)
     } else if (a === '--signer' && i + 1 < process.argv.length) {
       expectedSigner = process.argv[++i]!.toLowerCase()
+    } else if (a === '--service' && i + 1 < process.argv.length) {
+      const raw = process.argv[++i]!
+      if (raw !== 'a2a-agent' && raw !== 'person-mcp') {
+        console.error(`[verify-audit-chain] unknown --service value: ${raw}`)
+        process.exit(2)
+      }
+      service = raw
     } else if (a === '--help' || a === '-h') {
       console.log(
-        'Usage: verify-audit-chain.ts [--db <path>] [--signer <0x-address>]',
+        'Usage: verify-audit-chain.ts [--service a2a-agent|person-mcp] [--db <path>] [--signer <0x-address>]\n' +
+          '\n' +
+          'Defaults:\n' +
+          '  --service a2a-agent\n' +
+          '  --db      apps/a2a-agent/local.db   (a2a-agent)\n' +
+          '            apps/person-mcp/person-mcp.db (person-mcp)\n',
       )
       process.exit(0)
     }
   }
-  return { dbPath, expectedSigner }
+  return { service, dbPath: dbPath ?? defaultDbPath(service), expectedSigner }
 }
 
 interface AuditRow {
@@ -133,6 +176,8 @@ interface AuditRow {
   mcp_tool: string
   mcp_call_id: string
   event_type: string | null
+  event_kind: string | null
+  request_received_row_id: number | null
   execution_path: string
   tool_grant_hash: string | null
   tool_executor: string | null
@@ -140,7 +185,12 @@ interface AuditRow {
   selector: string | null
   call_data_hash: string | null
   value_wei: string
+  tx_hash: string | null
+  user_op_hash: string | null
+  status: string
+  error_reason: string
   received_at: string
+  finalized_at: string | null
   correlation_id: string | null
   prev_entry_hash: string | null
   entry_hash: string | null
@@ -156,6 +206,8 @@ function rowToHashFields(r: AuditRow): Record<string, unknown> {
     mcpTool: r.mcp_tool,
     mcpCallId: r.mcp_call_id,
     eventType: r.event_type ?? 'execution',
+    eventKind: r.event_kind,
+    requestReceivedRowId: r.request_received_row_id,
     executionPath: r.execution_path,
     toolGrantHash: r.tool_grant_hash,
     toolExecutor: r.tool_executor,
@@ -163,7 +215,12 @@ function rowToHashFields(r: AuditRow): Record<string, unknown> {
     selector: r.selector,
     callDataHash: r.call_data_hash,
     valueWei: r.value_wei,
+    txHash: r.tx_hash,
+    userOpHash: r.user_op_hash,
+    status: r.status,
+    errorReason: r.error_reason,
     receivedAt: r.received_at,
+    finalizedAt: r.finalized_at,
     correlationId: r.correlation_id,
   }
 }
@@ -180,47 +237,43 @@ interface CheckpointRow {
   sink_attempts: number
 }
 
-async function main(): Promise<void> {
-  const { dbPath, expectedSigner } = parseArgs()
-  console.log(`[verify-audit-chain] DB: ${dbPath}`)
-
-  const sqlite = new Database(dbPath, { readonly: true })
-  // ─── Verify the execution_audit chain ──────────────────────────────
+/**
+ * Walk `execution_audit` from the oldest hash-chained row forward.
+ * Returns a human-readable description of the break point on failure,
+ * `null` on intact.
+ */
+function verifyA2aChain(sqlite: Database.Database): string | null {
   const auditRows = sqlite
     .prepare(`SELECT * FROM execution_audit ORDER BY id ASC`)
     .all() as AuditRow[]
-  console.log(`[verify-audit-chain] scanning ${auditRows.length} audit rows`)
+  console.log(`[verify-audit-chain] scanning ${auditRows.length} a2a-agent audit rows`)
 
-  let chainBrokenAt: number | null = null
+  let brokenAt: number | null = null
   let prevEntryHash: string | null = null
   let chainStartId: number | null = null
   let rowsVerified = 0
 
   for (const r of auditRows) {
-    // Rows inserted before Sprint 3 do not carry the hash chain. We
-    // start verification from the FIRST row that has an entry_hash.
     if (r.prev_entry_hash === null && r.entry_hash === null) {
       // pre-S3 row; skip
       continue
     }
     if (chainStartId === null) chainStartId = r.id
 
-    // Verify prev_entry_hash matches our running pointer.
     if (r.prev_entry_hash !== prevEntryHash) {
       console.error(
         `[verify-audit-chain] row ${r.id}: prev_entry_hash mismatch — stored=${r.prev_entry_hash} expected=${prevEntryHash}`,
       )
-      chainBrokenAt = r.id
+      brokenAt = r.id
       break
     }
 
-    // Recompute the entry hash from the bound fields.
     const expected = computeEntryHash(rowToHashFields(r), prevEntryHash)
     if (r.entry_hash !== expected) {
       console.error(
         `[verify-audit-chain] row ${r.id}: entry_hash mismatch — stored=${r.entry_hash} expected=${expected}`,
       )
-      chainBrokenAt = r.id
+      brokenAt = r.id
       break
     }
 
@@ -228,19 +281,172 @@ async function main(): Promise<void> {
     rowsVerified++
   }
 
-  if (chainBrokenAt === null) {
+  if (brokenAt === null) {
     console.log(
-      `[verify-audit-chain] chain INTACT — ${rowsVerified} rows verified (starting at id=${chainStartId ?? 'n/a'})`,
+      `[verify-audit-chain] a2a-agent chain INTACT — ${rowsVerified} rows verified (starting at id=${chainStartId ?? 'n/a'})`,
     )
+    return null
+  }
+  console.error(`[verify-audit-chain] a2a-agent chain BROKEN at row id=${brokenAt}`)
+  return `row id=${brokenAt}`
+}
+
+// ─── person-mcp audit_log chain re-implementation ───────────────────
+//
+// Person-mcp's `audit_log` ledger is keyed per `smart_account_address`
+// (each account has its own chain). Hash format (see
+// `apps/person-mcp/src/session-store/index.ts::computeEntryHash`):
+//
+//   sha256(
+//     String(ts.getTime()) || '|' || account || '|' || sessionId || '|' ||
+//     grantHash || '|' || actionId || '|' || actionType || '|' ||
+//     actionHash || '|' || decision || '|' || (reason ?? '') || '|' ||
+//     (audience ?? '') || '|' || (verifier ?? '') || '|' ||
+//     (prevEntryHash ?? '')
+//   )
+
+interface PersonAuditRow {
+  seq: number
+  ts_ms: number
+  smart_account_address: string
+  session_id: string
+  grant_hash: string
+  action_id: string
+  action_type: string
+  action_hash: string
+  decision: string
+  reason: string | null
+  audience: string | null
+  verifier: string | null
+  prev_entry_hash: string | null
+  entry_hash: string
+}
+
+function computePersonEntryHash(
+  r: PersonAuditRow,
+  prevEntryHash: string | null,
+): string {
+  const h = createHash('sha256')
+  const join = (s: string) => {
+    h.update(s)
+    h.update('|')
+  }
+  join(String(r.ts_ms))
+  join(r.smart_account_address.toLowerCase())
+  join(r.session_id)
+  join(r.grant_hash)
+  join(r.action_id)
+  join(r.action_type)
+  join(r.action_hash)
+  join(r.decision)
+  join(r.reason ?? '')
+  join(r.audience ?? '')
+  join(r.verifier ?? '')
+  h.update(prevEntryHash ?? '')
+  return h.digest('hex')
+}
+
+/**
+ * Walk every per-account chain in `audit_log` and verify each row's
+ * `entry_hash` against its recomputed value and its `prev_entry_hash`
+ * pointer against the previous row's stored hash.
+ */
+function verifyPersonChain(sqlite: Database.Database): {
+  rowsVerified: number
+  brokenAt: { account: string; seq: number } | null
+  accountsScanned: number
+} {
+  const rows = sqlite
+    .prepare(
+      `SELECT seq, ts_ms, smart_account_address, session_id, grant_hash,
+              action_id, action_type, action_hash, decision,
+              reason, audience, verifier, prev_entry_hash, entry_hash
+         FROM audit_log
+        ORDER BY smart_account_address ASC, seq ASC`,
+    )
+    .all() as PersonAuditRow[]
+
+  let rowsVerified = 0
+  let currentAccount: string | null = null
+  let prevEntryHash: string | null = null
+  const accounts = new Set<string>()
+  let brokenAt: { account: string; seq: number } | null = null
+
+  for (const r of rows) {
+    accounts.add(r.smart_account_address)
+    if (currentAccount !== r.smart_account_address) {
+      currentAccount = r.smart_account_address
+      prevEntryHash = null
+    }
+    if (r.prev_entry_hash !== prevEntryHash) {
+      console.error(
+        `[verify-audit-chain] account=${r.smart_account_address} seq=${r.seq}: prev_entry_hash mismatch — stored=${r.prev_entry_hash} expected=${prevEntryHash}`,
+      )
+      brokenAt = { account: r.smart_account_address, seq: r.seq }
+      break
+    }
+    const expected = computePersonEntryHash(r, prevEntryHash)
+    if (r.entry_hash !== expected) {
+      console.error(
+        `[verify-audit-chain] account=${r.smart_account_address} seq=${r.seq}: entry_hash mismatch — stored=${r.entry_hash} expected=${expected}`,
+      )
+      brokenAt = { account: r.smart_account_address, seq: r.seq }
+      break
+    }
+    prevEntryHash = r.entry_hash
+    rowsVerified++
+  }
+  return { rowsVerified, brokenAt, accountsScanned: accounts.size }
+}
+
+async function main(): Promise<void> {
+  const { service, dbPath, expectedSigner } = parseArgs()
+  console.log(`[verify-audit-chain] service: ${service}`)
+  console.log(`[verify-audit-chain] DB: ${dbPath}`)
+
+  const sqlite = new Database(dbPath, { readonly: true })
+
+  let chainBrokenAt: string | null = null
+  if (service === 'a2a-agent') {
+    chainBrokenAt = verifyA2aChain(sqlite)
   } else {
-    console.error(`[verify-audit-chain] chain BROKEN at row id=${chainBrokenAt}`)
+    const personResult = verifyPersonChain(sqlite)
+    if (personResult.brokenAt) {
+      chainBrokenAt = `account=${personResult.brokenAt.account} seq=${personResult.brokenAt.seq}`
+      console.error(`[verify-audit-chain] person-mcp chain BROKEN at ${chainBrokenAt}`)
+    } else {
+      console.log(
+        `[verify-audit-chain] person-mcp chain INTACT — ${personResult.rowsVerified} rows verified across ${personResult.accountsScanned} accounts`,
+      )
+    }
   }
 
   // ─── Verify audit_checkpoint signatures ────────────────────────────
-  const cpRows = sqlite
-    .prepare(`SELECT * FROM audit_checkpoint ORDER BY id ASC`)
-    .all() as CheckpointRow[]
-  console.log(`[verify-audit-chain] verifying ${cpRows.length} checkpoints`)
+  // a2a-agent's `audit_checkpoint` table has no `service` column (the
+  // every-row-is-a2a-agent invariant is implicit). Person-mcp's table
+  // adds the column (Sprint 4 A.3) so a single sink can join rows from
+  // both streams. Probe via PRAGMA so the same CLI can read either DB.
+  const cpCols = sqlite
+    .prepare(`PRAGMA table_info(audit_checkpoint)`)
+    .all() as Array<{ name: string }>
+  const hasServiceColumn = cpCols.some((c) => c.name === 'service')
+  let cpRows: CheckpointRow[]
+  if (service === 'person-mcp' && hasServiceColumn) {
+    cpRows = sqlite
+      .prepare(
+        `SELECT id, latest_entry_id, latest_entry_hash, timestamp, chain_id,
+                signature, signer_address, sink_status, sink_attempts
+           FROM audit_checkpoint
+          WHERE service = 'person-mcp'
+          ORDER BY id ASC`,
+      )
+      .all() as CheckpointRow[]
+  } else {
+    cpRows = sqlite
+      .prepare(`SELECT * FROM audit_checkpoint ORDER BY id ASC`)
+      .all() as CheckpointRow[]
+  }
+  console.log(`[verify-audit-chain] verifying ${cpRows.length} ${service} checkpoints`)
 
   let checkpointFailures = 0
   let signerObserved: string | null = null
@@ -291,15 +497,17 @@ async function main(): Promise<void> {
   const latest = cpRows[cpRows.length - 1]
   if (latest) {
     console.log(
-      `[verify-audit-chain] most-recent checkpoint: id=${latest.id} ts=${latest.timestamp} latestEntryId=${latest.latest_entry_id} sinkStatus=${latest.sink_status}`,
+      `[verify-audit-chain] most-recent ${service} checkpoint: id=${latest.id} ts=${latest.timestamp} latestEntryId=${latest.latest_entry_id} sinkStatus=${latest.sink_status}`,
     )
     console.log(`[verify-audit-chain] checkpoint signer: ${latest.signer_address}`)
   } else {
-    console.log('[verify-audit-chain] no checkpoints yet (agent may not have run a full interval)')
+    console.log(
+      `[verify-audit-chain] no ${service} checkpoints yet (service may not have run a full interval)`,
+    )
   }
 
   const ok = chainBrokenAt === null && checkpointFailures === 0
-  console.log(`[verify-audit-chain] ${ok ? 'OK' : 'FAIL'}`)
+  console.log(`[verify-audit-chain] ${service}: ${ok ? 'OK' : 'FAIL'}`)
   process.exit(ok ? 0 : 1)
 }
 

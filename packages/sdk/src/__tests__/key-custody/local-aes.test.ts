@@ -101,6 +101,13 @@ describe('createLocalAesProvider / round-trip', () => {
     assert.equal(da.keyId, 'local')
     assert.equal(db.keyId, 'local')
   })
+
+  it('P0-6: provider exposes a sync `keyVersion` property equal to the generated tag', async () => {
+    const provider = createLocalAesProvider({ A2A_SESSION_SECRET: VALID_SECRET })
+    assert.equal(provider.keyVersion, 'local-v1')
+    const dk = await provider.generateSessionDataKey({ aadContext: CTX })
+    assert.equal(dk.keyVersion, provider.keyVersion)
+  })
 })
 
 describe('createLocalAesProvider / construction validation', () => {

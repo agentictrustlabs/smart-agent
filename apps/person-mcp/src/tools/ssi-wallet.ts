@@ -24,7 +24,7 @@ import {
 } from '@smart-agent/privacy-creds'
 import { db } from '../db/index.js'
 import { ssiProofAudit } from '../db/schema.js'
-import { listHolderWalletsForPrincipal, getHolderWalletById } from '../ssi/storage/wallets.js'
+import { listHolderWalletsForPrincipal, getHolderWalletById, getHolderWalletByContext } from '../ssi/storage/wallets.js'
 import { listCredentialMetadata, getCredentialMetadataById, findMarketplaceCredentialForRegistry } from '../ssi/storage/cred-metadata.js'
 import { getCredential } from '../ssi/storage/askar.js'
 import { listProofAuditByPrincipal } from '../ssi/storage/proof-audit.js'
@@ -608,6 +608,40 @@ const getCredentialDetails = {
   },
 }
 
+// ─── Holder-wallet lookup ───────────────────────────────────────────────────
+//
+// Returns the canonical holder_wallets row for a (principal, walletContext)
+// pair. The web action layer used to hit `GET /wallet/:principal/:context`
+// directly; routing through this MCP tool keeps every web→person-mcp call
+// on the A2A proxy and removes the last `PERSON_MCP_URL` direct fetch in
+// `apps/web/src`. Read-only — no signature required.
+const getHolderWallet = {
+  name: 'ssi_get_holder_wallet',
+  description:
+    'Look up the holder wallet for a (principal, walletContext) pair. Returns { found, holderWalletId?, walletContext?, linkSecretId?, status?, createdAt? }. Read-only.',
+  inputSchema: {
+    type: 'object' as const,
+    properties: {
+      principal:     { type: 'string' },
+      walletContext: { type: 'string', description: "Defaults to 'default'." },
+    },
+    required: ['principal'],
+  },
+  handler: async (args: { principal: string; walletContext?: string }) => {
+    const context = args.walletContext ?? 'default'
+    const hw = getHolderWalletByContext(args.principal, context)
+    if (!hw) return mcpText({ found: false as const })
+    return mcpText({
+      found:          true as const,
+      holderWalletId: hw.id,
+      walletContext:  hw.walletContext,
+      linkSecretId:   hw.linkSecretId,
+      status:         hw.status,
+      createdAt:      hw.createdAt,
+    })
+  },
+}
+
 // ─── Spec 004 (b2) — marketplace admin-delegation lookup ────────────────────
 //
 // Returns the most-recent active marketplace credential row that's
@@ -675,5 +709,6 @@ export const ssiWalletTools = {
   ssi_rotate_link_secret:          rotateLinkSecret,
   ssi_match_against_public_set:    matchAgainstPublicSet,
   ssi_get_credential_details:      getCredentialDetails,
+  ssi_get_holder_wallet:           getHolderWallet,
   ssi_get_marketplace_delegation:  getMarketplaceDelegation,
 }

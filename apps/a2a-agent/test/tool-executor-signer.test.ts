@@ -199,13 +199,17 @@ test('aws-kms: missing AWS_REGION yields a clean error', () => {
   )
 })
 
-test("vault-transit: throws deferred-sibling marker", () => {
+test("vault-transit: now falls into the unknown-backend branch (GCP-KMS G-PR-1)", () => {
+  // The vault-transit deferred-sibling case was deleted in G-PR-1
+  // (GCP-KMS-IMPLEMENTATION-PLAN § G6, orchestrator decision: AWS + GCP only).
+  // Setting A2A_KMS_BACKEND='vault-transit' must now fail closed via the
+  // default branch with "unknown A2A_KMS_BACKEND".
   assert.throws(
     () =>
       createToolExecutorSigner('round-awards', {
         A2A_KMS_BACKEND: 'vault-transit',
       }),
-    /vault-transit signer not implemented \(deferred sibling\) for tool "round-awards"/,
+    /unknown A2A_KMS_BACKEND: vault-transit/,
   )
 })
 

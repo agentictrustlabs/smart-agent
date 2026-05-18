@@ -4,8 +4,9 @@
  * K3-extension — selector + per-key cache).
  *
  * Covers:
- *   - Per-`A2A_KMS_BACKEND` selection (local-aes vs aws-kms vs
- *     vault-transit-sibling).
+ *   - Per-`A2A_KMS_BACKEND` selection (local-aes vs aws-kms; the
+ *     vault-transit deferred-sibling case was removed in GCP-KMS G-PR-1
+ *     and now falls into the unknown-backend branch).
  *   - The `MacKeyId → env-var-name` mapping for both legacy and AWS KMS.
  *   - Fail-fast when required env is missing.
  *   - Cache hit on second `cache.get(macKeyId)` call (same instance).
@@ -173,15 +174,19 @@ test('buildMacProvider aws-kms constructs a provider when env is well-formed', (
   assert.equal(typeof provider.verifyMac, 'function')
 })
 
-// ─── vault-transit sibling ───────────────────────────────────────────
+// ─── vault-transit removed (GCP-KMS G-PR-1) ──────────────────────────
 
-test("buildMacProvider 'vault-transit' throws not-implemented (sibling)", () => {
+test("buildMacProvider 'vault-transit' now falls into the unknown-backend branch", () => {
+  // The vault-transit deferred-sibling case was deleted in G-PR-1
+  // (GCP-KMS-IMPLEMENTATION-PLAN § G6, orchestrator decision: AWS + GCP only).
+  // Setting A2A_KMS_BACKEND='vault-transit' must now fail closed via the
+  // default branch with "unknown A2A_KMS_BACKEND".
   assert.throws(
     () =>
       buildMacProvider('web-to-a2a', {
         A2A_KMS_BACKEND: 'vault-transit',
       }),
-    /vault-transit.*not implemented/,
+    /unknown A2A_KMS_BACKEND: vault-transit/,
   )
 })
 

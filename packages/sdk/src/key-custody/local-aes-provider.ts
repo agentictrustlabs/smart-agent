@@ -98,6 +98,7 @@ export function createLocalAesProvider(env: LocalAesProviderEnv): A2AKeyProvider
   }
 
   return {
+    keyVersion: KEY_VERSION,
     async generateSessionDataKey({ aadContext }) {
       const salt = crypto.getRandomValues(new Uint8Array(SALT_BYTES))
       const info = canonicalContextBytes(aadContext)

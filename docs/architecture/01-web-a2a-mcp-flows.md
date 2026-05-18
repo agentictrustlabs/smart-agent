@@ -703,8 +703,123 @@ See `docs/operations/kms-signer-setup.md` § "Audit checkpoint sink (S3.1)" for 
 
 #### Out of scope (deferred)
 
-- **person-mcp checkpoint export**: person-mcp's `audit_log` already has the chain (Phase 0). A sibling `audit-checkpoint.ts` on person-mcp using the same pattern is a separate PR; the TODO is noted in `apps/person-mcp/src/session-store/index.ts`.
 - **Per-checkpoint KMS signing key**: currently reuses the master signer (rotates with K4 rotation). A dedicated AWS KMS signing key for checkpoints is the natural next hardening step.
 - **Multi-instance shared checkpoint queue**: current design is single-instance. Multi-instance deployments need a shared queue (Redis Streams / Postgres LISTEN/NOTIFY) so checkpoints don't race; deferred until the SQLite → Postgres migration.
 
 Tests: `apps/a2a-agent/test/audit-completeness.test.ts` (10 cases, every event type) + `apps/a2a-agent/test/audit-checkpoint.test.ts` (9 cases — signature recovery, chain head binding, sentinel, GC, sink-failure isolation, listRecentCheckpoints ordering, idempotent shutdown).
+
+#### Sprint 4 A.3 — person-mcp also emits signed checkpoints
+
+After Sprint 3 S3.1 landed the chain anchor on `a2a-agent.execution_audit`, the analogous gap on `person-mcp.audit_log` was the remaining hole: person-mcp's hash chain (Phase 0) had no external witness. Sprint 4 A.3 closes that hole.
+
+**Architecture:**
+
+```
+person-mcp (every 15 min)
+  └─ build digest = keccak256("sa:audit-checkpoint:v1" || latestEntryHash || timestamp || chainId)
+  └─ POST /auth/sign-checkpoint  (x-a2a-service: person-mcp HMAC envelope, `a2a-to-person` MAC key)
+      → a2a-agent master signer EIP-191-signs the digest, returns { signature, signerAddress }
+  └─ INSERT row into person-mcp's local `audit_checkpoint` table  (service='person-mcp')
+  └─ (if AUDIT_CHECKPOINT_SINK_URL set) POST same JSON payload to external sink
+```
+
+**Why route signing back to a2a-agent?**
+
+Person-mcp holds NO signing key. The key-custody posture keeps the master signer + per-tool executor keys behind a2a-agent's KMS plane; adding a dedicated person-mcp signing key would widen the key inventory (one more KMS key, one more IAM scope, one more rotation surface). Instead, person-mcp's checkpoint exporter calls the new `POST /auth/sign-checkpoint` endpoint on a2a-agent (gated by the existing inter-service HMAC envelope; explicit allow-list of one service: `person-mcp`). The returned signature carries `signerAddress` so the verify-CLI knows which key was used — exactly the same flow as a2a-agent's own checkpoints.
+
+The signing endpoint reuses the `checkpoint:` `actionId` prefix that `a2a-signer.ts::makeSignerAudit` already recognizes and skips, so each remote checkpoint sign does NOT write a `kms-sign` audit row (which would shift the chain head and force the next checkpoint to attest a different head than the one we just signed).
+
+**Local archive shape:**
+
+Person-mcp's `audit_checkpoint` table mirrors a2a-agent's with one extra column:
+
+```
+service           TEXT NOT NULL DEFAULT 'person-mcp'
+latest_entry_id   INTEGER NOT NULL   -- seq of the most-recent audit_log row, 0 = empty chain
+latest_entry_hash TEXT NOT NULL      -- entry_hash of that row, sentinel if empty
+timestamp         TEXT NOT NULL
+chain_id          INTEGER NOT NULL
+signature         TEXT NOT NULL      -- 0x-prefixed EIP-191 signature
+signer_address    TEXT NOT NULL      -- a2a-agent master signer address
+sink_status       TEXT NOT NULL DEFAULT 'not-configured'
+sink_attempts     INTEGER NOT NULL DEFAULT 0
+```
+
+The `service` column distinguishes rows when multiple services share a sink. Operators can join `WHERE service = 'person-mcp'` to isolate one stream.
+
+**Verification CLI:**
+
+`scripts/verify-audit-chain.ts` now takes a `--service` flag:
+
+```
+pnpm exec tsx scripts/verify-audit-chain.ts                          # a2a-agent (default)
+pnpm exec tsx scripts/verify-audit-chain.ts --service person-mcp
+pnpm exec tsx scripts/verify-audit-chain.ts --service person-mcp --db /tmp/snap.db
+```
+
+For `--service person-mcp` the CLI:
+1. Walks `audit_log` keyed by `smart_account_address` (each account has its own chain) and re-derives every `entry_hash` using the byte-identical `computePersonEntryHash` primitive.
+2. Filters `audit_checkpoint` to `service = 'person-mcp'` (graceful fallback when the column is absent — the old shape) and verifies every signature.
+
+The two services' chains stay independent: each anchors its own SQLite ledger; if multiple processes write to a shared sink, the operator can correlate by timestamp.
+
+**Tests:** `apps/person-mcp/test/audit-checkpoint.test.ts` (8 cases — signature recovery, chain head binding, sentinel, GC, sink-failure isolation, verification end-to-end, listRecent ordering, idempotent shutdown). The a2a-side endpoint is covered by `apps/a2a-agent/test/sign-checkpoint-route.test.ts` (4 cases — missing envelope, wrong service, bad digest, valid round-trip).
+
+## Sprint 4 A.1 — org-mcp inbound service-auth
+
+Direct mirror of the W2.1 work landed on person-mcp. Before A.1, the a2a-agent → org-mcp downstream hop was a plain HTTP passthrough — if org-mcp's port (3400) ever became reachable beyond localhost, any peer could call `/tools/list_proposals`, `/tools/deploy_agent`, `/tools/disbursement_create`, etc. without authorization. The mcp-proxy entry for org explicitly set `macKeyId: null` in `apps/a2a-agent/src/routes/mcp-proxy.ts` (see W2.1 § "Files") because org-mcp wasn't yet a signed-envelope verifier. A.1 closes that gap.
+
+The two-hop pattern (already drawn in W2.1 for person-mcp) now applies to org-mcp identically:
+
+```
+web → a2a-agent  (web-to-a2a MAC key — Stream B Task B1)
+   │
+   │  a2a-agent re-signs OUTBOUND with A2A_INTERSERVICE_HMAC_KEY_ORG
+   │  (a2a-to-org MAC key id), same envelope shape, fresh nonce/ts
+   ▼
+a2a-agent → org-mcp  ◄── requireInboundServiceAuth(['a2a-agent'])
+```
+
+The canonical format `${ts}|${nonce}|${path}|${sha256(body)}` is identical to web→a2a and a2a→person — uniform wire shape across every signed hop. The `a2a-to-org` MAC key id is what was already provisioned by `scripts/deploy-local.sh` as `A2A_INTERSERVICE_HMAC_KEY_ORG` (and propagated to both `apps/org-mcp/.env` and `apps/a2a-agent/.env`); HMAC is symmetric so the same shared secret authenticates both directions.
+
+**Files**:
+- `apps/org-mcp/src/auth/require-inbound-service-auth.ts` (new) — inbound verifier middleware. Reads `X-SA-Service` / `X-SA-Timestamp` / `X-SA-Nonce` / `X-SA-Signature`, enforces ±60s clock skew, verifies the MAC via `buildMcpMacProvider('org', env)`, records the nonce, and attaches `c.var.inboundService` on success.
+- `apps/org-mcp/src/auth/replay-nonce.ts` (new) — org-mcp-side replay-nonce cache (`inter_service_nonce` SQLite table). Same shape and 5-minute GC interval as person-mcp's table.
+- `apps/org-mcp/src/lib/audit.ts` (new) — org-mcp had no `audit_log` table before A.1; this module both bootstraps the `audit_log` schema (identical layout to person-mcp's: append-only, hash-chained via `prev_entry_hash` → `entry_hash`) and provides `appendAuditEntry()` + `auditDeny()` helpers. Defensive `ALTER TABLE … ADD COLUMN` calls cover any pre-A.1 partial schema.
+- `apps/a2a-agent/src/routes/mcp-proxy.ts` — org `macKeyId` flipped from `null` to `'a2a-to-org'`. The `callMcpTool` passthrough now signs every forwarded `/tools/:tool` call with `buildOutboundAuthHeaders('a2a-to-org', …)`.
+
+**Protected surfaces on org-mcp**:
+- `POST /tools/:toolName` — every MCP tool invocation. Was 200 to any caller; now 401 without a valid envelope.
+
+`GET /tools` (operator-debug listing) and `GET /health` stay open. Open OID4VCI / credential issuance routes (`POST /credential/*`, `POST /oid4vci/*`, `GET /.well-known/agent.json`, `GET /.well-known/openid-credential-issuer`) stay open by design — they implement open protocols and must be reachable from external counterparties without prior key exchange.
+
+**Replay-nonce GC**: `apps/org-mcp/src/index.ts::main()` schedules `cleanupOldNonces(120)` on a 5-minute `setInterval`. `.unref()` so the timer never holds the process open. Nonces older than 2× MAX_CLOCK_SKEW (120s) are evicted — the ±60s timestamp check would already reject any envelope that old, so the table stays bounded under load.
+
+**Env**: `A2A_INTERSERVICE_HMAC_KEY_ORG` (local-aes) / `AWS_KMS_MAC_KEY_ID_A2A_TO_ORG` (aws-kms) — both already provisioned by `scripts/deploy-local.sh` since K3-ext. `apps/org-mcp/.env.example` enumerates the full required surface.
+
+Tests: `apps/org-mcp/test/require-inbound-service-auth.test.ts` (7 cases — missing headers, unknown service, stale timestamp, bad signature, replay nonce, valid signature, canonical-string format lockdown). Manual smoke: `curl POST http://localhost:3400/tools/list_proposals` returns 401 (was 200 before A.1).
+
+## Sprint 4 A.2 — org-mcp cross-delegation binding
+
+Direct mirror of S2.3 for org-mcp's cross-delegation verifier. Before A.2, `apps/org-mcp/src/auth/verify-delegation.ts::verifyCrossDelegation` had the same binding gap S2.3 closed on person-mcp: the caller's session smart-account was never asserted to match the cross-delegation's `delegate`, on the (now-rejected) reasoning that "the A2A agent ensures the correct cross-delegation is paired with the correct session". The same senior-review question applies here — a bug in A2A pairing would become a cross-principal data-access vulnerability on org data (member rosters, internal contacts, revenue reports, governance state).
+
+A.2 ports the S2.3 fix verbatim to org-mcp: **Option C — in-caveat dual-address binding** (authoritative) layered with **Option A — chain-side resolution sanity check** (defense in depth). The architectural argument is identical to S2.3 (see § "Cross-delegation binding (Sprint 2 S2.3)" above); only the call sites change.
+
+**What the verifier now asserts** (before any chain read, in order):
+
+1. `DelegateBinding` caveat present (else reject unless `ACCEPT_LEGACY_CROSS_DELEGATIONS=true` in dev).
+2. `delegateSmartAccount === callerPrincipal`. Mismatch rejects with `Cross-delegation binding mismatch — caller smart-account is not the bound delegate` and writes an `action_type=cross-delegation:verify` audit-deny row.
+3. `delegatePersonAgent === resolvePersonAgentForSmartAccount(callerPrincipal)` when the resolver is configured. Mismatch rejects with `Cross-delegation binding mismatch — chain-resolved person-agent disagrees with bound person-agent`.
+
+The legacy revocation + ERC-1271 + caveat-enforcement steps are unchanged.
+
+**Files touched**:
+- `apps/org-mcp/src/auth/resolve-person-agent.ts` (new) — 60s-TTL in-memory cache wrapping the `AgentAccountResolver` walk. Mirror of person-mcp's helper; same fast-path / fallback / negative-cache semantics.
+- `apps/org-mcp/src/auth/verify-delegation.ts` — implements the binding check, writes audit-deny rows on every reject path. The stale "A2A agent ensures the correct cross-delegation is paired with the correct session" comment was removed (it never existed on org-mcp's path; the parallel inference still applied).
+- `apps/org-mcp/src/lib/audit.ts` (created in A.1) — `appendAuditEntry` is reused by the cross-delegation verifier's audit-deny rows so they share the same hash chain as the inbound-service-auth denials.
+
+**Cross-delegation issuance**: the seed flows in `apps/web/src/lib/demo-seed/seed-*` already emit the `DelegateBinding` caveat on every new cross-delegation (landed in S2.3). Org-mcp inherits this for free — no demo-seed code changes were required for A.2.
+
+**Migration / compatibility**: same as S2.3 — no production state. After `./scripts/fresh-start.sh` every cross-delegation carries the binding caveat and the verifier is in strict mode. Dev environments can set `ACCEPT_LEGACY_CROSS_DELEGATIONS=true` to accept pre-A.2 cross-delegations with a compat warning; the flag is force-`false` under `NODE_ENV=production`.
+
+Tests: `apps/org-mcp/test/cross-delegation-binding.test.ts` (6 cases — happy path, smart-account mismatch, legacy-missing-binding reject + compat-flag accept, EIP-712 hash inclusion proof, audit-deny row emission, resolver cache hit/miss behavior).

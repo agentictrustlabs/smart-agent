@@ -102,6 +102,7 @@ test('plaintext data key is zeroised by encryptSessionPackage in `finally`', asy
   const inner = createLocalAesProvider({ A2A_SESSION_SECRET: process.env.A2A_SESSION_SECRET! })
   let capturedKey: Uint8Array | null = null
   const spy: A2AKeyProvider = {
+    keyVersion: inner.keyVersion,
     async generateSessionDataKey(input) {
       const dk = await inner.generateSessionDataKey(input)
       capturedKey = dk.plaintextDataKey
@@ -130,6 +131,118 @@ test('plaintext data key is zeroised by encryptSessionPackage in `finally`', asy
   __resetKeyProviderForTests()
 })
 
+test('P0-6: cross-version tamper — encrypt under local-v1, replace stored keyVersion with local-v2 → AES-GCM tag fails (AAD mismatch)', async () => {
+  // The standard provider singleton (local-aes) refuses a keyVersion
+  // mismatch outright — so we use a custom spy provider that ignores
+  // the keyVersion field and ALWAYS returns the same plaintext data
+  // key. This isolates the AES-GCM AAD trip-wire: even if a permissive
+  // provider were used (or a future bug allowed cross-version key
+  // recovery), the AES-GCM tag would still detect the mismatch because
+  // keyVersion is bound into `buildSessionAAD`.
+  __resetKeyProviderForTests()
+  const innerV1 = createLocalAesProvider({ A2A_SESSION_SECRET: process.env.A2A_SESSION_SECRET! })
+  const permissive: A2AKeyProvider = {
+    keyVersion: innerV1.keyVersion,
+    async generateSessionDataKey(input) {
+      return innerV1.generateSessionDataKey(input)
+    },
+    async decryptSessionDataKey(input) {
+      // Return the SAME plaintext data key regardless of keyVersion —
+      // this is the worst-case where the KMS-layer trip-wire is
+      // bypassed and only the AES-GCM AAD remains to catch tamper.
+      return innerV1.decryptSessionDataKey({ ...input, keyVersion: innerV1.keyVersion })
+    },
+  }
+  __setKeyProviderForTests(permissive)
+  const enc = await encryptSessionPackage({ secret: 'rotated' }, META)
+  assert.equal(enc.keyVersion, 'local-v1')
+
+  // Tamper the stored keyVersion label to a future version. The
+  // permissive provider hands back the same data key, but the
+  // AES-GCM AAD now binds 'local-v2' — tag check must fail.
+  await assert.rejects(
+    () => decryptSessionPackage(
+      {
+        encryptedPackage: enc.ciphertext,
+        iv: enc.iv,
+        encryptedDataKey: enc.encryptedDataKey,
+        keyVersion: 'local-v2', // tampered
+        kmsKeyId: enc.kmsKeyId,
+      },
+      META,
+    ),
+  )
+  __resetKeyProviderForTests()
+})
+
+test('P0-6: aadContext passed to provider uses snake_case keys with hashed sessionId', async () => {
+  // Spy on `generateSessionDataKey` to capture the aadContext that
+  // `encryptSessionPackage` builds. Assert the shape matches the new
+  // canonical form (snake_case keys + sha256(sessionId)[:32]).
+  __resetKeyProviderForTests()
+  const inner = createLocalAesProvider({ A2A_SESSION_SECRET: process.env.A2A_SESSION_SECRET! })
+  let capturedCtx: Record<string, string> | null = null
+  const spy: A2AKeyProvider = {
+    keyVersion: inner.keyVersion,
+    async generateSessionDataKey(input) {
+      capturedCtx = input.aadContext
+      return inner.generateSessionDataKey(input)
+    },
+    async decryptSessionDataKey(input) {
+      return inner.decryptSessionDataKey(input)
+    },
+  }
+  __setKeyProviderForTests(spy)
+  await encryptSessionPackage({ x: 1 }, META)
+
+  assert.ok(capturedCtx, 'spy captured the aadContext')
+  // Exactly the new canonical keys — no raw sessionId leak.
+  assert.deepEqual(
+    Object.keys(capturedCtx!).sort(),
+    ['account_address', 'chain_id', 'expires_at', 'key_version', 'session_id_h'],
+  )
+  // `session_id_h` must be a 32-hex-char hash, NOT the raw sessionId.
+  assert.match(capturedCtx!.session_id_h!, /^[0-9a-f]{32}$/)
+  assert.notEqual(capturedCtx!.session_id_h, META.sessionId)
+  // `key_version` is present and matches the provider's sync tag.
+  assert.equal(capturedCtx!.key_version, 'local-v1')
+  // `account_address` is lowercased.
+  assert.equal(capturedCtx!.account_address, META.accountAddress.toLowerCase())
+  __resetKeyProviderForTests()
+})
+
+test('P0-6: encrypt-time and decrypt-time aadContexts are byte-identical (no PII bleed difference)', async () => {
+  __resetKeyProviderForTests()
+  const inner = createLocalAesProvider({ A2A_SESSION_SECRET: process.env.A2A_SESSION_SECRET! })
+  let encCtx: Record<string, string> | null = null
+  let decCtx: Record<string, string> | null = null
+  const spy: A2AKeyProvider = {
+    keyVersion: inner.keyVersion,
+    async generateSessionDataKey(input) {
+      encCtx = { ...input.aadContext }
+      return inner.generateSessionDataKey(input)
+    },
+    async decryptSessionDataKey(input) {
+      decCtx = { ...input.aadContext }
+      return inner.decryptSessionDataKey(input)
+    },
+  }
+  __setKeyProviderForTests(spy)
+  const enc = await encryptSessionPackage({ x: 1 }, META)
+  await decryptSessionPackage(
+    {
+      encryptedPackage: enc.ciphertext,
+      iv: enc.iv,
+      encryptedDataKey: enc.encryptedDataKey,
+      keyVersion: enc.keyVersion,
+      kmsKeyId: enc.kmsKeyId,
+    },
+    META,
+  )
+  assert.deepEqual(encCtx, decCtx, 'encrypt/decrypt aadContexts must match byte-for-byte')
+  __resetKeyProviderForTests()
+})
+
 test('plaintext data key is zeroised by decryptSessionPackage in `finally`', async () => {
   // Same spy approach but verify the decrypt-side `finally` zeroises.
   __resetKeyProviderForTests()
@@ -138,6 +251,7 @@ test('plaintext data key is zeroised by decryptSessionPackage in `finally`', asy
   const inner = createLocalAesProvider({ A2A_SESSION_SECRET: process.env.A2A_SESSION_SECRET! })
   let capturedKey: Uint8Array | null = null
   const spy: A2AKeyProvider = {
+    keyVersion: inner.keyVersion,
     async generateSessionDataKey(input) {
       return inner.generateSessionDataKey(input)
     },

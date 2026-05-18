@@ -18,14 +18,19 @@
  *     POST /session-store/revoke
  *     POST /session-store/bump-epoch
  *
- * Hardening §1.3 (Stream B Task B1): the WRITE routes
- *   - POST /insert
- *   - POST /revoke
- *   - POST /bump-epoch
- * sit behind `requireServiceAuth('web')`. The web app signs each
- * request with `WEB_TO_A2A_HMAC_KEY`; before this change, anyone on the
- * network could mint a SessionRecord pointing at a victim's smart
- * account (full session-impersonation primitive).
+ * Sprint 5 Wave 2 P1-1: EVERY route — read or write — sits behind
+ * `requireServiceAuth('web')`. Session metadata is sensitive: a
+ * /by-cookie or /active read leaks which smart account a cookie maps
+ * to, the active-session set for any account, and the revocation
+ * epoch. Even though the cryptographic authority lives further down
+ * (passkey + WalletAction), defense-in-depth at the a2a edge is
+ * non-optional once langchain orchestration runs in-process. The
+ * canonical-message format is the unified v2 spec from Sprint 5 P0-3
+ * (`${ts}|${nonce}|${path}|${sha256(body)}`); for GETs the body hash
+ * is the sha256 of the empty string. The web app signs every request
+ * with `WEB_TO_A2A_HMAC_KEY`; before P1-1 closed this, anyone on the
+ * network could list session metadata or (for writes) mint a
+ * SessionRecord pointing at a victim's smart account.
  *
  * Sprint 1 W2.1 — downstream re-signing. After verifying the inbound
  * web→a2a envelope, EVERY forwarded request to person-mcp is re-signed
@@ -71,7 +76,12 @@ async function forwardJsonSigned(
   return fetch(url, init)
 }
 
-sessionStore.get('/epoch/:account', async (c) => {
+// Sprint 5 P1-1 — GETs on session-store leak session metadata
+// (account ↔ cookie binding, active sessions, revocation epoch). Gate
+// every read with the same web→a2a HMAC envelope as the writes. For a
+// GET the request body is empty, so the body-hash in the canonical
+// string is sha256("") — handled transparently by buildWebCanonical.
+sessionStore.get('/epoch/:account', requireServiceAuth('web'), async (c) => {
   const account = c.req.param('account')
   const res = await forwardJsonSigned('GET', `/session-store/epoch/${account}`)
   return c.json(await res.json() as Record<string, unknown>, res.status as 200)
@@ -83,13 +93,17 @@ sessionStore.post('/insert', requireServiceAuth('web'), async (c) => {
   return c.json(await res.json() as Record<string, unknown>, res.status as 200)
 })
 
-sessionStore.get('/by-cookie/:cookieValue', async (c) => {
+sessionStore.get('/by-cookie/:cookieValue', requireServiceAuth('web'), async (c) => {
   const cookieValue = c.req.param('cookieValue')
   const res = await forwardJsonSigned('GET', `/session-store/by-cookie/${encodeURIComponent(cookieValue)}`)
   return c.json(await res.json() as Record<string, unknown>, res.status as 200)
 })
 
-sessionStore.get('/active/:account', async (c) => {
+// Operator-class read used only by the web app's "active sessions"
+// admin view. Like the other reads, it leaks session metadata; if a
+// future operator console ever needs to call this, it should mint its
+// own service-auth key rather than fall back to no-auth.
+sessionStore.get('/active/:account', requireServiceAuth('web'), async (c) => {
   const account = c.req.param('account')
   const res = await forwardJsonSigned('GET', `/session-store/active/${account}`)
   return c.json(await res.json() as Record<string, unknown>, res.status as 200)

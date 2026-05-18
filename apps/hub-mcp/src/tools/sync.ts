@@ -17,6 +17,7 @@ import {
   syncRoundToGraphDB,
   syncAllPoolsToGraphDB,
   syncAllCommitmentsToGraphDB,
+  emitAgentsTurtle,
 } from '../lib/graphdb-sync.js'
 import { scheduleKbSync, scheduleKbSyncEager } from '../lib/kb-write-through.js'
 
@@ -136,6 +137,24 @@ export const syncTools = {
       if (args.eager) scheduleKbSyncEager()
       else scheduleKbSync()
       return mcpText({ ok: true, scheduled: true, eager: !!args.eager })
+    },
+  },
+
+  /**
+   * Debug: raw turtle output for the agents named graph. Returns
+   * `{ turtle: string }`. Mirrors the existing `/debug/agents-turtle`
+   * HTTP endpoint so the web app's `/api/ontology-sync/turtle` proxy
+   * can route through the A2A `/mcp/hub/<tool>` gateway instead of
+   * fetching `HUB_MCP_URL` directly.
+   */
+  debugAgentsTurtle: {
+    name: 'debug:agents_turtle',
+    description:
+      'Raw turtle dump for the agents named graph (debug surface). Returns { turtle: string }.',
+    inputSchema: { type: 'object' as const, properties: {} },
+    handler: async () => {
+      const turtle = await emitAgentsTurtle()
+      return mcpText({ turtle })
     },
   },
 }

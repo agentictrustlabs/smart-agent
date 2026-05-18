@@ -387,6 +387,7 @@ export const TOOL_POLICIES: Record<string, ToolPolicy> = {
   'ssi_create_wallet_action':    mcpOnly('ssi_create_wallet_action', 'person-mcp'),
   'ssi_finish_credential_exchange': mcpOnly('ssi_finish_credential_exchange', 'person-mcp'),
   'ssi_get_credential_details':  mcpOnly('ssi_get_credential_details', 'person-mcp'),
+  'ssi_get_holder_wallet':       mcpOnly('ssi_get_holder_wallet', 'person-mcp'),
   'ssi_list_my_credentials':     mcpOnly('ssi_list_my_credentials', 'person-mcp'),
   'ssi_list_proof_audit':        mcpOnly('ssi_list_proof_audit', 'person-mcp'),
   'ssi_list_wallets':            mcpOnly('ssi_list_wallets', 'person-mcp'),

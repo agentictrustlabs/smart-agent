@@ -15,6 +15,7 @@
  */
 
 import { createMiddleware } from 'hono/factory'
+import { buildOutboundAuthHeaders } from '../auth/sign-outbound'
 
 interface GrantRecord {
   sessionId: string
@@ -49,7 +50,11 @@ export const requireGrantSession = createMiddleware(async (c, next) => {
 
   let record: GrantRecord | null = null
   try {
-    const res = await fetch(`${PERSON_MCP_URL}/session-store/by-cookie/${encodeURIComponent(sessionId)}`)
+    // Sprint 1 W2.1 — sign every a2a→person hop with `a2a-to-person`
+    // so person-mcp's inbound service-auth middleware accepts the call.
+    const lookupPath = `/session-store/by-cookie/${encodeURIComponent(sessionId)}`
+    const authHeaders = await buildOutboundAuthHeaders('a2a-to-person', lookupPath, '')
+    const res = await fetch(`${PERSON_MCP_URL}${lookupPath}`, { headers: authHeaders })
     if (!res.ok) {
       return c.json({ error: `grant lookup failed: HTTP ${res.status}` }, 502)
     }

@@ -47,15 +47,16 @@ ALLOWLIST=(
   # endpoints, not internal RPC). `ssi/config.ts` carries the URLs.
   "lib/ssi/clients.ts"
   "lib/ssi/config.ts"
-  # TODO(phase-2-consolidation): pre-existing bypass drift discovered when
-  # the Phase-1 hardening run wired `check:bypass` into CI for the first
-  # time. Each of these has a documented migration target and should be
-  # closed in the Phase-2 follow-up sprint. Removing an entry from this
-  # list requires migrating its callers to `callMcp`/`callHub`.
-  "lib/spec004/self-issue.ts"            # needs ssi_get_holder_wallet MCP tool
-  "components/agent/PeopleGroupFocusSection.tsx"  # needs people-group MCP tool wrapping list_focus
-  "components/dashboard/HubDashboard.tsx"         # needs discovery via callHub('hub', 'discovery:list_agents')
-  "lib/ontology/graphdb-sync.ts"         # debug turtle endpoint — migrate to callHub('hub', 'debug:agents_turtle')
+  # ── Phase-2 consolidation closed (Sprint 4 A.4) ─────────────────────
+  # The four `TODO(phase-2-consolidation)` allowlist entries below were
+  # closed in Sprint 4 A.4:
+  #   - lib/spec004/self-issue.ts            → ssi_get_holder_wallet MCP tool
+  #   - components/agent/PeopleGroupFocusSection.tsx → callMcp('people-group', 'list_segments', {publicOnly:true})
+  #   - components/dashboard/HubDashboard.tsx → hubListRounds (callHub)
+  #   - lib/ontology/graphdb-sync.ts          → debug:agents_turtle MCP tool
+  # No new allowlist drift is permitted — every web→MCP call now routes
+  # through callMcp / callHub. New direct *_MCP_URL fetches in apps/web/src
+  # MUST fail this guard.
 )
 
 PATTERN='PERSON_MCP_URL|ORG_MCP_URL|PEOPLE_GROUP_MCP_URL|HUB_MCP_URL|FAMILY_MCP_URL|GEO_MCP_URL|VERIFIER_MCP_URL|SKILL_MCP_URL|DiscoveryService\.fromEnv'
@@ -216,13 +217,115 @@ if [[ ${#ROUTE_HANDLER_VIOLATIONS[@]} -ne 0 ]]; then
   exit 1
 fi
 
-# ─── Append-only audit invariant (Hardening Phase 1D) ───────────────
-# `execution_audit` is append-only at the application layer. The only
-# sanctioned UPDATE site is `auditFinalize()` in
-# `apps/a2a-agent/src/lib/audit.ts`, which flips a `pending` row to
-# `completed` / `reverted` after a chain tx settles. No other file in
-# `apps/a2a-agent/src/` may call `db.update(executionAudit)` or
-# `db.delete(executionAudit)`. Comments / string literals naming the
+# ─── GCP KMS SDK isolation invariant (GCP-KMS G-PR-1) ──────────────────
+# `@google-cloud/kms` and `google-auth-library` may only be imported from
+# `packages/sdk/src/key-custody/`. Mirrors the AWS-SDK isolation rule
+# above (KMS-IMPLEMENTATION-PLAN §2.1) and the matching invariant for
+# `@google-cloud/kms` in the KMS_SDK_PATTERN check on the a2a-agent
+# routes. Centralising every KMS / cloud-auth client behind the
+# `key-custody` barrel preserves the substrate-independence rule (P1):
+# we can swap or remove a backend with a single-directory blast radius.
+GCP_SDK_PATTERN='@google-cloud/kms|google-auth-library'
+GCP_SDK_ALLOWED_DIR="$ROOT/packages/sdk/src/key-custody"
+GCP_SDK_VIOLATIONS=()
+if command -v grep >/dev/null 2>&1; then
+  # Search ALL TS/JS source files in the repo, then filter to only
+  # report hits OUTSIDE the allowed directory. node_modules and build
+  # outputs are excluded.
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    file=${line%%:*}
+    # Skip if the file is inside the allowed directory.
+    case "$file" in
+      "$GCP_SDK_ALLOWED_DIR"/*) continue ;;
+    esac
+    # Skip pure comment lines (// or starts with leading * inside a /* */ block).
+    content=${line#*:*:}
+    trimmed="${content#"${content%%[![:space:]]*}"}"
+    case "$trimmed" in
+      "//"*|"*"*|"/*"*|"#"*) continue ;;
+    esac
+    GCP_SDK_VIOLATIONS+=("$line")
+  done < <(
+    grep -RIn --include='*.ts' --include='*.tsx' --include='*.js' --include='*.mjs' --include='*.cjs' \
+      --exclude-dir=node_modules --exclude-dir=.next --exclude-dir=dist --exclude-dir=build \
+      -E "from ['\"]($GCP_SDK_PATTERN)['\"]|require\(['\"]($GCP_SDK_PATTERN)['\"]\)" \
+      "$ROOT/apps" "$ROOT/packages" "$ROOT/scripts" 2>/dev/null || true
+  )
+fi
+
+if [[ ${#GCP_SDK_VIOLATIONS[@]} -ne 0 ]]; then
+  echo "[check-no-bypass] FAIL — @google-cloud/kms or google-auth-library imported outside packages/sdk/src/key-custody/:" >&2
+  printf '  %s\n' "${GCP_SDK_VIOLATIONS[@]}" >&2
+  echo "" >&2
+  echo "Both packages MUST only be imported from packages/sdk/src/key-custody/" >&2
+  echo "(GCP-KMS-IMPLEMENTATION-PLAN.md § G8). All cloud-KMS / cloud-auth" >&2
+  echo "clients are centralised behind the key-custody barrel so backends" >&2
+  echo "can be swapped or removed with single-directory blast radius (P1)." >&2
+  exit 1
+fi
+
+# ─── Session-store signed-fetch invariant (Sprint 5 Wave 2 P1-1) ─────
+# Every web→a2a `/session-store/*` call (read or write) MUST go through
+# the signed-envelope helper in
+# `apps/web/src/lib/auth/person-mcp-session-client.ts` (or any future
+# extension that reuses its `signedHeadersFor` builder). A bare
+# `fetch(...session-store...)` from anywhere under `apps/web/src/`
+# bypasses `requireServiceAuth('web')` at the a2a edge and re-introduces
+# the metadata leak P1-1 closed. The session-store client itself uses
+# the helper, so we allow it to call fetch on a session-store URL.
+SESSION_STORE_FETCH_PATTERN='fetch\([^)]*session-store'
+SESSION_STORE_ALLOWLIST=(
+  # The signed-fetch helper. Every fetch in this file is wrapped by
+  # `signedHeadersFor(path, body)` — it IS the canonical entry point.
+  "lib/auth/person-mcp-session-client.ts"
+)
+SESSION_STORE_VIOLATIONS=()
+if [[ -d "$WEB_SRC" ]]; then
+  SESSION_STORE_HITS=$(grep -RIn -E "$SESSION_STORE_FETCH_PATTERN" "$WEB_SRC" 2>/dev/null || true)
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    rel=${line#*apps/web/src/}
+    path=${rel%%:*}
+    skip=0
+    for allowed in "${SESSION_STORE_ALLOWLIST[@]}"; do
+      if [[ "$path" == "$allowed" || "$path" == "$allowed"/* ]]; then
+        skip=1
+        break
+      fi
+    done
+    [[ $skip -eq 1 ]] && continue
+    # Skip pure comment lines.
+    content=${line#*:*:}
+    trimmed="${content#"${content%%[![:space:]]*}"}"
+    case "$trimmed" in
+      "//"*|"*"*|"/*"*|"#"*) continue ;;
+    esac
+    SESSION_STORE_VIOLATIONS+=("$line")
+  done <<< "$SESSION_STORE_HITS"
+fi
+
+if [[ ${#SESSION_STORE_VIOLATIONS[@]} -ne 0 ]]; then
+  echo "[check-no-bypass] FAIL — unsigned session-store fetch in apps/web/src:" >&2
+  printf '  %s\n' "${SESSION_STORE_VIOLATIONS[@]}" >&2
+  echo "" >&2
+  echo "Sprint 5 Wave 2 P1-1: every /session-store/* call (read or write)" >&2
+  echo "MUST go through the signed-envelope helper in" >&2
+  echo "apps/web/src/lib/auth/person-mcp-session-client.ts (signedHeadersFor)." >&2
+  echo "Bare fetch() to /session-store/* bypasses requireServiceAuth('web')" >&2
+  echo "at the a2a edge and re-opens the session-metadata leak P1-1 closed." >&2
+  exit 1
+fi
+
+# ─── Append-only audit invariant (Hardening Phase 1D, tightened by P0-5) ───
+# `execution_audit` is STRICTLY append-only at the application layer.
+# Every helper in `apps/a2a-agent/src/lib/audit.ts` (auditAppend,
+# auditFinalize, auditDeny) is an INSERT. NO file — not even
+# `lib/audit.ts` — may call `db.update(executionAudit)` or
+# `db.delete(executionAudit)`. Outcome rows (`request_finalized` /
+# `request_denied`) are hash-chained NEW rows that bind the origin row's
+# PK + the outcome columns, so the chain is tamper-evident on both
+# request and outcome sides. Comments / string literals naming the
 # pattern (e.g. inside doc comments or error messages) are tolerated.
 AUDIT_APPEND_PATTERN='\.(update|delete)\(executionAudit\)'
 AUDIT_A2A_SRC="$ROOT/apps/a2a-agent/src"
@@ -238,27 +341,70 @@ if [[ -d "$AUDIT_A2A_SRC" ]]; then
     case "$trimmed" in
       "//"*|"*"*|"/*"*|"#"*) continue ;;
     esac
-    # Skip the one sanctioned site — the auditFinalize helper.
-    rel=${line#"$ROOT/"}
-    relpath=${rel%%:*}
-    path=${relpath#apps/a2a-agent/src/}
-    if [[ "$path" == "lib/audit.ts" ]]; then
-      continue
-    fi
     AUDIT_VIOLATIONS+=("$line")
   done <<< "$AUDIT_HITS"
 
   if [[ ${#AUDIT_VIOLATIONS[@]} -ne 0 ]]; then
-    echo "[check-no-bypass] FAIL — execution_audit is append-only; UPDATE/DELETE outside auditFinalize() detected:" >&2
+    echo "[check-no-bypass] FAIL — execution_audit is append-only; UPDATE/DELETE call site(s) detected:" >&2
     printf '  %s\n' "${AUDIT_VIOLATIONS[@]}" >&2
     echo "" >&2
-    echo "Audit rows are written via auditAppend() (INSERT only) and the single" >&2
-    echo "outcome-update helper auditFinalize() in $AUDIT_HELPER. Add new audit" >&2
-    echo "state via a new row, never mutate an existing one. See Hardening" >&2
-    echo "Phase 1D #3 (append-only invariant)." >&2
+    echo "Audit rows are written via auditAppend / auditFinalize / auditDeny in" >&2
+    echo "$AUDIT_HELPER — every helper is an INSERT (P0-5 two-row outcome model)." >&2
+    echo "Outcome must be encoded as a NEW hash-chained row, never as a mutation" >&2
+    echo "of an existing one. See Hardening Phase 1D #3 (append-only invariant)" >&2
+    echo "and P0-5 (outcome binding)." >&2
     exit 1
   fi
 fi
 
-echo "[check-no-bypass] OK — no direct-MCP bypasses in apps/web/src, no direct KMS SDK imports in a2a-agent routes, no DEPLOYER_PRIVATE_KEY in route handlers outside K6 allowlist (${#K6_ROUTE_HANDLER_ALLOWLIST[@]} entr$([ ${#K6_ROUTE_HANDLER_ALLOWLIST[@]} -eq 1 ] && echo y || echo ies)), execution_audit append-only invariant holds."
+# ─── P0-4 invariant — denyAndAudit gate on high-risk routes ──────────
+# Sprint 5 Wave 2 P0-4: across the four redeem variants and the
+# deploy-agent route, every 4xx/5xx exit MUST call `denyAndAudit(...)`
+# so the chain has a hash-bound terminal row for every authority
+# decision. A raw `c.json({error}, 4xx_or_5xx)` in these files is a
+# regression — it leaves a `request_received` row without a matching
+# `request_denied` row, indistinguishable from an open request.
+#
+# Scope: `apps/a2a-agent/src/routes/onchain-redeem.ts` (and any sibling
+# files that mint on-chain action — add them to P0_4_FILES below).
+#
+# Allowed exit shapes in these files:
+#   - `return c.json({ ... })`            — 2xx (status omitted, default 200)
+#   - `return c.json({ ... }, 200)`       — explicit 2xx
+#   - `return denyAndAudit(c, { ... })`   — every 4xx/5xx
+#
+# Disallowed: any `c.json(..., 4xx|5xx)` outside a denyAndAudit call.
+P0_4_FILES=(
+  "$ROOT/apps/a2a-agent/src/routes/onchain-redeem.ts"
+)
+P0_4_BARE_PATTERN='c\.json\([^)]*,[[:space:]]*[45][0-9][0-9][[:space:]]*\)'
+P0_4_VIOLATIONS=()
+for f in "${P0_4_FILES[@]}"; do
+  [[ -f "$f" ]] || continue
+  hits=$(grep -nE "$P0_4_BARE_PATTERN" "$f" 2>/dev/null || true)
+  [[ -z "$hits" ]] && continue
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    content=${line#*:}
+    trimmed="${content#"${content%%[![:space:]]*}"}"
+    case "$trimmed" in
+      "//"*|"*"*|"/*"*|"#"*) continue ;;
+    esac
+    P0_4_VIOLATIONS+=("$f:$line")
+  done <<< "$hits"
+done
+
+if [[ ${#P0_4_VIOLATIONS[@]} -ne 0 ]]; then
+  echo "[check-no-bypass] FAIL — P0-4: raw c.json(..., 4xx|5xx) in route(s) requiring denyAndAudit():" >&2
+  printf '  %s\n' "${P0_4_VIOLATIONS[@]}" >&2
+  echo "" >&2
+  echo "Every 4xx/5xx exit in the redeem + deploy-agent routes MUST go through" >&2
+  echo "denyAndAudit(c, { reason, status, ... }) so a request_denied audit row" >&2
+  echo "is hash-chained for every authority decision. See" >&2
+  echo "apps/a2a-agent/src/lib/audit.ts (denyAndAudit) and" >&2
+  echo "apps/a2a-agent/src/lib/audit-deny-reasons.ts (AUDIT_DENY_REASONS)." >&2
+  exit 1
+fi
+
+echo "[check-no-bypass] OK — no direct-MCP bypasses in apps/web/src, no direct KMS SDK imports in a2a-agent routes, no @google-cloud/kms or google-auth-library imports outside packages/sdk/src/key-custody, no DEPLOYER_PRIVATE_KEY in route handlers outside K6 allowlist (${#K6_ROUTE_HANDLER_ALLOWLIST[@]} entr$([ ${#K6_ROUTE_HANDLER_ALLOWLIST[@]} -eq 1 ] && echo y || echo ies)), all /session-store/* fetches in apps/web/src go through signed-envelope helper, execution_audit append-only invariant holds, P0-4 denyAndAudit invariant holds in ${#P0_4_FILES[@]} file(s)."
 exit 0

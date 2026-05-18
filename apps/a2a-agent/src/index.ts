@@ -16,7 +16,12 @@ import { a2a } from './routes/a2a'
 import { hostContext } from './middleware/host-context'
 import { rateLimit } from './middleware/rate-limit'
 import { correlationId } from './middleware/correlation-id'
-import { assertPolicyCompleteness } from './lib/policy-startup'
+import {
+  assertPolicyCompleteness,
+  assertMarketplacePolicy,
+  assertDeployerKeyPolicy,
+  assertAuditSinkConfigured,
+} from './lib/policy-startup'
 import { cleanupOldNonces } from './auth/replay-nonce'
 import { MAX_CLOCK_SKEW_SECONDS } from './auth/inter-service'
 import { scheduleCheckpoints } from './lib/audit-checkpoint'
@@ -81,11 +86,14 @@ app.route('/session', onchainRedeem)
 // /session/:id/audit which don't collide with the bare /session/:id handler.
 app.route('/session', sessionMeta)
 
-// Hardening §1.3 (Stream B Task B1) — web → a2a-agent passthroughs for
-// the SessionRecord lifecycle and WalletAction dispatch. Write routes
-// (insert/revoke/bump-epoch/dispatch) gate on `requireServiceAuth('web')`
-// using `WEB_TO_A2A_HMAC_KEY`. Read routes (epoch/by-cookie/active) stay
-// unauthenticated at the a2a edge for now — read-only and idempotent.
+// Hardening §1.3 (Stream B Task B1) + Sprint 5 P1-1 — web → a2a-agent
+// passthroughs for the SessionRecord lifecycle and WalletAction
+// dispatch. EVERY session-store route (insert/revoke/bump-epoch reads
+// and writes) gates on `requireServiceAuth('web')` using
+// `WEB_TO_A2A_HMAC_KEY`. The reads were closed in P1-1 — they leak
+// session metadata (cookie ↔ account binding, active-session list,
+// revocation epoch). WalletAction dispatch writes follow the same
+// pattern.
 app.route('/session-store', sessionStore)
 app.route('/wallet-action', walletAction)
 
@@ -100,21 +108,32 @@ app.route('/', a2a)
 // somehow do.
 assertPolicyCompleteness()
 
-// Hardening K6 — DEPLOYER_PRIVATE_KEY runtime warning. The deployer
-// key is a CI/CD-only secret used by `forge script Deploy.s.sol`. Its
-// presence in a production runtime env is a misconfiguration. We log
-// loudly but do not throw (would break boot during sensitive migration
-// windows). The companion CI invariant in `scripts/check-no-bypass.sh`
-// prevents the key from being re-introduced into route handler code.
-// See `docs/operations/kms-signer-setup.md` § "Deployer key (K6 —
-// CI/CD only)" for the operator runbook.
-if (process.env.NODE_ENV === 'production' && process.env.DEPLOYER_PRIVATE_KEY) {
-  console.warn(
-    '[K6 WARNING] DEPLOYER_PRIVATE_KEY is set in a production environment. ' +
-      'The deployer key is a CI/CD-only secret; it must NOT be available at ' +
-      'runtime. Remove it from your production env. See ' +
-      'docs/operations/kms-signer-setup.md § "Deployer key (K6 — CI/CD only)".',
-  )
+// Sprint 5 P0-8 — when MARKETPLACE_ENABLED=true every marketplace tool
+// MUST have selectors. When false, the redeem route 503s marketplace
+// traffic and this assert is a no-op. Same module, separate helper so
+// the error message can point at the marketplace-specific tables.
+assertMarketplacePolicy()
+
+// Sprint 5 P0-9 — DEPLOYER_PRIVATE_KEY hard-fails in production. The
+// `assertDeployerKeyPolicy` helper replaces the prior WARN-only path:
+// production startup refuses if the key is present, unless the operator
+// time-boxes a break-glass via ALLOW_RUNTIME_DEPLOYER_KEY_UNTIL. When
+// the break-glass is active a structured WARN is emitted AND a
+// `system:break-glass-deployer-key` audit row is written. The companion
+// CI invariant in `scripts/check-no-bypass.sh` prevents the key from
+// being re-introduced into route handler code (K6).
+//
+// Sprint 5 P1-5 — production MUST have AUDIT_CHECKPOINT_SINK_URL set
+// AND reachable at boot. Without an external attestation the audit
+// chain is not tamper-evident; we refuse to start rather than serve
+// requests whose audit trail is not externally witnessed.
+//
+// Both calls are async so we wrap them in an IIFE that gates `serve()`
+// at the bottom of the file. The synchronous asserts above can stay
+// top-level; only the audit-row write + sink probe need awaiting.
+async function runAsyncStartupInvariants(): Promise<void> {
+  await assertDeployerKeyPolicy()
+  await assertAuditSinkConfigured()
 }
 
 // ─── Replay-nonce cache cleanup ─────────────────────────────────────
@@ -161,9 +180,24 @@ console.log(
     `ALLOW_LEGACY_A2A_SESSIONS=${config.ALLOW_LEGACY_A2A_SESSIONS}`,
 )
 
-serve({
-  fetch: app.fetch,
-  port: config.PORT,
-}, (info) => {
-  console.log(`Smart Agent A2A server listening on http://localhost:${info.port}`)
-})
+// Sprint 5 P0-9 + P1-5 — gate `serve()` on the async invariants. A
+// failure here exits the process with the thrown error before the
+// listener binds, matching the dev-time behaviour of the synchronous
+// asserts above.
+runAsyncStartupInvariants()
+  .then(() => {
+    serve(
+      {
+        fetch: app.fetch,
+        port: config.PORT,
+      },
+      (info) => {
+        console.log(`Smart Agent A2A server listening on http://localhost:${info.port}`)
+      },
+    )
+  })
+  .catch((err: unknown) => {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error(`[startup] async invariant failed: ${msg}`)
+    process.exit(1)
+  })

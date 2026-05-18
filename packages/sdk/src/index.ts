@@ -138,9 +138,12 @@ export type {
   AwsKmsEnv,
   AwsKmsDeps,
   // VaultTransit env/deps types were removed when the vault-transit
-  // provider was deleted from packages/sdk/src/key-custody/ — the
-  // selector branch in `buildKeyProvider` / `buildSignerBackend` still
-  // throws "not yet implemented" so existing API surface is unchanged.
+  // provider was deleted from packages/sdk/src/key-custody/. The selector
+  // branch in `buildKeyProvider` / `buildSignerBackend` /
+  // `buildToolExecutorBackend` was also removed in G-PR-1
+  // (GCP-KMS-IMPLEMENTATION-PLAN.md § G6, orchestrator decision: AWS + GCP
+  // only). `A2A_KMS_BACKEND='vault-transit'` now falls into the
+  // "unknown backend" branch and fails closed.
   LocalSecp256k1Env,
   LocalSecp256k1Signer,
   KmsAccountBackend,

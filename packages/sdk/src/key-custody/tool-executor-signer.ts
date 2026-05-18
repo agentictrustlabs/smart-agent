@@ -166,7 +166,14 @@ export type ToolExecutorSignerBackend = LocalSecp256k1Signer | AwsKmsSigner
  *                         signer; the role's identity policy adds one
  *                         statement per tool key with that key's ARN
  *                         pinned as `Resource` for least-privilege.
- *   - `'vault-transit'` → throws "not implemented (sibling)".
+ *   - `'gcp-kms'`       → wired only on the a2a-agent side (see
+ *                         `apps/a2a-agent/src/auth/key-provider.ts`
+ *                         `buildToolExecutorBackend`). The SDK-level
+ *                         signer factory here intentionally falls
+ *                         through to "unknown backend" until G-PR-4
+ *                         lands the GCP implementation. The
+ *                         `'vault-transit'` deferred-sibling case was
+ *                         removed in G-PR-1.
  *
  * Thrown errors are operator-actionable strings — the env var name
  * appears verbatim so the operator can search their deployment for
@@ -246,10 +253,13 @@ export function createToolExecutorSigner(
         { ...deps.awsKmsDeps, audit: deps.audit },
       )
     }
-    case 'vault-transit':
-      throw new Error(
-        `createToolExecutorSigner: vault-transit signer not implemented (deferred sibling) for tool "${toolId}"`,
-      )
+    // The 'gcp-kms' branch is wired by the a2a-agent-side
+    // `buildToolExecutorBackend` (see `apps/a2a-agent/src/auth/key-provider.ts`)
+    // and currently throws "GCP backend not yet implemented for tool-executor
+    // signer (G-PR-4)". The SDK-level factory here doesn't enumerate gcp-kms
+    // — it falls through to "unknown backend" until G-PR-4 lands the
+    // implementation. The vault-transit deferred-sibling case was removed
+    // in G-PR-1.
     default:
       throw new Error(
         `createToolExecutorSigner: unknown A2A_KMS_BACKEND: ${backend}`,

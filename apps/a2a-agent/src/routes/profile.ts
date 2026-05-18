@@ -13,6 +13,7 @@ import { sessions } from '../db/schema'
 import { config } from '../config'
 import { requireSession } from '../middleware/require-session'
 import { decryptSessionPackage } from '../auth/encryption'
+import { buildOutboundAuthHeaders } from '../auth/sign-outbound'
 
 const PERSON_MCP_URL = process.env.PERSON_MCP_URL ?? 'http://localhost:3200'
 
@@ -96,11 +97,16 @@ async function callMcpTool(
     async (msg) => sessionAccount.signMessage({ message: msg }),
   )
 
-  // Call person-mcp tool with the delegation token
-  const mcpRes = await fetch(`${PERSON_MCP_URL}/tools/${toolName}`, {
+  // Call person-mcp tool with the delegation token. Sign the a2a→person
+  // hop with the `a2a-to-person` HMAC key so person-mcp's inbound
+  // service-auth middleware accepts the call (Sprint 1 W2.1).
+  const toolPath = `/tools/${toolName}`
+  const toolBody = JSON.stringify({ tool: toolName, args: { ...args, token } })
+  const toolAuthHeaders = await buildOutboundAuthHeaders('a2a-to-person', toolPath, toolBody)
+  const mcpRes = await fetch(`${PERSON_MCP_URL}${toolPath}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ tool: toolName, args: { ...args, token } }),
+    headers: { 'Content-Type': 'application/json', ...toolAuthHeaders },
+    body: toolBody,
   })
 
   if (!mcpRes.ok) {

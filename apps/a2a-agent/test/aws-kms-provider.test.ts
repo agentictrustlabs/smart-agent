@@ -184,6 +184,64 @@ test('generateSessionDataKey round-trip — EncryptionContext forwarded verbatim
   kmsMock.restore()
 })
 
+// --- P0-6: EncryptionContext with key_version is forwarded ---------
+
+test('P0-6: aws-kms provider exposes a synchronous keyVersion property derived from KeyId', () => {
+  const client = new KMSClient({ region: 'us-east-1' })
+  const provider = createAwsKmsProvider(VALID_ENV, { client })
+  // The keyVersion is needed BEFORE generateSessionDataKey so callers
+  // can build the EncryptionContext (which includes 'key_version').
+  assert.equal(provider.keyVersion, EXPECTED_KEY_VERSION)
+})
+
+test('P0-6: EncryptionContext containing key_version + session_id_h is forwarded to KMS verbatim on both encrypt and decrypt', async () => {
+  // This is the integration check for the new canonical aadContext
+  // shape produced by `encryptSessionPackage` (snake_case keys + hashed
+  // sessionId). aws-kms-provider must forward it verbatim — it does
+  // NOT inspect or transform the context, but KMS embeds it in the
+  // ciphertext MAC so any mutation between encrypt and decrypt would
+  // surface as `InvalidCiphertextException` in production.
+  const client = new KMSClient({ region: 'us-east-1' })
+  const kmsMock = mockClient(client)
+  const plaintext = makeFixedKey()
+  const ciphertext = makeCiphertext()
+  kmsMock.on(GenerateDataKeyCommand).resolves({
+    Plaintext: plaintext,
+    CiphertextBlob: ciphertext,
+    KeyId: VALID_ENV.AWS_KMS_KEY_ID,
+  })
+  kmsMock.on(DecryptCommand).resolves({ Plaintext: plaintext })
+
+  const provider = createAwsKmsProvider(VALID_ENV, { client })
+  const newShapeCtx = {
+    session_id_h: 'a'.repeat(32), // 16-byte hex hash placeholder
+    account_address: '0xabc0000000000000000000000000000000000001',
+    chain_id: '31337',
+    expires_at: '2026-05-20T00:00:00.000Z',
+    key_version: provider.keyVersion,
+  }
+  await provider.generateSessionDataKey({ aadContext: newShapeCtx })
+  await provider.decryptSessionDataKey({
+    encryptedDataKey: ciphertext,
+    aadContext: newShapeCtx,
+    keyId: VALID_ENV.AWS_KMS_KEY_ID,
+    keyVersion: provider.keyVersion,
+  })
+
+  const genInput = kmsMock.commandCalls(GenerateDataKeyCommand)[0]!.args[0].input
+  const decInput = kmsMock.commandCalls(DecryptCommand)[0]!.args[0].input
+  assert.deepEqual(genInput.EncryptionContext, newShapeCtx)
+  assert.deepEqual(decInput.EncryptionContext, newShapeCtx)
+  // Belt-and-suspenders: raw sessionId must NEVER appear in the
+  // EncryptionContext that KMS logs into CloudTrail.
+  assert.equal(genInput.EncryptionContext!.sessionId, undefined)
+  assert.equal(decInput.EncryptionContext!.sessionId, undefined)
+  // `key_version` must be present.
+  assert.equal(genInput.EncryptionContext!.key_version, provider.keyVersion)
+  assert.equal(decInput.EncryptionContext!.key_version, provider.keyVersion)
+  kmsMock.restore()
+})
+
 // --- InvalidCiphertextException → context mismatch error ------------
 
 test('decryptSessionDataKey maps InvalidCiphertextException to "context mismatch (KMS denied decrypt)"', async () => {

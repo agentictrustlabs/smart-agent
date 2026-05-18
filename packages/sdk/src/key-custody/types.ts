@@ -30,6 +30,24 @@
  */
 
 export interface A2AKeyProvider {
+  /**
+   * Synchronously-knowable keyVersion tag for this provider instance.
+   *
+   * Used by callers (e.g. `encryptSessionPackage`) to build the
+   * `aadContext` BEFORE invoking `generateSessionDataKey` — the
+   * keyVersion participates in the EncryptionContext that AWS KMS
+   * embeds in the cipher's MAC, so we need it on the encrypt side as
+   * well as the decrypt side.
+   *
+   *   - local-aes: `'local-v1'` (compile-time constant)
+   *   - aws-kms:   `'aws-kms:<uuid|alias-suffix>'` (derived from
+   *                AWS_KMS_KEY_ID at construction time)
+   *
+   * The keyVersion returned from `generateSessionDataKey({ ... }).keyVersion`
+   * MUST equal this property.
+   */
+  readonly keyVersion: string
+
   generateSessionDataKey(input: {
     aadContext: Record<string, string>
   }): Promise<{

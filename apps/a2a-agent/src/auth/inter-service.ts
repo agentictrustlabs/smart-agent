@@ -40,6 +40,7 @@
  *     verifier rejects with 401 "replay detected".
  */
 import { fromBase64Url } from '@smart-agent/sdk'
+import { createHash } from 'node:crypto'
 import type { Context, MiddlewareHandler } from 'hono'
 import { recordNonce } from './replay-nonce'
 import { defaultMacProviderCache, type MacKeyId } from './mac-provider'
@@ -79,23 +80,46 @@ function macKeyIdFor(service: ServiceName): MacKeyId {
   }
 }
 
+/** Hex SHA-256 of the raw request body — bound into the canonical string. */
+export function sha256Hex(bodyRaw: string): string {
+  return createHash('sha256').update(bodyRaw, 'utf8').digest('hex')
+}
+
 /**
- * Build the canonical message bytes — identical shape on both sides of
- * the wire. Includes timestamp, fresh nonce, request path, and sha256 of
- * the body so a captured signature cannot be replayed against a different
- * (path, body, timestamp, nonce) tuple.
+ * Canonical-v2 message — `${ts}|${nonce}|${path}|${sha256(body)}`. Same
+ * shape the web→a2a (`service-auth-web.ts`) and a2a→mcp
+ * (`require-inbound-service-auth.ts` on each MCP) hops already use. Every
+ * binding (timestamp, fresh per-request nonce, request path, body-hash)
+ * lives INSIDE the signed message so a captured `(timestamp, signature)`
+ * pair cannot be replayed against a different path or body, and the
+ * nonce-replay table closes the within-window replay window left open by
+ * the ±60s timestamp check.
+ *
+ * The legacy canonical was `${body}:${ts}:${sessionId}` — replay-vulnerable
+ * because the nonce was carried in the header but never bound into the
+ * MAC. `sessionId` is still indirectly bound through `path` (every
+ * inter-service route is mounted under `/session/:id/<verb>`), so the
+ * "one session's signature can't be replayed against another session" guarantee
+ * is preserved.
  */
-function buildCanonicalMessage(
-  bodyRaw: string,
+export function buildCanonicalMessage(
   timestamp: number | string,
-  sessionId: string,
+  nonce: string,
+  path: string,
+  bodyRaw: string,
 ): Uint8Array {
-  // The legacy canonical was `${body}:${ts}:${sessionId}`. We keep that
-  // exact byte sequence so wire compatibility is preserved during the
-  // rollout — local-aes provider replicates the old `crypto.createHmac`
-  // computation byte-for-byte.
-  const canonical = `${bodyRaw}:${timestamp}:${sessionId}`
+  const canonical = `${timestamp}|${nonce}|${path}|${sha256Hex(bodyRaw)}`
   return new TextEncoder().encode(canonical)
+}
+
+/** String form of the canonical-v2 message (for debugging / outbound signers). */
+export function buildCanonicalString(
+  timestamp: number | string,
+  nonce: string,
+  path: string,
+  bodyRaw: string,
+): string {
+  return `${timestamp}|${nonce}|${path}|${sha256Hex(bodyRaw)}`
 }
 
 export interface InterServiceContext {
@@ -117,9 +141,9 @@ export function requireInterServiceAuth(): MiddlewareHandler {
     // returning the 4xx response. The route family is the request
     // path (e.g. `/session/<id>/redeem-tx`).
     const sessionId = c.req.param('id') ?? ''
-    const route = new URL(c.req.url).pathname
+    const path = new URL(c.req.url).pathname
     const denyFields = {
-      route,
+      route: path,
       sessionId,
       executionPath: 'stateless-redeem' as const,
     }
@@ -127,8 +151,12 @@ export function requireInterServiceAuth(): MiddlewareHandler {
     const service = c.req.header(SERVICE_HEADER)
     const timestampStr = c.req.header(TIMESTAMP_HEADER)
     const signature = c.req.header(SIGNATURE_HEADER)
+    const nonce = c.req.header(NONCE_HEADER)
 
-    if (!service || !timestampStr || !signature) {
+    // Canonical-v2 binds the nonce INTO the MAC — it must be present
+    // before we can even compute the canonical message. The legacy
+    // canonical accepted nonceless envelopes; that was the bug.
+    if (!service || !timestampStr || !signature || !nonce) {
       await auditDeny(c, { ...denyFields, reason: 'missing inter-service auth headers' })
       return c.json({ error: 'missing inter-service auth headers' }, 401)
     }
@@ -148,10 +176,11 @@ export function requireInterServiceAuth(): MiddlewareHandler {
       return c.json({ error: 'timestamp out of window' }, 401)
     }
 
-    // The path's :id is part of the canonical message so a signature for
-    // one session can't be replayed against another.
+    // Canonical-v2 — `${ts}|${nonce}|${path}|${sha256(body)}`. Read the
+    // body once and hash the exact bytes we received; never re-stringify
+    // a parsed object, or the signature won't match.
     const bodyRaw = await c.req.text()
-    const canonicalMessage = buildCanonicalMessage(bodyRaw, timestamp, sessionId)
+    const canonicalMessage = buildCanonicalMessage(timestamp, nonce, path, bodyRaw)
 
     let provider
     try {
@@ -199,14 +228,11 @@ export function requireInterServiceAuth(): MiddlewareHandler {
     }
 
     // ─── Hardening §1.10 — replay-nonce cache ────────────────────────
-    // Reject envelopes lacking a fresh per-request nonce; reject repeats
-    // of a previously-seen nonce. Both arms together close the
-    // within-window replay window left open by the ±60s timestamp check.
-    const nonce = c.req.header(NONCE_HEADER)
-    if (!nonce) {
-      await auditDeny(c, { ...denyFields, mcpServer: service, reason: 'missing nonce header' })
-      return c.json({ error: 'missing nonce header' }, 401)
-    }
+    // The nonce is already bound INTO the canonical (above) — that
+    // closes path/body/timestamp replay. The single-use table closes
+    // the remaining "identical envelope replayed within the timestamp
+    // window" gap. Record AFTER MAC verifies so an attacker collision
+    // can't pre-burn a nonce.
     const accepted = recordNonce(nonce, service as ServiceName)
     if (!accepted) {
       await auditDeny(c, { ...denyFields, mcpServer: service, reason: 'replay detected' })
@@ -225,7 +251,8 @@ export function isEnrolledService(service: string): service is ServiceName {
   return SERVICE_NAMES.includes(service as ServiceName)
 }
 
-// Re-exported for any tests that still build a canonical inline.
+// Re-exported for any tests that still build a canonical inline. New
+// callers should use `buildCanonicalMessage(ts, nonce, path, body)` directly.
 export const canonicalMessageBytesForTest = buildCanonicalMessage
 
 // Re-exported for backwards-compat with any code that relied on this old

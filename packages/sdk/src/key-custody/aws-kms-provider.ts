@@ -13,6 +13,17 @@
  * time. That's the second of two independent trip-wires (the first is the
  * AES-GCM AAD in `apps/a2a-agent/src/auth/encryption.ts`).
  *
+ * KMS-enforced per-version separation (reviewer P0-6):
+ *   The caller's `aadContext` includes `key_version` (e.g. 'aws-kms:<uuid>').
+ *   AWS KMS embeds the entire context map (including `key_version`) in the
+ *   ciphertext MAC. A row encrypted under one provider tag CANNOT be
+ *   decrypted by KMS under a different tag — `InvalidCiphertextException`
+ *   maps to our clean `'context mismatch (KMS denied decrypt)'`. This is
+ *   the substantive per-version isolation guarantee at the KMS layer.
+ *   The IAM policy (KMS-IMPLEMENTATION-PLAN.md §8.1) additionally enforces
+ *   that `key_version` MUST appear in every EncryptionContext via the
+ *   `kms:EncryptionContextKeys` allow-list + the `Null` condition.
+ *
  * Credentials come from `@vercel/oidc-aws-credentials-provider`, which
  * lazily reads the Vercel OIDC token from request scope on each
  * `client.send(...)` and trades it for AWS STS temp credentials via
@@ -197,6 +208,7 @@ export function createAwsKmsProvider(
   }
 
   return {
+    keyVersion,
     async generateSessionDataKey({ aadContext }) {
       try {
         const out = await client.send(

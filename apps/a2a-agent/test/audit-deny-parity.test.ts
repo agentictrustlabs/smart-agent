@@ -172,14 +172,21 @@ test('requireInterServiceAuth — timestamp out of window → 401 + audit deny r
 })
 
 test('requireInterServiceAuth — missing nonce → 401 + audit deny row', async () => {
+  // After the P0-3 canonical-v2 unification, the nonce is bound INTO
+  // the MAC — it must be present BEFORE we can compute the canonical
+  // message. So a request that arrives without the nonce header now
+  // gets the same generic "missing inter-service auth headers" reason
+  // as any other absent envelope field (previously it was a separate
+  // "missing nonce header" branch after MAC verification).
   const app = mountInterServiceApp()
   const cor = 'sa-cor-' + 'e'.repeat(32) + '-no-nonce'
   const sessionId = 'sess-' + randomUUID()
   const ts = Math.floor(Date.now() / 1000)
   const bodyJson = '{}'
-  const provider = buildMcpMacProvider('org', process.env)
-  const canonical = `${bodyJson}:${ts}:${sessionId}`
-  const { mac } = await provider.generateMac({ canonicalMessage: new TextEncoder().encode(canonical) })
+  // The signature value doesn't matter — the middleware short-circuits
+  // before it reads the body or verifies the MAC when any header is
+  // absent. Use an arbitrary base64url string.
+  const fakeSig = toBase64Url(new Uint8Array(32))
   const res = await app.request(`/session/${sessionId}/redeem-tx`, {
     method: 'POST',
     headers: {
@@ -187,7 +194,7 @@ test('requireInterServiceAuth — missing nonce → 401 + audit deny row', async
       [CORRELATION_HEADER]: cor,
       'x-a2a-service': 'org-mcp',
       'x-a2a-timestamp': String(ts),
-      'x-a2a-signature': toBase64Url(mac),
+      'x-a2a-signature': fakeSig,
       // No nonce.
     },
     body: bodyJson,
@@ -196,7 +203,7 @@ test('requireInterServiceAuth — missing nonce → 401 + audit deny row', async
   const row = await latestDenyRowFor(`/session/${sessionId}/redeem-tx`)
   assert.ok(row)
   assert.equal(row.correlationId, cor)
-  assert.match(row.errorReason, /missing nonce header/)
+  assert.match(row.errorReason, /missing inter-service auth headers/)
 })
 
 // ─── Web→A2A service-auth denial paths ───────────────────────────────

@@ -88,3 +88,7 @@ export type {
   McpMacProviderEnv,
   WebMacKeyId,
 } from './mac-provider-factory'
+// GCP-KMS G-PR-1 — Workload Identity Federation auth primitive. Actual
+// GCP-KMS provider/signer/MAC implementations land in G-PR-2..G-PR-5.
+export { createGcpAuthClient, GCP_AUTH_ENV_KEYS } from './gcp-auth'
+export type { GcpAuthEnv, GcpAuthDeps } from './gcp-auth'

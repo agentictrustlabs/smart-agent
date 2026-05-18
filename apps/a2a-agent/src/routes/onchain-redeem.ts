@@ -84,7 +84,25 @@ import { config } from '../config'
 import { requireInterServiceAuth } from '../auth/inter-service'
 import { getExecutorForTool } from '../lib/tool-executors'
 import { decryptSessionPackage } from '../auth/encryption'
-import { auditFinalize, readCorrelationId, auditDeny } from '../lib/audit'
+import { auditFinalize, readCorrelationId, denyAndAudit } from '../lib/audit'
+import type { AuditDenyReason } from '../lib/audit-deny-reasons'
+import { MARKETPLACE_TOOL_IDS, resolveMarketplaceEnabled } from '../lib/policy-startup'
+
+/**
+ * Sprint 5 P0-8 — marketplace tools are 503'd at the route boundary
+ * when `MARKETPLACE_ENABLED=false` (the default). The companion boot
+ * gate (`assertMarketplacePolicy`) refuses to start when the flag is
+ * `true` and any marketplace tool lacks selectors, so by the time
+ * `isMarketplaceToolDisabled` returns `true` we know the operator
+ * has explicitly NOT opted into marketplace traffic for this deploy.
+ *
+ * Single helper used by every policy-lookup site in this module so a
+ * future marketplace tool added to TOOL_POLICIES is gated automatically.
+ */
+function isMarketplaceToolDisabled(toolId: string): boolean {
+  if (!MARKETPLACE_TOOL_IDS.has(toolId)) return false
+  return !resolveMarketplaceEnabled(process.env)
+}
 
 const onchainRedeem = new Hono()
 
@@ -235,6 +253,20 @@ async function loadActiveSessionPackage(
   return { pkg, row }
 }
 
+/**
+ * P0-4 — map the (small) set of free-form session-error strings produced
+ * by `loadActiveSessionPackage` onto a stable `session:*` reason literal
+ * drawn from `AUDIT_DENY_REASONS`. Keeps the deny-row vocabulary closed
+ * without forcing the session helper to surface typed errors itself.
+ */
+function sessionErrorToReason(err: string): AuditDenyReason {
+  if (err === 'session not found') return 'session:not-found'
+  if (err.startsWith('session not active')) return 'session:not-active'
+  if (err === 'session expired') return 'session:expired'
+  if (err.startsWith('session missing encrypted package')) return 'session:missing-package'
+  return 'session:lookup-failed'
+}
+
 function extractSelector(callData: Hex): `0x${string}` {
   if (typeof callData !== 'string' || !callData.startsWith('0x') || callData.length < 10) {
     throw new Error('callData too short to extract selector')
@@ -248,57 +280,77 @@ onchainRedeem.post('/:id/redeem-tx', requireInterServiceAuth(), async (c) => {
   const ctx = c.get('interService' as never) as { service: string; bodyRaw: string } | undefined
   const bodyRaw = ctx?.bodyRaw ?? (await c.req.text())
   const mcpServer = ctx?.service ?? 'unknown'
+  // P0-4 — single try/catch around the whole handler. Every 4xx/5xx
+  // exit goes through denyAndAudit. The outer catch covers unhandled
+  // throws as `error:unhandled`.
+  try {
   let body: RedeemTxBody
   try {
     body = JSON.parse(bodyRaw) as RedeemTxBody
   } catch {
-    await auditDeny(c, {
+    return denyAndAudit(c, {
       route: '/session/:id/redeem-tx',
+      reason: 'fields:malformed-json',
+      status: 400,
       executionPath: 'stateless-redeem',
       sessionId,
       mcpServer,
-      reason: 'invalid JSON body',
     })
-    return c.json({ error: 'invalid JSON body' }, 400)
   }
 
   // ─── Policy lookup ─────────────────────────────────────────────────
   const policy = TOOL_POLICIES[body.mcpTool]
   if (!policy) {
-    await auditDeny(c, {
+    return denyAndAudit(c, {
       route: '/session/:id/redeem-tx',
+      reason: 'policy:unknown-tool',
+      publicMessage: `unknown tool: ${body.mcpTool}`,
+      status: 403,
       executionPath: 'stateless-redeem',
       sessionId,
       mcpServer,
-      reason: `unknown tool: ${body.mcpTool}`,
       mcpCallId: body.mcpCallId,
     })
-    return c.json({ error: `unknown tool: ${body.mcpTool}` }, 403)
+  }
+  // Sprint 5 P0-8 — marketplace tools 503 unless MARKETPLACE_ENABLED=true.
+  if (isMarketplaceToolDisabled(body.mcpTool)) {
+    return denyAndAudit(c, {
+      route: '/session/:id/redeem-tx',
+      reason: 'policy:marketplace-disabled',
+      publicMessage: `marketplace tool ${body.mcpTool} is disabled (MARKETPLACE_ENABLED=false)`,
+      status: 503,
+      executionPath: 'stateless-redeem',
+      sessionId,
+      mcpServer,
+      mcpCallId: body.mcpCallId,
+    })
   }
   if (policy.executionPath !== 'stateless-redeem') {
-    await auditDeny(c, {
+    return denyAndAudit(c, {
       route: '/session/:id/redeem-tx',
+      reason: 'policy:wrong-execution-path',
+      publicMessage: `tool ${body.mcpTool} requires path ${policy.executionPath}, not stateless-redeem`,
+      status: 403,
       executionPath: 'stateless-redeem',
       sessionId,
       mcpServer,
-      reason: `tool ${body.mcpTool} requires path ${policy.executionPath}, not stateless-redeem`,
       mcpCallId: body.mcpCallId,
     })
-    return c.json({ error: `tool ${body.mcpTool} requires path ${policy.executionPath}, not stateless-redeem` }, 403)
   }
 
   // ─── Resolve session ───────────────────────────────────────────────
   const sess = await loadActiveSessionPackage(sessionId)
   if ('error' in sess) {
-    await auditDeny(c, {
+    return denyAndAudit(c, {
       route: '/session/:id/redeem-tx',
+      reason: sessionErrorToReason(sess.error),
+      publicMessage: sess.error,
+      status: sess.status,
       executionPath: 'stateless-redeem',
       sessionId,
       mcpServer,
-      reason: sess.error,
       mcpCallId: body.mcpCallId,
     })
-    return c.json({ error: sess.error }, sess.status)
   }
   const { pkg } = sess
 
@@ -307,38 +359,51 @@ onchainRedeem.post('/:id/redeem-tx', requireInterServiceAuth(), async (c) => {
   const allowedTargets = policyAllowedTargets(policy, env)
   const targetLower = body.target.toLowerCase() as Address
   if (!allowedTargets.includes(targetLower)) {
-    await writeReceipt({
-      c,
-      pkg,
+    return denyAndAudit(c, {
+      route: '/session/:id/redeem-tx',
+      reason: 'policy:target-not-allowed',
+      publicMessage: `target not allowed for ${body.mcpTool}`,
+      status: 403,
+      executionPath: 'stateless-redeem',
       sessionId,
       mcpServer,
-      body,
-      executionPath: 'stateless-redeem',
-      status: 'denied',
-      errorReason: `target ${body.target} not in policy allowed targets`,
+      mcpCallId: body.mcpCallId,
+      target: body.target,
+      sessionPrincipal: pkg.sessionKeyAddress,
     })
-    return c.json({ error: `target not allowed for ${body.mcpTool}` }, 403)
   }
 
   let selector: `0x${string}`
   try {
     selector = extractSelector(body.callData)
   } catch (e) {
-    return c.json({ error: (e as Error).message }, 400)
+    return denyAndAudit(c, {
+      route: '/session/:id/redeem-tx',
+      reason: 'validation:invalid-call-data',
+      publicMessage: (e as Error).message,
+      status: 400,
+      executionPath: 'stateless-redeem',
+      sessionId,
+      mcpServer,
+      mcpCallId: body.mcpCallId,
+      sessionPrincipal: pkg.sessionKeyAddress,
+    })
   }
   const allowedSelectors = policyAllowedSelectors(body.mcpTool, policy)
   if (!allowedSelectors.has(selector)) {
-    await writeReceipt({
-      c,
-      pkg,
+    return denyAndAudit(c, {
+      route: '/session/:id/redeem-tx',
+      reason: 'policy:selector-not-allowed',
+      publicMessage: `selector ${selector} not allowed for ${body.mcpTool}`,
+      status: 403,
+      executionPath: 'stateless-redeem',
       sessionId,
       mcpServer,
-      body,
-      executionPath: 'stateless-redeem',
-      status: 'denied',
-      errorReason: `selector ${selector} not in policy allowed selectors`,
+      mcpCallId: body.mcpCallId,
+      target: body.target,
+      selector,
+      sessionPrincipal: pkg.sessionKeyAddress,
     })
-    return c.json({ error: `selector ${selector} not allowed for ${body.mcpTool}` }, 403)
   }
 
   // ─── Enforce policy.maxValueWei (off-chain twin of ValueEnforcer) ──
@@ -349,17 +414,19 @@ onchainRedeem.post('/:id/redeem-tx', requireInterServiceAuth(), async (c) => {
   {
     const requestedValue = BigInt(body.value)
     if (policy.maxValueWei !== undefined && requestedValue > policy.maxValueWei) {
-      await writeReceipt({
-        c,
-        pkg,
+      return denyAndAudit(c, {
+        route: '/session/:id/redeem-tx',
+        reason: 'policy:value-exceeds-cap',
+        publicMessage: `value ${requestedValue} exceeds tool maxValueWei ${policy.maxValueWei}`,
+        status: 400,
+        executionPath: 'stateless-redeem',
         sessionId,
         mcpServer,
-        body,
-        executionPath: 'stateless-redeem',
-        status: 'denied',
-        errorReason: `value ${requestedValue} exceeds tool maxValueWei ${policy.maxValueWei}`,
+        mcpCallId: body.mcpCallId,
+        target: body.target,
+        selector,
+        sessionPrincipal: pkg.sessionKeyAddress,
       })
-      return c.json({ error: `value ${requestedValue} exceeds tool maxValueWei ${policy.maxValueWei}` }, 400)
     }
   }
 
@@ -416,12 +483,46 @@ onchainRedeem.post('/:id/redeem-tx', requireInterServiceAuth(), async (c) => {
       errorReason: ok ? '' : 'transaction reverted',
     })
 
-    if (!ok) return c.json({ error: 'tx reverted', txHash, executionReceiptId: receiptId }, 502)
+    if (!ok) {
+      return denyAndAudit(c, {
+        route: '/session/:id/redeem-tx',
+        reason: 'tx:reverted',
+        publicMessage: 'tx reverted',
+        status: 502,
+        skipAudit: true, // auditFinalize already wrote the request_finalized row above
+        executionPath: 'stateless-redeem',
+        sessionId,
+        mcpServer,
+        extra: { txHash, executionReceiptId: receiptId },
+      })
+    }
     return c.json({ txHash, executionReceiptId: receiptId })
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     await auditFinalize(receiptId, { status: 'reverted', errorReason: msg.slice(0, 1000) })
-    return c.json({ error: `redeem failed: ${msg}` }, 500)
+    return denyAndAudit(c, {
+      route: '/session/:id/redeem-tx',
+      reason: 'error:redeem-failed',
+      publicMessage: `redeem failed: ${msg}`,
+      status: 500,
+      skipAudit: true, // auditFinalize already wrote the request_finalized(reverted) row
+      executionPath: 'stateless-redeem',
+      sessionId,
+      mcpServer,
+    })
+  }
+  } catch (err) {
+    // P0-4 outer catch — unhandled throws BEFORE the receipt was created.
+    const msg = err instanceof Error ? err.message : String(err)
+    return denyAndAudit(c, {
+      route: '/session/:id/redeem-tx',
+      reason: 'error:unhandled',
+      publicMessage: msg,
+      status: 500,
+      executionPath: 'stateless-redeem',
+      sessionId,
+      mcpServer,
+    })
   }
 })
 
@@ -430,20 +531,51 @@ onchainRedeem.post('/:id/deploy-agent', requireInterServiceAuth(), async (c) => 
   const sessionId = c.req.param('id')
   const ctx = c.get('interService' as never) as { service: string; bodyRaw: string } | undefined
   const bodyRaw = ctx?.bodyRaw ?? (await c.req.text())
+  const mcpServer = ctx?.service ?? 'unknown'
+  try {
   let body: DeployAgentBody
   try {
     body = JSON.parse(bodyRaw) as DeployAgentBody
   } catch {
-    return c.json({ error: 'invalid JSON body' }, 400)
+    return denyAndAudit(c, {
+      route: '/session/:id/deploy-agent',
+      reason: 'fields:malformed-json',
+      status: 400,
+      executionPath: 'stateless-redeem',
+      sessionId,
+      mcpServer,
+    })
   }
-  const mcpServer = ctx?.service ?? 'unknown'
 
   const sess = await loadActiveSessionPackage(sessionId)
-  if ('error' in sess) return c.json({ error: sess.error }, sess.status)
+  if ('error' in sess) {
+    return denyAndAudit(c, {
+      route: '/session/:id/deploy-agent',
+      reason: sessionErrorToReason(sess.error),
+      publicMessage: sess.error,
+      status: sess.status,
+      executionPath: 'stateless-redeem',
+      sessionId,
+      mcpServer,
+      mcpCallId: body.mcpCallId,
+    })
+  }
   const { pkg } = sess
 
   const factory = process.env.AGENT_FACTORY_ADDRESS as Address | undefined
-  if (!factory) return c.json({ error: 'AGENT_FACTORY_ADDRESS not set on a2a-agent' }, 500)
+  if (!factory) {
+    return denyAndAudit(c, {
+      route: '/session/:id/deploy-agent',
+      reason: 'env:agent-factory-not-set',
+      publicMessage: 'AGENT_FACTORY_ADDRESS not set on a2a-agent',
+      status: 500,
+      executionPath: 'stateless-redeem',
+      sessionId,
+      mcpServer,
+      mcpCallId: body.mcpCallId,
+      sessionPrincipal: pkg.sessionKeyAddress,
+    })
+  }
 
   // Audit prefill — best-effort selector capture.
   let selectorHex: Hex | null = null
@@ -506,12 +638,45 @@ onchainRedeem.post('/:id/deploy-agent', requireInterServiceAuth(), async (c) => 
       errorReason: ok ? '' : 'transaction reverted',
     })
 
-    if (!ok) return c.json({ error: 'tx reverted', txHash, executionReceiptId: receiptId }, 502)
+    if (!ok) {
+      return denyAndAudit(c, {
+        route: '/session/:id/deploy-agent',
+        reason: 'tx:reverted',
+        publicMessage: 'tx reverted',
+        status: 502,
+        skipAudit: true,
+        executionPath: 'stateless-redeem',
+        sessionId,
+        mcpServer,
+        extra: { txHash, executionReceiptId: receiptId },
+      })
+    }
     return c.json({ address: deployedAddress, txHash, executionReceiptId: receiptId })
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     await auditFinalize(receiptId, { status: 'reverted', errorReason: msg.slice(0, 1000) })
-    return c.json({ error: `deploy-agent failed: ${msg}` }, 500)
+    return denyAndAudit(c, {
+      route: '/session/:id/deploy-agent',
+      reason: 'error:deploy-agent-failed',
+      publicMessage: `deploy-agent failed: ${msg}`,
+      status: 500,
+      skipAudit: true,
+      executionPath: 'stateless-redeem',
+      sessionId,
+      mcpServer,
+    })
+  }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    return denyAndAudit(c, {
+      route: '/session/:id/deploy-agent',
+      reason: 'error:unhandled',
+      publicMessage: msg,
+      status: 500,
+      executionPath: 'stateless-redeem',
+      sessionId,
+      mcpServer,
+    })
   }
 })
 
@@ -580,30 +745,91 @@ onchainRedeem.post('/:id/redeem-with-chain', requireInterServiceAuth(), async (c
   const sessionId = c.req.param('id')
   const ctx = c.get('interService' as never) as { service: string; bodyRaw: string } | undefined
   const bodyRaw = ctx?.bodyRaw ?? (await c.req.text())
+  const mcpServer = ctx?.service ?? 'unknown'
+  try {
   let body: RedeemWithChainBody
   try {
     body = JSON.parse(bodyRaw) as RedeemWithChainBody
   } catch {
-    return c.json({ error: 'invalid JSON body' }, 400)
+    return denyAndAudit(c, {
+      route: '/session/:id/redeem-with-chain',
+      reason: 'fields:malformed-json',
+      status: 400,
+      executionPath: 'stateless-redeem',
+      sessionId,
+      mcpServer,
+    })
   }
-  const mcpServer = ctx?.service ?? 'unknown'
 
   if (!Array.isArray(body.chain) || body.chain.length === 0) {
-    return c.json({ error: 'chain must be a non-empty array of signed delegations' }, 400)
+    return denyAndAudit(c, {
+      route: '/session/:id/redeem-with-chain',
+      reason: 'validation:chain-empty',
+      publicMessage: 'chain must be a non-empty array of signed delegations',
+      status: 400,
+      executionPath: 'stateless-redeem',
+      sessionId,
+      mcpServer,
+      mcpCallId: body.mcpCallId,
+    })
   }
 
   // Policy lookup — same gate as redeem-tx (defense in depth).
   const policy = TOOL_POLICIES[body.mcpTool]
   if (!policy) {
-    return c.json({ error: `unknown tool: ${body.mcpTool}` }, 403)
+    return denyAndAudit(c, {
+      route: '/session/:id/redeem-with-chain',
+      reason: 'policy:unknown-tool',
+      publicMessage: `unknown tool: ${body.mcpTool}`,
+      status: 403,
+      executionPath: 'stateless-redeem',
+      sessionId,
+      mcpServer,
+      mcpCallId: body.mcpCallId,
+    })
+  }
+  // Sprint 5 P0-8 — marketplace tools 503 unless MARKETPLACE_ENABLED=true.
+  // redeem-with-chain is the canonical marketplace dispatch path, so this
+  // gate is the primary 503 surface for marketplace traffic.
+  if (isMarketplaceToolDisabled(body.mcpTool)) {
+    return denyAndAudit(c, {
+      route: '/session/:id/redeem-with-chain',
+      reason: 'policy:marketplace-disabled',
+      publicMessage: `marketplace tool ${body.mcpTool} is disabled (MARKETPLACE_ENABLED=false)`,
+      status: 503,
+      executionPath: 'stateless-redeem',
+      sessionId,
+      mcpServer,
+      mcpCallId: body.mcpCallId,
+    })
   }
   if (policy.executionPath !== 'stateless-redeem') {
-    return c.json({ error: `tool ${body.mcpTool} requires path ${policy.executionPath}, not stateless-redeem` }, 403)
+    return denyAndAudit(c, {
+      route: '/session/:id/redeem-with-chain',
+      reason: 'policy:wrong-execution-path',
+      publicMessage: `tool ${body.mcpTool} requires path ${policy.executionPath}, not stateless-redeem`,
+      status: 403,
+      executionPath: 'stateless-redeem',
+      sessionId,
+      mcpServer,
+      mcpCallId: body.mcpCallId,
+    })
   }
 
   // Resolve session.
   const sess = await loadActiveSessionPackage(sessionId)
-  if ('error' in sess) return c.json({ error: sess.error }, sess.status)
+  if ('error' in sess) {
+    return denyAndAudit(c, {
+      route: '/session/:id/redeem-with-chain',
+      reason: sessionErrorToReason(sess.error),
+      publicMessage: sess.error,
+      status: sess.status,
+      executionPath: 'stateless-redeem',
+      sessionId,
+      mcpServer,
+      mcpCallId: body.mcpCallId,
+    })
+  }
   const { pkg } = sess
 
   // Chain ordering: DelegationManager expects [leaf, …, root] — index 0
@@ -611,9 +837,17 @@ onchainRedeem.post('/:id/redeem-with-chain', requireInterServiceAuth(), async (c
   // the redeem tx with). The previous chain[last] check was backwards.
   const leaf = body.chain[0]
   if (leaf.delegate.toLowerCase() !== pkg.sessionKeyAddress.toLowerCase()) {
-    return c.json({
-      error: `chain leaf delegate (${leaf.delegate}) must equal session key (${pkg.sessionKeyAddress})`,
-    }, 400)
+    return denyAndAudit(c, {
+      route: '/session/:id/redeem-with-chain',
+      reason: 'validation:chain-leaf-delegate-mismatch',
+      publicMessage: `chain leaf delegate (${leaf.delegate}) must equal session key (${pkg.sessionKeyAddress})`,
+      status: 400,
+      executionPath: 'stateless-redeem',
+      sessionId,
+      mcpServer,
+      mcpCallId: body.mcpCallId,
+      sessionPrincipal: pkg.sessionKeyAddress,
+    })
   }
 
   // Validate target / selector against policy (defense in depth — the
@@ -622,41 +856,69 @@ onchainRedeem.post('/:id/redeem-with-chain', requireInterServiceAuth(), async (c
   const allowedTargets = policyAllowedTargets(policy, env)
   const targetLower = body.target.toLowerCase() as Address
   if (!allowedTargets.includes(targetLower)) {
-    return c.json({ error: `target not allowed for ${body.mcpTool}` }, 403)
+    return denyAndAudit(c, {
+      route: '/session/:id/redeem-with-chain',
+      reason: 'policy:target-not-allowed',
+      publicMessage: `target not allowed for ${body.mcpTool}`,
+      status: 403,
+      executionPath: 'stateless-redeem',
+      sessionId,
+      mcpServer,
+      mcpCallId: body.mcpCallId,
+      target: body.target,
+      sessionPrincipal: pkg.sessionKeyAddress,
+    })
   }
   let selector: `0x${string}`
   try {
     selector = extractSelector(body.callData)
   } catch (e) {
-    return c.json({ error: (e as Error).message }, 400)
+    return denyAndAudit(c, {
+      route: '/session/:id/redeem-with-chain',
+      reason: 'validation:invalid-call-data',
+      publicMessage: (e as Error).message,
+      status: 400,
+      executionPath: 'stateless-redeem',
+      sessionId,
+      mcpServer,
+      mcpCallId: body.mcpCallId,
+      sessionPrincipal: pkg.sessionKeyAddress,
+    })
   }
   const allowedSelectors = policyAllowedSelectors(body.mcpTool, policy)
   if (!allowedSelectors.has(selector)) {
-    return c.json({ error: `selector ${selector} not allowed for ${body.mcpTool}` }, 403)
+    return denyAndAudit(c, {
+      route: '/session/:id/redeem-with-chain',
+      reason: 'policy:selector-not-allowed',
+      publicMessage: `selector ${selector} not allowed for ${body.mcpTool}`,
+      status: 403,
+      executionPath: 'stateless-redeem',
+      sessionId,
+      mcpServer,
+      mcpCallId: body.mcpCallId,
+      target: body.target,
+      selector,
+      sessionPrincipal: pkg.sessionKeyAddress,
+    })
   }
 
   // Enforce policy.maxValueWei (off-chain twin of ValueEnforcer).
   {
     const requestedValue = BigInt(body.value)
     if (policy.maxValueWei !== undefined && requestedValue > policy.maxValueWei) {
-      await writeReceipt({
-        c,
-        pkg,
+      return denyAndAudit(c, {
+        route: '/session/:id/redeem-with-chain',
+        reason: 'policy:value-exceeds-cap',
+        publicMessage: `value ${requestedValue} exceeds tool maxValueWei ${policy.maxValueWei}`,
+        status: 400,
+        executionPath: 'stateless-redeem',
         sessionId,
         mcpServer,
-        body: {
-          mcpTool: body.mcpTool,
-          mcpCallId: body.mcpCallId,
-          a2aTaskId: body.a2aTaskId ?? '',
-          target: body.target,
-          value: body.value,
-          callData: body.callData,
-        },
-        executionPath: 'stateless-redeem',
-        status: 'denied',
-        errorReason: `value ${requestedValue} exceeds tool maxValueWei ${policy.maxValueWei}`,
+        mcpCallId: body.mcpCallId,
+        target: body.target,
+        selector,
+        sessionPrincipal: pkg.sessionKeyAddress,
       })
-      return c.json({ error: `value ${requestedValue} exceeds tool maxValueWei ${policy.maxValueWei}` }, 400)
     }
   }
 
@@ -722,12 +984,45 @@ onchainRedeem.post('/:id/redeem-with-chain', requireInterServiceAuth(), async (c
       errorReason: ok ? '' : 'transaction reverted',
     })
 
-    if (!ok) return c.json({ error: 'tx reverted', txHash, executionReceiptId: receiptId }, 502)
+    if (!ok) {
+      return denyAndAudit(c, {
+        route: '/session/:id/redeem-with-chain',
+        reason: 'tx:reverted',
+        publicMessage: 'tx reverted',
+        status: 502,
+        skipAudit: true,
+        executionPath: 'stateless-redeem',
+        sessionId,
+        mcpServer,
+        extra: { txHash, executionReceiptId: receiptId },
+      })
+    }
     return c.json({ txHash, executionReceiptId: receiptId })
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     await auditFinalize(receiptId, { status: 'reverted', errorReason: msg.slice(0, 1000) })
-    return c.json({ error: `redeem-with-chain failed: ${msg}` }, 500)
+    return denyAndAudit(c, {
+      route: '/session/:id/redeem-with-chain',
+      reason: 'error:redeem-with-chain-failed',
+      publicMessage: `redeem-with-chain failed: ${msg}`,
+      status: 500,
+      skipAudit: true,
+      executionPath: 'stateless-redeem',
+      sessionId,
+      mcpServer,
+    })
+  }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    return denyAndAudit(c, {
+      route: '/session/:id/redeem-with-chain',
+      reason: 'error:unhandled',
+      publicMessage: msg,
+      status: 500,
+      executionPath: 'stateless-redeem',
+      sessionId,
+      mcpServer,
+    })
   }
 })
 
@@ -770,32 +1065,88 @@ onchainRedeem.post('/:id/redeem-subdelegated', requireInterServiceAuth(), async 
   const sessionId = c.req.param('id')
   const ctx = c.get('interService' as never) as { service: string; bodyRaw: string } | undefined
   const bodyRaw = ctx?.bodyRaw ?? (await c.req.text())
+  const mcpServer = ctx?.service ?? 'unknown'
+  try {
   let body: RedeemTxBody
   try {
     body = JSON.parse(bodyRaw) as RedeemTxBody
   } catch {
-    return c.json({ error: 'invalid JSON body' }, 400)
+    return denyAndAudit(c, {
+      route: '/session/:id/redeem-subdelegated',
+      reason: 'fields:malformed-json',
+      status: 400,
+      executionPath: 'sub-delegated',
+      sessionId,
+      mcpServer,
+    })
   }
-  const mcpServer = ctx?.service ?? 'unknown'
 
   // ─── Policy lookup ─────────────────────────────────────────────────
   const policy = TOOL_POLICIES[body.mcpTool]
   if (!policy) {
-    return c.json({ error: `unknown tool: ${body.mcpTool}` }, 403)
+    return denyAndAudit(c, {
+      route: '/session/:id/redeem-subdelegated',
+      reason: 'policy:unknown-tool',
+      publicMessage: `unknown tool: ${body.mcpTool}`,
+      status: 403,
+      executionPath: 'sub-delegated',
+      sessionId,
+      mcpServer,
+      mcpCallId: body.mcpCallId,
+    })
+  }
+  // Sprint 5 P0-8 — marketplace tools 503 unless MARKETPLACE_ENABLED=true.
+  if (isMarketplaceToolDisabled(body.mcpTool)) {
+    return denyAndAudit(c, {
+      route: '/session/:id/redeem-subdelegated',
+      reason: 'policy:marketplace-disabled',
+      publicMessage: `marketplace tool ${body.mcpTool} is disabled (MARKETPLACE_ENABLED=false)`,
+      status: 503,
+      executionPath: 'sub-delegated',
+      sessionId,
+      mcpServer,
+      mcpCallId: body.mcpCallId,
+    })
   }
   if (policy.executionPath !== 'sub-delegated') {
-    return c.json(
-      { error: `tool ${body.mcpTool} requires path ${policy.executionPath}, not sub-delegated` },
-      403,
-    )
+    return denyAndAudit(c, {
+      route: '/session/:id/redeem-subdelegated',
+      reason: 'policy:wrong-execution-path',
+      publicMessage: `tool ${body.mcpTool} requires path ${policy.executionPath}, not sub-delegated`,
+      status: 403,
+      executionPath: 'sub-delegated',
+      sessionId,
+      mcpServer,
+      mcpCallId: body.mcpCallId,
+    })
   }
   if (!body.a2aTaskId || body.a2aTaskId.length === 0) {
-    return c.json({ error: 'a2aTaskId is required for sub-delegated path' }, 400)
+    return denyAndAudit(c, {
+      route: '/session/:id/redeem-subdelegated',
+      reason: 'validation:missing-a2a-task-id',
+      publicMessage: 'a2aTaskId is required for sub-delegated path',
+      status: 400,
+      executionPath: 'sub-delegated',
+      sessionId,
+      mcpServer,
+      mcpCallId: body.mcpCallId,
+    })
   }
 
   // ─── Resolve session ───────────────────────────────────────────────
   const sess = await loadActiveSessionPackage(sessionId)
-  if ('error' in sess) return c.json({ error: sess.error }, sess.status)
+  if ('error' in sess) {
+    return denyAndAudit(c, {
+      route: '/session/:id/redeem-subdelegated',
+      reason: sessionErrorToReason(sess.error),
+      publicMessage: sess.error,
+      status: sess.status,
+      executionPath: 'sub-delegated',
+      sessionId,
+      mcpServer,
+      mcpCallId: body.mcpCallId,
+    })
+  }
   const { pkg } = sess
 
   // ─── Validate target / selector against policy ────────────────────
@@ -803,55 +1154,70 @@ onchainRedeem.post('/:id/redeem-subdelegated', requireInterServiceAuth(), async 
   const allowedTargets = policyAllowedTargets(policy, env)
   const targetLower = body.target.toLowerCase() as Address
   if (!allowedTargets.includes(targetLower)) {
-    await writeReceipt({
-      c,
-      pkg,
+    return denyAndAudit(c, {
+      route: '/session/:id/redeem-subdelegated',
+      reason: 'policy:target-not-allowed',
+      publicMessage: `target not allowed for ${body.mcpTool}`,
+      status: 403,
+      executionPath: 'sub-delegated',
       sessionId,
       mcpServer,
-      body,
-      executionPath: 'sub-delegated',
-      status: 'denied',
-      errorReason: `target ${body.target} not in policy allowed targets`,
+      mcpCallId: body.mcpCallId,
+      target: body.target,
+      sessionPrincipal: pkg.sessionKeyAddress,
     })
-    return c.json({ error: `target not allowed for ${body.mcpTool}` }, 403)
   }
 
   let selector: `0x${string}`
   try {
     selector = extractSelector(body.callData)
   } catch (e) {
-    return c.json({ error: (e as Error).message }, 400)
+    return denyAndAudit(c, {
+      route: '/session/:id/redeem-subdelegated',
+      reason: 'validation:invalid-call-data',
+      publicMessage: (e as Error).message,
+      status: 400,
+      executionPath: 'sub-delegated',
+      sessionId,
+      mcpServer,
+      mcpCallId: body.mcpCallId,
+      sessionPrincipal: pkg.sessionKeyAddress,
+    })
   }
   const allowedSelectors = policyAllowedSelectors(body.mcpTool, policy)
   if (!allowedSelectors.has(selector)) {
-    await writeReceipt({
-      c,
-      pkg,
+    return denyAndAudit(c, {
+      route: '/session/:id/redeem-subdelegated',
+      reason: 'policy:selector-not-allowed',
+      publicMessage: `selector ${selector} not allowed for ${body.mcpTool}`,
+      status: 403,
+      executionPath: 'sub-delegated',
       sessionId,
       mcpServer,
-      body,
-      executionPath: 'sub-delegated',
-      status: 'denied',
-      errorReason: `selector ${selector} not in policy allowed selectors`,
+      mcpCallId: body.mcpCallId,
+      target: body.target,
+      selector,
+      sessionPrincipal: pkg.sessionKeyAddress,
     })
-    return c.json({ error: `selector ${selector} not allowed for ${body.mcpTool}` }, 403)
   }
 
   // ─── Enforce policy.maxValueWei (off-chain twin of ValueEnforcer) ──
   {
     const requestedValue = BigInt(body.value)
     if (policy.maxValueWei !== undefined && requestedValue > policy.maxValueWei) {
-      await writeReceipt({
-        c,
-        pkg,
+      return denyAndAudit(c, {
+        route: '/session/:id/redeem-subdelegated',
+        reason: 'policy:value-exceeds-cap',
+        publicMessage: `value ${requestedValue} exceeds tool maxValueWei ${policy.maxValueWei}`,
+        status: 400,
+        executionPath: 'sub-delegated',
         sessionId,
         mcpServer,
-        body,
-        executionPath: 'sub-delegated',
-        status: 'denied',
-        errorReason: `value ${requestedValue} exceeds tool maxValueWei ${policy.maxValueWei}`,
+        mcpCallId: body.mcpCallId,
+        target: body.target,
+        selector,
+        sessionPrincipal: pkg.sessionKeyAddress,
       })
-      return c.json({ error: `value ${requestedValue} exceeds tool maxValueWei ${policy.maxValueWei}` }, 400)
     }
   }
 
@@ -864,17 +1230,19 @@ onchainRedeem.post('/:id/redeem-subdelegated', requireInterServiceAuth(), async 
   try {
     executor = await getExecutorForTool(body.mcpTool)
   } catch (e) {
-    await writeReceipt({
-      c,
-      pkg,
+    return denyAndAudit(c, {
+      route: '/session/:id/redeem-subdelegated',
+      reason: 'executor:resolution-failed',
+      publicMessage: (e as Error).message,
+      status: 500,
+      executionPath: 'sub-delegated',
       sessionId,
       mcpServer,
-      body,
-      executionPath: 'sub-delegated',
-      status: 'denied',
-      errorReason: (e as Error).message,
+      mcpCallId: body.mcpCallId,
+      target: body.target,
+      selector,
+      sessionPrincipal: pkg.sessionKeyAddress,
     })
-    return c.json({ error: (e as Error).message }, 500)
   }
 
   // ─── Mint + sign D_sub ─────────────────────────────────────────────
@@ -1024,7 +1392,17 @@ onchainRedeem.post('/:id/redeem-subdelegated', requireInterServiceAuth(), async 
     })
 
     if (!ok) {
-      return c.json({ error: 'tx reverted', txHash, executionReceiptId: receiptId }, 502)
+      return denyAndAudit(c, {
+        route: '/session/:id/redeem-subdelegated',
+        reason: 'tx:reverted',
+        publicMessage: 'tx reverted',
+        status: 502,
+        skipAudit: true,
+        executionPath: 'sub-delegated',
+        sessionId,
+        mcpServer,
+        extra: { txHash, executionReceiptId: receiptId },
+      })
     }
     return c.json({
       txHash,
@@ -1036,7 +1414,28 @@ onchainRedeem.post('/:id/redeem-subdelegated', requireInterServiceAuth(), async 
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     await auditFinalize(receiptId, { status: 'reverted', errorReason: msg.slice(0, 1000) })
-    return c.json({ error: `redeem-subdelegated failed: ${msg}` }, 500)
+    return denyAndAudit(c, {
+      route: '/session/:id/redeem-subdelegated',
+      reason: 'error:redeem-subdelegated-failed',
+      publicMessage: `redeem-subdelegated failed: ${msg}`,
+      status: 500,
+      skipAudit: true,
+      executionPath: 'sub-delegated',
+      sessionId,
+      mcpServer,
+    })
+  }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    return denyAndAudit(c, {
+      route: '/session/:id/redeem-subdelegated',
+      reason: 'error:unhandled',
+      publicMessage: msg,
+      status: 500,
+      executionPath: 'sub-delegated',
+      sessionId,
+      mcpServer,
+    })
   }
 })
 
@@ -1140,32 +1539,89 @@ onchainRedeem.post('/:id/redeem-via-account', requireInterServiceAuth(), async (
   const sessionId = c.req.param('id')
   const ctx = c.get('interService' as never) as { service: string; bodyRaw: string } | undefined
   const bodyRaw = ctx?.bodyRaw ?? (await c.req.text())
+  const mcpServer = ctx?.service ?? 'unknown'
+  try {
   let body: RedeemTxBody
   try {
     body = JSON.parse(bodyRaw) as RedeemTxBody
   } catch {
-    return c.json({ error: 'invalid JSON body' }, 400)
+    return denyAndAudit(c, {
+      route: '/session/:id/redeem-via-account',
+      reason: 'fields:malformed-json',
+      status: 400,
+      executionPath: 'session-account',
+      sessionId,
+      mcpServer,
+    })
   }
-  const mcpServer = ctx?.service ?? 'unknown'
 
   // ─── Policy lookup ─────────────────────────────────────────────────
   const policy = TOOL_POLICIES[body.mcpTool]
   if (!policy) {
-    return c.json({ error: `unknown tool: ${body.mcpTool}` }, 403)
+    return denyAndAudit(c, {
+      route: '/session/:id/redeem-via-account',
+      reason: 'policy:unknown-tool',
+      publicMessage: `unknown tool: ${body.mcpTool}`,
+      status: 403,
+      executionPath: 'session-account',
+      sessionId,
+      mcpServer,
+      mcpCallId: body.mcpCallId,
+    })
+  }
+  // Sprint 5 P0-8 — marketplace tools 503 unless MARKETPLACE_ENABLED=true.
+  if (isMarketplaceToolDisabled(body.mcpTool)) {
+    return denyAndAudit(c, {
+      route: '/session/:id/redeem-via-account',
+      reason: 'policy:marketplace-disabled',
+      publicMessage: `marketplace tool ${body.mcpTool} is disabled (MARKETPLACE_ENABLED=false)`,
+      status: 503,
+      executionPath: 'session-account',
+      sessionId,
+      mcpServer,
+      mcpCallId: body.mcpCallId,
+    })
   }
   if (policy.executionPath !== 'session-account') {
-    return c.json(
-      { error: `tool ${body.mcpTool} requires path ${policy.executionPath}, not session-account` },
-      403,
-    )
+    return denyAndAudit(c, {
+      route: '/session/:id/redeem-via-account',
+      reason: 'policy:wrong-execution-path',
+      publicMessage: `tool ${body.mcpTool} requires path ${policy.executionPath}, not session-account`,
+      status: 403,
+      executionPath: 'session-account',
+      sessionId,
+      mcpServer,
+      mcpCallId: body.mcpCallId,
+    })
   }
 
   // ─── Resolve session ───────────────────────────────────────────────
   const sess = await loadActiveSessionPackage(sessionId)
-  if ('error' in sess) return c.json({ error: sess.error }, sess.status)
+  if ('error' in sess) {
+    return denyAndAudit(c, {
+      route: '/session/:id/redeem-via-account',
+      reason: sessionErrorToReason(sess.error),
+      publicMessage: sess.error,
+      status: sess.status,
+      executionPath: 'session-account',
+      sessionId,
+      mcpServer,
+      mcpCallId: body.mcpCallId,
+    })
+  }
   const { pkg, row } = sess
   if (!row.sessionAgentAccount) {
-    return c.json({ error: 'session has no SessionAgentAccount; was /session/init called with stateful=true?' }, 400)
+    return denyAndAudit(c, {
+      route: '/session/:id/redeem-via-account',
+      reason: 'validation:missing-session-agent-account',
+      publicMessage: 'session has no SessionAgentAccount; was /session/init called with stateful=true?',
+      status: 400,
+      executionPath: 'session-account',
+      sessionId,
+      mcpServer,
+      mcpCallId: body.mcpCallId,
+      sessionPrincipal: pkg.sessionKeyAddress,
+    })
   }
   const sessionAgentAccount = row.sessionAgentAccount as Address
 
@@ -1174,37 +1630,67 @@ onchainRedeem.post('/:id/redeem-via-account', requireInterServiceAuth(), async (
   const allowedTargets = policyAllowedTargets(policy, env)
   const targetLower = body.target.toLowerCase() as Address
   if (allowedTargets.length > 0 && !allowedTargets.includes(targetLower)) {
-    await writeReceipt({
-      c, pkg, sessionId, mcpServer, body,
-      executionPath: 'session-account', status: 'denied',
-      errorReason: `target ${body.target} not in policy allowed targets`,
+    return denyAndAudit(c, {
+      route: '/session/:id/redeem-via-account',
+      reason: 'policy:target-not-allowed',
+      publicMessage: `target not allowed for ${body.mcpTool}`,
+      status: 403,
+      executionPath: 'session-account',
+      sessionId,
+      mcpServer,
+      mcpCallId: body.mcpCallId,
+      target: body.target,
+      sessionPrincipal: pkg.sessionKeyAddress,
     })
-    return c.json({ error: `target not allowed for ${body.mcpTool}` }, 403)
   }
   let selector: `0x${string}`
   try { selector = extractSelector(body.callData) } catch (e) {
-    return c.json({ error: (e as Error).message }, 400)
+    return denyAndAudit(c, {
+      route: '/session/:id/redeem-via-account',
+      reason: 'validation:invalid-call-data',
+      publicMessage: (e as Error).message,
+      status: 400,
+      executionPath: 'session-account',
+      sessionId,
+      mcpServer,
+      mcpCallId: body.mcpCallId,
+      sessionPrincipal: pkg.sessionKeyAddress,
+    })
   }
   const allowedSelectors = policyAllowedSelectors(body.mcpTool, policy)
   if (!allowedSelectors.has(selector)) {
-    await writeReceipt({
-      c, pkg, sessionId, mcpServer, body,
-      executionPath: 'session-account', status: 'denied',
-      errorReason: `selector ${selector} not in policy allowed selectors`,
+    return denyAndAudit(c, {
+      route: '/session/:id/redeem-via-account',
+      reason: 'policy:selector-not-allowed',
+      publicMessage: `selector ${selector} not allowed for ${body.mcpTool}`,
+      status: 403,
+      executionPath: 'session-account',
+      sessionId,
+      mcpServer,
+      mcpCallId: body.mcpCallId,
+      target: body.target,
+      selector,
+      sessionPrincipal: pkg.sessionKeyAddress,
     })
-    return c.json({ error: `selector ${selector} not allowed for ${body.mcpTool}` }, 403)
   }
 
   // ─── Enforce policy.maxValueWei (off-chain twin of ValueEnforcer) ──
   {
     const requestedValue = BigInt(body.value)
     if (policy.maxValueWei !== undefined && requestedValue > policy.maxValueWei) {
-      await writeReceipt({
-        c, pkg, sessionId, mcpServer, body,
-        executionPath: 'session-account', status: 'denied',
-        errorReason: `value ${requestedValue} exceeds tool maxValueWei ${policy.maxValueWei}`,
+      return denyAndAudit(c, {
+        route: '/session/:id/redeem-via-account',
+        reason: 'policy:value-exceeds-cap',
+        publicMessage: `value ${requestedValue} exceeds tool maxValueWei ${policy.maxValueWei}`,
+        status: 400,
+        executionPath: 'session-account',
+        sessionId,
+        mcpServer,
+        mcpCallId: body.mcpCallId,
+        target: body.target,
+        selector,
+        sessionPrincipal: pkg.sessionKeyAddress,
       })
-      return c.json({ error: `value ${requestedValue} exceeds tool maxValueWei ${policy.maxValueWei}` }, 400)
     }
   }
 
@@ -1300,7 +1786,19 @@ onchainRedeem.post('/:id/redeem-via-account', requireInterServiceAuth(), async (
       errorReason: ok ? '' : 'handleOps reverted',
     })
 
-    if (!ok) return c.json({ error: 'handleOps reverted', txHash, userOpHash, executionReceiptId: receiptId }, 502)
+    if (!ok) {
+      return denyAndAudit(c, {
+        route: '/session/:id/redeem-via-account',
+        reason: 'tx:handle-ops-reverted',
+        publicMessage: 'handleOps reverted',
+        status: 502,
+        skipAudit: true,
+        executionPath: 'session-account',
+        sessionId,
+        mcpServer,
+        extra: { txHash, userOpHash, executionReceiptId: receiptId },
+      })
+    }
     return c.json({
       txHash,
       userOpHash,
@@ -1310,7 +1808,28 @@ onchainRedeem.post('/:id/redeem-via-account', requireInterServiceAuth(), async (
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     await auditFinalize(receiptId, { status: 'reverted', errorReason: msg.slice(0, 1000) })
-    return c.json({ error: `redeem-via-account failed: ${msg}` }, 500)
+    return denyAndAudit(c, {
+      route: '/session/:id/redeem-via-account',
+      reason: 'error:redeem-via-account-failed',
+      publicMessage: `redeem-via-account failed: ${msg}`,
+      status: 500,
+      skipAudit: true,
+      executionPath: 'session-account',
+      sessionId,
+      mcpServer,
+    })
+  }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    return denyAndAudit(c, {
+      route: '/session/:id/redeem-via-account',
+      reason: 'error:unhandled',
+      publicMessage: msg,
+      status: 500,
+      executionPath: 'session-account',
+      sessionId,
+      mcpServer,
+    })
   }
 })
 

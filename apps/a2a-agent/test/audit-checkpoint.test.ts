@@ -228,6 +228,8 @@ test('verification walks the chain and detects no mismatch on good data', async 
   assert.ok(r1?.entryHash)
   assert.ok(r2?.entryHash)
   // Recompute r1 against its stored prev — must match its stored hash.
+  // P0-5 — binding set extended to include outcome columns + the
+  // event_kind / request_received_row_id row-kind link.
   const expected1 = computeEntryHash(
     {
       rootGrantHash: r1.rootGrantHash,
@@ -238,6 +240,8 @@ test('verification walks the chain and detects no mismatch on good data', async 
       mcpTool: r1.mcpTool,
       mcpCallId: r1.mcpCallId,
       eventType: r1.eventType ?? 'execution',
+      eventKind: r1.eventKind,
+      requestReceivedRowId: r1.requestReceivedRowId,
       executionPath: r1.executionPath,
       toolGrantHash: r1.toolGrantHash,
       toolExecutor: r1.toolExecutor,
@@ -245,7 +249,12 @@ test('verification walks the chain and detects no mismatch on good data', async 
       selector: r1.selector,
       callDataHash: r1.callDataHash,
       valueWei: r1.valueWei,
+      txHash: r1.txHash,
+      userOpHash: r1.userOpHash,
+      status: r1.status,
+      errorReason: r1.errorReason,
       receivedAt: r1.receivedAt,
+      finalizedAt: r1.finalizedAt,
       correlationId: r1.correlationId,
     },
     r1.prevEntryHash,
@@ -281,6 +290,8 @@ test('verification detects a deliberate row tampering', async () => {
       mcpTool: 'attacker-rewrote-this',
       mcpCallId: original.mcpCallId,
       eventType: original.eventType ?? 'execution',
+      eventKind: original.eventKind,
+      requestReceivedRowId: original.requestReceivedRowId,
       executionPath: original.executionPath,
       toolGrantHash: original.toolGrantHash,
       toolExecutor: original.toolExecutor,
@@ -288,7 +299,12 @@ test('verification detects a deliberate row tampering', async () => {
       selector: original.selector,
       callDataHash: original.callDataHash,
       valueWei: original.valueWei,
+      txHash: original.txHash,
+      userOpHash: original.userOpHash,
+      status: original.status,
+      errorReason: original.errorReason,
       receivedAt: original.receivedAt,
+      finalizedAt: original.finalizedAt,
       correlationId: original.correlationId,
     },
     original.prevEntryHash,

@@ -20,6 +20,7 @@ import {
   hubSyncRound,
   hubSyncAllPools,
   hubSyncAllCommitments,
+  callHub,
 } from '@/lib/clients/hub-client'
 
 // ---------------------------------------------------------------------------
@@ -81,17 +82,14 @@ export async function syncAllCommitmentsToGraphDB(): Promise<{ ok: boolean; mess
 /**
  * Raw turtle dump for the agents named graph. Web's `/api/ontology-sync/turtle`
  * route still uses this for debug; we proxy through hub-mcp's
- * `/debug/agents-turtle` HTTP endpoint.
+ * `debug:agents_turtle` MCP tool over the A2A `/mcp/hub/<tool>` gateway —
+ * keeping the call on the consolidated transport so no direct
+ * `HUB_MCP_URL` fetch remains in the web layer.
  */
 export async function emitAgentsTurtle(): Promise<string> {
-  const HUB_MCP_URL = process.env.HUB_MCP_URL ?? 'http://localhost:3900'
   try {
-    const res = await fetch(`${HUB_MCP_URL}/debug/agents-turtle`)
-    if (!res.ok) {
-      console.warn(`[kb-sync] hub-mcp turtle dump failed: ${res.status} ${res.statusText}`)
-      return ''
-    }
-    return await res.text()
+    const res = await callHub<{ turtle?: string }>('debug:agents_turtle', {})
+    return res.turtle ?? ''
   } catch (err) {
     console.warn('[kb-sync] hub-mcp turtle dump threw:', err instanceof Error ? err.message : err)
     return ''

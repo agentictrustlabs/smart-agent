@@ -7,8 +7,10 @@
  * dev-mode HKDF derivation.
  *
  * After K2 (KMS-IMPLEMENTATION-PLAN.md §3.2a) lands, `'aws-kms'` returns
- * a real provider in production when all routing env vars are set;
- * `'vault-transit'` remains stubbed as the deferred sibling (§3.2b).
+ * a real provider in production when all routing env vars are set.
+ * The `'vault-transit'` deferred-sibling case was deleted in GCP-KMS
+ * G-PR-1 (orchestrator decision: AWS + GCP only — see
+ * `output/GCP-KMS-IMPLEMENTATION-PLAN.md § G6`).
  *
  * Run: `node --import tsx --test apps/a2a-agent/test/key-provider-config.test.ts`
  */
@@ -108,13 +110,14 @@ test("NODE_ENV='development' + local-aes → instantiates successfully", () => {
   assert.equal(typeof provider.decryptSessionDataKey, 'function')
 })
 
-test('vault-transit backend throws "not yet implemented" (K2-alt sibling)', () => {
-  // Vault Transit is the documented sibling alternative (§3.2b). Its
-  // implementation file ships alongside aws-kms but the selector stays
-  // stubbed until a deployment chooses Vault.
+test('vault-transit backend now falls into the unknown-backend branch (GCP-KMS G-PR-1)', () => {
+  // The vault-transit deferred-sibling case was deleted in G-PR-1
+  // (GCP-KMS-IMPLEMENTATION-PLAN § G6, orchestrator decision: AWS + GCP only).
+  // Setting A2A_KMS_BACKEND='vault-transit' must now fail closed via the
+  // default branch with "unknown A2A_KMS_BACKEND".
   assert.throws(
     () => buildKeyProvider({ A2A_KMS_BACKEND: 'vault-transit' }),
-    /vault-transit.*not yet implemented/,
+    /unknown A2A_KMS_BACKEND: vault-transit/,
   )
 })
 

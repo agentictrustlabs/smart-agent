@@ -16,10 +16,10 @@ import { db, schema } from '@/db'
 import { eq } from 'drizzle-orm'
 import { getOrgCrossDelegation } from '@/lib/demo-seed/seed-org-delegations'
 import { bootstrapA2ASessionForUser } from '@/lib/actions/a2a-session.action'
+import { callMcp, McpCallError } from '@/lib/clients/mcp-client'
 
 const A2A_AGENT_URL = process.env.A2A_AGENT_URL ?? 'http://localhost:3100'
 const PG_AUDIENCE = 'urn:mcp:server:people-groups'
-const PG_DIRECT = process.env.PEOPLE_GROUP_MCP_URL ?? 'http://localhost:3300'
 
 interface SegmentRow {
   id: string
@@ -63,14 +63,23 @@ interface FocusData {
 }
 
 async function publicSegmentsOnly(orgAddress: string): Promise<SegmentRow[]> {
-  // Read T1 directly via the public list_segments tool (no auth path).
-  const r = await fetch(`${PG_DIRECT}/tools/list_segments`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ args: { sponsorPrincipal: orgAddress } }),
-  })
-  if (!r.ok) return []
-  const data = await r.json() as { segments?: SegmentRow[] }
-  return (data.segments ?? []).filter(s => s.visibility === 'public')
+  // T1-public read routed via the A2A `/mcp/people-group/list_segments`
+  // proxy. `publicOnly: true` tells the tool to skip the session-token
+  // auth path and return public T1 rows regardless of who's calling —
+  // necessary because every web caller now carries a session token after
+  // the A2A consolidation, even when they want the unauthenticated read
+  // shape. callMcp returns the unwrapped JSON body the tool writes.
+  try {
+    const data = await callMcp<{ segments?: SegmentRow[] }>(
+      'people-group',
+      'list_segments',
+      { sponsorPrincipal: orgAddress, publicOnly: true },
+    )
+    return (data.segments ?? []).filter(s => s.visibility === 'public')
+  } catch (e) {
+    if (e instanceof McpCallError) return []
+    return []
+  }
 }
 
 async function callPg<T = Record<string, unknown>>(args: {

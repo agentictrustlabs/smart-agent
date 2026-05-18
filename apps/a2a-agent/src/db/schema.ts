@@ -92,6 +92,15 @@ export const handles = sqliteTable('handles', {
 // `apps/person-mcp/src/session-store/index.ts::computeEntryHash`). The
 // columns are nullable for forward-compat with rows inserted before
 // Sprint 3; new rows always populate them.
+//
+// P0-5 (outcome binding, two-row model) — outcome is now hash-bound by
+// emitting a SEPARATE `request_finalized` (or `request_denied`) row
+// rather than UPDATEing the original `request_received` row. The new
+// `event_kind` column distinguishes the three row kinds; the new
+// `request_received_row_id` column points the outcome row back at its
+// origin so a verifier can link them. The two/three rows share the same
+// `correlation_id`. See `lib/audit.ts` module doc for the trade-off
+// (two-row vs dual-hash) and rationale.
 export const executionAudit = sqliteTable('execution_audit', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   rootGrantHash: text('root_grant_hash').notNull(),
@@ -107,6 +116,20 @@ export const executionAudit = sqliteTable('execution_audit', {
   // `session-epoch-bump`, `key-version-rejected`. NULL for the
   // pre-S3.2 execution rows (mcpTool already carries the family).
   eventType: text('event_type'),
+  // P0-5 — row-kind tag for the two-row outcome model. NULL on
+  // pre-P0-5 rows (treated as 'request_received'); new inserts always
+  // populate.
+  //   - 'request_received'  → original auditAppend row (request side)
+  //   - 'request_finalized' → terminal outcome row written by auditFinalize
+  //   - 'request_denied'    → terminal denial row written by auditDeny
+  eventKind: text('event_kind', {
+    enum: ['request_received', 'request_finalized', 'request_denied'],
+  }),
+  // P0-5 — outcome rows (`request_finalized` / `request_denied`) carry
+  // the PK of the originating `request_received` row so a verifier can
+  // link the two and so the outcome row's hash binding can include the
+  // origin PK. NULL on `request_received` rows.
+  requestReceivedRowId: integer('request_received_row_id'),
   executionPath: text('execution_path', { enum: ['mcp-only', 'stateless-redeem', 'sub-delegated', 'session-account'] }).notNull(),
   toolGrantHash: text('tool_grant_hash'),
   toolExecutor: text('tool_executor'),
@@ -164,12 +187,14 @@ export const auditCheckpoint = sqliteTable('audit_checkpoint', {
 
 // ─── Append-only invariant ──────────────────────────────────────────
 //
-// The `executionAudit` table is append-only at the application layer
-// (Hardening Phase 1D #3). Writes go through `apps/a2a-agent/src/lib/audit.ts`
-// `auditAppend()` (INSERT only) and the single sanctioned outcome-update
-// helper `auditFinalize()` (UPDATE pending → completed/reverted only).
+// The `executionAudit` table is strictly append-only at the application
+// layer (Hardening Phase 1D #3, tightened by P0-5). Writes go through
+// `apps/a2a-agent/src/lib/audit.ts` `auditAppend()` /
+// `auditFinalize()` / `auditDeny()` — every helper does an INSERT. No
+// helper performs an UPDATE or DELETE on `executionAudit`.
 //
-// `scripts/check-no-bypass.sh` rejects any direct `db.update(executionAudit)`
-// or `db.delete(executionAudit)` call site outside `lib/audit.ts`. Any
-// future schema change that adds a column should preserve this invariant
-// — never add a code path that mutates row state once it's been finalized.
+// `scripts/check-no-bypass.sh` rejects ANY `db.update(executionAudit)` or
+// `db.delete(executionAudit)` call site anywhere in the source tree,
+// including `lib/audit.ts`. Any future schema change that adds a column
+// must preserve this invariant — outcome must be encoded as a new
+// hash-chained row, never as a mutation of an existing one.

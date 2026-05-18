@@ -24,7 +24,7 @@ K4–K7 then walk down the remaining secret list (master EOA, tool-executor keys
 
 Invariants the new system upholds:
 
-- **AAD invariant** (unchanged but extended): every session row's AES-GCM tag binds `keccak256(sessionId ‖ accountAddress ‖ chainId ‖ expiresAt)` (Hardening §1.5 #8; `packages/sdk/src/crypto.ts:143-162`) **plus** the new `keyVersion` field — see §5.
+- **AAD invariant** (extended in reviewer P0-6): every session row's AES-GCM tag binds `keccak256(sessionId ‖ accountAddress ‖ chainId ‖ expiresAt ‖ keyVersion)` (Hardening §1.5 #8 + P0-6; `packages/sdk/src/crypto.ts:buildSessionAAD`). The `keyVersion` field makes a per-version replay (e.g. `local-v1` → `local-v2`, or any rotation across providers) detectable at the AES-GCM tag layer in addition to the KMS layer.
 - **KMS context invariant**: the KMS-side `EncryptionContext` passed to `GenerateDataKey` / `Decrypt` mirrors the AAD tuple verbatim. AWS rejects any `Decrypt` call whose context bytes don't match what was used at `GenerateDataKey` (surfaced as `InvalidCiphertextException`). This is a second, independent trip-wire enforced by AWS rather than by our code. **This invariant applies to symmetric KMS keys only — see §13.**
 - **IAM invariant**: only the a2a-agent runtime IAM role holds `kms:Decrypt` on the key ARN; the role is assumable only via OIDC federation from the project's Vercel deployment. Developer roles, the web-app role, MCP roles, and humans are denied. Phase 1D audit rows detect violations.
 - **No plaintext leaves a2a-agent**: data keys live only in heap memory, only for the duration of the encrypt/decrypt call, and only inside the privileged a2a process — never on disk, never crossing process boundaries, never logged.
@@ -184,7 +184,7 @@ Provider responsibilities:
    - Returns `Plaintext`.
    - `InvalidCiphertextException` is the AWS-side context-mismatch trip-wire — surfaced as `Error('context mismatch (KMS denied decrypt)')`. This is the second of two independent trip-wires (the first is the AES-GCM AAD in `apps/a2a-agent/src/auth/encryption.ts`).
 
-4. **EncryptionContext binding**. The canonical AAD tuple is `{ sessionId, accountAddress, chainId, expiresAt, keyVersion }`. AWS embeds this in the cipher's MAC and refuses to decrypt unless every byte matches what was used at `GenerateDataKey` time. The IAM permissions policy (§8.1) additionally enforces that every call carries this exact set of context keys via the `kms:EncryptionContextKeys` and `Null` conditions, so a misuse is caught at the IAM layer before reaching our code.
+4. **EncryptionContext binding**. The canonical context map (snake_case keys to match the IAM policy ARNs and CloudTrail JSON; sessionId is sha256-hashed per reviewer P0-6 so raw sessionIds never bleed into operator telemetry) is `{ session_id_h, account_address, chain_id, expires_at, key_version }`. AWS embeds this in the cipher's MAC and refuses to decrypt unless every byte matches what was used at `GenerateDataKey` time. The IAM permissions policy (§8.1) additionally enforces that every call carries this exact set of context keys via the `kms:EncryptionContextKeys` and `Null` conditions, so a misuse is caught at the IAM layer before reaching our code.
 
 5. **Error mapping**. Clean messages, no response-body leakage:
    - `InvalidCiphertextException` → `'context mismatch (KMS denied decrypt)'` (the EncryptionContext trip-wire).
@@ -381,12 +381,14 @@ export interface EncryptedRow {
 }
 
 function buildAadContext(meta: SessionMeta, keyVersion: string): Record<string, string> {
+  // Reviewer P0-6 — keys are snake_case (matches IAM policy ARNs in §8.1),
+  // sessionId is hashed (KMS EncryptionContext appears in CloudTrail).
   return {
-    sessionId: meta.sessionId,
-    accountAddress: meta.accountAddress.toLowerCase(),
-    chainId: String(meta.chainId),
-    expiresAt: meta.expiresAt,
-    keyVersion,
+    session_id_h: sha256(meta.sessionId).slice(0, 32),
+    account_address: meta.accountAddress.toLowerCase(),
+    chain_id: String(meta.chainId),
+    expires_at: meta.expiresAt,
+    key_version: keyVersion,
   }
 }
 
@@ -395,14 +397,15 @@ function toB64(b: Uint8Array): string { let s=''; for (const x of b) s+=String.f
 function fromB64(s: string): Uint8Array { const bin=atob(s); const o=new Uint8Array(bin.length); for (let i=0;i<bin.length;i++) o[i]=bin.charCodeAt(i); return o }
 
 export async function encryptSessionPackage<T>(payload: T, meta: SessionMeta): Promise<EncryptedRow> {
-  // Generate first so we get back the keyVersion / keyId the provider intends to tag with.
-  const dk = await provider.generateSessionDataKey({
-    aadContext: buildAadContext(meta, /* keyVersion stub */ 'pending'),
-  })
-  // Re-bind with the real keyVersion so the AAD on both layers includes it.
-  const aadContext = buildAadContext(meta, dk.keyVersion)
+  // P0-6 — `keyVersion` is synchronously knowable from the provider, so we
+  // build the aadContext BEFORE GenerateDataKey (AWS KMS requires the
+  // EncryptionContext at GenerateDataKey time — it embeds it in the MAC).
+  const keyVersion = provider.keyVersion
+  const aadContext = buildAadContext(meta, keyVersion)
+  const dk = await provider.generateSessionDataKey({ aadContext })
   try {
-    const aesAad = buildSessionAAD(meta) // existing SDK helper, unchanged
+    // buildSessionAAD now binds keyVersion too (P0-6).
+    const aesAad = buildSessionAAD({ ...meta, keyVersion })
     const dataKeyHex = Array.from(dk.plaintextDataKey).map(b => b.toString(16).padStart(2,'0')).join('')
     const enc = await encryptPayload(payload, dataKeyHex, aesAad)
     return {
@@ -443,7 +446,8 @@ export async function decryptSessionPackage<T>(
     keyVersion: row.keyVersion,
   })
   try {
-    const aesAad = buildSessionAAD(meta)
+    // buildSessionAAD now binds row.keyVersion too (P0-6).
+    const aesAad = buildSessionAAD({ ...meta, keyVersion: row.keyVersion })
     const dataKeyHex = Array.from(dataKey).map(b => b.toString(16).padStart(2,'0')).join('')
     return await decryptPayload<T>(
       { ciphertext: row.encryptedPackage, iv: row.iv },
@@ -460,7 +464,7 @@ async function decryptLegacy<T>(
   meta: SessionMeta,
 ): Promise<T> {
   const { config } = await import('../config')
-  const aad = buildSessionAAD(meta)
+  const aad = buildSessionAAD({ ...meta, keyVersion: 'legacy' })
   return decryptPayload<T>(
     { ciphertext: row.encryptedPackage!, iv: row.iv! },
     config.A2A_SESSION_SECRET,
@@ -567,19 +571,19 @@ The trust policy MUST bind the role to the Vercel OIDC issuer with `sub` and `au
       "Condition": {
         "ForAnyValue:StringEquals": {
           "kms:EncryptionContextKeys": [
-            "sessionId",
-            "accountAddress",
-            "chainId",
-            "expiresAt",
-            "keyVersion"
+            "session_id_h",
+            "account_address",
+            "chain_id",
+            "expires_at",
+            "key_version"
           ]
         },
         "Null": {
-          "kms:EncryptionContext:sessionId": "false",
-          "kms:EncryptionContext:accountAddress": "false",
-          "kms:EncryptionContext:chainId": "false",
-          "kms:EncryptionContext:expiresAt": "false",
-          "kms:EncryptionContext:keyVersion": "false"
+          "kms:EncryptionContext:session_id_h": "false",
+          "kms:EncryptionContext:account_address": "false",
+          "kms:EncryptionContext:chain_id": "false",
+          "kms:EncryptionContext:expires_at": "false",
+          "kms:EncryptionContext:key_version": "false"
         }
       }
     },

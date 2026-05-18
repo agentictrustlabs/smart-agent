@@ -80,14 +80,33 @@ const INTER_SERVICE_PATH_SUFFIXES = [
   '/deploy-agent',
 ]
 
-function isHostExempt(path: string): boolean {
+// System-scoped prefixes (NOT bound to any agent slug). The session-store
+// passthrough mirrors a system-level table; wallet-action dispatch is
+// per-session, not per-agent. Without these exempts, the host-context
+// middleware rejects every call as `agent host required` (which is what
+// the reviewer found — the docs claimed exemption, the code never
+// implemented it). Use strict prefix matching (NOT regex) so it's
+// obvious what's allowed.
+const SYSTEM_SCOPED_PREFIXES = [
+  '/session-store/',  // session-store CRUD — system table, no agent binding
+  '/wallet-action/',  // WalletAction dispatch — per-session, system-scoped
+]
+
+export function isHostExempt(path: string): boolean {
   if (
     path === '/health' ||
     path === '/.well-known/agent.json' ||
     path === '/auth/challenge' ||
     path === '/auth/verify' ||
-    path === '/session/init'
+    path === '/session/init' ||
+    // /session/package carries WebAuthn assertions + caveat blobs; the
+    // session is keyed by session-id, not by any agent slug. Already
+    // exempt prior to the P0-2 fix per memory note.
+    path === '/session/package'
   ) return true
+  for (const prefix of SYSTEM_SCOPED_PREFIXES) {
+    if (path.startsWith(prefix)) return true
+  }
   // /session/<id>/<inter-service-verb>
   if (path.startsWith('/session/')) {
     for (const suffix of INTER_SERVICE_PATH_SUFFIXES) {

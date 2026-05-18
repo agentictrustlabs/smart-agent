@@ -7,15 +7,18 @@
  * connection for any session-store operation — person-mcp remains the
  * storage owner, a2a-agent forwards untouched.
  *
- * Hardening §1.3 (Stream B Task B1): the WRITE routes (`/insert`,
- * `/revoke`, `/bump-epoch`) carry a signed envelope verified at the a2a
- * edge via `requireServiceAuth('web')`. The web app signs every write
- * with `WEB_TO_A2A_HMAC_KEY` over a canonical string that includes the
- * timestamp, fresh per-request nonce, request path, and sha256 of the
- * body. The READ routes (`/epoch/:account`, `/by-cookie/:cookieValue`,
- * `/active/:account`) are unauthenticated at the a2a edge for now —
- * they're read-only and idempotent; the broader route-classification
- * sweep in Phase 1B will give them their own service-auth tier.
+ * Hardening §1.3 (Stream B Task B1) + Sprint 5 P1-1: EVERY route on
+ * /session-store/* carries a signed envelope verified at the a2a edge
+ * via `requireServiceAuth('web')`. The web app signs every request
+ * (read or write) with `WEB_TO_A2A_HMAC_KEY` over the canonical-v2
+ * string from Sprint 5 P0-3:
+ *
+ *   `${ts}|${nonce}|${path}|${sha256(body)}`
+ *
+ * For GETs the body hash is sha256("") (empty-string digest). The
+ * Sprint 5 P1-1 fix closed the read side — by-cookie / active /
+ * epoch were previously unauthed at the a2a edge and leaked session
+ * metadata (cookie ↔ account binding, active-session set, epoch).
  *
  * Hardening §1.3 (Stream B Task B3): `insertSessionRecord` also threads
  * the just-completed passkey assertion through to person-mcp so the
@@ -72,7 +75,11 @@ async function signedHeadersFor(path: string, bodyJson: string): Promise<Record<
 }
 
 export async function fetchRevocationEpoch(account: `0x${string}`): Promise<number> {
-  const res = await fetch(`${a2aBaseUrl()}/session-store/epoch/${account}`)
+  // Sprint 5 P1-1 — GET reads now carry the same web→a2a HMAC
+  // envelope as POST writes. Body is empty so we sign sha256("").
+  const path = `/session-store/epoch/${account}`
+  const headers = await signedHeadersFor(path, '')
+  const res = await fetch(`${a2aBaseUrl()}${path}`, { headers })
   if (!res.ok) throw new Error(`epoch fetch failed: ${res.status}`)
   const data = await res.json() as { epoch: number }
   return data.epoch
@@ -130,14 +137,20 @@ export async function insertSessionRecord(
 }
 
 export async function fetchSessionByCookie(cookieValue: string): Promise<SessionRecord | null> {
-  const res = await fetch(`${a2aBaseUrl()}/session-store/by-cookie/${encodeURIComponent(cookieValue)}`)
+  // Sprint 5 P1-1 — GET reads now carry the same web→a2a HMAC envelope.
+  const path = `/session-store/by-cookie/${encodeURIComponent(cookieValue)}`
+  const headers = await signedHeadersFor(path, '')
+  const res = await fetch(`${a2aBaseUrl()}${path}`, { headers })
   if (!res.ok) return null
   const data = await res.json() as { record: SessionRecord | null }
   return data.record
 }
 
 export async function listActiveSessions(account: `0x${string}`): Promise<SessionRecord[]> {
-  const res = await fetch(`${a2aBaseUrl()}/session-store/active/${account}`)
+  // Sprint 5 P1-1 — GET reads now carry the same web→a2a HMAC envelope.
+  const path = `/session-store/active/${account}`
+  const headers = await signedHeadersFor(path, '')
+  const res = await fetch(`${a2aBaseUrl()}${path}`, { headers })
   if (!res.ok) return []
   const data = await res.json() as { records: SessionRecord[] }
   return data.records

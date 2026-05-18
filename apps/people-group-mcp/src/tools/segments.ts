@@ -75,7 +75,9 @@ export const segmentTools = {
     name: 'list_segments',
     description:
       'List population segments. Without auth, only T1 fields of public-visibility segments are returned. '
-      + 'Owner session or matching cross-delegation gets full T2 detail.',
+      + 'Owner session or matching cross-delegation gets full T2 detail. '
+      + 'Pass `publicOnly: true` to force the T1-public path even when a session token is present '
+      + '(used by web callers that always carry a session but want the public read shape).',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -84,6 +86,7 @@ export const segmentTools = {
         conceptId: { type: 'string' },
         scopeTypeId: { type: 'string' },
         crossDelegation: { type: 'object', description: 'Optional cross-delegation for delegated read' },
+        publicOnly: { type: 'boolean', description: 'Force T1-public path even with a session token' },
       },
     },
     handler: async (args: {
@@ -92,12 +95,16 @@ export const segmentTools = {
       conceptId?: string
       scopeTypeId?: string
       crossDelegation?: unknown
+      publicOnly?: boolean
     }) => {
       // Multi-tenancy isolation rule (SEC-10): every query must filter by principal
       // when reading T2 fields. Public-only listing is OK without principal.
       let dataPrincipal: string | null = null
       let isAuthenticated = false
-      if (args.token) {
+      // `publicOnly` short-circuits the auth path so callers that always
+      // carry a session token (web app post-consolidation) can still ask
+      // for the unauthenticated T1-public shape.
+      if (args.token && !args.publicOnly) {
         try {
           const ctx = await requirePrincipalAny({
             token: args.token,

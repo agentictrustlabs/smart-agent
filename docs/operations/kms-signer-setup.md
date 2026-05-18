@@ -1893,23 +1893,34 @@ Defer until S2.4 has bake-in time and we've decided whether server-
 side opaque session ids (with a DB lookup) are a better long-term
 direction than stateless JWTs altogether.
 
-## Audit checkpoint sink (S3.1)
+## Audit checkpoint sink (S3.1 + Sprint 4 A.3)
 
-Sprint 3 introduces an **external anchor** for the a2a-agent's `execution_audit` hash chain (`docs/architecture/01-web-a2a-mcp-flows.md` § "Audit completeness + external anchor"). On a periodic interval (15 min prod / 1 min dev), the agent signs a small JSON payload — `{ latestEntryId, latestEntryHash, timestamp, chainId, signature, signerAddress }` — using the **master signer** (the same KMS key documented above) and:
+Sprint 3 introduces an **external anchor** for the a2a-agent's `execution_audit` hash chain (`docs/architecture/01-web-a2a-mcp-flows.md` § "Audit completeness + external anchor"). Sprint 4 A.3 extends the same pattern to **person-mcp**'s `audit_log` hash chain. Both services run the same cadence (15 min prod / 1 min dev), sign payloads with the **same master signer** (a2a-agent's KMS key; person-mcp posts its digest to a2a-agent's `POST /auth/sign-checkpoint`), write to their own local `audit_checkpoint` table, and (when `AUDIT_CHECKPOINT_SINK_URL` is set) POST to the configured sink.
 
-1. Always: writes the row to the local `audit_checkpoint` SQLite table (last 30 days, daily GC).
-2. If `AUDIT_CHECKPOINT_SINK_URL` is set: POSTs the same payload to that URL.
+The payload shape is `{ latestEntryId, latestEntryHash, timestamp, chainId, signature, signerAddress }`. The person-mcp variant adds a `service: 'person-mcp'` field; a2a-agent emits no `service` field (rows in its local table imply `service: 'a2a-agent'` by table-owner). Operators who consume both streams via a single sink URL can join the streams by timestamp and identify the producer either from the body's `service` field or from the `x-sa-checkpoint-service` HTTP header person-mcp adds to every sink POST.
 
-The sink is **the** external witness. An attacker who mutates the agent's local DB cannot also rewrite the sink's history — the next operator-run `scripts/verify-audit-chain.ts` walks the local chain, recomputes every hash, and compares to the last sink-anchored checkpoint. Any divergence is forensic evidence of tampering.
+| Service     | Local table                    | Source module                                  |
+|-------------|--------------------------------|------------------------------------------------|
+| a2a-agent   | `apps/a2a-agent/local.db`      | `apps/a2a-agent/src/lib/audit-checkpoint.ts`   |
+| person-mcp  | `apps/person-mcp/person-mcp.db`| `apps/person-mcp/src/lib/audit-checkpoint.ts`  |
+
+Always: each service writes its checkpoint to its own local `audit_checkpoint` SQLite table (last 30 days, daily GC). The sink POST is best-effort with 3 attempts + exponential backoff; sink failures never roll back the local write. An attacker who mutates either local DB cannot also rewrite the sink's history — the next operator-run `scripts/verify-audit-chain.ts` walks the local chain, recomputes every hash, and compares to the last sink-anchored checkpoint. Any divergence is forensic evidence of tampering.
+
+**Operator key inventory**: only ONE signing key (a2a-agent's master KMS key) — person-mcp does NOT hold a separate signing key. Person-mcp builds its own checkpoint digest, then makes an authenticated inter-service call to `a2a-agent POST /auth/sign-checkpoint` (allow-list of one service: `person-mcp`; reuses the existing `a2a-to-person` HMAC MAC key already provisioned for inter-service auth) to obtain the signature.
 
 ### Env vars
 
 | Variable                       | Required | Default | Purpose                                                                 |
 |--------------------------------|----------|---------|-------------------------------------------------------------------------|
-| `AUDIT_CHECKPOINT_SINK_URL`    | optional | unset   | HTTP(S) URL the agent POSTs each checkpoint JSON to.                    |
-| `AUDIT_CHECKPOINT_SINK_AUTH`   | optional | unset   | Value attached as the `Authorization` header on every sink POST. Empty → no auth header. |
+| `AUDIT_CHECKPOINT_SINK_URL`    | optional | unset   | HTTP(S) URL the agent POSTs each checkpoint JSON to. **Same value on a2a-agent AND person-mcp** so a single sink receives both streams. |
+| `AUDIT_CHECKPOINT_SINK_AUTH`   | optional | unset   | Value attached as the `Authorization` header on every sink POST. Empty → no auth header. Same value on both services. |
 
-If `AUDIT_CHECKPOINT_SINK_URL` is unset, the agent only writes to the local SQLite archive — there is NO external witness and the chain integrity is only as strong as the local DB. Dev / smoke-test environments may leave it unset; **production deployments MUST configure a sink.**
+If `AUDIT_CHECKPOINT_SINK_URL` is unset on a service, that service only writes to its own local SQLite archive — there is NO external witness for that chain and integrity is only as strong as the local DB. Dev / smoke-test environments may leave it unset; **production deployments MUST configure a sink on both services**.
+
+The sink receives interleaved POSTs from both services; each body carries everything needed to demultiplex:
+- person-mcp bodies have a `"service": "person-mcp"` field.
+- a2a-agent bodies have no `service` field (legacy shape; rows in a2a-agent's local table imply `service: 'a2a-agent'`).
+- person-mcp POSTs also include the header `x-sa-checkpoint-service: person-mcp` for sink layers that do not parse the body before routing.
 
 ### Recipe — Azure Monitor Log Analytics (Data Collection Rule)
 
@@ -1941,6 +1952,22 @@ Any service that accepts `POST <url>` with `Content-Type: application/json` + an
 
 ### Verification
 
-Run `pnpm exec tsx scripts/verify-audit-chain.ts` periodically (e.g. nightly cron in production) and check the exit code. A `0` means the chain is intact AND every checkpoint signature verifies. A `1` is a hard alert — escalate to the on-call.
+Run the verifier nightly against each service's DB and check the exit code. A `0` means the chain is intact AND every checkpoint signature verifies. A `1` is a hard alert — escalate to the on-call.
 
-The CLI also accepts `--signer 0xMASTER_SIGNER_ADDRESS` to pin the expected signer; rotating the master signer (K4 rotation runbook above) requires updating the operator-pinned address on the next run.
+```bash
+pnpm exec tsx scripts/verify-audit-chain.ts                              # default: --service a2a-agent
+pnpm exec tsx scripts/verify-audit-chain.ts --service person-mcp         # person-mcp's audit_log + checkpoints
+pnpm exec tsx scripts/verify-audit-chain.ts --service a2a-agent --signer 0xMASTER_SIGNER_ADDRESS
+```
+
+The CLI accepts:
+- `--service a2a-agent|person-mcp` — which service's chain to verify (default `a2a-agent`).
+- `--db <path>` — override the default DB path (defaults: `apps/a2a-agent/local.db` and `apps/person-mcp/person-mcp.db`).
+- `--signer 0x...` — pin the expected signer address. Both services use the same master signer, so the same `--signer` value applies to both runs. Rotating the master signer (K4 rotation runbook above) requires updating the operator-pinned address on the next run.
+
+For a nightly cron a two-line invocation gives full coverage:
+
+```bash
+pnpm exec tsx scripts/verify-audit-chain.ts --service a2a-agent  --signer "$EXPECTED_SIGNER" || alert
+pnpm exec tsx scripts/verify-audit-chain.ts --service person-mcp --signer "$EXPECTED_SIGNER" || alert
+```

@@ -38,7 +38,12 @@
  *   - `local-aes`     → `createLocalHmacProvider` reading the legacy env var
  *   - `aws-kms`       → `createAwsKmsMacProvider` reading the per-MAC-key
  *                       AWS env var (e.g. `AWS_KMS_MAC_KEY_ID_WEB_TO_A2A`)
- *   - `vault-transit` → throws "not implemented (sibling)"
+ *   - `gcp-kms`       → wired only on the a2a-agent side (see
+ *                       `apps/a2a-agent/src/auth/mac-provider.ts`); MCPs +
+ *                       web fall through to "unknown backend" until G-PR-5
+ *                       lands the GCP HMAC implementation. The
+ *                       `'vault-transit'` deferred-sibling case was removed
+ *                       in G-PR-1 (orchestrator decision: AWS + GCP only).
  *
  * Production guard mirrors the rest of the family: `local-aes` in prod throws.
  */
@@ -189,10 +194,13 @@ function buildProviderForMacKeyId(
         AWS_KMS_MAC_KEY_ID: keyId,
       })
     }
-    case 'vault-transit':
-      throw new Error(
-        `buildMacProvider(${macKeyId}): 'vault-transit' MAC provider not implemented (sibling)`,
-      )
+    // 'gcp-kms' branch is wired by the a2a-agent-side `buildMacProvider`
+    // in `apps/a2a-agent/src/auth/mac-provider.ts`. The MCP-side caller
+    // here intentionally does NOT yet support gcp-kms — MCPs ship with
+    // their own outbound MAC key and we won't add GCP-KMS HMAC support
+    // for them until G-PR-5 lands the underlying implementation. Until
+    // then any MCP env that tries `A2A_KMS_BACKEND='gcp-kms'` falls
+    // through to the unknown-backend branch and fails closed.
     default:
       throw new Error(`buildMacProvider: unknown A2A_KMS_BACKEND: ${backend}`)
   }

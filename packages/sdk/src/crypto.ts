@@ -133,23 +133,49 @@ export async function decryptPayload<T = unknown>(
 /**
  * Build a canonical AAD for a session-package encryption.
  *
- * Binds the ciphertext to `(sessionId, accountAddress, chainId, expiresAt)`
+ * Binds the ciphertext to
+ * `(sessionId, accountAddress, chainId, expiresAt, keyVersion)`
  * via `keccak256(abi.encodePacked(...))`. Callers should reconstruct the
  * AAD on read by passing the SAME values from the session row.
  *
+ * Canonical format (HARDENING-PLAN §1.5 #8 + reviewer P0-6):
+ *   keccak256(
+ *     abi.encodePacked(
+ *       sessionId,           // string
+ *       accountAddress,      // string (lower-cased)
+ *       chainId,             // uint256
+ *       expiresAt,           // string (ISO timestamp)
+ *       keyVersion           // string ('local-v1' | 'aws-kms:<uuid>' | …)
+ *     )
+ *   )
+ *
  * `expiresAt` is the ISO timestamp string from the DB row. Strings are
  * packed as bytes so any drift causes decrypt to fail (the trip-wire).
+ *
+ * `keyVersion` (added in P0-6): pinning the key-version label into the
+ * AES-GCM tag means a row encrypted under `local-v1` cannot be
+ * silently replayed against a verifier that has been told the row is
+ * `aws-kms:<uuid>` (or vice versa). This is the AES-GCM-layer analogue
+ * of the AWS KMS `EncryptionContext:key_version` binding enforced by
+ * the IAM policy on the CMK.
  */
 export function buildSessionAAD(input: {
   sessionId: string
   accountAddress: string
   chainId: number
   expiresAt: string
+  keyVersion: string
 }): Uint8Array {
   const hash = keccak256(
     encodePacked(
-      ['string', 'string', 'uint256', 'string'],
-      [input.sessionId, input.accountAddress.toLowerCase(), BigInt(input.chainId), input.expiresAt],
+      ['string', 'string', 'uint256', 'string', 'string'],
+      [
+        input.sessionId,
+        input.accountAddress.toLowerCase(),
+        BigInt(input.chainId),
+        input.expiresAt,
+        input.keyVersion,
+      ],
     ),
   )
   // Strip 0x and decode hex → bytes

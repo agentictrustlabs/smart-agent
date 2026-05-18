@@ -469,7 +469,54 @@ sqliteHandle.exec(`
 
   -- Spec 004 v2 -- pool_pledges DROPPED (person-mcp). Authoritative on
   -- chain in PledgeRegistry. Solo human donors use org-mcp pool_pledge:*.
+
+  -- ─── Sprint 4 A.3 — audit checkpoint ledger ──────────────────────────
+  -- Signed periodic snapshots of person-mcps audit_log chain head. Each
+  -- row asserts that at the recorded timestamp the most-recent audit_log
+  -- entry had seq=latest_entry_id and entry_hash=latest_entry_hash. The
+  -- signature is produced by a2a-agents master signer (person-mcp posts
+  -- the digest to /auth/sign-checkpoint via the inter-service HMAC
+  -- envelope; person-mcp itself holds no signing key) and stored locally
+  -- plus optionally posted to AUDIT_CHECKPOINT_SINK_URL for an external
+  -- witness.
+  --
+  -- The service column distinguishes which services chain a checkpoint
+  -- anchors when multiple services share a sink: a2a-agent rows come
+  -- from apps/a2a-agent/src/lib/audit-checkpoint.ts; person-mcp rows
+  -- come from apps/person-mcp/src/lib/audit-checkpoint.ts. Useful for
+  -- cross-stream join queries against the operator sink.
+  CREATE TABLE IF NOT EXISTS audit_checkpoint (
+    id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    service           TEXT NOT NULL DEFAULT 'person-mcp',
+    latest_entry_id   INTEGER NOT NULL,
+    latest_entry_hash TEXT NOT NULL,
+    timestamp         TEXT NOT NULL,
+    chain_id          INTEGER NOT NULL,
+    signature         TEXT NOT NULL,
+    signer_address    TEXT NOT NULL,
+    sink_status       TEXT NOT NULL DEFAULT 'not-configured',
+    sink_attempts     INTEGER NOT NULL DEFAULT 0
+  );
+  CREATE INDEX IF NOT EXISTS idx_person_audit_checkpoint_timestamp ON audit_checkpoint(timestamp);
+  CREATE INDEX IF NOT EXISTS idx_person_audit_checkpoint_service ON audit_checkpoint(service);
 `)
+
+// Sprint 4 A.3 — best-effort migration for older DBs that pre-date the
+// `service` column on `audit_checkpoint`. The column is non-null with a
+// `'person-mcp'` default so existing rows back-fill to the correct
+// service. Wrapped in try/catch so a fresh DB (no table yet) just
+// silently moves on; the CREATE TABLE above will pick up the new shape.
+try {
+  const cols = sqliteHandle
+    .prepare(`PRAGMA table_info(audit_checkpoint)`)
+    .all() as Array<{ name: string }>
+  const colNames = new Set(cols.map((c) => c.name))
+  if (cols.length > 0 && !colNames.has('service')) {
+    sqliteHandle.exec(
+      `ALTER TABLE audit_checkpoint ADD COLUMN service TEXT NOT NULL DEFAULT 'person-mcp'`,
+    )
+  }
+} catch { /* table missing or column already exists — both fine */ }
 
 /** Raw better-sqlite3 handle. Used by the absorbed ssi storage modules. */
 export const sqlite: DatabaseType = sqliteHandle

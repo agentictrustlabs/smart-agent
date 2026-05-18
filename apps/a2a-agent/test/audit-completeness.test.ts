@@ -125,6 +125,8 @@ test('computeEntryHash is deterministic over the binding-field subset', () => {
     mcpTool: 'unit.test',
     mcpCallId: 'unit-1',
     eventType: 'execution',
+    eventKind: 'request_received',
+    requestReceivedRowId: null,
     executionPath: 'mcp-only',
     toolGrantHash: null,
     toolExecutor: null,
@@ -132,7 +134,12 @@ test('computeEntryHash is deterministic over the binding-field subset', () => {
     selector: null,
     callDataHash: null,
     valueWei: '0',
+    txHash: null,
+    userOpHash: null,
+    status: 'completed',
+    errorReason: '',
     receivedAt: '2026-05-17T12:00:00.000Z',
+    finalizedAt: '2026-05-17T12:00:00.000Z',
     correlationId: null,
   }
   const h1 = computeEntryHash(row, null)

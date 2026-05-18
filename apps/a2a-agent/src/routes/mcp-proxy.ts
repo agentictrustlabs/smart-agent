@@ -30,15 +30,17 @@ interface StoredSessionPackage {
   expiresAt: string
 }
 
-// Sprint 1 W2.1 — each downstream MCP gets its own MAC key id for the
-// a2a→MCP signing hop. Person-mcp's `require-inbound-service-auth.ts`
-// rejects unsigned tool calls; the other MCPs do not yet enforce this
-// (`macKeyId` is `null` for them and the call goes unsigned, preserving
-// the pre-W2.1 behavior). When org-mcp/people-group-mcp adopt the same
-// inbound verifier, flip those to their respective `a2a-to-*` keys.
+// Sprint 1 W2.1 / Sprint 4 A.1 — each downstream MCP gets its own MAC
+// key id for the a2a→MCP signing hop. Person-mcp (W2.1) and org-mcp
+// (A.1) both enforce inbound HMAC envelopes via
+// `require-inbound-service-auth.ts`; the remaining MCPs do not yet
+// enforce this (`macKeyId` is `null` for them and the call goes
+// unsigned, preserving the pre-W2.1 behavior). When the remaining MCPs
+// adopt the same inbound verifier, flip those to their respective
+// `a2a-to-*` keys.
 const SERVERS = {
   person:        { url: PERSON_MCP_URL,       audience: 'urn:mcp:server:person'        as const, macKeyId: 'a2a-to-person'        as MacKeyId | null },
-  org:           { url: ORG_MCP_URL,          audience: 'urn:mcp:server:org'           as const, macKeyId: null as MacKeyId | null },
+  org:           { url: ORG_MCP_URL,          audience: 'urn:mcp:server:org'           as const, macKeyId: 'a2a-to-org'           as MacKeyId | null },
   'people-group': { url: PEOPLE_GROUP_MCP_URL, audience: 'urn:mcp:server:people-groups' as const, macKeyId: null as MacKeyId | null },
 } as const
 

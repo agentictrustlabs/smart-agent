@@ -24,6 +24,11 @@ import {
   envKeyForMacKeyId,
   MAC_KEY_IDS,
 } from '@smart-agent/sdk/key-custody'
+import {
+  assertNoForbiddenGcpStaticKeys,
+  type KeyProviderEnv,
+} from './key-provider'
+import { createGcpAuthClient, GCP_AUTH_ENV_KEYS } from '@smart-agent/sdk/key-custody'
 
 export type { MacKeyId }
 export { MAC_KEY_IDS }
@@ -84,10 +89,50 @@ export function buildMacProvider(
         AWS_KMS_MAC_KEY_ID: keyId,
       })
     }
-    case 'vault-transit':
+    case 'gcp-kms': {
+      // GCP-KMS G-PR-1 stub for the per-side inter-service MAC provider.
+      // Same validate → build-auth-client → throw pattern as the other
+      // factories. The MAC-specific identifier is per MacKeyId:
+      // `GCP_KMS_MAC_<MAC_KEY_ID>_VERSION`. Implementation lands in G-PR-5.
+      for (const key of GCP_AUTH_ENV_KEYS) {
+        if (!env[key]) {
+          throw new Error(
+            `buildMacProvider(${macKeyId}): ${key} is required for 'gcp-kms' backend ` +
+              '(GCP-KMS-IMPLEMENTATION-PLAN.md § G1).',
+          )
+        }
+      }
+      if (env.NODE_ENV === 'production') {
+        // The MAC factory accepts a narrower env shape than the
+        // KeyProviderEnv used by the other three factories — coerce via
+        // an indexed read so the shared production-guard helper still
+        // works.
+        assertNoForbiddenGcpStaticKeys(env as KeyProviderEnv)
+      }
+      // Build the auth client so auth-env errors surface before the
+      // staged marker.
+      createGcpAuthClient({
+        GCP_PROJECT_ID: env.GCP_PROJECT_ID as string,
+        GCP_PROJECT_NUMBER: env.GCP_PROJECT_NUMBER as string,
+        GCP_WORKLOAD_IDENTITY_POOL_ID: env.GCP_WORKLOAD_IDENTITY_POOL_ID as string,
+        GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID:
+          env.GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID as string,
+        GCP_SERVICE_ACCOUNT_EMAIL: env.GCP_SERVICE_ACCOUNT_EMAIL as string,
+      })
+      const gcpVersionEnvName = `GCP_KMS_MAC_${macKeyId
+        .replace(/-/g, '_')
+        .toUpperCase()}_VERSION`
+      if (!env[gcpVersionEnvName]) {
+        throw new Error(
+          `buildMacProvider(${macKeyId}): ${gcpVersionEnvName} is required for 'gcp-kms' backend ` +
+            '(GCP-KMS-IMPLEMENTATION-PLAN.md § G5).',
+        )
+      }
       throw new Error(
-        `buildMacProvider(${macKeyId}): 'vault-transit' MAC provider not implemented (sibling)`,
+        `GCP backend not yet implemented for MAC provider "${macKeyId}" (G-PR-5). ` +
+          'See output/GCP-KMS-IMPLEMENTATION-PLAN.md § G5.',
       )
+    }
     default:
       throw new Error(`buildMacProvider: unknown A2A_KMS_BACKEND: ${backend}`)
   }

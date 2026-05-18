@@ -5,11 +5,9 @@
  *   - No person-mcp /tools/ traffic in this file — all signing happens
  *     server-side and the credential row is written directly via SQLite
  *     for the dev-mode self-issue path.
- *   - One direct-HTTP holder-wallet lookup remains
- *     (`GET ${walletUrl}/wallet/<principal>/<context>`); marked with a
- *     TODO(phase-4) below — person-mcp owner needs to expose this as an
- *     MCP tool (e.g. `ssi_get_holder_wallet`) so it can ride the A2A
- *     proxy instead of going direct.
+ *   - Holder-wallet lookup goes through person-mcp's `ssi_get_holder_wallet`
+ *     tool via `callMcp('person', 'ssi_get_holder_wallet', ...)` so this
+ *     file no longer touches `PERSON_MCP_URL` directly.
  *
  * For users acting as the pool/round admin for their *own* pool/round, the
  * normal cred-issuance flow doesn't fit: the admin is also the only
@@ -49,6 +47,7 @@ import {
   signRootDelegation,
   SPEC004_SELECTORS,
 } from '@smart-agent/sdk'
+import { callMcp, McpCallError } from '@/lib/clients/mcp-client'
 
 interface SelfIssueInput {
   /** The user's smart account (delegator + holder). */
@@ -95,30 +94,28 @@ export async function selfIssueMarketplaceDelegation(
   //    onboarding flow (HubOnboardClient → provisionHolderWalletViaSession)
   //    to have already created the holder wallet for this principal.
   //
-  // TODO(phase-4): this lookup is currently a direct HTTP GET on person-mcp.
-  // Wrap as an `ssi_get_holder_wallet` MCP tool in person-mcp so this can
-  // route via `callMcp('person', 'ssi_get_holder_wallet', { principal,
-  // walletContext })` and stop hitting PERSON_MCP_URL directly.
-  const walletUrl = process.env.SSI_WALLET_URL ?? process.env.PERSON_MCP_URL ?? 'http://localhost:3500'
+  // Lookup goes through person-mcp's `ssi_get_holder_wallet` tool via the
+  // A2A `/mcp/person/<tool>` proxy. `callMcp` returns the unwrapped JSON
+  // body the tool writes via mcpText() — type the result as the inner
+  // shape, NOT the `{ content: [{ text }] }` envelope.
   const walletContext = 'default'
   let holderWalletId: string
   try {
-    const lookup = await fetch(
-      `${walletUrl}/wallet/${encodeURIComponent(principal)}/${encodeURIComponent(walletContext)}`,
-      { cache: 'no-store' },
-    )
-    if (!lookup.ok) {
+    const lookup = await callMcp<{
+      found: boolean
+      holderWalletId?: string
+    }>('person', 'ssi_get_holder_wallet', { principal, walletContext })
+    if (!lookup.found || !lookup.holderWalletId) {
       return {
         ok: false,
         error: `holder wallet not provisioned for ${principal} — onboarding flow should have created it`,
       }
     }
-    const j = (await lookup.json()) as { holderWalletId?: string }
-    if (!j.holderWalletId) {
-      return { ok: false, error: 'wallet lookup ok but no holderWalletId' }
-    }
-    holderWalletId = j.holderWalletId
+    holderWalletId = lookup.holderWalletId
   } catch (e) {
+    if (e instanceof McpCallError) {
+      return { ok: false, error: `wallet lookup failed: ${e.message}` }
+    }
     return { ok: false, error: `wallet lookup threw: ${e instanceof Error ? e.message : String(e)}` }
   }
 

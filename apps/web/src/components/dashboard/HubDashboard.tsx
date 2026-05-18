@@ -6,7 +6,7 @@ import { db, schema } from '@/db'
 import { getUserOrgs } from '@/lib/get-user-orgs'
 import { getConnectedOrgs } from '@/lib/get-org-members'
 import { NeedsAttentionCard, type AttentionItem } from '@/components/catalyst/NeedsAttentionCard'
-import { hubCountAgentsByType, hubCountEdges } from '@/lib/clients/hub-client'
+import { hubCountAgentsByType, hubCountEdges, hubListRounds } from '@/lib/clients/hub-client'
 import { getPersonAgentForUser, getAiAgentsForOrg } from '@/lib/agent-registry'
 import { getAgentMetadata } from '@/lib/agent-metadata'
 import { listHubsForOnboarding } from '@/lib/actions/onboarding/setup-agent.action'
@@ -78,12 +78,12 @@ async function getActionCounts(hubId: string): Promise<ActionCounts> {
 
   // Open rounds the viewer can apply to: hub-scoped, status `open`, and
   // submission deadline still in the future. Best-effort; the discovery
-  // SDK call is independent of the viewer's identity, so this is a pure
-  // hub-level count (good enough for a dashboard summary).
+  // read is independent of the viewer's identity, so this is a pure
+  // hub-level count (good enough for a dashboard summary). Routes through
+  // hub-mcp via `callHub('hub', 'discovery:list_rounds')` so the in-process
+  // LRU cache absorbs repeated dashboard hits.
   try {
-    const { DiscoveryService } = await import('@smart-agent/discovery')
-    const discovery = DiscoveryService.fromEnv()
-    const rounds = await discovery.listRounds({ hubId, viewerAgentId: '', includeClosed: false })
+    const rounds = await hubListRounds({ hubId, viewerAgentId: '', includeClosed: false })
     const nowMs = Date.now()
     openRounds = rounds.filter(r => {
       const dl = r.deadline ? Date.parse(r.deadline) : 0

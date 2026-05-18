@@ -22,7 +22,7 @@
  */
 import { toBase64Url } from '@smart-agent/sdk'
 import { buildMcpMacProvider, type KmsMacProvider } from '@smart-agent/sdk/key-custody'
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import type { Address, Hex } from 'viem'
 
 const A2A_AGENT_URL = process.env.A2A_AGENT_URL ?? 'http://127.0.0.1:3100'
@@ -36,20 +36,31 @@ function macProvider(): KmsMacProvider {
   return cachedMacProvider
 }
 
+/** Hex SHA-256 of the raw body bytes — bound into the canonical string. */
+function sha256Hex(bodyRaw: string): string {
+  return createHash('sha256').update(bodyRaw, 'utf8').digest('hex')
+}
+
 async function signedFetch(
   path: string,
-  sessionId: string,
+  _sessionId: string,
   body: Record<string, unknown>,
 ): Promise<Response> {
   const bodyJson = JSON.stringify(body)
   const timestamp = Math.floor(Date.now() / 1000)
-  const canonical = `${bodyJson}:${timestamp}:${sessionId}`
+  // Hardening §1.10 — fresh per-request nonce. Bound INTO the canonical
+  // so a captured envelope can't be replayed within the 60s timestamp
+  // window OR against a different path/body.
+  const nonce = randomUUID()
+  // Canonical-v2: `${ts}|${nonce}|${path}|${sha256(body)}`. Same shape
+  // the web→a2a and a2a→mcp hops use. The legacy `${body}:${ts}:${sessionId}`
+  // canonical did not bind the nonce → replay vulnerable. `sessionId`
+  // remains indirectly bound through `path` (every inter-service route
+  // is mounted under `/session/:id/<verb>`).
+  const canonical = `${timestamp}|${nonce}|${path}|${sha256Hex(bodyJson)}`
   const canonicalMessage = new TextEncoder().encode(canonical)
   const { mac } = await macProvider().generateMac({ canonicalMessage })
   const signature = toBase64Url(mac)
-  // Hardening §1.10 — fresh per-request nonce so a captured envelope
-  // can't be replayed within the 60s timestamp window.
-  const nonce = randomUUID()
   return fetch(`${A2A_AGENT_URL}${path}`, {
     method: 'POST',
     headers: {

@@ -47,6 +47,7 @@ describe('buildSessionAAD', () => {
     accountAddress: '0xAbC0000000000000000000000000000000000001',
     chainId: 31337,
     expiresAt: '2026-05-17T12:00:00.000Z',
+    keyVersion: 'local-v1',
   }
 
   it('is deterministic for identical inputs', () => {
@@ -79,10 +80,23 @@ describe('buildSessionAAD', () => {
     assert.notDeepEqual(Array.from(a), Array.from(b))
   })
 
+  it('differs when keyVersion differs (P0-6: per-version isolation)', () => {
+    const a = buildSessionAAD(base)
+    const b = buildSessionAAD({ ...base, keyVersion: 'aws-kms:00000000-0000-0000-0000-000000000000' })
+    assert.notDeepEqual(Array.from(a), Array.from(b))
+  })
+
   it('end-to-end: ciphertext bound under (id_a) fails to decrypt with (id_b)', async () => {
     const aadA = buildSessionAAD(base)
     const aadB = buildSessionAAD({ ...base, sessionId: 'sa_attacker' })
     const enc = await encryptPayload({ secret: 'x' }, SECRET, aadA)
     await assert.rejects(() => decryptPayload(enc, SECRET, aadB))
+  })
+
+  it('P0-6: ciphertext bound under keyVersion=v1 fails to decrypt under keyVersion=v2', async () => {
+    const aadV1 = buildSessionAAD({ ...base, keyVersion: 'local-v1' })
+    const aadV2 = buildSessionAAD({ ...base, keyVersion: 'local-v2' })
+    const enc = await encryptPayload({ secret: 'rotated' }, SECRET, aadV1)
+    await assert.rejects(() => decryptPayload(enc, SECRET, aadV2))
   })
 })

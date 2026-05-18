@@ -6,7 +6,9 @@
  *     viem LocalAccount that can sign a message.
  *   - 'aws-kms' → throws cleanly with the "not yet implemented (K4 PR-2)"
  *     marker so a misconfigured prod boot fails fast.
- *   - 'vault-transit' → throws cleanly with the deferred-sibling marker.
+ *   - 'vault-transit' → now falls into the unknown-backend branch (the
+ *                       deferred-sibling stub was removed in GCP-KMS G-PR-1
+ *                       per orchestrator decision: AWS + GCP only).
  *
  * Tests mutate `process.env` and reset the singleton between cases via the
  * `__resetMasterSignerForTests` hook — matches the pattern established in
@@ -123,11 +125,13 @@ test("A2A_KMS_BACKEND='aws-kms' with full valid env → constructs successfully"
   delete process.env.AWS_KMS_SIGNER_KEY_ID
 })
 
-test("A2A_KMS_BACKEND='vault-transit' → throws deferred-sibling error", () => {
+test("A2A_KMS_BACKEND='vault-transit' → falls into unknown-backend branch (GCP-KMS G-PR-1)", () => {
+  // The vault-transit deferred-sibling stub was removed in G-PR-1
+  // (GCP-KMS-IMPLEMENTATION-PLAN § G6, orchestrator decision: AWS + GCP only).
   process.env.A2A_KMS_BACKEND = 'vault-transit'
   assert.throws(
     () => getMasterSignerBackend(),
-    /vault-transit signer not implemented \(deferred sibling\)/,
+    /unknown A2A_KMS_BACKEND: vault-transit/,
   )
 })
 

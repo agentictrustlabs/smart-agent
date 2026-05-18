@@ -7,6 +7,12 @@ import { CATALYST_DID, ensureMembershipRegistered } from './issuers/membership.j
 import { ensureMarketplaceCredsRegistered } from './issuers/marketplaceCreds.js'
 import { credentialRoutes } from './api/credential.js'
 import { oid4vciRoutes } from './api/oid4vci.js'
+// Sprint 4 A.1 — inbound service-auth on org-mcp's tool surface.
+import {
+  requireInboundServiceAuth,
+  MAX_CLOCK_SKEW_SECONDS as INBOUND_MAX_CLOCK_SKEW_SECONDS,
+} from './auth/require-inbound-service-auth.js'
+import { cleanupOldNonces as cleanupInboundNonces } from './auth/replay-nonce.js'
 
 // ───────────────────────────────────────────────────────────────────────
 // Tool registry — mirrors person-mcp's pattern. All tools are gated by
@@ -97,10 +103,22 @@ app.get('/.well-known/agent.json', (c) => c.json({
   },
 }))
 
+// Sprint 4 A.1 — inbound service-auth on tool invocations. The MCP
+// tool surface used to accept any caller that could reach the HTTP
+// port; now every tool call must carry a valid `X-SA-Service: a2a-agent`
+// HMAC envelope. The mcp-proxy in a2a-agent re-signs each forwarded
+// request with the `a2a-to-org` MAC key before calling org-mcp.
+//
+// Applied per-route (not via `app.use('/tools/*')`) because Hono's
+// wildcard pattern also catches the bare `GET /tools` listing route,
+// which is an operator-debug surface that leaks no PII and stays open.
+// `/health` is similarly open.
+const toolsAuth = requireInboundServiceAuth()
+
 // Tool dispatcher — same pattern as person-mcp
 app.get('/tools', (c) => c.json({ tools: toolDefinitions }))
 
-app.post('/tools/:toolName', async (c) => {
+app.post('/tools/:toolName', toolsAuth, async (c) => {
   const toolName = c.req.param('toolName')
   const body = await c.req.json<{ tool?: string; args?: Record<string, unknown> }>()
   const actualTool = body.tool ?? toolName
@@ -129,6 +147,21 @@ async function main() {
   console.log(`[org-mcp] ${config.displayName} @ ${CATALYST_DID}`)
   console.log(`[org-mcp] tools: ${Object.keys(toolHandlers).length}`)
   console.log(`[org-mcp] listening on http://localhost:${config.port}`)
+
+  // Sprint 4 A.1 — replay-nonce cache GC. Nonces older than 2× the
+  // timestamp-skew window are safe to evict (the timestamp check alone
+  // would reject any envelope that old). 5-minute interval; .unref() so
+  // the timer never holds the process open.
+  const NONCE_GC_INTERVAL_MS = 5 * 60 * 1000
+  const NONCE_MAX_AGE_SECONDS = 2 * INBOUND_MAX_CLOCK_SKEW_SECONDS
+  setInterval(() => {
+    try {
+      const deleted = cleanupInboundNonces(NONCE_MAX_AGE_SECONDS)
+      if (deleted > 0) console.log(`[org-mcp nonce-gc] evicted ${deleted} expired replay-nonce rows`)
+    } catch (err) {
+      console.error('[org-mcp nonce-gc] failed:', err)
+    }
+  }, NONCE_GC_INTERVAL_MS).unref()
 }
 
 main().catch((err) => {
