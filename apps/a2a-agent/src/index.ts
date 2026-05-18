@@ -23,6 +23,7 @@ import {
   assertLegacySessionPolicy,
   assertProductionKeyHygiene,
   assertAuditSinkConfigured,
+  assertGcpEnvComplete,
 } from './lib/policy-startup'
 import { cleanupOldNonces } from './auth/replay-nonce'
 import { MAX_CLOCK_SKEW_SECONDS } from './auth/inter-service'
@@ -125,6 +126,16 @@ assertMarketplacePolicy()
 // also calls the shared helper from the AWS arm so lazy code paths
 // can't miss the check.
 assertProductionKeyHygiene()
+
+// GCP-KMS G-PR-6 — top-level "is the GCP env fully provisioned" check.
+// Companion to assertProductionKeyHygiene: that helper enforces what must
+// NOT be set (forensics-liability env vars); this one enforces what MUST
+// be set when A2A_KMS_BACKEND='gcp-kms' — every identifier across the
+// session envelope, master signer, tool-executor signers, and
+// inter-service MAC keys. The error message lists EVERY missing var in
+// one punch list so the operator can fix them all in a single edit.
+// No-op when the backend is not gcp-kms.
+assertGcpEnvComplete()
 
 // Sprint 5 P0-9 — DEPLOYER_PRIVATE_KEY hard-fails in production. The
 // `assertDeployerKeyPolicy` helper replaces the prior WARN-only path:

@@ -70,6 +70,13 @@ import {
   type KeyProviderEnv,
   type ProductionKeyBackend,
 } from '../auth/key-provider'
+import {
+  GCP_AUTH_ENV_KEYS,
+  MAC_KEY_IDS,
+  TOOL_EXECUTOR_IDS,
+  envKeyForMacKeyId,
+  toolEnvKeyName,
+} from '@smart-agent/sdk/key-custody'
 import { auditAppend } from './audit'
 
 /**
@@ -789,4 +796,95 @@ export async function assertAuditSinkConfigured(
         '§ AUDIT_CHECKPOINT_SINK_URL.',
     )
   }
+}
+
+// ─── G-PR-6 — GCP env completeness invariant ─────────────────────────
+
+/**
+ * G-PR-6 — Top-level "is the GCP env fully provisioned" check.
+ *
+ * `assertNoForbiddenStaticKeys` (G-PR-1) covers the "what must NOT be set"
+ * side. `validateGcpEnvAndBuildAuthClient` (G-PR-1, in `key-provider.ts`)
+ * is per-factory and fires only when the specific factory is invoked. This
+ * function is the single top-level gate: when `A2A_KMS_BACKEND='gcp-kms'`
+ * (regardless of `NODE_ENV` — see §G7 of the GCP plan), it walks every
+ * required identifier and throws a SINGLE clean error LISTING ALL MISSING
+ * VARS in one message, so an operator gets the full punch list instead
+ * of fail-fast-on-first-missing.
+ *
+ * The required set:
+ *
+ *   Always (auth + session envelope + master signer):
+ *     - every key in `GCP_AUTH_ENV_KEYS`
+ *     - `GCP_KMS_SESSION_KEK`
+ *     - `GCP_KMS_MASTER_SIGNER_VERSION`
+ *
+ *   Tool executors (every entry in `TOOL_EXECUTOR_IDS`):
+ *     - `GCP_KMS_TOOL_EXECUTOR_<TOOL>_VERSION` per id (via `toolEnvKeyName`)
+ *
+ *   MAC keys (every entry in `MAC_KEY_IDS`):
+ *     - `GCP_KMS_MAC_<EDGE>_VERSION` per id (via `envKeyForMacKeyId`)
+ *
+ * When `A2A_KMS_BACKEND !== 'gcp-kms'` the function is a no-op — the AWS
+ * path has its own per-factory env validation and the local-aes path is
+ * exclusively dev.
+ *
+ * Dev posture (NODE_ENV !== 'production' + A2A_KMS_BACKEND='gcp-kms'):
+ * the assert STILL fires. The rationale matches `assertPolicyCompleteness`
+ * — catching env-config mistakes at dev boot is the point. The GCP path
+ * is operational only when every identifier is set; making dev tolerant
+ * of half-configured env hides bugs until production deploy.
+ */
+export interface GcpEnvCompleteEnv extends KeyProviderEnv {
+  NODE_ENV?: string
+  A2A_KMS_BACKEND?: string
+}
+
+export function assertGcpEnvComplete(
+  envIn: GcpEnvCompleteEnv = process.env as GcpEnvCompleteEnv,
+): void {
+  if (envIn.A2A_KMS_BACKEND !== 'gcp-kms') return
+
+  const missing: string[] = []
+
+  // Auth identifiers (5 required).
+  for (const key of GCP_AUTH_ENV_KEYS) {
+    const v = envIn[key]
+    if (v === undefined || v === '') missing.push(key)
+  }
+
+  // Session envelope KEK.
+  if (!envIn.GCP_KMS_SESSION_KEK) missing.push('GCP_KMS_SESSION_KEK')
+
+  // Master EOA signer.
+  if (!envIn.GCP_KMS_MASTER_SIGNER_VERSION) {
+    missing.push('GCP_KMS_MASTER_SIGNER_VERSION')
+  }
+
+  // Tool executor signers — one per TOOL_EXECUTOR_IDS.
+  for (const id of TOOL_EXECUTOR_IDS) {
+    const envName = toolEnvKeyName(id, 'gcp-kms')
+    const v = envIn[envName]
+    if (v === undefined || v === '') missing.push(envName)
+  }
+
+  // Inter-service MAC keys — one per MAC_KEY_IDS.
+  for (const id of MAC_KEY_IDS) {
+    const envName = envKeyForMacKeyId(id).gcpKms
+    const v = envIn[envName]
+    if (v === undefined || v === '') missing.push(envName)
+  }
+
+  if (missing.length === 0) return
+
+  // List EVERY missing var in one message — the operator wants the full
+  // punch list, not a fail-fast on the first one.
+  const sorted = [...missing].sort()
+  throw new Error(
+    "policy-startup (assertGcpEnvComplete): A2A_KMS_BACKEND='gcp-kms' " +
+      `but ${sorted.length} required env var(s) missing: ${sorted.join(', ')}. ` +
+      'Set every identifier in the Vercel project env before redeploying. ' +
+      'See docs/operator/gcp-kms-provisioning.md for the provisioning runbook ' +
+      'and scripts/diagnose-gcp-kms.ts for the deploy-time smoke test.',
+  )
 }

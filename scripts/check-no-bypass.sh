@@ -231,8 +231,22 @@ fi
 # routes. Centralising every KMS / cloud-auth client behind the
 # `key-custody` barrel preserves the substrate-independence rule (P1):
 # we can swap or remove a backend with a single-directory blast radius.
+#
+# Operator workstation tools under scripts/ are an explicit exception
+# (mirrors the AWS rule, which scopes to runtime call paths and excludes
+# scripts/). The exemption is per-file via GCP_SDK_SCRIPT_ALLOWLIST so
+# every operator import is named and intentional.
 GCP_SDK_PATTERN='@google-cloud/kms|google-auth-library'
 GCP_SDK_ALLOWED_DIR="$ROOT/packages/sdk/src/key-custody"
+# Per-file allowlist of operator workstation scripts that may import the
+# GCP KMS / google-auth-library SDKs directly. Path is relative to repo
+# root. Each entry must be operator tooling, not a runtime call path.
+GCP_SDK_SCRIPT_ALLOWLIST=(
+  # G-PR-6 deploy-time smoke test (sibling of scripts/kms-signer-address.ts
+  # for AWS). Operator-facing, runs from a workstation against the same
+  # env the agent boots with. Not part of any runtime call path.
+  "scripts/diagnose-gcp-kms.ts"
+)
 GCP_SDK_VIOLATIONS=()
 if command -v grep >/dev/null 2>&1; then
   # Search ALL TS/JS source files in the repo, then filter to only
@@ -245,6 +259,16 @@ if command -v grep >/dev/null 2>&1; then
     case "$file" in
       "$GCP_SDK_ALLOWED_DIR"/*) continue ;;
     esac
+    # Skip if the file is on the per-file operator-script allowlist.
+    rel=${file#"$ROOT/"}
+    skip=0
+    for allowed in "${GCP_SDK_SCRIPT_ALLOWLIST[@]}"; do
+      if [[ "$rel" == "$allowed" ]]; then
+        skip=1
+        break
+      fi
+    done
+    [[ $skip -eq 1 ]] && continue
     # Skip pure comment lines (// or starts with leading * inside a /* */ block).
     content=${line#*:*:}
     trimmed="${content#"${content%%[![:space:]]*}"}"

@@ -1,7 +1,32 @@
 # GCP Cloud KMS — Sibling Backend Implementation Plan
 
-Status: **PROPOSED** (2026-05-17)
+Status: **DONE** (2026-05-17 — all six PRs landed; production-ready)
 Goal: Add `A2A_KMS_BACKEND=gcp-kms` as a sibling to `aws-kms`, with feature-parity across the four key classes (session-package envelope encryption, asymmetric master-EOA signer, tool-executor signers, inter-service MAC). Production environments choose one backend per deployment via env flip; the app code remains backend-agnostic.
+
+## Production readiness (G-PR-6 — 2026-05-17)
+
+The GCP backend is production-ready. Operator-facing artifacts:
+
+- **Operator runbook**: `docs/operator/gcp-kms-provisioning.md` — 12-step
+  provisioning (project, APIs, key ring, keys per class, Workload Identity Pool,
+  service account, IAM bindings, Vercel env). Mirrors the AWS sibling at
+  `docs/operations/kms-signer-setup.md`. Includes the rollback/rotate playbook
+  and the "do NOT set in prod" eyes-only checklist.
+- **Diagnose CLI**: `scripts/diagnose-gcp-kms.ts` — one-shot deploy-time smoke
+  test. Reports env presence + IAM reachability per key class
+  (session/master/tool-executors/MAC) and exits non-zero on any failure.
+- **Boot-time invariant**: `assertGcpEnvComplete(env)` in
+  `apps/a2a-agent/src/lib/policy-startup.ts`, wired into the top-level
+  startup guard set in `apps/a2a-agent/src/index.ts`. Refuses to start when
+  `A2A_KMS_BACKEND='gcp-kms'` AND any required identifier is missing —
+  lists every missing var in ONE error message so the operator gets the
+  full punch list.
+- **Bypass-guard rules**: `scripts/check-no-bypass.sh` rejects any import of
+  `@google-cloud/kms` or `google-auth-library` outside
+  `packages/sdk/src/key-custody/` (G-PR-1 landed this; G-PR-6 verified it).
+
+Test coverage for G-PR-6: `apps/a2a-agent/test/policy-startup-gcp-env-complete.test.ts`
+(7 tests pinning dev + prod + per-class missing branches + cross-backend no-op).
 
 This plan complements `output/KMS-IMPLEMENTATION-PLAN.md` (AWS-primary) and is grounded in the AWS implementation already shipped in `packages/sdk/src/key-custody/`.
 
@@ -347,6 +372,11 @@ Mirror the AWS test surface. For each new file:
 
 ## G10 — IAM + provisioning runbook
 
+Status: **DONE** (G-PR-6, 2026-05-17). Runbook lives at
+`docs/operator/gcp-kms-provisioning.md`. Cross-linked from this plan, from
+`docs/operations/kms-signer-setup.md` (AWS sibling), and from the
+diagnose CLI's `--help` output.
+
 Add `docs/operator/gcp-kms-provisioning.md` (sibling of any existing AWS operator runbook):
 
 1. Create GCP project.
@@ -370,14 +400,16 @@ Add `docs/operator/gcp-kms-provisioning.md` (sibling of any existing AWS operato
 
 ## G11 — Phased delivery
 
-| Phase | Scope | PRs |
+Status: **DONE** (G-PR-1..G-PR-6 all landed by 2026-05-17).
+
+| Phase | Scope | Status |
 |---|---|---|
-| G-PR-1 | `gcp-auth.ts` + production guard + factory case throwing "not yet implemented" | 1 |
-| G-PR-2 | `gcp-kms-provider.ts` (session envelope) + tests + factory wired | 1 |
-| G-PR-3 | `gcp-kms-signer.ts` + `viem-kms-account` integration + tests + factory wired | 1 |
-| G-PR-4 | Tool-executor GCP arm + tests | 1 |
-| G-PR-5 | `gcp-kms-mac.ts` + tests + factory wired | 1 |
-| G-PR-6 | Production startup invariants + bypass-guard rules + operator runbook | 1 |
+| G-PR-1 | `gcp-auth.ts` + production guard + factory case throwing "not yet implemented" | DONE |
+| G-PR-2 | `gcp-kms-provider.ts` (session envelope) + tests + factory wired | DONE |
+| G-PR-3 | `gcp-kms-signer.ts` + `viem-kms-account` integration + tests + factory wired | DONE |
+| G-PR-4 | Tool-executor GCP arm + tests | DONE |
+| G-PR-5 | `gcp-kms-mac.ts` + tests + factory wired | DONE |
+| G-PR-6 | Production startup invariants (`assertGcpEnvComplete`) + bypass-guard rules + operator runbook (`docs/operator/gcp-kms-provisioning.md`) + diagnose CLI (`scripts/diagnose-gcp-kms.ts`) | DONE |
 
 Sequencing rule: each PR is independently shippable and adds one provider arm. The factory throws "GCP backend not yet ready for <X>" until that arm lands. This mirrors how the AWS PRs (K2 → K4 PR-1 → K4 PR-2 → K5 → K3-ext) shipped.
 
