@@ -275,15 +275,18 @@ export async function resolveSpec004Chain(
   const leafSalt = BigInt(Math.floor(Math.random() * Number.MAX_SAFE_INTEGER))
   // The leaf's `delegator` MUST equal the admin delegation's `delegate`
   // (the cred holder) — that's what DelegationManager's chain walk checks
-  // when validating index N+1's delegate equals index N's delegator. In
-  // the legacy single-user path the session's accountAddress happened to
-  // match the holder, but in the stranger-applies-to-round flow the
-  // admin → holder delegation's delegator is the fund agent, not the
-  // session principal. Reading the holder directly from the cred is the
-  // robust source of truth.
+  // when validating index N+1's delegate equals index N's delegator.
+  //
+  // Option A (ERC-4337-only redeem): the leaf's `delegate` is the user's
+  // own smart account (= the redeem msg.sender via EntryPoint →
+  // AgentAccount.execute → DelegationManager). DelegationManager's
+  // `i==0 && d.delegate != msg.sender → revert InvalidDelegate` check
+  // therefore passes because the smart account IS the msg.sender at the
+  // DelegationManager call site. The session-signer EOA still SIGNS the
+  // leaf, but it is no longer the leaf's `delegate`.
   const leaf = await signChildDelegation({
     delegator: adminDelegation.delegate as Address,
-    delegate: status.sessionKeyAddress as Address,
+    delegate: status.accountAddress as Address,
     parentHash: parentHash as Hex,
     caveats: leafCaveats,
     salt: leafSalt,

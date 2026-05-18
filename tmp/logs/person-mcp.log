@@ -12,10 +12,6 @@
 --> GET /health [32m200[0m 0ms
 <-- GET /health
 --> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 1ms
-<-- GET /health
---> GET /health [32m200[0m 1ms
 [person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
     at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
@@ -36,8 +32,6 @@
 <-- GET /health
 --> GET /health [32m200[0m 0ms
 <-- GET /health
---> GET /health [32m200[0m 1ms
-<-- GET /health
 --> GET /health [32m200[0m 0ms
 <-- GET /health
 --> GET /health [32m200[0m 0ms
@@ -67,55 +61,6 @@
 --> GET /health [32m200[0m 0ms
 <-- GET /health
 --> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
-    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
-    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
-    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 1ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 1ms
 <-- GET /health
 --> GET /health [32m200[0m 0ms
 <-- GET /health
@@ -202,7 +147,9 @@
 <-- GET /health
 --> GET /health [32m200[0m 0ms
 <-- GET /health
---> GET /health [32m200[0m 0ms
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
 <-- GET /health
 --> GET /health [32m200[0m 0ms
 [person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
@@ -210,6 +157,38 @@
     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
     at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
     at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
 <-- GET /health
 --> GET /health [32m200[0m 0ms
 <-- GET /health
@@ -236,6 +215,33 @@
 --> GET /health [32m200[0m 0ms
 <-- GET /health
 --> GET /health [32m200[0m 0ms
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
 <-- GET /health
 --> GET /health [32m200[0m 0ms
 <-- GET /health
@@ -268,176 +274,10 @@
 --> GET /health [32m200[0m 0ms
 <-- GET /health
 --> GET /health [32m200[0m 0ms
-[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
-    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
-    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
-    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
-[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
-    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
-    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
-    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
-[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
-    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
-    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
-    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
-[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
-    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
-    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
-    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
-[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
-    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
-    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
-    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
-[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
-    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
-    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
-    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
-[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
-    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
-    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
-    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
-[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
-    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
-    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
-    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
-[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
-    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
-    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
-    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
-[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
-    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
-    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
-    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
-[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
-    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
-    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
-    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
-[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
-    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
-    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
-    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
-[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
-    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
-    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
-    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
-[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
-    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
-    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
-    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
-[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
-    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
-    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
-    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
-[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
-    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
-    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
-    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
-[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
-    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
-    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
-    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
-[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
-    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
-    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
-    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
-[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
-    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
-    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
-    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
-[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
-    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
-    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
-    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
-[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
-    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
-    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
-    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
-[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
-    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
-    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
-    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
-[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
-    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
-    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
-    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
-[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
-    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
-    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
-    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
-[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
-    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
-    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
-    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
-[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
-    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
-    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
-    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
-[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
-    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
-    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
-    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
-[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
-    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
-    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
-    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
-[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
-    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
-    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
-    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
-[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
-    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
-    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
-    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
-[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
-    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
-    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
-    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
-[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
-    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
-    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
-    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
-[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
-    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
-    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
-    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
-[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
-    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
-    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
-    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
 <-- GET /health
 --> GET /health [32m200[0m 0ms
 [person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
@@ -445,3 +285,5 @@
     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
     at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
     at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+<-- GET /health
+--> GET /health [32m200[0m 0ms

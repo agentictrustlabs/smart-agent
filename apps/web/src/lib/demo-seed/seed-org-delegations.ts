@@ -5,9 +5,15 @@
  *
  * For every ORGANIZATION_GOVERNANCE edge with ROLE_OWNER (PersonAgent owns
  * Org), mint a signed Org→UserSmartAccount delegation and persist it in a
- * parallel DATA_ACCESS_DELEGATION edge. The delegation is signed by the
- * deployer key, which is an ERC-1271 owner of every org's AgentAccount —
- * so this is legitimate org-owner authorization, not a bypass.
+ * parallel DATA_ACCESS_DELEGATION edge.
+ *
+ * The delegation is EIP-712 signed by the org's OWN owner EOA (the
+ * deterministic-from-label EOA that was set as initialOwner at factory
+ * deploy time — see `agent-self-register.ts`). Per the seed-as-self
+ * refactor, the deployer key is no longer a co-owner of org smart
+ * accounts, so deployer-signed delegations would fail ERC-1271
+ * validation at runtime redemption. The org's own EOA IS an owner of
+ * its AgentAccount, so ERC-1271 validates it correctly.
  *
  * At runtime an admin user bootstraps their OWN A2A session, reads this
  * cross-delegation off the edge, and presents it to org-mcp via the
@@ -22,8 +28,7 @@
 
 import { db, schema } from '@/db'
 import { eq } from 'drizzle-orm'
-import { privateKeyToAccount } from 'viem/accounts'
-import { keccak256, toBytes, encodePacked } from 'viem'
+import { keccak256, encodePacked } from 'viem'
 import {
   hashDelegation, encodeTimestampTerms, buildCaveat, buildDataScopeCaveat,
   buildDelegateBindingCaveat,
@@ -36,6 +41,7 @@ import {
 } from '@/lib/contracts'
 import { getPersonAgentForUser } from '@/lib/agent-registry'
 import { agentRelationshipAbi as relAbi } from '@smart-agent/sdk'
+import { resolveAgentIdentity } from './agent-self-register'
 
 const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? '31337')
 const ORG_AUDIENCE = 'urn:mcp:server:org'
@@ -79,16 +85,14 @@ export interface OrgGovernancePair {
  * the org against org-mcp.
  */
 export async function seedOrgCrossDelegations(pairs: OrgGovernancePair[]): Promise<number> {
-  const deployerKey = process.env.DEPLOYER_PRIVATE_KEY as `0x${string}` | undefined
   const delegationManagerAddr = process.env.DELEGATION_MANAGER_ADDRESS as `0x${string}` | undefined
   const timestampEnforcerAddr = process.env.TIMESTAMP_ENFORCER_ADDRESS as `0x${string}` | undefined
   const relAddr = process.env.AGENT_RELATIONSHIP_ADDRESS as `0x${string}` | undefined
-  if (!deployerKey || !delegationManagerAddr || !timestampEnforcerAddr || !relAddr) {
-    console.warn('[seed-org-deleg] missing env (DEPLOYER_PRIVATE_KEY, DELEGATION_MANAGER_ADDRESS, TIMESTAMP_ENFORCER_ADDRESS, AGENT_RELATIONSHIP_ADDRESS)')
+  if (!delegationManagerAddr || !timestampEnforcerAddr || !relAddr) {
+    console.warn('[seed-org-deleg] missing env (DELEGATION_MANAGER_ADDRESS, TIMESTAMP_ENFORCER_ADDRESS, AGENT_RELATIONSHIP_ADDRESS)')
     return 0
   }
 
-  const deployer = privateKeyToAccount(deployerKey)
   const publicClient = getPublicClient()
 
   let created = 0
@@ -113,7 +117,14 @@ export async function seedOrgCrossDelegations(pairs: OrgGovernancePair[]): Promi
     const orgLower = orgAddress.toLowerCase() as `0x${string}`
     const personLower = personAgent.toLowerCase() as `0x${string}`
 
-    // Build delegation: deployer signs as ERC-1271 owner of org's smart account.
+    // Build delegation: org's own owner EOA signs as ERC-1271 owner of
+    // org's smart account. The deterministic-from-label EOA is the org's
+    // initialOwner at factory deploy time (seed-as-self pattern), so
+    // `_owners[recovered] == true` in AgentAccount._verifyEcdsa.
+    const orgIdentity = await resolveAgentIdentity(orgLower)
+    if (!orgIdentity) {
+      throw new Error(`[seed-org-deleg] cannot resolve owner EOA for org ${orgLower} — was it deployed via one of the seed-*-onchain files? (no fallback to deployer key)`)
+    }
     const now = Math.floor(Date.now() / 1000)
     const expiresAt = now + 365 * 24 * 60 * 60 // 1 year
     const salt = BigInt(keccak256(encodePacked(['address', 'address', 'string'], [orgLower, userSmartAccount, saltLabel])))
@@ -140,7 +151,7 @@ export async function seedOrgCrossDelegations(pairs: OrgGovernancePair[]): Promi
       CHAIN_ID,
       delegationManagerAddr,
     )
-    const signature = await deployer.signMessage({ message: { raw: delHash } })
+    const signature = await orgIdentity.eoa.signMessage({ message: { raw: delHash } })
 
     const signedDelegation = {
       ...delegation,

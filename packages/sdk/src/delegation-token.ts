@@ -217,8 +217,14 @@ export async function verifyDelegationToken(
     return { valid: false, error: 'Session key address mismatch' }
   }
 
-  if (claims.delegation.delegate.toLowerCase() !== claims.sessionKeyAddress.toLowerCase()) {
-    return { valid: false, error: 'Delegation delegate does not match session key' }
+  // Option A: the delegation's `delegate` is the user's smart account
+  // (= claims.sub). The session signer (claims.sessionKeyAddress) is a
+  // registered owner of that smart account and SIGNED the delegation via
+  // the smart account's ERC-1271 path. The on-chain leaf-delegate /
+  // msg.sender check inside DelegationManager resolves to the smart
+  // account when the userOp is submitted by the smart account.
+  if (claims.delegation.delegate.toLowerCase() !== claims.sub.toLowerCase()) {
+    return { valid: false, error: 'Delegation delegate does not match smart account (claims.sub)' }
   }
 
   if (new Date(claims.expiresAtISO) < new Date()) {

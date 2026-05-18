@@ -150,10 +150,18 @@ session.post('/package', async (c) => {
     return c.json({ error: 'Session already activated or revoked' }, 400)
   }
 
-  // Verify delegation.delegate matches the session key we generated
-  if (!pendingSession.sessionKeyAddress ||
-      body.delegation.delegate.toLowerCase() !== pendingSession.sessionKeyAddress.toLowerCase()) {
-    return c.json({ error: 'Delegation delegate does not match session key' }, 400)
+  // Option A (ERC-4337-only redeem) — the leaf delegation's `delegate`
+  // is the user's own smart account, NOT the session-signer EOA. This
+  // is the precondition that makes DelegationManager._validateDelegation's
+  //   if (i==0 && d.delegate != msg.sender) revert InvalidDelegate
+  // pass when the redeem is routed via userOp(sender=smartAccount) →
+  // AgentAccount.execute(DelegationManager, redeemDelegation(...)).
+  //
+  // The session-signer EOA still SIGNS the delegation (we verify that
+  // signature via ERC-1271 against the smart account below — the session
+  // signer is a registered owner). But it is no longer the `delegate`.
+  if (body.delegation.delegate.toLowerCase() !== pendingSession.accountAddress.toLowerCase()) {
+    return c.json({ error: 'Delegation delegate must equal session account (smart account)' }, 400)
   }
 
   // Verify delegation.delegator matches the account address on the session

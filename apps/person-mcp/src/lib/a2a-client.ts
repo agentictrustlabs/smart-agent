@@ -3,9 +3,11 @@
  *
  * Mirrors org-mcp's `a2a-client.ts`. Person-mcp does NOT hold a wallet; any
  * on-chain write a person-mcp tool needs is forwarded to a2a-agent's
- * `/session/:id/redeem-tx` endpoint. The session was opened by the user's
- * smart-account session (web action layer); a2a-agent redeems the user's
- * root delegation against the tool's TOOL_POLICIES-gated target.
+ * `/session/:id/redeem-via-account` endpoint. Under Option A every on-chain
+ * write routes through ERC-4337 EntryPoint with the master EOA as the
+ * gas-paying bundler. The session was opened by the user's smart-account
+ * session (web action layer); a2a-agent redeems the user's root
+ * delegation against the tool's TOOL_POLICIES-gated target.
  *
  * Authentication is the standard inter-service HMAC handshake. After KMS
  * migration K3-extension, signing routes through `buildMcpMacProvider`
@@ -94,7 +96,7 @@ export async function callA2aRedeem(
     value: req.value.toString(),
     callData: req.callData,
   }
-  const res = await signedFetch(`/session/${sessionId}/redeem-tx`, sessionId, body)
+  const res = await signedFetch(`/session/${sessionId}/redeem-via-account`, sessionId, body)
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
     throw new Error(`a2a redeem failed (${res.status}): ${(err as { error?: string }).error ?? res.statusText}`)

@@ -102,9 +102,15 @@ export async function verifyDelegationAndExtractPrincipal(
     return { error: `Invalid audience: ${claims.aud}` }
   }
 
-  // ─── Layer 3: delegate == session key ──────────────────────────
-  if (claims.delegation.delegate.toLowerCase() !== claims.sessionKeyAddress.toLowerCase()) {
-    return { error: 'Delegation delegate does not match session key' }
+  // ─── Layer 3: delegate == smart account (Option A) ────────────
+  // The on-chain leaf-delegate check inside DelegationManager requires
+  // msg.sender == leaf.delegate; under Option A the userOp is submitted
+  // by the user's smart account (= claims.sub), so the off-chain
+  // delegation's `delegate` field must equal that smart account too.
+  // The session signer's authorization comes from being a registered
+  // owner of the smart account, not from being the delegate.
+  if (claims.delegation.delegate.toLowerCase() !== claims.sub.toLowerCase()) {
+    return { error: 'Delegation delegate does not match smart account (claims.sub)' }
   }
 
   // ─── Layer 4: Compute EIP-712 delegation hash ─────────────────

@@ -24,8 +24,8 @@
  */
 
 import {
-  deploySmartAccount, createRelationship, confirmRelationship,
-  getPublicClient, getWalletClient,
+  createRelationship, confirmRelationship,
+  getPublicClient,
 } from '@/lib/contracts'
 import {
   ORGANIZATION_GOVERNANCE, ORGANIZATION_MEMBERSHIP, ALLIANCE,
@@ -35,11 +35,16 @@ import {
   ATL_CONTROLLER,
 } from '@smart-agent/sdk'
 import { agentAccountResolverAbi } from '@smart-agent/sdk'
-import { keccak256, toBytes } from 'viem'
+import { keccak256, toBytes, type PrivateKeyAccount } from 'viem'
 import { ensureCommunityUsers } from '@/lib/demo-seed/lookup-users'
+import {
+  registerAgentAsSelf,
+  writeAgentPropertiesAsSelf,
+  getCounterfactualAddress,
+  deterministicEoaFromLabel,
+} from './agent-self-register'
 
 const TYPE_ORGANIZATION = keccak256(toBytes('atl:OrganizationAgent'))
-const ZERO_HASH = '0x0000000000000000000000000000000000000000000000000000000000000000' as `0x${string}`
 
 // CREATE2 salt buckets — disjoint from catalyst-seed (200001..299999),
 // gc-seed, cil-seed. We use 600000s to avoid collisions on redeploy.
@@ -48,26 +53,57 @@ const SALT_PLAINS        = 600101
 const SALT_DENVER_METRO  = 600201
 
 // ─── Helpers (mirror seed-catalyst-onchain.ts patterns) ───────────────
+//
+// Architectural refactor: every org/hub agent has its own deterministic
+// EOA derived from a stable label. The smart account's `initialOwner`
+// is that EOA and the userOp signer for every resolver write. Sister-
+// network seeds (this file) and catalyst-seed MUST share the SAME label
+// scheme for the catalyst-noco + catalyst-hub addresses so cross-seed
+// `deploy('catalyst:catalystNoco', 200001)` produces the SAME address
+// regardless of which seed runs first.
 
-async function deploy(salt: number) {
-  const wc = getWalletClient()
-  return deploySmartAccount(wc.account!.address, BigInt(salt))
+interface AgentIdentity {
+  eoa: PrivateKeyAccount
+  salt: bigint
+}
+const agentIdentities = new Map<`0x${string}`, AgentIdentity>()
+
+function rememberIdentity(smartAccount: `0x${string}`, id: AgentIdentity) {
+  agentIdentities.set(smartAccount.toLowerCase() as `0x${string}`, id)
+}
+function lookupIdentity(smartAccount: `0x${string}`): AgentIdentity {
+  const id = agentIdentities.get(smartAccount.toLowerCase() as `0x${string}`)
+  if (!id) {
+    throw new Error(`[disciple-networks-seed] No agent identity registered for ${smartAccount} — call deploy(label, salt) before any resolver write.`)
+  }
+  return id
+}
+
+async function deploy(label: string, salt: number): Promise<`0x${string}`> {
+  const eoa = deterministicEoaFromLabel(label)
+  const saltBig = BigInt(salt)
+  const addr = await getCounterfactualAddress(eoa.address, saltBig)
+  rememberIdentity(addr, { eoa, salt: saltBig })
+  return addr
 }
 
 async function register(addr: `0x${string}`, name: string, desc: string, agentType: `0x${string}`) {
-  const wc = getWalletClient()
   const resolver = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}`
   if (!resolver) return
   try {
+    const id = lookupIdentity(addr)
     const pc = getPublicClient()
     const isReg = await pc.readContract({
       address: resolver, abi: agentAccountResolverAbi,
       functionName: 'isRegistered', args: [addr],
     }) as boolean
     if (isReg) return
-    await wc.writeContract({
-      address: resolver, abi: agentAccountResolverAbi,
-      functionName: 'register', args: [addr, name, desc, agentType, ZERO_HASH, ''],
+    await registerAgentAsSelf({
+      smartAccount: addr,
+      signerAccount: id.eoa,
+      salt: id.salt,
+      name, description: desc, agentType,
+      label: `disciple-networks-seed:register(${name})`,
     })
   } catch (e) {
     console.warn(`[disciple-networks-seed] Failed to register ${name}:`, (e as Error).message?.slice(0, 200))
@@ -75,7 +111,6 @@ async function register(addr: `0x${string}`, name: string, desc: string, agentTy
 }
 
 async function setController(agentAddr: `0x${string}`, walletAddr: string) {
-  const wc = getWalletClient()
   const resolver = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}`
   if (!resolver) return
   try {
@@ -85,10 +120,15 @@ async function setController(agentAddr: `0x${string}`, walletAddr: string) {
       args: [agentAddr, ATL_CONTROLLER as `0x${string}`],
     }) as string[]
     if (existing.some(a => a.toLowerCase() === walletAddr.toLowerCase())) return
-    await wc.writeContract({
-      address: resolver, abi: agentAccountResolverAbi,
-      functionName: 'addMultiAddressProperty',
-      args: [agentAddr, ATL_CONTROLLER as `0x${string}`, walletAddr as `0x${string}`],
+    const id = lookupIdentity(agentAddr)
+    await writeAgentPropertiesAsSelf({
+      smartAccount: agentAddr,
+      signerAccount: id.eoa,
+      salt: id.salt,
+      properties: [
+        { kind: 'multiAddress-append', predicate: ATL_CONTROLLER as `0x${string}`, value: walletAddr as `0x${string}` },
+      ],
+      label: `disciple-networks-seed:setController(${agentAddr})`,
     })
   } catch (e) {
     console.warn(`[disciple-networks-seed] Controller failed for ${agentAddr}:`, (e as Error).message?.slice(0, 200))
@@ -133,9 +173,9 @@ export async function seedDiscipleNetworksOnChain() {
 
   // ─── Deploy org agents ─────────────────────────────────────────────
   console.log('[disciple-networks-seed] Deploying 3 sister network org agents...')
-  const frontRange  = await deploy(SALT_FRONT_RANGE)
-  const plains      = await deploy(SALT_PLAINS)
-  const denverMetro = await deploy(SALT_DENVER_METRO)
+  const frontRange  = await deploy('disciple-networks:frontRange',  SALT_FRONT_RANGE)
+  const plains      = await deploy('disciple-networks:plains',      SALT_PLAINS)
+  const denverMetro = await deploy('disciple-networks:denverMetro', SALT_DENVER_METRO)
 
   await register(
     frontRange, 'Front Range House Churches',
@@ -228,11 +268,12 @@ export async function seedDiscipleNetworksOnChain() {
   // Sister networks ally with each other and with Catalyst NoCo so the
   // Discover surface has visible cross-network bridges. We compute the
   // catalyst-noco + catalyst-hub addresses by re-running deploy() with
-  // the same salts the catalyst seed uses (200001 / 290001) — CREATE2
-  // makes this deterministic and idempotent: returns the existing
-  // address rather than redeploying.
+  // the SAME label + salt the catalyst seed uses — CREATE2 makes this
+  // deterministic and idempotent: same (initialOwner, salt) tuple →
+  // same counterfactual address, whether the seed has run already or
+  // not. Labels MUST stay in sync with seed-catalyst-onchain.ts.
   console.log('[disciple-networks-seed] Creating sister-network alliances...')
-  const catalystNoco = await deploy(200001)
+  const catalystNoco = await deploy('catalyst:catalystNoco', 200001)
   await createEdge(catalystNoco, frontRange,  ALLIANCE, [ROLE_STRATEGIC_PARTNER], 'cross-network discipleship learning exchange')
   await createEdge(catalystNoco, plains,      ALLIANCE, [ROLE_STRATEGIC_PARTNER], 'cross-network discipleship learning exchange')
   await createEdge(catalystNoco, denverMetro, ALLIANCE, [ROLE_STRATEGIC_PARTNER], 'cross-network discipleship learning exchange')
@@ -244,7 +285,8 @@ export async function seedDiscipleNetworksOnChain() {
   // Hub agent salt = 290001 (matches seed-catalyst-onchain.ts line 433).
   // HAS_MEMBER edges so the new networks surface in hub member rolls.
   console.log('[disciple-networks-seed] Linking sister networks under Catalyst Hub...')
-  const hubCatalyst = await deploy(290001)
+  // Same label MUST match seed-catalyst-onchain.ts's hub deploy line.
+  const hubCatalyst = await deploy('catalyst:hub', 290001)
   await createEdge(hubCatalyst, frontRange,  HAS_MEMBER as `0x${string}`, [ROLE_MEMBER])
   await createEdge(hubCatalyst, plains,      HAS_MEMBER as `0x${string}`, [ROLE_MEMBER])
   await createEdge(hubCatalyst, denverMetro, HAS_MEMBER as `0x${string}`, [ROLE_MEMBER])

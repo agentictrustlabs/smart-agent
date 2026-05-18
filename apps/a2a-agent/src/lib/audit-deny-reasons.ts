@@ -50,8 +50,6 @@
 
 export const AUDIT_DENY_REASONS = [
   // ─── validation:* — request shape ────────────────────────────────
-  'validation:missing-a2a-task-id',
-  'validation:missing-session-agent-account',
   'validation:chain-empty',
   'validation:chain-leaf-delegate-mismatch',
   'validation:invalid-call-data',
@@ -80,19 +78,13 @@ export const AUDIT_DENY_REASONS = [
   // ─── env:* — server config ───────────────────────────────────────
   'env:agent-factory-not-set',
 
-  // ─── executor:* — tool-executor signer resolution ────────────────
-  'executor:resolution-failed',
-
   // ─── tx:* — on-chain submission outcomes (paired with auditFinalize) ─
   'tx:reverted',
   'tx:handle-ops-reverted',
 
   // ─── error:* — unhandled throws ──────────────────────────────────
   'error:unhandled',
-  'error:redeem-failed',
   'error:deploy-agent-failed',
-  'error:redeem-with-chain-failed',
-  'error:redeem-subdelegated-failed',
   'error:redeem-via-account-failed',
 ] as const
 

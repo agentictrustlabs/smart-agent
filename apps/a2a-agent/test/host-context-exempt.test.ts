@@ -52,11 +52,13 @@ test('existing exempts still hold (regression)', () => {
 })
 
 test('inter-service /session/:id/<verb> suffixes are exempt', () => {
-  assert.equal(isHostExempt('/session/sess-1/redeem-tx'), true)
+  // Option A: only redeem-via-account + deploy-agent survive.
   assert.equal(isHostExempt('/session/sess-1/deploy-agent'), true)
-  assert.equal(isHostExempt('/session/sess-1/redeem-with-chain'), true)
-  assert.equal(isHostExempt('/session/sess-1/redeem-subdelegated'), true)
   assert.equal(isHostExempt('/session/sess-1/redeem-via-account'), true)
+  // Deleted variants no longer exist — must NOT be exempt (will 404).
+  assert.equal(isHostExempt('/session/sess-1/redeem-tx'), false)
+  assert.equal(isHostExempt('/session/sess-1/redeem-with-chain'), false)
+  assert.equal(isHostExempt('/session/sess-1/redeem-subdelegated'), false)
 })
 
 test('non-exempt routes are NOT exempt (sanity check — the middleware must still gate user routes)', () => {

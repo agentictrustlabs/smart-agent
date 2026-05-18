@@ -21,6 +21,10 @@ import {
   TOOL_POLICIES,
   POOL_REGISTRY_SELECTORS_BY_TOOL,
   FUND_REGISTRY_SELECTORS_BY_TOOL,
+  AGENT_ACCOUNT_RESOLVER_SELECTORS_BY_TOOL,
+  AGENT_RELATIONSHIP_SELECTORS_BY_TOOL,
+  PROPOSAL_REGISTRY_SELECTORS_BY_TOOL,
+  COMMITMENT_REGISTRY_SELECTORS_BY_TOOL,
   listAllowedTargetSymbols,
   resolveTargetAddress,
   isOnchainTool,
@@ -29,6 +33,10 @@ import {
   poolRegistryAbi,
   fundRegistryAbi,
   agentAccountFactoryAbi,
+  agentAccountResolverAbi,
+  agentRelationshipAbi,
+  proposalRegistryAbi,
+  commitmentRegistryAbi,
 } from '../abi'
 import type { SessionPermissionRequest } from './types'
 
@@ -52,6 +60,10 @@ const ABIS: AbiByTarget = {
   PoolRegistry: poolRegistryAbi as readonly unknown[],
   FundRegistry: fundRegistryAbi as readonly unknown[],
   AgentAccountFactory: agentAccountFactoryAbi as readonly unknown[],
+  AgentAccountResolver: agentAccountResolverAbi as readonly unknown[],
+  AgentRelationship: agentRelationshipAbi as readonly unknown[],
+  ProposalRegistry: proposalRegistryAbi as readonly unknown[],
+  CommitmentRegistry: commitmentRegistryAbi as readonly unknown[],
 }
 
 function selectorOf(target: string, functionName: string): Hex | null {
@@ -110,6 +122,26 @@ export function buildSessionPermissionRequest(
     for (const fn of fns) {
       const sel = selectorOf('FundRegistry', fn)
       if (sel) selectorSet.add(sel)
+    }
+  }
+  // Bug fix: prior to this, AgentAccountResolver / AgentRelationship /
+  // ProposalRegistry / CommitmentRegistry selectors were silently omitted
+  // from the session permission scope, so any tool whose policy targets
+  // those contracts failed with `selector 0x... not allowed` at the
+  // AllowedMethodsEnforcer (e.g. relationship:emit_edge during hub-join).
+  const EXTRA_TABLES: Array<[string, Record<string, string[]>]> = [
+    ['AgentAccountResolver', AGENT_ACCOUNT_RESOLVER_SELECTORS_BY_TOOL],
+    ['AgentRelationship', AGENT_RELATIONSHIP_SELECTORS_BY_TOOL],
+    ['ProposalRegistry', PROPOSAL_REGISTRY_SELECTORS_BY_TOOL],
+    ['CommitmentRegistry', COMMITMENT_REGISTRY_SELECTORS_BY_TOOL],
+  ]
+  for (const [target, table] of EXTRA_TABLES) {
+    for (const [tool, fns] of Object.entries(table)) {
+      if (!isOnchainTool(tool)) continue
+      for (const fn of fns) {
+        const sel = selectorOf(target, fn)
+        if (sel) selectorSet.add(sel)
+      }
     }
   }
   const createAccountSel = selectorOf('AgentAccountFactory', 'createAccount')

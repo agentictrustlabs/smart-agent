@@ -160,9 +160,17 @@ export async function POST() {
     }))
     const salt = BigInt(Date.now() + Math.floor(Math.random() * 100000))
 
+    // Option A (ERC-4337-only redeem) — the LEAF delegation's `delegate`
+    // is the user's own smart account (= the redeem msg.sender via
+    // EntryPoint→AgentAccount.execute→DelegationManager). Session signer
+    // signs over hashDelegation; smart account validates via ERC-1271.
+    // `sessionKeyAddress` is still bound implicitly through the
+    // a2a-agent's /session/package row (the signer that validates here
+    // must be a registered owner of the smart account).
+    void sessionKeyAddress
     const delegation = {
       delegator: accountAddress,
-      delegate: sessionKeyAddress as `0x${string}`,
+      delegate: accountAddress,
       authority: ROOT_AUTHORITY as `0x${string}`,
       caveats: caveatsForHash,
       salt,

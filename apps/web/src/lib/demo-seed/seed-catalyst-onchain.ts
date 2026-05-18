@@ -4,7 +4,7 @@ import { db, schema } from '@/db'
 import { eq } from 'drizzle-orm'
 // randomUUID no longer needed — agent_index uses address as PK
 import {
-  deploySmartAccount, createRelationship, confirmRelationship,
+  createRelationship, confirmRelationship,
   getPublicClient, getWalletClient,
 } from '@/lib/contracts'
 // getPublicClient used by register() for isRegistered check
@@ -19,7 +19,16 @@ import {
   GeoFeatureClient, GeoClaimClient, type GeoRelation,
 } from '@smart-agent/sdk'
 import { agentAccountResolverAbi, agentDisputeRecordAbi } from '@smart-agent/sdk'
-import { keccak256, toBytes } from 'viem'
+import { keccak256, toBytes, type PrivateKeyAccount } from 'viem'
+import {
+  registerAgentAsSelf,
+  writeAgentPropertiesAsSelf,
+  mintSelfGeoClaim,
+  getCounterfactualAddress,
+  deterministicEoaFromLabel,
+  loadDemoUserAgentIdentity,
+  type AgentProperty,
+} from './agent-self-register'
 
 const TYPE_ORGANIZATION = keccak256(toBytes('atl:OrganizationAgent'))
 // TYPE_PERSON no longer needed — person agents deployed by generateDemoWallet
@@ -30,11 +39,30 @@ const TYPE_HUB = keccak256(toBytes('atl:HubAgent'))
 // "org → its treasury" as two nodes.
 const TYPE_TREASURY_AGENT = keccak256(toBytes('atl:TreasuryAgent'))
 const SA_HAS_TREASURY = keccak256(toBytes('sa:hasTreasury'))
-const ZERO_HASH = '0x0000000000000000000000000000000000000000000000000000000000000000' as `0x${string}`
 
-async function deploy(salt: number): Promise<`0x${string}`> {
-  const walletClient = getWalletClient()
-  return deploySmartAccount(walletClient.account!.address, BigInt(salt))
+// ─── Agent identity registry — same pattern as gc/cil-seed ────────────
+interface AgentIdentity {
+  eoa: PrivateKeyAccount
+  salt: bigint
+}
+const agentIdentities = new Map<`0x${string}`, AgentIdentity>()
+function rememberIdentity(smartAccount: `0x${string}`, id: AgentIdentity) {
+  agentIdentities.set(smartAccount.toLowerCase() as `0x${string}`, id)
+}
+function lookupIdentity(smartAccount: `0x${string}`): AgentIdentity {
+  const id = agentIdentities.get(smartAccount.toLowerCase() as `0x${string}`)
+  if (!id) {
+    throw new Error(`[catalyst-seed] No agent identity registered for ${smartAccount} — call deploy(label, salt) before any resolver write.`)
+  }
+  return id
+}
+
+async function deploy(label: string, salt: number): Promise<`0x${string}`> {
+  const eoa = deterministicEoaFromLabel(label)
+  const saltBig = BigInt(salt)
+  const addr = await getCounterfactualAddress(eoa.address, saltBig)
+  rememberIdentity(addr, { eoa, salt: saltBig })
+  return addr
 }
 
 /** Turn a display name like "Catalyst NoCo Network" into a DNS-safe
@@ -51,31 +79,46 @@ function slugify(name: string): string {
 }
 
 async function register(addr: `0x${string}`, name: string, desc: string, agentType: `0x${string}`) {
-  const walletClient = getWalletClient()
   const resolverAddr = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}`
   if (!resolverAddr) return
   try {
+    const id = lookupIdentity(addr)
     const client = getPublicClient()
     const isReg = await client.readContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'isRegistered', args: [addr] }) as boolean
-    if (!isReg) {
-      await walletClient.writeContract({
-        address: resolverAddr, abi: agentAccountResolverAbi,
-        functionName: 'register', args: [addr, name, desc, agentType, ZERO_HASH, ''],
-      })
-    }
-    // Always (idempotently) set the agent's primary name so A2A URL
-    // resolution can derive a slug. Re-running is cheap — same hash
-    // value writes are no-ops at the storage level.
     const primaryName = `${slugify(name)}.agent`
+
+    if (!isReg) {
+      // First seed pass — register + primary-name in ONE userOp so the
+      // A2A URL resolver finds a slug immediately.
+      await registerAgentAsSelf({
+        smartAccount: addr,
+        signerAccount: id.eoa,
+        salt: id.salt,
+        name, description: desc, agentType,
+        properties: [
+          { kind: 'string', predicate: ATL_PRIMARY_NAME as `0x${string}`, value: primaryName },
+        ],
+        label: `catalyst-seed:register(${name})`,
+      })
+      return
+    }
+    // Already registered: idempotently re-set the primary name if it
+    // drifted. Re-runs of the seed re-derive the same name from `name`,
+    // so this is a no-op unless an external write changed it.
     try {
       const existing = await client.readContract({
         address: resolverAddr, abi: agentAccountResolverAbi,
         functionName: 'getStringProperty', args: [addr, ATL_PRIMARY_NAME as `0x${string}`],
       }) as string
       if (existing !== primaryName) {
-        await walletClient.writeContract({
-          address: resolverAddr, abi: agentAccountResolverAbi,
-          functionName: 'setStringProperty', args: [addr, ATL_PRIMARY_NAME as `0x${string}`, primaryName],
+        await writeAgentPropertiesAsSelf({
+          smartAccount: addr,
+          signerAccount: id.eoa,
+          salt: id.salt,
+          properties: [
+            { kind: 'string', predicate: ATL_PRIMARY_NAME as `0x${string}`, value: primaryName },
+          ],
+          label: `catalyst-seed:primaryName(${name})`,
         })
       }
     } catch (e) {
@@ -101,11 +144,13 @@ async function deployAndLinkTreasury(
   orgName: string,
 ): Promise<`0x${string}` | null> {
   try {
-    const walletClient = getWalletClient()
     const resolverAddr = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}` | undefined
     if (!resolverAddr) return null
 
-    const treasury = await deploy(400000 + orgSalt)
+    // Deterministic treasury label namespaced under the org name. Salt
+    // pattern (400000 + orgSalt) preserved from the original code.
+    const treasuryLabel = `catalyst:treasury:${orgName}`
+    const treasury = await deploy(treasuryLabel, 400000 + orgSalt)
     await register(
       treasury,
       `${orgName} Treasury`,
@@ -114,12 +159,18 @@ async function deployAndLinkTreasury(
     )
 
     // Link org → treasury via sa:hasTreasury on the AgentAccountResolver.
-    // Deployer is an initial owner of the org's AgentAccount (factory
-    // pattern), so this write passes the resolver's onlyAgentOwner gate.
-    await walletClient.writeContract({
-      address: resolverAddr, abi: agentAccountResolverAbi,
-      functionName: 'setAddressProperty',
-      args: [orgAddr, SA_HAS_TREASURY, treasury],
+    // This is a write ON the org agent (`onlyAgentOwner(orgAddr)`), so it
+    // MUST be signed by the org's own EOA — looked up from the identity
+    // map populated when the org was deployed.
+    const orgId = lookupIdentity(orgAddr)
+    await writeAgentPropertiesAsSelf({
+      smartAccount: orgAddr,
+      signerAccount: orgId.eoa,
+      salt: orgId.salt,
+      properties: [
+        { kind: 'address', predicate: SA_HAS_TREASURY, value: treasury },
+      ],
+      label: `catalyst-seed:linkTreasury(${orgName})`,
     })
     return treasury
   } catch (e) {
@@ -137,7 +188,6 @@ async function createEdge(subject: `0x${string}`, object: `0x${string}`, relType
 }
 
 async function setController(agentAddr: `0x${string}`, walletAddr: string) {
-  const wc = getWalletClient()
   const res = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}`
   if (!res) return
   try {
@@ -150,7 +200,16 @@ async function setController(agentAddr: `0x${string}`, walletAddr: string) {
       args: [agentAddr, ATL_CONTROLLER as `0x${string}`],
     }) as string[]
     if (existing.some(a => a.toLowerCase() === walletAddr.toLowerCase())) return
-    await wc.writeContract({ address: res, abi: agentAccountResolverAbi, functionName: 'addMultiAddressProperty', args: [agentAddr, ATL_CONTROLLER as `0x${string}`, walletAddr as `0x${string}`] })
+    const id = lookupIdentity(agentAddr)
+    await writeAgentPropertiesAsSelf({
+      smartAccount: agentAddr,
+      signerAccount: id.eoa,
+      salt: id.salt,
+      properties: [
+        { kind: 'multiAddress-append', predicate: ATL_CONTROLLER as `0x${string}`, value: walletAddr as `0x${string}` },
+      ],
+      label: `catalyst-seed:setController(${agentAddr})`,
+    })
   } catch (_e) { console.warn(`[catalyst-seed] Controller failed:`, _e) }
 }
 
@@ -158,14 +217,23 @@ async function setController(agentAddr: `0x${string}`, walletAddr: string) {
 // Static fallback profiles in hub-profiles.ts provide nav config.
 
 async function setGeo(addr: `0x${string}`, lat: string, lon: string) {
-  const wc = getWalletClient()
   const resolver = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}`
   if (!resolver) return
   try {
-    await wc.writeContract({ address: resolver, abi: agentAccountResolverAbi, functionName: 'setStringProperty', args: [addr, ATL_LATITUDE as `0x${string}`, lat] })
-    await wc.writeContract({ address: resolver, abi: agentAccountResolverAbi, functionName: 'setStringProperty', args: [addr, ATL_LONGITUDE as `0x${string}`, lon] })
-    await wc.writeContract({ address: resolver, abi: agentAccountResolverAbi, functionName: 'setStringProperty', args: [addr, ATL_SPATIAL_CRS as `0x${string}`, 'EPSG:4326'] })
-    await wc.writeContract({ address: resolver, abi: agentAccountResolverAbi, functionName: 'setStringProperty', args: [addr, ATL_SPATIAL_TYPE as `0x${string}`, 'Point'] })
+    const id = lookupIdentity(addr)
+    const props: AgentProperty[] = [
+      { kind: 'string', predicate: ATL_LATITUDE as `0x${string}`,    value: lat },
+      { kind: 'string', predicate: ATL_LONGITUDE as `0x${string}`,   value: lon },
+      { kind: 'string', predicate: ATL_SPATIAL_CRS as `0x${string}`, value: 'EPSG:4326' },
+      { kind: 'string', predicate: ATL_SPATIAL_TYPE as `0x${string}`, value: 'Point' },
+    ]
+    await writeAgentPropertiesAsSelf({
+      smartAccount: addr,
+      signerAccount: id.eoa,
+      salt: id.salt,
+      properties: props,
+      label: `catalyst-seed:setGeo(${addr})`,
+    })
   } catch (_e) { console.warn(`[catalyst-seed] Geo failed for ${addr}:`, _e) }
 }
 
@@ -186,55 +254,24 @@ async function mintGeoClaim(args: {
   relation: GeoRelation            // 'residentOf' | 'operatesIn' | …
   confidence: number               // 0..100
 }) {
-  const wc = getWalletClient()
-  const pc = getPublicClient()
-  const featReg = process.env.GEO_FEATURE_REGISTRY_ADDRESS as `0x${string}` | undefined
-  const claimReg = process.env.GEO_CLAIM_REGISTRY_ADDRESS as `0x${string}` | undefined
-  if (!featReg || !claimReg) return
-  const [country, region, city] = args.cityKey.split('/')
-  const featureId = GeoFeatureClient.featureIdFor({ countryCode: country, region, city })
-  const featureClient = new GeoFeatureClient(pc, featReg)
-  const claimClient = new GeoClaimClient(pc, claimReg)
-
-  let version: bigint
-  try {
-    const latest = await featureClient.getLatest(featureId)
-    version = latest.version
-  } catch {
-    console.warn(`[catalyst-seed] feature ${args.cityKey} not published yet — skip claim for ${args.subject}`)
+  let identity = agentIdentities.get(args.subject.toLowerCase() as `0x${string}`)
+  if (!identity) {
+    const personId = await loadDemoUserAgentIdentity(args.subject)
+    if (personId) identity = personId
+  }
+  if (!identity) {
+    console.warn(`[catalyst-seed] geo-claim skip: no identity for subject ${args.subject}`)
     return
   }
-  if (version === 0n) return
-
-  // Deterministic nonce so re-runs hit the contract's ClaimExists guard
-  // instead of stacking duplicate claims for the same (subject, feature,
-  // relation) tuple. keccak fits the bytes32 nonce slot.
-  const nonceLabel = `seed:${args.subject.toLowerCase()}|${args.cityKey}|${args.relation}|v1`
-  const nonce = keccak256(toBytes(nonceLabel)) as `0x${string}`
-  const evidenceCommit = keccak256(toBytes(`evidence:${nonceLabel}`)) as `0x${string}`
-
-  try {
-    const hash = await claimClient.mint(wc, {
-      subjectAgent: args.subject,
-      issuer: args.subject,             // self-asserted seed claim
-      featureId,
-      featureVersion: version,
-      relation: args.relation,
-      visibility: 'Public',
-      evidenceCommit,
-      confidence: args.confidence,
-      policyId: 'smart-agent.geo-overlap.v1',
-      nonce,
-    })
-    await pc.waitForTransactionReceipt({ hash })
-  } catch (_e) {
-    // The contract's ClaimExists revert is the idempotent path; only
-    // truly unexpected reverts get logged.
-    const msg = (_e as Error)?.message ?? ''
-    if (!/ClaimExists/.test(msg)) {
-      console.warn(`[catalyst-seed] geo-claim mint failed for ${args.subject} → ${args.cityKey}:`, msg.slice(0, 120))
-    }
-  }
+  await mintSelfGeoClaim({
+    subject: args.subject,
+    signerAccount: identity.eoa,
+    salt: identity.salt,
+    cityKey: args.cityKey,
+    relation: args.relation,
+    confidence: args.confidence,
+    logPrefix: '[catalyst-seed]',
+  })
 }
 
 function upsertUser(u: { id: string; name: string; email: string; wallet: string; did: string }) {
@@ -349,18 +386,22 @@ async function doSeed() {
   const paSione = userMap.get('cat-user-014')?.personAgentAddress as `0x${string}` | undefined
 
   // ─── Deploy Org/AI Agent Smart Accounts ──────────────────────────
+  // Each label MUST stay stable: the cross-network seed
+  // (seed-disciple-networks-onchain.ts) reuses `catalyst:catalystNoco`
+  // and `catalyst:hub` to compute the SAME counterfactual addresses
+  // without re-deriving the salt/owner pair on its own.
   console.log('[catalyst-seed] Deploying org smart accounts...')
-  const network = await deploy(200001)      // Catalyst NoCo Network
-  const hub = await deploy(200002)          // Fort Collins Network (regional facilitator org, not the Hub agent)
-  const grpWellington = await deploy(200003)  // Wellington Circle
-  const grpLaporte = await deploy(200004)     // Laporte Circle
-  const grpTimnath = await deploy(200005)     // Timnath Circle
-  const grpLoveland = await deploy(200006)    // Loveland Circle
-  const grpBerthoud = await deploy(200007)    // Berthoud Circle
-  const grpJohnstown = await deploy(200008)   // Johnstown Circle
-  const grpRedFeather = await deploy(200009)  // Red Feather Lakes Circle
-  const senegalWolofOutreach = await deploy(200014)  // Sione's people-group research sub-org
-  const analytics = await deploy(210001)
+  const network              = await deploy('catalyst:catalystNoco',         200001)  // Catalyst NoCo Network
+  const hub                  = await deploy('catalyst:fortCollinsNetwork',   200002)  // Fort Collins Network (regional facilitator org)
+  const grpWellington        = await deploy('catalyst:grpWellington',        200003)
+  const grpLaporte           = await deploy('catalyst:grpLaporte',           200004)
+  const grpTimnath           = await deploy('catalyst:grpTimnath',           200005)
+  const grpLoveland          = await deploy('catalyst:grpLoveland',          200006)
+  const grpBerthoud          = await deploy('catalyst:grpBerthoud',          200007)
+  const grpJohnstown         = await deploy('catalyst:grpJohnstown',         200008)
+  const grpRedFeather        = await deploy('catalyst:grpRedFeather',        200009)
+  const senegalWolofOutreach = await deploy('catalyst:senegalWolofOutreach', 200014)  // Sione's people-group research sub-org
+  const analytics            = await deploy('catalyst:analytics',            210001)
 
   console.log('[catalyst-seed] Smart accounts deployed. Network:', network, 'Fort Collins Network:', hub)
 
@@ -671,7 +712,8 @@ async function doSeed() {
 
   // ─── Hub Agent ──────────────────────────────────────────────────
   console.log('[catalyst-seed] Deploying hub agent...')
-  const hubCatalyst = await deploy(290001)
+  // Same label MUST match seed-disciple-networks-onchain.ts.
+  const hubCatalyst = await deploy('catalyst:hub', 290001)
   await register(hubCatalyst, 'Catalyst Hub', 'Catalyst NoCo Network hub — Hispanic outreach, activity tracking, multiplication mapping', TYPE_HUB)
 
   // HAS_MEMBER edges — connect all agents to the hub
@@ -693,12 +735,26 @@ async function doSeed() {
   console.log('[catalyst-seed] Setting up .agent naming hierarchy...')
 
   async function setNameProps(addr: `0x${string}`, label: string, fullName: string) {
-    const wc = getWalletClient()
     const resolver = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}`
     if (!resolver) return
     try {
-      await wc.writeContract({ address: resolver, abi: agentAccountResolverAbi, functionName: 'setStringProperty', args: [addr, ATL_NAME_LABEL as `0x${string}`, label] })
-      await wc.writeContract({ address: resolver, abi: agentAccountResolverAbi, functionName: 'setStringProperty', args: [addr, ATL_PRIMARY_NAME as `0x${string}`, fullName] })
+      // Look up identity; person agents (deployed by generate-wallet)
+      // live in a separate identity space and aren't in our map — for
+      // those, the primary name was already set at generate time, so
+      // skip silently rather than rewriting with a deployer the agent
+      // doesn't recognize.
+      const id = agentIdentities.get(addr.toLowerCase() as `0x${string}`)
+      if (!id) return
+      await writeAgentPropertiesAsSelf({
+        smartAccount: addr,
+        signerAccount: id.eoa,
+        salt: id.salt,
+        properties: [
+          { kind: 'string', predicate: ATL_NAME_LABEL as `0x${string}`,   value: label },
+          { kind: 'string', predicate: ATL_PRIMARY_NAME as `0x${string}`, value: fullName },
+        ],
+        label: `catalyst-seed:setNameProps(${label})`,
+      })
     } catch (_e) { console.warn(`[catalyst-seed] Name props failed for ${label}:`, _e) }
   }
 
@@ -1004,18 +1060,20 @@ async function doSeed() {
 }
 
 /**
- * Minimal seed — just enough on-chain state to exercise every page in the
- * three intent-marketplace lanes (specs 001 / 002 / 003) without overloading
- * the public GraphDB instance.
+ * Minimal seed — just enough on-chain state to drive the proposal-funding
+ * demo video + every page in the three intent-marketplace lanes (specs 001
+ * / 002 / 003) without overloading the public GraphDB instance.
  *
  * Seeds:
- *   - 2 demo users: Maria Gonzalez (cat-user-001), Pastor David Chen (cat-user-002)
+ *   - 3 demo users: Maria Gonzalez (cat-user-001), Pastor David Chen
+ *     (cat-user-002), Sarah Thompson (cat-user-005)
  *   - 3 org/hub agents: Catalyst NoCo Network, Fort Collins Network, Catalyst Hub
  *   - Geo claims (residentOf for users, operatesIn for orgs)
- *   - Governance + membership edges (Maria→Network OWNER, David→Hub OWNER, David→Network MEMBER)
+ *   - Governance + membership edges (Maria→Network OWNER, David→Hub OWNER,
+ *     David→Network MEMBER, Sarah→Network MEMBER)
  *   - Issuer-EOA → Network controller link (org-mcp credential lookup)
  *   - Org→User cross-delegations (Network/Maria, Hub/David)
- *   - HAS_MEMBER edges from Catalyst Hub to all four agents
+ *   - HAS_MEMBER edges from Catalyst Hub to all member agents
  *
  * Skipped vs full mode: 9 sub-circles, 1 people-group sub-org, analytics
  * AI agent, naming hierarchy, namespace edges, cross-circle alliances,
@@ -1024,22 +1082,28 @@ async function doSeed() {
 async function doMinimalSeed() {
   console.log('[catalyst-seed:minimal] Seeding catalyst essentials only (CATALYST_SEED_MODE=minimal)...')
 
-  // Seed only the two users we exercise across the three lanes.
+  // Seed only the three users we exercise across the proposal-funding video
+  // + three intent-marketplace lanes.
   upsertUser({ id: 'cat-user-001', name: 'Maria Gonzalez',    email: 'maria@catalystnoco.org', wallet: '0x00000000000000000000000000000000000b0001', did: 'did:demo:cat-001' })
   upsertUser({ id: 'cat-user-002', name: 'Pastor David Chen', email: 'david@catalystnoco.org', wallet: '0x00000000000000000000000000000000000b0002', did: 'did:demo:cat-002' })
+  upsertUser({ id: 'cat-user-005', name: 'Sarah Thompson',    email: 'sarah@catalystnoco.org', wallet: '0x00000000000000000000000000000000000b0005', did: 'did:demo:cat-005' })
 
   // Provision wallets + person agents (one-time per user). `ensureDemoUser`
   // is idempotent — re-runs are no-ops.
   const { ensureDemoUser } = await import('./lookup-users')
   const maria = await ensureDemoUser('cat-user-001')
   const david = await ensureDemoUser('cat-user-002')
+  const sarah = await ensureDemoUser('cat-user-005')
   const paMaria = maria.personAgentAddress as `0x${string}`
   const paDavid = david.personAgentAddress as `0x${string}`
+  const paSarah = sarah.personAgentAddress as `0x${string}`
 
-  // Deploy the three org-tier smart accounts (idempotent salts).
-  const network = await deploy(200001)
-  const hub = await deploy(200002)
-  const hubCatalyst = await deploy(290001)
+  // Deploy the three org-tier smart accounts. Labels MUST match the
+  // full-seed pass + seed-disciple-networks so cross-seed deploy() calls
+  // resolve to the same addresses.
+  const network = await deploy('catalyst:catalystNoco', 200001)
+  const hub = await deploy('catalyst:fortCollinsNetwork', 200002)
+  const hubCatalyst = await deploy('catalyst:hub', 290001)
   console.log(`[catalyst-seed:minimal] Deployed: network=${network} hub=${hub} catalystHub=${hubCatalyst}`)
 
   await register(network, 'Catalyst NoCo Network', 'Northern Colorado catalyst network — Hispanic community outreach and church planting north of Fort Collins', TYPE_ORGANIZATION)
@@ -1075,11 +1139,13 @@ async function doMinimalSeed() {
   await mintGeoClaim({ subject: hub,     cityKey: 'us/colorado/fortcollins', relation: 'operatesIn', confidence: 100 })
   await mintGeoClaim({ subject: paMaria, cityKey: 'us/colorado/fortcollins', relation: 'residentOf', confidence: 90 })
   await mintGeoClaim({ subject: paDavid, cityKey: 'us/colorado/fortcollins', relation: 'residentOf', confidence: 90 })
+  await mintGeoClaim({ subject: paSarah, cityKey: 'us/colorado/fortcollins', relation: 'residentOf', confidence: 90 })
 
   // Governance + membership — minimum for proposal/pledge/match flows.
   await createEdge(paMaria, network, ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
   await createEdge(paDavid, hub,     ORGANIZATION_GOVERNANCE, [ROLE_OWNER])
   await createEdge(paDavid, network, ORGANIZATION_MEMBERSHIP, [ROLE_MEMBER])
+  await createEdge(paSarah, network, ORGANIZATION_MEMBERSHIP, [ROLE_MEMBER])
   await createEdge(network, hub,     ALLIANCE,                [ROLE_STRATEGIC_PARTNER])
 
   // Org→user cross-delegations so org-acting actions don't need the deployer key.
@@ -1095,9 +1161,9 @@ async function doMinimalSeed() {
   }
 
   // HAS_MEMBER edges connect agents to the hub (drives /h/catalyst routing).
-  for (const agent of [network, hub, paMaria, paDavid]) {
+  for (const agent of [network, hub, paMaria, paDavid, paSarah]) {
     await createEdge(hubCatalyst, agent, HAS_MEMBER as `0x${string}`, [ROLE_MEMBER])
   }
 
-  console.log('[catalyst-seed:minimal] Done — 4 agents + ~12 edges. Set CATALYST_SEED_MODE=full to seed the complete community.')
+  console.log('[catalyst-seed:minimal] Done — 3 users + 3 orgs + 2 treasuries. Set CATALYST_SEED_MODE=full to seed the complete community.')
 }

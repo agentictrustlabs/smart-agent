@@ -173,9 +173,21 @@ export async function bootstrapA2ASessionForUser(user: {
     const caveatsForHash = caveats.map((c) => ({ enforcer: c.enforcer, terms: c.terms }))
     const salt = BigInt(Date.now() + Math.floor(Math.random() * 100000))
 
+    // Option A (ERC-4337-only redeem) — the LEAF delegation's `delegate`
+    // is the user's own smart account, NOT the session-signer EOA. The
+    // session signer still SIGNS this delegation (via ERC-1271 against
+    // the smart account's _validateSig), but the on-chain redeem path
+    // is now: userOp(sender=smartAccount) → AgentAccount.execute(
+    //   DelegationManager, 0, redeemDelegation(...)
+    // ). DelegationManager._validateDelegation's
+    //   if (i==0 && d.delegate != msg.sender) revert InvalidDelegate
+    // check therefore passes because msg.sender at the DelegationManager
+    // call site IS the smart account = leaf.delegate. The master EOA
+    // (a2a-agent's funded operator account) pays gas via EntryPoint.handleOps;
+    // session-signer EOAs never need ETH.
     const delegationData = {
       delegator: user.smartAccountAddress as `0x${string}`,
-      delegate: sessionKeyAddress as `0x${string}`,
+      delegate: user.smartAccountAddress as `0x${string}`,
       authority: ROOT_AUTHORITY as `0x${string}`,
       caveats: caveatsForHash,
       salt,

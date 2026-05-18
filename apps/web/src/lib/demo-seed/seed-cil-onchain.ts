@@ -3,7 +3,7 @@
 import { db, schema } from '@/db'
 import { eq } from 'drizzle-orm'
 import {
-  deploySmartAccount, createRelationship, confirmRelationship,
+  createRelationship, confirmRelationship,
   getPublicClient, getWalletClient,
 } from '@/lib/contracts'
 import {
@@ -17,28 +17,60 @@ import {
   agentNameRegistryAbi, agentNameResolverAbi,
 } from '@smart-agent/sdk'
 import { agentAccountResolverAbi } from '@smart-agent/sdk'
-import { keccak256, toBytes, encodePacked } from 'viem'
+import { keccak256, toBytes, encodePacked, type PrivateKeyAccount } from 'viem'
+import {
+  registerAgentAsSelf,
+  writeAgentPropertiesAsSelf,
+  mintSelfGeoClaim,
+  getCounterfactualAddress,
+  deterministicEoaFromLabel,
+  loadDemoUserAgentIdentity,
+  type AgentProperty,
+} from './agent-self-register'
 
 const TYPE_ORGANIZATION = keccak256(toBytes('atl:OrganizationAgent'))
 const TYPE_HUB = keccak256(toBytes('atl:HubAgent'))
-const ZERO_HASH = '0x0000000000000000000000000000000000000000000000000000000000000000' as `0x${string}`
 
-async function deploy(salt: number): Promise<`0x${string}`> {
-  const walletClient = getWalletClient()
-  return deploySmartAccount(walletClient.account!.address, BigInt(salt))
+// ─── Agent identity registry — same pattern as gc-seed ────────────────
+interface AgentIdentity {
+  eoa: PrivateKeyAccount
+  salt: bigint
+}
+const agentIdentities = new Map<`0x${string}`, AgentIdentity>()
+
+function rememberIdentity(smartAccount: `0x${string}`, id: AgentIdentity) {
+  agentIdentities.set(smartAccount.toLowerCase() as `0x${string}`, id)
+}
+function lookupIdentity(smartAccount: `0x${string}`): AgentIdentity {
+  const id = agentIdentities.get(smartAccount.toLowerCase() as `0x${string}`)
+  if (!id) {
+    throw new Error(`[cil-seed] No agent identity registered for ${smartAccount} — call deploy(label, salt) before any resolver write.`)
+  }
+  return id
+}
+
+async function deploy(label: string, salt: number): Promise<`0x${string}`> {
+  const eoa = deterministicEoaFromLabel(label)
+  const saltBig = BigInt(salt)
+  const addr = await getCounterfactualAddress(eoa.address, saltBig)
+  rememberIdentity(addr, { eoa, salt: saltBig })
+  return addr
 }
 
 async function register(addr: `0x${string}`, name: string, desc: string, agentType: `0x${string}`) {
-  const walletClient = getWalletClient()
   const resolverAddr = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}`
   if (!resolverAddr) return
   try {
+    const id = lookupIdentity(addr)
     const client = getPublicClient()
     const isReg = await client.readContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'isRegistered', args: [addr] }) as boolean
     if (isReg) return
-    await walletClient.writeContract({
-      address: resolverAddr, abi: agentAccountResolverAbi,
-      functionName: 'register', args: [addr, name, desc, agentType, ZERO_HASH, ''],
+    await registerAgentAsSelf({
+      smartAccount: addr,
+      signerAccount: id.eoa,
+      salt: id.salt,
+      name, description: desc, agentType,
+      label: `cil-seed:register(${name})`,
     })
   } catch (_e) { console.warn(`[cil-seed] Failed to register ${name}:`, _e) }
 }
@@ -52,7 +84,6 @@ async function createEdge(subject: `0x${string}`, object: `0x${string}`, relType
 }
 
 async function setController(agentAddr: `0x${string}`, walletAddr: string) {
-  const wc = getWalletClient()
   const res = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}`
   if (!res) return
   try {
@@ -62,83 +93,86 @@ async function setController(agentAddr: `0x${string}`, walletAddr: string) {
       args: [agentAddr, ATL_CONTROLLER as `0x${string}`],
     }) as string[]
     if (existing.some(a => a.toLowerCase() === walletAddr.toLowerCase())) return
-    await wc.writeContract({ address: res, abi: agentAccountResolverAbi, functionName: 'addMultiAddressProperty', args: [agentAddr, ATL_CONTROLLER as `0x${string}`, walletAddr as `0x${string}`] })
+    const id = lookupIdentity(agentAddr)
+    await writeAgentPropertiesAsSelf({
+      smartAccount: agentAddr,
+      signerAccount: id.eoa,
+      salt: id.salt,
+      properties: [
+        { kind: 'multiAddress-append', predicate: ATL_CONTROLLER as `0x${string}`, value: walletAddr as `0x${string}` },
+      ],
+      label: `cil-seed:setController(${agentAddr})`,
+    })
   } catch (_e) { console.warn(`[cil-seed] Controller failed:`, _e) }
 }
 
 // Hub config setString removed — static fallback profiles provide nav config.
 
 async function setGeo(addr: `0x${string}`, lat: string, lon: string) {
-  const wc = getWalletClient()
   const resolver = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}`
   if (!resolver) return
   try {
-    await wc.writeContract({ address: resolver, abi: agentAccountResolverAbi, functionName: 'setStringProperty', args: [addr, ATL_LATITUDE as `0x${string}`, lat] })
-    await wc.writeContract({ address: resolver, abi: agentAccountResolverAbi, functionName: 'setStringProperty', args: [addr, ATL_LONGITUDE as `0x${string}`, lon] })
-    await wc.writeContract({ address: resolver, abi: agentAccountResolverAbi, functionName: 'setStringProperty', args: [addr, ATL_SPATIAL_CRS as `0x${string}`, 'EPSG:4326'] })
-    await wc.writeContract({ address: resolver, abi: agentAccountResolverAbi, functionName: 'setStringProperty', args: [addr, ATL_SPATIAL_TYPE as `0x${string}`, 'Point'] })
+    const id = lookupIdentity(addr)
+    const props: AgentProperty[] = [
+      { kind: 'string', predicate: ATL_LATITUDE as `0x${string}`,    value: lat },
+      { kind: 'string', predicate: ATL_LONGITUDE as `0x${string}`,   value: lon },
+      { kind: 'string', predicate: ATL_SPATIAL_CRS as `0x${string}`, value: 'EPSG:4326' },
+      { kind: 'string', predicate: ATL_SPATIAL_TYPE as `0x${string}`, value: 'Point' },
+    ]
+    await writeAgentPropertiesAsSelf({
+      smartAccount: addr,
+      signerAccount: id.eoa,
+      salt: id.salt,
+      properties: props,
+      label: `cil-seed:setGeo(${addr})`,
+    })
   } catch (_e) { console.warn(`[cil-seed] Geo failed for ${addr}:`, _e) }
 }
 
-/** See seed-catalyst-onchain.ts for the design notes — same shape here. */
+/** Mint a self-asserted geo claim from `subject`. See agent-self-register
+ *  for the userOp routing — the call lands as `msg.sender == subject` so
+ *  GeoClaimRegistry's `_isAuthorized` accepts it without needing the
+ *  deployer to be a co-owner. */
 async function mintGeoClaim(args: {
   subject: `0x${string}`
   cityKey: string
   relation: GeoRelation
   confidence: number
 }) {
-  const wc = getWalletClient()
-  const pc = getPublicClient()
-  const featReg = process.env.GEO_FEATURE_REGISTRY_ADDRESS as `0x${string}` | undefined
-  const claimReg = process.env.GEO_CLAIM_REGISTRY_ADDRESS as `0x${string}` | undefined
-  if (!featReg || !claimReg) return
-  const [country, region, city] = args.cityKey.split('/')
-  const featureId = GeoFeatureClient.featureIdFor({ countryCode: country, region, city })
-  const featureClient = new GeoFeatureClient(pc, featReg)
-  const claimClient = new GeoClaimClient(pc, claimReg)
-
-  let version: bigint
-  try {
-    const latest = await featureClient.getLatest(featureId)
-    version = latest.version
-  } catch {
-    console.warn(`[cil-seed] feature ${args.cityKey} not published yet — skip claim for ${args.subject}`)
+  let identity = agentIdentities.get(args.subject.toLowerCase() as `0x${string}`)
+  if (!identity) {
+    const personId = await loadDemoUserAgentIdentity(args.subject)
+    if (personId) identity = personId
+  }
+  if (!identity) {
+    console.warn(`[cil-seed] geo-claim skip: no identity for subject ${args.subject}`)
     return
   }
-  if (version === 0n) return
-
-  const nonceLabel = `seed:${args.subject.toLowerCase()}|${args.cityKey}|${args.relation}|v1`
-  const nonce = keccak256(toBytes(nonceLabel)) as `0x${string}`
-  const evidenceCommit = keccak256(toBytes(`evidence:${nonceLabel}`)) as `0x${string}`
-
-  try {
-    const hash = await claimClient.mint(wc, {
-      subjectAgent: args.subject,
-      issuer: args.subject,
-      featureId,
-      featureVersion: version,
-      relation: args.relation,
-      visibility: 'Public',
-      evidenceCommit,
-      confidence: args.confidence,
-      policyId: 'smart-agent.geo-overlap.v1',
-      nonce,
-    })
-    await pc.waitForTransactionReceipt({ hash })
-  } catch (_e) {
-    const msg = (_e as Error)?.message ?? ''
-    if (!/ClaimExists/.test(msg)) {
-      console.warn(`[cil-seed] geo-claim mint failed for ${args.subject} → ${args.cityKey}:`, msg.slice(0, 120))
-    }
-  }
+  await mintSelfGeoClaim({
+    subject: args.subject,
+    signerAccount: identity.eoa,
+    salt: identity.salt,
+    cityKey: args.cityKey,
+    relation: args.relation,
+    confidence: args.confidence,
+    logPrefix: '[cil-seed]',
+  })
 }
 
 async function setGenMapData(addr: `0x${string}`, data: string) {
-  const wc = getWalletClient()
   const resolver = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}`
   if (!resolver) return
   try {
-    await wc.writeContract({ address: resolver, abi: agentAccountResolverAbi, functionName: 'setStringProperty', args: [addr, ATL_GENMAP_DATA as `0x${string}`, data] })
+    const id = lookupIdentity(addr)
+    await writeAgentPropertiesAsSelf({
+      smartAccount: addr,
+      signerAccount: id.eoa,
+      salt: id.salt,
+      properties: [
+        { kind: 'string', predicate: ATL_GENMAP_DATA as `0x${string}`, value: data },
+      ],
+      label: `cil-seed:setGenMapData(${addr})`,
+    })
   } catch (_e) { console.warn(`[cil-seed] GenMap data failed for ${addr}:`, _e) }
 }
 
@@ -202,15 +236,17 @@ async function doSeed() {
   // ─── Deploy Org Smart Accounts ───────────────────────────────────
   console.log('[cil-seed] Deploying org smart accounts...')
 
-  // Organizations (salt 400001+)
-  const cil         = await deploy(400001)
-  const ilad        = await deploy(400002)
-  const ravah       = await deploy(400003)
-  const afiaMarket  = await deploy(400004)
-  const kossiRepair = await deploy(400005)
-  const lomeCluster = await deploy(400006)
-  const wave1       = await deploy(400007)
-  const wave2       = await deploy(400008)
+  // Organizations (salt 400001+). Stable per-org labels: each org's
+  // smart account is owned by a deterministic EOA derived from its
+  // label. Re-runs of the seed produce the same address.
+  const cil         = await deploy('cil:cil',         400001)
+  const ilad        = await deploy('cil:ilad',        400002)
+  const ravah       = await deploy('cil:ravah',       400003)
+  const afiaMarket  = await deploy('cil:afiaMarket',  400004)
+  const kossiRepair = await deploy('cil:kossiRepair', 400005)
+  const lomeCluster = await deploy('cil:lomeCluster', 400006)
+  const wave1       = await deploy('cil:wave1',       400007)
+  const wave2       = await deploy('cil:wave2',       400008)
 
   console.log('[cil-seed] Smart accounts deployed. CIL:', cil, 'ILAD:', ilad)
 
@@ -379,7 +415,7 @@ async function doSeed() {
 
   // ─── Hub Agent ─────────────────────────────────────────────���────
   console.log('[cil-seed] Deploying hub agent...')
-  const hubMission = await deploy(490001)
+  const hubMission = await deploy('cil:hub', 490001)
   await register(hubMission, 'Mission Collective Hub', 'Mission Collective — revenue-sharing capital deployment, ILAD operations, business health monitoring', TYPE_HUB)
 
   // Hub governance — paCameron (cil-user-001) is the operating admin.
@@ -419,17 +455,35 @@ async function doSeed() {
       const lh = keccak256(toBytes(label))
       const cn = keccak256(encodePacked(['bytes32', 'bytes32'], [parentNode, lh]))
       try {
-        // Idempotent: skip if already registered
+        // 1. Name-registry write — stays deployer-signed (deployer is
+        //    owner of `mission.agent` parent; see report for separate
+        //    refactor of name-registry parent ownership).
         const exists = await pc.readContract({ address: nameRegistryAddr, abi: agentNameRegistryAbi, functionName: 'recordExists', args: [cn] }) as boolean
         if (!exists) {
           const h = await wc.writeContract({ address: nameRegistryAddr, abi: agentNameRegistryAbi, functionName: 'register', args: [parentNode, label, ownerAddr, nameResolverAddr, 0n] })
           await pc.waitForTransactionReceipt({ hash: h })
         }
-        // Always set addr + name props
         try { await wc.writeContract({ address: nameResolverAddr, abi: agentNameResolverAbi, functionName: 'setAddr', args: [cn, ownerAddr] }) } catch { /* */ }
+
+        // 2. Resolver name-label + primary-name MUST be agent-signed.
+        //    Look up identity; skip silently if `ownerAddr` is not an
+        //    agent we deployed in this seed.
         if (resolverAddr) {
-          try { await wc.writeContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'setStringProperty', args: [ownerAddr, ATL_NAME_LABEL as `0x${string}`, label] }) } catch { /* */ }
-          try { await wc.writeContract({ address: resolverAddr, abi: agentAccountResolverAbi, functionName: 'setStringProperty', args: [ownerAddr, ATL_PRIMARY_NAME as `0x${string}`, fullName] }) } catch { /* */ }
+          const id = agentIdentities.get(ownerAddr.toLowerCase() as `0x${string}`)
+          if (id) {
+            try {
+              await writeAgentPropertiesAsSelf({
+                smartAccount: ownerAddr,
+                signerAccount: id.eoa,
+                salt: id.salt,
+                properties: [
+                  { kind: 'string', predicate: ATL_NAME_LABEL as `0x${string}`,   value: label },
+                  { kind: 'string', predicate: ATL_PRIMARY_NAME as `0x${string}`, value: fullName },
+                ],
+                label: `cil-seed:regName(${label})`,
+              })
+            } catch { /* idempotent: silent on second pass */ }
+          }
         }
         return cn
       } catch (e) { console.warn(`[cil-seed] Name reg failed for ${label}:`, e); return cn }

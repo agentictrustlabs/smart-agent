@@ -1,39 +1,38 @@
 'use server'
 
 /**
- * Grant user smart accounts as ERC-4337 owners of org AgentAccounts.
+ * Grant user smart accounts as ERC-4337 owners of org / personAgent /
+ * pool AgentAccounts.
  *
  * Boot-seed creates `ORGANIZATION_GOVERNANCE + ROLE_OWNER` edges in the
  * relationship graph, but that's only metadata — the user's smart account
- * is NOT actually an owner of the org's AgentAccount. Without this step,
- * the unified delegation flow can't redeem on-chain via the org as
- * fund/pool agent: `FundRegistry.openRound`'s `onlyFundOwner(fundAgent)`
+ * is NOT actually a co-owner of the org's AgentAccount. Without this
+ * step, the unified delegation flow can't redeem on-chain via the org as
+ * fund / pool agent: `FundRegistry.openRound`'s `onlyFundOwner(fundAgent)`
  * check calls `fundAgent.isOwner(msg.sender)` where msg.sender is the
  * user's smart account (the redeem's rootDelegator), and returns false.
  *
- * This module fills the gap. Mechanism: deployer (already an ERC-1271
- * owner of every org via boot-seed) signs a tightly-scoped delegation
- * `org → deployerEOA` with caveats `[Timestamp, AllowedTargets([org]),
- * AllowedMethods([addOwner])]`, then redeems it through
- * `DelegationManager.redeemDelegation`. The redeem flow makes msg.sender
- * to `org.execute` = DelegationManager (passes `_requireForExecute`),
- * which then calls `org.addOwner(userSmartAccount)` from self (passes
- * `onlySelf`).
+ * After the seed-as-self refactor, orgs are owned by *deterministic
+ * EOAs* derived from their seed label (e.g. `catalyst:catalystNoco`),
+ * NOT by the deployer. We therefore can't sign a `org → deployer`
+ * delegation any more — that whole branch is gone. Instead, this module
+ * makes the ORG SIGN FOR ITSELF: we look up the org's owner EOA via
+ * `resolveAgentIdentity` and submit a userOp from the org's smart
+ * account that calls `address(this).addOwner(userSmartAccount)`.
+ *
+ * `AgentAccount.addOwner` is `onlySelf` (line 548 of
+ * `packages/contracts/src/AgentAccount.sol`) — the only authorized
+ * `msg.sender` is `address(this)`. The userOp routes through
+ * `EntryPoint.handleOps` → `AgentAccount.execute(self, 0, addOwner(user))`,
+ * which lands `msg.sender == address(this)` at `addOwner`. No
+ * DelegationManager indirection required.
  *
  * Idempotent: skips pairs where the user is already an owner.
  */
 
-import {
-  createPublicClient, http,
-  encodeFunctionData, encodeAbiParameters, toFunctionSelector,
-  keccak256, encodePacked,
-  type Address, type Hex,
-} from 'viem'
-import { privateKeyToAccount } from 'viem/accounts'
-import {
-  delegationManagerAbi, agentAccountAbi, ROOT_AUTHORITY,
-} from '@smart-agent/sdk'
-import { getWalletClient } from '@/lib/contracts'
+import { createPublicClient, encodeFunctionData, http, type Address } from 'viem'
+import { agentAccountAbi } from '@smart-agent/sdk'
+import { executeCallsAsAgent, resolveAgentIdentity } from './agent-self-register'
 
 const RPC_URL = process.env.RPC_URL ?? 'http://127.0.0.1:8545'
 
@@ -50,31 +49,14 @@ export interface OrgOwnerPair {
  * (already-owners are skipped silently).
  */
 export async function grantOrgOwnershipBatch(pairs: OrgOwnerPair[]): Promise<number> {
-  const deployerKey = process.env.DEPLOYER_PRIVATE_KEY as Hex | undefined
-  const dm = process.env.DELEGATION_MANAGER_ADDRESS as Address | undefined
-  const timestampEnforcer = process.env.TIMESTAMP_ENFORCER_ADDRESS as Address | undefined
-  const targetsEnforcer = process.env.ALLOWED_TARGETS_ENFORCER_ADDRESS as Address | undefined
-  const methodsEnforcer = process.env.ALLOWED_METHODS_ENFORCER_ADDRESS as Address | undefined
-  if (!deployerKey || !dm || !timestampEnforcer || !targetsEnforcer || !methodsEnforcer) {
-    console.warn('[grant-org-ownership] missing env (DEPLOYER_PRIVATE_KEY / DELEGATION_MANAGER_ADDRESS / TIMESTAMP_ENFORCER_ADDRESS / ALLOWED_TARGETS_ENFORCER_ADDRESS / ALLOWED_METHODS_ENFORCER_ADDRESS)')
-    return 0
-  }
-
-  const account = privateKeyToAccount(deployerKey)
-  // getWalletClient() returns a wallet wrapped in the process-wide deployer
-  // lock + nonce counter. Bare viem createWalletClient calls race on the
-  // deployer's nonce when concurrent writes hit the chain (e.g., a pool
-  // create + the immediately-following org-ownership grant), so any code
-  // path that signs as DEPLOYER_PRIVATE_KEY must go through this helper.
-  const wallet = getWalletClient()
   const pub = createPublicClient({ chain: undefined, transport: http(RPC_URL) })
-  const addOwnerSelector = toFunctionSelector('addOwner(address)')
 
   let granted = 0
   for (const pair of pairs) {
     const { orgAddress, userSmartAccount } = pair
     const label = pair.label ?? `${userSmartAccount} → ${orgAddress}`
     try {
+      // Cheap idempotency check — `isOwner` is a free view.
       const already = await pub.readContract({
         address: orgAddress, abi: agentAccountAbi, functionName: 'isOwner',
         args: [userSmartAccount],
@@ -84,51 +66,31 @@ export async function grantOrgOwnershipBatch(pairs: OrgOwnerPair[]): Promise<num
         continue
       }
 
-      const now = Math.floor(Date.now() / 1000)
-      const validUntil = now + 600
-      const timestampTerms = encodeAbiParameters(
-        [{ type: 'uint256' }, { type: 'uint256' }],
-        [BigInt(now - 60), BigInt(validUntil)],
-      )
-      const targetsTerms = encodeAbiParameters([{ type: 'address[]' }], [[orgAddress]])
-      const methodsTerms = encodeAbiParameters([{ type: 'bytes4[]' }], [[addOwnerSelector]])
-
-      const caveats = [
-        { enforcer: timestampEnforcer, terms: timestampTerms, args: '0x' as Hex },
-        { enforcer: targetsEnforcer,   terms: targetsTerms,   args: '0x' as Hex },
-        { enforcer: methodsEnforcer,   terms: methodsTerms,   args: '0x' as Hex },
-      ]
-      const salt = BigInt(keccak256(encodePacked(
-        ['address', 'address', 'uint256'],
-        [orgAddress, userSmartAccount, BigInt(now)],
-      )))
-
-      const unsigned = {
-        delegator: orgAddress,
-        delegate:  account.address as Address,
-        authority: ROOT_AUTHORITY as Hex,
-        caveats,
-        salt,
-        signature: '0x' as Hex,
+      // Resolve the *target* agent's owner EOA + salt so the userOp's
+      // `sender` is `orgAddress` and `msg.sender` at `addOwner` resolves
+      // to `address(this)` — which is the only path past `onlySelf`.
+      const identity = await resolveAgentIdentity(orgAddress)
+      if (!identity) {
+        console.warn(`[grant-org-ownership] ! ${label}: no identity for ${orgAddress} — cannot sign as the agent itself`)
+        continue
       }
-      const digest = await pub.readContract({
-        address: dm, abi: delegationManagerAbi, functionName: 'hashDelegation',
-        args: [unsigned],
-      }) as Hex
-      const signature = await account.signMessage({ message: { raw: digest } })
-      const signed = { ...unsigned, signature }
 
-      const innerData = encodeFunctionData({
+      const addOwnerCall = encodeFunctionData({
         abi: agentAccountAbi, functionName: 'addOwner', args: [userSmartAccount],
       })
 
-      const tx = await wallet.writeContract({
-        address: dm, abi: delegationManagerAbi, functionName: 'redeemDelegation',
-        args: [[signed], orgAddress, 0n, innerData],
-        chain: undefined,
+      await executeCallsAsAgent({
+        smartAccount: orgAddress,
+        signerAccount: identity.eoa,
+        salt: identity.salt,
+        // Self-call: the AgentAccount executes addOwner on itself. The
+        // `_requireForExecute` allowlist (BaseAccount) lets the
+        // EntryPoint reach `execute`; `execute` performs the inner call
+        // with `msg.sender == address(this)`, satisfying `onlySelf`.
+        calls: [{ target: orgAddress, value: 0n, data: addOwnerCall }],
+        label: `grant-org-ownership:addOwner(${label})`,
       })
-      await pub.waitForTransactionReceipt({ hash: tx })
-      console.log(`[grant-org-ownership] ✓ ${label} (tx ${tx})`)
+      console.log(`[grant-org-ownership] ✓ ${label} (granted)`)
       granted++
     } catch (err) {
       console.warn(`[grant-org-ownership] ! ${label}: ${err instanceof Error ? err.message : String(err)}`)

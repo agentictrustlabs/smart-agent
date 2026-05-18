@@ -71,6 +71,7 @@ import "../src/SkillDefinitionRegistry.sol";
 import "../src/AgentSkillRegistry.sol";
 import "../src/SkillIssuerRegistry.sol";
 import "../src/zk/GeoH3InclusionVerifier.sol";
+import "../src/SmartAgentPaymaster.sol";
 import "account-abstraction/interfaces/IEntryPoint.sol";
 import "account-abstraction/core/EntryPoint.sol";
 
@@ -93,7 +94,18 @@ contract Deploy is Script {
         uint256 deployerKey = vm.envUint("PRIVATE_KEY");
         address deployer = vm.addr(deployerKey);
 
+        // The serverSigner is the EOA a2a-agent uses to sign every userOp
+        // submitted via /redeem-via-account. The factory's initialize() registers
+        // it as a co-owner of every AgentAccount, so AgentAccount._validateSignature
+        // accepts userOps signed by this key. In production this is a KMS-backed
+        // key; in dev deploy-local.sh exports SERVER_SIGNER_ADDRESS = the EOA
+        // derived from A2A_MASTER_PRIVATE_KEY. Misalignment causes AA24 errors
+        // at handleOps. If the env is unset (back-compat) we fall back to
+        // deployer, but deploy-local.sh always sets it.
+        address serverSigner = vm.envOr("SERVER_SIGNER_ADDRESS", deployer);
+
         console.log("Deployer:", deployer);
+        console.log("ServerSigner:", serverSigner);
         console.log("Chain ID:", block.chainid);
 
         vm.startBroadcast(deployerKey);
@@ -109,12 +121,27 @@ contract Deploy is Script {
             console.log("EntryPoint (deployed):", address(ep));
         }
 
+        // 1b. SmartAgentPaymaster — sponsors gas at the EntryPoint level so
+        //     the bundler EOA's balance is decoupled from per-op gas economics.
+        //     v1 ships in DEV-SAFE accept-all mode (see SmartAgentPaymaster.sol
+        //     for the production hardening checklist). The 1 ETH stake +
+        //     5 ETH deposit values are dev-only; production deploy is a
+        //     separate runbook (output/PAYMASTER-INTEGRATION-PLAN.md § 4).
+        SmartAgentPaymaster paymaster = new SmartAgentPaymaster(entryPoint, deployer);
+        paymaster.addStake{value: 1 ether}(uint32(1 days));
+        paymaster.deposit{value: 5 ether}();
+        console.log("SmartAgentPaymaster:", address(paymaster));
+        console.log("  paymaster stake (ETH):  1");
+        console.log("  paymaster deposit (ETH): 5");
+
         // 2. DelegationManager (deployed first so factory can pass it to accounts)
         DelegationManager delegationManager = new DelegationManager();
         console.log("DelegationManager:", address(delegationManager));
 
         // 3. AgentAccountFactory (deploys implementation singleton, sets DelegationManager + serverSigner)
-        AgentAccountFactory factory = new AgentAccountFactory(entryPoint, address(delegationManager), deployer);
+        //    serverSigner = the a2a-agent master signer (NOT deployer) so userOps
+        //    signed by a2a-agent validate against the smart account's owner set.
+        AgentAccountFactory factory = new AgentAccountFactory(entryPoint, address(delegationManager), serverSigner);
         console.log("AgentAccountFactory:", address(factory));
         console.log("  AgentAccount impl:", address(factory.accountImplementation()));
 
@@ -429,6 +456,7 @@ contract Deploy is Script {
         console.log("");
         console.log("=== Copy to apps/web/.env ===");
         _logEnv("ENTRYPOINT_ADDRESS", address(entryPoint));
+        _logEnv("PAYMASTER_ADDRESS", address(paymaster));
         _logEnv("AGENT_FACTORY_ADDRESS", address(factory));
         _logEnv("DELEGATION_MANAGER_ADDRESS", address(delegationManager));
         _logEnv("AGENT_RELATIONSHIP_ADDRESS", address(agentRelationship));

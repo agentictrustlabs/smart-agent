@@ -73,9 +73,6 @@ declare module 'hono' {
 // the session id alone selects the right principal. Host-context
 // would only confuse them.
 const INTER_SERVICE_PATH_SUFFIXES = [
-  '/redeem-tx',
-  '/redeem-with-chain',
-  '/redeem-subdelegated',
   '/redeem-via-account',
   '/deploy-agent',
 ]

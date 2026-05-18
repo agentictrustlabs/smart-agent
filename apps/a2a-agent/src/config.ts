@@ -193,6 +193,12 @@ export const config = {
   // Phase 3 (stateful session-account path) — set only when the deploy script
   // includes SessionAgentAccountFactory and the first-party modules.
   ENTRYPOINT_ADDRESS: env('ENTRYPOINT_ADDRESS', '0x0000000000000000000000000000000000000000') as `0x${string}`,
+  // SmartAgentPaymaster — sponsors every userOp submitted via /redeem-via-account.
+  // Deployed + staked + deposited by Deploy.s.sol; propagated to env by
+  // scripts/deploy-local.sh. The paymaster reimburses the bundler (master
+  // EOA in dev; external bundler in prod) via EntryPoint economics, so the
+  // outer-tx sender's balance stays flat instead of bleeding per call.
+  PAYMASTER_ADDRESS: env('PAYMASTER_ADDRESS', '0x0000000000000000000000000000000000000000') as `0x${string}`,
   SESSION_AGENT_ACCOUNT_FACTORY_ADDRESS: env('SESSION_AGENT_ACCOUNT_FACTORY_ADDRESS', '0x0000000000000000000000000000000000000000') as `0x${string}`,
   ECDSA_SESSION_VALIDATOR_ADDRESS: env('ECDSA_SESSION_VALIDATOR_ADDRESS', '0x0000000000000000000000000000000000000000') as `0x${string}`,
   SPEND_CAP_HOOK_ADDRESS: env('SPEND_CAP_HOOK_ADDRESS', '0x0000000000000000000000000000000000000000') as `0x${string}`,

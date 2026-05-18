@@ -105,8 +105,11 @@ export async function verifyDelegationAndExtractOrgPrincipal(
     return { error: `Invalid audience: ${claims.aud}` }
   }
 
-  if (claims.delegation.delegate.toLowerCase() !== claims.sessionKeyAddress.toLowerCase()) {
-    return { error: 'Delegation delegate does not match session key' }
+  // Option A: leaf delegate is the user's smart account (= claims.sub),
+  // not the session signer EOA. Session signer's authority comes from
+  // being a registered owner of the smart account.
+  if (claims.delegation.delegate.toLowerCase() !== claims.sub.toLowerCase()) {
+    return { error: 'Delegation delegate does not match smart account (claims.sub)' }
   }
 
   const delegationManagerAddr = config.delegationManagerAddress

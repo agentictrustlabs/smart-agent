@@ -18,6 +18,16 @@ set -euo pipefail
 #   scripts/fresh-start.sh                # full reset, wait for ready
 #   scripts/fresh-start.sh --no-wait      # skip readiness polling
 #   scripts/fresh-start.sh --no-services  # only deploy + seed; don't start servers
+#   scripts/fresh-start.sh --minimal      # catalyst-only seed (Maria/Pastor David
+#                                         # smoke-test path; ~5min instead of ~60min).
+#                                         # Skips gc, cil, disciple-networks,
+#                                         # mcp-data, skill-claims. Lane seeds
+#                                         # (round/pool/proposal/pledge/match)
+#                                         # still run since maria/david use them.
+#   scripts/fresh-start.sh --keep-contracts
+#                                         # Skip anvil restart + contract redeploy.
+#                                         # Wipes DBs only. Combine with --minimal
+#                                         # for sub-2-minute iteration cycles.
 #
 # Where things live afterwards:
 #   • Anvil:           pid=tmp/pids/anvil.pid       log=tmp/logs/anvil.log
@@ -100,10 +110,14 @@ WIPE_PATHS=(
 # ─── Args ──────────────────────────────────────────────────────────────
 WAIT_FOR_READY=1
 START_SERVICES=1
+KEEP_CONTRACTS=0
+SEED_PROFILE="full"
 for arg in "$@"; do
   case "$arg" in
-    --no-wait)     WAIT_FOR_READY=0 ;;
-    --no-services) START_SERVICES=0; WAIT_FOR_READY=0 ;;
+    --no-wait)         WAIT_FOR_READY=0 ;;
+    --no-services)     START_SERVICES=0; WAIT_FOR_READY=0 ;;
+    --minimal)         SEED_PROFILE="minimal" ;;
+    --keep-contracts)  KEEP_CONTRACTS=1 ;;
     --help|-h)
       sed -n '/^# ─/,/^# ───/p' "$0" | head -60
       exit 0
@@ -111,6 +125,12 @@ for arg in "$@"; do
     *) echo "unknown flag: $arg" >&2; exit 2 ;;
   esac
 done
+
+# Export profile so the web boot-seed pipeline + catalyst seed honour it.
+export SEED_PROFILE
+if [[ "$SEED_PROFILE" == "minimal" ]]; then
+  export CATALYST_SEED_MODE="minimal"
+fi
 
 # ─── Helpers ───────────────────────────────────────────────────────────
 
@@ -183,6 +203,18 @@ stop_all() {
   sleep 1
 }
 
+# Variant that keeps anvil running (used with --keep-contracts).
+stop_services_keep_anvil() {
+  banner "1/8  Stopping dev services (anvil stays up)"
+  kill_port "$WEB_PORT"
+  for tuple in "${SERVICES[@]}"; do
+    IFS=':' read -r name port _ <<<"$tuple"
+    kill_port "$port"
+  done
+  pkill -f 'tsx (watch )?src/index.ts' 2>/dev/null || true
+  sleep 1
+}
+
 wipe_state() {
   banner "2/8  Wiping DB + Askar state"
   for glob in "${WIPE_PATHS[@]}"; do
@@ -221,7 +253,7 @@ deploy_contracts() {
   banner "4/8  Deploying contracts + seeding ontology"
   sanitize_web_env
   bash "$SCRIPT_DIR/deploy-local.sh" 2>&1 | tee "$LOG_DIR/deploy.log" \
-    | grep -E '=== |Address:|Tx:' || true
+    | grep -E '=== |Address:|Tx:|SmartAgentPaymaster:|paymaster (stake|deposit)' || true
 }
 
 # Future on-chain seed steps go here. Order matters; one per line.
@@ -229,6 +261,29 @@ seed_after_deploy() {
   banner "5/8  Post-deploy seeds"
   echo "  (ontology + relationship-type-registry seeded inline by deploy-local.sh)"
   echo "  (per-hub on-chain seed runs in-process via /api/boot-seed)"
+
+  # Verify the gas-sponsorship paymaster is deployed AND funded — every
+  # userOp built by a2a-agent depends on its EntryPoint deposit being > 0.
+  local web_env="$ROOT_DIR/apps/web/.env"
+  if [[ -f "$web_env" ]]; then
+    local pm_addr ep_addr
+    pm_addr=$(grep '^PAYMASTER_ADDRESS=' "$web_env" | sed 's/.*=//' | tr -d '\r')
+    ep_addr=$(grep '^ENTRYPOINT_ADDRESS=' "$web_env" | sed 's/.*=//' | tr -d '\r')
+    if [[ -n "${pm_addr:-}" && -n "${ep_addr:-}" ]]; then
+      local pm_dep_wei pm_dep_eth
+      pm_dep_wei=$(cast call --rpc-url "http://127.0.0.1:$ANVIL_PORT" \
+        "$ep_addr" "balanceOf(address)(uint256)" "$pm_addr" 2>/dev/null \
+        | awk '{print $1}')
+      if [[ -n "${pm_dep_wei:-}" ]]; then
+        pm_dep_eth=$(cast to-unit "$pm_dep_wei" ether 2>/dev/null || echo "?")
+        echo "  ✓ paymaster $pm_addr — EntryPoint deposit: ${pm_dep_eth} ETH"
+      else
+        echo "  ⚠ paymaster $pm_addr deployed but EntryPoint.balanceOf read failed"
+      fi
+    else
+      echo "  ⚠ PAYMASTER_ADDRESS / ENTRYPOINT_ADDRESS missing from apps/web/.env"
+    fi
+  fi
 }
 
 start_services() {
@@ -315,11 +370,21 @@ seed_marketplace_lanes() {
 
 # ─── Run ───────────────────────────────────────────────────────────────
 
-stop_all
-wipe_state
-start_anvil
-deploy_contracts
-seed_after_deploy
+echo "  profile: $SEED_PROFILE   keep-contracts: $KEEP_CONTRACTS"
+
+if (( KEEP_CONTRACTS )); then
+  # Fast path: keep anvil + deployed contracts; only wipe state and re-seed.
+  # Useful for iterating on seed/UX without paying the deploy cost each time.
+  stop_services_keep_anvil
+  wipe_state
+  # No start_anvil, no deploy_contracts.
+else
+  stop_all
+  wipe_state
+  start_anvil
+  deploy_contracts
+  seed_after_deploy
+fi
 
 if (( START_SERVICES )); then
   start_services

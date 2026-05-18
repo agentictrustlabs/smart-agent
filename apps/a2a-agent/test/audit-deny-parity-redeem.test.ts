@@ -1,19 +1,23 @@
 /**
- * Sprint 5 Wave 2 P0-4 — deny-row parity for the high-risk redeem
- * + deploy-agent routes.
+ * Sprint 5 Wave 2 P0-4 — deny-row parity for the redeem + deploy-agent
+ * routes.
  *
- * Reviewer finding: across the four redeem variants
- * (`/redeem-tx`, `/redeem-with-chain`, `/redeem-subdelegated`,
- * `/redeem-via-account`) and `/deploy-agent`, some early-exit deny
- * branches returned 4xx/5xx without writing a `request_denied` audit
- * row. A senior firm walking the audit chain saw `request_received`
- * rows with no terminal — gaps were indistinguishable from open
- * requests.
+ * Reviewer finding: across the redeem + deploy-agent endpoints, some
+ * early-exit deny branches returned 4xx/5xx without writing a
+ * `request_denied` audit row. A senior firm walking the audit chain
+ * saw `request_received` rows with no terminal — gaps were
+ * indistinguishable from open requests.
  *
  * Fix: every 4xx/5xx exit now goes through `denyAndAudit(...)` which
  * (a) writes a `request_denied` row (hash-chained, binding the
  * `AUDIT_DENY_REASONS` literal + status + correlationId) and
  * (b) returns the HTTP response.
+ *
+ * Option A (ERC-4337-only redeem): the legacy `/redeem-tx`,
+ * `/redeem-with-chain`, and `/redeem-subdelegated` routes were deleted.
+ * Every on-chain write now routes through `/redeem-via-account` (with
+ * an optional `chain` field for the AnonCreds-gated marketplace flow).
+ * `/deploy-agent` survives as a thin wrapper around the factory.
  *
  * This file is the table-driven parity test. For each route in scope
  * and each deny branch, we:
@@ -178,105 +182,6 @@ interface DenyCase {
  * lives in AUDIT_DENY_REASONS and every call site has been swept.
  */
 const cases: DenyCase[] = [
-  // ─── /redeem-tx ──────────────────────────────────────────────────
-  {
-    name: 'redeem-tx — malformed JSON body',
-    routeTail: 'redeem-tx',
-    buildBody: () => 'this-is-not-json',
-    expectedStatus: 400,
-    expectedReason: 'fields:malformed-json',
-  },
-  {
-    name: 'redeem-tx — unknown tool',
-    routeTail: 'redeem-tx',
-    buildBody: () => JSON.stringify({
-      mcpTool: 'tool.that.does.not.exist',
-      mcpCallId: 'mc-' + randomUUID(),
-      target: '0x' + '1'.repeat(40),
-      value: '0',
-      callData: '0xdeadbeef',
-    }),
-    expectedStatus: 403,
-    expectedReason: 'policy:unknown-tool',
-  },
-  {
-    name: 'redeem-tx — session not found',
-    routeTail: 'redeem-tx',
-    buildBody: () => JSON.stringify({
-      mcpTool: 'pool:create',
-      mcpCallId: 'mc-' + randomUUID(),
-      target: '0x' + '0'.repeat(40),
-      value: '0',
-      callData: '0xdeadbeef',
-    }),
-    expectedStatus: 404,
-    expectedReason: 'session:not-found',
-  },
-  // ─── /redeem-with-chain ──────────────────────────────────────────
-  {
-    name: 'redeem-with-chain — malformed JSON body',
-    routeTail: 'redeem-with-chain',
-    buildBody: () => 'still not json',
-    expectedStatus: 400,
-    expectedReason: 'fields:malformed-json',
-  },
-  {
-    name: 'redeem-with-chain — chain empty',
-    routeTail: 'redeem-with-chain',
-    buildBody: () => JSON.stringify({
-      mcpTool: 'pool:create',
-      mcpCallId: 'mc-' + randomUUID(),
-      target: '0x' + '0'.repeat(40),
-      value: '0',
-      callData: '0xdeadbeef',
-      chain: [],
-    }),
-    expectedStatus: 400,
-    expectedReason: 'validation:chain-empty',
-  },
-  {
-    name: 'redeem-with-chain — unknown tool',
-    routeTail: 'redeem-with-chain',
-    buildBody: () => JSON.stringify({
-      mcpTool: 'tool.not.in.policies',
-      mcpCallId: 'mc-' + randomUUID(),
-      target: '0x' + '0'.repeat(40),
-      value: '0',
-      callData: '0xdeadbeef',
-      chain: [{
-        delegator: '0x' + '1'.repeat(40),
-        delegate: '0x' + '2'.repeat(40),
-        authority: '0x' + '0'.repeat(64),
-        caveats: [],
-        salt: '1',
-        signature: '0x' + '0'.repeat(130),
-      }],
-    }),
-    expectedStatus: 403,
-    expectedReason: 'policy:unknown-tool',
-  },
-  // ─── /redeem-subdelegated ────────────────────────────────────────
-  {
-    name: 'redeem-subdelegated — malformed JSON',
-    routeTail: 'redeem-subdelegated',
-    buildBody: () => '{not-valid',
-    expectedStatus: 400,
-    expectedReason: 'fields:malformed-json',
-  },
-  {
-    name: 'redeem-subdelegated — unknown tool',
-    routeTail: 'redeem-subdelegated',
-    buildBody: () => JSON.stringify({
-      mcpTool: 'nope',
-      mcpCallId: 'mc-' + randomUUID(),
-      a2aTaskId: 'tk-1',
-      target: '0x' + '0'.repeat(40),
-      value: '0',
-      callData: '0xdeadbeef',
-    }),
-    expectedStatus: 403,
-    expectedReason: 'policy:unknown-tool',
-  },
   // ─── /redeem-via-account ─────────────────────────────────────────
   {
     name: 'redeem-via-account — malformed JSON',
@@ -297,6 +202,34 @@ const cases: DenyCase[] = [
     }),
     expectedStatus: 403,
     expectedReason: 'policy:unknown-tool',
+  },
+  {
+    name: 'redeem-via-account — mcp-only tool routed here',
+    routeTail: 'redeem-via-account',
+    buildBody: () => JSON.stringify({
+      // `intent:list` is a TOOL_POLICIES entry with executionPath='mcp-only';
+      // it has no on-chain side and must not reach the on-chain redeem path.
+      mcpTool: 'intent:list',
+      mcpCallId: 'mc-' + randomUUID(),
+      target: '0x' + '0'.repeat(40),
+      value: '0',
+      callData: '0xdeadbeef',
+    }),
+    expectedStatus: 403,
+    expectedReason: 'policy:wrong-execution-path',
+  },
+  {
+    name: 'redeem-via-account — session not found',
+    routeTail: 'redeem-via-account',
+    buildBody: () => JSON.stringify({
+      mcpTool: 'pool:create',
+      mcpCallId: 'mc-' + randomUUID(),
+      target: '0x' + '0'.repeat(40),
+      value: '0',
+      callData: '0xdeadbeef',
+    }),
+    expectedStatus: 404,
+    expectedReason: 'session:not-found',
   },
   // ─── /deploy-agent ───────────────────────────────────────────────
   {

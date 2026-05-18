@@ -137,19 +137,33 @@ export function triggerBootSeed(): Promise<void> {
       //    writes inside getWalletClient, so this is "concurrent kick-off,
       //    serialized signing" — gives us a single fan-out point instead
       //    of three round-trip waves of fetches.
-      state.phase = 'provisioning users (all communities)'
-      await Promise.all([
-        ensureCommunityUsers('gc-user-'),
-        ensureCommunityUsers('cat-user-'),
-        ensureCommunityUsers('cil-user-'),
-        // fr/pl/dm users (sister networks for catalyst). These don't depend on
-        // hub-seed completion, so we provision them up-front. This clears the
-        // 41/41 readiness gate before the slow hub-seed work runs, instead of
-        // making the user wait through ~10 minutes of catalyst+cil seeding.
-        ensureCommunityUsers('fr-user-'),
-        ensureCommunityUsers('pl-user-'),
-        ensureCommunityUsers('dm-user-'),
-      ])
+      // SEED_PROFILE=minimal: smoke-test seed for the proposal-funding video.
+      // Provisions exactly three demo users (Maria, Pastor David, Sarah) +
+      // catalyst-seed:minimal's 3 orgs + 2 treasuries. Skips gc/cil/
+      // disciple-networks/skill-claims/mcp-data entirely. ~5 min vs ~60 min.
+      const minimal = process.env.SEED_PROFILE === 'minimal'
+      state.phase = minimal
+        ? 'provisioning users (Maria + David + Sarah — minimal)'
+        : 'provisioning users (all communities)'
+      if (minimal) {
+        const { ensureDemoUser } = await import('@/lib/demo-seed/lookup-users')
+        await ensureDemoUser('cat-user-001') // Maria Gonzalez — Network Program Director
+        await ensureDemoUser('cat-user-002') // Pastor David Chen — Fort Collins Network Lead
+        await ensureDemoUser('cat-user-005') // Sarah Thompson — Network Regional Lead
+      } else {
+        await Promise.all([
+          ensureCommunityUsers('gc-user-'),
+          ensureCommunityUsers('cat-user-'),
+          ensureCommunityUsers('cil-user-'),
+          // fr/pl/dm users (sister networks for catalyst). These don't depend on
+          // hub-seed completion, so we provision them up-front. This clears the
+          // 41/41 readiness gate before the slow hub-seed work runs, instead of
+          // making the user wait through ~10 minutes of catalyst+cil seeding.
+          ensureCommunityUsers('fr-user-'),
+          ensureCommunityUsers('pl-user-'),
+          ensureCommunityUsers('dm-user-'),
+        ])
+      }
 
       // 2a. Geo features + .geo name tree first — hub seeds mint
       //     `residentOf` / `operatesIn` GeoClaims that pin a feature
@@ -189,26 +203,40 @@ export function triggerBootSeed(): Promise<void> {
       //     the pre-flight balance funding races trip "nonce too low"
       //     reverts. Per-hub locks make sequential safe under poll
       //     re-triggers.
-      state.phase = 'on-chain seed: all hubs'
-      await seedGlobalChurchOnChain()
+      state.phase = minimal
+        ? 'on-chain seed: catalyst hub only (minimal)'
+        : 'on-chain seed: all hubs'
+      if (!minimal) {
+        await seedGlobalChurchOnChain()
+      }
       await seedCatalystOnChain()
-      await seedCILOnChain()
+      if (!minimal) {
+        await seedCILOnChain()
+      }
 
-      // 2b′. Catalyst sister networks (Harvest East, Great Lakes,
-      //      CityBridge). Adds the disciple-tools-flavoured org agents
-      //      + 12 actors representing missional archetypes (Multiplier,
-      //      Dispatcher, Strategist, Digital Responder, Multi-Gen Coach)
-      //      under the existing Catalyst hub. Idempotent.
-      state.phase = 'on-chain seed: disciple-tools sister networks'
-      try {
-        await seedDiscipleNetworksOnChain()
-      } catch (e) {
-        console.warn('[boot-seed] disciple networks seed error (non-fatal):', (e as Error).message)
+      if (!minimal) {
+        // 2b′. Catalyst sister networks (Harvest East, Great Lakes,
+        //      CityBridge). Adds the disciple-tools-flavoured org agents
+        //      + 12 actors representing missional archetypes (Multiplier,
+        //      Dispatcher, Strategist, Digital Responder, Multi-Gen Coach)
+        //      under the existing Catalyst hub. Idempotent.
+        state.phase = 'on-chain seed: disciple-tools sister networks'
+        try {
+          await seedDiscipleNetworksOnChain()
+        } catch (e) {
+          console.warn('[boot-seed] disciple networks seed error (non-fatal):', (e as Error).message)
+        }
+      } else {
+        console.log('[boot-seed] SEED_PROFILE=minimal — skipping disciple-networks')
       }
 
       // 2c. Demo skill claims — runs after person-agents exist so
       //     getPersonAgentForUser resolves. Idempotent: deterministic
-      //     nonce hits ClaimExists on re-run.
+      //     nonce hits ClaimExists on re-run. In minimal mode the helper
+      //     iterates BINDINGS and silently skips users whose DB row
+      //     hasn't been provisioned — yielding only the Maria/David/Sarah
+      //     bindings (plus any other catalyst users that boot-seed
+      //     happened to provision).
       state.phase = 'on-chain seed: demo skill claims'
       try {
         await seedDemoSkillClaimsOnChain()
@@ -216,10 +244,30 @@ export function triggerBootSeed(): Promise<void> {
         console.warn('[boot-seed] demo skill claims error (non-fatal):', (e as Error).message)
       }
 
+      // 2c′. Fund the minimal demo principals' treasuries so the
+      //      proposal-funding video has real USDC to move. In minimal
+      //      mode this targets exactly Maria/David/Sarah personal
+      //      smart accounts + Catalyst NoCo Network + Fort Collins
+      //      Network org treasuries. In full mode the activity-log
+      //      seed downstream handles per-user funding via lane-seed
+      //      scripts, so this is a no-op there.
+      if (minimal) {
+        state.phase = 'on-chain seed: fund minimal demo treasuries'
+        try {
+          const { fundMinimalDemoTreasuries } = await import('@/lib/demo-seed/fund-demo-treasuries')
+          await fundMinimalDemoTreasuries()
+        } catch (e) {
+          console.warn('[boot-seed] minimal treasury funding failed (non-fatal):', (e as Error).message)
+        }
+      }
+
       // 2d. Seed person-mcp + org-mcp domain tables (oikos, prayers, training,
-      //     preferences, notifications, revenue reports, proposals). Direct
-      //     SQLite write into each MCP — bypasses delegation flow because the
-      //     boot-seed runs without a user session. Idempotent.
+      //     preferences, notifications, revenue reports, proposals).
+      //     Goes through the proper delegation flow per file docstring;
+      //     each function iterates a known user list and silently skips
+      //     users that aren't in the DB. In minimal mode this yields
+      //     Maria/David/Sarah's data (plus org-level revenue + proposals
+      //     for the two seeded orgs).
       state.phase = 'seeding mcp domain tables'
       try {
         const { seedMcpDemoData } = await import('@/lib/demo-seed/seed-mcp-data')

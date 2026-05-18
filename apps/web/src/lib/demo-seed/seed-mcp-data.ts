@@ -215,6 +215,27 @@ const CATALYST_USERS: UserSpec[] = [
     ],
   },
   {
+    userId: 'cat-user-005',
+    oikos: [
+      { personName: 'Maria Gonzalez', proximity: 'ring1', spiritualResponseState: 'decided', plannedConversation: true, notes: 'Network co-lead — monthly strategy sync' },
+      { personName: 'Front Range pastors group', proximity: 'ring2', spiritualResponseState: 'interested', plannedConversation: true, notes: 'Regional alliance opportunities' },
+      { personName: 'Funder relationships (CO Springs cohort)', proximity: 'ring2', spiritualResponseState: 'interested' },
+      { personName: 'Catalyst data-stewardship team', proximity: 'ring3', spiritualResponseState: 'curious' },
+    ],
+    prayers: [
+      { title: 'NoCo Network regional growth', schedule: 'daily', lastPrayedAt: daysAgo(1) },
+      { title: 'Wisdom for grant-cycle stewardship', schedule: 'mon,wed,fri' },
+      { title: 'Front Range pastor unity', schedule: 'daily' },
+      { title: 'Maria — bandwidth and rest', schedule: 'tue,thu' },
+    ],
+    training411: 5, cocObeying: 7, cocTeaching: 3,
+    preferences: { language: 'en', homeChurch: 'Catalyst NoCo Network', location: 'Fort Collins, CO' },
+    notifications: [
+      { kind: 'proposal_pending', payload: JSON.stringify({ title: 'Proposal awaiting review', body: "Maria's grant proposal is ready for your funding review.", link: '/catalyst/proposals' }) },
+      { kind: 'review_received', payload: JSON.stringify({ title: 'Annual review feedback', body: 'Maria left a peer review on your regional facilitation.', link: '/reviews' }) },
+    ],
+  },
+  {
     userId: 'cat-user-003',
     oikos: [
       { personName: 'Familia Herrera', proximity: 'ring1', spiritualResponseState: 'decided' },
@@ -582,6 +603,40 @@ interface ProfileSpec {
 }
 
 const PROFILE_SPECS: ProfileSpec[] = [
+  // Minimal-profile principals — Maria, David, Sarah. Their personal
+  // smart accounts double as personal treasuries; the proposal-funding
+  // video flow updates these profiles via the same delegation path the
+  // production UI would.
+  {
+    userId: 'cat-user-001',
+    displayName: 'Maria Gonzalez',
+    email: 'maria@catalystnoco.org',
+    phone: '+1-970-555-0101',
+    language: 'es',
+    city: 'Fort Collins', stateProvince: 'CO', country: 'US',
+    bio: 'Program Director — Catalyst NoCo Network; bilingual community outreach lead across northern Colorado.',
+    dateOfBirth: '1986-04-12',
+  },
+  {
+    userId: 'cat-user-002',
+    displayName: 'Pastor David Chen',
+    email: 'david@catalystnoco.org',
+    phone: '+1-970-555-0102',
+    language: 'en',
+    city: 'Fort Collins', stateProvince: 'CO', country: 'US',
+    bio: 'Network Lead — Fort Collins Network; pastoral care, bridge-building, and bilingual worship development.',
+    dateOfBirth: '1979-09-03',
+  },
+  {
+    userId: 'cat-user-005',
+    displayName: 'Sarah Thompson',
+    email: 'sarah@catalystnoco.org',
+    phone: '+1-970-555-0105',
+    language: 'en',
+    city: 'Fort Collins', stateProvince: 'CO', country: 'US',
+    bio: 'Regional Lead — Catalyst NoCo Network; grant-cycle stewardship and Front Range pastor relationships.',
+    dateOfBirth: '1982-07-21',
+  },
   // Catalyst — coaching subjects (Maria coaches Ana; David coaches Ana + Carlos)
   {
     userId: 'cat-user-004',
@@ -951,8 +1006,10 @@ async function seedProposals(): Promise<number> {
 
 // ─── On-chain activity log seeder ────────────────────────────────────────
 // Activities live on-chain (agent-resolver JSON property) — not in any MCP.
-// `setActivityLog` writes via the deployer key (system bootstrap; same as
-// the on-chain agent/edge seeders use). No delegation required.
+// Each write lands as a userOp from the *target agent's* own smart account,
+// signed by that agent's owner EOA (per the seed-as-self refactor). The
+// resolver's `onlyAgentOwner(agent)` guard accepts `msg.sender == agent`
+// directly — no deployer signing surface.
 
 interface ActivitySpec {
   type: 'meeting' | 'visit' | 'training' | 'outreach' | 'follow-up' | 'coaching' | 'prayer' | 'service' | 'assessment' | 'other'
@@ -998,8 +1055,10 @@ const ACTIVITY_CATALOG: Record<string, ActivitySpec[]> = {
 
 async function seedActivitiesOnChain(): Promise<number> {
   const { randomUUID } = await import('crypto')
-  const { getActivityLog, setActivityLog } = await import('@/lib/agent-resolver')
+  const { getActivityLog, ATL_ACTIVITY_LOG } = await import('@/lib/agent-resolver')
   const { getOrgsForPersonAgent } = await import('@/lib/agent-registry')
+  const { writeAgentPropertiesAsSelf, resolveAgentIdentity } =
+    await import('./agent-self-register')
 
   let total = 0
   for (const [userId, specs] of Object.entries(ACTIVITY_CATALOG)) {
@@ -1012,9 +1071,9 @@ async function seedActivitiesOnChain(): Promise<number> {
       for (const org of orgs) targetAddrs.add(org.address.toLowerCase())
     } catch { /* on-chain unavailable */ }
 
-    for (const orgAddr of targetAddrs) {
+    for (const targetAddr of targetAddrs) {
       let existing: any[] = []
-      try { existing = (await getActivityLog(orgAddr)) as any[] } catch { existing = [] }
+      try { existing = (await getActivityLog(targetAddr)) as any[] } catch { existing = [] }
       const seenTitles = new Set(existing.map((e: any) => e.title))
       let added = 0
       for (const s of specs) {
@@ -1035,14 +1094,31 @@ async function seedActivitiesOnChain(): Promise<number> {
         })
         added++
       }
-      if (added > 0) {
-        try {
-          await setActivityLog(orgAddr, existing as never)
-          total += added
-        } catch (err) {
-          console.warn(`[seed-mcp] activity log write failed for ${orgAddr}:`, (err as Error).message)
-        }
+      if (added === 0) continue
+
+      // Resolve the target agent's (eoa, salt) so the userOp's sender ==
+      // targetAddr and msg.sender at the resolver == targetAddr. The
+      // resolver's `onlyAgentOwner(agent)` modifier short-circuits when
+      // `msg.sender == agent` so we don't need any co-owner relay.
+      const identity = await resolveAgentIdentity(targetAddr as `0x${string}`)
+      if (!identity) {
+        console.warn(`[seed-mcp] activity log skip: no identity for ${targetAddr} (user=${userId})`)
+        continue
       }
+      await writeAgentPropertiesAsSelf({
+        smartAccount: targetAddr as `0x${string}`,
+        signerAccount: identity.eoa,
+        salt: identity.salt,
+        properties: [
+          {
+            kind: 'string',
+            predicate: ATL_ACTIVITY_LOG as `0x${string}`,
+            value: JSON.stringify(existing),
+          },
+        ],
+        label: `seed-mcp:activityLog(${targetAddr})`,
+      })
+      total += added
     }
   }
   return total

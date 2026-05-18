@@ -44,11 +44,27 @@ contract AgentAccountResolver is AttributeStorage {
     error AlreadyRegistered();
     error NotRegistered();
 
+    /// @notice Authorize the caller to write attributes on `agent`.
+    /// @dev Two acceptance paths:
+    ///   1. `msg.sender == agent` — the agent is acting on its OWN behalf.
+    ///      This is the canonical production shape: an ERC-4337 userOp's
+    ///      `sender` is the agent's smart account, and when that userOp
+    ///      executes `resolver.<setter>(self, …)` via `AgentAccount.execute`,
+    ///      `msg.sender` here equals the agent. The agent IS implicitly
+    ///      authorized over itself; no need to staticcall back into its
+    ///      own `isOwner` (which would also have to canonicalize the
+    ///      self-owner edge case).
+    ///   2. Otherwise, fall through to the agent's `isOwner(msg.sender)`
+    ///      check — for any other principal that holds an owner slot
+    ///      (e.g., a co-owner EOA acting as a relay outside the userOp
+    ///      pipeline).
     modifier onlyAgentOwner(address agent) {
-        (bool ok, bytes memory data) = agent.staticcall(
-            abi.encodeWithSignature("isOwner(address)", msg.sender)
-        );
-        if (!ok || !abi.decode(data, (bool))) revert NotAgentOwner();
+        if (msg.sender != agent) {
+            (bool ok, bytes memory data) = agent.staticcall(
+                abi.encodeWithSignature("isOwner(address)", msg.sender)
+            );
+            if (!ok || !abi.decode(data, (bool))) revert NotAgentOwner();
+        }
         _;
     }
 

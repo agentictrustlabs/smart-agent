@@ -1,27 +1,52 @@
 /**
- * Generate a real keypair for a demo user, fund it, deploy an AgentAccount,
- * and deploy + register a person agent in the on-chain resolver.
+ * Generate a real keypair for a demo user and deploy + register their
+ * smart account + person agent ON CHAIN AS THE USER — i.e. signing
+ * ERC-4337 userOps with the user's OWN EOA, never with the deployer or
+ * master signer.
  *
- * After this, the user is indistinguishable from a legacy-connected user
- * who completed onboarding — no fallbacks needed anywhere.
+ * This is the seed-time twin of the production flow: in production, a
+ * real user comes in via passkey or MetaMask, and their FIRST action
+ * lands on chain as a userOp whose `sender` is their smart account,
+ * signed by their wallet, and `msg.sender` at the resolver = the smart
+ * account. The demo seed reproduces exactly that shape — the simulated
+ * EOA stands in for what would otherwise be a passkey or MetaMask key.
  *
- * DEPLOY/SEED-TIME ONLY (K6). This module is invoked from the boot-seed
- * driver (`apps/web/src/lib/boot-seed.ts`) on fresh-start; it is NEVER
- * called from a request handler. Its `DEPLOYER_PRIVATE_KEY` use is on
- * the K6 allowlist by virtue of `apps/web/src/lib/demo-seed/**` being
- * exempt in `scripts/check-no-bypass.sh`.
+ * Two userOps land on chain per user:
+ *
+ *   1. From the user's smart account:
+ *        executeBatch([
+ *          resolver.register(self, …),
+ *          resolver.setStringProperty(self, ATL_PRIMARY_NAME, "<slug>-sa.agent"),
+ *        ])
+ *
+ *   2. From the user's person agent:
+ *        executeBatch([
+ *          resolver.register(self, …),
+ *          resolver.addMultiAddressProperty(self, ATL_CONTROLLER, userEoa),
+ *          resolver.setStringProperty(self, ATL_PRIMARY_NAME, "<slug>.agent"),
+ *        ])
+ *
+ * In both cases the userOp's `initCode` counterfactually deploys the
+ * account via `AgentAccountFactory.createAccount(userEoa, salt)`. The
+ * deployer EOA acts purely as the EntryPoint relayer (handleOps gas
+ * payer) — it does NOT sign or own these accounts.
+ *
+ * DEPLOY/SEED-TIME ONLY (K6). Invoked from the boot-seed driver
+ * (`apps/web/src/lib/boot-seed.ts`) on fresh-start; never from a
+ * request handler. Allowlisted in `scripts/check-no-bypass.sh`.
  */
 
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts'
 import { parseEther } from 'viem'
 import { keccak256, encodePacked, toBytes } from 'viem'
-import { deploySmartAccount, getPublicClient, getWalletClient } from '@/lib/contracts'
-import { agentAccountResolverAbi, ATL_CONTROLLER, ATL_PRIMARY_NAME } from '@smart-agent/sdk'
-
-const DEPLOYER_KEY = process.env.DEPLOYER_PRIVATE_KEY as `0x${string}`
+import { getPublicClient, getWalletClient } from '@/lib/contracts'
+import { ATL_CONTROLLER, ATL_PRIMARY_NAME } from '@smart-agent/sdk'
+import {
+  registerAgentAsSelf,
+  getCounterfactualAddress,
+} from './agent-self-register'
 
 const TYPE_PERSON = keccak256(toBytes('atl:PersonAgent'))
-const ZERO_HASH = '0x0000000000000000000000000000000000000000000000000000000000000000' as `0x${string}`
 
 /** Turn a display name like "Pastor David Chen" into a DNS-safe slug
  *  "pastor-david-chen" suitable as the leftmost label of a primary name.
@@ -41,8 +66,8 @@ function deriveSlug(name: string | undefined, agentAddress: `0x${string}`): stri
 }
 
 /**
- * Generate a new wallet, fund it, deploy an AgentAccount, and deploy
- * a person agent registered in the on-chain resolver.
+ * Generate a new wallet, fund it, deploy + register both the smart account
+ * and the person agent — each via a userOp signed by the user's own EOA.
  */
 export async function generateDemoWallet(userName?: string): Promise<{
   privateKey: `0x${string}`
@@ -50,16 +75,22 @@ export async function generateDemoWallet(userName?: string): Promise<{
   smartAccountAddress: `0x${string}`
   personAgentAddress: `0x${string}`
 }> {
-  // 1. Generate keypair
+  // 1. Generate keypair — this EOA is the user's "wallet" in the demo.
+  //    It's the EOA that signs every userOp envelope for the user's smart
+  //    account AND person agent. Master signer is a co-owner of both (via
+  //    factory.serverSigner) but never signs user-initiated actions.
   const privateKey = generatePrivateKey()
   const account = privateKeyToAccount(privateKey)
 
-  // 2. Fund from deployer (1 ETH for gas).
-  //    Route through `getWalletClient()` so the funding tx goes through
-  //    the process-wide deployer-lock + nonce counter — a separate viem
-  //    wallet client here would race with concurrent boot-seed writes
-  //    and hand out duplicate / skipped nonces.
-  if (DEPLOYER_KEY) {
+  // 2. Fund from deployer (1 ETH). The userOps below pay gas via the
+  //    paymaster + deployer-relayer, so the user EOA does NOT need ETH
+  //    for the seed-time registers. BUT downstream seed flows (geo
+  //    claims, name registry writes, edges) still sign with the deployer
+  //    for now (they have different auth models — see report). We keep
+  //    the funding here so the user EOA is ready to sign on-chain
+  //    actions at runtime without a separate top-up.
+  const deployerKey = process.env.DEPLOYER_PRIVATE_KEY as `0x${string}` | undefined
+  if (deployerKey) {
     const wc = getWalletClient()
     const pc = getPublicClient()
     const hash = await wc.sendTransaction({
@@ -71,148 +102,61 @@ export async function generateDemoWallet(userName?: string): Promise<{
     await pc.waitForTransactionReceipt({ hash })
   }
 
-  // 3. Deploy AgentAccount (deployer creates, user's EOA is owner)
+  // 3. Compute counterfactual addresses for BOTH accounts.
+  //    Owner = user EOA in both cases. Person agent gets a deterministic
+  //    salt derived from the user EOA so a re-run of the seed always
+  //    finds the same person agent. The smart account uses a random
+  //    salt (Date.now() + jitter) — the same shape as before, but with
+  //    the user EOA as owner instead of the deployer.
   const acctSalt = BigInt(Date.now() + Math.floor(Math.random() * 100000))
-  const smartAccountAddress = await deploySmartAccount(account.address, acctSalt) as `0x${string}`
+  const smartAccountAddress = await getCounterfactualAddress(account.address, acctSalt)
 
-  // 4. Deploy person agent (separate smart account registered as person type)
-  // Owner MUST be the deployer so resolver.register() passes the onlyAgentOwner check.
-  // The user's EOA is tracked via ATL_CONTROLLER (set below), not as a smart-account owner.
-  const deployerAddr = privateKeyToAccount(DEPLOYER_KEY).address
   const personSaltHash = keccak256(encodePacked(['string', 'address'], ['person', account.address]))
   const personSalt = BigInt(personSaltHash)
-  const personAgentAddress = await deploySmartAccount(deployerAddr, personSalt) as `0x${string}`
+  const personAgentAddress = await getCounterfactualAddress(account.address, personSalt)
 
-  // 5. Register person agent in on-chain resolver (uses deployer directly, no session needed).
-  //
-  //    The three on-chain properties below — `register`, `ATL_CONTROLLER`,
-  //    `ATL_PRIMARY_NAME` — are ALL required for a person agent to be a
-  //    first-class principal in the system:
-  //      • `register` lands the agent in AgentAccountResolver so other
-  //        property writes don't revert with `NotRegistered`.
-  //      • `ATL_CONTROLLER` ties the user's EOA to the smart account so
-  //        `getOrgsForPersonAgent` / KB sync can reverse-resolve ownership.
-  //      • `ATL_PRIMARY_NAME` is what the A2A URL resolver reads to derive
-  //        the per-agent host slug (`<slug>.agent.localhost:3100`) — without
-  //        it, every `callMcp()` for this user 401s with
-  //        "A2A endpoint unresolvable: no primary name registered".
-  //
-  //    Each step is idempotent at the read-first level so a re-run does
-  //    not pile on duplicate controllers or overwrite a correct name.
-  const resolverAddr = process.env.AGENT_ACCOUNT_RESOLVER_ADDRESS as `0x${string}`
+  // 4. Register the SMART ACCOUNT first.
+  //    One batched userOp: register(self) + setStringProperty(ATL_PRIMARY_NAME).
+  //    `initCode` deploys the account in the same op.
   const slug = deriveSlug(userName, personAgentAddress)
-  const primaryName = `${slug}.agent`
-  if (resolverAddr) {
-    try {
-      const wc = getWalletClient()
-      const pc = getPublicClient()
+  const saSlug = `${slug}-sa`
+  const saPrimaryName = `${saSlug}.agent`
+  const paPrimaryName = `${slug}.agent`
 
-      // 5a. Register (skip if already registered).
-      const isReg = await pc.readContract({
-        address: resolverAddr, abi: agentAccountResolverAbi,
-        functionName: 'isRegistered', args: [personAgentAddress],
-      }) as boolean
+  await registerAgentAsSelf({
+    smartAccount: smartAccountAddress,
+    signerAccount: account,
+    salt: acctSalt,
+    name: userName ?? 'Personal Account',
+    description: '',
+    agentType: TYPE_PERSON,
+    properties: [
+      { kind: 'string', predicate: ATL_PRIMARY_NAME as `0x${string}`, value: saPrimaryName },
+    ],
+    label: `smart-account[${userName ?? account.address}]`,
+  })
 
-      if (!isReg) {
-        const regHash = await wc.writeContract({
-          address: resolverAddr, abi: agentAccountResolverAbi,
-          functionName: 'register',
-          args: [personAgentAddress, userName ?? 'Personal Agent', '', TYPE_PERSON, ZERO_HASH, ''],
-        })
-        await pc.waitForTransactionReceipt({ hash: regHash })
-      }
+  // 5. Register the PERSON AGENT.
+  //    Same shape: one batched userOp deploys + registers + sets the
+  //    controller + sets the primary name. ATL_CONTROLLER carries the
+  //    user's EOA so KB sync / reverse-resolution can find the person
+  //    agent from a wallet address (legacy behaviour preserved).
+  await registerAgentAsSelf({
+    smartAccount: personAgentAddress,
+    signerAccount: account,
+    salt: personSalt,
+    name: userName ?? 'Personal Agent',
+    description: '',
+    agentType: TYPE_PERSON,
+    properties: [
+      { kind: 'multiAddress-append', predicate: ATL_CONTROLLER as `0x${string}`, value: account.address },
+      { kind: 'string', predicate: ATL_PRIMARY_NAME as `0x${string}`, value: paPrimaryName },
+    ],
+    label: `person-agent[${userName ?? account.address}]`,
+  })
 
-      // 5b. ATL_CONTROLLER — skip if the EOA is already in the multi-address
-      //     list, otherwise re-runs append duplicate copies of the same key.
-      const existingControllers = await pc.readContract({
-        address: resolverAddr, abi: agentAccountResolverAbi,
-        functionName: 'getMultiAddressProperty',
-        args: [personAgentAddress, ATL_CONTROLLER as `0x${string}`],
-      }) as readonly `0x${string}`[]
-      const alreadyController = existingControllers.some(
-        a => a.toLowerCase() === account.address.toLowerCase(),
-      )
-      if (!alreadyController) {
-        const ctrlHash = await wc.writeContract({
-          address: resolverAddr, abi: agentAccountResolverAbi,
-          functionName: 'addMultiAddressProperty',
-          args: [personAgentAddress, ATL_CONTROLLER as `0x${string}`, account.address],
-        })
-        await pc.waitForTransactionReceipt({ hash: ctrlHash })
-      }
-
-      // 5c. ATL_PRIMARY_NAME — skip if already set to the same value.
-      //     Mandatory: this is what the A2A URL resolver reads. If this
-      //     write fails we throw — the agent is unusable without it and a
-      //     silent warn would surface as a downstream 401 instead.
-      const existingPrimary = await pc.readContract({
-        address: resolverAddr, abi: agentAccountResolverAbi,
-        functionName: 'getStringProperty',
-        args: [personAgentAddress, ATL_PRIMARY_NAME as `0x${string}`],
-      }) as string
-      if (existingPrimary !== primaryName) {
-        const nameHash = await wc.writeContract({
-          address: resolverAddr, abi: agentAccountResolverAbi,
-          functionName: 'setStringProperty',
-          args: [personAgentAddress, ATL_PRIMARY_NAME as `0x${string}`, primaryName],
-        })
-        await pc.waitForTransactionReceipt({ hash: nameHash })
-      }
-
-      console.log(`[generate-wallet] Person agent registered: ${personAgentAddress} → ${account.address} (primary=${primaryName})`)
-
-      // 5d. Register the USER'S smart account too. Many web actions
-      //     (SSI credential issuance, list_intents, etc.) route via the
-      //     smart account address — NOT the deployer-owned person agent.
-      //     Without ATL_PRIMARY_NAME on the smart account, those routes
-      //     throw "A2A endpoint not resolvable: no primary name
-      //     registered" mid-flow (e.g. chapter 9 proposal-apply →
-      //     ssi_create_wallet_action). Slug = `<base>-sa.agent` to
-      //     keep it distinct from the person agent's `<base>.agent`.
-      const saSlug = `${slug}-sa`
-      const saPrimaryName = `${saSlug}.agent`
-      const isSaReg = await pc.readContract({
-        address: resolverAddr, abi: agentAccountResolverAbi,
-        functionName: 'isRegistered', args: [smartAccountAddress],
-      }) as boolean
-      if (!isSaReg) {
-        const saRegHash = await wc.writeContract({
-          address: resolverAddr, abi: agentAccountResolverAbi,
-          functionName: 'register',
-          args: [smartAccountAddress, userName ?? 'Personal Account', '', TYPE_PERSON, ZERO_HASH, ''],
-        })
-        await pc.waitForTransactionReceipt({ hash: saRegHash })
-      }
-      const existingSaPrimary = await pc.readContract({
-        address: resolverAddr, abi: agentAccountResolverAbi,
-        functionName: 'getStringProperty',
-        args: [smartAccountAddress, ATL_PRIMARY_NAME as `0x${string}`],
-      }) as string
-      if (existingSaPrimary !== saPrimaryName) {
-        const saNameHash = await wc.writeContract({
-          address: resolverAddr, abi: agentAccountResolverAbi,
-          functionName: 'setStringProperty',
-          args: [smartAccountAddress, ATL_PRIMARY_NAME as `0x${string}`, saPrimaryName],
-        })
-        await pc.waitForTransactionReceipt({ hash: saNameHash })
-      }
-      console.log(`[generate-wallet] Smart account registered: ${smartAccountAddress} → ${account.address} (primary=${saPrimaryName})`)
-    } catch (err) {
-      // Make this loud — without these three writes the person agent
-      // cannot route A2A traffic, and the symptom appears far downstream
-      // as a silent `callMcp` 401. Demo seed runs swallow this at the
-      // boot-seed level, but the log line is unambiguous.
-      console.error(
-        `[generate-wallet] Person agent registration failed for ${personAgentAddress} (primary=${primaryName}):`,
-        err instanceof Error ? err.message : err,
-      )
-      throw err
-    }
-  } else {
-    throw new Error(
-      '[generate-wallet] AGENT_ACCOUNT_RESOLVER_ADDRESS not set — cannot register person agent',
-    )
-  }
+  console.log(`[generate-wallet] Person agent registered: ${personAgentAddress} → ${account.address} (primary=${paPrimaryName})`)
+  console.log(`[generate-wallet] Smart account registered: ${smartAccountAddress} → ${account.address} (primary=${saPrimaryName})`)
 
   return {
     privateKey,

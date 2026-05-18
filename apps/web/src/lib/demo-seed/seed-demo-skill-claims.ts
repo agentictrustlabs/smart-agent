@@ -15,7 +15,7 @@
  * already exist (we look them up via `getPersonAgentForUser`).
  */
 
-import { getPublicClient, getWalletClient } from '@/lib/contracts'
+import { getPublicClient } from '@/lib/contracts'
 import {
   agentSkillRegistryAbi,
   skillDefinitionRegistryAbi,
@@ -26,8 +26,9 @@ import {
   SKILL_VISIBILITY,
   SKILL_OVERLAP_POLICY_ID,
 } from '@smart-agent/sdk'
-import { keccak256, toBytes, type Hex } from 'viem'
+import { encodeFunctionData, keccak256, toBytes, type Hex } from 'viem'
 import { getPersonAgentForUser } from '@/lib/agent-registry'
+import { executeCallsAsAgent, resolveAgentIdentity } from './agent-self-register'
 
 const ZERO32: Hex = '0x0000000000000000000000000000000000000000000000000000000000000000'
 
@@ -198,11 +199,11 @@ export async function seedDemoSkillClaimsOnChain(): Promise<void> {
   }
 
   const pc = getPublicClient()
-  const wc = getWalletClient()
 
   let minted = 0
   let skipped = 0
   let missingPersonAgent = 0
+  let missingIdentity = 0
 
   for (const b of BINDINGS) {
     const personAgent = await getPersonAgentForUser(b.userId) as `0x${string}` | null
@@ -234,30 +235,47 @@ export async function seedDemoSkillClaimsOnChain(): Promise<void> {
     const nonce = keccak256(toBytes(nonceLabel)) as Hex
     const evidenceCommit = keccak256(toBytes(`evidence:skill:${nonceLabel}`)) as Hex
 
+    // The claim subject is the person agent. AgentSkillRegistry.mintSelf
+    // gates on `msg.sender == subjectAgent` (or owner-of-subject), so we
+    // submit a userOp whose sender is `personAgent` and whose inner call
+    // hits `claimReg.mintSelf(...)` from `address(this) == personAgent`.
+    const identity = await resolveAgentIdentity(personAgent)
+    if (!identity) {
+      missingIdentity++
+      console.warn(`[skill-claims-seed] no identity for ${b.userId} personAgent ${personAgent} — skipping`)
+      continue
+    }
+
+    const mintCallData = encodeFunctionData({
+      abi: agentSkillRegistryAbi,
+      functionName: 'mintSelf',
+      args: [{
+        subjectAgent: personAgent,
+        issuer: personAgent,
+        skillId,
+        skillVersion: version,
+        relation: REL_HASH[b.relation]!,  // BINDINGS only use self-attestable relations
+        visibility: SKILL_VISIBILITY.Public,
+        proficiencyScore: b.proficiencyScore,
+        confidence: b.confidence,
+        evidenceCommit,
+        edgeId: ZERO32,
+        assertionId: ZERO32,
+        policyId: SKILL_OVERLAP_POLICY_ID,
+        validAfter: 0n,
+        validUntil: 0n,
+        nonce,
+      }],
+    })
+
     try {
-      const hash = await wc.writeContract({
-        address: claimReg,
-        abi: agentSkillRegistryAbi,
-        functionName: 'mintSelf',
-        args: [{
-          subjectAgent: personAgent,
-          issuer: personAgent,
-          skillId,
-          skillVersion: version,
-          relation: REL_HASH[b.relation]!,  // BINDINGS only use self-attestable relations
-          visibility: SKILL_VISIBILITY.Public,
-          proficiencyScore: b.proficiencyScore,
-          confidence: b.confidence,
-          evidenceCommit,
-          edgeId: ZERO32,
-          assertionId: ZERO32,
-          policyId: SKILL_OVERLAP_POLICY_ID,
-          validAfter: 0n,
-          validUntil: 0n,
-          nonce,
-        }],
+      await executeCallsAsAgent({
+        smartAccount: personAgent,
+        signerAccount: identity.eoa,
+        salt: identity.salt,
+        calls: [{ target: claimReg, value: 0n, data: mintCallData }],
+        label: `skill-claims-seed:mintSelf(${b.userId}, ${conceptId})`,
       })
-      await pc.waitForTransactionReceipt({ hash })
       minted++
     } catch (err) {
       const msg = (err as Error).message ?? ''
@@ -268,5 +286,5 @@ export async function seedDemoSkillClaimsOnChain(): Promise<void> {
       }
     }
   }
-  console.log(`[skill-claims-seed] minted ${minted}, skipped ${skipped} (already claimed), missing person-agent ${missingPersonAgent}`)
+  console.log(`[skill-claims-seed] minted ${minted}, skipped ${skipped} (already claimed), missing person-agent ${missingPersonAgent}, missing identity ${missingIdentity}`)
 }

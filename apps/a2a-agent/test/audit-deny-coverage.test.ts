@@ -201,7 +201,10 @@ test('P0-4 coverage — every onchainRedeem.post handler ends with `error:unhand
 
   const routeRe = /onchainRedeem\.post\(/g
   const routeCount = (stripped.match(routeRe) || []).length
-  assert.ok(routeCount >= 5, `expected ≥5 onchainRedeem.post(...) routes, got ${routeCount}`)
+  // Option A: 2 routes survive — /redeem-via-account + /deploy-agent.
+  // The 3 legacy redeem variants (/redeem-tx, /redeem-with-chain,
+  // /redeem-subdelegated) were deleted.
+  assert.equal(routeCount, 2, `expected exactly 2 onchainRedeem.post(...) routes, got ${routeCount}`)
 
   const unhandledRe = /reason:\s*'error:unhandled'/g
   const unhandledCount = (stripped.match(unhandledRe) || []).length

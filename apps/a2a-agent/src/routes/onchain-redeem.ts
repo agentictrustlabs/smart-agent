@@ -1,13 +1,45 @@
 /**
- * Phase 1 — On-chain redeem endpoints (stateless-redeem path).
+ * Option A (ERC-4337-only redeem) — on-chain redeem endpoints.
  *
  * These endpoints are how MCP servers ask a2a-agent to redeem the user's
- * signed root delegation on chain. They are the ONLY paths through which
- * a routine on-chain write (pool:create, pool:update_mandate, round:open,
- * round:set_status, etc.) reaches DelegationManager.redeemDelegation.
+ * signed root delegation on chain. There are now exactly TWO surfaces:
  *
- *   POST /session/:id/redeem-tx     — generic redeem of (target, value, callData)
- *   POST /session/:id/deploy-agent  — wrapper around AgentAccountFactory.createAccount
+ *   POST /session/:id/redeem-via-account — every on-chain write
+ *   POST /session/:id/deploy-agent       — AgentAccountFactory.createAccount
+ *
+ * The legacy `/redeem-tx`, `/redeem-with-chain`, and `/redeem-subdelegated`
+ * routes were deleted: they submitted via session-signer / executor EOAs
+ * that have no ETH by design. Under Option A, every redeem routes through
+ * ERC-4337 EntryPoint.handleOps with the master EOA as the bundler /
+ * gas payer.
+ *
+ * The flow per redeem call:
+ *
+ *   1. Build a UserOperation:
+ *        sender    = user's AgentAccount (= session row's accountAddress)
+ *        callData  = AgentAccount.execute(
+ *                      DelegationManager,
+ *                      0,
+ *                      DelegationManager.redeemDelegation(chain, target, value, data),
+ *                    )
+ *        signature = ECDSA over userOpHash, signed by the master signer
+ *                    (registered as serverSigner / co-owner of every
+ *                     AgentAccount minted via the factory).
+ *   2. EntryPoint.handleOps([op], beneficiary=master) executes:
+ *        EntryPoint → AgentAccount.execute(...)   — passes _requireForExecute
+ *                                                   (msg.sender = EntryPoint).
+ *        AgentAccount → DelegationManager.redeemDelegation(...)  — passes the
+ *                                                   InvalidDelegate check
+ *                                                   because the LEAF
+ *                                                   delegation's `delegate`
+ *                                                   is the smart account
+ *                                                   itself = msg.sender.
+ *        DelegationManager enforces every caveat, then
+ *          → AgentAccount.execute(target, value, data) — passes
+ *                                                   _requireForExecute
+ *                                                   (msg.sender =
+ *                                                    _delegationManager).
+ *   3. The master EOA pays the gas; session-signer EOAs never need ETH.
  *
  * Auth: HMAC inter-service signature (`requireInterServiceAuth`). MCPs sign
  * the request body with their shared secret; the path's :id binds the
@@ -16,7 +48,7 @@
  * Authorization (per request):
  *   1. Session must exist + be active + not expired.
  *   2. The requested `mcpTool` must have a TOOL_POLICIES entry whose
- *      executionPath is 'stateless-redeem'.
+ *      executionPath is NOT `mcp-only` (an on-chain tool).
  *   3. The requested `target` must resolve to one of the policy's allowed
  *      target symbols (PoolRegistry / FundRegistry / AgentAccountFactory)
  *      via `resolveTargetAddress(env)`.
@@ -43,7 +75,6 @@ import {
   type Address,
   type Hex,
 } from 'viem'
-import { privateKeyToAccount } from 'viem/accounts'
 // KMS K4 PR-1 — master EOA now routes through the signer wrapper. The
 // surrounding viem call shape (walletClient.writeContract /
 // signMessage / signTransaction) is unchanged — `getMasterSigner()`
@@ -53,25 +84,20 @@ import { getMasterSigner } from '../auth/a2a-signer'
 import { localhost } from 'viem/chains'
 import {
   agentAccountAbi,
-  buildCaveat,
   delegationManagerAbi,
   agentAccountFactoryAbi,
   poolRegistryAbi,
   fundRegistryAbi,
   hashDelegation,
-  encodeTimestampTerms,
-  encodeValueTerms,
-  encodeAllowedTargetsTerms,
-  encodeAllowedMethodsTerms,
-  encodeTaskBindingTerms,
-  encodeCallDataHashTerms,
   TOOL_POLICIES,
   POOL_REGISTRY_SELECTORS_BY_TOOL,
   FUND_REGISTRY_SELECTORS_BY_TOOL,
   AGENT_ACCOUNT_RESOLVER_SELECTORS_BY_TOOL,
+  AGENT_RELATIONSHIP_SELECTORS_BY_TOOL,
   COMMITMENT_REGISTRY_SELECTORS_BY_TOOL,
   PROPOSAL_REGISTRY_SELECTORS_BY_TOOL,
   agentAccountResolverAbi,
+  agentRelationshipAbi,
   commitmentRegistryAbi,
   proposalRegistryAbi,
   resolveTargetAddress,
@@ -82,7 +108,6 @@ import { db } from '../db'
 import { sessions, executionAudit } from '../db/schema'
 import { config } from '../config'
 import { requireInterServiceAuth } from '../auth/inter-service'
-import { getExecutorForTool } from '../lib/tool-executors'
 import { decryptSessionPackage } from '../auth/encryption'
 import { auditFinalize, readCorrelationId, denyAndAudit } from '../lib/audit'
 import type { AuditDenyReason } from '../lib/audit-deny-reasons'
@@ -123,7 +148,21 @@ interface StoredSessionPackage {
   expiresAt: string
 }
 
-interface RedeemTxBody {
+interface ChainCaveat {
+  enforcer: `0x${string}`
+  terms: `0x${string}`
+  args?: `0x${string}`
+}
+interface ChainDelegationStruct {
+  delegator: `0x${string}`
+  delegate: `0x${string}`
+  authority: `0x${string}`
+  caveats: ChainCaveat[]
+  salt: string
+  signature: `0x${string}`
+}
+
+interface RedeemViaAccountBody {
   mcpTool: string
   mcpCallId: string
   a2aTaskId?: string
@@ -131,6 +170,15 @@ interface RedeemTxBody {
   /** Decimal string of wei. */
   value: string
   callData: Hex
+  /**
+   * Optional delegation chain. When present, used as the chain handed
+   * to `DelegationManager.redeemDelegation([leaf, ..., root], …)`.
+   * Index 0 is the LEAF (its `delegate` MUST equal the user's smart
+   * account = the userOp `sender` = msg.sender at DelegationManager).
+   * When absent, the redeem uses `[pkg.delegation]` (the session's own
+   * stored root delegation).
+   */
+  chain?: ChainDelegationStruct[]
 }
 
 interface DeployAgentBody {
@@ -145,6 +193,7 @@ const ABIS: Record<string, readonly unknown[]> = {
   FundRegistry: fundRegistryAbi as readonly unknown[],
   AgentAccountFactory: agentAccountFactoryAbi as readonly unknown[],
   AgentAccountResolver: agentAccountResolverAbi as readonly unknown[],
+  AgentRelationship: agentRelationshipAbi as readonly unknown[],
   CommitmentRegistry: commitmentRegistryAbi as readonly unknown[],
   ProposalRegistry: proposalRegistryAbi as readonly unknown[],
 }
@@ -180,6 +229,9 @@ function policyAllowedSelectors(toolId: string, policy: ToolPolicy): Set<`0x${st
   }
   if (policy.allowedTargets.includes('AgentAccountResolver')) {
     tryAdd('AgentAccountResolver', AGENT_ACCOUNT_RESOLVER_SELECTORS_BY_TOOL[toolId])
+  }
+  if (policy.allowedTargets.includes('AgentRelationship')) {
+    tryAdd('AgentRelationship', AGENT_RELATIONSHIP_SELECTORS_BY_TOOL[toolId])
   }
   if (policy.allowedTargets.includes('CommitmentRegistry')) {
     tryAdd('CommitmentRegistry', COMMITMENT_REGISTRY_SELECTORS_BY_TOOL[toolId])
@@ -274,152 +326,142 @@ function extractSelector(callData: Hex): `0x${string}` {
   return callData.slice(0, 10).toLowerCase() as `0x${string}`
 }
 
-// ─── POST /session/:id/redeem-tx ─────────────────────────────────────
-onchainRedeem.post('/:id/redeem-tx', requireInterServiceAuth(), async (c) => {
+// ─── POST /session/:id/redeem-via-account ────────────────────────────
+//
+// The ONLY redeem endpoint. Every on-chain write a tool performs is
+// submitted via ERC-4337:
+//
+//   sender    = user's AgentAccount (the session's accountAddress)
+//   callData  = AgentAccount.execute(
+//                 DelegationManager, 0,
+//                 redeemDelegation(chain, target, value, data),
+//               )
+//   signature = ECDSA over userOpHash by the master signer
+//
+// Master EOA pays gas via EntryPoint.handleOps; session-signer EOAs
+// never hold ETH.
+onchainRedeem.post('/:id/redeem-via-account', requireInterServiceAuth(), async (c) => {
   const sessionId = c.req.param('id')
   const ctx = c.get('interService' as never) as { service: string; bodyRaw: string } | undefined
   const bodyRaw = ctx?.bodyRaw ?? (await c.req.text())
   const mcpServer = ctx?.service ?? 'unknown'
-  // P0-4 — single try/catch around the whole handler. Every 4xx/5xx
-  // exit goes through denyAndAudit. The outer catch covers unhandled
-  // throws as `error:unhandled`.
   try {
-  let body: RedeemTxBody
-  try {
-    body = JSON.parse(bodyRaw) as RedeemTxBody
-  } catch {
-    return denyAndAudit(c, {
-      route: '/session/:id/redeem-tx',
-      reason: 'fields:malformed-json',
-      status: 400,
-      executionPath: 'stateless-redeem',
-      sessionId,
-      mcpServer,
-    })
-  }
-
-  // ─── Policy lookup ─────────────────────────────────────────────────
-  const policy = TOOL_POLICIES[body.mcpTool]
-  if (!policy) {
-    return denyAndAudit(c, {
-      route: '/session/:id/redeem-tx',
-      reason: 'policy:unknown-tool',
-      publicMessage: `unknown tool: ${body.mcpTool}`,
-      status: 403,
-      executionPath: 'stateless-redeem',
-      sessionId,
-      mcpServer,
-      mcpCallId: body.mcpCallId,
-    })
-  }
-  // Sprint 5 P0-8 — marketplace tools 503 unless MARKETPLACE_ENABLED=true.
-  if (isMarketplaceToolDisabled(body.mcpTool)) {
-    return denyAndAudit(c, {
-      route: '/session/:id/redeem-tx',
-      reason: 'policy:marketplace-disabled',
-      publicMessage: `marketplace tool ${body.mcpTool} is disabled (MARKETPLACE_ENABLED=false)`,
-      status: 503,
-      executionPath: 'stateless-redeem',
-      sessionId,
-      mcpServer,
-      mcpCallId: body.mcpCallId,
-    })
-  }
-  if (policy.executionPath !== 'stateless-redeem') {
-    return denyAndAudit(c, {
-      route: '/session/:id/redeem-tx',
-      reason: 'policy:wrong-execution-path',
-      publicMessage: `tool ${body.mcpTool} requires path ${policy.executionPath}, not stateless-redeem`,
-      status: 403,
-      executionPath: 'stateless-redeem',
-      sessionId,
-      mcpServer,
-      mcpCallId: body.mcpCallId,
-    })
-  }
-
-  // ─── Resolve session ───────────────────────────────────────────────
-  const sess = await loadActiveSessionPackage(sessionId)
-  if ('error' in sess) {
-    return denyAndAudit(c, {
-      route: '/session/:id/redeem-tx',
-      reason: sessionErrorToReason(sess.error),
-      publicMessage: sess.error,
-      status: sess.status,
-      executionPath: 'stateless-redeem',
-      sessionId,
-      mcpServer,
-      mcpCallId: body.mcpCallId,
-    })
-  }
-  const { pkg } = sess
-
-  // ─── Validate target / selector against policy ────────────────────
-  const env = process.env as Record<string, string | undefined>
-  const allowedTargets = policyAllowedTargets(policy, env)
-  const targetLower = body.target.toLowerCase() as Address
-  if (!allowedTargets.includes(targetLower)) {
-    return denyAndAudit(c, {
-      route: '/session/:id/redeem-tx',
-      reason: 'policy:target-not-allowed',
-      publicMessage: `target not allowed for ${body.mcpTool}`,
-      status: 403,
-      executionPath: 'stateless-redeem',
-      sessionId,
-      mcpServer,
-      mcpCallId: body.mcpCallId,
-      target: body.target,
-      sessionPrincipal: pkg.sessionKeyAddress,
-    })
-  }
-
-  let selector: `0x${string}`
-  try {
-    selector = extractSelector(body.callData)
-  } catch (e) {
-    return denyAndAudit(c, {
-      route: '/session/:id/redeem-tx',
-      reason: 'validation:invalid-call-data',
-      publicMessage: (e as Error).message,
-      status: 400,
-      executionPath: 'stateless-redeem',
-      sessionId,
-      mcpServer,
-      mcpCallId: body.mcpCallId,
-      sessionPrincipal: pkg.sessionKeyAddress,
-    })
-  }
-  const allowedSelectors = policyAllowedSelectors(body.mcpTool, policy)
-  if (!allowedSelectors.has(selector)) {
-    return denyAndAudit(c, {
-      route: '/session/:id/redeem-tx',
-      reason: 'policy:selector-not-allowed',
-      publicMessage: `selector ${selector} not allowed for ${body.mcpTool}`,
-      status: 403,
-      executionPath: 'stateless-redeem',
-      sessionId,
-      mcpServer,
-      mcpCallId: body.mcpCallId,
-      target: body.target,
-      selector,
-      sessionPrincipal: pkg.sessionKeyAddress,
-    })
-  }
-
-  // ─── Enforce policy.maxValueWei (off-chain twin of ValueEnforcer) ──
-  // The ToolPolicy carries a per-tool wei cap. Until now it was only
-  // declared, never read by redeem handlers. Defense in depth — the
-  // on-chain ValueEnforcer also bounds value via the user's signed
-  // delegation, but policy.maxValueWei reflects the operator's intent.
-  {
-    const requestedValue = BigInt(body.value)
-    if (policy.maxValueWei !== undefined && requestedValue > policy.maxValueWei) {
+    let body: RedeemViaAccountBody
+    try {
+      body = JSON.parse(bodyRaw) as RedeemViaAccountBody
+    } catch {
       return denyAndAudit(c, {
-        route: '/session/:id/redeem-tx',
-        reason: 'policy:value-exceeds-cap',
-        publicMessage: `value ${requestedValue} exceeds tool maxValueWei ${policy.maxValueWei}`,
+        route: '/session/:id/redeem-via-account',
+        reason: 'fields:malformed-json',
         status: 400,
-        executionPath: 'stateless-redeem',
+        executionPath: 'session-account',
+        sessionId,
+        mcpServer,
+      })
+    }
+
+    // ─── Policy lookup ─────────────────────────────────────────────────
+    const policy = TOOL_POLICIES[body.mcpTool]
+    if (!policy) {
+      return denyAndAudit(c, {
+        route: '/session/:id/redeem-via-account',
+        reason: 'policy:unknown-tool',
+        publicMessage: `unknown tool: ${body.mcpTool}`,
+        status: 403,
+        executionPath: 'session-account',
+        sessionId,
+        mcpServer,
+        mcpCallId: body.mcpCallId,
+      })
+    }
+    // Sprint 5 P0-8 — marketplace tools 503 unless MARKETPLACE_ENABLED=true.
+    if (isMarketplaceToolDisabled(body.mcpTool)) {
+      return denyAndAudit(c, {
+        route: '/session/:id/redeem-via-account',
+        reason: 'policy:marketplace-disabled',
+        publicMessage: `marketplace tool ${body.mcpTool} is disabled (MARKETPLACE_ENABLED=false)`,
+        status: 503,
+        executionPath: 'session-account',
+        sessionId,
+        mcpServer,
+        mcpCallId: body.mcpCallId,
+      })
+    }
+    // Option A unification: every non-mcp-only tool routes here. Tools
+    // with `mcp-only` have no on-chain side and must not be submitted.
+    if (policy.executionPath === 'mcp-only') {
+      return denyAndAudit(c, {
+        route: '/session/:id/redeem-via-account',
+        reason: 'policy:wrong-execution-path',
+        publicMessage: `tool ${body.mcpTool} is mcp-only and has no on-chain side`,
+        status: 403,
+        executionPath: 'session-account',
+        sessionId,
+        mcpServer,
+        mcpCallId: body.mcpCallId,
+      })
+    }
+
+    // ─── Resolve session ───────────────────────────────────────────────
+    const sess = await loadActiveSessionPackage(sessionId)
+    if ('error' in sess) {
+      return denyAndAudit(c, {
+        route: '/session/:id/redeem-via-account',
+        reason: sessionErrorToReason(sess.error),
+        publicMessage: sess.error,
+        status: sess.status,
+        executionPath: 'session-account',
+        sessionId,
+        mcpServer,
+        mcpCallId: body.mcpCallId,
+      })
+    }
+    const { pkg, row } = sess
+    // Option A: the user's own AgentAccount IS the redeemer. No separate
+    // SessionAgentAccount is needed; the session row's `accountAddress`
+    // (set at /session/init) is the userOp `sender`.
+    const userAgentAccount = row.accountAddress as Address
+
+    // ─── Validate target/selector against policy ───────────────────────
+    const env = process.env as Record<string, string | undefined>
+    const allowedTargets = policyAllowedTargets(policy, env)
+    const targetLower = body.target.toLowerCase() as Address
+    if (allowedTargets.length > 0 && !allowedTargets.includes(targetLower)) {
+      return denyAndAudit(c, {
+        route: '/session/:id/redeem-via-account',
+        reason: 'policy:target-not-allowed',
+        publicMessage: `target not allowed for ${body.mcpTool}`,
+        status: 403,
+        executionPath: 'session-account',
+        sessionId,
+        mcpServer,
+        mcpCallId: body.mcpCallId,
+        target: body.target,
+        sessionPrincipal: pkg.sessionKeyAddress,
+      })
+    }
+    let selector: `0x${string}`
+    try { selector = extractSelector(body.callData) } catch (e) {
+      return denyAndAudit(c, {
+        route: '/session/:id/redeem-via-account',
+        reason: 'validation:invalid-call-data',
+        publicMessage: (e as Error).message,
+        status: 400,
+        executionPath: 'session-account',
+        sessionId,
+        mcpServer,
+        mcpCallId: body.mcpCallId,
+        sessionPrincipal: pkg.sessionKeyAddress,
+      })
+    }
+    const allowedSelectors = policyAllowedSelectors(body.mcpTool, policy)
+    if (!allowedSelectors.has(selector)) {
+      return denyAndAudit(c, {
+        route: '/session/:id/redeem-via-account',
+        reason: 'policy:selector-not-allowed',
+        publicMessage: `selector ${selector} not allowed for ${body.mcpTool}`,
+        status: 403,
+        executionPath: 'session-account',
         sessionId,
         mcpServer,
         mcpCallId: body.mcpCallId,
@@ -428,98 +470,273 @@ onchainRedeem.post('/:id/redeem-tx', requireInterServiceAuth(), async (c) => {
         sessionPrincipal: pkg.sessionKeyAddress,
       })
     }
-  }
 
-  // ─── Insert pending receipt ────────────────────────────────────────
-  const receiptId = await writeReceipt({
-    c,
-    pkg,
-    sessionId,
-    mcpServer,
-    body,
-    executionPath: 'stateless-redeem',
-    status: 'pending',
-  })
-
-  // ─── Submit redeem ─────────────────────────────────────────────────
-  try {
-    const sessionAccount = privateKeyToAccount(pkg.sessionPrivateKey)
-    const wallet = createWalletClient({
-      account: sessionAccount,
-      chain: getChain(),
-      transport: http(config.RPC_URL),
-    })
-    const pub = createPublicClient({ chain: getChain(), transport: http(config.RPC_URL) })
-
-    // Rehydrate the stored delegation into the redeem struct.
-    const struct = {
-      delegator: pkg.delegation.delegator,
-      delegate: pkg.delegation.delegate,
-      authority: pkg.delegation.authority,
-      caveats: pkg.delegation.caveats.map((c) => ({
-        enforcer: c.enforcer,
-        terms: c.terms,
-        args: (c.args ?? '0x') as Hex,
-      })),
-      salt: BigInt(pkg.delegation.salt),
-      signature: pkg.delegation.signature,
+    // ─── Enforce policy.maxValueWei (off-chain twin of ValueEnforcer) ──
+    {
+      const requestedValue = BigInt(body.value)
+      if (policy.maxValueWei !== undefined && requestedValue > policy.maxValueWei) {
+        return denyAndAudit(c, {
+          route: '/session/:id/redeem-via-account',
+          reason: 'policy:value-exceeds-cap',
+          publicMessage: `value ${requestedValue} exceeds tool maxValueWei ${policy.maxValueWei}`,
+          status: 400,
+          executionPath: 'session-account',
+          sessionId,
+          mcpServer,
+          mcpCallId: body.mcpCallId,
+          target: body.target,
+          selector,
+          sessionPrincipal: pkg.sessionKeyAddress,
+        })
+      }
     }
-    const valueWei = BigInt(body.value)
 
-    const txHash = await wallet.writeContract({
-      address: config.DELEGATION_MANAGER_ADDRESS,
+    // ─── Resolve the delegation chain ──────────────────────────────────
+    // Caller may pass an explicit `chain` (e.g. the AnonCreds-gated
+    // admin→holder→smartAccount chain). When omitted, use the session's
+    // own root delegation as a 1-element chain.
+    let chainStructs: Array<{
+      delegator: `0x${string}`
+      delegate: `0x${string}`
+      authority: `0x${string}`
+      caveats: Array<{ enforcer: `0x${string}`; terms: `0x${string}`; args: Hex }>
+      salt: bigint
+      signature: `0x${string}`
+    }>
+    if (body.chain && Array.isArray(body.chain)) {
+      if (body.chain.length === 0) {
+        return denyAndAudit(c, {
+          route: '/session/:id/redeem-via-account',
+          reason: 'validation:chain-empty',
+          publicMessage: 'chain must be a non-empty array of signed delegations',
+          status: 400,
+          executionPath: 'session-account',
+          sessionId,
+          mcpServer,
+          mcpCallId: body.mcpCallId,
+          sessionPrincipal: pkg.sessionKeyAddress,
+        })
+      }
+      // Leaf (index 0) must delegate to the user's smart account — the
+      // userOp sender = msg.sender at the DelegationManager call.
+      const leaf = body.chain[0]
+      if (leaf.delegate.toLowerCase() !== userAgentAccount.toLowerCase()) {
+        return denyAndAudit(c, {
+          route: '/session/:id/redeem-via-account',
+          reason: 'validation:chain-leaf-delegate-mismatch',
+          publicMessage: `chain leaf delegate (${leaf.delegate}) must equal smart account (${userAgentAccount})`,
+          status: 400,
+          executionPath: 'session-account',
+          sessionId,
+          mcpServer,
+          mcpCallId: body.mcpCallId,
+          sessionPrincipal: pkg.sessionKeyAddress,
+        })
+      }
+      chainStructs = body.chain.map((d) => ({
+        delegator: d.delegator,
+        delegate: d.delegate,
+        authority: d.authority,
+        caveats: d.caveats.map((cav) => ({
+          enforcer: cav.enforcer,
+          terms: cav.terms,
+          args: (cav.args ?? '0x') as Hex,
+        })),
+        salt: BigInt(d.salt),
+        signature: d.signature,
+      }))
+    } else {
+      // Default: use the session's stored root delegation. Under Option A
+      // its `delegate` is the smart account itself — pkg.delegation.delegate
+      // == accountAddress == userAgentAccount, which satisfies the
+      // InvalidDelegate check at DelegationManager.
+      chainStructs = [{
+        delegator: pkg.delegation.delegator,
+        delegate: pkg.delegation.delegate,
+        authority: pkg.delegation.authority,
+        caveats: pkg.delegation.caveats.map((cav) => ({
+          enforcer: cav.enforcer,
+          terms: cav.terms,
+          args: (cav.args ?? '0x') as Hex,
+        })),
+        salt: BigInt(pkg.delegation.salt),
+        signature: pkg.delegation.signature,
+      }]
+    }
+
+    // ─── Build the inner execute() callData ────────────────────────────
+    // The user's AgentAccount calls DelegationManager.redeemDelegation,
+    // which validates the chain + caveats and re-enters
+    // AgentAccount.execute(target, value, data). The double-execute is
+    // exactly the ERC-7710 dispatch — DelegationManager's call back into
+    // the account is permitted by _requireForExecute (msg.sender =
+    // _delegationManager).
+    const valueWei = BigInt(body.value)
+    const redeemCallData = encodeFunctionData({
       abi: delegationManagerAbi,
       functionName: 'redeemDelegation',
-      args: [[struct], body.target, valueWei, body.callData],
-      account: sessionAccount,
-      chain: wallet.chain ?? null,
+      args: [chainStructs, body.target, valueWei, body.callData],
     })
-    const receipt = await pub.waitForTransactionReceipt({ hash: txHash })
-    const ok = receipt.status === 'success'
-
-    await auditFinalize(receiptId, {
-      status: ok ? 'completed' : 'reverted',
-      txHash,
-      errorReason: ok ? '' : 'transaction reverted',
+    const innerCallData = encodeFunctionData({
+      abi: agentAccountAbi,
+      functionName: 'execute',
+      args: [config.DELEGATION_MANAGER_ADDRESS, 0n, redeemCallData],
     })
 
-    if (!ok) {
-      return denyAndAudit(c, {
-        route: '/session/:id/redeem-tx',
-        reason: 'tx:reverted',
-        publicMessage: 'tx reverted',
-        status: 502,
-        skipAudit: true, // auditFinalize already wrote the request_finalized row above
-        executionPath: 'stateless-redeem',
-        sessionId,
-        mcpServer,
-        extra: { txHash, executionReceiptId: receiptId },
-      })
+    // ─── Build the 4337 UserOperation ──────────────────────────────────
+    const pub = createPublicClient({ chain: getChain(), transport: http(config.RPC_URL) })
+
+    // Pull the next nonce from EntryPoint (key=0).
+    const nonce = (await pub.readContract({
+      address: config.ENTRYPOINT_ADDRESS,
+      abi: entryPointMinimalAbi,
+      functionName: 'getNonce',
+      args: [userAgentAccount, 0n],
+    })) as bigint
+
+    // Pack gas limits + fees per EntryPoint v0.7 layout:
+    //   accountGasLimits = abi.encodePacked(verificationGasLimit << 128 | callGasLimit)
+    //   gasFees          = abi.encodePacked(maxPriorityFeePerGas << 128 | maxFeePerGas)
+    const verificationGasLimit = 500_000n
+    const callGasLimit = 2_000_000n
+    const accountGasLimits = packTwo(verificationGasLimit, callGasLimit)
+    const preVerificationGas = 100_000n
+    const maxPriorityFeePerGas = 1n
+    const maxFeePerGas = 1_000_000_000n // 1 gwei (local dev)
+    const gasFees = packTwo(maxPriorityFeePerGas, maxFeePerGas)
+
+    // ERC-4337 v0.7 paymasterAndData layout:
+    //   address (20 bytes) || verificationGasLimit (uint128) || postOpGasLimit (uint128) || extra
+    // SmartAgentPaymaster is deployed + staked + deposited at Deploy.s.sol.
+    // Dev posture: accept-all (BasePaymaster._validatePaymasterUserOp returns
+    // valid for any sender). Production hardening flips _dev=false + populates
+    // the accept-list — see output/PAYMASTER-INTEGRATION-PLAN.md §4.
+    const paymasterAndData: Hex = (config.PAYMASTER_ADDRESS.toLowerCase() !==
+      '0x0000000000000000000000000000000000000000')
+      ? `0x${config.PAYMASTER_ADDRESS.slice(2)}${(100_000n).toString(16).padStart(32, '0')}${(50_000n).toString(16).padStart(32, '0')}` as Hex
+      : '0x' as Hex
+
+    const op = {
+      sender: userAgentAccount,
+      nonce,
+      initCode: '0x' as Hex, // AgentAccount already deployed
+      callData: innerCallData,
+      accountGasLimits,
+      preVerificationGas,
+      gasFees,
+      paymasterAndData,
+      signature: '0x' as Hex, // to be filled below
     }
-    return c.json({ txHash, executionReceiptId: receiptId })
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    await auditFinalize(receiptId, { status: 'reverted', errorReason: msg.slice(0, 1000) })
-    return denyAndAudit(c, {
-      route: '/session/:id/redeem-tx',
-      reason: 'error:redeem-failed',
-      publicMessage: `redeem failed: ${msg}`,
-      status: 500,
-      skipAudit: true, // auditFinalize already wrote the request_finalized(reverted) row
-      executionPath: 'stateless-redeem',
+
+    // userOpHash from EntryPoint view function.
+    const userOpHash = (await pub.readContract({
+      address: config.ENTRYPOINT_ADDRESS,
+      abi: entryPointMinimalAbi,
+      functionName: 'getUserOpHash',
+      args: [op],
+    })) as Hex
+
+    // ─── Sign the userOpHash ──────────────────────────────────────────
+    // The master signer is registered as serverSigner / co-owner on every
+    // AgentAccount minted via AgentAccountFactory (factory passes it as
+    // the second initialize() arg). AgentAccount._validateSignature
+    // recovers the ECDSA signer and checks _owners[recovered] — the
+    // master signer satisfies that gate without needing the user's
+    // private key at runtime.
+    //
+    // The session-signer EOA's role is purely off-chain (MCP auth proof
+    // of session liveness via the encrypted package); it never signs an
+    // on-chain transaction.
+    const masterEoa = await getMasterSigner()
+    const signature = await masterEoa.signMessage({ message: { raw: userOpHash } })
+    const signedOp = { ...op, signature }
+
+    // ─── Submit via the self-bundler (master EOA pays gas) ────────────
+    const receiptId = await writeReceipt({
+      c,
+      pkg,
       sessionId,
       mcpServer,
+      body: {
+        mcpTool: body.mcpTool,
+        mcpCallId: body.mcpCallId,
+        a2aTaskId: body.a2aTaskId ?? '',
+        target: body.target,
+        value: body.value,
+        callData: body.callData,
+      },
+      executionPath: 'session-account',
+      status: 'pending',
+      overrideSelector: selector,
+      overrideCallDataHash: keccak256(body.callData),
+      toolExecutor: userAgentAccount,
     })
-  }
+
+    try {
+      const wallet = createWalletClient({
+        account: masterEoa,
+        chain: getChain(),
+        transport: http(config.RPC_URL),
+      })
+      const txHash = await wallet.writeContract({
+        address: config.ENTRYPOINT_ADDRESS,
+        abi: entryPointMinimalAbi,
+        functionName: 'handleOps',
+        args: [[signedOp], masterEoa.address],
+        account: masterEoa,
+        chain: wallet.chain ?? null,
+      })
+      const r = await pub.waitForTransactionReceipt({ hash: txHash })
+      const ok = r.status === 'success'
+
+      await auditFinalize(receiptId, {
+        status: ok ? 'completed' : 'reverted',
+        txHash,
+        userOpHash,
+        errorReason: ok ? '' : 'handleOps reverted',
+      })
+
+      if (!ok) {
+        return denyAndAudit(c, {
+          route: '/session/:id/redeem-via-account',
+          reason: 'tx:handle-ops-reverted',
+          publicMessage: 'handleOps reverted',
+          status: 502,
+          skipAudit: true,
+          executionPath: 'session-account',
+          sessionId,
+          mcpServer,
+          extra: { txHash, userOpHash, executionReceiptId: receiptId },
+        })
+      }
+      return c.json({
+        txHash,
+        userOpHash,
+        executionReceiptId: receiptId,
+        sessionAgentAccount: userAgentAccount,
+      })
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      await auditFinalize(receiptId, { status: 'reverted', errorReason: msg.slice(0, 1000) })
+      return denyAndAudit(c, {
+        route: '/session/:id/redeem-via-account',
+        reason: 'error:redeem-via-account-failed',
+        publicMessage: `redeem-via-account failed: ${msg}`,
+        status: 500,
+        skipAudit: true,
+        executionPath: 'session-account',
+        sessionId,
+        mcpServer,
+      })
+    }
   } catch (err) {
-    // P0-4 outer catch — unhandled throws BEFORE the receipt was created.
     const msg = err instanceof Error ? err.message : String(err)
     return denyAndAudit(c, {
-      route: '/session/:id/redeem-tx',
+      route: '/session/:id/redeem-via-account',
       reason: 'error:unhandled',
       publicMessage: msg,
       status: 500,
-      executionPath: 'stateless-redeem',
+      executionPath: 'session-account',
       sessionId,
       mcpServer,
     })
@@ -527,912 +744,161 @@ onchainRedeem.post('/:id/redeem-tx', requireInterServiceAuth(), async (c) => {
 })
 
 // ─── POST /session/:id/deploy-agent ──────────────────────────────────
+//
+// AgentAccountFactory.createAccount(owner, salt). There is no on-chain
+// auth check on the factory — `(owner, salt)` is a deterministic CREATE2
+// triplet; anyone can call it for any (owner, salt) that hasn't been
+// minted yet. We therefore submit directly from the master EOA (the
+// funded operator account, registered as serverSigner) — consistent
+// with Option A's "master EOA is the SOLE on-chain submitter" model.
 onchainRedeem.post('/:id/deploy-agent', requireInterServiceAuth(), async (c) => {
   const sessionId = c.req.param('id')
   const ctx = c.get('interService' as never) as { service: string; bodyRaw: string } | undefined
   const bodyRaw = ctx?.bodyRaw ?? (await c.req.text())
   const mcpServer = ctx?.service ?? 'unknown'
   try {
-  let body: DeployAgentBody
-  try {
-    body = JSON.parse(bodyRaw) as DeployAgentBody
-  } catch {
-    return denyAndAudit(c, {
-      route: '/session/:id/deploy-agent',
-      reason: 'fields:malformed-json',
-      status: 400,
-      executionPath: 'stateless-redeem',
-      sessionId,
-      mcpServer,
-    })
-  }
-
-  const sess = await loadActiveSessionPackage(sessionId)
-  if ('error' in sess) {
-    return denyAndAudit(c, {
-      route: '/session/:id/deploy-agent',
-      reason: sessionErrorToReason(sess.error),
-      publicMessage: sess.error,
-      status: sess.status,
-      executionPath: 'stateless-redeem',
-      sessionId,
-      mcpServer,
-      mcpCallId: body.mcpCallId,
-    })
-  }
-  const { pkg } = sess
-
-  const factory = process.env.AGENT_FACTORY_ADDRESS as Address | undefined
-  if (!factory) {
-    return denyAndAudit(c, {
-      route: '/session/:id/deploy-agent',
-      reason: 'env:agent-factory-not-set',
-      publicMessage: 'AGENT_FACTORY_ADDRESS not set on a2a-agent',
-      status: 500,
-      executionPath: 'stateless-redeem',
-      sessionId,
-      mcpServer,
-      mcpCallId: body.mcpCallId,
-      sessionPrincipal: pkg.sessionKeyAddress,
-    })
-  }
-
-  // Audit prefill — best-effort selector capture.
-  let selectorHex: Hex | null = null
-  try {
-    selectorHex = selectorFor('AgentAccountFactory', 'createAccount')
-  } catch { /* non-fatal */ }
-
-  const callDataPreviewHash: Hex = keccak256(toBytes(`deploy-agent:${body.owner}:${body.salt}`))
-
-  const receiptId = await writeReceipt({
-    c,
-    pkg,
-    sessionId,
-    mcpServer,
-    body: {
-      mcpTool: 'deploy-agent',
-      mcpCallId: body.mcpCallId,
-      a2aTaskId: '',
-      target: factory,
-      value: '0',
-      callData: '0x' as Hex,
-    },
-    executionPath: 'stateless-redeem',
-    status: 'pending',
-    overrideSelector: selectorHex,
-    overrideCallDataHash: callDataPreviewHash,
-  })
-
-  try {
-    const sessionAccount = privateKeyToAccount(pkg.sessionPrivateKey)
-    const wallet = createWalletClient({
-      account: sessionAccount,
-      chain: getChain(),
-      transport: http(config.RPC_URL),
-    })
-    const pub = createPublicClient({ chain: getChain(), transport: http(config.RPC_URL) })
-
-    const salt = BigInt(body.salt)
-    const txHash = await wallet.writeContract({
-      address: factory,
-      abi: agentAccountFactoryAbi,
-      functionName: 'createAccount',
-      args: [body.owner, salt],
-      account: sessionAccount,
-      chain: wallet.chain ?? null,
-    })
-    const receipt = await pub.waitForTransactionReceipt({ hash: txHash })
-
-    const deployedAddress = await pub.readContract({
-      address: factory,
-      abi: agentAccountFactoryAbi,
-      functionName: 'getAddress',
-      args: [body.owner, salt],
-    }) as Address
-
-    const ok = receipt.status === 'success'
-    await auditFinalize(receiptId, {
-      status: ok ? 'completed' : 'reverted',
-      txHash,
-      errorReason: ok ? '' : 'transaction reverted',
-    })
-
-    if (!ok) {
+    let body: DeployAgentBody
+    try {
+      body = JSON.parse(bodyRaw) as DeployAgentBody
+    } catch {
       return denyAndAudit(c, {
         route: '/session/:id/deploy-agent',
-        reason: 'tx:reverted',
-        publicMessage: 'tx reverted',
-        status: 502,
-        skipAudit: true,
-        executionPath: 'stateless-redeem',
+        reason: 'fields:malformed-json',
+        status: 400,
+        executionPath: 'session-account',
         sessionId,
         mcpServer,
-        extra: { txHash, executionReceiptId: receiptId },
       })
     }
-    return c.json({ address: deployedAddress, txHash, executionReceiptId: receiptId })
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    await auditFinalize(receiptId, { status: 'reverted', errorReason: msg.slice(0, 1000) })
-    return denyAndAudit(c, {
-      route: '/session/:id/deploy-agent',
-      reason: 'error:deploy-agent-failed',
-      publicMessage: `deploy-agent failed: ${msg}`,
-      status: 500,
-      skipAudit: true,
-      executionPath: 'stateless-redeem',
-      sessionId,
-      mcpServer,
-    })
-  }
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    return denyAndAudit(c, {
-      route: '/session/:id/deploy-agent',
-      reason: 'error:unhandled',
-      publicMessage: msg,
-      status: 500,
-      executionPath: 'stateless-redeem',
-      sessionId,
-      mcpServer,
-    })
-  }
-})
 
-// ─── POST /session/:id/redeem-with-chain ─────────────────────────────
-//
-// Spec 004 (auth-model b2) — chained redeem for marketplace tools.
-//
-// Where `/redeem-tx` redeems `pkg.delegation` directly (msg.sender at the
-// target = the session's account holder), `/redeem-with-chain` ignores
-// `pkg.delegation` and redeems a caller-supplied chain. The leaf of the
-// chain MUST have `delegate == sessionKeyAddress` so DelegationManager
-// accepts the redeemer.
-//
-// Typical chain at credential issuance time:
-//   chain = [
-//     {                                    // D_admin_holder (signed by admin AA)
-//       delegator: admin AgentAccount,
-//       delegate:  holder AgentAccount,
-//       authority: ROOT,
-//       caveats:   [AllowedTargets([GrantProposalRegistry]),
-//                   AllowedMethods([submit,edit,withdraw])],
-//       …
-//     },
-//     {                                    // D_holder_session (freshly minted)
-//       delegator: holder AgentAccount,
-//       delegate:  sessionKeyAddress,
-//       authority: hash(D_admin_holder),
-//       caveats:   [Timestamp(short)],
-//       …
-//     },
-//   ]
-//
-// At dispatch, DelegationManager walks the chain root-down, ending at
-// `admin.execute(target, value, callData)`. msg.sender at the registry =
-// admin AgentAccount, so `_isAccountOwner(fundAgent, msg.sender)` passes
-// (admin is registered as owner of fund/pool via the standard
-// pool:create / fund:open path).
-//
-// Auth: HMAC inter-service (same as the other endpoints).
-// Authorization: TOOL_POLICIES target/selector gate (defense in depth);
-// the rest of the chain's caveats already constrain on chain.
-interface ChainCaveat {
-  enforcer: `0x${string}`
-  terms: `0x${string}`
-  args?: `0x${string}`
-}
-interface ChainDelegationStruct {
-  delegator: `0x${string}`
-  delegate: `0x${string}`
-  authority: `0x${string}`
-  caveats: ChainCaveat[]
-  salt: string
-  signature: `0x${string}`
-}
-interface RedeemWithChainBody {
-  mcpTool: string
-  mcpCallId: string
-  a2aTaskId?: string
-  target: Address
-  value: string
-  callData: Hex
-  chain: ChainDelegationStruct[]
-}
-
-onchainRedeem.post('/:id/redeem-with-chain', requireInterServiceAuth(), async (c) => {
-  const sessionId = c.req.param('id')
-  const ctx = c.get('interService' as never) as { service: string; bodyRaw: string } | undefined
-  const bodyRaw = ctx?.bodyRaw ?? (await c.req.text())
-  const mcpServer = ctx?.service ?? 'unknown'
-  try {
-  let body: RedeemWithChainBody
-  try {
-    body = JSON.parse(bodyRaw) as RedeemWithChainBody
-  } catch {
-    return denyAndAudit(c, {
-      route: '/session/:id/redeem-with-chain',
-      reason: 'fields:malformed-json',
-      status: 400,
-      executionPath: 'stateless-redeem',
-      sessionId,
-      mcpServer,
-    })
-  }
-
-  if (!Array.isArray(body.chain) || body.chain.length === 0) {
-    return denyAndAudit(c, {
-      route: '/session/:id/redeem-with-chain',
-      reason: 'validation:chain-empty',
-      publicMessage: 'chain must be a non-empty array of signed delegations',
-      status: 400,
-      executionPath: 'stateless-redeem',
-      sessionId,
-      mcpServer,
-      mcpCallId: body.mcpCallId,
-    })
-  }
-
-  // Policy lookup — same gate as redeem-tx (defense in depth).
-  const policy = TOOL_POLICIES[body.mcpTool]
-  if (!policy) {
-    return denyAndAudit(c, {
-      route: '/session/:id/redeem-with-chain',
-      reason: 'policy:unknown-tool',
-      publicMessage: `unknown tool: ${body.mcpTool}`,
-      status: 403,
-      executionPath: 'stateless-redeem',
-      sessionId,
-      mcpServer,
-      mcpCallId: body.mcpCallId,
-    })
-  }
-  // Sprint 5 P0-8 — marketplace tools 503 unless MARKETPLACE_ENABLED=true.
-  // redeem-with-chain is the canonical marketplace dispatch path, so this
-  // gate is the primary 503 surface for marketplace traffic.
-  if (isMarketplaceToolDisabled(body.mcpTool)) {
-    return denyAndAudit(c, {
-      route: '/session/:id/redeem-with-chain',
-      reason: 'policy:marketplace-disabled',
-      publicMessage: `marketplace tool ${body.mcpTool} is disabled (MARKETPLACE_ENABLED=false)`,
-      status: 503,
-      executionPath: 'stateless-redeem',
-      sessionId,
-      mcpServer,
-      mcpCallId: body.mcpCallId,
-    })
-  }
-  if (policy.executionPath !== 'stateless-redeem') {
-    return denyAndAudit(c, {
-      route: '/session/:id/redeem-with-chain',
-      reason: 'policy:wrong-execution-path',
-      publicMessage: `tool ${body.mcpTool} requires path ${policy.executionPath}, not stateless-redeem`,
-      status: 403,
-      executionPath: 'stateless-redeem',
-      sessionId,
-      mcpServer,
-      mcpCallId: body.mcpCallId,
-    })
-  }
-
-  // Resolve session.
-  const sess = await loadActiveSessionPackage(sessionId)
-  if ('error' in sess) {
-    return denyAndAudit(c, {
-      route: '/session/:id/redeem-with-chain',
-      reason: sessionErrorToReason(sess.error),
-      publicMessage: sess.error,
-      status: sess.status,
-      executionPath: 'stateless-redeem',
-      sessionId,
-      mcpServer,
-      mcpCallId: body.mcpCallId,
-    })
-  }
-  const { pkg } = sess
-
-  // Chain ordering: DelegationManager expects [leaf, …, root] — index 0
-  // is the LEAF, which must delegate to the session key (the EOA we sign
-  // the redeem tx with). The previous chain[last] check was backwards.
-  const leaf = body.chain[0]
-  if (leaf.delegate.toLowerCase() !== pkg.sessionKeyAddress.toLowerCase()) {
-    return denyAndAudit(c, {
-      route: '/session/:id/redeem-with-chain',
-      reason: 'validation:chain-leaf-delegate-mismatch',
-      publicMessage: `chain leaf delegate (${leaf.delegate}) must equal session key (${pkg.sessionKeyAddress})`,
-      status: 400,
-      executionPath: 'stateless-redeem',
-      sessionId,
-      mcpServer,
-      mcpCallId: body.mcpCallId,
-      sessionPrincipal: pkg.sessionKeyAddress,
-    })
-  }
-
-  // Validate target / selector against policy (defense in depth — the
-  // chain's own caveats already constrain on chain).
-  const env = process.env as Record<string, string | undefined>
-  const allowedTargets = policyAllowedTargets(policy, env)
-  const targetLower = body.target.toLowerCase() as Address
-  if (!allowedTargets.includes(targetLower)) {
-    return denyAndAudit(c, {
-      route: '/session/:id/redeem-with-chain',
-      reason: 'policy:target-not-allowed',
-      publicMessage: `target not allowed for ${body.mcpTool}`,
-      status: 403,
-      executionPath: 'stateless-redeem',
-      sessionId,
-      mcpServer,
-      mcpCallId: body.mcpCallId,
-      target: body.target,
-      sessionPrincipal: pkg.sessionKeyAddress,
-    })
-  }
-  let selector: `0x${string}`
-  try {
-    selector = extractSelector(body.callData)
-  } catch (e) {
-    return denyAndAudit(c, {
-      route: '/session/:id/redeem-with-chain',
-      reason: 'validation:invalid-call-data',
-      publicMessage: (e as Error).message,
-      status: 400,
-      executionPath: 'stateless-redeem',
-      sessionId,
-      mcpServer,
-      mcpCallId: body.mcpCallId,
-      sessionPrincipal: pkg.sessionKeyAddress,
-    })
-  }
-  const allowedSelectors = policyAllowedSelectors(body.mcpTool, policy)
-  if (!allowedSelectors.has(selector)) {
-    return denyAndAudit(c, {
-      route: '/session/:id/redeem-with-chain',
-      reason: 'policy:selector-not-allowed',
-      publicMessage: `selector ${selector} not allowed for ${body.mcpTool}`,
-      status: 403,
-      executionPath: 'stateless-redeem',
-      sessionId,
-      mcpServer,
-      mcpCallId: body.mcpCallId,
-      target: body.target,
-      selector,
-      sessionPrincipal: pkg.sessionKeyAddress,
-    })
-  }
-
-  // Enforce policy.maxValueWei (off-chain twin of ValueEnforcer).
-  {
-    const requestedValue = BigInt(body.value)
-    if (policy.maxValueWei !== undefined && requestedValue > policy.maxValueWei) {
+    const sess = await loadActiveSessionPackage(sessionId)
+    if ('error' in sess) {
       return denyAndAudit(c, {
-        route: '/session/:id/redeem-with-chain',
-        reason: 'policy:value-exceeds-cap',
-        publicMessage: `value ${requestedValue} exceeds tool maxValueWei ${policy.maxValueWei}`,
-        status: 400,
-        executionPath: 'stateless-redeem',
+        route: '/session/:id/deploy-agent',
+        reason: sessionErrorToReason(sess.error),
+        publicMessage: sess.error,
+        status: sess.status,
+        executionPath: 'session-account',
         sessionId,
         mcpServer,
         mcpCallId: body.mcpCallId,
-        target: body.target,
-        selector,
-        sessionPrincipal: pkg.sessionKeyAddress,
       })
     }
-  }
+    const { pkg } = sess
 
-  // Receipt.
-  const receiptId = await writeReceipt({
-    c,
-    pkg,
-    sessionId,
-    mcpServer,
-    body: {
-      mcpTool: body.mcpTool,
-      mcpCallId: body.mcpCallId,
-      a2aTaskId: body.a2aTaskId ?? '',
-      target: body.target,
-      value: body.value,
-      callData: body.callData,
-    },
-    executionPath: 'stateless-redeem',
-    status: 'pending',
-  })
-
-  // Submit DelegationManager.redeemDelegation(chain, target, value, callData)
-  // — signed by the session key. The on-chain validators run for each
-  // chain element; the leaf's delegate-msg.sender check uses the session
-  // key (which we just confirmed matches above).
-  try {
-    const sessionAccount = privateKeyToAccount(pkg.sessionPrivateKey)
-    const wallet = createWalletClient({
-      account: sessionAccount,
-      chain: getChain(),
-      transport: http(config.RPC_URL),
-    })
-    const pub = createPublicClient({ chain: getChain(), transport: http(config.RPC_URL) })
-
-    const structs = body.chain.map((d) => ({
-      delegator: d.delegator,
-      delegate: d.delegate,
-      authority: d.authority,
-      caveats: d.caveats.map((cav) => ({
-        enforcer: cav.enforcer,
-        terms: cav.terms,
-        args: (cav.args ?? '0x') as Hex,
-      })),
-      salt: BigInt(d.salt),
-      signature: d.signature,
-    }))
-    const valueWei = BigInt(body.value)
-
-    const txHash = await wallet.writeContract({
-      address: config.DELEGATION_MANAGER_ADDRESS,
-      abi: delegationManagerAbi,
-      functionName: 'redeemDelegation',
-      args: [structs, body.target, valueWei, body.callData],
-      account: sessionAccount,
-      chain: wallet.chain ?? null,
-    })
-    const receipt = await pub.waitForTransactionReceipt({ hash: txHash })
-    const ok = receipt.status === 'success'
-
-    await auditFinalize(receiptId, {
-      status: ok ? 'completed' : 'reverted',
-      txHash,
-      errorReason: ok ? '' : 'transaction reverted',
-    })
-
-    if (!ok) {
+    const factory = process.env.AGENT_FACTORY_ADDRESS as Address | undefined
+    if (!factory) {
       return denyAndAudit(c, {
-        route: '/session/:id/redeem-with-chain',
-        reason: 'tx:reverted',
-        publicMessage: 'tx reverted',
-        status: 502,
-        skipAudit: true,
-        executionPath: 'stateless-redeem',
-        sessionId,
-        mcpServer,
-        extra: { txHash, executionReceiptId: receiptId },
-      })
-    }
-    return c.json({ txHash, executionReceiptId: receiptId })
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    await auditFinalize(receiptId, { status: 'reverted', errorReason: msg.slice(0, 1000) })
-    return denyAndAudit(c, {
-      route: '/session/:id/redeem-with-chain',
-      reason: 'error:redeem-with-chain-failed',
-      publicMessage: `redeem-with-chain failed: ${msg}`,
-      status: 500,
-      skipAudit: true,
-      executionPath: 'stateless-redeem',
-      sessionId,
-      mcpServer,
-    })
-  }
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    return denyAndAudit(c, {
-      route: '/session/:id/redeem-with-chain',
-      reason: 'error:unhandled',
-      publicMessage: msg,
-      status: 500,
-      executionPath: 'stateless-redeem',
-      sessionId,
-      mcpServer,
-    })
-  }
-})
-
-// ─── POST /session/:id/redeem-subdelegated ───────────────────────────
-//
-// Phase 2 — sub-delegated execution path for sensitive-tier tools.
-//
-// Flow per call:
-//   1. Validate the requested tool's policy is `executionPath='sub-delegated'`.
-//   2. Validate target/selector match the policy (defense in depth — same
-//      gate that the user's root delegation already enforces on-chain).
-//   3. Resolve the per-tool executor identity from
-//      `getExecutorForTool(toolId)`. This is the LEAF delegate of D_sub.
-//   4. Mint D_sub:
-//        delegator = sessionKeyAddress    (the LEAF of D_root)
-//        delegate  = executor.address
-//        authority = hash(D_root)
-//        caveats   = [
-//          Timestamp(now, now + 60s),                       // tight window
-//          AllowedTargets([target]),
-//          AllowedMethods([selector]),
-//          Value(callValueWei),
-//          CallDataHashEnforcer(keccak256(callData)),       // runtime gate
-//          TaskBindingEnforcer(keccak256(toBytes(taskId))), // audit tag
-//        ]
-//      Signed with sessionPrivateKey (ECDSA over hashDelegation, which the
-//      DelegationManager._validateSignature verifies for EOA delegators).
-//   5. Build the redeem chain [D_sub, D_root] and submit
-//      DelegationManager.redeemDelegation as msg.sender = executor.address.
-//   6. Best-effort revoke hash(D_sub) immediately after submit from the
-//      session key (matches the user's delegator authority chain — see
-//      gotcha note in phase2-delegation-summary.md).
-//   7. Audit row: executionPath='sub-delegated', toolGrantHash=hash(D_sub),
-//      toolExecutor=executor.address, plus the standard root/session
-//      metadata.
-//
-// On any error before submit, audit row is written with status='denied'
-// + errorReason. On revert, status='reverted'.
-onchainRedeem.post('/:id/redeem-subdelegated', requireInterServiceAuth(), async (c) => {
-  const sessionId = c.req.param('id')
-  const ctx = c.get('interService' as never) as { service: string; bodyRaw: string } | undefined
-  const bodyRaw = ctx?.bodyRaw ?? (await c.req.text())
-  const mcpServer = ctx?.service ?? 'unknown'
-  try {
-  let body: RedeemTxBody
-  try {
-    body = JSON.parse(bodyRaw) as RedeemTxBody
-  } catch {
-    return denyAndAudit(c, {
-      route: '/session/:id/redeem-subdelegated',
-      reason: 'fields:malformed-json',
-      status: 400,
-      executionPath: 'sub-delegated',
-      sessionId,
-      mcpServer,
-    })
-  }
-
-  // ─── Policy lookup ─────────────────────────────────────────────────
-  const policy = TOOL_POLICIES[body.mcpTool]
-  if (!policy) {
-    return denyAndAudit(c, {
-      route: '/session/:id/redeem-subdelegated',
-      reason: 'policy:unknown-tool',
-      publicMessage: `unknown tool: ${body.mcpTool}`,
-      status: 403,
-      executionPath: 'sub-delegated',
-      sessionId,
-      mcpServer,
-      mcpCallId: body.mcpCallId,
-    })
-  }
-  // Sprint 5 P0-8 — marketplace tools 503 unless MARKETPLACE_ENABLED=true.
-  if (isMarketplaceToolDisabled(body.mcpTool)) {
-    return denyAndAudit(c, {
-      route: '/session/:id/redeem-subdelegated',
-      reason: 'policy:marketplace-disabled',
-      publicMessage: `marketplace tool ${body.mcpTool} is disabled (MARKETPLACE_ENABLED=false)`,
-      status: 503,
-      executionPath: 'sub-delegated',
-      sessionId,
-      mcpServer,
-      mcpCallId: body.mcpCallId,
-    })
-  }
-  if (policy.executionPath !== 'sub-delegated') {
-    return denyAndAudit(c, {
-      route: '/session/:id/redeem-subdelegated',
-      reason: 'policy:wrong-execution-path',
-      publicMessage: `tool ${body.mcpTool} requires path ${policy.executionPath}, not sub-delegated`,
-      status: 403,
-      executionPath: 'sub-delegated',
-      sessionId,
-      mcpServer,
-      mcpCallId: body.mcpCallId,
-    })
-  }
-  if (!body.a2aTaskId || body.a2aTaskId.length === 0) {
-    return denyAndAudit(c, {
-      route: '/session/:id/redeem-subdelegated',
-      reason: 'validation:missing-a2a-task-id',
-      publicMessage: 'a2aTaskId is required for sub-delegated path',
-      status: 400,
-      executionPath: 'sub-delegated',
-      sessionId,
-      mcpServer,
-      mcpCallId: body.mcpCallId,
-    })
-  }
-
-  // ─── Resolve session ───────────────────────────────────────────────
-  const sess = await loadActiveSessionPackage(sessionId)
-  if ('error' in sess) {
-    return denyAndAudit(c, {
-      route: '/session/:id/redeem-subdelegated',
-      reason: sessionErrorToReason(sess.error),
-      publicMessage: sess.error,
-      status: sess.status,
-      executionPath: 'sub-delegated',
-      sessionId,
-      mcpServer,
-      mcpCallId: body.mcpCallId,
-    })
-  }
-  const { pkg } = sess
-
-  // ─── Validate target / selector against policy ────────────────────
-  const env = process.env as Record<string, string | undefined>
-  const allowedTargets = policyAllowedTargets(policy, env)
-  const targetLower = body.target.toLowerCase() as Address
-  if (!allowedTargets.includes(targetLower)) {
-    return denyAndAudit(c, {
-      route: '/session/:id/redeem-subdelegated',
-      reason: 'policy:target-not-allowed',
-      publicMessage: `target not allowed for ${body.mcpTool}`,
-      status: 403,
-      executionPath: 'sub-delegated',
-      sessionId,
-      mcpServer,
-      mcpCallId: body.mcpCallId,
-      target: body.target,
-      sessionPrincipal: pkg.sessionKeyAddress,
-    })
-  }
-
-  let selector: `0x${string}`
-  try {
-    selector = extractSelector(body.callData)
-  } catch (e) {
-    return denyAndAudit(c, {
-      route: '/session/:id/redeem-subdelegated',
-      reason: 'validation:invalid-call-data',
-      publicMessage: (e as Error).message,
-      status: 400,
-      executionPath: 'sub-delegated',
-      sessionId,
-      mcpServer,
-      mcpCallId: body.mcpCallId,
-      sessionPrincipal: pkg.sessionKeyAddress,
-    })
-  }
-  const allowedSelectors = policyAllowedSelectors(body.mcpTool, policy)
-  if (!allowedSelectors.has(selector)) {
-    return denyAndAudit(c, {
-      route: '/session/:id/redeem-subdelegated',
-      reason: 'policy:selector-not-allowed',
-      publicMessage: `selector ${selector} not allowed for ${body.mcpTool}`,
-      status: 403,
-      executionPath: 'sub-delegated',
-      sessionId,
-      mcpServer,
-      mcpCallId: body.mcpCallId,
-      target: body.target,
-      selector,
-      sessionPrincipal: pkg.sessionKeyAddress,
-    })
-  }
-
-  // ─── Enforce policy.maxValueWei (off-chain twin of ValueEnforcer) ──
-  {
-    const requestedValue = BigInt(body.value)
-    if (policy.maxValueWei !== undefined && requestedValue > policy.maxValueWei) {
-      return denyAndAudit(c, {
-        route: '/session/:id/redeem-subdelegated',
-        reason: 'policy:value-exceeds-cap',
-        publicMessage: `value ${requestedValue} exceeds tool maxValueWei ${policy.maxValueWei}`,
-        status: 400,
-        executionPath: 'sub-delegated',
+        route: '/session/:id/deploy-agent',
+        reason: 'env:agent-factory-not-set',
+        publicMessage: 'AGENT_FACTORY_ADDRESS not set on a2a-agent',
+        status: 500,
+        executionPath: 'session-account',
         sessionId,
         mcpServer,
         mcpCallId: body.mcpCallId,
-        target: body.target,
-        selector,
         sessionPrincipal: pkg.sessionKeyAddress,
       })
     }
-  }
 
-  // ─── Resolve executor identity ─────────────────────────────────────
-  // K5 — `getExecutorForTool` now returns a viem `LocalAccount` backed
-  // by either the dev hex key (local-aes) or the per-tool AWS KMS key
-  // (aws-kms). The `account` field replaces the legacy
-  // `privateKeyToAccount(executor.privateKey)` construction below.
-  let executor: Awaited<ReturnType<typeof getExecutorForTool>>
-  try {
-    executor = await getExecutorForTool(body.mcpTool)
-  } catch (e) {
-    return denyAndAudit(c, {
-      route: '/session/:id/redeem-subdelegated',
-      reason: 'executor:resolution-failed',
-      publicMessage: (e as Error).message,
-      status: 500,
-      executionPath: 'sub-delegated',
+    // Audit prefill — best-effort selector capture.
+    let selectorHex: Hex | null = null
+    try {
+      selectorHex = selectorFor('AgentAccountFactory', 'createAccount')
+    } catch { /* non-fatal */ }
+
+    const callDataPreviewHash: Hex = keccak256(toBytes(`deploy-agent:${body.owner}:${body.salt}`))
+
+    const receiptId = await writeReceipt({
+      c,
+      pkg,
       sessionId,
       mcpServer,
-      mcpCallId: body.mcpCallId,
-      target: body.target,
-      selector,
-      sessionPrincipal: pkg.sessionKeyAddress,
+      body: {
+        mcpTool: 'deploy-agent',
+        mcpCallId: body.mcpCallId,
+        a2aTaskId: '',
+        target: factory,
+        value: '0',
+        callData: '0x' as Hex,
+      },
+      executionPath: 'session-account',
+      status: 'pending',
+      overrideSelector: selectorHex,
+      overrideCallDataHash: callDataPreviewHash,
     })
-  }
 
-  // ─── Mint + sign D_sub ─────────────────────────────────────────────
-  const now = Math.floor(Date.now() / 1000)
-  const windowEnd = now + 60 // 60-second tight window
-  const valueWei = BigInt(body.value)
-  const callDataHash = keccak256(body.callData)
-  const taskIdHash = keccak256(toBytes(body.a2aTaskId))
+    try {
+      const masterEoa = await getMasterSigner()
+      const wallet = createWalletClient({
+        account: masterEoa,
+        chain: getChain(),
+        transport: http(config.RPC_URL),
+      })
+      const pub = createPublicClient({ chain: getChain(), transport: http(config.RPC_URL) })
 
-  const subCaveats = [
-    buildCaveat(config.TIMESTAMP_ENFORCER_ADDRESS, encodeTimestampTerms(now, windowEnd)),
-    buildCaveat(config.ALLOWED_TARGETS_ENFORCER_ADDRESS, encodeAllowedTargetsTerms([body.target])),
-    buildCaveat(config.ALLOWED_METHODS_ENFORCER_ADDRESS, encodeAllowedMethodsTerms([selector])),
-    buildCaveat(config.VALUE_ENFORCER_ADDRESS, encodeValueTerms(valueWei)),
-    buildCaveat(config.CALLDATA_HASH_ENFORCER_ADDRESS, encodeCallDataHashTerms(callDataHash)),
-    buildCaveat(config.TASK_BINDING_ENFORCER_ADDRESS, encodeTaskBindingTerms(taskIdHash)),
-  ]
+      const salt = BigInt(body.salt)
+      const txHash = await wallet.writeContract({
+        address: factory,
+        abi: agentAccountFactoryAbi,
+        functionName: 'createAccount',
+        args: [body.owner, salt],
+        account: masterEoa,
+        chain: wallet.chain ?? null,
+      })
+      const receipt = await pub.waitForTransactionReceipt({ hash: txHash })
 
-  // D_root.delegator -> D_root.delegate (= sessionKeyAddress).
-  // D_sub.delegator = sessionKeyAddress, D_sub.delegate = executor.address,
-  // authority = hash(D_root).
-  const rootHash = rootGrantHashFromPkg(pkg)
-  const subSalt = BigInt(`0x${Buffer.from(crypto.getRandomValues(new Uint8Array(8))).toString('hex')}`)
-  const subDelegationForHash = {
-    delegator: pkg.sessionKeyAddress,
-    delegate: executor.address,
-    authority: rootHash,
-    caveats: subCaveats.map((c) => ({ enforcer: c.enforcer, terms: c.terms })),
-    salt: subSalt,
-  }
-  const subHash = hashDelegation(
-    subDelegationForHash,
-    config.CHAIN_ID,
-    config.DELEGATION_MANAGER_ADDRESS,
-  )
+      const deployedAddress = await pub.readContract({
+        address: factory,
+        abi: agentAccountFactoryAbi,
+        functionName: 'getAddress',
+        args: [body.owner, salt],
+      }) as Address
 
-  const sessionAccount = privateKeyToAccount(pkg.sessionPrivateKey)
-  const subSignature = await sessionAccount.signMessage({ message: { raw: subHash } })
+      const ok = receipt.status === 'success'
 
-  // Receipt prefill (before submit so we always have a row on revert).
-  const receiptId = await writeReceipt({
-    c,
-    pkg,
-    sessionId,
-    mcpServer,
-    body,
-    executionPath: 'sub-delegated',
-    status: 'pending',
-    toolGrantHash: subHash,
-    toolExecutor: executor.address,
-    overrideSelector: selector,
-    overrideCallDataHash: callDataHash,
-  })
+      await auditFinalize(receiptId, {
+        status: ok ? 'completed' : 'reverted',
+        txHash,
+        errorReason: ok ? '' : 'transaction reverted',
+      })
 
-  // ─── Submit redeem chain ───────────────────────────────────────────
-  try {
-    // K5 — `executor.account` is the K5-built viem `LocalAccount`
-    // (signed by AWS KMS in prod, by the local hex key in dev).
-    const executorAccount = executor.account
-    const wallet = createWalletClient({
-      account: executorAccount,
-      chain: getChain(),
-      transport: http(config.RPC_URL),
-    })
-    const pub = createPublicClient({ chain: getChain(), transport: http(config.RPC_URL) })
-
-    const dSubStruct = {
-      delegator: pkg.sessionKeyAddress,
-      delegate: executor.address,
-      authority: rootHash,
-      caveats: subCaveats.map((c) => ({
-        enforcer: c.enforcer,
-        terms: c.terms,
-        args: (c.args ?? '0x') as Hex,
-      })),
-      salt: subSalt,
-      signature: subSignature,
-    }
-    const dRootStruct = {
-      delegator: pkg.delegation.delegator,
-      delegate: pkg.delegation.delegate,
-      authority: pkg.delegation.authority,
-      caveats: pkg.delegation.caveats.map((c) => ({
-        enforcer: c.enforcer,
-        terms: c.terms,
-        args: (c.args ?? '0x') as Hex,
-      })),
-      salt: BigInt(pkg.delegation.salt),
-      signature: pkg.delegation.signature,
-    }
-
-    // Chain order: leaf first, root last (per DelegationManager validation).
-    const txHash = await wallet.writeContract({
-      address: config.DELEGATION_MANAGER_ADDRESS,
-      abi: delegationManagerAbi,
-      functionName: 'redeemDelegation',
-      args: [[dSubStruct, dRootStruct], body.target, valueWei, body.callData],
-      account: executorAccount,
-      chain: wallet.chain ?? null,
-    })
-    const receipt = await pub.waitForTransactionReceipt({ hash: txHash })
-    const ok = receipt.status === 'success'
-
-    // ─── Best-effort post-submit revoke of D_sub ─────────────────────
-    //
-    // Single-use semantics: even though the 60s Timestamp + the
-    // CallDataHashEnforcer already prevent reuse for a different call,
-    // we explicitly revoke hash(D_sub) so a leaked session key can't
-    // re-issue the SAME calldata within the window. Signed by the
-    // session key — DelegationManager.revokeDelegation has no
-    // authorization gate so any caller works, but signing from the
-    // session key keeps the audit trail clean.
-    let revokeTxHash: Hex | null = null
-    let revokeError: string | null = null
-    if (ok) {
-      try {
-        const sessionWallet = createWalletClient({
-          account: sessionAccount,
-          chain: getChain(),
-          transport: http(config.RPC_URL),
+      if (!ok) {
+        return denyAndAudit(c, {
+          route: '/session/:id/deploy-agent',
+          reason: 'tx:reverted',
+          publicMessage: 'tx reverted',
+          status: 502,
+          skipAudit: true,
+          executionPath: 'session-account',
+          sessionId,
+          mcpServer,
+          extra: { txHash, executionReceiptId: receiptId },
         })
-        revokeTxHash = await sessionWallet.writeContract({
-          address: config.DELEGATION_MANAGER_ADDRESS,
-          abi: delegationManagerAbi,
-          functionName: 'revokeDelegation',
-          args: [subHash],
-          account: sessionAccount,
-          chain: sessionWallet.chain ?? null,
-        })
-        // Don't await receipt — fire-and-forget so latency doesn't pile up.
-        // The revocation will land on the next block, which is fine: the
-        // call we just submitted already consumed the unique calldata
-        // hash, so even a same-block second submission would revert at
-        // the CallDataHashEnforcer level if it could even get past the
-        // timestamp window.
-      } catch (e) {
-        revokeError = e instanceof Error ? e.message : String(e)
       }
-    }
-
-    await auditFinalize(receiptId, {
-      status: ok ? 'completed' : 'reverted',
-      txHash,
-      errorReason: ok
-        ? (revokeError ? `submit-ok; revoke-failed: ${revokeError.slice(0, 500)}` : '')
-        : 'transaction reverted',
-    })
-
-    if (!ok) {
+      return c.json({ address: deployedAddress, txHash, executionReceiptId: receiptId })
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      await auditFinalize(receiptId, { status: 'reverted', errorReason: msg.slice(0, 1000) })
       return denyAndAudit(c, {
-        route: '/session/:id/redeem-subdelegated',
-        reason: 'tx:reverted',
-        publicMessage: 'tx reverted',
-        status: 502,
+        route: '/session/:id/deploy-agent',
+        reason: 'error:deploy-agent-failed',
+        publicMessage: `deploy-agent failed: ${msg}`,
+        status: 500,
         skipAudit: true,
-        executionPath: 'sub-delegated',
+        executionPath: 'session-account',
         sessionId,
         mcpServer,
-        extra: { txHash, executionReceiptId: receiptId },
       })
     }
-    return c.json({
-      txHash,
-      executionReceiptId: receiptId,
-      toolGrantHash: subHash,
-      toolExecutor: executor.address,
-      revokeTxHash,
-    })
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    await auditFinalize(receiptId, { status: 'reverted', errorReason: msg.slice(0, 1000) })
-    return denyAndAudit(c, {
-      route: '/session/:id/redeem-subdelegated',
-      reason: 'error:redeem-subdelegated-failed',
-      publicMessage: `redeem-subdelegated failed: ${msg}`,
-      status: 500,
-      skipAudit: true,
-      executionPath: 'sub-delegated',
-      sessionId,
-      mcpServer,
-    })
-  }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     return denyAndAudit(c, {
-      route: '/session/:id/redeem-subdelegated',
+      route: '/session/:id/deploy-agent',
       reason: 'error:unhandled',
       publicMessage: msg,
       status: 500,
-      executionPath: 'sub-delegated',
+      executionPath: 'session-account',
       sessionId,
       mcpServer,
     })
@@ -1440,11 +906,19 @@ onchainRedeem.post('/:id/redeem-subdelegated', requireInterServiceAuth(), async 
 })
 
 // ─── Helper: write an audit row ──────────────────────────────────────
+interface ReceiptBody {
+  mcpTool: string
+  mcpCallId: string
+  a2aTaskId?: string
+  target: Address
+  value: string
+  callData: Hex
+}
 interface ReceiptInput {
   pkg: StoredSessionPackage
   sessionId: string
   mcpServer: string
-  body: RedeemTxBody
+  body: ReceiptBody
   executionPath: 'mcp-only' | 'stateless-redeem' | 'sub-delegated' | 'session-account'
   status: 'completed' | 'reverted' | 'denied' | 'pending'
   errorReason?: string
@@ -1507,332 +981,6 @@ async function writeReceipt(input: ReceiptInput): Promise<number> {
   return inserted[0]!.id
 }
 
-// ─── POST /session/:id/redeem-via-account ────────────────────────────
-//
-// Phase 3 — stateful session-account execution path.
-//
-// Routes when `TOOL_POLICIES[mcpTool].executionPath === 'session-account'`.
-// The session has a deployed SessionAgentAccount whose installed first-party
-// modules enforce spend caps, rate limits, and target/selector allowlists at
-// every call.
-//
-// Flow per call:
-//   1. Validate the requested tool's policy is `executionPath='session-account'`.
-//   2. Validate the session has a `sessionAgentAccount` recorded (set at
-//      /session/init when `stateful=true`).
-//   3. Build a 4337 UserOperation:
-//        sender   = sessionAgentAccount
-//        callData = AgentAccount.execute(target, value, data)
-//        nonce    = pulled from EntryPoint
-//        signature = ECDSA over userOpHash, signed by sessionPrivateKey
-//          (the session EOA is the owner of the SessionAgentAccount, so
-//           AgentAccount._validateSignature accepts via standard ECDSA path).
-//   4. Submit EntryPoint.handleOps([op], beneficiary=executor) AS the
-//      self-bundler (a2a-agent's master EOA pays gas).
-//   5. Hooks installed on the account (SpendCap, RateLimit, Allowlist)
-//      execute pre/post the inner call and revert on policy violations.
-//   6. Write ExecutionReceipt with executionPath='session-account' and
-//      userOpHash populated.
-//
-// For local dev there is no external bundler — this endpoint IS the bundler.
-onchainRedeem.post('/:id/redeem-via-account', requireInterServiceAuth(), async (c) => {
-  const sessionId = c.req.param('id')
-  const ctx = c.get('interService' as never) as { service: string; bodyRaw: string } | undefined
-  const bodyRaw = ctx?.bodyRaw ?? (await c.req.text())
-  const mcpServer = ctx?.service ?? 'unknown'
-  try {
-  let body: RedeemTxBody
-  try {
-    body = JSON.parse(bodyRaw) as RedeemTxBody
-  } catch {
-    return denyAndAudit(c, {
-      route: '/session/:id/redeem-via-account',
-      reason: 'fields:malformed-json',
-      status: 400,
-      executionPath: 'session-account',
-      sessionId,
-      mcpServer,
-    })
-  }
-
-  // ─── Policy lookup ─────────────────────────────────────────────────
-  const policy = TOOL_POLICIES[body.mcpTool]
-  if (!policy) {
-    return denyAndAudit(c, {
-      route: '/session/:id/redeem-via-account',
-      reason: 'policy:unknown-tool',
-      publicMessage: `unknown tool: ${body.mcpTool}`,
-      status: 403,
-      executionPath: 'session-account',
-      sessionId,
-      mcpServer,
-      mcpCallId: body.mcpCallId,
-    })
-  }
-  // Sprint 5 P0-8 — marketplace tools 503 unless MARKETPLACE_ENABLED=true.
-  if (isMarketplaceToolDisabled(body.mcpTool)) {
-    return denyAndAudit(c, {
-      route: '/session/:id/redeem-via-account',
-      reason: 'policy:marketplace-disabled',
-      publicMessage: `marketplace tool ${body.mcpTool} is disabled (MARKETPLACE_ENABLED=false)`,
-      status: 503,
-      executionPath: 'session-account',
-      sessionId,
-      mcpServer,
-      mcpCallId: body.mcpCallId,
-    })
-  }
-  if (policy.executionPath !== 'session-account') {
-    return denyAndAudit(c, {
-      route: '/session/:id/redeem-via-account',
-      reason: 'policy:wrong-execution-path',
-      publicMessage: `tool ${body.mcpTool} requires path ${policy.executionPath}, not session-account`,
-      status: 403,
-      executionPath: 'session-account',
-      sessionId,
-      mcpServer,
-      mcpCallId: body.mcpCallId,
-    })
-  }
-
-  // ─── Resolve session ───────────────────────────────────────────────
-  const sess = await loadActiveSessionPackage(sessionId)
-  if ('error' in sess) {
-    return denyAndAudit(c, {
-      route: '/session/:id/redeem-via-account',
-      reason: sessionErrorToReason(sess.error),
-      publicMessage: sess.error,
-      status: sess.status,
-      executionPath: 'session-account',
-      sessionId,
-      mcpServer,
-      mcpCallId: body.mcpCallId,
-    })
-  }
-  const { pkg, row } = sess
-  if (!row.sessionAgentAccount) {
-    return denyAndAudit(c, {
-      route: '/session/:id/redeem-via-account',
-      reason: 'validation:missing-session-agent-account',
-      publicMessage: 'session has no SessionAgentAccount; was /session/init called with stateful=true?',
-      status: 400,
-      executionPath: 'session-account',
-      sessionId,
-      mcpServer,
-      mcpCallId: body.mcpCallId,
-      sessionPrincipal: pkg.sessionKeyAddress,
-    })
-  }
-  const sessionAgentAccount = row.sessionAgentAccount as Address
-
-  // ─── Validate target/selector against policy ───────────────────────
-  const env = process.env as Record<string, string | undefined>
-  const allowedTargets = policyAllowedTargets(policy, env)
-  const targetLower = body.target.toLowerCase() as Address
-  if (allowedTargets.length > 0 && !allowedTargets.includes(targetLower)) {
-    return denyAndAudit(c, {
-      route: '/session/:id/redeem-via-account',
-      reason: 'policy:target-not-allowed',
-      publicMessage: `target not allowed for ${body.mcpTool}`,
-      status: 403,
-      executionPath: 'session-account',
-      sessionId,
-      mcpServer,
-      mcpCallId: body.mcpCallId,
-      target: body.target,
-      sessionPrincipal: pkg.sessionKeyAddress,
-    })
-  }
-  let selector: `0x${string}`
-  try { selector = extractSelector(body.callData) } catch (e) {
-    return denyAndAudit(c, {
-      route: '/session/:id/redeem-via-account',
-      reason: 'validation:invalid-call-data',
-      publicMessage: (e as Error).message,
-      status: 400,
-      executionPath: 'session-account',
-      sessionId,
-      mcpServer,
-      mcpCallId: body.mcpCallId,
-      sessionPrincipal: pkg.sessionKeyAddress,
-    })
-  }
-  const allowedSelectors = policyAllowedSelectors(body.mcpTool, policy)
-  if (!allowedSelectors.has(selector)) {
-    return denyAndAudit(c, {
-      route: '/session/:id/redeem-via-account',
-      reason: 'policy:selector-not-allowed',
-      publicMessage: `selector ${selector} not allowed for ${body.mcpTool}`,
-      status: 403,
-      executionPath: 'session-account',
-      sessionId,
-      mcpServer,
-      mcpCallId: body.mcpCallId,
-      target: body.target,
-      selector,
-      sessionPrincipal: pkg.sessionKeyAddress,
-    })
-  }
-
-  // ─── Enforce policy.maxValueWei (off-chain twin of ValueEnforcer) ──
-  {
-    const requestedValue = BigInt(body.value)
-    if (policy.maxValueWei !== undefined && requestedValue > policy.maxValueWei) {
-      return denyAndAudit(c, {
-        route: '/session/:id/redeem-via-account',
-        reason: 'policy:value-exceeds-cap',
-        publicMessage: `value ${requestedValue} exceeds tool maxValueWei ${policy.maxValueWei}`,
-        status: 400,
-        executionPath: 'session-account',
-        sessionId,
-        mcpServer,
-        mcpCallId: body.mcpCallId,
-        target: body.target,
-        selector,
-        sessionPrincipal: pkg.sessionKeyAddress,
-      })
-    }
-  }
-
-  // ─── Build the inner execute() callData ────────────────────────────
-  // AgentAccount.execute(target, value, data)
-  const innerCallData = encodeFunctionData({
-    abi: agentAccountAbi,
-    functionName: 'execute',
-    args: [body.target, BigInt(body.value), body.callData],
-  })
-
-  // ─── Build the 4337 UserOperation ──────────────────────────────────
-  const pub = createPublicClient({ chain: getChain(), transport: http(config.RPC_URL) })
-  const sessionAccount = privateKeyToAccount(pkg.sessionPrivateKey)
-
-  // Pull the next nonce from EntryPoint (key=0).
-  const nonce = (await pub.readContract({
-    address: config.ENTRYPOINT_ADDRESS,
-    abi: entryPointMinimalAbi,
-    functionName: 'getNonce',
-    args: [sessionAgentAccount, 0n],
-  })) as bigint
-
-  // Pack gas limits + fees per EntryPoint v0.7 layout:
-  //   accountGasLimits = abi.encodePacked(verificationGasLimit << 128 | callGasLimit)
-  //   gasFees          = abi.encodePacked(maxPriorityFeePerGas << 128 | maxFeePerGas)
-  const verificationGasLimit = 500_000n
-  const callGasLimit = 1_500_000n
-  const accountGasLimits = packTwo(verificationGasLimit, callGasLimit)
-  const preVerificationGas = 100_000n
-  const maxPriorityFeePerGas = 1n
-  const maxFeePerGas = 1_000_000_000n // 1 gwei (local dev)
-  const gasFees = packTwo(maxPriorityFeePerGas, maxFeePerGas)
-
-  const op = {
-    sender: sessionAgentAccount,
-    nonce,
-    initCode: '0x' as Hex, // SessionAgentAccount already deployed
-    callData: innerCallData,
-    accountGasLimits,
-    preVerificationGas,
-    gasFees,
-    paymasterAndData: '0x' as Hex,
-    signature: '0x' as Hex, // to be filled below
-  }
-
-  // EntryPoint v0.7 userOpHash = keccak256(abi.encode(packedHash, address(entryPoint), chainId))
-  // For simplicity, we delegate to the EntryPoint's view function if available;
-  // many deployments expose getUserOpHash().
-  const userOpHash = (await pub.readContract({
-    address: config.ENTRYPOINT_ADDRESS,
-    abi: entryPointMinimalAbi,
-    functionName: 'getUserOpHash',
-    args: [op],
-  })) as Hex
-
-  // Sign the userOpHash with the session EOA (it's an owner of the
-  // SessionAgentAccount → ECDSA path in _validateSignature accepts).
-  const signature = await sessionAccount.signMessage({ message: { raw: userOpHash } })
-  const signedOp = { ...op, signature }
-
-  // ─── Submit via the self-bundler (master EOA pays gas) ────────────
-  const receiptId = await writeReceipt({
-    c, pkg, sessionId, mcpServer, body,
-    executionPath: 'session-account', status: 'pending',
-    overrideSelector: selector,
-    overrideCallDataHash: keccak256(body.callData),
-    toolExecutor: sessionAgentAccount,
-  })
-
-  try {
-    const masterEoa = await getMasterSigner()
-    const wallet = createWalletClient({
-      account: masterEoa,
-      chain: getChain(),
-      transport: http(config.RPC_URL),
-    })
-    const txHash = await wallet.writeContract({
-      address: config.ENTRYPOINT_ADDRESS,
-      abi: entryPointMinimalAbi,
-      functionName: 'handleOps',
-      args: [[signedOp], masterEoa.address],
-      account: masterEoa,
-      chain: wallet.chain ?? null,
-    })
-    const r = await pub.waitForTransactionReceipt({ hash: txHash })
-    const ok = r.status === 'success'
-
-    await auditFinalize(receiptId, {
-      status: ok ? 'completed' : 'reverted',
-      txHash,
-      userOpHash,
-      errorReason: ok ? '' : 'handleOps reverted',
-    })
-
-    if (!ok) {
-      return denyAndAudit(c, {
-        route: '/session/:id/redeem-via-account',
-        reason: 'tx:handle-ops-reverted',
-        publicMessage: 'handleOps reverted',
-        status: 502,
-        skipAudit: true,
-        executionPath: 'session-account',
-        sessionId,
-        mcpServer,
-        extra: { txHash, userOpHash, executionReceiptId: receiptId },
-      })
-    }
-    return c.json({
-      txHash,
-      userOpHash,
-      executionReceiptId: receiptId,
-      sessionAgentAccount,
-    })
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    await auditFinalize(receiptId, { status: 'reverted', errorReason: msg.slice(0, 1000) })
-    return denyAndAudit(c, {
-      route: '/session/:id/redeem-via-account',
-      reason: 'error:redeem-via-account-failed',
-      publicMessage: `redeem-via-account failed: ${msg}`,
-      status: 500,
-      skipAudit: true,
-      executionPath: 'session-account',
-      sessionId,
-      mcpServer,
-    })
-  }
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    return denyAndAudit(c, {
-      route: '/session/:id/redeem-via-account',
-      reason: 'error:unhandled',
-      publicMessage: msg,
-      status: 500,
-      executionPath: 'session-account',
-      sessionId,
-      mcpServer,
-    })
-  }
-})
-
 // ─── Minimal EntryPoint v0.7 ABI ────────────────────────────────────
 const entryPointMinimalAbi = [
   {
@@ -1891,8 +1039,8 @@ function packTwo(high: bigint, low: bigint): `0x${string}` {
   return ('0x' + v.toString(16).padStart(64, '0')) as `0x${string}`
 }
 
-// Suppress unused import warning — decodeAbiParameters is exported for future
-// use (e.g., decoding callData arg snapshots in audit rows). Phase 2 will use it.
+// Suppress unused-import sigils — kept exported for forward compat
+// (e.g. callData arg-snapshot decoding in audit rows).
 void decodeAbiParameters
 
 export { onchainRedeem }

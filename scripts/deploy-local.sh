@@ -19,9 +19,29 @@ ANVIL_KEY="0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
 echo "=== Deploying contracts to local Anvil ==="
 echo ""
 
+# The a2a-agent master signer is the EOA registered as serverSigner on
+# every AgentAccount minted by the factory (= a co-owner of the smart
+# account). AgentAccount._validateSignature accepts userOps signed by
+# this key. Misalignment between the factory's serverSigner and
+# a2a-agent's runtime signer causes @AA24 signature errors at
+# EntryPoint.handleOps.
+#
+# Derive the address through the SAME getMasterSigner() path a2a-agent
+# uses at runtime — backend-aware, so dev (local-aes from
+# A2A_MASTER_PRIVATE_KEY) and prod (aws-kms / gcp-kms via GetPublicKey)
+# both flow through one helper. This avoids re-reading raw private keys
+# in the deploy script and avoids regressing to pre-K4 behavior.
+A2A_MASTER_PRIVATE_KEY_FOR_SIGNER="0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"
+SERVER_SIGNER_ADDRESS=$( \
+  A2A_KMS_BACKEND="${A2A_KMS_BACKEND:-local-aes}" \
+  A2A_MASTER_PRIVATE_KEY="$A2A_MASTER_PRIVATE_KEY_FOR_SIGNER" \
+  pnpm --silent tsx "$ROOT_DIR/scripts/master-signer-address.ts" \
+)
+echo "ServerSigner (a2a-agent master EOA, via getMasterSigner()): $SERVER_SIGNER_ADDRESS"
+
 # Run the deploy script
 cd "$CONTRACTS_DIR"
-OUTPUT=$(PRIVATE_KEY="$ANVIL_KEY" forge script script/Deploy.s.sol \
+OUTPUT=$(PRIVATE_KEY="$ANVIL_KEY" SERVER_SIGNER_ADDRESS="$SERVER_SIGNER_ADDRESS" forge script script/Deploy.s.sol \
   --rpc-url "$ANVIL_RPC" \
   --broadcast \
   --slow \
@@ -32,6 +52,7 @@ echo "$OUTPUT" | grep -E "Deployer:|Chain ID:|EntryPoint|Factory|Manager|Enforce
 
 # Extract addresses from the output
 ENTRYPOINT=$(echo "$OUTPUT" | grep "ENTRYPOINT_ADDRESS=" | sed 's/.*=//')
+PAYMASTER=$(echo "$OUTPUT" | grep "PAYMASTER_ADDRESS=" | sed 's/.*=//')
 FACTORY=$(echo "$OUTPUT" | grep "AGENT_FACTORY_ADDRESS=" | sed 's/.*=//')
 DELEGATION=$(echo "$OUTPUT" | grep "DELEGATION_MANAGER_ADDRESS=" | sed 's/.*=//')
 TIMESTAMP=$(echo "$OUTPUT" | grep "TIMESTAMP_ENFORCER_ADDRESS=" | sed 's/.*=//')
@@ -112,6 +133,7 @@ AGENT_NAME_ATTRIBUTE_RESOLVER=$(echo "$OUTPUT" | grep "AGENT_NAME_ATTRIBUTE_RESO
 echo ""
 echo "=== Extracted addresses ==="
 echo "EntryPoint:                $ENTRYPOINT"
+echo "SmartAgentPaymaster:       $PAYMASTER"
 echo "AgentAccountFactory:       $FACTORY"
 echo "DelegationManager:         $DELEGATION"
 echo "AgentRelationship:         $RELATIONSHIP"
@@ -148,6 +170,7 @@ fi
 
 # Remove old contract addresses from .env
 sed -i '/^ENTRYPOINT_ADDRESS=/d' "$WEB_ENV"
+sed -i '/^PAYMASTER_ADDRESS=/d' "$WEB_ENV"
 sed -i '/^AGENT_FACTORY_ADDRESS=/d' "$WEB_ENV"
 sed -i '/^DELEGATION_MANAGER_ADDRESS=/d' "$WEB_ENV"
 sed -i '/^AGENT_TRUST_GRAPH_ADDRESS=/d' "$WEB_ENV"
@@ -319,6 +342,7 @@ SESSION_JWT_SECRETS=$SESSION_JWT_SECRETS_VALUE
 # See docs/operations/kms-signer-setup.md § "Web session-grant signer key (S1.1)".
 SESSION_SIGNER_BACKEND=dev-pepper
 ENTRYPOINT_ADDRESS=$ENTRYPOINT
+PAYMASTER_ADDRESS=$PAYMASTER
 AGENT_FACTORY_ADDRESS=$FACTORY
 DELEGATION_MANAGER_ADDRESS=$DELEGATION
 AGENT_RELATIONSHIP_ADDRESS=$RELATIONSHIP
@@ -421,7 +445,23 @@ for svc in org-mcp family-mcp person-mcp geo-mcp verifier-mcp people-group-mcp; 
   update_env_var "$ENV_FILE" DELEGATION_MANAGER_ADDRESS "$DELEGATION"
   update_env_var "$ENV_FILE" AGENT_RELATIONSHIP_ADDRESS "$RELATIONSHIP"
   update_env_var "$ENV_FILE" AGENT_ACCOUNT_RESOLVER_ADDRESS "$AGENT_ACCT_RESOLVER"
+  # Caveat enforcers — every MCP's verify-delegation.ts walks the
+  # delegation's caveats and looks the enforcer address up against env;
+  # if the address it sees doesn't match the env constant, the caveat is
+  # rejected as "unknown enforcer". Propagate every enforcer the deploy
+  # emits so dev runs the SAME enforcer set as the web/a2a build the
+  # delegation was signed against (no patch — architecture parity).
   update_env_var "$ENV_FILE" TIMESTAMP_ENFORCER_ADDRESS "$TIMESTAMP"
+  update_env_var "$ENV_FILE" VALUE_ENFORCER_ADDRESS "$VALUE"
+  update_env_var "$ENV_FILE" ALLOWED_TARGETS_ENFORCER_ADDRESS "$TARGETS"
+  update_env_var "$ENV_FILE" ALLOWED_METHODS_ENFORCER_ADDRESS "$METHODS"
+  update_env_var "$ENV_FILE" DATA_SCOPE_ENFORCER_ADDRESS "$DATA_SCOPE"
+  update_env_var "$ENV_FILE" NAME_SCOPE_ENFORCER_ADDRESS "$NAME_SCOPE_ENFORCER"
+  update_env_var "$ENV_FILE" MEMBERSHIP_PROOF_ENFORCER_ADDRESS "$MEMBERSHIP_PROOF_ENFORCER"
+  update_env_var "$ENV_FILE" RATE_LIMIT_ENFORCER_ADDRESS "$RATE_LIMIT_ENFORCER"
+  update_env_var "$ENV_FILE" RECOVERY_ENFORCER_ADDRESS "$RECOVERY_ENFORCER"
+  update_env_var "$ENV_FILE" TASK_BINDING_ENFORCER_ADDRESS "$TASK_BINDING_ENFORCER"
+  update_env_var "$ENV_FILE" CALLDATA_HASH_ENFORCER_ADDRESS "$CALLDATA_HASH_ENFORCER"
   update_env_var "$ENV_FILE" MCP_TOOL_SCOPE_ENFORCER_ADDRESS "$MCP_TOOL_SCOPE_ENFORCER"
   # Tier 2 — pool/round registry + factory addresses, plus the ORG_MCP_EOA
   # private key so org-mcp can sign DelegationManager.redeemDelegation as the
@@ -437,6 +477,11 @@ for svc in org-mcp family-mcp person-mcp geo-mcp verifier-mcp people-group-mcp; 
   update_env_var "$ENV_FILE" MOCK_USDC_ADDRESS "$MOCK_USDC"
   update_env_var "$ENV_FILE" USDC_ADDRESS "$MOCK_USDC"
   update_env_var "$ENV_FILE" AGENT_FACTORY_ADDRESS "$FACTORY"
+  # Gas-sponsorship — every userOp built by MCPs / web flowing through
+  # a2a-agent's redeem path attaches PAYMASTER_ADDRESS to paymasterAndData,
+  # so each MCP service needs to see the current paymaster address.
+  update_env_var "$ENV_FILE" PAYMASTER_ADDRESS "$PAYMASTER"
+  update_env_var "$ENV_FILE" ENTRYPOINT_ADDRESS "$ENTRYPOINT"
   # Phase 1 — Inter-service HMAC secret + a2a-agent endpoint URL for the
   # MCPs that talk back to a2a-agent's redeem endpoints. The same secret
   # is also published to apps/web/.env (a2a-agent reads it server-side).
@@ -492,7 +537,22 @@ update_env_var "$A2A_ENV_FILE" REVOCATION_MODULE_ADDRESS "$REVOCATION_MODULE"
 # production this is an AWS KMS asymmetric ECC_SECG_P256K1 key (K4 PR-2).
 A2A_MASTER_PRIVATE_KEY="0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"
 update_env_var "$A2A_ENV_FILE" A2A_MASTER_PRIVATE_KEY "$A2A_MASTER_PRIVATE_KEY"
+# Web also needs A2A_MASTER_PRIVATE_KEY for runtime writes that must be
+# signed by an owner of the smart account (e.g., AgentAccountResolver
+# .register calls — onlyAgentOwner modifier). The master signer is now
+# the system-wide co-owner on every AgentAccount minted via the factory,
+# so it's the right signer for these post-deploy operator writes.
+# Pre-K6 the seed used DEPLOYER_PRIVATE_KEY for the same purpose; now
+# that the factory's serverSigner = master (not deployer), seed-time
+# writes must shift to the master signer. Same env var in dev (raw key)
+# and prod (a KMS-backed signer wraps it).
+update_env_var "$WEB_ENV" A2A_MASTER_PRIVATE_KEY "$A2A_MASTER_PRIVATE_KEY"
 update_env_var "$A2A_ENV_FILE" ENTRYPOINT_ADDRESS "$ENTRYPOINT"
+# Gas-sponsorship — a2a-agent's self-bundler attaches paymasterAndData to
+# every userOp it submits to EntryPoint.handleOps so the master EOA's
+# balance is decoupled from per-op gas economics (see
+# packages/contracts/src/SmartAgentPaymaster.sol).
+update_env_var "$A2A_ENV_FILE" PAYMASTER_ADDRESS "$PAYMASTER"
 update_env_var "$A2A_ENV_FILE" A2A_INTERSERVICE_HMAC_KEY_ORG "$A2A_INTERSERVICE_HMAC_KEY_ORG"
 update_env_var "$A2A_ENV_FILE" A2A_SESSION_SECRET "$A2A_SESSION_SECRET"
 # Hardening §1.3 (Stream B Task B1) — shared secret for web → a2a-agent
