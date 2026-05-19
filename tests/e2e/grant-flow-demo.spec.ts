@@ -215,7 +215,16 @@ async function demoLogin(page: Page, userId: string): Promise<void> {
  * wait for the post-login redirect to the user's hub home.
  */
 async function uiLogin(page: Page, userId: string, displayName: string): Promise<void> {
-  await page.goto(`${BASE}/demo`, { waitUntil: 'networkidle' })
+  // When a chapter-N user is already signed in, navigating to /demo can
+  // race with an auto-redirect to /h/.../home, surfacing as ERR_ABORTED.
+  // Tolerate that — the cookie we set below via the direct POST is what
+  // the next chapter actually needs.
+  try {
+    await page.goto(`${BASE}/demo`, { waitUntil: 'domcontentloaded', timeout: 30_000 })
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e)
+    if (!/ERR_ABORTED|net::ERR_/.test(msg)) throw e
+  }
   // Pre-mint the session cookie via direct POST. In minimal-mode seeds
   // the readiness gate inside DemoLoginButton stalls (community check
   // expects the full 43-user community, we have 3), so we can't rely on

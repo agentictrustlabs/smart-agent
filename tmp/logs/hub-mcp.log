@@ -8,3 +8,451 @@
 [hub-mcp] MCP stdio transport connected
 <-- GET /health
 --> GET /health [32m200[0m 1ms
+<-- POST /tools/sync:all
+[ontology-sync] Starting on-chain → GraphDB sync...
+[ontology-sync] Emitted 9 agents. Building combined data-graph turtle...
+[ontology-sync] Data graph uploaded: 9 agents + 0 class assertions + 0 rounds + 0 pools
+--> POST /tools/sync:all [32m200[0m 827ms
+<-- POST /tools/sync:all
+[ontology-sync] Starting on-chain → GraphDB sync...
+[ontology-sync] Emitted 9 agents. Building combined data-graph turtle...
+[ontology-sync] Data graph uploaded: 9 agents + 0 class assertions + 0 rounds + 0 pools
+--> POST /tools/sync:all [32m200[0m 559ms
+<-- POST /tools/sync:all
+[ontology-sync] Starting on-chain → GraphDB sync...
+[ontology-sync] Emitted 9 agents. Building combined data-graph turtle...
+[ontology-sync] Data graph uploaded: 9 agents + 0 class assertions + 0 rounds + 3 pools
+--> POST /tools/sync:all [32m200[0m 518ms
+<-- POST /tools/sync:all
+[ontology-sync] Starting on-chain → GraphDB sync...
+[ontology-sync] Emitted 9 agents. Building combined data-graph turtle...
+[ontology-sync] Data graph uploaded: 9 agents + 0 class assertions + 1 rounds + 4 pools + 2 Vote + 1 GrantProposal + 1 Pledge + 1 Commitment
+--> POST /tools/sync:all [32m200[0m 601ms
+<-- POST /tools/sync:schedule
+--> POST /tools/sync:schedule [32m200[0m 1ms
+<-- POST /tools/sync:all
+[ontology-sync] Starting on-chain → GraphDB sync...
+[ontology-sync] Emitted 31 agents. Building combined data-graph turtle...
+[ontology-sync] Data graph uploaded: 31 agents + 0 class assertions + 2 rounds + 5 pools + 4 Vote + 2 GrantProposal + 2 Pledge + 2 Commitment
+--> POST /tools/sync:all [32m200[0m 1s
+<-- POST /tools/discovery:list_rounds
+--> POST /tools/discovery:list_rounds [32m200[0m 226ms
+[ontology-sync] Starting on-chain → GraphDB sync...
+[ontology-sync] Emitted 31 agents. Building combined data-graph turtle...
+[ontology-sync] Data graph uploaded: 31 agents + 0 class assertions + 2 rounds + 5 pools + 4 Vote + 2 GrantProposal + 2 Pledge + 2 Commitment
+[kb-sync] ok (31 agents)
+<-- POST /tools/discovery:list_active_initiations_for_intent
+--> POST /tools/discovery:list_active_initiations_for_intent [32m200[0m 210ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 56ms
+<-- POST /tools/sync:all
+[ontology-sync] Starting on-chain → GraphDB sync...
+[ontology-sync] Emitted 31 agents. Building combined data-graph turtle...
+[ontology-sync] Data graph uploaded: 31 agents + 0 class assertions + 3 rounds + 6 pools + 6 Vote + 3 GrantProposal + 3 Pledge + 3 Commitment
+--> POST /tools/sync:all [32m200[0m 1s
+<-- POST /tools/discovery:list_rounds
+--> POST /tools/discovery:list_rounds [32m200[0m 1s
+<-- POST /tools/discovery:list_active_initiations_for_intent
+--> POST /tools/discovery:list_active_initiations_for_intent [32m200[0m 181ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 62ms
+<-- POST /tools/sync:all
+[ontology-sync] Starting on-chain → GraphDB sync...
+[ontology-sync] Emitted 31 agents. Building combined data-graph turtle...
+[ontology-sync] Data graph uploaded: 31 agents + 0 class assertions + 4 rounds + 7 pools + 8 Vote + 4 GrantProposal + 4 Pledge + 4 Commitment
+--> POST /tools/sync:all [32m200[0m 1s
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 198ms
+<-- POST /tools/sync:all
+[ontology-sync] Starting on-chain → GraphDB sync...
+[ontology-sync] Emitted 31 agents. Building combined data-graph turtle...
+[ontology-sync] Data graph uploaded: 31 agents + 0 class assertions + 5 rounds + 8 pools + 10 Vote + 5 GrantProposal + 5 Pledge + 5 Commitment
+--> POST /tools/sync:all [32m200[0m 1s
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 146ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 134ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 0ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 136ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 149ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 0ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 1ms
+<-- POST /tools/sync:all
+[ontology-sync] Starting on-chain → GraphDB sync...
+[ontology-sync] Emitted 31 agents. Building combined data-graph turtle...
+[ontology-sync] Data graph uploaded: 31 agents + 0 class assertions + 6 rounds + 9 pools + 12 Vote + 6 GrantProposal + 6 Pledge + 6 Commitment
+--> POST /tools/sync:all [32m200[0m 1s
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 138ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 4s
+<-- POST /tools/sync:all
+[ontology-sync] Starting on-chain → GraphDB sync...
+[ontology-sync] Emitted 31 agents. Building combined data-graph turtle...
+[ontology-sync] Data graph uploaded: 31 agents + 0 class assertions + 7 rounds + 10 pools + 14 Vote + 7 GrantProposal + 7 Pledge + 7 Commitment
+--> POST /tools/sync:all [32m200[0m 1s
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 60ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 0ms
+<-- POST /tools/sync:all
+[ontology-sync] Starting on-chain → GraphDB sync...
+[ontology-sync] Emitted 31 agents. Building combined data-graph turtle...
+[ontology-sync] Data graph uploaded: 31 agents + 0 class assertions + 8 rounds + 11 pools + 16 Vote + 8 GrantProposal + 8 Pledge + 8 Commitment
+--> POST /tools/sync:all [32m200[0m 4s
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 59ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 1ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 138ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 139ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 0ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 198ms
+<-- POST /tools/sync:all
+[ontology-sync] Starting on-chain → GraphDB sync...
+[ontology-sync] Emitted 31 agents. Building combined data-graph turtle...
+[ontology-sync] Data graph uploaded: 31 agents + 0 class assertions + 9 rounds + 12 pools + 18 Vote + 9 GrantProposal + 9 Pledge + 9 Commitment
+--> POST /tools/sync:all [32m200[0m 1s
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 61ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 0ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 139ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 146ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 1ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 180ms
+<-- POST /tools/sync:all
+[ontology-sync] Starting on-chain → GraphDB sync...
+[ontology-sync] Emitted 31 agents. Building combined data-graph turtle...
+[ontology-sync] Data graph uploaded: 31 agents + 0 class assertions + 10 rounds + 13 pools + 20 Vote + 10 GrantProposal + 10 Pledge + 10 Commitment
+--> POST /tools/sync:all [32m200[0m 3s
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 56ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 0ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 195ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 145ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 0ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 139ms
+<-- POST /tools/sync:all
+[ontology-sync] Starting on-chain → GraphDB sync...
+[ontology-sync] Emitted 31 agents. Building combined data-graph turtle...
+[ontology-sync] Data graph uploaded: 31 agents + 0 class assertions + 11 rounds + 14 pools + 22 Vote + 11 GrantProposal + 11 Pledge + 11 Commitment
+--> POST /tools/sync:all [32m200[0m 2s
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 56ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 1ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 152ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 196ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 0ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 126ms
+<-- POST /tools/sync:all_commitments
+--> POST /tools/sync:all_commitments [32m200[0m 966ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 1ms
+<-- POST /tools/sync:all_commitments
+--> POST /tools/sync:all_commitments [32m200[0m 873ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 53ms
+<-- POST /tools/sync:all
+[ontology-sync] Starting on-chain → GraphDB sync...
+[ontology-sync] Emitted 31 agents. Building combined data-graph turtle...
+[ontology-sync] Data graph uploaded: 31 agents + 0 class assertions + 12 rounds + 15 pools + 24 Vote + 12 GrantProposal + 12 Pledge + 12 Commitment
+--> POST /tools/sync:all [32m200[0m 2s
+<-- POST /tools/discovery:list_rounds
+--> POST /tools/discovery:list_rounds [32m200[0m 144ms
+<-- POST /tools/discovery:list_active_initiations_for_intent
+--> POST /tools/discovery:list_active_initiations_for_intent [32m200[0m 65ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 58ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 55ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 1ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 136ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 1s
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 1ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 135ms
+<-- POST /tools/sync:all_commitments
+--> POST /tools/sync:all_commitments [32m200[0m 895ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 1ms
+<-- POST /tools/sync:all_commitments
+--> POST /tools/sync:all_commitments [32m200[0m 906ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 53ms
+<-- POST /tools/sync:all
+[ontology-sync] Starting on-chain → GraphDB sync...
+[ontology-sync] Emitted 31 agents. Building combined data-graph turtle...
+[ontology-sync] Data graph uploaded: 31 agents + 0 class assertions + 13 rounds + 16 pools + 26 Vote + 13 GrantProposal + 13 Pledge + 13 Commitment
+--> POST /tools/sync:all [32m200[0m 2s
+<-- POST /tools/discovery:list_rounds
+--> POST /tools/discovery:list_rounds [32m200[0m 179ms
+<-- POST /tools/discovery:get_pool_detail
+--> POST /tools/discovery:get_pool_detail [32m200[0m 139ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 229ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 1ms
+<-- POST /tools/discovery:list_recent_allocations
+--> POST /tools/discovery:list_recent_allocations [32m200[0m 56ms
+<-- POST /tools/discovery:list_rounds
+--> POST /tools/discovery:list_rounds [32m200[0m 67ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 66ms
+<-- POST /tools/discovery:list_active_initiations_for_intent
+--> POST /tools/discovery:list_active_initiations_for_intent [32m200[0m 61ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 53ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 166ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 175ms
+<-- POST /tools/discovery:list_rounds
+--> POST /tools/discovery:list_rounds [32m200[0m 170ms
+<-- POST /tools/discovery:get_pool_detail
+--> POST /tools/discovery:get_pool_detail [32m200[0m 61ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 141ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 1ms
+<-- POST /tools/discovery:list_recent_allocations
+--> POST /tools/discovery:list_recent_allocations [32m200[0m 59ms
+<-- POST /tools/discovery:list_rounds
+--> POST /tools/discovery:list_rounds [32m200[0m 55ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 51ms
+<-- POST /tools/discovery:list_active_initiations_for_intent
+--> POST /tools/discovery:list_active_initiations_for_intent [32m200[0m 54ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 53ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 56ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 59ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 188ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 1s
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 1ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 187ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 190ms
+<-- POST /tools/sync:all_commitments
+--> POST /tools/sync:all_commitments [32m200[0m 2s
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 56ms
+<-- POST /tools/discovery:get_pool_detail
+--> POST /tools/discovery:get_pool_detail [32m200[0m 164ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 174ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 1ms
+<-- POST /tools/discovery:list_recent_allocations
+--> POST /tools/discovery:list_recent_allocations [32m200[0m 65ms
+<-- POST /tools/sync:all_commitments
+<-- POST /tools/discovery:list_rounds
+--> POST /tools/discovery:list_rounds [32m200[0m 57ms
+--> POST /tools/sync:all_commitments [32m200[0m 915ms
+<-- POST /tools/sync:all
+[ontology-sync] Starting on-chain → GraphDB sync...
+[ontology-sync] Emitted 31 agents. Building combined data-graph turtle...
+[ontology-sync] Data graph uploaded: 31 agents + 0 class assertions + 14 rounds + 17 pools + 28 Vote + 14 GrantProposal + 14 Pledge + 14 Commitment
+--> POST /tools/sync:all [32m200[0m 2s
+<-- POST /tools/discovery:list_rounds
+--> POST /tools/discovery:list_rounds [32m200[0m 189ms
+<-- POST /tools/discovery:get_pool_detail
+--> POST /tools/discovery:get_pool_detail [32m200[0m 147ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 188ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:list_recent_allocations
+--> POST /tools/discovery:list_recent_allocations [32m200[0m 52ms
+<-- POST /tools/discovery:list_rounds
+--> POST /tools/discovery:list_rounds [32m200[0m 69ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 140ms
+<-- POST /tools/discovery:list_active_initiations_for_intent
+--> POST /tools/discovery:list_active_initiations_for_intent [32m200[0m 130ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 53ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 183ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 135ms
+<-- POST /tools/discovery:list_rounds
+--> POST /tools/discovery:list_rounds [32m200[0m 147ms
+<-- POST /tools/discovery:get_pool_detail
+--> POST /tools/discovery:get_pool_detail [32m200[0m 70ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 151ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:list_recent_allocations
+--> POST /tools/discovery:list_recent_allocations [32m200[0m 49ms
+<-- POST /tools/discovery:list_rounds
+--> POST /tools/discovery:list_rounds [32m200[0m 69ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 57ms
+<-- POST /tools/discovery:list_active_initiations_for_intent
+--> POST /tools/discovery:list_active_initiations_for_intent [32m200[0m 96ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 205ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 57ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 58ms
+<-- POST /tools/discovery:list_rounds
+--> POST /tools/discovery:list_rounds [32m200[0m 177ms
+<-- POST /tools/discovery:list_rounds
+--> POST /tools/discovery:list_rounds [32m200[0m 0ms
+<-- POST /tools/discovery:get_pool_detail
+--> POST /tools/discovery:get_pool_detail [32m200[0m 140ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 162ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:list_recent_allocations
+--> POST /tools/discovery:list_recent_allocations [32m200[0m 59ms
+<-- POST /tools/discovery:list_rounds
+--> POST /tools/discovery:list_rounds [32m200[0m 61ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 131ms
+<-- POST /tools/discovery:list_active_initiations_for_intent
+--> POST /tools/discovery:list_active_initiations_for_intent [32m200[0m 128ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 57ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 138ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 152ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 133ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 132ms
+<-- POST /tools/discovery:list_rounds
+--> POST /tools/discovery:list_rounds [32m200[0m 137ms
+<-- POST /tools/sync:all
+[ontology-sync] Starting on-chain → GraphDB sync...
+[ontology-sync] Emitted 31 agents. Building combined data-graph turtle...
+[ontology-sync] Data graph uploaded: 31 agents + 0 class assertions + 15 rounds + 18 pools + 30 Vote + 15 GrantProposal + 15 Pledge + 15 Commitment
+--> POST /tools/sync:all [32m200[0m 2s
+<-- POST /tools/discovery:list_rounds
+--> POST /tools/discovery:list_rounds [32m200[0m 1s
+<-- POST /tools/discovery:get_pool_detail
+--> POST /tools/discovery:get_pool_detail [32m200[0m 132ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 166ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:list_recent_allocations
+--> POST /tools/discovery:list_recent_allocations [32m200[0m 56ms
+<-- POST /tools/discovery:list_rounds
+--> POST /tools/discovery:list_rounds [32m200[0m 63ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 134ms
+<-- POST /tools/discovery:list_active_initiations_for_intent
+--> POST /tools/discovery:list_active_initiations_for_intent [32m200[0m 141ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 58ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 130ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 134ms
+<-- POST /tools/discovery:list_rounds
+--> POST /tools/discovery:list_rounds [32m200[0m 140ms
+<-- POST /tools/discovery:get_pool_detail
+--> POST /tools/discovery:get_pool_detail [32m200[0m 57ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 142ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:list_recent_allocations
+--> POST /tools/discovery:list_recent_allocations [32m200[0m 50ms
+<-- POST /tools/discovery:list_rounds
+--> POST /tools/discovery:list_rounds [32m200[0m 58ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 53ms
+<-- POST /tools/discovery:list_active_initiations_for_intent
+--> POST /tools/discovery:list_active_initiations_for_intent [32m200[0m 60ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 55ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 61ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 60ms
+<-- POST /tools/discovery:list_rounds
+--> POST /tools/discovery:list_rounds [32m200[0m 224ms
+<-- POST /tools/discovery:list_rounds
+--> POST /tools/discovery:list_rounds [32m200[0m 217ms
+<-- POST /tools/discovery:get_pool_detail
+--> POST /tools/discovery:get_pool_detail [32m200[0m 704ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 190ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:list_recent_allocations
+--> POST /tools/discovery:list_recent_allocations [32m200[0m 52ms
+<-- POST /tools/discovery:list_rounds
+--> POST /tools/discovery:list_rounds [32m200[0m 57ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 140ms
+<-- POST /tools/discovery:list_active_initiations_for_intent
+--> POST /tools/discovery:list_active_initiations_for_intent [32m200[0m 135ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 58ms
+<-- POST /tools/discovery:get_round_detail
+--> POST /tools/discovery:get_round_detail [32m200[0m 180ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 157ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 129ms
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 121ms
+<-- POST /tools/sync:all_commitments
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 126ms
+--> POST /tools/sync:all_commitments [32m200[0m 1s
+<-- POST /tools/discovery:raw_sparql
+--> POST /tools/discovery:raw_sparql [32m200[0m 0ms
+<-- POST /tools/discovery:get_pool_detail
+<-- POST /tools/sync:all_commitments
+--> POST /tools/discovery:get_pool_detail [32m200[0m 135ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 165ms
+<-- POST /tools/discovery:get_hop_distance
+--> POST /tools/discovery:get_hop_distance [32m200[0m 0ms
+<-- POST /tools/discovery:list_recent_allocations
+--> POST /tools/discovery:list_recent_allocations [32m200[0m 66ms
+<-- POST /tools/discovery:list_rounds
+--> POST /tools/discovery:list_rounds [32m200[0m 72ms
+--> POST /tools/sync:all_commitments [32m200[0m 1s

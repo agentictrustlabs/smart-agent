@@ -105,13 +105,23 @@ export async function verifyDelegationAndExtractOrgPrincipal(
     return { error: `Invalid audience: ${claims.aud}` }
   }
 
-  // Option A: leaf delegate is the user's smart account (= claims.sub),
-  // not the session signer EOA. Session signer's authority comes from
-  // being a registered owner of the smart account.
-  if (claims.delegation.delegate.toLowerCase() !== claims.sub.toLowerCase()) {
-    return { error: 'Delegation delegate does not match smart account (claims.sub)' }
-  }
-
+  // Canonical chained-delegation architecture (Phase 1+2, 2026-05-10):
+  //
+  //   D_root.delegate = sessionKeyAddress              (one-hop, low-value tools)
+  //   D_sub.delegate  = perToolFamilyExecutorAddress   (two-hop, high-value tools)
+  //
+  // Neither equals `claims.sub` (the user's smart account). The valid
+  // invariants for this verifier are:
+  //   (a) the ERC-1271 signature below proves the delegator (the user's
+  //       AgentAccount) signed this leaf,
+  //   (b) caveat enforcement runs below this point,
+  //   (c) the on-chain DM.redeemDelegation call will validate the full
+  //       chain (multi-hop) and enforce `msg.sender == leaf.delegate`.
+  //
+  // Do NOT reintroduce a `delegate == claims.sub` check here — it rejects
+  // every Phase 1+2 delegation and there is no Phase 3 self-delegation
+  // mode in this codebase. See
+  // `output/CHAINED-DELEGATION-RESTORATION-PLAN.md` for the unwind history.
   const delegationManagerAddr = config.delegationManagerAddress
 
   {

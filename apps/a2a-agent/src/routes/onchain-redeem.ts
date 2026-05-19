@@ -342,18 +342,30 @@ function extractSelector(callData: Hex): `0x${string}` {
 
 // ─── POST /session/:id/redeem-via-account ────────────────────────────
 //
-// The ONLY redeem endpoint. Every on-chain write a tool performs is
-// submitted via ERC-4337:
+// Phase 1 chained-delegation redeem (canonical, 2026-05-10; see
+// `output/phase1-delegation-summary.md` § "`POST /session/:id/redeem-tx`"
+// — this endpoint inherits that wire).
 //
-//   sender    = user's AgentAccount (the session's accountAddress)
-//   callData  = AgentAccount.execute(
-//                 DelegationManager, 0,
-//                 redeemDelegation(chain, target, value, data),
-//               )
-//   signature = ECDSA over userOpHash by the master signer
+// One-hop redemption for LOW-VALUE tools:
 //
-// Master EOA pays gas via EntryPoint.handleOps; session-signer EOAs
-// never hold ETH.
+//   1. HMAC-authed (`requireInterServiceAuth`) — caller is an MCP server.
+//   2. Look up the session (must be active + unexpired).
+//   3. Validate target + selector against `TOOL_POLICIES[mcpTool]`.
+//   4. Decrypt the session package; build a viem wallet from
+//      `sessionPrivateKey` — the sessionKey IS the leaf delegate of
+//      D_root, and the EVM tx sender at DM.redeemDelegation, so
+//      `msg.sender == D_root.delegate` and the chain validates.
+//   5. Write a pending ExecutionReceipt; submit
+//      `DM.redeemDelegation([D_root], target, value, callData)`.
+//   6. Finalize the receipt on success/revert.
+//
+// HIGH-VALUE tools route to `/redeem-subdelegated` (Phase 2) instead,
+// which mints a per-call D_sub from the session key to a per-tool-family
+// executor and submits the 2-hop chain.
+//
+// There is no master-signer co-sign at runtime. `getRelayOnlySigner()`
+// exists only to pay gas for Variant B `handleOps` during session
+// acceptance (a separate flow from the redeem here).
 onchainRedeem.post('/:id/redeem-via-account', requireInterServiceAuth(), async (c) => {
   const sessionId = c.req.param('id')
   const ctx = c.get('interService' as never) as { service: string; bodyRaw: string } | undefined

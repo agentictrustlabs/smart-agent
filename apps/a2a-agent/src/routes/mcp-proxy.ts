@@ -1,5 +1,5 @@
 import { Hono, type MiddlewareHandler } from 'hono'
-import { eq } from 'drizzle-orm'
+import { eq, desc } from 'drizzle-orm'
 import { privateKeyToAccount } from 'viem/accounts'
 import { mintDelegationToken } from '@smart-agent/sdk'
 import type { DelegationTokenClaims } from '@smart-agent/sdk'
@@ -122,7 +122,17 @@ async function callMcpTool(
   const server = SERVERS[serverKey]
   if (!server) return { ok: false, error: `Unknown MCP server: ${serverKey}` }
 
-  const rows = await db.select().from(sessions).where(eq(sessions.accountAddress, accountAddress))
+  // Pick the FRESHEST active session for this account. Without the
+  // `createdAt` sort, SQLite returns rows in insertion order and
+  // `find()` would pick the OLDEST active session — a real footgun
+  // when an account has accumulated stale sessions across restarts
+  // (every init mints a new session row; old rows stay 'active' until
+  // their TTL expires hours later). The session-key gas pre-fund
+  // happens at init time, so an old session row points at a key with
+  // 0 ETH while the freshly-funded one waits unused.
+  const rows = await db.select().from(sessions)
+    .where(eq(sessions.accountAddress, accountAddress))
+    .orderBy(desc(sessions.createdAt))
   const active = rows.find(r => r.encryptedPackage && r.iv && r.status === 'active')
   if (!active) return { ok: false, status: 401, error: 'No active agent session' }
   if (new Date(active.expiresAt) < new Date()) return { ok: false, status: 401, error: 'Session expired' }

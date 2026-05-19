@@ -2,76 +2,76 @@
   {
     "chapter": 1,
     "offsetSec": 0,
-    "narration": "Welcome to Smart Agent. We're walking through a complete grant lifecycle, end to end. Maria, the steward of Catalyst NoCo Network, is signing in. In production this is a passkey or sign-in-with-Ethereum flow; the demo user picker is just a shortcut into the same on-chain principal."
+    "narration": "Welcome to Smart Agent. We're about to walk through a complete grant lifecycle. Maria, the steward of the Catalyst NoCo Network, is about to sign in. In production this is a passkey or sign-in-with-Ethereum flow — no MetaMask in the middle."
   },
   {
     "chapter": 2,
-    "offsetSec": 39.42,
-    "narration": "This is Maria's wallet. She has one million dollars in USDC, but notice it's held in a separate Treasury Service Agent, not on her person account. Money never sits on a person's smart account directly — that separation is a core safety property of the platform."
+    "offsetSec": 20.55,
+    "narration": "Maria lands on Catalyst NoCo Network — her organisation's hub. Every party here — people, organisations, even AI agents — is a first-class principal with its own on-chain identity and programmable delegation."
   },
   {
     "chapter": 3,
-    "offsetSec": 51.187,
-    "narration": "Maria opens the pool create form. The pool is its own on-chain agent — its account is co-owned by the Catalyst NoCo organisation, so stewards equal org owners. She fills in display name, slug, and visibility, then signs the deploy transaction."
+    "offsetSec": 25.763,
+    "narration": "Here's Maria's wallet. She has one million dollars in USDC, but notice it's held in a separate Treasury Service Agent, not on her person account. Money never sits on a person's smart account directly — that separation is a core safety property of the platform."
   },
   {
     "chapter": 4,
-    "offsetSec": 91.078,
-    "narration": "With the pool live, Maria pledges thirty thousand dollars to back this round. The pledge is recorded in PledgeRegistry, but no USDC has moved yet — that's a separate honor step she'll take next."
+    "offsetSec": 31.917,
+    "narration": "Maria created a grant pool and pledged thirty thousand dollars to back this round. The pledge is recorded in the PledgeRegistry contract, and the honor step moves USDC from her treasury to the pool — both signed by her, no admin in the middle."
   },
   {
     "chapter": 5,
-    "offsetSec": 112.593,
-    "narration": "She honors the pledge with a single executeBatch transaction on her treasury. Two things happen atomically: USDC transfers from her treasury to the pool, and PledgeRegistry records the payment. One click, one signature."
+    "offsetSec": 38.249,
+    "narration": "Next, Maria opened a grant round on her pool. The round is the structured solicitation: status, deadline, validator requirements, and proposal list — every field reads directly from on-chain assertions, no off-chain database in between."
   },
   {
     "chapter": 6,
-    "offsetSec": 126.597,
-    "narration": "Next, Maria opens a grant round on the pool. The round inherits the pool's stewards as voters and lists Sarah as the validator who will attest milestone delivery. It goes live for applications immediately."
+    "offsetSec": 44.627,
+    "narration": "Pastor David, on the other side of the network, expressed a NeedIntent — he needs funding for trauma-care training in Fort Collins. The body of his intent stays in his personal MCP server. The public version surfaces in the marketplace as an on-chain assertion."
   },
   {
     "chapter": 7,
-    "offsetSec": 153.652,
-    "narration": "Now we switch principals. Pastor David, on the other side of the network, signs in. There's no on-chain logout — just a different session cookie. From the platform's perspective every party is a first-class agent with its own identity."
+    "offsetSec": 50.512,
+    "narration": "David applied with a proposal anchored to his intent. Maria and a second steward voted Approve, the round closed, and the award announcement created a Commitment record in CommitmentRegistry — two milestones, each gated by a validator attestation and a steward release."
   },
   {
     "chapter": 8,
-    "offsetSec": 178.302,
-    "narration": "David expresses a NeedIntent — he needs funding for trauma-care training in Fort Collins. The body of the intent stays in his personal MCP server. The public version surfaces in the marketplace as an on-chain assertion."
+    "offsetSec": 60.718,
+    "narration": "Sarah is the validator on this round. Her inbox shows two pending milestones. In production, validators prove their qualifications with AnonCreds credentials off-chain — but the attestation they sign lives on-chain and unlocks each tranche."
   },
   {
     "chapter": 9,
-    "offsetSec": 192.283,
-    "narration": "David applies to Maria's round. His proposal anchors directly to his intent and splits the award into two milestones, each gated by a validator attestation plus a steward release. No money moves at this point."
+    "offsetSec": 65.102,
+    "narration": "Sarah attests the first milestone — kickoff and first cohort. She types her evidence summary; only the hash goes on-chain. The full document stays in her personal MCP. This is a single transaction signed by her wallet."
   },
   {
     "chapter": 10,
-    "offsetSec": 244.655,
-    "narration": "Maria reviews the proposal and votes Approve. The round's voting policy is steward-quorum — two approvals are needed for the round to award."
+    "offsetSec": 69.997,
+    "narration": "Sarah attests milestone two — final report and outcomes. One validator attestation per milestone is what the contract requires to unlock the matching tranche for the steward to release."
   },
   {
     "chapter": 11,
-    "offsetSec": 298.382,
-    "narration": "David also votes Approve on his own proposal — this template permits proposer voting. Stricter templates can enforce recusal. With two approvals in, the round is ready to finalise."
+    "offsetSec": 98.433,
+    "narration": "Now back to Maria. Her steward inbox shows two attested milestones ready for release. This is the two-gate model: the validator attests delivery, the steward approves payment — and neither party can bypass the other."
   },
   {
     "chapter": 12,
-    "offsetSec": 338.377,
-    "narration": "Maria finalises the round with a single click. Behind the scenes the contract sets the round status to decided, announces the award, and creates a Commitment record with two milestones — the on-chain promise of payment-on-delivery."
+    "offsetSec": 102.055,
+    "narration": "Maria releases the first tranche, twelve thousand dollars. A single transaction does two things: transfer USDC from the pool to Fort Collins' treasury, and record the release on-chain so the audit trail is complete."
   },
   {
     "chapter": 13,
-    "offsetSec": 392.026,
-    "narration": "Sarah, the validator, sees both milestones in her inbox. She attests kickoff first — typing an evidence summary; only the hash goes on-chain. Then she attests the final report. Each attestation is what unlocks the matching tranche."
+    "offsetSec": 106.126,
+    "narration": "And the final tranche — eighteen thousand dollars. Once this releases, the Commitment transitions to Completed and the inbox row clears. The grant is fully delivered."
   },
   {
     "chapter": 14,
-    "offsetSec": 415.514,
-    "narration": "Now back to Maria. Her steward inbox shows two attested milestones ready for release. She approves the first tranche — twelve thousand dollars — then the second — eighteen thousand. Each release is an executeBatch: USDC transfer plus on-chain release record."
+    "offsetSec": 121.48,
+    "narration": "Looking back at the pool, it's empty — every committed milestone has been released. The Commitment is marked Completed on-chain."
   },
   {
     "chapter": 15,
-    "offsetSec": 431.243,
-    "narration": "And there's the outcome. Fort Collins Treasury balance grew by exactly thirty thousand dollars — the full grant, delivered on-chain. The Commitment is now marked Completed. End of demo."
+    "offsetSec": 141.761,
+    "narration": "And finally, on Fort Collins' organisation page, the treasury card confirms the money landed. Balance grew from $240,000 to $270,000 — a $30,000 delta that exactly matches the awarded grant. End of demo."
   }
 ]

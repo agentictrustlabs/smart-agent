@@ -1,0 +1,23 @@
+
+Running 7 tests using 1 worker
+
+[1A[2K[1/7] tests/e2e/demo-features.spec.ts:183:5 › T1 auth-demo-login
+[1A[2Ktests/e2e/demo-features.spec.ts:183:5 › T1 auth-demo-login
+[demo-features] running seed (STOP_AT_COMMITMENT=1)…
+
+[1A[2K[demo-features] commitment=0xac9406e122bbc7c9833f0914b95bf071a1222be23727c04d8197ca1b1a3c8b80
+
+[1A[2K[demo-features] pool=0xA4929654eBe107c001a6d8AB836Ca83Fc657817B
+
+[1A[2K[demo-features] Fort Collins treasury baseline: $150,000
+
+[1A[2K[2/7] tests/e2e/demo-features.spec.ts:194:5 › T2 hub-home-render
+[1A[2K[3/7] tests/e2e/demo-features.spec.ts:208:5 › T3 personal-treasury-balance
+[1A[2Ktests/e2e/demo-features.spec.ts:208:5 › T3 personal-treasury-balance
+[T3] mariaTreasury=0x2e8E77A58B90079A0D98d6f5b5A0a869837dA5e2  balance=1000000000000
+
+[1A[2K[4/7] tests/e2e/demo-features.spec.ts:231:5 › T4 pool-funded
+[1A[2K[5/7] tests/e2e/demo-features.spec.ts:244:5 › T5 round-open
+[1A[2K[6/7] tests/e2e/demo-features.spec.ts:270:5 › T6 intent-fetch
+[1A[2K[7/7] tests/e2e/demo-features.spec.ts:280:5 › T7 proposal-awarded
+[1A[2K  7 passed (2.5m)

@@ -1,0 +1,43 @@
+
+Running 4 tests using 1 worker
+
+[1A[2K[1/4] tests/e2e/demo-features.spec.ts:303:5 › T8 validator-inbox-renders
+[1A[2Ktests/e2e/demo-features.spec.ts:303:5 › T8 validator-inbox-renders
+[demo-features] running seed (STOP_AT_COMMITMENT=1)…
+
+[1A[2K[demo-features] commitment=0x62e621a73ae40510ca5c6840e13d5a516101ddadc34e5785c9d53288f078efd9
+
+[1A[2K[demo-features] pool=0xb9Fb898Cf07dDaf172649f47188a993cDAD62ab4
+
+[1A[2K[demo-features] Fort Collins treasury baseline: $150,000
+
+[1A[2K[2/4] tests/e2e/demo-features.spec.ts:331:5 › T9 record-outcome-onchain
+[1A[2K[3/4] tests/e2e/demo-features.spec.ts:388:5 › T10 steward-inbox-renders
+[1A[2K[4/4] tests/e2e/demo-features.spec.ts:413:5 › T11 release-tranche-rail-a
+[1A[2K  1) tests/e2e/demo-features.spec.ts:413:5 › T11 release-tranche-rail-a ────────────────────────────
+
+    Error: m1 release amount must be > 0; got 0
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoBeTruthy[2m()[22m
+
+    Received: [31mfalse[39m
+
+      447 |     args: [demoData.commitmentSubject, m2],
+      448 |   }) as readonly [bigint, bigint]
+    > 449 |   expect(r1[0] > 0n, `m1 release amount must be > 0; got ${r1[0]}`).toBeTruthy()
+          |                                                                     ^
+      450 |   expect(r2[0] > 0n, `m2 release amount must be > 0; got ${r2[0]}`).toBeTruthy()
+      451 | })
+      452 |
+        at /home/barb/smart-agent/tests/e2e/demo-features.spec.ts:449:69
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tests/e2e/test-results/demo-features-T11-release-tranche-rail-a/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tests/e2e/test-results/demo-features-T11-release-tranche-rail-a/error-context.md
+
+
+[1A[2K  1 failed
+    tests/e2e/demo-features.spec.ts:413:5 › T11 release-tranche-rail-a ─────────────────────────────
+  3 passed (50.3s)

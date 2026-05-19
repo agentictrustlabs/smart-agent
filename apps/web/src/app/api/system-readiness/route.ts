@@ -13,8 +13,16 @@ export const dynamic = 'force-dynamic'
 
 interface Check { label: string; ok: boolean; detail?: string }
 
-const EXPECTED_DEMO_USER_COUNT = Object.keys(DEMO_USER_META).length            // 19 today
-const EXPECTED_MIN_ONCHAIN_AGENTS = 40                                          // persons + orgs + hubs across all 3 communities
+// In `SEED_PROFILE=minimal` (used by the proposal-funding demo video +
+// `scripts/fresh-start.sh --minimal`), only Maria/David/Sarah + their
+// orgs + treasuries get seeded. The full-mode counts of 43+ users and
+// 40+ agents would never be reached, so `communityReady` would stay
+// false forever and the DemoLoginButton modal would camp on "Demo data
+// is still being seeded" on screen. Pick expected counts based on the
+// runtime profile.
+const IS_MINIMAL_SEED = process.env.SEED_PROFILE === 'minimal' || process.env.CATALYST_SEED_MODE === 'minimal'
+const EXPECTED_DEMO_USER_COUNT = IS_MINIMAL_SEED ? 3 : Object.keys(DEMO_USER_META).length            // 19+ today / 3 in minimal
+const EXPECTED_MIN_ONCHAIN_AGENTS = IS_MINIMAL_SEED ? 8 : 40                                          // 3 persons + 3 orgs + 2 treasuries / persons + orgs + hubs across all 3 communities
 
 async function rpcReady(): Promise<Check> {
   try {

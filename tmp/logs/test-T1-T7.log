@@ -1,0 +1,147 @@
+
+Running 7 tests using 1 worker
+
+[1A[2K[1/7] tests/e2e/demo-features.spec.ts:180:5 › T1 auth-demo-login
+[1A[2Ktests/e2e/demo-features.spec.ts:180:5 › T1 auth-demo-login
+[demo-features] running seed (STOP_AT_COMMITMENT=1)…
+
+[1A[2K[demo-features] commitment=0x0fdb92ef0402dcf887f9327123bd23812404e5abe73a92a65b4debb21f70ff9f
+
+[1A[2K[demo-features] pool=0xE2309B4035261048DF43dACd9d703F43Cf68757a
+
+[1A[2K[demo-features] Fort Collins treasury baseline: $150,000
+
+[1A[2K[2/7] tests/e2e/demo-features.spec.ts:191:5 › T2 hub-home-render
+[1A[2K[3/7] tests/e2e/demo-features.spec.ts:205:5 › T3 personal-treasury-balance
+[1A[2K[4/7] tests/e2e/demo-features.spec.ts:228:5 › T4 pool-funded
+[1A[2K[5/7] tests/e2e/demo-features.spec.ts:241:5 › T5 round-open
+[1A[2K[6/7] tests/e2e/demo-features.spec.ts:267:5 › T6 intent-fetch
+[1A[2K[7/7] tests/e2e/demo-features.spec.ts:277:5 › T7 proposal-awarded
+[1A[2K[8/7] (retries) tests/e2e/demo-features.spec.ts:180:5 › T1 auth-demo-login (retry #1)
+[1A[2K[demo-features] running seed (STOP_AT_COMMITMENT=1)…
+
+[1A[2K[demo-features] commitment=0x0ed32f379ca8a6902087e3acb6ccf8aec71afe134dc4487bdce5679f07338efc
+
+[1A[2K[demo-features] pool=0x8C4E7e819264fa6489D36256dac588a06eC1e365
+
+[1A[2K[demo-features] Fort Collins treasury baseline: $150,000
+
+[1A[2K  1) tests/e2e/demo-features.spec.ts:180:5 › T1 auth-demo-login ────────────────────────────────────
+
+    [31mTest timeout of 120000ms exceeded.[39m
+
+    TimeoutError: apiRequestContext.post: Timeout 120000ms exceeded.
+    Call log:
+    [2m  - → POST http://localhost:3000/api/demo-login[22m
+    [2m    - user-agent: Playwright/1.59.1 (x64; ubuntu 24.04) node/24.12[22m
+    [2m    - accept: */*[22m
+    [2m    - accept-encoding: gzip,deflate,br[22m
+    [2m    - origin: http://localhost:3000[22m
+    [2m    - content-type: application/json[22m
+    [2m    - content-length: 25[22m
+
+
+      146 | // Sign-in helper: direct POST sets the cookies on the playwright APIRequestContext.
+      147 | async function signIn(api: APIRequestContext, userId: string): Promise<void> {
+    > 148 |   const r = await api.post(`${BASE}/api/demo-login`, {
+          |                       ^
+      149 |     data: { userId },
+      150 |     headers: { origin: BASE, 'content-type': 'application/json' },
+      151 |     timeout: 120_000,
+        at signIn (/home/barb/smart-agent/tests/e2e/demo-features.spec.ts:148:23)
+        at /home/barb/smart-agent/tests/e2e/demo-features.spec.ts:182:9
+
+    Error Context: tests/e2e/test-results/demo-features-T1-auth-demo-login/error-context.md
+
+
+[1A[2K[9/7] (retries) tests/e2e/demo-features.spec.ts:191:5 › T2 hub-home-render (retry #1)
+[1A[2K[10/7] (retries) tests/e2e/demo-features.spec.ts:205:5 › T3 personal-treasury-balance (retry #1)
+[1A[2Ktests/e2e/demo-features.spec.ts:205:5 › T3 personal-treasury-balance
+[T3] mariaTreasury=0x2e8E77A58B90079A0D98d6f5b5A0a869837dA5e2  balance=1000000000000
+
+[1A[2K[11/7] (retries) tests/e2e/demo-features.spec.ts:228:5 › T4 pool-funded (retry #1)
+[1A[2K[12/7] (retries) tests/e2e/demo-features.spec.ts:241:5 › T5 round-open (retry #1)
+[1A[2K[13/7] (retries) tests/e2e/demo-features.spec.ts:267:5 › T6 intent-fetch (retry #1)
+[1A[2K[14/7] (retries) tests/e2e/demo-features.spec.ts:277:5 › T7 proposal-awarded (retry #1)
+[1A[2K  2) tests/e2e/demo-features.spec.ts:277:5 › T7 proposal-awarded ───────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    ContractFunctionExecutionError: The contract function "getStatus" reverted.
+
+    Contract Call:
+      address:   0x4c5859f0F772848b2D91F1D83E2Fe57935348029
+      function:  getStatus(bytes32)
+      args:               (0xfe3b4e2ab39735dba4360bf429ee0f3da76474e863280eb916ea63222457cc77)
+
+    Docs: https://viem.sh/docs/contract/readContract
+    Details: execution reverted
+    Version: viem@2.47.10
+
+      279 |   expect(COMMITMENT_REGISTRY, 'COMMITMENT_REGISTRY env required').toBeTruthy()
+      280 |   const proposalSubj = demoData.proposalId as `0x${string}`
+    > 281 |   const status = await pub.readContract({
+          |                  ^
+      282 |     address: GRANT_PROPOSAL_REGISTRY!, abi: grantProposalRegistryAbi, functionName: 'getStatus',
+      283 |     args: [proposalSubj],
+      284 |   }) as `0x${string}`
+        at getContractError (/home/barb/smart-agent/node_modules/.pnpm/viem@2.47.10_bufferutil@4.1.0_typescript@5.9.3_utf-8-validate@6.0.6_zod@3.25.76/node_modules/viem/utils/errors/getContractError.ts:82:10)
+        at readContract (/home/barb/smart-agent/node_modules/.pnpm/viem@2.47.10_bufferutil@4.1.0_typescript@5.9.3_utf-8-validate@6.0.6_zod@3.25.76/node_modules/viem/actions/public/readContract.ts:138:27)
+        at /home/barb/smart-agent/tests/e2e/demo-features.spec.ts:281:18
+    [cause]: ContractFunctionRevertedError: The contract function "getStatus" reverted.
+
+    Details: execution reverted
+    Version: viem@2.47.10
+        at /home/barb/smart-agent/node_modules/.pnpm/viem@2.47.10_bufferutil@4.1.0_typescript@5.9.3_utf-8-validate@6.0.6_zod@3.25.76/node_modules/viem/utils/errors/getContractError.ts:68:14
+        at getContractError (/home/barb/smart-agent/node_modules/.pnpm/viem@2.47.10_bufferutil@4.1.0_typescript@5.9.3_utf-8-validate@6.0.6_zod@3.25.76/node_modules/viem/utils/errors/getContractError.ts:80:5)
+        at readContract (/home/barb/smart-agent/node_modules/.pnpm/viem@2.47.10_bufferutil@4.1.0_typescript@5.9.3_utf-8-validate@6.0.6_zod@3.25.76/node_modules/viem/actions/public/readContract.ts:138:27)
+        at /home/barb/smart-agent/tests/e2e/demo-features.spec.ts:281:18
+    [cause]: CallExecutionError: Execution reverted for an unknown reason.
+
+    Raw Call Arguments:
+      to:    0x4c5859f0F772848b2D91F1D83E2Fe57935348029
+      data:  0x5de28ae0fe3b4e2ab39735dba4360bf429ee0f3da76474e863280eb916ea63222457cc77
+
+    Details: execution reverted
+    Version: viem@2.47.10
+        at getCallError (/home/barb/smart-agent/node_modules/.pnpm/viem@2.47.10_bufferutil@4.1.0_typescript@5.9.3_utf-8-validate@6.0.6_zod@3.25.76/node_modules/viem/utils/errors/getCallError.ts:42:10)
+        at call (/home/barb/smart-agent/node_modules/.pnpm/viem@2.47.10_bufferutil@4.1.0_typescript@5.9.3_utf-8-validate@6.0.6_zod@3.25.76/node_modules/viem/actions/public/call.ts:307:23)
+        at readContract (/home/barb/smart-agent/node_modules/.pnpm/viem@2.47.10_bufferutil@4.1.0_typescript@5.9.3_utf-8-validate@6.0.6_zod@3.25.76/node_modules/viem/actions/public/readContract.ts:122:22)
+        at /home/barb/smart-agent/tests/e2e/demo-features.spec.ts:281:18
+    [cause]: ExecutionRevertedError: Execution reverted for an unknown reason.
+
+    Details: execution reverted
+    Version: viem@2.47.10
+        at getNodeError (/home/barb/smart-agent/node_modules/.pnpm/viem@2.47.10_bufferutil@4.1.0_typescript@5.9.3_utf-8-validate@6.0.6_zod@3.25.76/node_modules/viem/utils/errors/getNodeError.ts:77:12)
+        at /home/barb/smart-agent/node_modules/.pnpm/viem@2.47.10_bufferutil@4.1.0_typescript@5.9.3_utf-8-validate@6.0.6_zod@3.25.76/node_modules/viem/utils/errors/getCallError.ts:35:31
+        at getCallError (/home/barb/smart-agent/node_modules/.pnpm/viem@2.47.10_bufferutil@4.1.0_typescript@5.9.3_utf-8-validate@6.0.6_zod@3.25.76/node_modules/viem/utils/errors/getCallError.ts:41:5)
+        at call (/home/barb/smart-agent/node_modules/.pnpm/viem@2.47.10_bufferutil@4.1.0_typescript@5.9.3_utf-8-validate@6.0.6_zod@3.25.76/node_modules/viem/actions/public/call.ts:307:23)
+        at readContract (/home/barb/smart-agent/node_modules/.pnpm/viem@2.47.10_bufferutil@4.1.0_typescript@5.9.3_utf-8-validate@6.0.6_zod@3.25.76/node_modules/viem/actions/public/readContract.ts:122:22)
+        at /home/barb/smart-agent/tests/e2e/demo-features.spec.ts:281:18
+    [cause]: RpcRequestError: RPC Request failed.
+
+    URL: http://127.0.0.1:8545
+    Request body: {"method":"eth_call","params":[{"data":"0x5de28ae0fe3b4e2ab39735dba4360bf429ee0f3da76474e863280eb916ea63222457cc77","to":"0x4c5859f0F772848b2D91F1D83E2Fe57935348029"},"latest"]}
+
+    Details: execution reverted
+    Version: viem@2.47.10
+        at request (/home/barb/smart-agent/node_modules/.pnpm/viem@2.47.10_bufferutil@4.1.0_typescript@5.9.3_utf-8-validate@6.0.6_zod@3.25.76/node_modules/viem/clients/transports/http.ts:157:19)
+        at delay.count.count (/home/barb/smart-agent/node_modules/.pnpm/viem@2.47.10_bufferutil@4.1.0_typescript@5.9.3_utf-8-validate@6.0.6_zod@3.25.76/node_modules/viem/utils/buildRequest.ts:153:22)
+        at attemptRetry (/home/barb/smart-agent/node_modules/.pnpm/viem@2.47.10_bufferutil@4.1.0_typescript@5.9.3_utf-8-validate@6.0.6_zod@3.25.76/node_modules/viem/utils/promise/withRetry.ts:44:22)
+
+    Error Context: tests/e2e/test-results/demo-features-T7-proposal-awarded-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    tests/e2e/test-results/demo-features-T7-proposal-awarded-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace tests/e2e/test-results/demo-features-T7-proposal-awarded-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[1A[2K  1 failed
+    tests/e2e/demo-features.spec.ts:277:5 › T7 proposal-awarded ────────────────────────────────────
+  1 flaky
+    tests/e2e/demo-features.spec.ts:180:5 › T1 auth-demo-login ─────────────────────────────────────
+  5 passed (5.1m)

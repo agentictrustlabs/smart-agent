@@ -359,29 +359,72 @@ sessionInit.post('/hybrid-init', async (c) => {
   const sessionAccount = privateKeyToAccount(sessionPrivateKey)
   const sessionId = `sa_${crypto.randomUUID().replace(/-/g, '')}`
 
-  // Build delegation struct — Option A shape (Spec 007 Phase B + Phase C):
+  // Gasless-from-the-user: fund the session key with enough ETH for
+  // ~100 redeem txs. The session key is the EVM tx sender at
+  // `DM.redeemDelegation` time (Phase 1 chained-delegation), so it must
+  // hold ETH — but the user never pays gas.
+  //
+  // Dev path (anvil): use the `anvil_setBalance` cheat-code — free, no
+  // relay drain. The relay-signer's balance gets depleted fast otherwise
+  // (each new session keeps 0.1 ETH, so 50 sessions = 5 ETH gone).
+  //
+  // Prod path (real chain): replace this with a paymaster userOp at
+  // redeem time — paymaster sponsors gas, the session key holds none.
+  // Out of scope for the local dev stack; tracked alongside the Option A
+  // userOp pipeline plan (`output/CHAINED-DELEGATION-RESTORATION-PLAN.md`).
+  if (process.env.NODE_ENV !== 'production') {
+    try {
+      // 1 ETH in hex, lowercase, no leading zeros after 0x — anvil's
+      // `anvil_setBalance` is strict about the literal.
+      const oneEth = '0xde0b6b3a7640000'
+      const res = await fetch(config.RPC_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0', id: 1,
+          method: 'anvil_setBalance',
+          params: [sessionAccount.address, oneEth],
+        }),
+      })
+      const json = await res.json() as { error?: { message: string }; result?: unknown }
+      if (json.error) {
+        return c.json({ error: `Failed to fund session key (anvil_setBalance): ${json.error.message}` }, 502)
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      return c.json({ error: `Failed to fund session key for gas: ${msg}` }, 502)
+    }
+  }
+
+  // Build the D_root delegation — Phase 1 chained-delegation shape
+  // (canonical, 2026-05-10; see `output/phase1-delegation-summary.md`):
+  //
   //   delegator = user's AgentAccount
-  //   delegate  = user's AgentAccount (self-delegation)
+  //   delegate  = sessionKey EOA   (a2a-agent's per-session authority for
+  //                                  this user; the user trusts a2a-agent
+  //                                  via this delegation)
+  //   caveats   = [Timestamp, AllowedTargets, AllowedMethods, Value,
+  //                McpToolScope]
   //
-  // The redemption path is the user's own AgentAccount: a userOp signed by
-  // the session signer (registered as an owner of the AgentAccount) calls
-  // AgentAccount.execute(DelegationManager, 0, redeemDelegation(...)). At
-  // DM, `msg.sender == AgentAccount == delegate`, so the
-  // `msg.sender == leaf.delegate` check passes. The session key never
-  // holds direct delegate authority on chain — it derives authority from
-  // being a registered owner of the AgentAccount and signing the userOp.
+  // For LOW-VALUE tools, sessionKey redeems D_root directly:
+  //   DM.redeemDelegation([D_root], target, value, data)
+  //   msg.sender = sessionKey = D_root.delegate ✓
   //
-  // The off-chain JWT verify (`apps/org-mcp/src/auth/verify-delegation.ts`
-  // L111) also enforces `delegation.delegate == claims.sub == userSmartAccount`,
-  // so producing the wrong shape here trips a 500 on every MCP write that
-  // routes through `/redeem-via-account`.
+  // For HIGH-VALUE tools (Phase 2), sessionKey mints a per-call D_sub
+  // delegating to a per-tool-family executor; executor redeems the
+  // 2-hop chain. See `output/phase2-delegation-summary.md`.
+  //
+  // The leaf `delegate` of D_root is intentionally NOT the user's smart
+  // account. The verify gates in `verify-delegation.ts` /
+  // `delegation-token.ts` accept this shape. See
+  // `output/CHAINED-DELEGATION-RESTORATION-PLAN.md` for unwind history.
   const saltHex = keccak256(toBytes(`hybrid-salt:${sessionId}`))
   const salt = BigInt(saltHex).toString()
 
   const caveats = buildSessionCaveats(body.scope, validUntilFinal)
   const delegationDraft = {
     delegator: body.accountAddress.toLowerCase() as `0x${string}`,
-    delegate: body.accountAddress.toLowerCase() as `0x${string}`,
+    delegate: sessionAccount.address.toLowerCase() as `0x${string}`,
     authority: ROOT_AUTHORITY,
     caveats,
     salt,

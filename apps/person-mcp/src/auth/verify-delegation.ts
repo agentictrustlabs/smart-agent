@@ -102,16 +102,15 @@ export async function verifyDelegationAndExtractPrincipal(
     return { error: `Invalid audience: ${claims.aud}` }
   }
 
-  // ─── Layer 3: delegate == smart account (Option A) ────────────
-  // The on-chain leaf-delegate check inside DelegationManager requires
-  // msg.sender == leaf.delegate; under Option A the userOp is submitted
-  // by the user's smart account (= claims.sub), so the off-chain
-  // delegation's `delegate` field must equal that smart account too.
-  // The session signer's authorization comes from being a registered
-  // owner of the smart account, not from being the delegate.
-  if (claims.delegation.delegate.toLowerCase() !== claims.sub.toLowerCase()) {
-    return { error: 'Delegation delegate does not match smart account (claims.sub)' }
-  }
+  // Canonical chained-delegation architecture (Phase 1+2, 2026-05-10):
+  //
+  //   D_root.delegate = sessionKeyAddress              (one-hop, low-value tools)
+  //   D_sub.delegate  = perToolFamilyExecutorAddress   (two-hop, high-value tools)
+  //
+  // Neither equals `claims.sub` (the user's smart account). The valid
+  // invariants are ERC-1271 below + caveat enforcement + on-chain DM
+  // multi-hop validation. Do NOT reintroduce `delegate == claims.sub`.
+  // See `output/CHAINED-DELEGATION-RESTORATION-PLAN.md`.
 
   // ─── Layer 4: Compute EIP-712 delegation hash ─────────────────
   const delegationManagerAddr = config.delegationManagerAddress

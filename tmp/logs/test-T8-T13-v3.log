@@ -1,0 +1,91 @@
+
+Running 6 tests using 1 worker
+
+[1A[2K[1/6] tests/e2e/demo-features.spec.ts:303:5 › T8 validator-inbox-renders
+[1A[2Ktests/e2e/demo-features.spec.ts:303:5 › T8 validator-inbox-renders
+[demo-features] running seed (STOP_AT_COMMITMENT=1)…
+
+[1A[2K[demo-features] commitment=0x20f1a1a193b9b832f9a0c9f83a00afd8a3ccfa39048867aae41a49ec87e07906
+
+[1A[2K[demo-features] pool=0x7BD1156ac0872856Cc8AA4De837c3B449fD8e891
+
+[1A[2K[demo-features] Fort Collins treasury baseline: $150,000
+
+[1A[2K[2/6] tests/e2e/demo-features.spec.ts:331:5 › T9 record-outcome-onchain
+[1A[2K[3/6] tests/e2e/demo-features.spec.ts:388:5 › T10 steward-inbox-renders
+[1A[2K[4/6] tests/e2e/demo-features.spec.ts:413:5 › T11 release-tranche-rail-a
+[1A[2K[5/6] tests/e2e/demo-features.spec.ts:454:5 › T12 pool-drained
+[1A[2K[6/6] tests/e2e/demo-features.spec.ts:465:5 › T13 fort-collins-treasury-grew
+[1A[2K[7/6] (retries) tests/e2e/demo-features.spec.ts:303:5 › T8 validator-inbox-renders (retry #1)
+[1A[2K[demo-features] running seed (STOP_AT_COMMITMENT=1)…
+
+[1A[2K[demo-features] commitment=0x272cf61dbd788e3b8473edc06940c5e2b379158c83ea39dad8022a517a335624
+
+[1A[2K[demo-features] pool=0x8797AfDe2a7Ab482370de1995766ce4D4cFCD90C
+
+[1A[2K[demo-features] Fort Collins treasury baseline: $150,000
+
+[1A[2K[8/6] (retries) tests/e2e/demo-features.spec.ts:331:5 › T9 record-outcome-onchain (retry #1)
+[1A[2K[9/6] (retries) tests/e2e/demo-features.spec.ts:388:5 › T10 steward-inbox-renders (retry #1)
+[1A[2K[10/6] (retries) tests/e2e/demo-features.spec.ts:413:5 › T11 release-tranche-rail-a (retry #1)
+[1A[2K  1) tests/e2e/demo-features.spec.ts:413:5 › T11 release-tranche-rail-a ────────────────────────────
+
+    Error: m1 release amount must be > 0; got 0
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoBeTruthy[2m()[22m
+
+    Received: [31mfalse[39m
+
+      447 |     args: [demoData.commitmentSubject, m2],
+      448 |   }) as readonly [bigint, bigint]
+    > 449 |   expect(r1[0] > 0n, `m1 release amount must be > 0; got ${r1[0]}`).toBeTruthy()
+          |                                                                     ^
+      450 |   expect(r2[0] > 0n, `m2 release amount must be > 0; got ${r2[0]}`).toBeTruthy()
+      451 | })
+      452 |
+        at /home/barb/smart-agent/tests/e2e/demo-features.spec.ts:449:69
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tests/e2e/test-results/demo-features-T11-release-tranche-rail-a/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tests/e2e/test-results/demo-features-T11-release-tranche-rail-a/error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: m1 release amount must be > 0; got 0
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoBeTruthy[2m()[22m
+
+    Received: [31mfalse[39m
+
+      447 |     args: [demoData.commitmentSubject, m2],
+      448 |   }) as readonly [bigint, bigint]
+    > 449 |   expect(r1[0] > 0n, `m1 release amount must be > 0; got ${r1[0]}`).toBeTruthy()
+          |                                                                     ^
+      450 |   expect(r2[0] > 0n, `m2 release amount must be > 0; got ${r2[0]}`).toBeTruthy()
+      451 | })
+      452 |
+        at /home/barb/smart-agent/tests/e2e/demo-features.spec.ts:449:69
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tests/e2e/test-results/demo-features-T11-release-tranche-rail-a-retry1/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tests/e2e/test-results/demo-features-T11-release-tranche-rail-a-retry1/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    tests/e2e/test-results/demo-features-T11-release-tranche-rail-a-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace tests/e2e/test-results/demo-features-T11-release-tranche-rail-a-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[1A[2K[11/6] (retries) tests/e2e/demo-features.spec.ts:454:5 › T12 pool-drained (retry #1)
+[1A[2K[12/6] (retries) tests/e2e/demo-features.spec.ts:465:5 › T13 fort-collins-treasury-grew (retry #1)
+[1A[2K  1 failed
+    tests/e2e/demo-features.spec.ts:413:5 › T11 release-tranche-rail-a ─────────────────────────────
+  2 did not run
+  3 passed (1.7m)

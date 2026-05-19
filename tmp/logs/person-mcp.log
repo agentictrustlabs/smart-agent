@@ -12,47 +12,6 @@
 --> GET /health [32m200[0m 0ms
 <-- GET /health
 --> GET /health [32m200[0m 0ms
-[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
-    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
-    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
-    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 1ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
 <-- GET /health
 --> GET /health [32m200[0m 0ms
 <-- GET /health
@@ -93,41 +52,7 @@
     at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
     at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
 <-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
+--> GET /health [32m200[0m 1ms
 <-- GET /health
 --> GET /health [32m200[0m 0ms
 <-- GET /health
@@ -149,7 +74,104 @@
 <-- GET /health
 --> GET /health [32m200[0m 1ms
 <-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
 --> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
 <-- GET /health
 --> GET /health [32m200[0m 0ms
 [person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
@@ -177,71 +199,6 @@
 --> GET /health [32m200[0m 0ms
 <-- GET /health
 --> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 1ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
-    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
-    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
-    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 1ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 1ms
 <-- GET /health
 --> GET /health [32m200[0m 0ms
 <-- GET /health
@@ -287,3 +244,2488 @@
     at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
 <-- GET /health
 --> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+<-- GET /session-store/by-cookie/sa_b5a5010f7e8d418eb142ac98708fc875
+--> GET /session-store/by-cookie/sa_b5a5010f7e8d418eb142ac98708fc875 [32m200[0m 2ms
+<-- GET /session-store/by-cookie/sa_b5a5010f7e8d418eb142ac98708fc875
+--> GET /session-store/by-cookie/sa_b5a5010f7e8d418eb142ac98708fc875 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_b5a5010f7e8d418eb142ac98708fc875
+--> GET /session-store/by-cookie/sa_b5a5010f7e8d418eb142ac98708fc875 [32m200[0m 0ms
+<-- POST /tools/list_oikos_contacts
+<-- POST /tools/list_training_progress
+<-- POST /tools/list_prayers
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 14ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 41ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 11ms
+<-- GET /session-store/by-cookie/sa_b5a5010f7e8d418eb142ac98708fc875
+--> GET /session-store/by-cookie/sa_b5a5010f7e8d418eb142ac98708fc875 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_b5a5010f7e8d418eb142ac98708fc875
+--> GET /session-store/by-cookie/sa_b5a5010f7e8d418eb142ac98708fc875 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_b5a5010f7e8d418eb142ac98708fc875
+--> GET /session-store/by-cookie/sa_b5a5010f7e8d418eb142ac98708fc875 [32m200[0m 0ms
+<-- POST /tools/list_prayers
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 7ms
+<-- GET /session-store/by-cookie/sa_b5a5010f7e8d418eb142ac98708fc875
+--> GET /session-store/by-cookie/sa_b5a5010f7e8d418eb142ac98708fc875 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_b5a5010f7e8d418eb142ac98708fc875
+--> GET /session-store/by-cookie/sa_b5a5010f7e8d418eb142ac98708fc875 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_b5a5010f7e8d418eb142ac98708fc875
+--> GET /session-store/by-cookie/sa_b5a5010f7e8d418eb142ac98708fc875 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_b5a5010f7e8d418eb142ac98708fc875
+--> GET /session-store/by-cookie/sa_b5a5010f7e8d418eb142ac98708fc875 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_b5a5010f7e8d418eb142ac98708fc875
+--> GET /session-store/by-cookie/sa_b5a5010f7e8d418eb142ac98708fc875 [32m200[0m 1ms
+<-- POST /tools/list_notifications
+<-- POST /tools/list_intents
+<-- POST /tools/list_oikos_contacts
+<-- POST /tools/list_training_progress
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_notifications [32m200[0m 19ms
+<-- POST /tools/list_prayers
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 16ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 12ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_intents [32m200[0m 23ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 9ms
+<-- GET /session-store/by-cookie/sa_b5a5010f7e8d418eb142ac98708fc875
+--> GET /session-store/by-cookie/sa_b5a5010f7e8d418eb142ac98708fc875 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_b5a5010f7e8d418eb142ac98708fc875
+--> GET /session-store/by-cookie/sa_b5a5010f7e8d418eb142ac98708fc875 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_b5a5010f7e8d418eb142ac98708fc875
+--> GET /session-store/by-cookie/sa_b5a5010f7e8d418eb142ac98708fc875 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_b5a5010f7e8d418eb142ac98708fc875
+--> GET /session-store/by-cookie/sa_b5a5010f7e8d418eb142ac98708fc875 [32m200[0m 1ms
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+<-- GET /session-store/by-cookie/sa_52069c134a6948f799c566dacb2693fb
+--> GET /session-store/by-cookie/sa_52069c134a6948f799c566dacb2693fb [32m200[0m 1ms
+<-- POST /tools/get_intent
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/get_intent [32m200[0m 7ms
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+<-- GET /session-store/by-cookie/sa_ec5a74efc51d4625891baa926a9d5c4f
+--> GET /session-store/by-cookie/sa_ec5a74efc51d4625891baa926a9d5c4f [32m200[0m 1ms
+<-- POST /tools/list_oikos_contacts
+<-- GET /session-store/by-cookie/sa_ec5a74efc51d4625891baa926a9d5c4f
+--> GET /session-store/by-cookie/sa_ec5a74efc51d4625891baa926a9d5c4f [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_ec5a74efc51d4625891baa926a9d5c4f
+--> GET /session-store/by-cookie/sa_ec5a74efc51d4625891baa926a9d5c4f [32m200[0m 0ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 7ms
+<-- POST /tools/list_prayers
+<-- POST /tools/list_training_progress
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 6ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 10ms
+<-- GET /session-store/by-cookie/sa_ec5a74efc51d4625891baa926a9d5c4f
+--> GET /session-store/by-cookie/sa_ec5a74efc51d4625891baa926a9d5c4f [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_ec5a74efc51d4625891baa926a9d5c4f
+--> GET /session-store/by-cookie/sa_ec5a74efc51d4625891baa926a9d5c4f [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_ec5a74efc51d4625891baa926a9d5c4f
+--> GET /session-store/by-cookie/sa_ec5a74efc51d4625891baa926a9d5c4f [32m200[0m 0ms
+<-- POST /tools/list_prayers
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 6ms
+<-- GET /session-store/by-cookie/sa_ec5a74efc51d4625891baa926a9d5c4f
+--> GET /session-store/by-cookie/sa_ec5a74efc51d4625891baa926a9d5c4f [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_ec5a74efc51d4625891baa926a9d5c4f
+--> GET /session-store/by-cookie/sa_ec5a74efc51d4625891baa926a9d5c4f [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_ec5a74efc51d4625891baa926a9d5c4f
+--> GET /session-store/by-cookie/sa_ec5a74efc51d4625891baa926a9d5c4f [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_ec5a74efc51d4625891baa926a9d5c4f
+--> GET /session-store/by-cookie/sa_ec5a74efc51d4625891baa926a9d5c4f [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_ec5a74efc51d4625891baa926a9d5c4f
+--> GET /session-store/by-cookie/sa_ec5a74efc51d4625891baa926a9d5c4f [32m200[0m 1ms
+<-- POST /tools/list_intents
+<-- POST /tools/list_notifications
+<-- POST /tools/list_oikos_contacts
+<-- POST /tools/list_prayers
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_intents [32m200[0m 19ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 12ms
+<-- POST /tools/list_training_progress
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_notifications [32m200[0m 22ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 15ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 7ms
+<-- GET /session-store/by-cookie/sa_ec5a74efc51d4625891baa926a9d5c4f
+--> GET /session-store/by-cookie/sa_ec5a74efc51d4625891baa926a9d5c4f [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_ec5a74efc51d4625891baa926a9d5c4f
+--> GET /session-store/by-cookie/sa_ec5a74efc51d4625891baa926a9d5c4f [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_ec5a74efc51d4625891baa926a9d5c4f
+--> GET /session-store/by-cookie/sa_ec5a74efc51d4625891baa926a9d5c4f [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_ec5a74efc51d4625891baa926a9d5c4f
+--> GET /session-store/by-cookie/sa_ec5a74efc51d4625891baa926a9d5c4f [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_abc4db57b4104981aa51d4c472a1f8ba
+--> GET /session-store/by-cookie/sa_abc4db57b4104981aa51d4c472a1f8ba [32m200[0m 1ms
+<-- POST /tools/get_intent
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/get_intent [32m200[0m 7ms
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp nonce-gc] evicted 26 expired replay-nonce rows
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp nonce-gc] evicted 26 expired replay-nonce rows
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+<-- GET /session-store/by-cookie/sa_210369d549a349c99caea2bd7cc61c81
+--> GET /session-store/by-cookie/sa_210369d549a349c99caea2bd7cc61c81 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_210369d549a349c99caea2bd7cc61c81
+--> GET /session-store/by-cookie/sa_210369d549a349c99caea2bd7cc61c81 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_9d157ef08af141ddb8d6d8a9f20c7211
+--> GET /session-store/by-cookie/sa_9d157ef08af141ddb8d6d8a9f20c7211 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_9d157ef08af141ddb8d6d8a9f20c7211
+--> GET /session-store/by-cookie/sa_9d157ef08af141ddb8d6d8a9f20c7211 [32m200[0m 1ms
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+<-- GET /session-store/by-cookie/sa_a6f3c70497f54b8fbd4bbbe4e84ce16f
+--> GET /session-store/by-cookie/sa_a6f3c70497f54b8fbd4bbbe4e84ce16f [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_a6f3c70497f54b8fbd4bbbe4e84ce16f
+--> GET /session-store/by-cookie/sa_a6f3c70497f54b8fbd4bbbe4e84ce16f [32m200[0m 1ms
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+<-- GET /session-store/by-cookie/sa_1749d386113545829ae92287ee5ec1ee
+--> GET /session-store/by-cookie/sa_1749d386113545829ae92287ee5ec1ee [32m200[0m 1ms
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+<-- GET /session-store/by-cookie/sa_1749d386113545829ae92287ee5ec1ee
+--> GET /session-store/by-cookie/sa_1749d386113545829ae92287ee5ec1ee [32m200[0m 0ms
+[person-mcp nonce-gc] evicted 6 expired replay-nonce rows
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+<-- GET /session-store/by-cookie/sa_771ac79281bc4fb583230ecaa789d437
+--> GET /session-store/by-cookie/sa_771ac79281bc4fb583230ecaa789d437 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_771ac79281bc4fb583230ecaa789d437
+--> GET /session-store/by-cookie/sa_771ac79281bc4fb583230ecaa789d437 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_771ac79281bc4fb583230ecaa789d437
+--> GET /session-store/by-cookie/sa_771ac79281bc4fb583230ecaa789d437 [32m200[0m 0ms
+<-- POST /tools/list_training_progress
+<-- POST /tools/list_prayers
+<-- POST /tools/list_oikos_contacts
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 9ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 14ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 20ms
+<-- GET /session-store/by-cookie/sa_771ac79281bc4fb583230ecaa789d437
+--> GET /session-store/by-cookie/sa_771ac79281bc4fb583230ecaa789d437 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_771ac79281bc4fb583230ecaa789d437
+--> GET /session-store/by-cookie/sa_771ac79281bc4fb583230ecaa789d437 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_771ac79281bc4fb583230ecaa789d437
+--> GET /session-store/by-cookie/sa_771ac79281bc4fb583230ecaa789d437 [32m200[0m 0ms
+<-- POST /tools/list_prayers
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 8ms
+<-- GET /session-store/by-cookie/sa_771ac79281bc4fb583230ecaa789d437
+--> GET /session-store/by-cookie/sa_771ac79281bc4fb583230ecaa789d437 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_771ac79281bc4fb583230ecaa789d437
+--> GET /session-store/by-cookie/sa_771ac79281bc4fb583230ecaa789d437 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_771ac79281bc4fb583230ecaa789d437
+--> GET /session-store/by-cookie/sa_771ac79281bc4fb583230ecaa789d437 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_771ac79281bc4fb583230ecaa789d437
+--> GET /session-store/by-cookie/sa_771ac79281bc4fb583230ecaa789d437 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_771ac79281bc4fb583230ecaa789d437
+--> GET /session-store/by-cookie/sa_771ac79281bc4fb583230ecaa789d437 [32m200[0m 0ms
+<-- POST /tools/list_intents
+<-- POST /tools/list_notifications
+<-- POST /tools/list_oikos_contacts
+<-- POST /tools/list_prayers
+<-- POST /tools/list_training_progress
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_intents [32m200[0m 23ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 17ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 13ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_notifications [32m200[0m 22ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 11ms
+<-- GET /session-store/by-cookie/sa_771ac79281bc4fb583230ecaa789d437
+--> GET /session-store/by-cookie/sa_771ac79281bc4fb583230ecaa789d437 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_771ac79281bc4fb583230ecaa789d437
+--> GET /session-store/by-cookie/sa_771ac79281bc4fb583230ecaa789d437 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_771ac79281bc4fb583230ecaa789d437
+--> GET /session-store/by-cookie/sa_771ac79281bc4fb583230ecaa789d437 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_771ac79281bc4fb583230ecaa789d437
+--> GET /session-store/by-cookie/sa_771ac79281bc4fb583230ecaa789d437 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_98200394cd9d41b6a02804be6accbb0e
+--> GET /session-store/by-cookie/sa_98200394cd9d41b6a02804be6accbb0e [32m200[0m 0ms
+<-- POST /tools/get_intent
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/get_intent [32m200[0m 8ms
+<-- GET /session-store/by-cookie/sa_0135835176894d868e45c59bda902702
+--> GET /session-store/by-cookie/sa_0135835176894d868e45c59bda902702 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_0135835176894d868e45c59bda902702
+--> GET /session-store/by-cookie/sa_0135835176894d868e45c59bda902702 [32m200[0m 0ms
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp nonce-gc] evicted 30 expired replay-nonce rows
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+<-- GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038
+--> GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038 [32m200[0m 2ms
+<-- GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038
+--> GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038
+--> GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038 [32m200[0m 0ms
+<-- POST /tools/list_oikos_contacts
+<-- POST /tools/list_training_progress
+<-- POST /tools/list_prayers
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 11ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 17ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 10ms
+<-- GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038
+--> GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038
+--> GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038
+--> GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038 [32m200[0m 0ms
+<-- POST /tools/list_prayers
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 7ms
+<-- GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038
+--> GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038
+--> GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038
+--> GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038
+--> GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038
+--> GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038 [32m200[0m 1ms
+<-- POST /tools/list_intents
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_intents [32m200[0m 6ms
+<-- POST /tools/list_oikos_contacts
+<-- POST /tools/list_notifications
+<-- POST /tools/list_prayers
+<-- POST /tools/list_training_progress
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 29ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_notifications [32m200[0m 28ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 17ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 11ms
+<-- GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038
+--> GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038
+--> GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038
+--> GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038
+--> GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038 [32m200[0m 0ms
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+<-- GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038
+--> GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038
+--> GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038
+--> GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038
+--> GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038 [32m200[0m 0ms
+<-- POST /tools/list_oikos_contacts
+<-- POST /tools/list_notifications
+<-- POST /tools/list_prayers
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 12ms
+<-- POST /tools/list_training_progress
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_notifications [32m200[0m 12ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 11ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 6ms
+<-- GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038
+--> GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038
+--> GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038
+--> GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038
+--> GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038 [32m200[0m 0ms
+<-- POST /tools/list_notifications
+<-- POST /tools/list_oikos_contacts
+<-- POST /tools/list_prayers
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_notifications [32m200[0m 11ms
+<-- POST /tools/list_training_progress
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 13ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 10ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 7ms
+<-- GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038
+--> GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038 [32m200[0m 2ms
+<-- GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038
+--> GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038
+--> GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038 [32m200[0m 2ms
+<-- GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038
+--> GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038
+--> GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038 [32m200[0m 1ms
+<-- POST /tools/get_intent
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/get_intent [32m200[0m 8ms
+<-- GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038
+--> GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038 [32m200[0m 3ms
+<-- GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038
+--> GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038 [32m200[0m 2ms
+<-- GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038
+--> GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038
+--> GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038
+--> GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038
+--> GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038 [32m200[0m 3ms
+<-- GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038
+--> GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038 [32m200[0m 2ms
+<-- POST /tools/ssi_list_proof_audit
+--> POST /tools/ssi_list_proof_audit [32m200[0m 3ms
+<-- GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038
+--> GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038 [32m200[0m 1ms
+<-- POST /tools/ssi_list_my_credentials
+--> POST /tools/ssi_list_my_credentials [32m200[0m 1ms
+<-- POST /tools/ssi_list_wallets
+--> POST /tools/ssi_list_wallets [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038
+--> GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038 [32m200[0m 1ms
+<-- POST /tools/list_received_delegations
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_received_delegations [32m200[0m 8ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038
+--> GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038 [32m200[0m 2ms
+<-- GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038
+--> GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038
+--> GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038 [32m200[0m 0ms
+<-- POST /tools/ssi_list_my_credentials
+--> POST /tools/ssi_list_my_credentials [32m200[0m 2ms
+<-- POST /tools/ssi_list_wallets
+--> POST /tools/ssi_list_wallets [32m200[0m 2ms
+<-- POST /tools/ssi_list_proof_audit
+--> POST /tools/ssi_list_proof_audit [32m200[0m 2ms
+<-- GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038
+--> GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038 [32m200[0m 0ms
+<-- POST /tools/list_received_delegations
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_received_delegations [32m200[0m 7ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038
+--> GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038 [32m200[0m 4ms
+<-- POST /tools/ssi_get_holder_wallet
+--> POST /tools/ssi_get_holder_wallet [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038
+--> GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038 [32m200[0m 1ms
+<-- POST /tools/ssi_create_wallet_action
+--> POST /tools/ssi_create_wallet_action [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038
+--> GET /session-store/by-cookie/sa_4d17d76e18374a28941d14fb27f37038 [32m200[0m 1ms
+<-- POST /tools/ssi_provision_wallet
+<-- POST /wallet/provision
+--> POST /wallet/provision [32m200[0m 11ms
+--> POST /tools/ssi_provision_wallet [32m200[0m 18ms
+<-- GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec
+--> GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec [32m200[0m 3ms
+<-- GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec
+--> GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec
+--> GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec [32m200[0m 1ms
+<-- POST /tools/list_oikos_contacts
+<-- POST /tools/list_prayers
+<-- POST /tools/list_training_progress
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 9ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 13ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 7ms
+<-- GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec
+--> GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec
+--> GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec
+--> GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec [32m200[0m 0ms
+<-- POST /tools/list_prayers
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 5ms
+<-- GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec
+--> GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec
+--> GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec
+--> GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec
+--> GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec
+--> GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec [32m200[0m 1ms
+<-- POST /tools/list_intents
+<-- POST /tools/list_notifications
+<-- POST /tools/list_oikos_contacts
+<-- POST /tools/list_training_progress
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_intents [32m200[0m 20ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_notifications [32m200[0m 17ms
+<-- POST /tools/list_prayers
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 19ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 16ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 11ms
+<-- GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec
+--> GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec [32m200[0m 2ms
+<-- GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec
+--> GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec [32m200[0m 3ms
+<-- GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec
+--> GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec [32m200[0m 2ms
+<-- GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec
+--> GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec [32m200[0m 3ms
+<-- GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec
+--> GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec [32m200[0m 3ms
+<-- GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec
+--> GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec
+--> GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec
+--> GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec [32m200[0m 1ms
+<-- POST /tools/list_notifications
+<-- POST /tools/list_prayers
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_notifications [32m200[0m 11ms
+<-- POST /tools/list_oikos_contacts
+<-- POST /tools/list_training_progress
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 18ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 13ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 11ms
+<-- GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec
+--> GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec [32m200[0m 3ms
+<-- GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec
+--> GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec [32m200[0m 2ms
+<-- GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec
+--> GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec
+--> GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec [32m200[0m 1ms
+<-- POST /tools/list_notifications
+<-- POST /tools/list_oikos_contacts
+<-- POST /tools/list_prayers
+<-- POST /tools/list_training_progress
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_notifications [32m200[0m 20ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 19ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 14ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 11ms
+<-- GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec
+--> GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec [32m200[0m 2ms
+<-- GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec
+--> GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec
+--> GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec [32m200[0m 2ms
+<-- GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec
+--> GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec [32m200[0m 1ms
+<-- POST /tools/list_notifications
+<-- POST /tools/list_oikos_contacts
+<-- POST /tools/list_prayers
+<-- POST /tools/list_training_progress
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_notifications [32m200[0m 20ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 18ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 15ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 11ms
+<-- GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec
+--> GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec
+--> GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec [32m200[0m 2ms
+<-- GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec
+--> GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec [32m200[0m 4ms
+<-- GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec
+--> GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec
+--> GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec [32m200[0m 3ms
+<-- POST /tools/get_intent
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/get_intent [32m200[0m 9ms
+<-- GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec
+--> GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec [32m200[0m 2ms
+<-- GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec
+--> GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec [32m200[0m 4ms
+<-- GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec
+--> GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec [32m200[0m 2ms
+<-- GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec
+--> GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec [32m200[0m 3ms
+<-- GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec
+--> GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec [32m200[0m 1ms
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+<-- GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec
+--> GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec [32m200[0m 3ms
+<-- GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec
+--> GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec
+--> GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec [32m200[0m 1ms
+<-- POST /tools/ssi_list_my_credentials
+--> POST /tools/ssi_list_my_credentials [32m200[0m 2ms
+<-- POST /tools/ssi_list_proof_audit
+--> POST /tools/ssi_list_proof_audit [32m200[0m 2ms
+<-- POST /tools/ssi_list_wallets
+--> POST /tools/ssi_list_wallets [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec
+--> GET /session-store/by-cookie/sa_c0be593e222c4aa1b3ae0de8ab4473ec [32m200[0m 2ms
+<-- POST /tools/list_received_delegations
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_received_delegations [32m200[0m 8ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_8cdbf129de38484b8caf0b9190b842d9
+--> GET /session-store/by-cookie/sa_8cdbf129de38484b8caf0b9190b842d9 [32m200[0m 3ms
+<-- GET /session-store/by-cookie/sa_8cdbf129de38484b8caf0b9190b842d9
+--> GET /session-store/by-cookie/sa_8cdbf129de38484b8caf0b9190b842d9 [32m200[0m 3ms
+<-- GET /session-store/by-cookie/sa_8cdbf129de38484b8caf0b9190b842d9
+--> GET /session-store/by-cookie/sa_8cdbf129de38484b8caf0b9190b842d9 [32m200[0m 3ms
+<-- POST /tools/ssi_get_holder_wallet
+--> POST /tools/ssi_get_holder_wallet [32m200[0m 2ms
+<-- GET /session-store/by-cookie/sa_8cdbf129de38484b8caf0b9190b842d9
+--> GET /session-store/by-cookie/sa_8cdbf129de38484b8caf0b9190b842d9 [32m200[0m 1ms
+<-- POST /tools/ssi_create_wallet_action
+--> POST /tools/ssi_create_wallet_action [32m200[0m 2ms
+<-- GET /session-store/by-cookie/sa_8cdbf129de38484b8caf0b9190b842d9
+--> GET /session-store/by-cookie/sa_8cdbf129de38484b8caf0b9190b842d9 [32m200[0m 1ms
+<-- POST /tools/ssi_provision_wallet
+<-- POST /wallet/provision
+--> POST /wallet/provision [32m200[0m 4ms
+--> POST /tools/ssi_provision_wallet [32m200[0m 9ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+<-- GET /session-store/by-cookie/sa_ec29d42448674669808a6c0e7f57fee2
+--> GET /session-store/by-cookie/sa_ec29d42448674669808a6c0e7f57fee2 [32m200[0m 4ms
+<-- GET /session-store/by-cookie/sa_ec29d42448674669808a6c0e7f57fee2
+--> GET /session-store/by-cookie/sa_ec29d42448674669808a6c0e7f57fee2 [32m200[0m 2ms
+<-- GET /session-store/by-cookie/sa_ec29d42448674669808a6c0e7f57fee2
+--> GET /session-store/by-cookie/sa_ec29d42448674669808a6c0e7f57fee2 [32m200[0m 2ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+[person-mcp nonce-gc] evicted 140 expired replay-nonce rows
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp nonce-gc] evicted 11 expired replay-nonce rows
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+<-- GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285
+--> GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285 [32m200[0m 2ms
+<-- GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285
+--> GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285
+--> GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285 [32m200[0m 1ms
+<-- POST /tools/list_oikos_contacts
+<-- POST /tools/list_training_progress
+<-- POST /tools/list_prayers
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 7ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 18ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 14ms
+<-- GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285
+--> GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285 [32m200[0m 2ms
+<-- GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285
+--> GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285
+--> GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285 [32m200[0m 0ms
+<-- POST /tools/list_prayers
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 12ms
+<-- GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285
+--> GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285
+--> GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285
+--> GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285
+--> GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285
+--> GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285 [32m200[0m 1ms
+<-- POST /tools/list_intents
+<-- POST /tools/list_notifications
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_intents [32m200[0m 11ms
+<-- POST /tools/list_oikos_contacts
+<-- POST /tools/list_training_progress
+<-- POST /tools/list_prayers
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_notifications [32m200[0m 21ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 17ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 14ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 11ms
+<-- GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285
+--> GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285
+--> GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285 [32m200[0m 3ms
+<-- GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285
+--> GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285 [32m200[0m 3ms
+<-- GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285
+--> GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285 [32m200[0m 3ms
+<-- GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285
+--> GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285
+--> GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285
+--> GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285
+--> GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285 [32m200[0m 1ms
+<-- POST /tools/list_training_progress
+<-- POST /tools/list_notifications
+<-- POST /tools/list_prayers
+<-- POST /tools/list_oikos_contacts
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 20ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_notifications [32m200[0m 18ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 16ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 13ms
+<-- GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285
+--> GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285 [32m200[0m 3ms
+<-- GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285
+--> GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285
+--> GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285
+--> GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285 [32m200[0m 2ms
+<-- POST /tools/list_notifications
+<-- POST /tools/list_oikos_contacts
+<-- POST /tools/list_prayers
+<-- POST /tools/list_training_progress
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_notifications [32m200[0m 17ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 14ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 8ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 12ms
+<-- GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285
+--> GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285
+--> GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285
+--> GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285
+--> GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285
+--> GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285 [32m200[0m 0ms
+<-- POST /tools/get_intent
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/get_intent [32m200[0m 6ms
+<-- GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285
+--> GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285
+--> GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285
+--> GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285
+--> GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285
+--> GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285 [32m200[0m 0ms
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+<-- GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285
+--> GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285
+--> GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285
+--> GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285 [32m200[0m 1ms
+<-- POST /tools/ssi_list_proof_audit
+--> POST /tools/ssi_list_proof_audit [32m200[0m 0ms
+<-- POST /tools/ssi_list_my_credentials
+--> POST /tools/ssi_list_my_credentials [32m200[0m 1ms
+<-- POST /tools/ssi_list_wallets
+--> POST /tools/ssi_list_wallets [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285
+--> GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285 [32m200[0m 0ms
+<-- POST /tools/list_received_delegations
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_received_delegations [32m200[0m 14ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285
+--> GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285 [32m200[0m 3ms
+<-- GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285
+--> GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285
+--> GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285 [32m200[0m 0ms
+<-- POST /tools/ssi_list_my_credentials
+--> POST /tools/ssi_list_my_credentials [32m200[0m 1ms
+<-- POST /tools/ssi_list_proof_audit
+--> POST /tools/ssi_list_proof_audit [32m200[0m 1ms
+<-- POST /tools/ssi_list_wallets
+--> POST /tools/ssi_list_wallets [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285
+--> GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285 [32m200[0m 1ms
+<-- POST /tools/list_received_delegations
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_received_delegations [32m200[0m 7ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285
+--> GET /session-store/by-cookie/sa_29910cfa1c3e4f968c46e08baff32285 [32m200[0m 1ms
+<-- POST /tools/ssi_get_holder_wallet
+--> POST /tools/ssi_get_holder_wallet [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7
+--> GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7
+--> GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7
+--> GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7 [32m200[0m 0ms
+<-- POST /tools/list_oikos_contacts
+<-- POST /tools/list_prayers
+<-- POST /tools/list_training_progress
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 8ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 13ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 6ms
+<-- GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7
+--> GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7
+--> GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7
+--> GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7 [32m200[0m 0ms
+<-- POST /tools/list_prayers
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 7ms
+<-- GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7
+--> GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7
+--> GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7
+--> GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7
+--> GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7
+--> GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7 [32m200[0m 0ms
+<-- POST /tools/list_intents
+<-- POST /tools/list_notifications
+<-- POST /tools/list_oikos_contacts
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_intents [32m200[0m 18ms
+<-- POST /tools/list_prayers
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_notifications [32m200[0m 20ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 15ms
+<-- POST /tools/list_training_progress
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 12ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 6ms
+<-- GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7
+--> GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7
+--> GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7
+--> GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7
+--> GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7
+--> GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7
+--> GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7
+--> GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7
+--> GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7 [32m200[0m 1ms
+<-- POST /tools/list_notifications
+<-- POST /tools/list_oikos_contacts
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_notifications [32m200[0m 8ms
+<-- POST /tools/list_prayers
+<-- POST /tools/list_training_progress
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 12ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 10ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 8ms
+<-- GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7
+--> GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7
+--> GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7
+--> GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7
+--> GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7 [32m200[0m 0ms
+<-- POST /tools/list_oikos_contacts
+<-- POST /tools/list_prayers
+<-- POST /tools/list_notifications
+<-- POST /tools/list_training_progress
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 13ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 5ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_notifications [32m200[0m 9ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 12ms
+<-- GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7
+--> GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7
+--> GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7
+--> GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7
+--> GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7 [32m200[0m 0ms
+<-- POST /tools/list_notifications
+<-- POST /tools/list_oikos_contacts
+<-- POST /tools/list_prayers
+<-- POST /tools/list_training_progress
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_notifications [32m200[0m 15ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 12ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 10ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 8ms
+<-- GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7
+--> GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7
+--> GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7
+--> GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7
+--> GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7
+--> GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7 [32m200[0m 1ms
+<-- POST /tools/get_intent
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/get_intent [32m200[0m 8ms
+<-- GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7
+--> GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7
+--> GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7
+--> GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7
+--> GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7
+--> GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7
+--> GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7
+--> GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7
+--> GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7 [32m200[0m 0ms
+<-- POST /tools/ssi_list_my_credentials
+--> POST /tools/ssi_list_my_credentials [32m200[0m 1ms
+<-- POST /tools/ssi_list_proof_audit
+--> POST /tools/ssi_list_proof_audit [32m200[0m 1ms
+<-- POST /tools/ssi_list_wallets
+--> POST /tools/ssi_list_wallets [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7
+--> GET /session-store/by-cookie/sa_cd10b791829a481880ca8232857de9a7 [32m200[0m 1ms
+<-- POST /tools/list_received_delegations
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_received_delegations [32m200[0m 8ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560
+--> GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560
+--> GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560 [32m200[0m 0ms
+<-- POST /tools/list_oikos_contacts
+<-- POST /tools/list_prayers
+<-- GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560
+--> GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560 [32m200[0m 0ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 8ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 13ms
+<-- POST /tools/list_training_progress
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 6ms
+<-- GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560
+--> GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560
+--> GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560
+--> GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560 [32m200[0m 1ms
+<-- POST /tools/list_prayers
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 6ms
+<-- GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560
+--> GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560
+--> GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560
+--> GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560
+--> GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560 [32m200[0m 0ms
+<-- POST /tools/list_intents
+<-- POST /tools/list_notifications
+<-- POST /tools/list_oikos_contacts
+<-- GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560
+--> GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560 [32m200[0m 0ms
+<-- POST /tools/list_prayers
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_intents [32m200[0m 20ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 13ms
+<-- POST /tools/list_training_progress
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_notifications [32m200[0m 22ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 8ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 14ms
+<-- GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560
+--> GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560
+--> GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560
+--> GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560
+--> GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560
+--> GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560
+--> GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560
+--> GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560
+--> GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560 [32m200[0m 0ms
+<-- POST /tools/list_notifications
+<-- POST /tools/list_oikos_contacts
+<-- POST /tools/list_prayers
+<-- POST /tools/list_training_progress
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_notifications [32m200[0m 16ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 13ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 10ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 8ms
+<-- GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560
+--> GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560
+--> GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560
+--> GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560 [32m200[0m 0ms
+<-- POST /tools/list_oikos_contacts
+<-- POST /tools/list_prayers
+<-- POST /tools/list_training_progress
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 13ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 9ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 7ms
+<-- GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560
+--> GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560
+--> GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560
+--> GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560
+--> GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560 [32m200[0m 1ms
+<-- POST /tools/list_prayers
+<-- POST /tools/list_intents
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 10ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_intents [32m200[0m 6ms
+<-- GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560
+--> GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560
+--> GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560
+--> GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560
+--> GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560 [32m200[0m 0ms
+<-- POST /tools/list_notifications
+<-- POST /tools/list_oikos_contacts
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_notifications [32m200[0m 11ms
+<-- POST /tools/list_prayers
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 11ms
+<-- POST /tools/list_training_progress
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 14ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 10ms
+<-- GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560
+--> GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560
+--> GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560
+--> GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560
+--> GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560
+--> GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560
+--> GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560
+--> GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560
+--> GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560 [32m200[0m 0ms
+<-- POST /tools/list_notifications
+<-- POST /tools/list_oikos_contacts
+<-- POST /tools/list_prayers
+<-- POST /tools/list_training_progress
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_notifications [32m200[0m 18ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 13ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 7ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 17ms
+<-- GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560
+--> GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560
+--> GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560
+--> GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560
+--> GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560 [32m200[0m 1ms
+<-- POST /tools/list_notifications
+<-- POST /tools/list_oikos_contacts
+<-- POST /tools/list_prayers
+<-- POST /tools/list_training_progress
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_notifications [32m200[0m 22ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 18ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 11ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 17ms
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+<-- GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560
+--> GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560
+--> GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560
+--> GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560 [32m200[0m 0ms
+<-- POST /tools/ssi_list_my_credentials
+--> POST /tools/ssi_list_my_credentials [32m200[0m 2ms
+<-- POST /tools/ssi_list_proof_audit
+--> POST /tools/ssi_list_proof_audit [32m200[0m 2ms
+<-- POST /tools/ssi_list_wallets
+--> POST /tools/ssi_list_wallets [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560
+--> GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560 [32m200[0m 0ms
+<-- POST /tools/list_received_delegations
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_received_delegations [32m200[0m 9ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560
+--> GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560
+--> GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560
+--> GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560
+--> GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560
+--> GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560 [32m200[0m 0ms
+<-- POST /tools/get_intent
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/get_intent [32m200[0m 10ms
+<-- GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560
+--> GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560
+--> GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560
+--> GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560
+--> GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560
+--> GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560
+--> GET /session-store/by-cookie/sa_4a68c2153ed84addb80e83ac80aa6560 [32m200[0m 1ms
+<-- POST /tools/ssi_get_holder_wallet
+--> POST /tools/ssi_get_holder_wallet [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_c75389c2604e4f03849c2230546103df
+--> GET /session-store/by-cookie/sa_c75389c2604e4f03849c2230546103df [32m200[0m 0ms
+<-- POST /tools/ssi_get_holder_wallet
+--> POST /tools/ssi_get_holder_wallet [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_363aca142f064b9fa30bec65fe1172ab
+--> GET /session-store/by-cookie/sa_363aca142f064b9fa30bec65fe1172ab [32m200[0m 0ms
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_363aca142f064b9fa30bec65fe1172ab
+--> GET /session-store/by-cookie/sa_363aca142f064b9fa30bec65fe1172ab [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_ac3ae70e30f64646ababc3d7743f98b4
+--> GET /session-store/by-cookie/sa_ac3ae70e30f64646ababc3d7743f98b4 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_ac3ae70e30f64646ababc3d7743f98b4
+--> GET /session-store/by-cookie/sa_ac3ae70e30f64646ababc3d7743f98b4 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_ac3ae70e30f64646ababc3d7743f98b4
+--> GET /session-store/by-cookie/sa_ac3ae70e30f64646ababc3d7743f98b4 [32m200[0m 0ms
+<-- POST /tools/list_oikos_contacts
+<-- POST /tools/list_training_progress
+<-- POST /tools/list_prayers
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 11ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 17ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 8ms
+<-- GET /session-store/by-cookie/sa_ac3ae70e30f64646ababc3d7743f98b4
+--> GET /session-store/by-cookie/sa_ac3ae70e30f64646ababc3d7743f98b4 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_ac3ae70e30f64646ababc3d7743f98b4
+--> GET /session-store/by-cookie/sa_ac3ae70e30f64646ababc3d7743f98b4 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_ac3ae70e30f64646ababc3d7743f98b4
+--> GET /session-store/by-cookie/sa_ac3ae70e30f64646ababc3d7743f98b4 [32m200[0m 0ms
+<-- POST /tools/list_prayers
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 6ms
+<-- GET /session-store/by-cookie/sa_ac3ae70e30f64646ababc3d7743f98b4
+--> GET /session-store/by-cookie/sa_ac3ae70e30f64646ababc3d7743f98b4 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_ac3ae70e30f64646ababc3d7743f98b4
+--> GET /session-store/by-cookie/sa_ac3ae70e30f64646ababc3d7743f98b4 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_ac3ae70e30f64646ababc3d7743f98b4
+--> GET /session-store/by-cookie/sa_ac3ae70e30f64646ababc3d7743f98b4 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_ac3ae70e30f64646ababc3d7743f98b4
+--> GET /session-store/by-cookie/sa_ac3ae70e30f64646ababc3d7743f98b4 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_ac3ae70e30f64646ababc3d7743f98b4
+--> GET /session-store/by-cookie/sa_ac3ae70e30f64646ababc3d7743f98b4 [32m200[0m 0ms
+<-- POST /tools/list_intents
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_intents [32m200[0m 6ms
+<-- POST /tools/list_notifications
+<-- POST /tools/list_oikos_contacts
+<-- POST /tools/list_prayers
+<-- POST /tools/list_training_progress
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 13ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_notifications [32m200[0m 24ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 21ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 20ms
+<-- GET /session-store/by-cookie/sa_ac3ae70e30f64646ababc3d7743f98b4
+--> GET /session-store/by-cookie/sa_ac3ae70e30f64646ababc3d7743f98b4 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_ac3ae70e30f64646ababc3d7743f98b4
+--> GET /session-store/by-cookie/sa_ac3ae70e30f64646ababc3d7743f98b4 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_ac3ae70e30f64646ababc3d7743f98b4
+--> GET /session-store/by-cookie/sa_ac3ae70e30f64646ababc3d7743f98b4 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_ac3ae70e30f64646ababc3d7743f98b4
+--> GET /session-store/by-cookie/sa_ac3ae70e30f64646ababc3d7743f98b4 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_ac3ae70e30f64646ababc3d7743f98b4
+--> GET /session-store/by-cookie/sa_ac3ae70e30f64646ababc3d7743f98b4 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_ac3ae70e30f64646ababc3d7743f98b4
+--> GET /session-store/by-cookie/sa_ac3ae70e30f64646ababc3d7743f98b4 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_ac3ae70e30f64646ababc3d7743f98b4
+--> GET /session-store/by-cookie/sa_ac3ae70e30f64646ababc3d7743f98b4 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_ac3ae70e30f64646ababc3d7743f98b4
+--> GET /session-store/by-cookie/sa_ac3ae70e30f64646ababc3d7743f98b4 [32m200[0m 0ms
+<-- POST /tools/list_notifications
+<-- POST /tools/list_training_progress
+<-- POST /tools/list_oikos_contacts
+<-- POST /tools/list_prayers
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_notifications [32m200[0m 17ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 16ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 12ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 8ms
+<-- GET /session-store/by-cookie/sa_ac3ae70e30f64646ababc3d7743f98b4
+--> GET /session-store/by-cookie/sa_ac3ae70e30f64646ababc3d7743f98b4 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_ac3ae70e30f64646ababc3d7743f98b4
+--> GET /session-store/by-cookie/sa_ac3ae70e30f64646ababc3d7743f98b4 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_ac3ae70e30f64646ababc3d7743f98b4
+--> GET /session-store/by-cookie/sa_ac3ae70e30f64646ababc3d7743f98b4 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_ac3ae70e30f64646ababc3d7743f98b4
+--> GET /session-store/by-cookie/sa_ac3ae70e30f64646ababc3d7743f98b4 [32m200[0m 0ms
+<-- POST /tools/list_oikos_contacts
+<-- POST /tools/list_prayers
+<-- POST /tools/list_notifications
+<-- POST /tools/list_training_progress
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 21ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 19ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_notifications [32m200[0m 14ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 12ms
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+<-- GET /session-store/epoch/0x527f6e6e3A9d0F32E6b9B0344e153563Ed29135F
+--> GET /session-store/epoch/0x527f6e6e3A9d0F32E6b9B0344e153563Ed29135F [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312
+--> GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312
+--> GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312
+--> GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312 [32m200[0m 0ms
+<-- POST /tools/list_prayers
+<-- POST /tools/list_training_progress
+<-- POST /tools/list_oikos_contacts
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 9ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 13ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 17ms
+<-- GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312
+--> GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312
+--> GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312
+--> GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312 [32m200[0m 0ms
+<-- POST /tools/list_prayers
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 7ms
+<-- GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312
+--> GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312
+--> GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312
+--> GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312
+--> GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312
+--> GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312 [32m200[0m 0ms
+<-- POST /tools/list_intents
+<-- POST /tools/list_notifications
+<-- POST /tools/list_oikos_contacts
+<-- POST /tools/list_training_progress
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_intents [32m200[0m 19ms
+<-- POST /tools/list_prayers
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_notifications [32m200[0m 21ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 17ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 12ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 8ms
+<-- GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312
+--> GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312
+--> GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312
+--> GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312
+--> GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312
+--> GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312
+--> GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312
+--> GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312
+--> GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312 [32m200[0m 0ms
+<-- POST /tools/list_training_progress
+<-- POST /tools/list_oikos_contacts
+<-- POST /tools/list_notifications
+<-- POST /tools/list_prayers
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 6ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 19ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_notifications [32m200[0m 12ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 16ms
+<-- GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312
+--> GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312
+--> GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312
+--> GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312
+--> GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312 [32m200[0m 0ms
+<-- POST /tools/list_notifications
+<-- POST /tools/list_oikos_contacts
+<-- POST /tools/list_prayers
+<-- POST /tools/list_training_progress
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_notifications [32m200[0m 14ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 12ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 8ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 7ms
+<-- GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312
+--> GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312
+--> GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312 [32m200[0m 0ms
+<-- GET /session-store/epoch/0x527f6e6e3A9d0F32E6b9B0344e153563Ed29135F
+--> GET /session-store/epoch/0x527f6e6e3A9d0F32E6b9B0344e153563Ed29135F [32m200[0m 1ms
+<-- POST /session-store/insert
+--> POST /session-store/insert [32m200[0m 5ms
+<-- GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312
+--> GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312
+--> GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312 [32m200[0m 1ms
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+<-- GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312
+--> GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312 [32m200[0m 0ms
+<-- POST /tools/get_intent
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/get_intent [32m200[0m 7ms
+<-- GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312
+--> GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312
+--> GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312
+--> GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312
+--> GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312
+--> GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/60c8e2f1-7d60-4acd-b92c-6a5dac0b5c54
+--> GET /session-store/by-cookie/60c8e2f1-7d60-4acd-b92c-6a5dac0b5c54 [32m200[0m 1ms
+<-- POST /wallet-action/dispatch
+--> POST /wallet-action/dispatch [32m200[0m 4ms
+<-- GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312
+--> GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312
+--> GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312
+--> GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312 [32m200[0m 0ms
+<-- POST /tools/ssi_list_my_credentials
+--> POST /tools/ssi_list_my_credentials [32m200[0m 1ms
+<-- POST /tools/ssi_list_wallets
+--> POST /tools/ssi_list_wallets [32m200[0m 0ms
+<-- POST /tools/ssi_list_proof_audit
+--> POST /tools/ssi_list_proof_audit [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312
+--> GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312 [32m200[0m 0ms
+<-- POST /tools/list_received_delegations
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_received_delegations [32m200[0m 7ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_99586af25b154f7fa5d154f24a509ce5
+--> GET /session-store/by-cookie/sa_99586af25b154f7fa5d154f24a509ce5 [32m200[0m 1ms
+<-- POST /tools/relationship:emit_edge
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/relationship:emit_edge [31m500[0m 16ms
+<-- GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312
+--> GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312
+--> GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312
+--> GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312 [32m200[0m 0ms
+<-- POST /tools/ssi_list_my_credentials
+--> POST /tools/ssi_list_my_credentials [32m200[0m 1ms
+<-- POST /tools/ssi_list_wallets
+--> POST /tools/ssi_list_wallets [32m200[0m 1ms
+<-- POST /tools/ssi_list_proof_audit
+--> POST /tools/ssi_list_proof_audit [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312
+--> GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312 [32m200[0m 1ms
+<-- POST /tools/list_received_delegations
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_received_delegations [32m200[0m 9ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312
+--> GET /session-store/by-cookie/sa_aaaa42ef3bd34c94a6e6c6808df71312 [32m200[0m 0ms
+<-- POST /tools/ssi_get_holder_wallet
+--> POST /tools/ssi_get_holder_wallet [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187
+--> GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187
+--> GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187
+--> GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187 [32m200[0m 0ms
+<-- POST /tools/list_oikos_contacts
+<-- POST /tools/list_prayers
+<-- POST /tools/list_training_progress
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 9ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 14ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 7ms
+<-- GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187
+--> GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187
+--> GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187
+--> GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187 [32m200[0m 0ms
+<-- POST /tools/list_prayers
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 5ms
+<-- GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187
+--> GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187
+--> GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187
+--> GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187
+--> GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187
+--> GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187 [32m200[0m 1ms
+<-- POST /tools/list_intents
+<-- POST /tools/list_notifications
+<-- POST /tools/list_oikos_contacts
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_intents [32m200[0m 13ms
+<-- POST /tools/list_training_progress
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_notifications [32m200[0m 17ms
+<-- POST /tools/list_prayers
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 18ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 13ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 6ms
+<-- GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187
+--> GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187
+--> GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187
+--> GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187
+--> GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187
+--> GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187
+--> GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187
+--> GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187
+--> GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187 [32m200[0m 0ms
+<-- POST /tools/list_notifications
+<-- POST /tools/list_oikos_contacts
+<-- POST /tools/list_prayers
+<-- POST /tools/list_training_progress
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_notifications [32m200[0m 16ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 6ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 14ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 11ms
+<-- GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187
+--> GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187
+--> GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187
+--> GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187
+--> GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187 [32m200[0m 0ms
+<-- POST /tools/list_notifications
+<-- POST /tools/list_oikos_contacts
+<-- POST /tools/list_prayers
+<-- POST /tools/list_training_progress
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_notifications [32m200[0m 15ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 11ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 9ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 7ms
+<-- GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187
+--> GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187
+--> GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187
+--> GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187
+--> GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187 [32m200[0m 0ms
+<-- POST /tools/list_notifications
+<-- POST /tools/list_oikos_contacts
+<-- POST /tools/list_prayers
+<-- POST /tools/list_training_progress
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_notifications [32m200[0m 18ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 16ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 14ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 11ms
+<-- GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187
+--> GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187
+--> GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187
+--> GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187
+--> GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187
+--> GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187 [32m200[0m 0ms
+<-- POST /tools/get_intent
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/get_intent [32m200[0m 8ms
+<-- GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187
+--> GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187
+--> GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187
+--> GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187
+--> GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187
+--> GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187 [32m200[0m 0ms
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+<-- GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187
+--> GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187
+--> GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187 [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187
+--> GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187 [32m200[0m 0ms
+<-- POST /tools/ssi_list_my_credentials
+--> POST /tools/ssi_list_my_credentials [32m200[0m 1ms
+<-- POST /tools/ssi_list_proof_audit
+--> POST /tools/ssi_list_proof_audit [32m200[0m 0ms
+<-- POST /tools/ssi_list_wallets
+--> POST /tools/ssi_list_wallets [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187
+--> GET /session-store/by-cookie/sa_371b31cca5a94ae890c53afdafb41187 [32m200[0m 1ms
+<-- POST /tools/list_received_delegations
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_received_delegations [32m200[0m 8ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e
+--> GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e
+--> GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e [32m200[0m 0ms
+<-- POST /tools/list_oikos_contacts
+<-- POST /tools/list_prayers
+<-- GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e
+--> GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e [32m200[0m 0ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 9ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 20ms
+<-- POST /tools/list_training_progress
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 5ms
+<-- GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e
+--> GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e
+--> GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e
+--> GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e [32m200[0m 1ms
+<-- POST /tools/list_prayers
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 7ms
+<-- GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e
+--> GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e
+--> GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e
+--> GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e
+--> GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e
+--> GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e [32m200[0m 1ms
+<-- POST /tools/list_intents
+<-- POST /tools/list_notifications
+<-- POST /tools/list_oikos_contacts
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_intents [32m200[0m 17ms
+<-- POST /tools/list_prayers
+<-- POST /tools/list_training_progress
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_notifications [32m200[0m 23ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 11ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 20ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 12ms
+<-- GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e
+--> GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e
+--> GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e
+--> GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e
+--> GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e
+--> GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e
+--> GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e
+--> GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e
+--> GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e [32m200[0m 0ms
+<-- POST /tools/list_notifications
+<-- POST /tools/list_oikos_contacts
+<-- POST /tools/list_prayers
+<-- POST /tools/list_training_progress
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_notifications [32m200[0m 16ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 12ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 9ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 6ms
+<-- GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e
+--> GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e
+--> GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e
+--> GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e [32m200[0m 0ms
+<-- POST /tools/list_oikos_contacts
+<-- POST /tools/list_prayers
+<-- POST /tools/list_training_progress
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 11ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 9ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 6ms
+<-- GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e
+--> GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e
+--> GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e
+--> GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e [32m200[0m 1ms
+<-- POST /tools/list_prayers
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 6ms
+<-- GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e
+--> GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e
+--> GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e
+--> GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e
+--> GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e
+--> GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e [32m200[0m 0ms
+<-- POST /tools/list_notifications
+<-- POST /tools/list_oikos_contacts
+<-- POST /tools/list_prayers
+<-- POST /tools/list_intents
+<-- POST /tools/list_training_progress
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_notifications [32m200[0m 29ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 27ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 24ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_intents [32m200[0m 20ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 9ms
+<-- GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e
+--> GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e
+--> GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e
+--> GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e
+--> GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e
+--> GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e
+--> GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e
+--> GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e
+--> GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e [32m200[0m 0ms
+<-- POST /tools/list_notifications
+<-- POST /tools/list_oikos_contacts
+<-- POST /tools/list_prayers
+<-- POST /tools/list_training_progress
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_notifications [32m200[0m 18ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 16ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 11ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 9ms
+<-- GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e
+--> GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e
+--> GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e
+--> GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e
+--> GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e [32m200[0m 1ms
+<-- POST /tools/list_notifications
+<-- POST /tools/list_oikos_contacts
+<-- POST /tools/list_prayers
+<-- POST /tools/list_training_progress
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_notifications [32m200[0m 15ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_oikos_contacts [32m200[0m 12ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_prayers [32m200[0m 9ms
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_training_progress [32m200[0m 7ms
+<-- GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e
+--> GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e
+--> GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e
+--> GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e [32m200[0m 0ms
+<-- POST /tools/ssi_list_my_credentials
+--> POST /tools/ssi_list_my_credentials [32m200[0m 1ms
+<-- POST /tools/ssi_list_proof_audit
+--> POST /tools/ssi_list_proof_audit [32m200[0m 1ms
+<-- POST /tools/ssi_list_wallets
+--> POST /tools/ssi_list_wallets [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e
+--> GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e [32m200[0m 0ms
+<-- POST /tools/list_received_delegations
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/list_received_delegations [32m200[0m 8ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e
+--> GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e
+--> GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e
+--> GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e
+--> GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e
+--> GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e [32m200[0m 1ms
+<-- POST /tools/get_intent
+[verify] ERC-1271 delegation signature verified successfully
+--> POST /tools/get_intent [32m200[0m 7ms
+<-- GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e
+--> GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e
+--> GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e
+--> GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e
+--> GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e
+--> GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e [32m200[0m 0ms
+[person-mcp nonce-gc] evicted 320 expired replay-nonce rows
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+<-- GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e
+--> GET /session-store/by-cookie/sa_a30e5662eaa745c2ab4e1b4114827c3e [32m200[0m 0ms
+<-- POST /tools/ssi_get_holder_wallet
+--> POST /tools/ssi_get_holder_wallet [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_c401f3cc9b454cfb9bf7ced2782899c4
+--> GET /session-store/by-cookie/sa_c401f3cc9b454cfb9bf7ced2782899c4 [32m200[0m 0ms
+<-- POST /tools/ssi_get_holder_wallet
+--> POST /tools/ssi_get_holder_wallet [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_97d10bdce48541dab701ed029992422a
+--> GET /session-store/by-cookie/sa_97d10bdce48541dab701ed029992422a [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_97d10bdce48541dab701ed029992422a
+--> GET /session-store/by-cookie/sa_97d10bdce48541dab701ed029992422a [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_97d10bdce48541dab701ed029992422a
+--> GET /session-store/by-cookie/sa_97d10bdce48541dab701ed029992422a [32m200[0m 1ms
+<-- POST /tools/ssi_get_holder_wallet
+--> POST /tools/ssi_get_holder_wallet [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /session-store/by-cookie/sa_54919c8914f54133a4b8972ff280b7b8
+--> GET /session-store/by-cookie/sa_54919c8914f54133a4b8972ff280b7b8 [32m200[0m 1ms
+<-- POST /tools/ssi_get_holder_wallet
+--> POST /tools/ssi_get_holder_wallet [32m200[0m 1ms
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+<-- GET /session-store/by-cookie/sa_54919c8914f54133a4b8972ff280b7b8
+--> GET /session-store/by-cookie/sa_54919c8914f54133a4b8972ff280b7b8 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_54919c8914f54133a4b8972ff280b7b8
+--> GET /session-store/by-cookie/sa_54919c8914f54133a4b8972ff280b7b8 [32m200[0m 1ms
+<-- GET /session-store/by-cookie/sa_54919c8914f54133a4b8972ff280b7b8
+--> GET /session-store/by-cookie/sa_54919c8914f54133a4b8972ff280b7b8 [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp nonce-gc] evicted 200 expired replay-nonce rows
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)
+[person-mcp audit-checkpoint] export failed: Error: a2a /auth/sign-checkpoint failed (400): {"error":"agent host required"}
+    at postSignCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:185:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exportPersonMcpCheckpoint (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:233:40)
+    at async <anonymous> (/home/barb/smart-agent/apps/person-mcp/src/lib/audit-checkpoint.ts:422:9)

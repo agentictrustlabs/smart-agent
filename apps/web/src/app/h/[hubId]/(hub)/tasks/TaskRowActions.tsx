@@ -75,15 +75,16 @@ export function TaskRowActions({ task, hubSlug }: { task: InboxTask; hubSlug: st
     setError(null)
     start(async () => {
       try {
-        // task.amount is the tranche size in commitment-unit scale (whole
-        // USD for grant rounds). The on-chain executeBatch transfer expects
-        // USDC at 6-decimal precision (1 USD = 1_000_000 raw units), while
-        // `recordRelease` records in commitment-unit scale. Scale the two
-        // sides independently — mirrors `PledgeHonorForm` and avoids the
-        // ERC20InsufficientBalance (0xe450d38c) revert that fires when
-        // `tokenAmount` is shipped as raw whole-USD.
-        const unit = BigInt(task.amount)
-        const tokenAmount = (unit * 1_000_000n).toString()
+        // task.amount is the tranche size already in 6-decimal USDC raw
+        // (the commitment stores `totalAmount` as raw 6-decimal — see
+        // `scripts/seed-grant-flow-demo.ts:524` `TOTAL = 30_000n * 10n ** 6n`,
+        // and `commitments.action.ts:listInboxTasks` computes
+        // `trancheAmount = totalAmount * trancheBps / 10000`, preserving
+        // the scale). Both the USDC.transfer and the recordRelease
+        // arguments take this same scale. Multiplying by 1_000_000 again
+        // here would request 1e6× the pool's balance and revert with
+        // ERC20InsufficientBalance (0xe450d38c).
+        const tokenAmount = task.amount
         const res = await fetch('/api/commitments/release', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },

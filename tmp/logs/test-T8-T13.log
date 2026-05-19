@@ -1,0 +1,82 @@
+
+Running 6 tests using 1 worker
+
+[1A[2K[1/6] tests/e2e/demo-features.spec.ts:303:5 › T8 validator-inbox-renders
+[1A[2Ktests/e2e/demo-features.spec.ts:303:5 › T8 validator-inbox-renders
+[demo-features] running seed (STOP_AT_COMMITMENT=1)…
+
+[1A[2K[demo-features] commitment=0xdfe73aaa72ce451b8408cab4f678a5f5fe499288200feef453c44b385de8143b
+
+[1A[2K[demo-features] pool=0x60743A7c3998B642c4ddf1Cf4C4C866807f631D4
+
+[1A[2K[demo-features] Fort Collins treasury baseline: $150,000
+
+[1A[2K[2/6] tests/e2e/demo-features.spec.ts:318:5 › T9 record-outcome-onchain
+[1A[2K[3/6] tests/e2e/demo-features.spec.ts:375:5 › T10 steward-inbox-renders
+[1A[2K[4/6] tests/e2e/demo-features.spec.ts:389:5 › T11 release-tranche-rail-a
+[1A[2K[5/6] tests/e2e/demo-features.spec.ts:430:5 › T12 pool-drained
+[1A[2K[6/6] tests/e2e/demo-features.spec.ts:441:5 › T13 fort-collins-treasury-grew
+[1A[2K[7/6] (retries) tests/e2e/demo-features.spec.ts:303:5 › T8 validator-inbox-renders (retry #1)
+[1A[2K[demo-features] running seed (STOP_AT_COMMITMENT=1)…
+
+[1A[2K[demo-features] commitment=0xe6ead83fc9b90c26dcddb5b26cceaadc7f3530bf6c24ab9574c0f0315a03bf7f
+
+[1A[2K[demo-features] pool=0x5b88430ed9ad8Ad3e02FFCA2252e2377C9026d1D
+
+[1A[2K[demo-features] Fort Collins treasury baseline: $150,000
+
+[1A[2K  1) tests/e2e/demo-features.spec.ts:303:5 › T8 validator-inbox-renders ────────────────────────────
+
+    Error: tasks page must render at least one attestation row for 0xdfe73aaa72ce451b8408cab4f678a5f5fe499288200feef453c44b385de8143b
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoBeTruthy[2m()[22m
+
+    Received: [31mfalse[39m
+
+      311 |   const subjectLc = demoData.commitmentSubject.toLowerCase()
+      312 |   const re = new RegExp(`data-commitment-subject="${subjectLc}"[^>]*data-task-kind="attestation"`)
+    > 313 |   expect(re.test(html), `tasks page must render at least one attestation row for ${subjectLc}`).toBeTruthy()
+          |                                                                                                 ^
+      314 |   await api.dispose()
+      315 | })
+      316 |
+        at /home/barb/smart-agent/tests/e2e/demo-features.spec.ts:313:97
+
+    Error Context: tests/e2e/test-results/demo-features-T8-validator-inbox-renders/error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: tasks page must render at least one attestation row for 0xe6ead83fc9b90c26dcddb5b26cceaadc7f3530bf6c24ab9574c0f0315a03bf7f
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoBeTruthy[2m()[22m
+
+    Received: [31mfalse[39m
+
+      311 |   const subjectLc = demoData.commitmentSubject.toLowerCase()
+      312 |   const re = new RegExp(`data-commitment-subject="${subjectLc}"[^>]*data-task-kind="attestation"`)
+    > 313 |   expect(re.test(html), `tasks page must render at least one attestation row for ${subjectLc}`).toBeTruthy()
+          |                                                                                                 ^
+      314 |   await api.dispose()
+      315 | })
+      316 |
+        at /home/barb/smart-agent/tests/e2e/demo-features.spec.ts:313:97
+
+    Error Context: tests/e2e/test-results/demo-features-T8-validator-inbox-renders-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    tests/e2e/test-results/demo-features-T8-validator-inbox-renders-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace tests/e2e/test-results/demo-features-T8-validator-inbox-renders-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[1A[2K[8/6] (retries) tests/e2e/demo-features.spec.ts:318:5 › T9 record-outcome-onchain (retry #1)
+[1A[2K[9/6] (retries) tests/e2e/demo-features.spec.ts:375:5 › T10 steward-inbox-renders (retry #1)
+[1A[2K[10/6] (retries) tests/e2e/demo-features.spec.ts:389:5 › T11 release-tranche-rail-a (retry #1)
+[1A[2K[11/6] (retries) tests/e2e/demo-features.spec.ts:430:5 › T12 pool-drained (retry #1)
+[1A[2K[12/6] (retries) tests/e2e/demo-features.spec.ts:441:5 › T13 fort-collins-treasury-grew (retry #1)
+[1A[2K  1 failed
+    tests/e2e/demo-features.spec.ts:303:5 › T8 validator-inbox-renders ─────────────────────────────
+  5 did not run

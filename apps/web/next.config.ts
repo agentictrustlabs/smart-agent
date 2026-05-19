@@ -8,6 +8,13 @@ const nextConfig: NextConfig = {
     '@smart-agent/credential-registry',
     '@smart-agent/discovery',
   ],
+  // Leave viem as a server-side external. Without this, transpiled SDK
+  // packages that import viem produce a webpack output where the page
+  // bundle does `require('./vendor-chunks/viem@<hash>.js')` but the
+  // chunk file is never emitted — every request to a route whose import
+  // graph hits viem returns MODULE_NOT_FOUND 500. Marking viem external
+  // skips the chunking and resolves it from `node_modules` at runtime.
+  serverExternalPackages: ['viem'],
   async rewrites() {
     return [
       // Root-level routes → catalyst pages (no file moves needed)

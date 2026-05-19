@@ -1,0 +1,176 @@
+/**
+ * Inbound service-auth middleware for people-group-mcp (Spec 007 Phase D).
+ *
+ * Mirrors the analogous middleware on hub-mcp, person-mcp, and org-mcp —
+ * every authority-bearing route on people-group-mcp must re-verify that
+ * the caller is an enrolled upstream service (only `a2a-agent` is allowed
+ * inbound). The `/tools/:toolName` surface is authority-bearing because
+ * concept admin / segment / community writes touch the curator-gated
+ * registry; reads of sponsor-private data are also routed through tools.
+ *
+ * Wire format mirrors the web→a2a / a2a→person / a2a→org / a2a→hub
+ * envelope:
+ *
+ *   X-SA-Service:   a2a-agent
+ *   X-SA-Timestamp: 1746902400          (unix seconds, ±60s window)
+ *   X-SA-Nonce:     <fresh-per-request> (replay defense)
+ *   X-SA-Signature: <base64url MAC>
+ *
+ *   canonical = `${ts}|${nonce}|${path}|${sha256(body)}`
+ *
+ * MAC key id is `a2a-to-people-group`. HMAC is symmetric — a2a-agent and
+ * people-group-mcp share the secret
+ * (`A2A_INTERSERVICE_HMAC_KEY_PEOPLE_GROUP` in local-aes mode,
+ * `AWS_KMS_MAC_KEY_ID_A2A_TO_PEOPLE_GROUP` in aws-kms mode, or
+ * `GCP_KMS_MAC_A2A_TO_PEOPLE_GROUP_VERSION` in gcp-kms mode).
+ *
+ * Replay defense is in-memory (people-group-mcp uses sqlite but the
+ * nonce cache is short-lived and per-process; no need to persist).
+ */
+
+import { fromBase64Url, buildCanonicalMacMessage, sha256Hex as sdkSha256Hex } from '@smart-agent/sdk'
+import { buildMcpMacProvider, type KmsMacProvider } from '@smart-agent/sdk/key-custody'
+import type { Context, MiddlewareHandler } from 'hono'
+
+export const SERVICE_HEADER = 'x-sa-service'
+export const TIMESTAMP_HEADER = 'x-sa-timestamp'
+export const NONCE_HEADER = 'x-sa-nonce'
+export const SIGNATURE_HEADER = 'x-sa-signature'
+
+export const MAX_CLOCK_SKEW_SECONDS = 60
+
+/** The only inbound service allowed to talk to people-group-mcp's control plane. */
+export const ALLOWED_INBOUND_SERVICES = ['a2a-agent'] as const
+export type InboundService = (typeof ALLOWED_INBOUND_SERVICES)[number]
+
+/**
+ * Hex SHA-256 of the raw request body — re-exported from the shared SDK
+ * helper. Spec 007 Phase G.3 collapsed every per-service copy into
+ * `@smart-agent/sdk` so sender/verifier can never silently drift.
+ */
+export const sha256Hex = sdkSha256Hex
+
+/**
+ * Canonical message both sides sign over —
+ * `\${ts}|\${nonce}|\${path}|\${sha256(body)}`. Sourced from the shared SDK
+ * helper since spec 007 Phase G.3.
+ */
+export const buildInboundCanonical = buildCanonicalMacMessage
+
+interface InboundServiceContext {
+  service: InboundService
+  timestamp: number
+}
+
+declare module 'hono' {
+  interface ContextVariableMap {
+    inboundService?: InboundServiceContext
+  }
+}
+
+// ─── In-memory replay-nonce cache ─────────────────────────────────────
+// Entries expire after 2× the clock-skew window (the timestamp guard
+// already rejects anything older).
+
+const NONCE_MAX_AGE_MS = 2 * MAX_CLOCK_SKEW_SECONDS * 1000
+const nonceCache = new Map<string, number>()
+
+function recordNonce(nonce: string): boolean {
+  if (!nonce || nonce.length < 8) return false
+  const now = Date.now()
+  if (nonceCache.size > 1000) {
+    for (const [k, usedAt] of nonceCache) {
+      if (now - usedAt > NONCE_MAX_AGE_MS) nonceCache.delete(k)
+    }
+  }
+  if (nonceCache.has(nonce)) return false
+  nonceCache.set(nonce, now)
+  return true
+}
+
+/** Test-only — reset the in-memory nonce cache between cases. */
+export function resetInboundNonceCacheForTest(): void {
+  nonceCache.clear()
+}
+
+// ─── MAC provider — lazy, per-process ────────────────────────────────
+
+let cachedMacProvider: KmsMacProvider | null = null
+function inboundMacProvider(): KmsMacProvider {
+  if (!cachedMacProvider) {
+    cachedMacProvider = buildMcpMacProvider('people-group', process.env)
+  }
+  return cachedMacProvider
+}
+
+/** Test-only — reset the cached provider so a new env shape can take effect. */
+export function resetInboundMacProviderForTest(): void {
+  cachedMacProvider = null
+}
+
+/**
+ * Mount on every authority-bearing route. Currently only `a2a-agent` is
+ * an allowed inbound.
+ */
+export function requireInboundServiceAuth(
+  allowedServices: readonly InboundService[] = ALLOWED_INBOUND_SERVICES,
+): MiddlewareHandler {
+  return async (c: Context, next) => {
+    const service = c.req.header(SERVICE_HEADER)
+    const timestampStr = c.req.header(TIMESTAMP_HEADER)
+    const nonce = c.req.header(NONCE_HEADER)
+    const signature = c.req.header(SIGNATURE_HEADER)
+
+    if (!service || !timestampStr || !nonce || !signature) {
+      return c.json({ error: 'missing service-auth headers' }, 401)
+    }
+    if (!allowedServices.includes(service as InboundService)) {
+      return c.json({ error: `unexpected service: ${service}` }, 401)
+    }
+
+    const timestamp = Number(timestampStr)
+    if (!Number.isFinite(timestamp)) {
+      return c.json({ error: 'invalid timestamp' }, 401)
+    }
+    const now = Math.floor(Date.now() / 1000)
+    if (Math.abs(now - timestamp) > MAX_CLOCK_SKEW_SECONDS) {
+      return c.json({ error: 'timestamp out of window' }, 401)
+    }
+
+    let provider: KmsMacProvider
+    try {
+      provider = inboundMacProvider()
+    } catch (err) {
+      return c.json(
+        { error: `a2a-to-people-group key not configured: ${(err as Error).message}` },
+        503,
+      )
+    }
+
+    const path = new URL(c.req.url).pathname
+    const bodyRaw = await c.req.text()
+    const canonical = buildInboundCanonical(timestamp, nonce, path, bodyRaw)
+    const canonicalMessage = new TextEncoder().encode(canonical)
+
+    let macBytes: Uint8Array
+    try {
+      macBytes = fromBase64Url(signature)
+    } catch {
+      return c.json({ error: 'signature mismatch' }, 401)
+    }
+
+    const { valid } = await provider.verifyMac({ canonicalMessage, mac: macBytes })
+    if (!valid) {
+      return c.json({ error: 'signature mismatch' }, 401)
+    }
+
+    // Replay defense — record AFTER signature verifies so a valid
+    // attacker-collision can't pre-burn a nonce. First insert wins.
+    if (!recordNonce(nonce)) {
+      return c.json({ error: 'replay detected' }, 401)
+    }
+
+    c.set('inboundService', { service: service as InboundService, timestamp })
+    await next()
+  }
+}

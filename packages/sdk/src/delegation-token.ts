@@ -217,15 +217,17 @@ export async function verifyDelegationToken(
     return { valid: false, error: 'Session key address mismatch' }
   }
 
-  // Option A: the delegation's `delegate` is the user's smart account
-  // (= claims.sub). The session signer (claims.sessionKeyAddress) is a
-  // registered owner of that smart account and SIGNED the delegation via
-  // the smart account's ERC-1271 path. The on-chain leaf-delegate /
-  // msg.sender check inside DelegationManager resolves to the smart
-  // account when the userOp is submitted by the smart account.
-  if (claims.delegation.delegate.toLowerCase() !== claims.sub.toLowerCase()) {
-    return { valid: false, error: 'Delegation delegate does not match smart account (claims.sub)' }
-  }
+  // Canonical chained-delegation architecture (Phase 1+2, 2026-05-10):
+  // the leaf `delegate` is either the session key (one-hop, low-value
+  // tools) or a per-tool-family executor (two-hop, high-value tools).
+  // Neither equals `claims.sub`. The session signer was just verified
+  // above (ECDSA recover from `sessionSignature` matches
+  // `claims.sessionKeyAddress`); the ERC-1271 signature on the
+  // delegation itself is verified by the on-chain redeem path.
+  //
+  // Do NOT reintroduce `delegate == claims.sub` here — it rejects every
+  // valid Phase 1+2 delegation. See
+  // `output/CHAINED-DELEGATION-RESTORATION-PLAN.md`.
 
   if (new Date(claims.expiresAtISO) < new Date()) {
     return { valid: false, error: 'Token expired' }

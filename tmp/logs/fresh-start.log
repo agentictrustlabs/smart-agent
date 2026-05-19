@@ -1,62 +1,72 @@
+  profile: minimal   keep-contracts: 0
 
-[1;36m=== 1/8  Stopping anvil + every dev service[0m  (08:41:33)
-  killing pid(s) 1475414 on :8545
-  killing pid(s) 1477697 on :3000
-  killing pid(s) 1477382 on :3400
-  killing pid(s) 1477415 on :3500
-  killing pid(s) 1477414 on :3200
-  killing pid(s) 1477478 on :3100
-  killing pid(s) 1477413 on :3600
-  killing pid(s) 1477412 on :3700
-  killing pid(s) 1477447 on :3300
-  killing pid(s) 1477459 on :3900
-Terminated
-Terminated
-Terminated
+[1;36m=== 1/8  Stopping anvil + every dev service[0m  (12:08:29)
+  killing pid(s) 2060634 on :3000
 
-[1;36m=== 2/8  Wiping DB + Askar state[0m  (08:41:34)
+[1;36m=== 2/8  Wiping DB + Askar state[0m  (12:08:31)
   removed: 35 path globs
 
-[1;36m=== 3/8  Starting fresh anvil (chain id 31337)[0m  (08:41:35)
-  anvil → pid=1480843 log=/home/barb/smart-agent/tmp/logs/anvil.log
+[1;36m=== 3/8  Starting fresh anvil (chain id 31337)[0m  (12:08:31)
+  anvil → pid=2076871 log=/home/barb/smart-agent/tmp/logs/anvil.log
   ✓ anvil up
 
-[1;36m=== 4/8  Deploying contracts + seeding ontology[0m  (08:41:36)
+[1;36m=== 4/8  Deploying contracts + seeding ontology[0m  (12:08:32)
 === Deploying contracts to local Anvil ===
 === Extracted addresses ===
-SmartAgentPaymaster:       0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512
+SmartAgentPaymaster:       0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0
 === Updated /home/barb/smart-agent/apps/web/.env ===
 === Seeding ontology predicates ===
+=== Seeding Ontology Term Registry ===
+=== Ontology terms registered: 87 ===
+=== Seeding relationship-type registry ===
+=== Seeding Relationship Type Registry ===
+=== Type Registry seeded: 17 relationship types ===
+=== Seeding spec-004 / spec-005 sa: predicates + shapes ===
 
-[1;36m=== 5/8  Post-deploy seeds[0m  (08:41:48)
+[1;36m=== 5/8  Post-deploy seeds[0m  (12:08:53)
   (ontology + relationship-type-registry seeded inline by deploy-local.sh)
   (per-hub on-chain seed runs in-process via /api/boot-seed)
-  ✓ paymaster 0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512 — EntryPoint deposit: 5 ETH
+  ✓ paymaster 0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0 — EntryPoint deposit: 5 ETH
 
-[1;36m=== 6/8  Starting backend services[0m  (08:41:48)
-  org-mcp → pid=1482564 log=/home/barb/smart-agent/tmp/logs/org-mcp.log
-  family-mcp → pid=1482568 log=/home/barb/smart-agent/tmp/logs/family-mcp.log
-  person-mcp → pid=1482572 log=/home/barb/smart-agent/tmp/logs/person-mcp.log
-  a2a-agent → pid=1482576 log=/home/barb/smart-agent/tmp/logs/a2a-agent.log
-  geo-mcp → pid=1482585 log=/home/barb/smart-agent/tmp/logs/geo-mcp.log
-  verifier-mcp → pid=1482595 log=/home/barb/smart-agent/tmp/logs/verifier-mcp.log
-  skill-mcp → pid=1482606 log=/home/barb/smart-agent/tmp/logs/skill-mcp.log
-  people-group-mcp → pid=1482617 log=/home/barb/smart-agent/tmp/logs/people-group-mcp.log
-  hub-mcp → pid=1482627 log=/home/barb/smart-agent/tmp/logs/hub-mcp.log
+[1;36m=== 6/8  Starting backend services[0m  (12:08:53)
+  org-mcp → pid=2081704 log=/home/barb/smart-agent/tmp/logs/org-mcp.log
+  family-mcp → pid=2081708 log=/home/barb/smart-agent/tmp/logs/family-mcp.log
+  person-mcp → pid=2081712 log=/home/barb/smart-agent/tmp/logs/person-mcp.log
+  a2a-agent → pid=2081721 log=/home/barb/smart-agent/tmp/logs/a2a-agent.log
+  geo-mcp → pid=2081730 log=/home/barb/smart-agent/tmp/logs/geo-mcp.log
+  verifier-mcp → pid=2081739 log=/home/barb/smart-agent/tmp/logs/verifier-mcp.log
+  skill-mcp → pid=2081749 log=/home/barb/smart-agent/tmp/logs/skill-mcp.log
+  people-group-mcp → pid=2081758 log=/home/barb/smart-agent/tmp/logs/people-group-mcp.log
+  hub-mcp → pid=2081768 log=/home/barb/smart-agent/tmp/logs/hub-mcp.log
   ✓ org-mcp up
   ✓ family-mcp up
   ✓ person-mcp up
   ✓ a2a-agent up
   ✓ geo-mcp up
   ✓ verifier-mcp up
-  ⚠ skill-mcp not responding at http://127.0.0.1:3800/health after 30s
-  ⚠ skill-mcp not responding at http://127.0.0.1:3800/.well-known/agent.json after 5s
+  ✓ skill-mcp up
   ✓ people-group-mcp up
   ✓ hub-mcp up
 
-[1;36m=== 7/8  Starting web (Next.js)[0m  (08:42:36)
-  web → pid=1483079 log=/home/barb/smart-agent/tmp/logs/web.log
+[1;36m=== 7/8  Starting web (Next.js)[0m  (12:09:04)
+  web → pid=2082267 log=/home/barb/smart-agent/tmp/logs/web.log
   ✓ web up
 
-[1;36m=== 8/8  Triggering /api/boot-seed (also runs final on-chain → KB sync)[0m  (08:42:45)
+[1;36m=== 8/8  Triggering /api/boot-seed (also runs final on-chain → KB sync)[0m  (12:09:13)
   polling /api/system-readiness …
+  ⚠ readiness still false after 240s — see tmp/logs/web.log
+  forcing on-chain → GraphDB sync …
+
+[1;36m=== 9/9  Seeding intent-marketplace lanes (specs 001/002/003)[0m  (12:13:25)
+  ✓ sync-ontology
+  ✓ seed-test-round
+  ✓ seed-test-pool
+  ✓ seed-test-proposal
+  ✓ seed-test-pledge
+  ✓ seed-test-match-initiation
+  forcing follow-up on-chain → GraphDB sync …
+  ✓ post-anchor sync
+
+[1;36m=== Done — fresh stack at http://localhost:3000[0m  (12:13:51)
+Tail logs:   tail -f /home/barb/smart-agent/tmp/logs/<service>.log
+Stop later:  for f in /home/barb/smart-agent/tmp/pids/*.pid; do kill "$(cat "$f")" 2>/dev/null || true; done

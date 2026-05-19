@@ -10,18 +10,6 @@
 <-- GET /health
 --> GET /health [32m200[0m 0ms
 <-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
 --> GET /health [32m200[0m 1ms
 <-- GET /health
 --> GET /health [32m200[0m 0ms
@@ -42,127 +30,7 @@
 <-- GET /health
 --> GET /health [32m200[0m 0ms
 <-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
 --> GET /health [32m200[0m 1ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 1ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 1ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
-<-- GET /health
---> GET /health [32m200[0m 0ms
 <-- GET /health
 --> GET /health [32m200[0m 0ms
 <-- GET /health
@@ -261,3 +129,654 @@
 --> GET /health [32m200[0m 0ms
 <-- GET /health
 --> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- POST /tools/pool_pledge:read_self
+<-- POST /tools/grant_proposal:list_for_member
+--> POST /tools/grant_proposal:list_for_member [32m200[0m 91ms
+[pool_pledge:read_self] principal=0xbcdb07fdec88ca33ef6fffc03fd127b35bd5cfb1 returned 0 pledge(s)
+--> POST /tools/pool_pledge:read_self [32m200[0m 123ms
+<-- POST /tools/list_org_intents
+--> POST /tools/list_org_intents [32m200[0m 10ms
+<-- POST /tools/pool_pledge:read_self
+[pool_pledge:read_self] principal=0xbcdb07fdec88ca33ef6fffc03fd127b35bd5cfb1 returned 0 pledge(s)
+--> POST /tools/pool_pledge:read_self [32m200[0m 25ms
+<-- POST /tools/pool_pledge:read_self
+<-- POST /tools/grant_proposal:list_for_member
+--> POST /tools/grant_proposal:list_for_member [32m200[0m 99ms
+[pool_pledge:read_self] principal=0xbcdb07fdec88ca33ef6fffc03fd127b35bd5cfb1 returned 0 pledge(s)
+--> POST /tools/pool_pledge:read_self [32m200[0m 118ms
+<-- POST /tools/list_org_intents
+--> POST /tools/list_org_intents [32m200[0m 7ms
+<-- POST /tools/pool_pledge:read_self
+[pool_pledge:read_self] principal=0xbcdb07fdec88ca33ef6fffc03fd127b35bd5cfb1 returned 0 pledge(s)
+--> POST /tools/pool_pledge:read_self [32m200[0m 31ms
+[org-mcp nonce-gc] evicted 4 expired replay-nonce rows
+[org-mcp nonce-gc] evicted 4 expired replay-nonce rows
+<-- POST /tools/commitment:record_outcome
+--> POST /tools/commitment:record_outcome [32m200[0m 4s
+<-- POST /tools/commitment:record_outcome
+--> POST /tools/commitment:record_outcome [32m200[0m 4s
+<-- POST /tools/commitment:record_outcome
+--> POST /tools/commitment:record_outcome [32m200[0m 4s
+<-- POST /tools/commitment:record_outcome
+--> POST /tools/commitment:record_outcome [32m200[0m 4s
+[org-mcp nonce-gc] evicted 2 expired replay-nonce rows
+<-- POST /tools/commitment:record_outcome
+--> POST /tools/commitment:record_outcome [32m200[0m 4s
+<-- POST /tools/commitment:record_outcome
+--> POST /tools/commitment:record_outcome [32m200[0m 4s
+<-- POST /tools/commitment:record_outcome
+--> POST /tools/commitment:record_outcome [32m200[0m 4s
+<-- POST /tools/commitment:record_outcome
+--> POST /tools/commitment:record_outcome [32m200[0m 4s
+<-- POST /tools/grant_proposal:list_for_member
+<-- POST /tools/pool_pledge:read_self
+--> POST /tools/grant_proposal:list_for_member [32m200[0m 193ms
+<-- POST /tools/list_org_intents
+--> POST /tools/list_org_intents [32m200[0m 17ms
+[pool_pledge:read_self] principal=0xbcdb07fdec88ca33ef6fffc03fd127b35bd5cfb1 returned 0 pledge(s)
+--> POST /tools/pool_pledge:read_self [32m200[0m 260ms
+<-- POST /tools/pool_pledge:read_self
+[pool_pledge:read_self] principal=0xbcdb07fdec88ca33ef6fffc03fd127b35bd5cfb1 returned 0 pledge(s)
+--> POST /tools/pool_pledge:read_self [32m200[0m 71ms
+[org-mcp nonce-gc] evicted 4 expired replay-nonce rows
+<-- POST /tools/commitment:record_outcome
+--> POST /tools/commitment:record_outcome [32m200[0m 4s
+<-- POST /tools/commitment:record_outcome
+--> POST /tools/commitment:record_outcome [32m200[0m 4s
+[org-mcp nonce-gc] evicted 8 expired replay-nonce rows
+<-- POST /tools/pool_pledge:read_self
+<-- POST /tools/grant_proposal:list_for_member
+--> POST /tools/grant_proposal:list_for_member [32m200[0m 161ms
+<-- POST /tools/list_org_intents
+[pool_pledge:read_self] principal=0xbcdb07fdec88ca33ef6fffc03fd127b35bd5cfb1 returned 0 pledge(s)
+--> POST /tools/pool_pledge:read_self [32m200[0m 246ms
+--> POST /tools/list_org_intents [32m200[0m 26ms
+<-- POST /tools/pool_pledge:read_self
+[pool_pledge:read_self] principal=0xbcdb07fdec88ca33ef6fffc03fd127b35bd5cfb1 returned 0 pledge(s)
+--> POST /tools/pool_pledge:read_self [32m200[0m 112ms
+<-- POST /tools/pool_pledge:list_for_pool
+--> POST /tools/pool_pledge:list_for_pool [32m200[0m 6ms
+<-- POST /tools/pool_pledge:list_for_pool
+--> POST /tools/pool_pledge:list_for_pool [32m200[0m 97ms
+<-- POST /tools/grant_proposal:count_for_round
+<-- POST /tools/grant_proposal:list_for_round
+--> POST /tools/grant_proposal:list_for_round [32m200[0m 472ms
+--> POST /tools/grant_proposal:count_for_round [32m200[0m 506ms
+<-- POST /tools/grant_proposal:read_self
+--> POST /tools/grant_proposal:read_self [32m200[0m 59ms
+<-- POST /tools/vote:list_for_proposal
+<-- POST /tools/vote:tally_for_round
+--> POST /tools/vote:list_for_proposal [32m200[0m 91ms
+--> POST /tools/vote:tally_for_round [32m200[0m 123ms
+<-- POST /tools/vote:list_for_proposal
+--> POST /tools/vote:list_for_proposal [32m200[0m 38ms
+<-- POST /tools/vote:tally_for_round
+--> POST /tools/vote:tally_for_round [32m200[0m 32ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- POST /tools/pool_pledge:read_self
+<-- POST /tools/grant_proposal:list_for_member
+--> POST /tools/grant_proposal:list_for_member [32m200[0m 133ms
+<-- POST /tools/list_org_intents
+[pool_pledge:read_self] principal=0xba50181472e82dc0dfc126bec85abc25ec384133 returned 0 pledge(s)
+--> POST /tools/pool_pledge:read_self [32m200[0m 179ms
+--> POST /tools/list_org_intents [32m200[0m 27ms
+<-- POST /tools/pool_pledge:read_self
+[pool_pledge:read_self] principal=0xba50181472e82dc0dfc126bec85abc25ec384133 returned 0 pledge(s)
+--> POST /tools/pool_pledge:read_self [32m200[0m 72ms
+<-- POST /tools/pool_pledge:list_for_pool
+--> POST /tools/pool_pledge:list_for_pool [32m200[0m 7ms
+<-- POST /tools/pool_pledge:list_for_pool
+--> POST /tools/pool_pledge:list_for_pool [32m200[0m 99ms
+<-- POST /tools/grant_proposal:count_for_round
+<-- POST /tools/grant_proposal:list_for_round
+--> POST /tools/grant_proposal:count_for_round [32m200[0m 91ms
+--> POST /tools/grant_proposal:list_for_round [32m200[0m 122ms
+<-- POST /tools/grant_proposal:read_self
+--> POST /tools/grant_proposal:read_self [32m200[0m 54ms
+<-- POST /tools/vote:tally_for_round
+--> POST /tools/vote:tally_for_round [32m200[0m 43ms
+<-- POST /tools/vote:list_for_proposal
+--> POST /tools/vote:list_for_proposal [32m200[0m 35ms
+<-- POST /tools/vote:tally_for_round
+--> POST /tools/vote:tally_for_round [32m200[0m 41ms
+<-- POST /tools/vote:list_for_proposal
+--> POST /tools/vote:list_for_proposal [32m200[0m 51ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- POST /tools/commitment:record_outcome
+--> POST /tools/commitment:record_outcome [32m200[0m 4s
+<-- POST /tools/commitment:record_outcome
+--> POST /tools/commitment:record_outcome [32m200[0m 4s
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- POST /tools/pool_pledge:list_for_pool
+--> POST /tools/pool_pledge:list_for_pool [32m200[0m 7ms
+<-- POST /tools/pool_pledge:list_for_pool
+--> POST /tools/pool_pledge:list_for_pool [32m200[0m 156ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+[org-mcp nonce-gc] evicted 26 expired replay-nonce rows
+[org-mcp nonce-gc] evicted 4 expired replay-nonce rows
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- POST /tools/pool_pledge:read_self
+<-- POST /tools/grant_proposal:list_for_member
+--> POST /tools/grant_proposal:list_for_member [32m200[0m 190ms
+<-- POST /tools/list_org_intents
+--> POST /tools/list_org_intents [32m200[0m 26ms
+[pool_pledge:read_self] principal=0xbcdb07fdec88ca33ef6fffc03fd127b35bd5cfb1 returned 0 pledge(s)
+--> POST /tools/pool_pledge:read_self [32m200[0m 299ms
+<-- POST /tools/pool_pledge:read_self
+[pool_pledge:read_self] principal=0xbcdb07fdec88ca33ef6fffc03fd127b35bd5cfb1 returned 0 pledge(s)
+--> POST /tools/pool_pledge:read_self [32m200[0m 91ms
+<-- POST /tools/pool_pledge:list_for_pool
+--> POST /tools/pool_pledge:list_for_pool [32m200[0m 6ms
+<-- POST /tools/pool_pledge:list_for_pool
+--> POST /tools/pool_pledge:list_for_pool [32m200[0m 134ms
+<-- POST /tools/grant_proposal:count_for_round
+<-- POST /tools/grant_proposal:list_for_round
+--> POST /tools/grant_proposal:list_for_round [32m200[0m 103ms
+--> POST /tools/grant_proposal:count_for_round [32m200[0m 149ms
+<-- POST /tools/grant_proposal:read_self
+--> POST /tools/grant_proposal:read_self [32m200[0m 119ms
+<-- POST /tools/vote:list_for_proposal
+<-- POST /tools/vote:tally_for_round
+--> POST /tools/vote:list_for_proposal [32m200[0m 75ms
+--> POST /tools/vote:tally_for_round [32m200[0m 94ms
+<-- POST /tools/vote:list_for_proposal
+--> POST /tools/vote:list_for_proposal [32m200[0m 40ms
+<-- POST /tools/vote:tally_for_round
+--> POST /tools/vote:tally_for_round [32m200[0m 41ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- POST /tools/pool_pledge:read_self
+<-- POST /tools/grant_proposal:list_for_member
+--> POST /tools/grant_proposal:list_for_member [32m200[0m 81ms
+<-- POST /tools/list_org_intents
+[pool_pledge:read_self] principal=0xba50181472e82dc0dfc126bec85abc25ec384133 returned 0 pledge(s)
+--> POST /tools/pool_pledge:read_self [32m200[0m 166ms
+--> POST /tools/list_org_intents [32m200[0m 17ms
+<-- POST /tools/pool_pledge:read_self
+[pool_pledge:read_self] principal=0xba50181472e82dc0dfc126bec85abc25ec384133 returned 0 pledge(s)
+--> POST /tools/pool_pledge:read_self [32m200[0m 80ms
+<-- POST /tools/pool_pledge:list_for_pool
+--> POST /tools/pool_pledge:list_for_pool [32m200[0m 5ms
+<-- POST /tools/pool_pledge:list_for_pool
+--> POST /tools/pool_pledge:list_for_pool [32m200[0m 80ms
+<-- POST /tools/grant_proposal:count_for_round
+<-- POST /tools/grant_proposal:list_for_round
+--> POST /tools/grant_proposal:count_for_round [32m200[0m 77ms
+--> POST /tools/grant_proposal:list_for_round [32m200[0m 100ms
+<-- POST /tools/grant_proposal:read_self
+--> POST /tools/grant_proposal:read_self [32m200[0m 55ms
+<-- POST /tools/vote:tally_for_round
+<-- POST /tools/vote:list_for_proposal
+--> POST /tools/vote:tally_for_round [32m200[0m 46ms
+--> POST /tools/vote:list_for_proposal [32m200[0m 92ms
+<-- POST /tools/vote:tally_for_round
+--> POST /tools/vote:tally_for_round [32m200[0m 35ms
+<-- POST /tools/vote:list_for_proposal
+--> POST /tools/vote:list_for_proposal [32m200[0m 38ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- POST /tools/pool_pledge:read_self
+<-- POST /tools/grant_proposal:list_for_member
+--> POST /tools/grant_proposal:list_for_member [32m200[0m 83ms
+<-- POST /tools/list_org_intents
+[pool_pledge:read_self] principal=0xbcdb07fdec88ca33ef6fffc03fd127b35bd5cfb1 returned 0 pledge(s)
+--> POST /tools/pool_pledge:read_self [32m200[0m 181ms
+--> POST /tools/list_org_intents [32m200[0m 8ms
+<-- POST /tools/pool_pledge:read_self
+[pool_pledge:read_self] principal=0xbcdb07fdec88ca33ef6fffc03fd127b35bd5cfb1 returned 0 pledge(s)
+--> POST /tools/pool_pledge:read_self [32m200[0m 69ms
+<-- POST /tools/pool_pledge:read_self
+<-- POST /tools/grant_proposal:list_for_member
+--> POST /tools/grant_proposal:list_for_member [32m200[0m 99ms
+[pool_pledge:read_self] principal=0xbcdb07fdec88ca33ef6fffc03fd127b35bd5cfb1 returned 0 pledge(s)
+--> POST /tools/pool_pledge:read_self [32m200[0m 143ms
+<-- POST /tools/list_org_intents
+--> POST /tools/list_org_intents [32m200[0m 7ms
+<-- POST /tools/pool_pledge:read_self
+[pool_pledge:read_self] principal=0xbcdb07fdec88ca33ef6fffc03fd127b35bd5cfb1 returned 0 pledge(s)
+--> POST /tools/pool_pledge:read_self [32m200[0m 73ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- POST /tools/pool_pledge:list_for_pool
+--> POST /tools/pool_pledge:list_for_pool [32m200[0m 6ms
+<-- POST /tools/pool_pledge:list_for_pool
+--> POST /tools/pool_pledge:list_for_pool [32m200[0m 103ms
+<-- POST /tools/grant_proposal:count_for_round
+<-- POST /tools/grant_proposal:list_for_round
+--> POST /tools/grant_proposal:list_for_round [32m200[0m 100ms
+--> POST /tools/grant_proposal:count_for_round [32m200[0m 151ms
+<-- POST /tools/grant_proposal:read_self
+--> POST /tools/grant_proposal:read_self [32m200[0m 71ms
+<-- POST /tools/vote:tally_for_round
+<-- POST /tools/vote:list_for_proposal
+--> POST /tools/vote:tally_for_round [32m200[0m 43ms
+--> POST /tools/vote:list_for_proposal [32m200[0m 63ms
+<-- POST /tools/vote:tally_for_round
+--> POST /tools/vote:tally_for_round [32m200[0m 45ms
+<-- POST /tools/vote:list_for_proposal
+--> POST /tools/vote:list_for_proposal [32m200[0m 30ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- POST /tools/commitment:record_outcome
+--> POST /tools/commitment:record_outcome [32m200[0m 4s
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- POST /tools/commitment:record_outcome
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+--> POST /tools/commitment:record_outcome [32m200[0m 4s
+<-- POST /tools/pool_pledge:read_self
+<-- POST /tools/grant_proposal:list_for_member
+--> POST /tools/grant_proposal:list_for_member [32m200[0m 132ms
+[pool_pledge:read_self] principal=0xbcdb07fdec88ca33ef6fffc03fd127b35bd5cfb1 returned 0 pledge(s)
+--> POST /tools/pool_pledge:read_self [32m200[0m 155ms
+<-- POST /tools/list_org_intents
+--> POST /tools/list_org_intents [32m200[0m 5ms
+<-- POST /tools/pool_pledge:read_self
+[pool_pledge:read_self] principal=0xbcdb07fdec88ca33ef6fffc03fd127b35bd5cfb1 returned 0 pledge(s)
+--> POST /tools/pool_pledge:read_self [32m200[0m 115ms
+<-- POST /tools/pool_pledge:read_self
+<-- POST /tools/grant_proposal:list_for_member
+--> POST /tools/grant_proposal:list_for_member [32m200[0m 83ms
+[pool_pledge:read_self] principal=0xbcdb07fdec88ca33ef6fffc03fd127b35bd5cfb1 returned 0 pledge(s)
+--> POST /tools/pool_pledge:read_self [32m200[0m 161ms
+<-- POST /tools/list_org_intents
+--> POST /tools/list_org_intents [32m200[0m 5ms
+<-- POST /tools/pool_pledge:read_self
+[pool_pledge:read_self] principal=0xbcdb07fdec88ca33ef6fffc03fd127b35bd5cfb1 returned 0 pledge(s)
+--> POST /tools/pool_pledge:read_self [32m200[0m 82ms
+<-- POST /tools/pool_pledge:list_for_pool
+--> POST /tools/pool_pledge:list_for_pool [32m200[0m 5ms
+<-- POST /tools/pool_pledge:list_for_pool
+--> POST /tools/pool_pledge:list_for_pool [32m200[0m 118ms
+<-- POST /tools/grant_proposal:count_for_round
+<-- POST /tools/grant_proposal:list_for_round
+--> POST /tools/grant_proposal:count_for_round [32m200[0m 122ms
+--> POST /tools/grant_proposal:list_for_round [32m200[0m 119ms
+<-- POST /tools/grant_proposal:read_self
+--> POST /tools/grant_proposal:read_self [32m200[0m 62ms
+<-- POST /tools/vote:tally_for_round
+<-- POST /tools/vote:list_for_proposal
+--> POST /tools/vote:list_for_proposal [32m200[0m 68ms
+--> POST /tools/vote:tally_for_round [32m200[0m 91ms
+<-- POST /tools/vote:list_for_proposal
+--> POST /tools/vote:list_for_proposal [32m200[0m 38ms
+<-- POST /tools/vote:tally_for_round
+--> POST /tools/vote:tally_for_round [32m200[0m 28ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- POST /tools/pool_pledge:read_self
+<-- POST /tools/grant_proposal:list_for_member
+--> POST /tools/grant_proposal:list_for_member [32m200[0m 150ms
+<-- POST /tools/list_org_intents
+[pool_pledge:read_self] principal=0xba50181472e82dc0dfc126bec85abc25ec384133 returned 0 pledge(s)
+--> POST /tools/pool_pledge:read_self [32m200[0m 173ms
+--> POST /tools/list_org_intents [32m200[0m 7ms
+<-- POST /tools/pool_pledge:read_self
+[pool_pledge:read_self] principal=0xba50181472e82dc0dfc126bec85abc25ec384133 returned 0 pledge(s)
+--> POST /tools/pool_pledge:read_self [32m200[0m 64ms
+<-- POST /tools/pool_pledge:list_for_pool
+--> POST /tools/pool_pledge:list_for_pool [32m200[0m 5ms
+<-- POST /tools/pool_pledge:list_for_pool
+--> POST /tools/pool_pledge:list_for_pool [32m200[0m 90ms
+<-- POST /tools/grant_proposal:count_for_round
+--> POST /tools/grant_proposal:count_for_round [32m200[0m 53ms
+<-- POST /tools/grant_proposal:list_for_round
+--> POST /tools/grant_proposal:list_for_round [32m200[0m 37ms
+<-- POST /tools/grant_proposal:read_self
+--> POST /tools/grant_proposal:read_self [32m200[0m 43ms
+<-- POST /tools/vote:tally_for_round
+<-- POST /tools/vote:list_for_proposal
+--> POST /tools/vote:tally_for_round [32m200[0m 55ms
+--> POST /tools/vote:list_for_proposal [32m200[0m 94ms
+<-- POST /tools/vote:tally_for_round
+--> POST /tools/vote:tally_for_round [32m200[0m 33ms
+<-- POST /tools/vote:list_for_proposal
+--> POST /tools/vote:list_for_proposal [32m200[0m 28ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- POST /tools/pool_pledge:read_self
+<-- POST /tools/grant_proposal:list_for_member
+--> POST /tools/grant_proposal:list_for_member [32m200[0m 167ms
+<-- POST /tools/list_org_intents
+[pool_pledge:read_self] principal=0xbcdb07fdec88ca33ef6fffc03fd127b35bd5cfb1 returned 0 pledge(s)
+--> POST /tools/pool_pledge:read_self [32m200[0m 217ms
+--> POST /tools/list_org_intents [32m200[0m 9ms
+<-- POST /tools/pool_pledge:read_self
+[pool_pledge:read_self] principal=0xbcdb07fdec88ca33ef6fffc03fd127b35bd5cfb1 returned 0 pledge(s)
+--> POST /tools/pool_pledge:read_self [32m200[0m 69ms
+<-- POST /tools/pool_pledge:read_self
+<-- POST /tools/grant_proposal:list_for_member
+--> POST /tools/grant_proposal:list_for_member [32m200[0m 142ms
+[pool_pledge:read_self] principal=0xbcdb07fdec88ca33ef6fffc03fd127b35bd5cfb1 returned 0 pledge(s)
+--> POST /tools/pool_pledge:read_self [32m200[0m 177ms
+<-- POST /tools/list_org_intents
+--> POST /tools/list_org_intents [32m200[0m 6ms
+<-- POST /tools/pool_pledge:read_self
+[pool_pledge:read_self] principal=0xbcdb07fdec88ca33ef6fffc03fd127b35bd5cfb1 returned 0 pledge(s)
+--> POST /tools/pool_pledge:read_self [32m200[0m 65ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- POST /tools/pool_pledge:list_for_pool
+--> POST /tools/pool_pledge:list_for_pool [32m200[0m 7ms
+<-- POST /tools/pool_pledge:list_for_pool
+--> POST /tools/pool_pledge:list_for_pool [32m200[0m 89ms
+<-- POST /tools/grant_proposal:count_for_round
+<-- POST /tools/grant_proposal:list_for_round
+--> POST /tools/grant_proposal:list_for_round [32m200[0m 77ms
+--> POST /tools/grant_proposal:count_for_round [32m200[0m 113ms
+<-- POST /tools/grant_proposal:read_self
+--> POST /tools/grant_proposal:read_self [32m200[0m 63ms
+<-- POST /tools/vote:tally_for_round
+--> POST /tools/vote:tally_for_round [32m200[0m 46ms
+<-- POST /tools/vote:list_for_proposal
+--> POST /tools/vote:list_for_proposal [32m200[0m 40ms
+<-- POST /tools/vote:tally_for_round
+--> POST /tools/vote:tally_for_round [32m200[0m 30ms
+<-- POST /tools/vote:list_for_proposal
+--> POST /tools/vote:list_for_proposal [32m200[0m 34ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+[org-mcp nonce-gc] evicted 57 expired replay-nonce rows
+<-- POST /tools/commitment:record_outcome
+--> POST /tools/commitment:record_outcome [32m200[0m 4s
+<-- POST /tools/commitment:record_outcome
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+--> POST /tools/commitment:record_outcome [32m200[0m 4s
+<-- POST /tools/pool_pledge:list_for_pool
+--> POST /tools/pool_pledge:list_for_pool [32m200[0m 5ms
+<-- POST /tools/pool_pledge:list_for_pool
+--> POST /tools/pool_pledge:list_for_pool [32m200[0m 116ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+[org-mcp nonce-gc] evicted 39 expired replay-nonce rows

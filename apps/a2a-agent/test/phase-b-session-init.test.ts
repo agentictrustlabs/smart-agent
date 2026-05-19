@@ -87,16 +87,14 @@ test('hybrid-init — low-risk scope returns Variant A', async () => {
     (message.delegator as string).toLowerCase(),
     TEST_USER.toLowerCase(),
   )
-  // Option A invariant (Spec 007 Phase B+C): delegate == delegator ==
-  // user's AgentAccount. The session key derives authority from being a
-  // registered OWNER of the AgentAccount and signing the userOp; the
-  // delegation itself is self-issued. This is what `org-mcp` verifies at
-  // `verify-delegation.ts:111` and what `/redeem-via-account` relies on:
-  // the userOp goes `AgentAccount.execute(DM, redeemDelegation)`, so
-  // `msg.sender` at DM equals AgentAccount equals delegate.
+  // Phase 1 chained-delegation invariant: D_root.delegate is the
+  // sessionKey EOA (the a2a-agent's per-session authority for this
+  // user). The user trusts a2a-agent through this delegation; a2a-agent
+  // later mints D_sub for high-value tools to per-tool executors.
+  // See `output/phase1-delegation-summary.md`.
   assert.equal(
     (message.delegate as string).toLowerCase(),
-    TEST_USER.toLowerCase(),
+    (body.sessionKeyAddress as string).toLowerCase(),
   )
 
   // Session row was persisted with variant='A'.
