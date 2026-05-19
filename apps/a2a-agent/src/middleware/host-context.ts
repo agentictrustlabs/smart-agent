@@ -87,6 +87,12 @@ const INTER_SERVICE_PATH_SUFFIXES = [
 const SYSTEM_SCOPED_PREFIXES = [
   '/session-store/',  // session-store CRUD — system table, no agent binding
   '/wallet-action/',  // WalletAction dispatch — per-session, system-scoped
+  // hub-mcp proxy — boot-seed, kb-sync, and per-pool sync hit this from
+  // web without an A2A session cookie and (when the call is from a
+  // server action) often without a `system.<base>` host header either.
+  // The downstream signature (a2a-to-hub MAC verified by hub-mcp) is
+  // the trust boundary; host-context has nothing useful to bind here.
+  '/mcp/hub/',
 ]
 
 export function isHostExempt(path: string): boolean {
@@ -99,7 +105,14 @@ export function isHostExempt(path: string): boolean {
     // /session/package carries WebAuthn assertions + caveat blobs; the
     // session is keyed by session-id, not by any agent slug. Already
     // exempt prior to the P0-2 fix per memory note.
-    path === '/session/package'
+    path === '/session/package' ||
+    // Spec 007 Phase B — hybrid session bootstrap is session-id-keyed
+    // and not agent-bound (the session covers a scope of actions, not
+    // an agent slug). Both the init handshake (returns signing payload
+    // or userOp) and the finalize handshake (consumes the signed
+    // payload, activates the session) are host-exempt.
+    path === '/session/hybrid-init' ||
+    path === '/session/hybrid-finalize'
   ) return true
   for (const prefix of SYSTEM_SCOPED_PREFIXES) {
     if (path.startsWith(prefix)) return true

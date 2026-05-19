@@ -13,6 +13,7 @@ import "../src/mocks/MockUSDC.sol";
 
 import "account-abstraction/interfaces/IEntryPoint.sol";
 import "account-abstraction/core/EntryPoint.sol";
+import "./helpers/MockGovernance.sol";
 
 /// @notice Spec 005 unit suite — covers test-plan.md § 1:
 ///   - U-AA-1..5: AgentAccount.executeBatch
@@ -64,7 +65,7 @@ contract Spec005PledgeHonorTest is Test {
         // Pool admin agent: owned by this test contract (only matters for
         // markPaid, which remains admin-gated). Donor treasury also owned
         // by this test contract for executeBatch tests.
-        factory    = new AgentAccountFactory(IEntryPoint(address(entryPoint)), address(0), address(this));
+        factory    = new AgentAccountFactory(IEntryPoint(address(entryPoint)), address(0), address(this), address(this), address(new MockGovernance(address(this))));
         poolAgent     = address(factory.createAccount(address(this), 1));
         donorTreasury = address(factory.createAccount(address(this), 2));
 

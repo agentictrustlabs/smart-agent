@@ -1,0 +1,46 @@
+{
+  "storage": [
+    {
+      "astId": 12324,
+      "contract": "src/AgentAccountFactory.sol:AgentAccountFactory",
+      "label": "bundlerSigner",
+      "offset": 0,
+      "slot": "0",
+      "type": "t_address"
+    },
+    {
+      "astId": 12327,
+      "contract": "src/AgentAccountFactory.sol:AgentAccountFactory",
+      "label": "sessionIssuer",
+      "offset": 0,
+      "slot": "1",
+      "type": "t_address"
+    },
+    {
+      "astId": 12355,
+      "contract": "src/AgentAccountFactory.sol:AgentAccountFactory",
+      "label": "__gap",
+      "offset": 0,
+      "slot": "2",
+      "type": "t_array(t_uint256)50_storage"
+    }
+  ],
+  "types": {
+    "t_address": {
+      "encoding": "inplace",
+      "label": "address",
+      "numberOfBytes": "20"
+    },
+    "t_array(t_uint256)50_storage": {
+      "encoding": "inplace",
+      "label": "uint256[50]",
+      "numberOfBytes": "1600",
+      "base": "t_uint256"
+    },
+    "t_uint256": {
+      "encoding": "inplace",
+      "label": "uint256",
+      "numberOfBytes": "32"
+    }
+  }
+}

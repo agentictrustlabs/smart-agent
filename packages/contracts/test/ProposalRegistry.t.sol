@@ -8,6 +8,7 @@ import "../src/ShapeRegistry.sol";
 import "../src/ProposalRegistry.sol";
 import "account-abstraction/interfaces/IEntryPoint.sol";
 import "account-abstraction/core/EntryPoint.sol";
+import "./helpers/MockGovernance.sol";
 
 contract ProposalRegistryTest is Test {
     EntryPoint entryPoint;
@@ -46,7 +47,7 @@ contract ProposalRegistryTest is Test {
         shapes = new ShapeRegistry(address(this));
         proposals = new ProposalRegistry(address(ontology), address(shapes));
 
-        factory = new AgentAccountFactory(IEntryPoint(address(entryPoint)), address(0), address(this));
+        factory = new AgentAccountFactory(IEntryPoint(address(entryPoint)), address(0), address(this), address(this), address(new MockGovernance(address(this))));
         awardingFund = address(factory.createAccount(fundOwner, 1));
         otherFund = address(factory.createAccount(otherFundOwner, 2));
 
@@ -148,10 +149,13 @@ contract ProposalRegistryTest is Test {
         bytes32 ps = proposals.proposalSubject("privacy-test");
         ProposalRegistry.AnnounceParams memory p = _validAwardParams(ps);
         p.status = STATUS_SUBMITTED;
+        // Spec 007 Phase A — pre-compute revert data before pranking.
+        bytes32 statusKey = proposals.SA_PROPOSAL_STATUS();
+        bytes memory expectedRevert = abi.encodeWithSelector(
+            ShapeRegistry.EnumValueNotAllowed.selector, statusKey, STATUS_SUBMITTED
+        );
         vm.prank(fundOwner);
-        vm.expectRevert(abi.encodeWithSelector(
-            ShapeRegistry.EnumValueNotAllowed.selector, proposals.SA_PROPOSAL_STATUS(), STATUS_SUBMITTED
-        ));
+        vm.expectRevert(expectedRevert);
         proposals.announceAward(p);
     }
 
@@ -190,10 +194,13 @@ contract ProposalRegistryTest is Test {
         ProposalRegistry.AnnounceParams memory p = _validAwardParams(ps);
         vm.prank(fundOwner);
         proposals.announceAward(p);
+        // Spec 007 Phase A — pre-compute revert data before pranking.
+        bytes32 statusKey = proposals.SA_PROPOSAL_STATUS();
+        bytes memory expectedRevert = abi.encodeWithSelector(
+            ShapeRegistry.EnumValueNotAllowed.selector, statusKey, STATUS_SUBMITTED
+        );
         vm.prank(fundOwner);
-        vm.expectRevert(abi.encodeWithSelector(
-            ShapeRegistry.EnumValueNotAllowed.selector, proposals.SA_PROPOSAL_STATUS(), STATUS_SUBMITTED
-        ));
+        vm.expectRevert(expectedRevert);
         proposals.setStatus(ps, STATUS_SUBMITTED);
     }
 

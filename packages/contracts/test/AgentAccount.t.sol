@@ -7,6 +7,7 @@ import "../src/AgentAccountFactory.sol";
 import "../src/libraries/WebAuthnLib.sol";
 import "account-abstraction/interfaces/IEntryPoint.sol";
 import "account-abstraction/core/EntryPoint.sol";
+import "./helpers/MockGovernance.sol";
 
 contract AgentAccountTest is Test {
     EntryPoint public entryPoint;
@@ -27,7 +28,7 @@ contract AgentAccountTest is Test {
         entryPoint = new EntryPoint();
 
         // Deploy factory
-        factory = new AgentAccountFactory(IEntryPoint(address(entryPoint)), address(0), address(this));
+        factory = new AgentAccountFactory(IEntryPoint(address(entryPoint)), address(0), address(this), address(this), address(new MockGovernance(address(this))));
 
         // Deploy agent account via factory
         account = factory.createAccount(owner, 0);
@@ -61,9 +62,9 @@ contract AgentAccountTest is Test {
 
     function test_initial_owner_is_set() public view {
         assertTrue(account.isOwner(owner), "Initial owner should be set");
-        // Factory adds msg.sender (test contract) as server signer co-owner
-        assertTrue(account.isOwner(address(this)), "Server signer should be co-owner");
-        assertEq(account.ownerCount(), 2, "Should have 2 owners (user + server signer)");
+        // Spec 007 Phase A — bundlerSigner / sessionIssuer are NOT owners.
+        assertFalse(account.isOwner(address(this)), "bundlerSigner/sessionIssuer must not be co-owner");
+        assertEq(account.ownerCount(), 1, "Single-owner under Phase A");
     }
 
     function test_non_owner_is_not_owner() public view {
@@ -76,7 +77,8 @@ contract AgentAccountTest is Test {
         account.addOwner(other);
 
         assertTrue(account.isOwner(other), "New owner should be added");
-        assertEq(account.ownerCount(), 3, "Should have 3 owners (user + server + new)");
+        // Phase A — initial set is 1 (only `owner`); adding `other` → 2.
+        assertEq(account.ownerCount(), 2, "Should have 2 owners (user + new)");
     }
 
     function test_add_owner_reverts_if_not_self() public {
@@ -98,23 +100,23 @@ contract AgentAccountTest is Test {
     }
 
     function test_remove_owner_via_self_call() public {
-        // Account has 2 owners (user + server signer)
-        // Remove original owner
+        // Phase A — single-owner account. Remove the sole owner only
+        // works if another signer (passkey or added owner) covers the
+        // last-signer invariant. Add a co-owner first.
+        vm.prank(address(account));
+        account.addOwner(other);
         vm.prank(address(account));
         account.removeOwner(owner);
 
         assertFalse(account.isOwner(owner), "Removed owner should not be owner");
-        assertEq(account.ownerCount(), 1, "Should have 1 owner (server signer remains)");
+        assertEq(account.ownerCount(), 1, "Should have 1 owner (other remains)");
     }
 
     function test_remove_last_owner_reverts() public {
-        // Remove first owner, leaving only server signer
-        vm.prank(address(account));
-        account.removeOwner(owner);
-        // Now try to remove last owner
+        // Phase A — only one owner present. Try to remove it directly.
         vm.prank(address(account));
         vm.expectRevert(AgentAccount.CannotRemoveLastOwner.selector);
-        account.removeOwner(address(this));
+        account.removeOwner(owner);
     }
 
     function test_remove_non_owner_reverts() public {
@@ -220,15 +222,12 @@ contract AgentAccountTest is Test {
     }
 
     function test_removePasskey_cannot_remove_last_signer() public {
-        // The factory seeds the account with TWO owners: `owner` + serverSigner
-        // (the test contract itself). To isolate the last-signer invariant:
-        // register a passkey, then remove both owners (allowed since the passkey
-        // covers the "at least one signer" invariant), then try to remove the
-        // passkey — which must revert.
+        // Spec 007 Phase A — accounts start as single-owner. Register
+        // a passkey, then remove the sole owner (allowed since the
+        // passkey covers the "at least one signer" invariant), then
+        // try to remove the passkey — which must revert.
         vm.prank(address(account));
         account.addPasskey(CRED_1, 0x1111, 0x2222);
-        vm.prank(address(account));
-        account.removeOwner(address(this));      // 2 owners → 1
         vm.prank(address(account));
         account.removeOwner(owner);              // 1 owner + 1 passkey → 0 owners
         // Now the sole signer is the passkey. Removing it must revert.
@@ -241,17 +240,13 @@ contract AgentAccountTest is Test {
         vm.prank(address(account));
         account.addPasskey(CRED_1, 0x1111, 0x2222);
         vm.prank(address(account));
-        account.removeOwner(address(this));
-        vm.prank(address(account));
         account.removeOwner(owner);
         assertEq(account.ownerCount(), 0);
         assertEq(account.passkeyCount(), 1);
     }
 
     function test_removeOwner_blocked_without_other_signers() public {
-        // Drop the second owner first so `owner` is the only one.
-        vm.prank(address(account));
-        account.removeOwner(address(this));
+        // Single-owner account, no passkey. Cannot remove the sole owner.
         vm.prank(address(account));
         vm.expectRevert(AgentAccount.CannotRemoveLastOwner.selector);
         account.removeOwner(owner);

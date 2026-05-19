@@ -178,6 +178,23 @@ export type {
 export { MAX_SESSION_TTL_SEC, clampSessionTtl } from './policy/session-ttl'
 export type { SessionRiskTier } from './policy/session-ttl'
 
+// ─── Spec 007 Phase B — hybrid-session action-risk tier classifier ───
+export {
+  compareRiskTier,
+  variantForTier,
+  classifyRiskTier,
+} from './risk-tier'
+export type {
+  ActionRiskTier,
+  SessionVariant,
+  ActionDescriptor,
+  RiskTierLookup,
+  HybridSessionInitRequest,
+  HybridSessionInitResponse,
+  HybridSessionInitVariantAResponse,
+  HybridSessionInitVariantBResponse,
+} from './risk-tier'
+
 // ─── Challenge Authentication ───────────────────────────────────────
 export { createChallenge, isChallengeExpired, hashChallenge, A2A_AUTH_DOMAIN, CHALLENGE_TYPES } from './challenge'
 export type { ChallengeData } from './challenge'

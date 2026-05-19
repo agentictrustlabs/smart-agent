@@ -12,6 +12,7 @@ import "../src/mocks/MockUSDC.sol";
 
 import "account-abstraction/interfaces/IEntryPoint.sol";
 import "account-abstraction/core/EntryPoint.sol";
+import "./helpers/MockGovernance.sol";
 
 /// @notice Spec 006 unit suite — covers the CommitmentRegistry surface:
 ///   - U-CR-C-* : commit happy paths, validation, ReleasesBlocked.
@@ -56,7 +57,7 @@ contract Spec006CommitmentRegistryTest is Test {
         shapes     = new ShapeRegistry(address(this));
         commitReg  = new CommitmentRegistry(address(ontology), address(shapes));
 
-        factory   = new AgentAccountFactory(IEntryPoint(address(entryPoint)), address(0), address(this));
+        factory   = new AgentAccountFactory(IEntryPoint(address(entryPoint)), address(0), address(this), address(this), address(new MockGovernance(address(this))));
         donor     = address(factory.createAccount(address(this), 1));
         recipient = address(factory.createAccount(address(this), 2));
 

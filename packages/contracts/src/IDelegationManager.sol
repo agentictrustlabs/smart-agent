@@ -52,7 +52,17 @@ interface IDelegationManager {
     ) external;
 
     /// @notice Revoke a delegation by its hash.
+    ///
+    /// @dev Legacy permissionless path. Phase A.5 introduces
+    ///      `revokeDelegationByOwner` for authenticated revocation that
+    ///      works for Variant A delegations.
     function revokeDelegation(bytes32 delegationHash) external;
+
+    /// @notice Phase A.5 — authenticated revocation. Caller must be
+    ///         either `delegation.delegator` or `delegation.delegate`.
+    ///         The delegation struct is signature-checked first to
+    ///         prevent a malicious delegate from revoking a forged hash.
+    function revokeDelegationByOwner(Delegation calldata delegation) external;
 
     /// @notice Check if a delegation has been revoked.
     function isRevoked(bytes32 delegationHash) external view returns (bool);

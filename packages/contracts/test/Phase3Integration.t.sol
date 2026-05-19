@@ -13,6 +13,7 @@ import "../src/modules/TargetSelectorAllowlistHookModule.sol";
 import "../src/modules/RevocationModule.sol";
 import "account-abstraction/interfaces/IEntryPoint.sol";
 import "account-abstraction/core/EntryPoint.sol";
+import "./helpers/MockGovernance.sol";
 
 /**
  * @title Phase3IntegrationTest
@@ -56,7 +57,7 @@ contract Phase3IntegrationTest is Test {
 
         entryPoint = new EntryPoint();
         dm = new DelegationManager();
-        accountFactory = new AgentAccountFactory(IEntryPoint(address(entryPoint)), address(dm), address(this));
+        accountFactory = new AgentAccountFactory(IEntryPoint(address(entryPoint)), address(dm), address(this), address(this), address(new MockGovernance(address(this))));
         sessionFactory = new SessionAgentAccountFactory(accountFactory);
 
         validator = new ECDSASessionValidator();

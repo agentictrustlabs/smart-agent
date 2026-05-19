@@ -9,6 +9,7 @@ import "../src/AgentNameAttributeResolver.sol";
 import "../src/OntologyTermRegistry.sol";
 import "account-abstraction/interfaces/IEntryPoint.sol";
 import "account-abstraction/core/EntryPoint.sol";
+import "./helpers/MockGovernance.sol";
 
 contract AgentNameAttributeResolverTest is Test {
     EntryPoint entryPoint;
@@ -45,7 +46,7 @@ contract AgentNameAttributeResolverTest is Test {
         ontology = new OntologyTermRegistry(address(this));
         resolver = new AgentNameAttributeResolver(nameRegistry, address(ontology));
 
-        factory = new AgentAccountFactory(IEntryPoint(address(entryPoint)), address(0), address(this));
+        factory = new AgentAccountFactory(IEntryPoint(address(entryPoint)), address(0), address(this), address(this), address(new MockGovernance(address(this))));
         agentAlice = address(factory.createAccount(alice, 1));
         agentBob = address(factory.createAccount(bob, 2));
 
@@ -148,6 +149,11 @@ contract AgentNameAttributeResolverTest is Test {
     }
 
     function test_auth_account_co_owner_can_write() public {
+        // Spec 007 Phase A — bundlerSigner/sessionIssuer are not
+        // automatic co-owners. Add the test contract as a co-owner via
+        // a self-call to preserve the "co-owner can write" assertion.
+        vm.prank(agentAlice);
+        AgentAccount(payable(agentAlice)).addOwner(address(this));
         resolver.setStringAttribute(aliceNode, PRED_AVATAR, "by-server");
         assertEq(resolver.getStringAttribute(aliceNode, PRED_AVATAR), "by-server");
     }

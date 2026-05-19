@@ -3,13 +3,24 @@ pragma solidity ^0.8.28;
 
 import "account-abstraction/core/BaseAccount.sol";
 import "account-abstraction/interfaces/IEntryPoint.sol";
+import "account-abstraction/interfaces/PackedUserOperation.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import "./IAgentAccount.sol";
 import "./libraries/WebAuthnLib.sol";
+
+/// @dev Minimal subset of AgentAccountFactory's surface used by the
+///      account to look up factory-scoped capability roles. We avoid a
+///      hard import of AgentAccountFactory to prevent a circular type
+///      dependency at compile time.
+interface IAgentAccountFactoryView {
+    function bundlerSigner() external view returns (address);
+    function sessionIssuer() external view returns (address);
+}
 
 /**
  * @title AgentAccount
@@ -28,7 +39,7 @@ import "./libraries/WebAuthnLib.sol";
  * - ERC-7710 delegated execution via DelegationManager
  * - UUPS upgrades (ERC-1822)
  */
-contract AgentAccount is BaseAccount, Initializable, UUPSUpgradeable, IAgentAccount, IERC1271 {
+contract AgentAccount is BaseAccount, Initializable, UUPSUpgradeable, ReentrancyGuard, IAgentAccount, IERC1271 {
     using ECDSA for bytes32;
     using MessageHashUtils for bytes32;
 
@@ -45,6 +56,50 @@ contract AgentAccount is BaseAccount, Initializable, UUPSUpgradeable, IAgentAcco
     mapping(address => bool) private _owners;
     uint256 private _ownerCount;
 
+    /// @dev Spec 007 Phase A — the factory that deployed this account.
+    ///      `bundlerSigner()` and `sessionIssuer()` are read off this
+    ///      address on each capability check, so a future factory
+    ///      upgrade can rotate either role without per-account
+    ///      migration. Set once during `initialize`. Zero is tolerated
+    ///      for legacy / direct-deploy paths (no bundler envelope path
+    ///      enabled).
+    address private _factory;
+
+    /// @dev Spec 007 Phase A (Variant B) — set of session-delegation
+    ///      hashes the owner has pre-authorized on chain. The
+    ///      DelegationManager consults this set at redeem time when a
+    ///      high-risk session is in play; this is the on-chain
+    ///      counterpart to the off-chain caveated delegation used in
+    ///      Variant A.
+    mapping(bytes32 => bool) private _acceptedSessionDelegations;
+
+    /// @dev Spec 007 Phase A.5 — optional per-account upgrade delay
+    ///      (seconds). 0 (default) keeps backward-compat: upgrades fire
+    ///      immediately on owner sig. Owners can opt in to a delay via
+    ///      `setUpgradeTimelock`.
+    uint256 private _upgradeTimelock;
+
+    struct PendingUpgrade {
+        address newImplementation;
+        uint64 readyAt;        // UNIX seconds; 0 = no pending upgrade
+    }
+
+    /// @dev Spec 007 Phase A.5 — current pending upgrade (set by
+    ///      `upgradeToWithAuthorization` when `_upgradeTimelock > 0`).
+    PendingUpgrade private _pendingUpgrade;
+
+    /// @dev Spec 007 Phase A.5 — maximum permitted upgrade timelock to
+    ///      protect against an owner accidentally setting an absurdly
+    ///      large delay that bricks future migrations.
+    uint256 internal constant MAX_UPGRADE_TIMELOCK = 30 days;
+
+    /// @dev Spec 007 Phase A.5 (SC7 § 3.1) — storage gap reserves 50
+    ///      slots after the last linear-layout state variable. Future
+    ///      additive upgrades shrink the gap by however many slots they
+    ///      add. ERC-7201 namespaced state (passkeys, modules) lives at
+    ///      keccak-computed slots and is NOT in this linear layout.
+    uint256[50] private __gap;
+
     // ─── Errors ─────────────────────────────────────────────────────
 
     error NotFromSelf();
@@ -58,6 +113,44 @@ contract AgentAccount is BaseAccount, Initializable, UUPSUpgradeable, IAgentAcco
     error InvalidPasskeyPublicKey();
     error CannotRemoveLastSigner();
     error UnknownSignatureType(uint8 sigType);
+
+    // Phase A errors (spec 007).
+    error NotEntryPoint();
+    error NotBundler();
+    error NotOwnerSig();
+    error InvalidInnerSignature();
+    error FactoryNotSet();
+    error SessionDelegationAlreadyAccepted(bytes32 hash);
+
+    // Phase A.5 errors (spec 007).
+    error UpgradeTimelockTooLong(uint256 secs, uint256 max);
+    error NoPendingUpgrade();
+    error UpgradeNotReady(uint64 readyAt, uint256 nowTs);
+    error PendingUpgradeMismatch(address pending, address attempted);
+    error UpgradePending();
+
+    // ─── Phase A events ─────────────────────────────────────────────
+
+    /// @notice Emitted by `acceptSessionDelegation` — the owner has
+    ///         registered the given session-delegation hash on chain.
+    event SessionDelegationAccepted(bytes32 indexed sessionDelegationHash);
+
+    /// @notice Emitted by `upgradeToWithAuthorization` after the owner
+    ///         signature is verified, before the underlying UUPS
+    ///         upgrade fires. Provides an auditable on-chain witness
+    ///         that THIS specific owner authorized the upgrade.
+    event UpgradeAuthorized(address indexed newImplementation);
+
+    /// @notice Emitted when an owner queues an upgrade that has to wait
+    ///         out the per-account timelock (Phase A.5).
+    event UpgradeProposed(address indexed newImplementation, uint64 readyAt);
+
+    /// @notice Emitted when the queued upgrade is cancelled by the owner
+    ///         during the wait window.
+    event UpgradeCancelled(address indexed newImplementation);
+
+    /// @notice Emitted when the per-account upgrade timelock is changed.
+    event UpgradeTimelockChanged(uint256 oldValue, uint256 newValue);
 
     // ─── Modifiers ──────────────────────────────────────────────────
 
@@ -74,39 +167,200 @@ contract AgentAccount is BaseAccount, Initializable, UUPSUpgradeable, IAgentAcco
     }
 
     /**
-     * @notice Initialize the account with an initial owner, optional server signer, and DelegationManager.
+     * @notice Initialize the account with an initial owner, the
+     *         DelegationManager, and the factory address.
+     *
+     *         Spec 007 Phase A: the master / bundler / session-issuer
+     *         keys are NOT added to `_owners`. The factory address is
+     *         stored so the account can resolve `bundlerSigner()` and
+     *         `sessionIssuer()` on demand. This lets a future factory
+     *         upgrade rotate those roles without per-account
+     *         migration. If `factory_` is `address(0)` the account
+     *         supports the legacy / test path (no bundler envelope or
+     *         session-issuer capability checks).
+     *
      * @param initialOwner The primary owner of this agent account (user's EOA).
-     * @param serverSigner The server/deployer address added as co-owner for delegation signing.
-     *                     Use address(0) to skip (single-owner mode).
      * @param dm The DelegationManager address (ERC-7710 executor). Use address(0) to skip.
+     * @param factory_ The factory that deployed this account. Pass
+     *                 address(0) for legacy/test paths.
      */
-    function initialize(address initialOwner, address serverSigner, address dm) external initializer {
+    function initialize(address initialOwner, address dm, address factory_) external initializer {
         if (initialOwner == address(0)) revert ZeroAddress();
         _owners[initialOwner] = true;
         _ownerCount = 1;
         emit OwnerAdded(initialOwner);
 
-        // Add server signer as co-owner (for delegation signing in server-relay mode)
-        if (serverSigner != address(0) && serverSigner != initialOwner) {
-            _owners[serverSigner] = true;
-            _ownerCount = 2;
-            emit OwnerAdded(serverSigner);
-        }
-
         _delegationManager = dm;
+        _factory = factory_;
+    }
+
+    /**
+     * @notice Two-owner initializer used by `SessionAgentAccountFactory`
+     *         when bootstrapping session-scoped accounts whose modules
+     *         must be installed by the factory at deploy time.
+     *
+     *         This path intentionally co-owns the account at init —
+     *         the second owner is the FACTORY itself, so it can call
+     *         `installModule` (owner-gated) before stepping back. It
+     *         is NOT used by the main `AgentAccountFactory` (user
+     *         accounts are single-owner under Phase A).
+     *
+     *         The co-owner is removable post-bootstrap via a userOp
+     *         signed by the primary owner (`addOwner` / `removeOwner`
+     *         are `onlySelf` — see `SessionAgentAccountFactory.sol`
+     *         for the documented cleanup path).
+     */
+    function initializeWithCoOwner(
+        address initialOwner,
+        address coOwner,
+        address dm,
+        address factory_
+    ) external initializer {
+        if (initialOwner == address(0)) revert ZeroAddress();
+        _owners[initialOwner] = true;
+        _ownerCount = 1;
+        emit OwnerAdded(initialOwner);
+        if (coOwner != address(0) && coOwner != initialOwner) {
+            _owners[coOwner] = true;
+            _ownerCount = 2;
+            emit OwnerAdded(coOwner);
+        }
+        _delegationManager = dm;
+        _factory = factory_;
     }
 
     // ─── UUPS Upgrade ──────────────────────────────────────────────
 
     /**
-     * @dev Only the account itself can authorize upgrades (via UserOp or self-call).
-     *      This prevents unauthorized implementation changes.
+     * @dev Spec 007 Phase A — `_authorizeUpgrade` requires `msg.sender
+     *      == address(this)`. The ONLY path that satisfies this is a
+     *      re-entrant call from `upgradeToWithAuthorization` (below),
+     *      which verifies an explicit owner signature first. Direct
+     *      callers of `upgradeToAndCall` cannot satisfy `onlySelf` and
+     *      will revert here. Master / bundler / session-issuer
+     *      therefore cannot upgrade even by submitting the tx.
      */
     function _authorizeUpgrade(address) internal view override onlySelf {}
 
+    /**
+     * @notice Upgrade the implementation, gated by an explicit owner
+     *         signature. Spec 007 Phase A (D2 / acceptance criterion
+     *         "test_MasterCannotUpgrade").
+     *
+     *         The owner signs `keccak256(abi.encode("UPGRADE",
+     *         newImpl, address(this), block.chainid))` (raw or
+     *         eth-signed wrap, both accepted by `_verifyEcdsa`). Any
+     *         caller can submit the tx — what matters is whose
+     *         signature the bytes recover to. Master / bundler /
+     *         session-issuer can submit but cannot authorize.
+     *
+     * @param newImpl The new implementation address.
+     * @param ownerSig The owner's ECDSA signature over the upgrade
+     *                 digest. Bare 65-byte or 0x00-type-byte-prefixed
+     *                 forms both accepted (matches `_verifyEcdsa`).
+     */
+    function upgradeToWithAuthorization(address newImpl, bytes calldata ownerSig) external {
+        if (newImpl == address(0)) revert ZeroAddress();
+        bytes32 digest = keccak256(
+            abi.encode(
+                bytes32("UPGRADE"),
+                newImpl,
+                address(this),
+                block.chainid
+            )
+        );
+        if (!_verifyEcdsa(digest, ownerSig)) revert NotOwnerSig();
+
+        // Phase A.5 — if a per-account timelock is configured, queue
+        // the upgrade instead of executing immediately. The user can
+        // cancel it during the window via `cancelPendingUpgrade`; the
+        // execution happens via `executePendingUpgrade()` after the
+        // window expires.
+        if (_upgradeTimelock != 0) {
+            // Refuse to queue if an upgrade is already pending. The
+            // owner must cancel the current one first; otherwise a
+            // stolen owner-sig could displace a benign pending upgrade.
+            if (_pendingUpgrade.readyAt != 0) revert UpgradePending();
+            uint64 readyAt = uint64(block.timestamp + _upgradeTimelock);
+            _pendingUpgrade = PendingUpgrade({
+                newImplementation: newImpl,
+                readyAt: readyAt
+            });
+            emit UpgradeProposed(newImpl, readyAt);
+            return;
+        }
+
+        emit UpgradeAuthorized(newImpl);
+        // Self-call into the standard UUPS path so the `_authorizeUpgrade`
+        // `onlySelf` gate is satisfied. `upgradeToAndCall(newImpl, "")`
+        // is equivalent to the historical `upgradeTo(newImpl)`.
+        this.upgradeToAndCall(newImpl, "");
+    }
+
+    /// @notice Execute a previously-queued upgrade. Permissionless once
+    ///         the timelock has expired — anyone can pay the gas, but
+    ///         the implementation address was bound at queue time.
+    function executePendingUpgrade() external {
+        PendingUpgrade memory p = _pendingUpgrade;
+        if (p.readyAt == 0) revert NoPendingUpgrade();
+        if (block.timestamp < p.readyAt) revert UpgradeNotReady(p.readyAt, block.timestamp);
+        // Clear pending BEFORE the upgrade fires so a misbehaving new
+        // impl can't replay this state.
+        delete _pendingUpgrade;
+        emit UpgradeAuthorized(p.newImplementation);
+        this.upgradeToAndCall(p.newImplementation, "");
+    }
+
+    /// @notice Cancel a queued upgrade during the timelock window. Owner
+    ///         signs a digest that binds to the pending implementation
+    ///         AND `address(this)` + chain id, preventing cross-account
+    ///         replay of a cancel-grant.
+    /// @param ownerSig Owner ECDSA signature over `keccak256(abi.encode(
+    ///                 "UPGRADE_CANCEL", _pendingUpgrade.newImplementation,
+    ///                 address(this), block.chainid))`.
+    function cancelPendingUpgrade(bytes calldata ownerSig) external {
+        PendingUpgrade memory p = _pendingUpgrade;
+        if (p.readyAt == 0) revert NoPendingUpgrade();
+        bytes32 digest = keccak256(
+            abi.encode(
+                bytes32("UPGRADE_CANCEL"),
+                p.newImplementation,
+                address(this),
+                block.chainid
+            )
+        );
+        if (!_verifyEcdsa(digest, ownerSig)) revert NotOwnerSig();
+        delete _pendingUpgrade;
+        emit UpgradeCancelled(p.newImplementation);
+    }
+
+    /// @notice Configure the per-account upgrade timelock (seconds).
+    ///         Settable only via a userOp the owner signed
+    ///         (`onlySelf`). 0 == immediate upgrades (default,
+    ///         backward-compat).
+    function setUpgradeTimelock(uint256 secs) external onlySelf {
+        if (secs > MAX_UPGRADE_TIMELOCK) {
+            revert UpgradeTimelockTooLong(secs, MAX_UPGRADE_TIMELOCK);
+        }
+        uint256 old = _upgradeTimelock;
+        _upgradeTimelock = secs;
+        emit UpgradeTimelockChanged(old, secs);
+    }
+
+    /// @notice Current per-account upgrade timelock (seconds).
+    function upgradeTimelock() external view returns (uint256) {
+        return _upgradeTimelock;
+    }
+
+    /// @notice Current pending-upgrade state.
+    function pendingUpgrade() external view returns (address newImpl, uint64 readyAt) {
+        PendingUpgrade memory p = _pendingUpgrade;
+        return (p.newImplementation, p.readyAt);
+    }
+
     /// @notice Returns the current implementation version.
     function version() external pure returns (string memory) {
-        return "2.0.0";
+        return "2.2.0";
     }
 
     // ─── Delegation Manager (ERC-7710) ─────────────────────────────
@@ -127,6 +381,134 @@ contract AgentAccount is BaseAccount, Initializable, UUPSUpgradeable, IAgentAcco
     /// @notice Get the currently authorized DelegationManager.
     function delegationManager() external view returns (address) {
         return _delegationManager;
+    }
+
+    // ─── Phase A — capability roles (factory-scoped) ───────────────
+
+    /// @notice Address of the factory that deployed this account.
+    function factory() external view returns (address) {
+        return _factory;
+    }
+
+    /// @notice Bundler signer address. Resolved through the factory so
+    ///         a factory upgrade can rotate this without per-account
+    ///         migration. Returns address(0) if no factory is set
+    ///         (legacy / direct-deploy path).
+    function bundlerSigner() public view returns (address) {
+        if (_factory == address(0)) return address(0);
+        return IAgentAccountFactoryView(_factory).bundlerSigner();
+    }
+
+    /// @notice Session-issuer address. Same factory-indirect pattern.
+    function sessionIssuer() public view returns (address) {
+        if (_factory == address(0)) return address(0);
+        return IAgentAccountFactoryView(_factory).sessionIssuer();
+    }
+
+    /// @notice True iff the owner has pre-authorized the given
+    ///         session-delegation hash on chain (Variant B).
+    function hasAcceptedSessionDelegation(bytes32 sessionDelegationHash) external view returns (bool) {
+        return _acceptedSessionDelegations[sessionDelegationHash];
+    }
+
+    /**
+     * @notice Pre-authorize an on-chain session delegation (Variant B).
+     *
+     *         For high-risk sessions (per spec 007 § D2), the user
+     *         signs an EIP-712 message authorising a specific session
+     *         delegation hash and submits a userOp that calls this
+     *         function. Subsequent session userOps recover their
+     *         authority by consulting this set.
+     *
+     *         The hash itself is opaque to AgentAccount; it MUST
+     *         encode the session key, scope, expiry and any other
+     *         binding fields. Off-chain layer (DelegationManager)
+     *         validates the shape.
+     *
+     *         Authorization gate: `msg.sender == address(this)`. The
+     *         only way to reach this is a userOp signed by an owner
+     *         and routed through `execute` → self-call. Master /
+     *         bundler / session-issuer cannot register a session by
+     *         themselves; they can only submit a userOp the user
+     *         already signed.
+     *
+     * @param sessionDelegationHash The keccak256 hash of the session
+     *                              delegation the owner has authorized.
+     */
+    function acceptSessionDelegation(bytes32 sessionDelegationHash) external onlySelf {
+        if (_acceptedSessionDelegations[sessionDelegationHash]) {
+            revert SessionDelegationAlreadyAccepted(sessionDelegationHash);
+        }
+        _acceptedSessionDelegations[sessionDelegationHash] = true;
+        emit SessionDelegationAccepted(sessionDelegationHash);
+    }
+
+    /**
+     * @notice Defense-in-depth wrapper: verify a bundler-envelope
+     *         signature AT THE CONTRACT LAYER, then re-enter the
+     *         standard ERC-4337 validation path.
+     *
+     *         Spec 007 Phase A D3 — `executeFromBundler` is an
+     *         ADDITIONAL layer ALONGSIDE the standard EntryPoint flow,
+     *         not a replacement. It re-checks at the contract layer
+     *         what `apps/a2a-agent/src/routes/onchain-redeem.ts`
+     *         already checked off-chain.
+     *
+     *         Authorization gates:
+     *           - `bundlerSig` recovers to `bundlerSigner()` over a
+     *             digest binding `userOpHash`, `address(this)`, and
+     *             `block.chainid`. Master / random callers cannot
+     *             impersonate the bundler.
+     *           - The inner `op.signature` is validated against
+     *             `_owners` (or the WebAuthn passkey set) via the
+     *             standard `_validateSig` path. The bundler envelope
+     *             alone is insufficient.
+     *
+     *         This function is purely a verification hook: it does
+     *         NOT execute the userOp. EntryPoint.handleOps drives
+     *         execution as usual. Off-chain bundler-relay code calls
+     *         this view first as a sanity gate before submitting to
+     *         EntryPoint, and on-chain tooling can call it to assert
+     *         the bundler envelope at the contract layer.
+     *
+     * @param op The packed userOp envelope being submitted.
+     * @param userOpHash The hash EntryPoint will compute for `op`.
+     *                   Passed by the caller so the contract doesn't
+     *                   need to know EntryPoint version semantics; the
+     *                   off-chain relay computes it identically.
+     * @param bundlerSig The bundler's signature over
+     *                   `keccak256(abi.encode("BUNDLER_ENVELOPE",
+     *                   userOpHash, address(this), block.chainid))`.
+     * @return true if both layers (bundler envelope + inner signature)
+     *         validate. Reverts otherwise.
+     */
+    function executeFromBundler(
+        PackedUserOperation calldata op,
+        bytes32 userOpHash,
+        bytes calldata bundlerSig
+    ) external view returns (bool) {
+        address bundler = bundlerSigner();
+        if (bundler == address(0)) revert FactoryNotSet();
+
+        bytes32 envelopeDigest = keccak256(
+            abi.encode(
+                bytes32("BUNDLER_ENVELOPE"),
+                userOpHash,
+                address(this),
+                block.chainid
+            )
+        );
+        if (!_verifySignerEcdsa(envelopeDigest, bundlerSig, bundler)) {
+            revert NotBundler();
+        }
+        // Re-verify the inner userOp signature against the owner set.
+        // This is what `_validateSignature` does at EntryPoint time;
+        // we re-run it here so a misbehaving off-chain relay can't
+        // forge a payload past the bundler check.
+        if (!_validateSig(userOpHash, op.signature)) {
+            revert InvalidInnerSignature();
+        }
+        return true;
     }
 
     // ─── ERC-7579 module config (install/uninstall + introspection) ───
@@ -347,7 +729,14 @@ contract AgentAccount is BaseAccount, Initializable, UUPSUpgradeable, IAgentAcco
     //   - postCheck only runs on success (the call already reverts on failure).
 
     /// @inheritdoc BaseAccount
-    function execute(address target, uint256 value, bytes calldata data) external override {
+    /// @dev Spec 007 Phase A.5 (SC5 § 6.1) — `nonReentrant` blocks the
+    ///      "execute -> target -> execute on the same account" class of
+    ///      bugs that downstream stateful enforcers / hooks could enable.
+    ///      `_requireForExecute` already restricts callers to
+    ///      EntryPoint / self / DelegationManager; the guard hardens
+    ///      against a malicious target re-entering through one of those
+    ///      callers.
+    function execute(address target, uint256 value, bytes calldata data) external override nonReentrant {
         _requireForExecute();
 
         ModulesStorage storage $ = _modulesStorage();
@@ -391,7 +780,7 @@ contract AgentAccount is BaseAccount, Initializable, UUPSUpgradeable, IAgentAcco
     ///      Inner calls run with `msg.sender == address(this)`.
     ///      All-or-nothing: any inner revert bubbles and reverts the batch.
     ///      Pre-hooks run once on the whole batch; post-hooks run on success.
-    function executeBatch(Call[] calldata calls) external override {
+    function executeBatch(Call[] calldata calls) external override nonReentrant {
         _requireForExecute();
 
         ModulesStorage storage $ = _modulesStorage();
@@ -515,6 +904,22 @@ contract AgentAccount is BaseAccount, Initializable, UUPSUpgradeable, IAgentAcco
         bytes32 ethSigned = hash.toEthSignedMessageHash();
         (recovered, err,) = ECDSA.tryRecover(ethSigned, sig);
         return err == ECDSA.RecoverError.NoError && _owners[recovered];
+    }
+
+    /// @dev Verify a signature recovers to a SPECIFIC expected signer
+    ///      (used by `executeFromBundler` and any future capability
+    ///      check that targets a system key, NOT the owner set). Try
+    ///      raw hash first then eth-signed wrap, like `_verifyEcdsa`.
+    function _verifySignerEcdsa(
+        bytes32 hash,
+        bytes memory sig,
+        address expected
+    ) internal pure returns (bool) {
+        (address recovered, ECDSA.RecoverError err,) = ECDSA.tryRecover(hash, sig);
+        if (err == ECDSA.RecoverError.NoError && recovered == expected) return true;
+        bytes32 ethSigned = MessageHashUtils.toEthSignedMessageHash(hash);
+        (recovered, err,) = ECDSA.tryRecover(ethSigned, sig);
+        return err == ECDSA.RecoverError.NoError && recovered == expected;
     }
 
     function _verifyWebAuthn(bytes32 hash, bytes memory payload) internal view returns (bool) {

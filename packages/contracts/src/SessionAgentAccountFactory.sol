@@ -15,9 +15,10 @@ import "./AgentAccountFactory.sol";
  *   Wrap pattern:
  *     1. Deploy an ERC1967Proxy pointing at AgentAccount's implementation
  *        (read from the wrapped AgentAccountFactory).
- *     2. initialize(owner=desiredOwner, serverSigner=THIS_FACTORY, dm=dm).
+ *     2. initializeWithCoOwner(owner=desiredOwner, coOwner=THIS_FACTORY, dm=dm, factory_=THIS_FACTORY).
  *        Two owners get set: the user (`desiredOwner`) and this factory
- *        (so this factory can call installModule).
+ *        (so this factory can call installModule). The fourth arg is
+ *        the factory-for-capability-lookups address (Spec 007 Phase A).
  *     3. Install each validator (type 1) and hook (type 4) with the
  *        provided init blob.
  *     4. Self-revoke: factory calls account.removeOwner(factory) by routing
@@ -95,15 +96,22 @@ contract SessionAgentAccountFactory {
         if (predicted.code.length > 0) revert AlreadyDeployed(predicted);
 
         // Deploy with the user-supplied `owner` as the primary owner AND
-        // THIS factory as the `serverSigner` co-owner. Two-owner pattern:
+        // THIS factory as the transient co-owner. Two-owner pattern:
         //   - `owner` (the session-key EOA) signs UserOps + manages day-to-day.
         //   - The factory is a transient co-owner present so it can
         //     installModule on the new proxy. Documented as a no-op
         //     liability post-deploy (no callback paths into the account).
         //     The owner can `removeOwner(factory)` from any UserOp later.
+        // Spec 007 Phase A — session bootstrap uses the two-owner
+        // initializer so this factory can `installModule` at deploy
+        // time. The user-supplied `owner` is the primary owner; this
+        // factory is the transient co-owner. `address(this)` is also
+        // passed as the factory-for-capability-lookups, satisfying
+        // `bundlerSigner()` / `sessionIssuer()` via the delegating
+        // views below.
         bytes memory initData = abi.encodeCall(
-            AgentAccount.initialize,
-            (owner, address(this), delegationManager)
+            AgentAccount.initializeWithCoOwner,
+            (owner, address(this), delegationManager, address(this))
         );
         ERC1967Proxy proxy = new ERC1967Proxy{salt: salt}(
             address(accountImplementation),
@@ -130,11 +138,30 @@ contract SessionAgentAccountFactory {
         // UserOp at any time to clean up the ownership set.
     }
 
+    /// @notice Spec 007 Phase A — delegate capability-role lookups
+    ///         to the wrapped main factory. Session accounts read
+    ///         `bundlerSigner()` / `sessionIssuer()` off this
+    ///         contract, which in turn reads the main factory.
+    function bundlerSigner() external view returns (address) {
+        return accountFactory.bundlerSigner();
+    }
+
+    function sessionIssuer() external view returns (address) {
+        return accountFactory.sessionIssuer();
+    }
+
     /// @notice Counterfactual address of a session account given (owner, salt).
     function getAddress(address owner, bytes32 salt) public view returns (address) {
+        // Spec 007 Phase A — session bootstrap uses the two-owner
+        // initializer so this factory can `installModule` at deploy
+        // time. The user-supplied `owner` is the primary owner; this
+        // factory is the transient co-owner. `address(this)` is also
+        // passed as the factory-for-capability-lookups, satisfying
+        // `bundlerSigner()` / `sessionIssuer()` via the delegating
+        // views below.
         bytes memory initData = abi.encodeCall(
-            AgentAccount.initialize,
-            (owner, address(this), delegationManager)
+            AgentAccount.initializeWithCoOwner,
+            (owner, address(this), delegationManager, address(this))
         );
         bytes memory proxyBytecode = abi.encodePacked(
             type(ERC1967Proxy).creationCode,

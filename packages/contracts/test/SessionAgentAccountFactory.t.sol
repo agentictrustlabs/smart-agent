@@ -11,6 +11,7 @@ import "../src/modules/SpendCapHookModule.sol";
 import "../src/modules/RateLimitHookModule.sol";
 import "account-abstraction/interfaces/IEntryPoint.sol";
 import "account-abstraction/core/EntryPoint.sol";
+import "./helpers/MockGovernance.sol";
 
 contract SessionAgentAccountFactoryTest is Test {
     EntryPoint public entryPoint;
@@ -29,7 +30,7 @@ contract SessionAgentAccountFactoryTest is Test {
 
         entryPoint = new EntryPoint();
         dm = new DelegationManager();
-        accountFactory = new AgentAccountFactory(IEntryPoint(address(entryPoint)), address(dm), deployer);
+        accountFactory = new AgentAccountFactory(IEntryPoint(address(entryPoint)), address(dm), deployer, deployer, address(new MockGovernance(address(this))));
         sessionFactory = new SessionAgentAccountFactory(accountFactory);
     }
 

@@ -1,0 +1,45 @@
+
+Running 1 test using 1 worker
+
+[demo] seeding scenario (STOP_AT_COMMITMENT=1)…
+[demo] commitment: 0x5d13dfead5e0b36ef1ee6ec2605b5203b4197ee700cb6ae7fdf943110b569c31
+[demo] pool:       0x42594415DcC856a602D5d85170119bA8489668Cf
+[demo] Fort Collins Treasury before: $150,000
+[demo] pre-warming pages (no recording)…
+[demo] pre-warm complete
+  ✘  1 tests/e2e/grant-flow-demo.spec.ts:329:5 › Customer demo — grant lifecycle on Smart Agent (5.4m)
+
+
+  1) tests/e2e/grant-flow-demo.spec.ts:329:5 › Customer demo — grant lifecycle on Smart Agent ──────
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: locator('[data-commitment-subject="0x5d13dfead5e0b36ef1ee6ec2605b5203b4197ee700cb6ae7fdf943110b569c31"][data-task-kind="attestation"]').first()
+    Expected: visible
+    Timeout: 30000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 30000ms[22m
+    [2m  - waiting for locator('[data-commitment-subject="0x5d13dfead5e0b36ef1ee6ec2605b5203b4197ee700cb6ae7fdf943110b569c31"][data-task-kind="attestation"]').first()[22m
+
+
+      454 |     await page.reload({ waitUntil: 'networkidle' })
+      455 |   }
+    > 456 |   await expect(attestScope.first()).toBeVisible({ timeout: 30_000 })
+          |                                     ^
+      457 |
+      458 |   // ── Chapter 9: Sarah attests milestone 1 ─────────────────────────
+      459 |   await setBanner(page, 9, TOTAL_CHAPTERS,
+        at /home/barb/smart-agent/tests/e2e/grant-flow-demo.spec.ts:456:37
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tests/e2e/demo-output/grant-flow-demo-Customer-d-79b52-nt-lifecycle-on-Smart-Agent/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tests/e2e/demo-output/grant-flow-demo-Customer-d-79b52-nt-lifecycle-on-Smart-Agent/error-context.md
+
+  Slow test file: tests/e2e/grant-flow-demo.spec.ts (5.4m)
+  Consider running tests from slow files in parallel. See: https://playwright.dev/docs/test-parallel
+  1 failed
+    tests/e2e/grant-flow-demo.spec.ts:329:5 › Customer demo — grant lifecycle on Smart Agent ───────

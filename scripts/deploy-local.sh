@@ -19,34 +19,51 @@ ANVIL_KEY="0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
 echo "=== Deploying contracts to local Anvil ==="
 echo ""
 
-# The a2a-agent master signer is the EOA registered as serverSigner on
-# every AgentAccount minted by the factory (= a co-owner of the smart
-# account). AgentAccount._validateSignature accepts userOps signed by
-# this key. Misalignment between the factory's serverSigner and
-# a2a-agent's runtime signer causes @AA24 signature errors at
-# EntryPoint.handleOps.
+# Spec 007 Phase A — derive THREE distinct signer addresses (master /
+# bundler / session-issuer). Each is a separate KMS key in production
+# with its own blast radius, rotation cadence, and audit retention.
+# Pre-Phase-A this was a single SERVER_SIGNER who was auto-coowner of
+# every AgentAccount; that role is gone.
 #
-# Derive the address through the SAME getMasterSigner() path a2a-agent
-# uses at runtime — backend-aware, so dev (local-aes from
-# A2A_MASTER_PRIVATE_KEY) and prod (aws-kms / gcp-kms via GetPublicKey)
-# both flow through one helper. This avoids re-reading raw private keys
-# in the deploy script and avoids regressing to pre-K4 behavior.
+# In local dev each is derived from a deterministic anvil private key
+# via the same `master-signer-address.ts` path the runtime uses. The
+# --role flag selects which key the script derives from.
 A2A_MASTER_PRIVATE_KEY_FOR_SIGNER="0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"
-SERVER_SIGNER_ADDRESS=$( \
+# Anvil account #2 (well-known dev key) — bundler EOA.
+A2A_BUNDLER_PRIVATE_KEY_FOR_SIGNER="0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a"
+# Anvil account #3 (well-known dev key) — session-issuer EOA.
+A2A_SESSION_ISSUER_PRIVATE_KEY_FOR_SIGNER="0x7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6"
+
+MASTER_SIGNER_ADDRESS=$( \
   A2A_KMS_BACKEND="${A2A_KMS_BACKEND:-local-aes}" \
   A2A_MASTER_PRIVATE_KEY="$A2A_MASTER_PRIVATE_KEY_FOR_SIGNER" \
-  pnpm --silent tsx "$ROOT_DIR/scripts/master-signer-address.ts" \
+  pnpm --silent tsx "$ROOT_DIR/scripts/master-signer-address.ts" --role master \
 )
-echo "ServerSigner (a2a-agent master EOA, via getMasterSigner()): $SERVER_SIGNER_ADDRESS"
+BUNDLER_SIGNER_ADDRESS=$( \
+  A2A_KMS_BACKEND="${A2A_KMS_BACKEND:-local-aes}" \
+  A2A_BUNDLER_PRIVATE_KEY="$A2A_BUNDLER_PRIVATE_KEY_FOR_SIGNER" \
+  pnpm --silent tsx "$ROOT_DIR/scripts/master-signer-address.ts" --role bundler \
+)
+SESSION_ISSUER_ADDRESS=$( \
+  A2A_KMS_BACKEND="${A2A_KMS_BACKEND:-local-aes}" \
+  A2A_SESSION_ISSUER_PRIVATE_KEY="$A2A_SESSION_ISSUER_PRIVATE_KEY_FOR_SIGNER" \
+  pnpm --silent tsx "$ROOT_DIR/scripts/master-signer-address.ts" --role session-issuer \
+)
+echo "MasterSigner   (a2a-agent master EOA): $MASTER_SIGNER_ADDRESS"
+echo "BundlerSigner  (executeFromBundler):   $BUNDLER_SIGNER_ADDRESS"
+echo "SessionIssuer  (session delegations):  $SESSION_ISSUER_ADDRESS"
 
 # Run the deploy script
 cd "$CONTRACTS_DIR"
-OUTPUT=$(PRIVATE_KEY="$ANVIL_KEY" SERVER_SIGNER_ADDRESS="$SERVER_SIGNER_ADDRESS" forge script script/Deploy.s.sol \
-  --rpc-url "$ANVIL_RPC" \
-  --broadcast \
-  --slow \
-  --skip-simulation \
-  -vvv 2>&1)
+OUTPUT=$(PRIVATE_KEY="$ANVIL_KEY" \
+  BUNDLER_SIGNER_ADDRESS="$BUNDLER_SIGNER_ADDRESS" \
+  SESSION_ISSUER_ADDRESS="$SESSION_ISSUER_ADDRESS" \
+  forge script script/Deploy.s.sol \
+    --rpc-url "$ANVIL_RPC" \
+    --broadcast \
+    --slow \
+    --skip-simulation \
+    -vvv 2>&1)
 
 echo "$OUTPUT" | grep -E "Deployer:|Chain ID:|EntryPoint|Factory|Manager|Enforcer|impl"
 
@@ -129,10 +146,13 @@ COMMITMENT_REGISTRY=$(echo "$OUTPUT" | grep "COMMITMENT_REGISTRY_ADDRESS=" | sed
 # Spec 005 — dev-only MockUSDC.
 MOCK_USDC=$(echo "$OUTPUT" | grep "MOCK_USDC_ADDRESS=" | sed 's/.*=//')
 AGENT_NAME_ATTRIBUTE_RESOLVER=$(echo "$OUTPUT" | grep "AGENT_NAME_ATTRIBUTE_RESOLVER_ADDRESS=" | sed 's/.*=//')
+# Spec 007 Phase A.5 — Governance multisig + timelock.
+GOVERNANCE=$(echo "$OUTPUT" | grep "GOVERNANCE_ADDRESS=" | sed 's/.*=//')
 
 echo ""
 echo "=== Extracted addresses ==="
 echo "EntryPoint:                $ENTRYPOINT"
+echo "Governance:                $GOVERNANCE"
 echo "SmartAgentPaymaster:       $PAYMASTER"
 echo "AgentAccountFactory:       $FACTORY"
 echo "DelegationManager:         $DELEGATION"
@@ -170,6 +190,7 @@ fi
 
 # Remove old contract addresses from .env
 sed -i '/^ENTRYPOINT_ADDRESS=/d' "$WEB_ENV"
+sed -i '/^GOVERNANCE_ADDRESS=/d' "$WEB_ENV"
 sed -i '/^PAYMASTER_ADDRESS=/d' "$WEB_ENV"
 sed -i '/^AGENT_FACTORY_ADDRESS=/d' "$WEB_ENV"
 sed -i '/^DELEGATION_MANAGER_ADDRESS=/d' "$WEB_ENV"
@@ -247,6 +268,10 @@ sed -i '/^AGENT_NAME_ATTRIBUTE_RESOLVER_ADDRESS=/d' "$WEB_ENV"
 sed -i '/^RPC_URL=/d' "$WEB_ENV"
 sed -i '/^DEPLOYER_PRIVATE_KEY=/d' "$WEB_ENV"
 sed -i '/^DEPLOYER_ADDRESS=/d' "$WEB_ENV"
+# Spec 007 Phase A — drop legacy + re-write new capability-role addrs.
+sed -i '/^SERVER_SIGNER_ADDRESS=/d' "$WEB_ENV"
+sed -i '/^BUNDLER_SIGNER_ADDRESS=/d' "$WEB_ENV"
+sed -i '/^SESSION_ISSUER_ADDRESS=/d' "$WEB_ENV"
 # Phase 1 (delegation refactor) — ORG_MCP_EOA / D_onchain retired. No EOA
 # is held by org-mcp anymore. On-chain redeems flow through a2a-agent's
 # session EOA, which redeems the user's signed root delegation directly.
@@ -255,6 +280,7 @@ sed -i '/^DEPLOYER_ADDRESS=/d' "$WEB_ENV"
 sed -i '/^ORG_MCP_EOA_ADDRESS=/d' "$WEB_ENV"
 sed -i '/^ORG_MCP_EOA_PRIVATE_KEY=/d' "$WEB_ENV"
 sed -i '/^A2A_INTERSERVICE_HMAC_KEY_ORG=/d' "$WEB_ENV"
+sed -i '/^A2A_INTERSERVICE_HMAC_KEY_HUB=/d' "$WEB_ENV"
 sed -i '/^A2A_SESSION_SECRET=/d' "$WEB_ENV"
 sed -i '/^WEB_TO_A2A_HMAC_KEY=/d' "$WEB_ENV"
 # Sprint S2.6 — `oauth-salt` MAC key (replaces SERVER_PEPPER for the
@@ -279,6 +305,12 @@ sed -i '/^SESSION_JWT_SECRET=/d' "$WEB_ENV"
 # Phase 1 — shared HMAC secret between a2a-agent and org-mcp. Same value
 # goes to both apps so HMAC verification works. Hardcoded for dev.
 A2A_INTERSERVICE_HMAC_KEY_ORG="0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+# Shared HMAC secret between a2a-agent and hub-mcp. Same value on both
+# ends; canonical-string format lives in apps/a2a-agent/src/auth/sign-outbound.ts.
+# Used by the system-scoped /mcp/hub/:tool proxy route (boot-seed, kb-sync,
+# per-pool sync, /api/ontology-sync) — no per-user session on that path,
+# so the MAC is the only trust boundary.
+A2A_INTERSERVICE_HMAC_KEY_HUB="0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
 # Hardening §1.3 (Stream B Task B1) — web → a2a-agent service auth.
 # Signs `/session-store/insert|revoke|bump-epoch` and
 # `/wallet-action/dispatch` envelopes between the Next.js web server and
@@ -325,6 +357,7 @@ DEPLOYER_PRIVATE_KEY=$ANVIL_KEY
 # /api/auth/check-agent-name) read this and never touch the private key.
 DEPLOYER_ADDRESS=$DEPLOYER_ADDRESS_VALUE
 A2A_INTERSERVICE_HMAC_KEY_ORG=$A2A_INTERSERVICE_HMAC_KEY_ORG
+A2A_INTERSERVICE_HMAC_KEY_HUB=$A2A_INTERSERVICE_HMAC_KEY_HUB
 A2A_SESSION_SECRET=$A2A_SESSION_SECRET
 WEB_TO_A2A_HMAC_KEY=$WEB_TO_A2A_HMAC_KEY
 OAUTH_SALT_HMAC_KEY=$OAUTH_SALT_HMAC_KEY
@@ -342,6 +375,7 @@ SESSION_JWT_SECRETS=$SESSION_JWT_SECRETS_VALUE
 # See docs/operations/kms-signer-setup.md § "Web session-grant signer key (S1.1)".
 SESSION_SIGNER_BACKEND=dev-pepper
 ENTRYPOINT_ADDRESS=$ENTRYPOINT
+GOVERNANCE_ADDRESS=$GOVERNANCE
 PAYMASTER_ADDRESS=$PAYMASTER
 AGENT_FACTORY_ADDRESS=$FACTORY
 DELEGATION_MANAGER_ADDRESS=$DELEGATION
@@ -494,6 +528,17 @@ for svc in org-mcp family-mcp person-mcp geo-mcp verifier-mcp people-group-mcp; 
   echo "Updated $ENV_FILE"
 done
 
+# ─── Propagate inter-service secret to hub-mcp ─────────────────────────
+# Hub-mcp is a system-level aggregator (no per-user state, no on-chain
+# wallet). It only needs the shared HMAC secret so it can verify
+# a2a-agent's signed inbound calls on `/tools/*`. GraphDB and contract
+# addresses are already loaded by hub-mcp's config.ts (apps/web/.env
+# fallback).
+HUB_MCP_ENV_FILE="$ROOT_DIR/apps/hub-mcp/.env"
+if [ ! -f "$HUB_MCP_ENV_FILE" ]; then : > "$HUB_MCP_ENV_FILE"; fi
+update_env_var "$HUB_MCP_ENV_FILE" A2A_INTERSERVICE_HMAC_KEY_HUB "$A2A_INTERSERVICE_HMAC_KEY_HUB"
+echo "Updated $HUB_MCP_ENV_FILE"
+
 # ─── Propagate inter-service secret + session secret to a2a-agent ─────
 # a2a-agent's privileged session endpoints (/session/:id/redeem-tx etc.)
 # verify HMAC signatures with this secret. The session secret is used to
@@ -537,23 +582,41 @@ update_env_var "$A2A_ENV_FILE" REVOCATION_MODULE_ADDRESS "$REVOCATION_MODULE"
 # production this is an AWS KMS asymmetric ECC_SECG_P256K1 key (K4 PR-2).
 A2A_MASTER_PRIVATE_KEY="0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"
 update_env_var "$A2A_ENV_FILE" A2A_MASTER_PRIVATE_KEY "$A2A_MASTER_PRIVATE_KEY"
+# Spec 007 Phase A — bundler + session-issuer private keys (local-aes
+# dev shim). Each is a distinct anvil account so blast-radius
+# separation is meaningful even in dev. In production these are
+# separate AWS KMS asymmetric secp256k1 keys with their own IAM roles.
+A2A_BUNDLER_PRIVATE_KEY="$A2A_BUNDLER_PRIVATE_KEY_FOR_SIGNER"
+A2A_SESSION_ISSUER_PRIVATE_KEY="$A2A_SESSION_ISSUER_PRIVATE_KEY_FOR_SIGNER"
+update_env_var "$A2A_ENV_FILE" A2A_BUNDLER_PRIVATE_KEY "$A2A_BUNDLER_PRIVATE_KEY"
+update_env_var "$A2A_ENV_FILE" A2A_SESSION_ISSUER_PRIVATE_KEY "$A2A_SESSION_ISSUER_PRIVATE_KEY"
+update_env_var "$A2A_ENV_FILE" BUNDLER_SIGNER_ADDRESS "$BUNDLER_SIGNER_ADDRESS"
+update_env_var "$A2A_ENV_FILE" SESSION_ISSUER_ADDRESS "$SESSION_ISSUER_ADDRESS"
 # Web also needs A2A_MASTER_PRIVATE_KEY for runtime writes that must be
 # signed by an owner of the smart account (e.g., AgentAccountResolver
-# .register calls — onlyAgentOwner modifier). The master signer is now
-# the system-wide co-owner on every AgentAccount minted via the factory,
-# so it's the right signer for these post-deploy operator writes.
-# Pre-K6 the seed used DEPLOYER_PRIVATE_KEY for the same purpose; now
-# that the factory's serverSigner = master (not deployer), seed-time
-# writes must shift to the master signer. Same env var in dev (raw key)
-# and prod (a KMS-backed signer wraps it).
+# .register calls — onlyAgentOwner modifier).
+# Spec 007 Phase A — master is NO LONGER an automatic co-owner of any
+# account; runtime writes that need owner authority must be signed by
+# the actual owner (passkey / SIWE EOA / demo-deterministic EOA). The
+# env var is kept for backwards compat with existing dev paths during
+# Phase B migration, but new code paths should NOT rely on master =
+# owner.
 update_env_var "$WEB_ENV" A2A_MASTER_PRIVATE_KEY "$A2A_MASTER_PRIVATE_KEY"
+update_env_var "$WEB_ENV" BUNDLER_SIGNER_ADDRESS "$BUNDLER_SIGNER_ADDRESS"
+update_env_var "$WEB_ENV" SESSION_ISSUER_ADDRESS "$SESSION_ISSUER_ADDRESS"
 update_env_var "$A2A_ENV_FILE" ENTRYPOINT_ADDRESS "$ENTRYPOINT"
+# Spec 007 Phase A.5 — Governance multisig + timelock address. Downstream
+# services use this to read the pause flag and (for tooling) to drive
+# governance proposals.
+update_env_var "$A2A_ENV_FILE" GOVERNANCE_ADDRESS "$GOVERNANCE"
+update_env_var "$WEB_ENV" GOVERNANCE_ADDRESS "$GOVERNANCE"
 # Gas-sponsorship — a2a-agent's self-bundler attaches paymasterAndData to
 # every userOp it submits to EntryPoint.handleOps so the master EOA's
 # balance is decoupled from per-op gas economics (see
 # packages/contracts/src/SmartAgentPaymaster.sol).
 update_env_var "$A2A_ENV_FILE" PAYMASTER_ADDRESS "$PAYMASTER"
 update_env_var "$A2A_ENV_FILE" A2A_INTERSERVICE_HMAC_KEY_ORG "$A2A_INTERSERVICE_HMAC_KEY_ORG"
+update_env_var "$A2A_ENV_FILE" A2A_INTERSERVICE_HMAC_KEY_HUB "$A2A_INTERSERVICE_HMAC_KEY_HUB"
 update_env_var "$A2A_ENV_FILE" A2A_SESSION_SECRET "$A2A_SESSION_SECRET"
 # Hardening §1.3 (Stream B Task B1) — shared secret for web → a2a-agent
 # session-store + wallet-action envelopes. Same value as in WEB_ENV.
@@ -630,6 +693,16 @@ TEN_ETH_HEX="0x8ac7230489e80000" # 10 ETH
 cast rpc --rpc-url "$ANVIL_RPC" anvil_setBalance "$A2A_MASTER_EOA_ADDR" "$TEN_ETH_HEX" > /dev/null
 echo "Funded a2a-master EOA (10 ETH): $A2A_MASTER_EOA_ADDR"
 
+# Spec 007 Phase A — fund the bundler + session-issuer EOAs. The
+# bundler EOA submits userOp envelopes to EntryPoint.handleOps when
+# Phase B wires the new relay path; the session-issuer is mostly a
+# signer (no on-chain calls of its own under Phase A), but we fund it
+# anyway so any future on-chain capability check can pay gas.
+cast rpc --rpc-url "$ANVIL_RPC" anvil_setBalance "$BUNDLER_SIGNER_ADDRESS" "$TEN_ETH_HEX" > /dev/null
+cast rpc --rpc-url "$ANVIL_RPC" anvil_setBalance "$SESSION_ISSUER_ADDRESS" "$TEN_ETH_HEX" > /dev/null
+echo "Funded bundler-signer EOA (10 ETH):  $BUNDLER_SIGNER_ADDRESS"
+echo "Funded session-issuer EOA (10 ETH):  $SESSION_ISSUER_ADDRESS"
+
 # Tier 2 — surface the additional caveat enforcer addresses to apps/web so
 # bootstrapA2ASessionForUser can build D_onchain. (POOL_REGISTRY /
 # FUND_REGISTRY are already in the cat-EOF block above.)
@@ -673,10 +746,16 @@ if [ "${SKIP_POST_DEPLOY_SEEDS:-0}" = "1" ]; then
 else
   echo ""
   echo "=== Seeding ontology predicates ==="
-  "$SCRIPT_DIR/seed-ontology.sh"
+  # Invoke via `bash` so a missing executable bit on the sub-script
+  # doesn't abort deploy with "Permission denied" + set-e. Repo lost the
+  # +x bit twice via git checkout / WSL filesystem; the symptom was
+  # silent: sa:hasTreasury etc never got registered, and downstream
+  # writeAddressProperty calls reverted PredicateNotActive() inside
+  # userOps (swallowed by the seed's try/catch).
+  bash "$SCRIPT_DIR/seed-ontology.sh"
   echo ""
   echo "=== Seeding relationship-type registry ==="
-  "$SCRIPT_DIR/seed-type-registry.sh"
+  bash "$SCRIPT_DIR/seed-type-registry.sh"
   echo ""
   echo "=== Seeding spec-004 / spec-005 sa: predicates + shapes ==="
   # AttributeStorage on the marketplace registries reverts every write with

@@ -8,6 +8,7 @@ import "../src/ShapeRegistry.sol";
 import "../src/PoolRegistry.sol";
 import "account-abstraction/interfaces/IEntryPoint.sol";
 import "account-abstraction/core/EntryPoint.sol";
+import "./helpers/MockGovernance.sol";
 
 contract PoolRegistryTest is Test {
     EntryPoint entryPoint;
@@ -46,7 +47,7 @@ contract PoolRegistryTest is Test {
         shapes = new ShapeRegistry(address(this));
         pools = new PoolRegistry(address(ontology), address(shapes));
 
-        factory = new AgentAccountFactory(IEntryPoint(address(entryPoint)), address(0), address(this));
+        factory = new AgentAccountFactory(IEntryPoint(address(entryPoint)), address(0), address(this), address(this), address(new MockGovernance(address(this))));
         poolAgent = address(factory.createAccount(poolOwner, 1));
 
         _registerTerm(pools.SA_POOL_DOMAIN(), "sa:poolDomain", "bytes32");
@@ -171,10 +172,15 @@ contract PoolRegistryTest is Test {
         PoolRegistry.OpenParams memory p = _validParams();
         bytes32 fakeGov = keccak256("sa:GovNotInEnum");
         p.governanceModel = fakeGov;
+        // Spec 007 Phase A — pre-compute the expected revert data
+        // (the staticcall inside `vm.expectRevert(...)` would otherwise
+        // consume the prank and leave `msg.sender` as the test contract).
+        bytes32 govKey = pools.SA_POOL_GOVERNANCE_MODEL();
+        bytes memory expectedRevert = abi.encodeWithSelector(
+            ShapeRegistry.EnumValueNotAllowed.selector, govKey, fakeGov
+        );
         vm.prank(poolOwner);
-        vm.expectRevert(abi.encodeWithSelector(
-            ShapeRegistry.EnumValueNotAllowed.selector, pools.SA_POOL_GOVERNANCE_MODEL(), fakeGov
-        ));
+        vm.expectRevert(expectedRevert);
         pools.open(p);
     }
 
@@ -182,10 +188,12 @@ contract PoolRegistryTest is Test {
         PoolRegistry.OpenParams memory p = _validParams();
         bytes32 fakeCeiling = keccak256("sa:CeilingFake");
         p.ceilingPolicy = fakeCeiling;
+        bytes32 ceilingKey = pools.SA_POOL_CEILING_POLICY();
+        bytes memory expectedRevert = abi.encodeWithSelector(
+            ShapeRegistry.EnumValueNotAllowed.selector, ceilingKey, fakeCeiling
+        );
         vm.prank(poolOwner);
-        vm.expectRevert(abi.encodeWithSelector(
-            ShapeRegistry.EnumValueNotAllowed.selector, pools.SA_POOL_CEILING_POLICY(), fakeCeiling
-        ));
+        vm.expectRevert(expectedRevert);
         pools.open(p);
     }
 

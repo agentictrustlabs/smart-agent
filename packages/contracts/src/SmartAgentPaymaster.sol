@@ -4,6 +4,7 @@ pragma solidity ^0.8.28;
 import "account-abstraction/core/BasePaymaster.sol";
 import "account-abstraction/interfaces/IEntryPoint.sol";
 import "account-abstraction/interfaces/PackedUserOperation.sol";
+import "./governance/IGovernance.sol";
 
 /**
  * @title SmartAgentPaymaster
@@ -48,13 +49,44 @@ contract SmartAgentPaymaster is BasePaymaster {
     ///      via setAccepted / setAcceptedBatch.
     mapping(address => bool) private _acceptList;
 
+    /// @notice The Governance contract whose pause flag halts paymaster
+    ///         validation. Stored as immutable so an attacker who
+    ///         compromises governance still cannot redirect the pause
+    ///         signal to a contract they control.
+    /// @dev Phase A.5 (SC4 § 4.3.1) — the paymaster's Ownable owner is
+    ///      ALSO set to this address at construction, so withdraws and
+    ///      admin operations flow through governance proposals.
+    address public immutable governance;
+
     /// @notice Reason the paymaster rejected a userOp in production mode.
     error SenderNotAccepted(address sender);
+    /// @notice Phase A.5 — global system pause is in effect.
+    error SystemPaused();
+    error ZeroGovernance();
 
     event DevModeSet(bool dev);
     event SenderAcceptedSet(address indexed sender, bool accepted);
 
-    constructor(IEntryPoint entryPointAddr, address owner) BasePaymaster(entryPointAddr, owner) {
+    /// @dev Storage gap reserves slots for future state. Phase A.5
+    ///      (SC7 § 3.1).
+    uint256[50] private __gap;
+
+    /// @param entryPointAddr ERC-4337 EntryPoint.
+    /// @param initialOwner   Transient Ownable owner used during deploy
+    ///                       so the deployer can `addStake` / `deposit`
+    ///                       in the same broadcast. Transfer ownership
+    ///                       to `governance_` at the end of deploy via
+    ///                       `transferOwnership` + `acceptOwnership`.
+    /// @param governance_    The Governance contract; sourced for the
+    ///                       pause flag. Stored immutable so it cannot
+    ///                       be redirected post-deploy.
+    constructor(
+        IEntryPoint entryPointAddr,
+        address initialOwner,
+        address governance_
+    ) BasePaymaster(entryPointAddr, initialOwner) {
+        if (governance_ == address(0)) revert ZeroGovernance();
+        governance = governance_;
         // v1 ships in dev mode. Flip via setDevMode(false) before production.
         _dev = true;
         emit DevModeSet(true);
@@ -62,20 +94,30 @@ contract SmartAgentPaymaster is BasePaymaster {
 
     // ─── Admin ──────────────────────────────────────────────────────────
 
+    /// @dev Phase A.5 — policy setters are governance-only; Ownable
+    ///      authority (inherited `addStake`/`withdrawTo`/etc.) is
+    ///      transferred to governance at the end of deploy via
+    ///      Ownable2Step.
+    error NotGovernance();
+    modifier onlyGovernance() {
+        if (msg.sender != governance) revert NotGovernance();
+        _;
+    }
+
     /// @notice Toggle accept-all (dev) vs. allow-list (prod) policy.
-    function setDevMode(bool dev) external onlyOwner {
+    function setDevMode(bool dev) external onlyGovernance {
         _dev = dev;
         emit DevModeSet(dev);
     }
 
     /// @notice Add or remove a single sender from the production accept-list.
-    function setAccepted(address sender, bool accepted) external onlyOwner {
+    function setAccepted(address sender, bool accepted) external onlyGovernance {
         _acceptList[sender] = accepted;
         emit SenderAcceptedSet(sender, accepted);
     }
 
     /// @notice Batch variant for bulk migrations / seeds.
-    function setAcceptedBatch(address[] calldata senders, bool accepted) external onlyOwner {
+    function setAcceptedBatch(address[] calldata senders, bool accepted) external onlyGovernance {
         for (uint256 i = 0; i < senders.length; i++) {
             _acceptList[senders[i]] = accepted;
             emit SenderAcceptedSet(senders[i], accepted);
@@ -103,6 +145,8 @@ contract SmartAgentPaymaster is BasePaymaster {
         bytes32 /*userOpHash*/,
         uint256 /*maxCost*/
     ) internal view override returns (bytes memory context, uint256 validationData) {
+        // Phase A.5 — refuse to sponsor when the system is paused.
+        require(!IGovernanceView(governance).isPaused(), SystemPaused());
         if (!_dev) {
             require(_acceptList[userOp.sender], SenderNotAccepted(userOp.sender));
         }

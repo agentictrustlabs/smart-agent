@@ -8,6 +8,7 @@ import "../src/AgentAccountFactory.sol";
 import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import "account-abstraction/interfaces/IEntryPoint.sol";
 import "account-abstraction/core/EntryPoint.sol";
+import "./helpers/MockGovernance.sol";
 
 contract UniversalSignatureValidatorTest is Test {
     using MessageHashUtils for bytes32;
@@ -22,7 +23,7 @@ contract UniversalSignatureValidatorTest is Test {
     function setUp() public {
         sv = new UniversalSignatureValidator();
         entryPoint = new EntryPoint();
-        factory = new AgentAccountFactory(IEntryPoint(address(entryPoint)), address(0), address(this));
+        factory = new AgentAccountFactory(IEntryPoint(address(entryPoint)), address(0), address(this), address(this), address(new MockGovernance(address(this))));
         (owner, ownerKey) = makeAddrAndKey("owner");
     }
 

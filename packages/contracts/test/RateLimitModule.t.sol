@@ -7,6 +7,7 @@ import "../src/AgentAccountFactory.sol";
 import "../src/modules/RateLimitHookModule.sol";
 import "account-abstraction/interfaces/IEntryPoint.sol";
 import "account-abstraction/core/EntryPoint.sol";
+import "./helpers/MockGovernance.sol";
 
 contract Sink { uint256 public x; function poke(uint256 v) external { x = v; } }
 
@@ -23,7 +24,7 @@ contract RateLimitModuleTest is Test {
     function setUp() public {
         owner = makeAddr("owner");
         entryPoint = new EntryPoint();
-        factory = new AgentAccountFactory(IEntryPoint(address(entryPoint)), address(0), address(this));
+        factory = new AgentAccountFactory(IEntryPoint(address(entryPoint)), address(0), address(this), address(this), address(new MockGovernance(address(this))));
         account = factory.createAccount(owner, 0);
         vm.deal(address(account), 1 ether);
         module = new RateLimitHookModule();

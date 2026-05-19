@@ -8,6 +8,7 @@ import "../src/ShapeRegistry.sol";
 import "../src/FundRegistry.sol";
 import "account-abstraction/interfaces/IEntryPoint.sol";
 import "account-abstraction/core/EntryPoint.sol";
+import "./helpers/MockGovernance.sol";
 
 contract FundRegistryTest is Test {
     EntryPoint entryPoint;
@@ -44,7 +45,7 @@ contract FundRegistryTest is Test {
         shapes = new ShapeRegistry(address(this));
         funds = new FundRegistry(address(ontology), address(shapes));
 
-        factory = new AgentAccountFactory(IEntryPoint(address(entryPoint)), address(0), address(this));
+        factory = new AgentAccountFactory(IEntryPoint(address(entryPoint)), address(0), address(this), address(this), address(new MockGovernance(address(this))));
         fundAgent = address(factory.createAccount(fundOwner, 1));
         otherFundAgent = address(factory.createAccount(otherOwner, 2));
 
@@ -182,10 +183,17 @@ contract FundRegistryTest is Test {
         FundRegistry.OpenRoundParams memory p = _validRoundParams(round, fundAgent);
         bytes32 fakeStatus = keccak256("sa:NotARealStatus");
         p.initialStatus = fakeStatus;
+        // Spec 007 Phase A — the test contract is no longer an
+        // auto-coowner of `fundAgent`, so the `vm.expectRevert`
+        // argument expression `funds.SA_ROUND_STATUS()` (a staticcall)
+        // exhausts the prank before reaching `openRound`. Compute the
+        // expected revert data first, THEN prank just before the call.
+        bytes32 statusKey = funds.SA_ROUND_STATUS();
+        bytes memory expectedRevert = abi.encodeWithSelector(
+            ShapeRegistry.EnumValueNotAllowed.selector, statusKey, fakeStatus
+        );
         vm.prank(fundOwner);
-        vm.expectRevert(abi.encodeWithSelector(
-            ShapeRegistry.EnumValueNotAllowed.selector, funds.SA_ROUND_STATUS(), fakeStatus
-        ));
+        vm.expectRevert(expectedRevert);
         funds.openRound(p);
     }
 
@@ -205,10 +213,15 @@ contract FundRegistryTest is Test {
         vm.prank(fundOwner);
         funds.openRound(p);
         bytes32 fake = keccak256("sa:Bogus");
+        // Spec 007 Phase A — pre-compute the expected revert data so
+        // the staticcall inside `vm.expectRevert(...)` doesn't consume
+        // the prank.
+        bytes32 statusKey = funds.SA_ROUND_STATUS();
+        bytes memory expectedRevert = abi.encodeWithSelector(
+            ShapeRegistry.EnumValueNotAllowed.selector, statusKey, fake
+        );
         vm.prank(fundOwner);
-        vm.expectRevert(abi.encodeWithSelector(
-            ShapeRegistry.EnumValueNotAllowed.selector, funds.SA_ROUND_STATUS(), fake
-        ));
+        vm.expectRevert(expectedRevert);
         funds.setRoundStatus(round, fake);
     }
 

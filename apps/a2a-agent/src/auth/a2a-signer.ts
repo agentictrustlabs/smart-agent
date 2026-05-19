@@ -6,6 +6,25 @@
  * `privateKeyToAccount(config.A2A_MASTER_EOA_PRIVATE_KEY)` now goes
  * through `getMasterSigner()` instead.
  *
+ * ── Spec 007 Phase B — `getRelayOnlySigner()` flavor ──────────────
+ *
+ * Phase A dropped master from every user account's owner set. After
+ * Phase B, master MUST NOT sign anything that recovers to a user's
+ * authority — its only on-chain role is `EntryPoint.handleOps` (the
+ * 4337 bundler relay). `getRelayOnlySigner()` returns a viem account
+ * whose `signMessage` / `signTypedData` / `signTransaction` THROW so
+ * that a future regression that tries to use master to forge a userOp
+ * signature fails loud at compile-runtime instead of silently producing
+ * an invalid signature.
+ *
+ * `getMasterSigner()` keeps its broader role for:
+ *   - inter-service MAC envelope authentication
+ *   - audit checkpoint signing
+ *   - session-issuance co-signing (Variant B envelope)
+ *
+ * Outside `onchain-redeem.ts` and the relay path, prefer the relay-only
+ * flavor for any call that lands at EntryPoint.
+ *
  * Why a singleton:
  *   - `buildSignerBackend` validates env synchronously; instantiating on
  *     every call site would multiply the cost of env parsing.
@@ -154,6 +173,85 @@ export async function getMasterSigner(): Promise<LocalAccount> {
 export function __resetMasterSignerForTests(): void {
   backendSingleton = null
   accountSingleton = null
+}
+
+// ─── Spec 007 Phase B — relay-only signer flavor ────────────────────
+
+/**
+ * Sentinel error class for relay-only mis-use. A throw of this type
+ * proves the calling site tried to use master to sign user-authority
+ * material — surface it in tests + audit + alerting.
+ */
+export class MasterRelayOnlyViolation extends Error {
+  constructor(method: string) {
+    super(
+      `Master cannot sign user authority — use a session key. ` +
+        `(method=${method}; call getMasterSigner() instead of getRelayOnlySigner() ` +
+        `if you legitimately need a non-relay signing surface — and audit why)`,
+    )
+    this.name = 'MasterRelayOnlyViolation'
+  }
+}
+
+/**
+ * Read-mostly account view exposing ONLY `account` + `address` from the
+ * underlying master `LocalAccount`. Every signing method throws
+ * `MasterRelayOnlyViolation`. Pass this to `createWalletClient` when
+ * the only call that follows is `writeContract({ functionName:
+ * 'handleOps', ... })` — viem composes the wallet client to forward
+ * the underlying `signTransaction` via the chain's `eth_sendTransaction`
+ * RPC, which goes through `account.signTransaction(...)`. We override
+ * that ONE method to allow tx-broadcast (the relay's actual job) while
+ * blocking message-signing surfaces that could be used to forge a
+ * userOp signature.
+ *
+ * `signTransaction` is the only signing surface kept live: it produces
+ * an L1 transaction signature, which authorises the master EOA to PAY
+ * GAS — it does NOT recover to any AgentAccount owner. (Cross-check:
+ * `_validateSig` in `AgentAccount.sol` reads `userOp.signature`, not
+ * `tx.signature`; the latter is unaccessible from the smart account
+ * context.)
+ */
+export interface RelayOnlySigner {
+  readonly address: `0x${string}`
+  /** Underlying signer, narrowed to its broadcast surface only.
+   *  Marked private-ish by convention — call sites should never pull
+   *  it out and call the raw `signMessage` directly. */
+  readonly account: LocalAccount
+  /** Tx signing remains live — that's the relay's whole job. */
+  signTransaction: LocalAccount['signTransaction']
+  /** Throws `MasterRelayOnlyViolation`. */
+  signMessage(): never
+  /** Throws `MasterRelayOnlyViolation`. */
+  signTypedData(): never
+  /** Throws `MasterRelayOnlyViolation`. */
+  signUserOp(): never
+}
+
+/**
+ * Build a relay-only flavor of the master signer. Returns the viem
+ * `LocalAccount` wrapped so authority-signing surfaces throw. The
+ * underlying `LocalAccount` is REQUIRED for `createWalletClient`
+ * (viem's wallet client needs `signTransaction` to broadcast txs); we
+ * intercept the message-signing surfaces with throwing stubs.
+ *
+ * NOTE: We do not mutate the singleton — we return a fresh proxy each
+ * call so the underlying account stays usable through `getMasterSigner()`
+ * for the legitimate non-relay use cases (audit checkpoint, MAC).
+ */
+export async function getRelayOnlySigner(): Promise<RelayOnlySigner> {
+  const master = await getMasterSigner()
+  const blocked = (method: string): never => {
+    throw new MasterRelayOnlyViolation(method)
+  }
+  return {
+    address: master.address,
+    account: master,
+    signTransaction: master.signTransaction.bind(master),
+    signMessage: () => blocked('signMessage') as never,
+    signTypedData: () => blocked('signTypedData') as never,
+    signUserOp: () => blocked('signUserOp') as never,
+  }
 }
 
 // ─── K5 — per-tool executor signers ─────────────────────────────────

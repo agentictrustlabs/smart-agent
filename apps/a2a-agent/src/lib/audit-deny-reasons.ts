@@ -78,6 +78,23 @@ export const AUDIT_DENY_REASONS = [
   // ─── env:* — server config ───────────────────────────────────────
   'env:agent-factory-not-set',
 
+  // ─── policy:* — Phase B hybrid session risk-tier gate ────────────
+  // The session's variant ('A') is too weak for the requested action's
+  // risk tier ('high' or 'critical'). Caller should re-bootstrap a
+  // Variant B session via /session/hybrid-init.
+  'policy:risk-tier-mismatch',
+
+  // ─── session:* — Phase B session-shape gates ─────────────────────
+  // The session was minted before Phase B (legacy /session/package),
+  // so its delegation delegate is the smart account itself — not the
+  // session key. Post-Phase-A this path no longer validates because
+  // master is no longer an owner. Caller MUST re-bootstrap a hybrid
+  // session.
+  'session:legacy-shape-unsupported',
+  // Variant B on-chain acceptance did not land (race / RPC issue at
+  // session-init time). Re-finalize the session.
+  'session:variant-b-not-accepted-onchain',
+
   // ─── tx:* — on-chain submission outcomes (paired with auditFinalize) ─
   'tx:reverted',
   'tx:handle-ops-reverted',

@@ -1,45 +1,40 @@
 /**
- * Option A (ERC-4337-only redeem) — on-chain redeem endpoints.
+ * Spec 007 Phase B — on-chain redeem endpoints (hybrid-session model).
  *
- * These endpoints are how MCP servers ask a2a-agent to redeem the user's
- * signed root delegation on chain. There are now exactly TWO surfaces:
+ * Two surfaces:
  *
- *   POST /session/:id/redeem-via-account — every on-chain write
+ *   POST /session/:id/redeem-via-account — every on-chain write (Phase B
+ *     uses the session-key-signs-L1-tx pattern; the master EOA is NOT
+ *     involved in the redeem signature path).
  *   POST /session/:id/deploy-agent       — AgentAccountFactory.createAccount
+ *     (permissionless on chain; uses the master EOA as the broadcast
+ *     account via `getRelayOnlySigner()`).
  *
- * The legacy `/redeem-tx`, `/redeem-with-chain`, and `/redeem-subdelegated`
- * routes were deleted: they submitted via session-signer / executor EOAs
- * that have no ETH by design. Under Option A, every redeem routes through
- * ERC-4337 EntryPoint.handleOps with the master EOA as the bundler /
- * gas payer.
+ * Phase B redeem flow (per Phase B § 2 + C2 Q1 lock-in):
  *
- * The flow per redeem call:
+ *   1. Resolve the session via /session-store + DB.
+ *   2. The session's persisted delegation (Variant A or Variant B) has
+ *      delegate = sessionKey (the EOA generated at /session/hybrid-init).
+ *   3. Build an L1 transaction whose `to=DelegationManager`,
+ *      `data=redeemDelegation([d, ...], target, value, callData)`.
+ *   4. **The session key signs the L1 tx**. msg.sender at
+ *      DelegationManager is the session key — which equals the leaf
+ *      delegation's delegate. `_validateDelegation`'s
+ *      `if (i==0 && d.delegate != msg.sender) revert InvalidDelegate`
+ *      passes.
+ *   5. The session key broadcasts via `eth_sendRawTransaction` (viem
+ *      `walletClient.sendTransaction`). Master EOA has NO role on the
+ *      redeem path.
  *
- *   1. Build a UserOperation:
- *        sender    = user's AgentAccount (= session row's accountAddress)
- *        callData  = AgentAccount.execute(
- *                      DelegationManager,
- *                      0,
- *                      DelegationManager.redeemDelegation(chain, target, value, data),
- *                    )
- *        signature = ECDSA over userOpHash, signed by the master signer
- *                    (registered as serverSigner / co-owner of every
- *                     AgentAccount minted via the factory).
- *   2. EntryPoint.handleOps([op], beneficiary=master) executes:
- *        EntryPoint → AgentAccount.execute(...)   — passes _requireForExecute
- *                                                   (msg.sender = EntryPoint).
- *        AgentAccount → DelegationManager.redeemDelegation(...)  — passes the
- *                                                   InvalidDelegate check
- *                                                   because the LEAF
- *                                                   delegation's `delegate`
- *                                                   is the smart account
- *                                                   itself = msg.sender.
- *        DelegationManager enforces every caveat, then
- *          → AgentAccount.execute(target, value, data) — passes
- *                                                   _requireForExecute
- *                                                   (msg.sender =
- *                                                    _delegationManager).
- *   3. The master EOA pays the gas; session-signer EOAs never need ETH.
+ * For **Variant B** sessions the same flow applies; the additional
+ * gate is `_acceptedSessionDelegations[delegationHash] == true` which
+ * was established at /session/hybrid-finalize.
+ *
+ * **Master compromise isolation**: master cannot sign anything that
+ * recovers to a user owner (Phase A dropped co-ownership) AND it has
+ * no signing role in this redeem path. A master compromise can pay
+ * gas as a relay (deploy-agent path only) but cannot authorise any
+ * user action.
  *
  * Auth: HMAC inter-service signature (`requireInterServiceAuth`). MCPs sign
  * the request body with their shared secret; the path's :id binds the
@@ -75,12 +70,15 @@ import {
   type Address,
   type Hex,
 } from 'viem'
-// KMS K4 PR-1 — master EOA now routes through the signer wrapper. The
-// surrounding viem call shape (walletClient.writeContract /
-// signMessage / signTransaction) is unchanged — `getMasterSigner()`
-// returns a viem `LocalAccount` indistinguishable from
-// `privateKeyToAccount(...)`.
-import { getMasterSigner } from '../auth/a2a-signer'
+// KMS K4 PR-1 — master EOA now routes through the signer wrapper.
+// Phase B — master is RELAY-ONLY on the deploy-agent path; the redeem
+// path uses the session-key directly (Spec 007 § Step 4). Importing
+// both flavors: getRelayOnlySigner() for handleOps / direct broadcast,
+// getMasterSigner() retained for backward-compat call sites that are
+// being phased out.
+import { getMasterSigner, getRelayOnlySigner } from '../auth/a2a-signer'
+import { privateKeyToAccount } from 'viem/accounts'
+import { checkActionAgainstSession } from '../lib/policy-gate'
 import { localhost } from 'viem/chains'
 import {
   agentAccountAbi,
@@ -132,7 +130,20 @@ function isMarketplaceToolDisabled(toolId: string): boolean {
 const onchainRedeem = new Hono()
 
 // ─── Stored session-package shape ────────────────────────────────────
-// Set by /session/package; same shape mcp-proxy decrypts.
+//
+// Shape evolved across phases:
+//   - Pre-Phase-B (`/session/package` flow): delegation.delegate ==
+//     accountAddress (the smart account itself). Redeemed via userOp
+//     with master signing as co-owner. POST-PHASE-A this is broken
+//     because master is no longer an owner.
+//   - Phase B (`/session/hybrid-init` flow): delegation.delegate ==
+//     sessionKeyAddress (the EOA generated at session-init). Redeemed
+//     by the session key signing an L1 tx directly. The session row's
+//     `variant` column is set to 'A' or 'B' for these sessions.
+//
+// The redeem path inspects the session row's `variant` column to decide:
+//   - variant in ('A', 'B') → session-key direct path (new)
+//   - variant IS NULL       → legacy shape → 401 with re-bootstrap msg
 interface StoredSessionPackage {
   sessionPrivateKey: `0x${string}`
   sessionKeyAddress: `0x${string}`
@@ -146,6 +157,9 @@ interface StoredSessionPackage {
   }
   accountAddress: `0x${string}`
   expiresAt: string
+  // Phase B — set for hybrid sessions; undefined for legacy.
+  variant?: 'A' | 'B'
+  riskTier?: 'low' | 'medium' | 'high' | 'critical'
 }
 
 interface ChainCaveat {
@@ -546,10 +560,11 @@ onchainRedeem.post('/:id/redeem-via-account', requireInterServiceAuth(), async (
         signature: d.signature,
       }))
     } else {
-      // Default: use the session's stored root delegation. Under Option A
-      // its `delegate` is the smart account itself — pkg.delegation.delegate
-      // == accountAddress == userAgentAccount, which satisfies the
-      // InvalidDelegate check at DelegationManager.
+      // Phase B — default chain is the session's own root delegation.
+      // The leaf delegation's `delegate` MUST be the session key
+      // (pkg.sessionKeyAddress) so that the session key calling
+      // `DelegationManager.redeemDelegation` as msg.sender satisfies
+      // the `i==0 && d.delegate != msg.sender` check.
       chainStructs = [{
         delegator: pkg.delegation.delegator,
         delegate: pkg.delegation.delegate,
@@ -564,94 +579,120 @@ onchainRedeem.post('/:id/redeem-via-account', requireInterServiceAuth(), async (
       }]
     }
 
-    // ─── Build the inner execute() callData ────────────────────────────
-    // The user's AgentAccount calls DelegationManager.redeemDelegation,
-    // which validates the chain + caveats and re-enters
-    // AgentAccount.execute(target, value, data). The double-execute is
-    // exactly the ERC-7710 dispatch — DelegationManager's call back into
-    // the account is permitted by _requireForExecute (msg.sender =
-    // _delegationManager).
-    const valueWei = BigInt(body.value)
-    const redeemCallData = encodeFunctionData({
-      abi: delegationManagerAbi,
-      functionName: 'redeemDelegation',
-      args: [chainStructs, body.target, valueWei, body.callData],
-    })
-    const innerCallData = encodeFunctionData({
-      abi: agentAccountAbi,
-      functionName: 'execute',
-      args: [config.DELEGATION_MANAGER_ADDRESS, 0n, redeemCallData],
-    })
-
-    // ─── Build the 4337 UserOperation ──────────────────────────────────
-    const pub = createPublicClient({ chain: getChain(), transport: http(config.RPC_URL) })
-
-    // Pull the next nonce from EntryPoint (key=0).
-    const nonce = (await pub.readContract({
-      address: config.ENTRYPOINT_ADDRESS,
-      abi: entryPointMinimalAbi,
-      functionName: 'getNonce',
-      args: [userAgentAccount, 0n],
-    })) as bigint
-
-    // Pack gas limits + fees per EntryPoint v0.7 layout:
-    //   accountGasLimits = abi.encodePacked(verificationGasLimit << 128 | callGasLimit)
-    //   gasFees          = abi.encodePacked(maxPriorityFeePerGas << 128 | maxFeePerGas)
-    const verificationGasLimit = 500_000n
-    const callGasLimit = 2_000_000n
-    const accountGasLimits = packTwo(verificationGasLimit, callGasLimit)
-    const preVerificationGas = 100_000n
-    const maxPriorityFeePerGas = 1n
-    const maxFeePerGas = 1_000_000_000n // 1 gwei (local dev)
-    const gasFees = packTwo(maxPriorityFeePerGas, maxFeePerGas)
-
-    // ERC-4337 v0.7 paymasterAndData layout:
-    //   address (20 bytes) || verificationGasLimit (uint128) || postOpGasLimit (uint128) || extra
-    // SmartAgentPaymaster is deployed + staked + deposited at Deploy.s.sol.
-    // Dev posture: accept-all (BasePaymaster._validatePaymasterUserOp returns
-    // valid for any sender). Production hardening flips _dev=false + populates
-    // the accept-list — see output/PAYMASTER-INTEGRATION-PLAN.md §4.
-    const paymasterAndData: Hex = (config.PAYMASTER_ADDRESS.toLowerCase() !==
-      '0x0000000000000000000000000000000000000000')
-      ? `0x${config.PAYMASTER_ADDRESS.slice(2)}${(100_000n).toString(16).padStart(32, '0')}${(50_000n).toString(16).padStart(32, '0')}` as Hex
-      : '0x' as Hex
-
-    const op = {
-      sender: userAgentAccount,
-      nonce,
-      initCode: '0x' as Hex, // AgentAccount already deployed
-      callData: innerCallData,
-      accountGasLimits,
-      preVerificationGas,
-      gasFees,
-      paymasterAndData,
-      signature: '0x' as Hex, // to be filled below
+    // ─── Spec 007 Phase B — hybrid session gate ────────────────────────
+    // Pre-Phase-B sessions (`/session/package`) had delegate=accountAddress
+    // and were redeemed via userOp with master as co-owner. Post-Phase-A
+    // that path no longer validates because master is not in the owner
+    // set. We require the session to have been bootstrapped via the
+    // hybrid endpoint (variant is 'A' or 'B').
+    if (pkg.variant !== 'A' && pkg.variant !== 'B') {
+      return denyAndAudit(c, {
+        route: '/session/:id/redeem-via-account',
+        reason: 'session:legacy-shape-unsupported',
+        publicMessage:
+          'Session was minted before Phase B (no variant column); ' +
+          'master is no longer an owner so the legacy redemption path ' +
+          'cannot validate. Re-bootstrap via /session/hybrid-init.',
+        status: 401,
+        executionPath: 'session-account',
+        sessionId,
+        mcpServer,
+        mcpCallId: body.mcpCallId,
+        sessionPrincipal: pkg.sessionKeyAddress,
+      })
     }
 
-    // userOpHash from EntryPoint view function.
-    const userOpHash = (await pub.readContract({
-      address: config.ENTRYPOINT_ADDRESS,
-      abi: entryPointMinimalAbi,
-      functionName: 'getUserOpHash',
-      args: [op],
-    })) as Hex
+    // Phase B off-chain policy gate — does the session's variant cover
+    // the action's risk tier? The on-chain caveat enforcer is the
+    // authoritative gate (§ D2 Q5); this is the early-fail UX path.
+    const policyDecision = checkActionAgainstSession(
+      { route: body.mcpTool, args: { target: body.target, selectors: [selector] } },
+      pkg.variant,
+    )
+    if (!policyDecision.ok) {
+      return denyAndAudit(c, {
+        route: '/session/:id/redeem-via-account',
+        reason: 'policy:risk-tier-mismatch',
+        publicMessage: policyDecision.message,
+        status: 403,
+        executionPath: 'session-account',
+        sessionId,
+        mcpServer,
+        mcpCallId: body.mcpCallId,
+        target: body.target,
+        selector,
+        sessionPrincipal: pkg.sessionKeyAddress,
+      })
+    }
 
-    // ─── Sign the userOpHash ──────────────────────────────────────────
-    // The master signer is registered as serverSigner / co-owner on every
-    // AgentAccount minted via AgentAccountFactory (factory passes it as
-    // the second initialize() arg). AgentAccount._validateSignature
-    // recovers the ECDSA signer and checks _owners[recovered] — the
-    // master signer satisfies that gate without needing the user's
-    // private key at runtime.
+    // Variant B — confirm the on-chain acceptance is still in place.
+    // A finalize that didn't land would have left this false; we
+    // re-check here so a redeem against a non-accepted session fails
+    // cleanly instead of failing inside DelegationManager.
+    if (pkg.variant === 'B') {
+      const probeClient = createPublicClient({
+        chain: getChain(),
+        transport: http(config.RPC_URL),
+      })
+      const sessionDelegationHash = rootGrantHashFromPkg(pkg)
+      const accepted = (await probeClient.readContract({
+        address: pkg.accountAddress,
+        abi: agentAccountAbi,
+        functionName: 'hasAcceptedSessionDelegation',
+        args: [sessionDelegationHash],
+      })) as boolean
+      if (!accepted) {
+        return denyAndAudit(c, {
+          route: '/session/:id/redeem-via-account',
+          reason: 'session:variant-b-not-accepted-onchain',
+          publicMessage:
+            'Variant B session delegation is not accepted on chain. ' +
+            'Re-finalize via /session/hybrid-finalize.',
+          status: 401,
+          executionPath: 'session-account',
+          sessionId,
+          mcpServer,
+          mcpCallId: body.mcpCallId,
+          sessionPrincipal: pkg.sessionKeyAddress,
+        })
+      }
+    }
+
+    // ─── Phase B — Build and submit the L1 tx as the session key ───────
     //
-    // The session-signer EOA's role is purely off-chain (MCP auth proof
-    // of session liveness via the encrypted package); it never signs an
-    // on-chain transaction.
-    const masterEoa = await getMasterSigner()
-    const signature = await masterEoa.signMessage({ message: { raw: userOpHash } })
-    const signedOp = { ...op, signature }
+    // C2 Q1 lock-in: the session-key EOA calls
+    // `DelegationManager.redeemDelegation(...)` directly. msg.sender at
+    // DelegationManager equals the session key, which equals the leaf
+    // delegation's `delegate` — the `_validateDelegation` check passes.
+    //
+    // No userOp; no master signing of authority material. Master has
+    // NO role on this path.
+    const valueWei = BigInt(body.value)
 
-    // ─── Submit via the self-bundler (master EOA pays gas) ────────────
+    const pub = createPublicClient({ chain: getChain(), transport: http(config.RPC_URL) })
+
+    // Construct the session-key signer from the encrypted package's
+    // private key. The key never leaves this process; it was set at
+    // /session/hybrid-init, encrypted under the KMS data key, and
+    // decrypted just now via `decryptSessionPackage`.
+    const sessionKeyAccount = privateKeyToAccount(pkg.sessionPrivateKey)
+    if (
+      sessionKeyAccount.address.toLowerCase() !==
+      pkg.sessionKeyAddress.toLowerCase()
+    ) {
+      return denyAndAudit(c, {
+        route: '/session/:id/redeem-via-account',
+        reason: 'session:lookup-failed',
+        publicMessage:
+          'session key address mismatch — encrypted package is corrupt',
+        status: 500,
+        executionPath: 'session-account',
+        sessionId,
+        mcpServer,
+        mcpCallId: body.mcpCallId,
+      })
+    }
+
     const receiptId = await writeReceipt({
       c,
       pkg,
@@ -669,21 +710,24 @@ onchainRedeem.post('/:id/redeem-via-account', requireInterServiceAuth(), async (
       status: 'pending',
       overrideSelector: selector,
       overrideCallDataHash: keccak256(body.callData),
-      toolExecutor: userAgentAccount,
+      toolExecutor: pkg.sessionKeyAddress,
     })
 
     try {
+      // The session key signs the L1 tx and is also the broadcasting
+      // account. Its balance pays the gas. For Variant B the on-chain
+      // acceptance gate has already been verified above.
       const wallet = createWalletClient({
-        account: masterEoa,
+        account: sessionKeyAccount,
         chain: getChain(),
         transport: http(config.RPC_URL),
       })
       const txHash = await wallet.writeContract({
-        address: config.ENTRYPOINT_ADDRESS,
-        abi: entryPointMinimalAbi,
-        functionName: 'handleOps',
-        args: [[signedOp], masterEoa.address],
-        account: masterEoa,
+        address: config.DELEGATION_MANAGER_ADDRESS,
+        abi: delegationManagerAbi,
+        functionName: 'redeemDelegation',
+        args: [chainStructs, body.target, valueWei, body.callData],
+        account: sessionKeyAccount,
         chain: wallet.chain ?? null,
       })
       const r = await pub.waitForTransactionReceipt({ hash: txHash })
@@ -692,28 +736,27 @@ onchainRedeem.post('/:id/redeem-via-account', requireInterServiceAuth(), async (
       await auditFinalize(receiptId, {
         status: ok ? 'completed' : 'reverted',
         txHash,
-        userOpHash,
-        errorReason: ok ? '' : 'handleOps reverted',
+        errorReason: ok ? '' : 'redeem reverted',
       })
 
       if (!ok) {
         return denyAndAudit(c, {
           route: '/session/:id/redeem-via-account',
           reason: 'tx:handle-ops-reverted',
-          publicMessage: 'handleOps reverted',
+          publicMessage: 'redeemDelegation reverted',
           status: 502,
           skipAudit: true,
           executionPath: 'session-account',
           sessionId,
           mcpServer,
-          extra: { txHash, userOpHash, executionReceiptId: receiptId },
+          extra: { txHash, executionReceiptId: receiptId },
         })
       }
       return c.json({
         txHash,
-        userOpHash,
         executionReceiptId: receiptId,
         sessionAgentAccount: userAgentAccount,
+        sessionKey: pkg.sessionKeyAddress,
       })
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
@@ -829,9 +872,15 @@ onchainRedeem.post('/:id/deploy-agent', requireInterServiceAuth(), async (c) => 
     })
 
     try {
-      const masterEoa = await getMasterSigner()
+      // Phase B § Step 4 — use the relay-only flavor for broadcast. The
+      // factory's `createAccount(owner, salt)` is permissionless on
+      // chain, so master can broadcast as the gas-paying EOA. The
+      // relay-only flavor blocks message-signing so an accidental
+      // future use of this signer to forge a user-authority signature
+      // throws loud.
+      const relay = await getRelayOnlySigner()
       const wallet = createWalletClient({
-        account: masterEoa,
+        account: relay.account,
         chain: getChain(),
         transport: http(config.RPC_URL),
       })
@@ -843,7 +892,7 @@ onchainRedeem.post('/:id/deploy-agent', requireInterServiceAuth(), async (c) => 
         abi: agentAccountFactoryAbi,
         functionName: 'createAccount',
         args: [body.owner, salt],
-        account: masterEoa,
+        account: relay.account,
         chain: wallet.chain ?? null,
       })
       const receipt = await pub.waitForTransactionReceipt({ hash: txHash })
@@ -1040,7 +1089,11 @@ function packTwo(high: bigint, low: bigint): `0x${string}` {
 }
 
 // Suppress unused-import sigils — kept exported for forward compat
-// (e.g. callData arg-snapshot decoding in audit rows).
+// (e.g. callData arg-snapshot decoding in audit rows; userOp helpers
+// retained for Phase C migration of any remaining userOp-routed calls).
 void decodeAbiParameters
+void entryPointMinimalAbi
+void packTwo
+void getMasterSigner
 
 export { onchainRedeem }

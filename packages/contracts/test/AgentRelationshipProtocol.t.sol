@@ -8,6 +8,7 @@ import "../src/AgentRelationshipResolver.sol";
 import "../src/AgentAccountFactory.sol";
 import "account-abstraction/interfaces/IEntryPoint.sol";
 import "account-abstraction/core/EntryPoint.sol";
+import "./helpers/MockGovernance.sol";
 
 contract AgentRelationshipProtocolTest is Test {
     AgentRelationship public rel;
@@ -31,7 +32,7 @@ contract AgentRelationshipProtocolTest is Test {
         bob = makeAddr("bob");
 
         EntryPoint ep = new EntryPoint();
-        factory = new AgentAccountFactory(IEntryPoint(address(ep)), address(0), address(this));
+        factory = new AgentAccountFactory(IEntryPoint(address(ep)), address(0), address(this), address(this), address(new MockGovernance(address(this))));
         personAgent = address(factory.createAccount(alice, 1));
         orgAgent = address(factory.createAccount(alice, 2));
 

@@ -162,6 +162,28 @@ try {
   }
 } catch { /* columns already exist or table missing — both fine */ }
 
+// Spec 007 Phase B — best-effort migration for hybrid session-variant
+// columns (variant, risk_tier, session_delegation_hash,
+// onchain_accepted_tx_hash). All nullable so pre-Phase-B sessions
+// retain backward-compat semantics; the policy-gate treats NULL
+// variant as 'A' and NULL risk_tier as 'medium'.
+try {
+  const cols = sqlite.prepare(`PRAGMA table_info(sessions)`).all() as Array<{ name: string }>
+  const colNames = new Set(cols.map((c) => c.name))
+  if (!colNames.has('variant')) {
+    sqlite.exec(`ALTER TABLE sessions ADD COLUMN variant TEXT`)
+  }
+  if (!colNames.has('risk_tier')) {
+    sqlite.exec(`ALTER TABLE sessions ADD COLUMN risk_tier TEXT`)
+  }
+  if (!colNames.has('session_delegation_hash')) {
+    sqlite.exec(`ALTER TABLE sessions ADD COLUMN session_delegation_hash TEXT`)
+  }
+  if (!colNames.has('onchain_accepted_tx_hash')) {
+    sqlite.exec(`ALTER TABLE sessions ADD COLUMN onchain_accepted_tx_hash TEXT`)
+  }
+} catch { /* columns already exist or table missing — both fine */ }
+
 // Hardening Phase 1D — best-effort migration for older DBs that pre-date
 // the cross-service `correlation_id` column on `execution_audit`. The
 // column is nullable so pre-existing rows keep their NULL value; new

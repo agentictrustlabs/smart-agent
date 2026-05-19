@@ -8,12 +8,14 @@ import "../src/AgentAccountFactory.sol";
 import "account-abstraction/interfaces/IEntryPoint.sol";
 import "account-abstraction/interfaces/PackedUserOperation.sol";
 import "account-abstraction/core/EntryPoint.sol";
+import "./helpers/MockGovernance.sol";
 
 contract SmartAgentPaymasterTest is Test {
     EntryPoint internal entryPoint;
     SmartAgentPaymaster internal paymaster;
     AgentAccountFactory internal factory;
     AgentAccount internal account;
+    MockGovernance internal gov;
 
     address internal owner;
     address internal accountOwner;
@@ -28,10 +30,14 @@ contract SmartAgentPaymasterTest is Test {
         nonOwner = makeAddr("nonOwner");
 
         entryPoint = new EntryPoint();
-        paymaster = new SmartAgentPaymaster(IEntryPoint(address(entryPoint)), owner);
+        // Phase A.5: Paymaster takes (entryPoint, initialOwner, governance).
+        // initialOwner == test contract (so we can stake/deposit), governance
+        // == MockGovernance for setDevMode/setAccepted.
+        gov = new MockGovernance(owner);
+        paymaster = new SmartAgentPaymaster(IEntryPoint(address(entryPoint)), owner, address(gov));
 
         // Smart account so the integration test has a real validating sender.
-        factory = new AgentAccountFactory(IEntryPoint(address(entryPoint)), address(0), owner);
+        factory = new AgentAccountFactory(IEntryPoint(address(entryPoint)), address(0), owner, owner, address(gov));
         account = factory.createAccount(accountOwner, 0);
         // Fund the account just so postOp accounting in EntryPoint doesn't
         // exercise the prefund fallback. With the paymaster sponsoring gas
@@ -47,6 +53,7 @@ contract SmartAgentPaymasterTest is Test {
     function test_constructor_sets_entryPoint_and_owner() public view {
         assertEq(address(paymaster.entryPoint()), address(entryPoint), "entryPoint wired");
         assertEq(paymaster.owner(), owner, "owner wired");
+        assertEq(paymaster.governance(), address(gov), "governance wired");
         assertTrue(paymaster.devMode(), "ships in dev mode");
     }
 
@@ -93,6 +100,7 @@ contract SmartAgentPaymasterTest is Test {
     }
 
     function test_validatePaymasterUserOp_rejects_non_listed_in_prod() public {
+        vm.prank(address(gov));
         paymaster.setDevMode(false);
         PackedUserOperation memory op = _emptyUserOp(makeAddr("randomSender"));
         vm.prank(address(entryPoint));
@@ -106,7 +114,9 @@ contract SmartAgentPaymasterTest is Test {
     }
 
     function test_validatePaymasterUserOp_accepts_listed_in_prod() public {
+        vm.prank(address(gov));
         paymaster.setDevMode(false);
+        vm.prank(address(gov));
         paymaster.setAccepted(address(account), true);
 
         PackedUserOperation memory op = _emptyUserOp(address(account));
@@ -115,15 +125,32 @@ contract SmartAgentPaymasterTest is Test {
         assertEq(vd, 0);
     }
 
-    function test_setAccepted_only_owner() public {
+    /// @dev Phase A.5 — paymaster validation reverts when governance has paused.
+    function test_validatePaymasterUserOp_reverts_when_paused() public {
+        gov.setPaused(true);
+        PackedUserOperation memory op = _emptyUserOp(address(account));
+        vm.prank(address(entryPoint));
+        vm.expectRevert(SmartAgentPaymaster.SystemPaused.selector);
+        paymaster.validatePaymasterUserOp(op, bytes32(0), 0);
+    }
+
+    function test_setAccepted_only_governance() public {
         vm.prank(nonOwner);
-        vm.expectRevert();
+        vm.expectRevert(SmartAgentPaymaster.NotGovernance.selector);
         paymaster.setAccepted(address(account), true);
     }
 
-    function test_setDevMode_only_owner() public {
+    function test_setDevMode_only_governance() public {
         vm.prank(nonOwner);
-        vm.expectRevert();
+        vm.expectRevert(SmartAgentPaymaster.NotGovernance.selector);
+        paymaster.setDevMode(false);
+    }
+
+    /// @dev Phase A.5 — owner (deployer) cannot call governance-only setters
+    ///      even though they're still Ownable owner during deploy.
+    function test_owner_cannot_setDevMode_post_a5() public {
+        // owner == address(this), distinct from gov
+        vm.expectRevert(SmartAgentPaymaster.NotGovernance.selector);
         paymaster.setDevMode(false);
     }
 

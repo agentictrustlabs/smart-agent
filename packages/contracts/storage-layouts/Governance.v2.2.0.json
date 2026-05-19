@@ -1,0 +1,165 @@
+{
+  "storage": [
+    {
+      "astId": 6576,
+      "contract": "src/governance/Governance.sol:Governance",
+      "label": "_isSigner",
+      "offset": 0,
+      "slot": "0",
+      "type": "t_mapping(t_address,t_bool)"
+    },
+    {
+      "astId": 6578,
+      "contract": "src/governance/Governance.sol:Governance",
+      "label": "signerCount",
+      "offset": 0,
+      "slot": "1",
+      "type": "t_uint256"
+    },
+    {
+      "astId": 6623,
+      "contract": "src/governance/Governance.sol:Governance",
+      "label": "_proposals",
+      "offset": 0,
+      "slot": "2",
+      "type": "t_mapping(t_bytes32,t_struct(Proposal)6618_storage)"
+    },
+    {
+      "astId": 6629,
+      "contract": "src/governance/Governance.sol:Governance",
+      "label": "_approvedBy",
+      "offset": 0,
+      "slot": "3",
+      "type": "t_mapping(t_bytes32,t_mapping(t_address,t_bool))"
+    },
+    {
+      "astId": 6632,
+      "contract": "src/governance/Governance.sol:Governance",
+      "label": "proposalNonce",
+      "offset": 0,
+      "slot": "4",
+      "type": "t_uint256"
+    },
+    {
+      "astId": 6634,
+      "contract": "src/governance/Governance.sol:Governance",
+      "label": "_paused",
+      "offset": 0,
+      "slot": "5",
+      "type": "t_bool"
+    }
+  ],
+  "types": {
+    "t_address": {
+      "encoding": "inplace",
+      "label": "address",
+      "numberOfBytes": "20"
+    },
+    "t_bool": {
+      "encoding": "inplace",
+      "label": "bool",
+      "numberOfBytes": "1"
+    },
+    "t_bytes32": {
+      "encoding": "inplace",
+      "label": "bytes32",
+      "numberOfBytes": "32"
+    },
+    "t_bytes_storage": {
+      "encoding": "bytes",
+      "label": "bytes",
+      "numberOfBytes": "32"
+    },
+    "t_enum(ProposalKind)6598": {
+      "encoding": "inplace",
+      "label": "enum Governance.ProposalKind",
+      "numberOfBytes": "1"
+    },
+    "t_enum(ProposalState)6603": {
+      "encoding": "inplace",
+      "label": "enum Governance.ProposalState",
+      "numberOfBytes": "1"
+    },
+    "t_mapping(t_address,t_bool)": {
+      "encoding": "mapping",
+      "key": "t_address",
+      "label": "mapping(address => bool)",
+      "numberOfBytes": "32",
+      "value": "t_bool"
+    },
+    "t_mapping(t_bytes32,t_mapping(t_address,t_bool))": {
+      "encoding": "mapping",
+      "key": "t_bytes32",
+      "label": "mapping(bytes32 => mapping(address => bool))",
+      "numberOfBytes": "32",
+      "value": "t_mapping(t_address,t_bool)"
+    },
+    "t_mapping(t_bytes32,t_struct(Proposal)6618_storage)": {
+      "encoding": "mapping",
+      "key": "t_bytes32",
+      "label": "mapping(bytes32 => struct Governance.Proposal)",
+      "numberOfBytes": "32",
+      "value": "t_struct(Proposal)6618_storage"
+    },
+    "t_struct(Proposal)6618_storage": {
+      "encoding": "inplace",
+      "label": "struct Governance.Proposal",
+      "numberOfBytes": "128",
+      "members": [
+        {
+          "astId": 6606,
+          "contract": "src/governance/Governance.sol:Governance",
+          "label": "kind",
+          "offset": 0,
+          "slot": "0",
+          "type": "t_enum(ProposalKind)6598"
+        },
+        {
+          "astId": 6609,
+          "contract": "src/governance/Governance.sol:Governance",
+          "label": "state",
+          "offset": 1,
+          "slot": "0",
+          "type": "t_enum(ProposalState)6603"
+        },
+        {
+          "astId": 6611,
+          "contract": "src/governance/Governance.sol:Governance",
+          "label": "target",
+          "offset": 2,
+          "slot": "0",
+          "type": "t_address"
+        },
+        {
+          "astId": 6613,
+          "contract": "src/governance/Governance.sol:Governance",
+          "label": "readyAt",
+          "offset": 0,
+          "slot": "1",
+          "type": "t_uint256"
+        },
+        {
+          "astId": 6615,
+          "contract": "src/governance/Governance.sol:Governance",
+          "label": "approvals",
+          "offset": 0,
+          "slot": "2",
+          "type": "t_uint256"
+        },
+        {
+          "astId": 6617,
+          "contract": "src/governance/Governance.sol:Governance",
+          "label": "data",
+          "offset": 0,
+          "slot": "3",
+          "type": "t_bytes_storage"
+        }
+      ]
+    },
+    "t_uint256": {
+      "encoding": "inplace",
+      "label": "uint256",
+      "numberOfBytes": "32"
+    }
+  }
+}

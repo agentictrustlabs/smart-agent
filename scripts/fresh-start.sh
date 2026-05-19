@@ -28,6 +28,15 @@ set -euo pipefail
 #                                         # Skip anvil restart + contract redeploy.
 #                                         # Wipes DBs only. Combine with --minimal
 #                                         # for sub-2-minute iteration cycles.
+#   scripts/fresh-start.sh --with-kms     # Start a LocalStack KMS emulator and
+#                                         # provision every KMS key the stack
+#                                         # needs (envelope / master signer /
+#                                         # tool executors / inter-service MACs).
+#                                         # Flips A2A_KMS_BACKEND=aws-kms across
+#                                         # every service .env. Use to validate
+#                                         # the production AWS KMS code path on
+#                                         # localhost without an AWS account.
+#                                         # See docs/operations/kms-signer-localstack.md.
 #
 # Where things live afterwards:
 #   • Anvil:           pid=tmp/pids/anvil.pid       log=tmp/logs/anvil.log
@@ -67,6 +76,9 @@ SERVICES=(
 WEB_PORT=3000
 WEB_FILTER="@smart-agent/web"
 ANVIL_PORT=8545
+LOCALSTACK_PORT=4566
+LOCALSTACK_CONTAINER_NAME="sa-localstack-kms"
+LOCALSTACK_IMAGE="localstack/localstack:3.8.1"
 
 # Stateful paths under apps/* that survive runs and need wiping. Globs OK.
 WIPE_PATHS=(
@@ -111,6 +123,7 @@ WIPE_PATHS=(
 WAIT_FOR_READY=1
 START_SERVICES=1
 KEEP_CONTRACTS=0
+WITH_KMS=0
 SEED_PROFILE="full"
 for arg in "$@"; do
   case "$arg" in
@@ -118,8 +131,9 @@ for arg in "$@"; do
     --no-services)     START_SERVICES=0; WAIT_FOR_READY=0 ;;
     --minimal)         SEED_PROFILE="minimal" ;;
     --keep-contracts)  KEEP_CONTRACTS=1 ;;
+    --with-kms)        WITH_KMS=1 ;;
     --help|-h)
-      sed -n '/^# ─/,/^# ───/p' "$0" | head -60
+      sed -n '/^# ─/,/^# ───/p' "$0" | head -80
       exit 0
       ;;
     *) echo "unknown flag: $arg" >&2; exit 2 ;;
@@ -200,6 +214,15 @@ stop_all() {
   pkill -f 'tsx (watch )?src/index.ts' 2>/dev/null || true
   # Anvil parent shells keep the process under a wrapper bash; pkill catches stragglers.
   pkill -f 'anvil --host 0.0.0.0' 2>/dev/null || true
+  # LocalStack container — only relevant when --with-kms is in play (or
+  # was, in a previous run). The container is fully stateless across
+  # fresh-starts; we always tear it down so a stale container from a
+  # previous --with-kms run can't shadow today's keys.
+  if docker ps -a --filter "name=${LOCALSTACK_CONTAINER_NAME}" --format '{{.Names}}' \
+       2>/dev/null | grep -qx "${LOCALSTACK_CONTAINER_NAME}"; then
+    echo "  stopping LocalStack container ${LOCALSTACK_CONTAINER_NAME}"
+    docker rm -f "${LOCALSTACK_CONTAINER_NAME}" >/dev/null 2>&1 || true
+  fi
   sleep 1
 }
 
@@ -228,6 +251,50 @@ start_anvil() {
   banner "3/8  Starting fresh anvil (chain id 31337)"
   spawn anvil "anvil --host 0.0.0.0 --chain-id 31337"
   wait_anvil
+}
+
+# Task #122 — LocalStack KMS emulator. Boots a Community-edition
+# LocalStack container with only the KMS service enabled, waits for it
+# to report ready, then runs scripts/provision-localstack-kms.sh to
+# create every CMK the stack needs and write the key IDs into the
+# per-service .env files. Idempotent: re-running tears down the
+# previous container in stop_all() and starts fresh, so each
+# fresh-start gets a clean set of LocalStack KMS keys.
+start_localstack_kms() {
+  banner "3b/8  Starting LocalStack KMS (Task #122)"
+  if ! command -v docker >/dev/null 2>&1; then
+    echo "  ⚠ docker is required for --with-kms but was not found in PATH" >&2
+    exit 1
+  fi
+  kill_port "$LOCALSTACK_PORT"
+  echo "  starting $LOCALSTACK_IMAGE on :$LOCALSTACK_PORT"
+  docker run -d \
+    --name "$LOCALSTACK_CONTAINER_NAME" \
+    -p "${LOCALSTACK_PORT}:4566" \
+    -e SERVICES=kms \
+    "$LOCALSTACK_IMAGE" >/dev/null
+  # Health endpoint reports `"kms": "available"` once KMS has loaded.
+  local i=0
+  while ! curl -fsS "http://127.0.0.1:${LOCALSTACK_PORT}/_localstack/health" 2>/dev/null \
+           | grep -q '"kms": *"\(available\|running\)"'; do
+    sleep 1
+    i=$((i+1))
+    if (( i >= 60 )); then
+      echo "  ⚠ LocalStack KMS not ready after 60s — check 'docker logs ${LOCALSTACK_CONTAINER_NAME}'" >&2
+      exit 1
+    fi
+  done
+  echo "  ✓ LocalStack KMS up after ${i}s"
+
+  # Provisioning script — creates all the KMS keys and writes their IDs
+  # into apps/{a2a-agent,web,*-mcp}/.env. Logged to tmp/logs/provision-localstack-kms.log.
+  echo "  provisioning KMS keys + writing env propagation …"
+  if bash "$SCRIPT_DIR/provision-localstack-kms.sh" > "$LOG_DIR/provision-localstack-kms.log" 2>&1; then
+    echo "  ✓ KMS keys provisioned (see tmp/logs/provision-localstack-kms.log)"
+  else
+    echo "  ⚠ provision-localstack-kms.sh failed — see tmp/logs/provision-localstack-kms.log" >&2
+    exit 1
+  fi
 }
 
 # Strip out orphan address lines that prior versions of deploy-local.sh
@@ -378,12 +445,53 @@ if (( KEEP_CONTRACTS )); then
   stop_services_keep_anvil
   wipe_state
   # No start_anvil, no deploy_contracts.
+  # When --with-kms is combined with --keep-contracts we DO restart
+  # LocalStack — its keys are stateless and re-creating them is cheap,
+  # and the existing apps/web/.env still points at the previous key IDs
+  # which no longer exist (the LocalStack container is gone).
+  if (( WITH_KMS )); then
+    start_localstack_kms
+  fi
 else
   stop_all
   wipe_state
   start_anvil
+  # Task #122 — LocalStack KMS must come up + be provisioned BEFORE
+  # deploy_contracts, because deploy-local.sh invokes
+  # scripts/master-signer-address.ts which, under A2A_KMS_BACKEND='aws-kms',
+  # calls KMS GetPublicKey and returns the derived EVM address. That
+  # address becomes the AgentAccountFactory's `serverSigner` constructor
+  # arg, so it MUST be the LocalStack KMS-derived address from this run.
+  if (( WITH_KMS )); then
+    start_localstack_kms
+    # Surface the LocalStack env to the deploy-local subshell so
+    # master-signer-address.ts under A2A_KMS_BACKEND=aws-kms resolves
+    # against LocalStack and not against a missing-key/Vercel-OIDC path.
+    # The provisioning script already wrote these into apps/a2a-agent/.env;
+    # we re-export here so the deploy-local.sh subprocess inherits them
+    # without depending on dotenv side-effects.
+    set -a
+    # shellcheck disable=SC1091
+    . "$ROOT_DIR/apps/a2a-agent/.env"
+    set +a
+  fi
   deploy_contracts
   seed_after_deploy
+  if (( WITH_KMS )); then
+    # deploy-local.sh re-writes the local-aes dev-shim static keys
+    # (A2A_MASTER_PRIVATE_KEY, TOOL_EXECUTOR_*_PRIVATE_KEY, the
+    # per-MCP HMAC keys, OAUTH_SALT_HMAC_KEY) to every .env file
+    # because those are the v1 dev defaults. Under --with-kms those
+    # env vars are no-ops (the aws-kms code path doesn't read them),
+    # but leaving them on disk breaks the "no private keys in .env"
+    # invariant the LocalStack story is supposed to close. Strip
+    # them now that deploy-local has finished writing.
+    banner "5b/8  Stripping local-aes static keys (KMS mode)"
+    bash "$SCRIPT_DIR/provision-localstack-kms.sh" --strip-only \
+      > "$LOG_DIR/provision-localstack-kms.log" 2>&1 \
+      && echo "  ✓ static-key cleanup done" \
+      || echo "  ⚠ static-key cleanup failed — see tmp/logs/provision-localstack-kms.log"
+  fi
 fi
 
 if (( START_SERVICES )); then

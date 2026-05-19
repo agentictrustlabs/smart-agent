@@ -828,11 +828,23 @@ async function main() {
   if (process.env.STOP_AT_COMMITMENT === '1') {
     console.log('\n══════ STOP_AT_COMMITMENT=1 — skipping attest + release ══════')
     console.log('  attestation + release left for the UI test to drive')
+    // Trigger on-chain → GraphDB sync via the running Next.js process.
+    // We used to dynamic-import `apps/web/src/lib/ontology/graphdb-sync`
+    // here, but that module's import chain pulls in
+    // `apps/web/src/lib/clients/mcp-client.ts` which has `import 'server-only'`
+    // — that package only resolves inside Next.js, so under raw tsx it
+    // throws `Cannot find module 'server-only'` and the try/catch
+    // silently swallowed it on every run. Result: GraphDB never received
+    // the commitment, Sarah's /tasks inbox stayed at zero rows, and the
+    // demo recording deterministically failed at chapter 8.
     try {
-      const mod = await import(path.join(repoRoot, 'apps/web/src/lib/ontology/graphdb-sync.ts')) as { syncOnChainToGraphDB: () => Promise<unknown> }
-      await mod.syncOnChainToGraphDB()
-      console.log('  GraphDB sync ✓')
-    } catch { /* dev server may be cold */ }
+      const res = await fetch('http://localhost:3000/api/ontology-sync', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+      })
+      console.log(res.ok ? '  GraphDB sync ✓' : `  GraphDB sync HTTP ${res.status}`)
+    } catch (e) {
+      console.warn('  GraphDB sync POST failed (is the web service up?):', (e as Error).message.slice(0, 160))
+    }
     // Machine-parseable demo data block — the polished customer-demo
     // playwright test (grant-flow-demo.spec.ts) reads these to pre-warm
     // URLs and scope its assertions to this run's artifacts.
@@ -922,12 +934,16 @@ async function main() {
   console.log(`  Proposal+timeline: http://localhost:3000/h/catalyst/proposals/${gpSubject}`)
   console.log(`  Network graph:     http://localhost:3000/agents`)
 
+  // See STOP_AT_COMMITMENT branch above — same `server-only` import-chain
+  // issue prevents direct module load under raw tsx. Route through the
+  // running Next.js process via the public sync endpoint.
   try {
-    const mod = await import(path.join(repoRoot, 'apps/web/src/lib/ontology/graphdb-sync.ts')) as { syncOnChainToGraphDB: () => Promise<unknown> }
-    await mod.syncOnChainToGraphDB()
-    console.log('  on-chain → GraphDB sync ✓')
+    const res = await fetch('http://localhost:3000/api/ontology-sync', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+    })
+    console.log(res.ok ? '  on-chain → GraphDB sync ✓' : `  on-chain → GraphDB sync HTTP ${res.status}`)
   } catch (e) {
-    console.warn('  GraphDB sync warning:', (e as Error).message.slice(0, 160))
+    console.warn('  GraphDB sync POST failed (is the web service up?):', (e as Error).message.slice(0, 160))
   }
 }
 

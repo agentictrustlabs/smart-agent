@@ -7,7 +7,24 @@ export const agentAccountAbi = [
   { type: 'function', name: 'ownerCount', inputs: [], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view' },
   { type: 'function', name: 'entryPoint', inputs: [], outputs: [{ name: '', type: 'address' }], stateMutability: 'view' },
   { type: 'function', name: 'getNonce', inputs: [], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view' },
-  { type: 'function', name: 'initialize', inputs: [{ name: 'initialOwner', type: 'address' }, { name: 'serverSigner', type: 'address' }, { name: 'dm', type: 'address' }], outputs: [], stateMutability: 'nonpayable' },
+  // Spec 007 Phase A — `initialize(initialOwner, dm, factory)` and a
+  // second `initializeWithCoOwner(initialOwner, coOwner, dm, factory)`
+  // used by SessionAgentAccountFactory.
+  { type: 'function', name: 'initialize', inputs: [{ name: 'initialOwner', type: 'address' }, { name: 'dm', type: 'address' }, { name: 'factory_', type: 'address' }], outputs: [], stateMutability: 'nonpayable' },
+  { type: 'function', name: 'initializeWithCoOwner', inputs: [{ name: 'initialOwner', type: 'address' }, { name: 'coOwner', type: 'address' }, { name: 'dm', type: 'address' }, { name: 'factory_', type: 'address' }], outputs: [], stateMutability: 'nonpayable' },
+  // Spec 007 Phase A — capability-role views + new entrypoints.
+  { type: 'function', name: 'factory', inputs: [], outputs: [{ name: '', type: 'address' }], stateMutability: 'view' },
+  { type: 'function', name: 'bundlerSigner', inputs: [], outputs: [{ name: '', type: 'address' }], stateMutability: 'view' },
+  { type: 'function', name: 'sessionIssuer', inputs: [], outputs: [{ name: '', type: 'address' }], stateMutability: 'view' },
+  { type: 'function', name: 'hasAcceptedSessionDelegation', inputs: [{ name: 'sessionDelegationHash', type: 'bytes32' }], outputs: [{ name: '', type: 'bool' }], stateMutability: 'view' },
+  { type: 'function', name: 'acceptSessionDelegation', inputs: [{ name: 'sessionDelegationHash', type: 'bytes32' }], outputs: [], stateMutability: 'nonpayable' },
+  { type: 'function', name: 'upgradeToWithAuthorization', inputs: [{ name: 'newImpl', type: 'address' }, { name: 'ownerSig', type: 'bytes' }], outputs: [], stateMutability: 'nonpayable' },
+  // Spec 007 Phase A.5 — per-account upgrade timelock surface.
+  { type: 'function', name: 'setUpgradeTimelock', inputs: [{ name: 'secs', type: 'uint256' }], outputs: [], stateMutability: 'nonpayable' },
+  { type: 'function', name: 'upgradeTimelock', inputs: [], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view' },
+  { type: 'function', name: 'pendingUpgrade', inputs: [], outputs: [{ name: 'newImpl', type: 'address' }, { name: 'readyAt', type: 'uint64' }], stateMutability: 'view' },
+  { type: 'function', name: 'executePendingUpgrade', inputs: [], outputs: [], stateMutability: 'nonpayable' },
+  { type: 'function', name: 'cancelPendingUpgrade', inputs: [{ name: 'ownerSig', type: 'bytes' }], outputs: [], stateMutability: 'nonpayable' },
   { type: 'function', name: 'execute', inputs: [{ name: 'target', type: 'address' }, { name: 'value', type: 'uint256' }, { name: 'data', type: 'bytes' }], outputs: [], stateMutability: 'nonpayable' },
   { type: 'function', name: 'executeBatch', inputs: [{ name: 'calls', type: 'tuple[]', components: [{ name: 'target', type: 'address' }, { name: 'value', type: 'uint256' }, { name: 'data', type: 'bytes' }] }], outputs: [], stateMutability: 'nonpayable' },
   { type: 'function', name: 'isValidSignature', inputs: [{ name: 'hash', type: 'bytes32' }, { name: 'signature', type: 'bytes' }], outputs: [{ name: '', type: 'bytes4' }], stateMutability: 'view' },
@@ -35,7 +52,21 @@ export const agentAccountFactoryAbi = [
   { type: 'function', name: 'createAccount', inputs: [{ name: 'owner', type: 'address' }, { name: 'salt', type: 'uint256' }], outputs: [{ name: 'account', type: 'address' }], stateMutability: 'nonpayable' },
   { type: 'function', name: 'getAddress', inputs: [{ name: 'owner', type: 'address' }, { name: 'salt', type: 'uint256' }], outputs: [{ name: '', type: 'address' }], stateMutability: 'view' },
   { type: 'function', name: 'accountImplementation', inputs: [], outputs: [{ name: '', type: 'address' }], stateMutability: 'view' },
+  { type: 'function', name: 'delegationManager', inputs: [], outputs: [{ name: '', type: 'address' }], stateMutability: 'view' },
+  // Spec 007 Phase A — capability-role views. Read by AgentAccount on
+  // every `executeFromBundler` / session-issuer check; surface them on
+  // the SDK for off-chain consumers (cast spot-checks, audit tooling).
+  { type: 'function', name: 'bundlerSigner', inputs: [], outputs: [{ name: '', type: 'address' }], stateMutability: 'view' },
+  { type: 'function', name: 'sessionIssuer', inputs: [], outputs: [{ name: '', type: 'address' }], stateMutability: 'view' },
+  // Spec 007 Phase A.5 — governance-gated rotation of system signer
+  // addresses. AgentAccounts read these through `factory().X()` on
+  // each capability check, so a rotation propagates automatically.
+  { type: 'function', name: 'setBundlerSigner', inputs: [{ name: 'newBundler', type: 'address' }], outputs: [], stateMutability: 'nonpayable' },
+  { type: 'function', name: 'setSessionIssuer', inputs: [{ name: 'newIssuer', type: 'address' }], outputs: [], stateMutability: 'nonpayable' },
+  { type: 'function', name: 'governance', inputs: [], outputs: [{ name: '', type: 'address' }], stateMutability: 'view' },
   { type: 'event', name: 'AgentAccountCreated', inputs: [{ name: 'account', type: 'address', indexed: true }, { name: 'owner', type: 'address', indexed: true }, { name: 'salt', type: 'uint256', indexed: false }] },
+  { type: 'event', name: 'BundlerSignerChanged', inputs: [{ name: 'oldVal', type: 'address', indexed: true }, { name: 'newVal', type: 'address', indexed: true }] },
+  { type: 'event', name: 'SessionIssuerChanged', inputs: [{ name: 'oldVal', type: 'address', indexed: true }, { name: 'newVal', type: 'address', indexed: true }] },
 ] as const
 
 // ─── SessionAgentAccountFactory ABI (Phase 3) ────────────────────────
@@ -103,6 +134,20 @@ export const delegationManagerAbi = [
     outputs: [], stateMutability: 'nonpayable',
   },
   { type: 'function', name: 'revokeDelegation', inputs: [{ name: 'delegationHash', type: 'bytes32' }], outputs: [], stateMutability: 'nonpayable' },
+  // Spec 007 Phase A.5 — authenticated revocation (Variant A support).
+  // Caller MUST be `delegation.delegator` or `delegation.delegate`.
+  { type: 'function', name: 'revokeDelegationByOwner', inputs: [{ name: 'delegation', type: 'tuple', components: [
+    { name: 'delegator', type: 'address' },
+    { name: 'delegate', type: 'address' },
+    { name: 'authority', type: 'bytes32' },
+    { name: 'caveats', type: 'tuple[]', components: [
+      { name: 'enforcer', type: 'address' },
+      { name: 'terms', type: 'bytes' },
+      { name: 'args', type: 'bytes' },
+    ]},
+    { name: 'salt', type: 'uint256' },
+    { name: 'signature', type: 'bytes' },
+  ]}], outputs: [], stateMutability: 'nonpayable' },
   { type: 'function', name: 'isRevoked', inputs: [{ name: 'delegationHash', type: 'bytes32' }], outputs: [{ name: '', type: 'bool' }], stateMutability: 'view' },
   { type: 'function', name: 'hashDelegation', inputs: [{ name: 'd', type: 'tuple', components: [
     { name: 'delegator', type: 'address' },
@@ -119,6 +164,10 @@ export const delegationManagerAbi = [
   { type: 'function', name: 'ROOT_AUTHORITY', inputs: [], outputs: [{ name: '', type: 'bytes32' }], stateMutability: 'view' },
   { type: 'event', name: 'DelegationRedeemed', inputs: [{ name: 'delegationHash', type: 'bytes32', indexed: true }, { name: 'delegator', type: 'address', indexed: true }, { name: 'delegate', type: 'address', indexed: true }] },
   { type: 'event', name: 'DelegationRevoked', inputs: [{ name: 'delegationHash', type: 'bytes32', indexed: true }] },
+  // Phase A.5 — authenticated-revoke event. Carries the address that
+  // submitted the revoke (delegator or delegate) so off-chain consumers
+  // can attribute the revocation in audit logs.
+  { type: 'event', name: 'DelegationRevokedBy', inputs: [{ name: 'delegationHash', type: 'bytes32', indexed: true }, { name: 'by', type: 'address', indexed: true }] },
 ] as const
 
 // ─── AgentRelationship ABI (Edge Layer) ──────────────────────────────

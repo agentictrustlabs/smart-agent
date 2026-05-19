@@ -9,6 +9,7 @@ import "../src/AttributeStorage.sol";
 import "../src/AgentPredicates.sol";
 import "account-abstraction/interfaces/IEntryPoint.sol";
 import "account-abstraction/core/EntryPoint.sol";
+import "./helpers/MockGovernance.sol";
 
 /**
  * @notice Production-shape parity tests for the resolver's authorization
@@ -44,14 +45,19 @@ contract AgentAccountResolverSelfRegisterTest is Test {
         ontology = new OntologyTermRegistry(address(this));
         resolver = new AgentAccountResolver(address(ontology));
 
-        // Factory's serverSigner = coOwnerEoa → every deployed AgentAccount
-        // has coOwnerEoa added as a co-owner via AgentAccount.initialize.
-        // This mirrors the production wiring where the master signer is a
-        // co-owner of every account.
+        // Spec 007 Phase A — factory's bundlerSigner and sessionIssuer
+        // are NEVER added to any account's owner set. The "co-owner
+        // relay" path from the pre-Phase-A serverSigner model no
+        // longer exists. We keep `coOwnerEoa` as a stable, well-known
+        // EOA used by the legacy test as a baseline; it must now be
+        // added via an explicit `addOwner` self-call (see the relay
+        // test below).
         factory = new AgentAccountFactory(
             IEntryPoint(address(entryPoint)),
             address(0),
-            coOwnerEoa
+            coOwnerEoa,
+            coOwnerEoa,
+            address(new MockGovernance(address(this)))
         );
 
         // initialOwner = makeAddr("aliceEoa") — a distinct EOA so the
@@ -124,15 +130,19 @@ contract AgentAccountResolverSelfRegisterTest is Test {
 
     // ─── (2) Co-owner relay ─────────────────────────────────────────────
 
-    /// @dev The legacy path still works — the deployer / master EOA is a
-    ///      co-owner on every factory-minted account, so a co-owner-signed
-    ///      tx routes through the existing `isOwner` staticcall branch.
+    /// @dev Spec 007 Phase A — system keys are no longer auto-coowners.
+    ///      Adding a co-owner now requires an explicit self-call (via a
+    ///      userOp in production; here a `vm.prank(agentAlice)` mock).
+    ///      The relay then still resolves via `isOwner`.
     function test_register_via_coowner_succeeds() public {
+        vm.prank(agentAlice);
+        AgentAccount(payable(agentAlice)).addOwner(coOwnerEoa);
+
         vm.prank(coOwnerEoa);
         resolver.register(
             agentAlice,
             "Alice (co-owner relayed)",
-            "Legacy deployer-relayed register",
+            "Co-owner added via self-call, then relayed",
             AgentPredicates.TYPE_PERSON,
             bytes32(0),
             ""

@@ -8,6 +8,7 @@ import "../src/DelegationManager.sol";
 import "../src/modules/RevocationModule.sol";
 import "account-abstraction/interfaces/IEntryPoint.sol";
 import "account-abstraction/core/EntryPoint.sol";
+import "./helpers/MockGovernance.sol";
 
 contract RevocationModuleTest is Test {
     EntryPoint public entryPoint;
@@ -23,7 +24,7 @@ contract RevocationModuleTest is Test {
         owner = makeAddr("owner");
         entryPoint = new EntryPoint();
         dm = new DelegationManager();
-        factory = new AgentAccountFactory(IEntryPoint(address(entryPoint)), address(dm), address(this));
+        factory = new AgentAccountFactory(IEntryPoint(address(entryPoint)), address(dm), address(this), address(this), address(new MockGovernance(address(this))));
         account = factory.createAccount(owner, 0);
         vm.deal(address(account), 1 ether);
         module = new RevocationModule();

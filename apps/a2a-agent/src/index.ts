@@ -5,6 +5,7 @@ import { bodyLimit } from 'hono/body-limit'
 import { config } from './config'
 import { auth } from './routes/auth'
 import { session } from './routes/session'
+import { sessionInit as hybridSessionInit } from './routes/session-init'
 import { delegation } from './routes/delegation'
 import { profile } from './routes/profile'
 import { mcpProxy } from './routes/mcp-proxy'
@@ -82,7 +83,36 @@ app.use(
     resolveRateLimit(
       'SESSION_INIT',
       { max: 10, windowMs: 60_000 },
-      { max: 60, windowMs: 60_000 },
+      // Dev: 600/min. Boot-seed under --minimal still issues 3 user-level
+      // session bootstraps plus ~30 activity writes + 7 skill claim writes
+      // back-to-back, and the user-facing demo-login can fire 2-3 times
+      // during cold Next.js compilation. 60/min was tight enough that
+      // users got "Init: Too Many Requests" on their second login attempt
+      // and silently lost the a2a-session cookie. Production stays at 10/min.
+      { max: 600, windowMs: 60_000 },
+    ),
+  ),
+)
+// Spec 007 Phase B — hybrid session bootstrap shares the same rate-
+// limit posture as /session/init: a session-init burst is bursty on
+// fresh page load.
+app.use(
+  '/session/hybrid-init',
+  rateLimit(
+    resolveRateLimit(
+      'SESSION_INIT',
+      { max: 10, windowMs: 60_000 },
+      { max: 600, windowMs: 60_000 },
+    ),
+  ),
+)
+app.use(
+  '/session/hybrid-finalize',
+  rateLimit(
+    resolveRateLimit(
+      'SESSION_INIT',
+      { max: 10, windowMs: 60_000 },
+      { max: 600, windowMs: 60_000 },
     ),
   ),
 )
@@ -92,7 +122,7 @@ app.use(
     resolveRateLimit(
       'AUTH',
       { max: 10, windowMs: 60_000 },
-      { max: 60, windowMs: 60_000 },
+      { max: 600, windowMs: 60_000 },
     ),
   ),
 )
@@ -126,6 +156,13 @@ app.route('/mcp', mcpProxy)
 // Mounted under /session so the path params (:id) match the canonical
 // HMAC canonical-message format used by callers (signed as bodyJson:ts:sessionId).
 app.route('/session', onchainRedeem)
+
+// Spec 007 Phase B — hybrid session-init (`/session/hybrid-init`,
+// `/session/hybrid-finalize`). Variant A / B routing based on the
+// declared scope's max risk tier. Mounted under /session so the path
+// is `/session/hybrid-init` (host-exempt list in middleware/host-context.ts
+// matches the full path).
+app.route('/session', hybridSessionInit)
 
 // Phase 4 — Permission UI metadata endpoints (status, audit).
 // Mounted under /session; matches the suffixed paths /session/:id/status and

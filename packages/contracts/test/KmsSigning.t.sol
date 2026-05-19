@@ -27,6 +27,7 @@ import "../src/AgentAccount.sol";
 import "../src/AgentAccountFactory.sol";
 import "account-abstraction/interfaces/IEntryPoint.sol";
 import "account-abstraction/core/EntryPoint.sol";
+import "./helpers/MockGovernance.sol";
 
 contract KmsSigningTest is Test {
     EntryPoint public entryPoint;
@@ -43,7 +44,7 @@ contract KmsSigningTest is Test {
 
     function setUp() public {
         entryPoint = new EntryPoint();
-        factory = new AgentAccountFactory(IEntryPoint(address(entryPoint)), address(0), address(this));
+        factory = new AgentAccountFactory(IEntryPoint(address(entryPoint)), address(0), address(this), address(this), address(new MockGovernance(address(this))));
 
         // Read + parse the fixture. `vm.readFile` is scoped to `./test/fixtures`
         // via `fs_permissions` in foundry.toml.
@@ -97,12 +98,11 @@ contract KmsSigningTest is Test {
         // The signature was produced by `kmsSignerAddress`; recovery yields
         // that address; account.isOwner() returns false → magic value NOT
         // returned.
+        // Spec 007 Phase A — the factory no longer auto-coowns the
+        // test contract, so we don't have to call removeOwner.
         AgentAccount account = factory.createAccount(wrongAddress, 44);
-        // Remove the server-signer (this contract) so the fixture address
-        // truly isn't an owner via any path.
-        vm.prank(address(account));
-        account.removeOwner(address(this));
         assertFalse(account.isOwner(kmsSignerAddress), "fixture address must not be an owner");
+        assertFalse(account.isOwner(address(this)), "test contract must not be an owner (Phase A)");
 
         bytes4 result = account.isValidSignature(messageHash, signature);
         assertTrue(result != ERC1271_MAGIC, "signature from non-owner must not return magic value");

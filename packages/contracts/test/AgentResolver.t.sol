@@ -9,6 +9,7 @@ import "../src/AttributeStorage.sol";
 import "../src/AgentPredicates.sol";
 import "account-abstraction/interfaces/IEntryPoint.sol";
 import "account-abstraction/core/EntryPoint.sol";
+import "./helpers/MockGovernance.sol";
 
 contract AgentResolverTest is Test {
     EntryPoint entryPoint;
@@ -29,9 +30,18 @@ contract AgentResolverTest is Test {
         ontology = new OntologyTermRegistry(address(this));
         resolver = new AgentAccountResolver(address(ontology));
 
-        factory = new AgentAccountFactory(IEntryPoint(address(entryPoint)), address(0), address(this));
+        factory = new AgentAccountFactory(IEntryPoint(address(entryPoint)), address(0), address(this), address(this), address(new MockGovernance(address(this))));
         agentAlice = address(factory.createAccount(alice, 1));
         agentBob = address(factory.createAccount(bob, 2));
+
+        // Spec 007 Phase A — the factory no longer auto-coowns the
+        // test contract. Add it via self-call so the existing
+        // `onlyAgentOwner` flows (resolver auth, sub-delegations)
+        // continue to work in the same shape pre-Phase-A tests assumed.
+        vm.prank(agentAlice);
+        AgentAccount(payable(agentAlice)).addOwner(address(this));
+        vm.prank(agentBob);
+        AgentAccount(payable(agentBob)).addOwner(address(this));
 
         _registerTerm("atl:displayName", "string");
         _registerTerm("atl:description", "string");

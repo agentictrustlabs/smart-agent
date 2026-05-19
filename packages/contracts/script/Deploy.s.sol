@@ -72,6 +72,7 @@ import "../src/AgentSkillRegistry.sol";
 import "../src/SkillIssuerRegistry.sol";
 import "../src/zk/GeoH3InclusionVerifier.sol";
 import "../src/SmartAgentPaymaster.sol";
+import "../src/governance/Governance.sol";
 import "account-abstraction/interfaces/IEntryPoint.sol";
 import "account-abstraction/core/EntryPoint.sol";
 
@@ -94,21 +95,60 @@ contract Deploy is Script {
         uint256 deployerKey = vm.envUint("PRIVATE_KEY");
         address deployer = vm.addr(deployerKey);
 
-        // The serverSigner is the EOA a2a-agent uses to sign every userOp
-        // submitted via /redeem-via-account. The factory's initialize() registers
-        // it as a co-owner of every AgentAccount, so AgentAccount._validateSignature
-        // accepts userOps signed by this key. In production this is a KMS-backed
-        // key; in dev deploy-local.sh exports SERVER_SIGNER_ADDRESS = the EOA
-        // derived from A2A_MASTER_PRIVATE_KEY. Misalignment causes AA24 errors
-        // at handleOps. If the env is unset (back-compat) we fall back to
-        // deployer, but deploy-local.sh always sets it.
-        address serverSigner = vm.envOr("SERVER_SIGNER_ADDRESS", deployer);
+        // Spec 007 Phase A — capability roles. The factory tracks two
+        // factory-scoped EOAs (`bundlerSigner` + `sessionIssuer`)
+        // which are NEVER added to any account's owner set:
+        //   - bundlerSigner authorizes the ERC-4337 EntryPoint relay
+        //     envelope (verified inside `executeFromBundler`).
+        //   - sessionIssuer co-signs session delegations the user has
+        //     pre-authorized via `acceptSessionDelegation`.
+        // Deploy-local.sh derives each address from a distinct KMS
+        // key. If either env var is unset, we fall back to deployer +
+        // log a loud warning — useful for unit tests / quick local
+        // deploys, NEVER for production.
+        address bundlerSigner = vm.envOr("BUNDLER_SIGNER_ADDRESS", deployer);
+        address sessionIssuer = vm.envOr("SESSION_ISSUER_ADDRESS", deployer);
+        if (bundlerSigner == deployer) {
+            console.log("WARNING: BUNDLER_SIGNER_ADDRESS unset, defaulting to deployer");
+        }
+        if (sessionIssuer == deployer) {
+            console.log("WARNING: SESSION_ISSUER_ADDRESS unset, defaulting to deployer");
+        }
 
         console.log("Deployer:", deployer);
-        console.log("ServerSigner:", serverSigner);
+        console.log("BundlerSigner:", bundlerSigner);
+        console.log("SessionIssuer:", sessionIssuer);
         console.log("Chain ID:", block.chainid);
 
+        // Spec 007 Phase A.5 — Governance multisig + timelock authority.
+        // Local dev defaults: 1-of-1 governance (deployer as the sole
+        // signer), 0-second timelock for fast iteration. Production
+        // env MUST set GOVERNANCE_SIGNERS (comma-separated) +
+        // GOVERNANCE_THRESHOLD + GOVERNANCE_TIMELOCK_SECONDS (>= 48h).
+        uint256 govTimelock = vm.envOr("GOVERNANCE_TIMELOCK_SECONDS", uint256(0));
+        bool allowZero = govTimelock == 0;
+        uint256 govThreshold = vm.envOr("GOVERNANCE_THRESHOLD", uint256(1));
+        address[] memory govSigners = _resolveGovSigners(deployer);
+        if (govThreshold > govSigners.length) {
+            govThreshold = govSigners.length;
+        }
+        if (govTimelock != 0 && govTimelock < 48 hours) {
+            console.log("WARNING: GOVERNANCE_TIMELOCK_SECONDS below 48h prod minimum; tx will revert");
+        }
+        console.log("Governance signers:", govSigners.length);
+        console.log("Governance threshold:", govThreshold);
+        console.log("Governance timelock (s):", govTimelock);
+
         vm.startBroadcast(deployerKey);
+
+        Governance governance = new Governance(
+            govSigners,
+            govThreshold,
+            govSigners.length,
+            govTimelock,
+            allowZero
+        );
+        console.log("Governance:", address(governance));
 
         // 1. EntryPoint — use canonical if deployed, otherwise deploy for local testing
         IEntryPoint entryPoint;
@@ -123,11 +163,13 @@ contract Deploy is Script {
 
         // 1b. SmartAgentPaymaster — sponsors gas at the EntryPoint level so
         //     the bundler EOA's balance is decoupled from per-op gas economics.
+        //     Phase A.5 — owner / admin authority routes through Governance
+        //     so paymaster funds + accept-list can't be drained by a single
+        //     EOA. Pause flag from Governance also halts validation when
+        //     the system is paused.
         //     v1 ships in DEV-SAFE accept-all mode (see SmartAgentPaymaster.sol
-        //     for the production hardening checklist). The 1 ETH stake +
-        //     5 ETH deposit values are dev-only; production deploy is a
-        //     separate runbook (output/PAYMASTER-INTEGRATION-PLAN.md § 4).
-        SmartAgentPaymaster paymaster = new SmartAgentPaymaster(entryPoint, deployer);
+        //     for the production hardening checklist).
+        SmartAgentPaymaster paymaster = new SmartAgentPaymaster(entryPoint, deployer, address(governance));
         paymaster.addStake{value: 1 ether}(uint32(1 days));
         paymaster.deposit{value: 5 ether}();
         console.log("SmartAgentPaymaster:", address(paymaster));
@@ -138,12 +180,17 @@ contract Deploy is Script {
         DelegationManager delegationManager = new DelegationManager();
         console.log("DelegationManager:", address(delegationManager));
 
-        // 3. AgentAccountFactory (deploys implementation singleton, sets DelegationManager + serverSigner)
-        //    serverSigner = the a2a-agent master signer (NOT deployer) so userOps
-        //    signed by a2a-agent validate against the smart account's owner set.
-        AgentAccountFactory factory = new AgentAccountFactory(entryPoint, address(delegationManager), serverSigner);
+        // 3. AgentAccountFactory — Spec 007 Phase A constructor takes
+        //    capability-role addresses (bundlerSigner + sessionIssuer)
+        //    which are NEVER added to any account's owner set. Master
+        //    cannot sign userOps for users post-Phase-A.
+        AgentAccountFactory factory = new AgentAccountFactory(
+            entryPoint, address(delegationManager), bundlerSigner, sessionIssuer, address(governance)
+        );
         console.log("AgentAccountFactory:", address(factory));
         console.log("  AgentAccount impl:", address(factory.accountImplementation()));
+        console.log("  bundlerSigner:    ", factory.bundlerSigner());
+        console.log("  sessionIssuer:    ", factory.sessionIssuer());
 
         // 4. Caveat Enforcers
         TimestampEnforcer timestampEnforcer = new TimestampEnforcer();
@@ -450,6 +497,13 @@ contract Deploy is Script {
         DaimoP256Verifier verifier = new DaimoP256Verifier();
         console.log("DaimoP256Verifier:", address(verifier));
 
+        // ─── Transfer paymaster ownership to governance ───────────────
+        // Spec 007 Phase A.5 — the deployer was the transient Ownable
+        // owner during stake/deposit; hand off to governance so future
+        // withdraws / unlocks flow through the multisig.
+        paymaster.transferOwnership(address(governance));
+        console.log("Paymaster ownership transferred to governance (pending accept):", address(governance));
+
         vm.stopBroadcast();
 
         // Print env vars for copy-paste into apps/web/.env
@@ -459,6 +513,10 @@ contract Deploy is Script {
         _logEnv("PAYMASTER_ADDRESS", address(paymaster));
         _logEnv("AGENT_FACTORY_ADDRESS", address(factory));
         _logEnv("DELEGATION_MANAGER_ADDRESS", address(delegationManager));
+        // Spec 007 Phase A — capability-role addresses derived above.
+        // Downstream services log these for audit + cast-call sanity.
+        _logEnv("BUNDLER_SIGNER_ADDRESS", bundlerSigner);
+        _logEnv("SESSION_ISSUER_ADDRESS", sessionIssuer);
         _logEnv("AGENT_RELATIONSHIP_ADDRESS", address(agentRelationship));
         _logEnv("AGENT_ASSERTION_ADDRESS", address(agentAssertion));
         _logEnv("CLASS_ASSERTION_ADDRESS", address(classAssertion));
@@ -534,10 +592,39 @@ contract Deploy is Script {
         // injected by env rather than by deploy.
         _logEnv("MOCK_USDC_ADDRESS", address(mockUsdc));
         _logEnv("USDC_ADDRESS", address(mockUsdc));
+        // Spec 007 Phase A.5 — Governance multisig + timelock.
+        _logEnv("GOVERNANCE_ADDRESS", address(governance));
     }
 
     function _logEnv(string memory key, address addr) internal pure {
         console.log(string.concat(key, "=", vm.toString(addr)));
+    }
+
+    /// @dev Spec 007 Phase A.5 — resolve the governance signer set.
+    ///      Accepts a comma-separated `GOVERNANCE_SIGNERS` env var; if
+    ///      unset, falls back to a 1-of-1 with the deployer as the sole
+    ///      signer (dev-only). Production deploys MUST set both
+    ///      `GOVERNANCE_SIGNERS` and `GOVERNANCE_TIMELOCK_SECONDS`.
+    function _resolveGovSigners(address deployer) internal returns (address[] memory signers) {
+        // `vm.envAddress(name, delim)` reads the env var, splits it on
+        // `delim`, and parses each token as an address. Returns an
+        // empty array via vm.envOr fall-through if unset.
+        address[] memory empty = new address[](0);
+        try vm.envAddress("GOVERNANCE_SIGNERS", ",") returns (address[] memory parsed) {
+            if (parsed.length == 0) {
+                signers = new address[](1);
+                signers[0] = deployer;
+                console.log("WARNING: GOVERNANCE_SIGNERS empty, defaulting to 1-of-1 with deployer");
+            } else {
+                signers = parsed;
+            }
+        } catch {
+            // Env var unset.
+            empty;
+            signers = new address[](1);
+            signers[0] = deployer;
+            console.log("WARNING: GOVERNANCE_SIGNERS unset, defaulting to 1-of-1 with deployer");
+        }
     }
 
     function _seedPoolOntologyAndShape(OntologyTermRegistry ont, ShapeRegistry shapes, PoolRegistry pool) internal {

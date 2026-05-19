@@ -60,6 +60,29 @@ export const sessions = sqliteTable('sessions', {
   /** Informational; the KMS keyId/ARN (or 'local') at encryption time. Passed
    *  back into decryptSessionDataKey so the KMS knows which key to use. */
   kmsKeyId: text('kms_key_id'),
+  // ─── Spec 007 Phase B — hybrid session-variant metadata ───────────
+  // `variant` is 'A' (off-chain caveated delegation; default) or 'B'
+  // (on-chain accepted delegation). The pre-Phase-B `/session/init`
+  // route writes NULL — those rows are treated as Variant A by the
+  // policy-gate (matches the existing behavior since Variant A is the
+  // only thing the existing redeem path could do anyway).
+  variant: text('variant', { enum: ['A', 'B'] }),
+  // Classified action-risk tier (`low`|`medium`|`high`|`critical`).
+  // Sessions created by the hybrid /session/hybrid-init endpoint set
+  // this from `classifySessionRiskTier(scope)`. Pre-Phase-B sessions
+  // have NULL (treated as 'medium' by the policy-gate).
+  riskTier: text('risk_tier', {
+    enum: ['low', 'medium', 'high', 'critical'],
+  }),
+  // Variant B only — `sessionDelegationHash` registered on chain via
+  // `AgentAccount.acceptSessionDelegation(hash)` at session-init. NULL
+  // for Variant A.
+  sessionDelegationHash: text('session_delegation_hash'),
+  // Variant B only — the userOp hash submitted at session-init time.
+  // Recorded for audit join: a verifier can grep this column for the
+  // session-init txHash and confirm the on-chain `_acceptedSessionDelegations`
+  // mapping reflects what we persisted.
+  onChainAcceptedTxHash: text('onchain_accepted_tx_hash'),
 })
 
 // ─── Handles ─────────────────────────────────────────────────────────
