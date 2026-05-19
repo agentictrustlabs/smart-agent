@@ -1,20 +1,8 @@
 'use server'
 
 import { cookies } from 'next/headers'
-import { type Address } from 'viem'
 import { requireSession } from '@/lib/auth/session'
-import {
-  hashDelegation,
-  encodeTimestampTerms,
-  encodeAllowedTargetsTerms,
-  encodeAllowedMethodsTerms,
-  encodeValueTerms,
-  encodeMcpToolScopeTerms,
-  buildCaveat,
-  ROOT_AUTHORITY,
-  MCP_TOOL_SCOPE_ENFORCER,
-  TOOL_POLICIES,
-} from '@smart-agent/sdk'
+import { TOOL_POLICIES, type ActionDescriptor } from '@smart-agent/sdk'
 import { db, schema } from '@/db'
 import { eq } from 'drizzle-orm'
 import { A2A_SESSION_COOKIE_NAME } from './a2a-session-constants'
@@ -51,27 +39,66 @@ async function endpointFor(addr: string): Promise<
 }
 
 /**
- * Bootstrap an A2A session by signing a delegation on behalf of the user's
- * smart account using their own EOA private key.
+ * Build the declared scope handed to `/session/hybrid-init`.
  *
- * Phase 1 of the delegation refactor: the user signs ONE root delegation that
- * carries BOTH the MCP tool scope (verified off-chain by MCPs in
- * `verify-delegation.ts`) AND the on-chain authority for stateless redeems
- * (verified on-chain by DelegationManager + caveat enforcers).
+ * The scope serves two purposes inside the hybrid endpoint:
  *
- * Caveats composed from `TOOL_POLICIES` (packages/sdk/src/policy/tool-policies.ts):
- *   • Timestamp:        validAfter=now, validUntil=now+86400
- *   • AllowedTargets:   union of every on-chain target across tool policies
- *   • AllowedMethods:   union of every 4-byte selector across tool policies
- *   • Value:            0 (no ETH transfer)
- *   • McpToolScope:     union of every tool name in TOOL_POLICIES (off-chain)
+ *   1. Risk-tier classification: the route runs `classifySessionRiskTier`
+ *      across the scope and picks Variant A (low/medium) or Variant B
+ *      (high/critical). For the demo bootstrap we MUST stay on Variant
+ *      A — high-tier actions (pledge:honor, commitment:commit, etc.) are
+ *      exercised separately and either get their own Variant B session
+ *      or are gated by the on-chain caveat enforcer. The bootstrap
+ *      session is the "common-case" handle.
  *
- * The user signs once. The same delegation now gates BOTH MCP authentication
- * (via `verify-delegation.ts` in each MCP server) AND on-chain redemption
- * (via `DelegationManager.redeemDelegation` from the a2a-agent's session EOA).
+ *   2. Caveat assembly: `buildSessionCaveats` unions every `args.target`
+ *      and every entry of `args.selectors` across the scope to produce
+ *      the AllowedTargetsEnforcer + AllowedMethodsEnforcer terms. We
+ *      pass the full union of on-chain targets/selectors derived from
+ *      `TOOL_POLICIES` so the session's delegation is broad enough to
+ *      cover every routine-tier mcpTool the demo user might invoke.
  *
- * Only demo / legacy users have `users.privateKey`. Google / Passkey / SIWE
- * users must use the client-side bootstrap (use-a2a-session hook).
+ * One descriptor per target address. The descriptors share a low-tier
+ * route name (`agent_resolver:read`) so the classifier picks
+ * tier='low' → Variant A. Selectors are the full union.
+ */
+function buildDemoScope(): ActionDescriptor[] {
+  const allowedTargets = computeAllowedTargetAddresses()
+  const allowedSelectors = computeAllowedSelectors()
+  if (allowedTargets.length === 0) {
+    throw new Error('No allowed targets resolved from TOOL_POLICIES — env addresses missing')
+  }
+  if (allowedSelectors.length === 0) {
+    throw new Error('No allowed selectors derived from TOOL_POLICIES — registry empty')
+  }
+  // Use a low-tier route key so the max tier across the scope is 'low'
+  // → Variant A. The actual mcpTool used at redeem time is independent
+  // of what's declared here (policy-gate classifies the inbound action
+  // by its own route name, see apps/a2a-agent/src/lib/policy-gate.ts).
+  void TOOL_POLICIES // ensure registry import isn't tree-shaken; keys are documentation
+  return allowedTargets.map<ActionDescriptor>((target) => ({
+    route: 'agent_resolver:read',
+    args: { target, selectors: allowedSelectors },
+  }))
+}
+
+/**
+ * Bootstrap an A2A session for the given user.
+ *
+ * Spec 007 Phase B + Phase C K6 migration: this helper uses the hybrid
+ * session-init flow (`/session/hybrid-init` → user signs EIP-712 →
+ * `/session/hybrid-finalize`). The legacy `/session/init` +
+ * `/session/package` flow is gone.
+ *
+ * Variant A is the default for demo users — the scope declared here is
+ * low-tier so the classifier picks A. High-tier actions (money movement,
+ * grant award finalization, etc.) bootstrap their own Variant B session
+ * separately when the user signs at action time.
+ *
+ * No deployer-fallback: per Phase C K6 migration, demo users always
+ * carry their own private key (web `users.privateKey`). Passkey / SIWE
+ * users bootstrap client-side via the `useA2ASession` hook (they sign
+ * the EIP-712 payload with their passkey or injected wallet).
  */
 export async function bootstrapA2ASessionForUser(user: {
   smartAccountAddress?: string | null
@@ -87,135 +114,159 @@ export async function bootstrapA2ASessionForUser(user: {
   if (!user.smartAccountAddress) {
     return { success: false, error: 'No smart account deployed' }
   }
-  // Passkey users have no private key — fall through to deployer-signed
-  // delegations. The deployer is an initial owner of every freshly-
-  // created AgentAccount (set at factory.createAccount time), so the
-  // account's ERC-1271 isValidSignature accepts the deployer's ECDSA
-  // signature on the delegation hash. The user retains their passkey
-  // as the primary signer; the deployer-as-relayer signature is only
-  // used to bootstrap the session — every actual on-chain redeem still
-  // goes through DelegationManager's caveat enforcement.
-  const chainId = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? '31337')
-  const { privateKeyToAccount } = await import('viem/accounts')
-  let signer: ReturnType<typeof privateKeyToAccount>
-  if (user.privateKey) {
-    signer = privateKeyToAccount(user.privateKey as `0x${string}`)
-  } else {
-    const deployerKey = process.env.DEPLOYER_PRIVATE_KEY as `0x${string}` | undefined
-    if (!deployerKey) {
-      return { success: false, error: 'No user private key + no DEPLOYER_PRIVATE_KEY for deployer-signed fallback' }
+  if (!user.privateKey) {
+    // No silent fallback (project_arch_hardening_007 + feedback_no_patches_dev_mode).
+    // Demo users have `users.privateKey`; passkey/SIWE users must
+    // bootstrap client-side via the hook (passkey prompt OR injected
+    // wallet signs the EIP-712 typed-data payload returned by
+    // `/session/hybrid-init`).
+    return {
+      success: false,
+      error:
+        'bootstrapA2ASessionForUser requires a private key — passkey/SIWE users ' +
+        'must bootstrap client-side via the useA2ASession hook',
     }
-    signer = privateKeyToAccount(deployerKey)
   }
-  const userAccount = signer
+
+  const { privateKeyToAccount } = await import('viem/accounts')
+  const signer = privateKeyToAccount(user.privateKey as `0x${string}`)
 
   const routingAddress = user.personAgentAddress ?? user.smartAccountAddress
   const ep = await endpointFor(routingAddress)
   if (!ep.ok) return { success: false, error: ep.error }
 
+  // Build the declared scope. Failure here is loud (env addresses
+  // missing / registry empty) — bootstrap can't proceed.
+  let scope: ActionDescriptor[]
   try {
-    const initRes = await a2aFetch(`${ep.endpoint}/session/init`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Host': ep.hostHeader,
-      },
-      body: JSON.stringify({ accountAddress: user.smartAccountAddress, durationSeconds }),
-    })
-    if (!initRes.ok) {
-      const err = await initRes.json().catch(() => ({})) as { error?: string }
-      return { success: false, error: `Init: ${err.error ?? initRes.statusText}` }
-    }
-    const { sessionId, sessionKeyAddress } = await initRes.json() as { sessionId: string; sessionKeyAddress: `0x${string}` }
+    scope = buildDemoScope()
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : 'Scope assembly failed' }
+  }
 
-    const now = Math.floor(Date.now() / 1000)
-    const expiresAt = now + durationSeconds
+  const now = Math.floor(Date.now() / 1000)
+  const validUntil = now + durationSeconds
 
-    const timestampEnforcerAddr = process.env.TIMESTAMP_ENFORCER_ADDRESS as `0x${string}` | undefined
-    const allowedTargetsEnforcerAddr = process.env.ALLOWED_TARGETS_ENFORCER_ADDRESS as `0x${string}` | undefined
-    const allowedMethodsEnforcerAddr = process.env.ALLOWED_METHODS_ENFORCER_ADDRESS as `0x${string}` | undefined
-    const valueEnforcerAddr = process.env.VALUE_ENFORCER_ADDRESS as `0x${string}` | undefined
-    const delegationManagerAddr = process.env.DELEGATION_MANAGER_ADDRESS as `0x${string}` | undefined
-
-    if (!timestampEnforcerAddr) return { success: false, error: 'TIMESTAMP_ENFORCER_ADDRESS not set' }
-    if (!allowedTargetsEnforcerAddr) return { success: false, error: 'ALLOWED_TARGETS_ENFORCER_ADDRESS not set' }
-    if (!allowedMethodsEnforcerAddr) return { success: false, error: 'ALLOWED_METHODS_ENFORCER_ADDRESS not set' }
-    if (!valueEnforcerAddr) return { success: false, error: 'VALUE_ENFORCER_ADDRESS not set' }
-    if (!delegationManagerAddr) return { success: false, error: 'DELEGATION_MANAGER_ADDRESS not set' }
-
-    const allowedTargets = computeAllowedTargetAddresses()
-    const allowedSelectors = computeAllowedSelectors()
-    const allowedToolNames = Object.keys(TOOL_POLICIES)
-
-    const caveats = [
-      buildCaveat(timestampEnforcerAddr, encodeTimestampTerms(now, expiresAt)),
-      buildCaveat(allowedTargetsEnforcerAddr, encodeAllowedTargetsTerms(allowedTargets)),
-      buildCaveat(allowedMethodsEnforcerAddr, encodeAllowedMethodsTerms(allowedSelectors)),
-      buildCaveat(valueEnforcerAddr, encodeValueTerms(0n)),
-      // McpToolScope uses a sentinel enforcer address — verified off-chain by
-      // each MCP server's `verify-delegation.ts`. Not enforced on-chain (the
-      // on-chain caveat path stops at the AllowedMethods/AllowedTargets check).
-      // Use the deployed McpToolScopeEnforcer (Phase 1 fix): the same
-      // delegation is now ALSO redeemed on-chain, so DelegationManager
-      // invokes every caveat's enforcer — calling the previous sentinel
-      // (non-contract) address reverted. The deployed enforcer is a no-op;
-      // the real tool-scope policy stays off-chain in the MCP verifier.
-      buildCaveat(
-        (process.env.MCP_TOOL_SCOPE_ENFORCER_ADDRESS ?? MCP_TOOL_SCOPE_ENFORCER) as `0x${string}`,
-        encodeMcpToolScopeTerms(allowedToolNames),
-      ),
-      // NOTE: a per-session-key RateLimit caveat is deliberately deferred. The
-      // RateLimitEnforcer in @smart-agent/sdk is keyed by (delegator,
-      // delegationHash, scopeKey); wiring scopeKey choice + window/cap defaults
-      // into the bootstrap is Phase 2 work alongside per-call sub-delegations.
-    ]
-
-    const caveatsForHash = caveats.map((c) => ({ enforcer: c.enforcer, terms: c.terms }))
-    const salt = BigInt(Date.now() + Math.floor(Math.random() * 100000))
-
-    // Option A (ERC-4337-only redeem) — the LEAF delegation's `delegate`
-    // is the user's own smart account, NOT the session-signer EOA. The
-    // session signer still SIGNS this delegation (via ERC-1271 against
-    // the smart account's _validateSig), but the on-chain redeem path
-    // is now: userOp(sender=smartAccount) → AgentAccount.execute(
-    //   DelegationManager, 0, redeemDelegation(...)
-    // ). DelegationManager._validateDelegation's
-    //   if (i==0 && d.delegate != msg.sender) revert InvalidDelegate
-    // check therefore passes because msg.sender at the DelegationManager
-    // call site IS the smart account = leaf.delegate. The master EOA
-    // (a2a-agent's funded operator account) pays gas via EntryPoint.handleOps;
-    // session-signer EOAs never need ETH.
-    const delegationData = {
-      delegator: user.smartAccountAddress as `0x${string}`,
-      delegate: user.smartAccountAddress as `0x${string}`,
-      authority: ROOT_AUTHORITY as `0x${string}`,
-      caveats: caveatsForHash,
-      salt,
-    }
-    const delegationHash = hashDelegation(delegationData, chainId, delegationManagerAddr)
-    const delegationSig = await userAccount.signMessage({ message: { raw: delegationHash } })
-
-    const pkgRes = await a2aFetch(`${ep.endpoint}/session/package`, {
+  try {
+    // ─── Step 1 — POST /session/hybrid-init ─────────────────────────
+    const initRes = await a2aFetch(`${ep.endpoint}/session/hybrid-init`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Host': ep.hostHeader,
       },
       body: JSON.stringify({
-        sessionId,
-        delegation: {
-          ...delegationData,
-          salt: salt.toString(),
-          signature: delegationSig,
-        },
+        accountAddress: user.smartAccountAddress,
+        scope,
+        validUntil,
       }),
     })
-    if (!pkgRes.ok) {
-      const err = await pkgRes.json().catch(() => ({})) as { error?: string }
-      return { success: false, error: `Package: ${err.error ?? pkgRes.statusText}` }
+    if (!initRes.ok) {
+      const err = await initRes.json().catch(() => ({})) as { error?: string }
+      return { success: false, error: `hybrid-init: ${err.error ?? initRes.statusText}` }
+    }
+    const initJson = await initRes.json() as {
+      variant: 'A' | 'B'
+      sessionId: string
+      sessionKeyAddress: `0x${string}`
+      delegationHash: `0x${string}`
+      riskTier: 'low' | 'medium' | 'high' | 'critical'
+      validUntil: number
+      signingPayload?: {
+        domain: {
+          name: string
+          version: string
+          chainId: number
+          verifyingContract: `0x${string}`
+        }
+        types: Record<string, ReadonlyArray<{ name: string; type: string }>>
+        primaryType: 'Delegation'
+        message: {
+          delegator: `0x${string}`
+          delegate: `0x${string}`
+          authority: `0x${string}`
+          caveatsHash: `0x${string}`
+          salt: string
+        }
+      }
+      userOpHash?: `0x${string}`
     }
 
-    return { success: true, sessionId }
+    if (initJson.variant !== 'A') {
+      // Demo bootstrap is intentionally low-tier — anything that lands
+      // here as Variant B is a misconfiguration in `buildDemoScope`.
+      // Fail loudly per the no-silent-fallback rule.
+      return {
+        success: false,
+        error:
+          `hybrid-init returned Variant ${initJson.variant} (tier=${initJson.riskTier}); ` +
+          `bootstrap scope must be low/medium. Check buildDemoScope() in a2a-session.action.ts.`,
+      }
+    }
+    if (!initJson.signingPayload) {
+      return { success: false, error: 'hybrid-init Variant A response missing signingPayload' }
+    }
+
+    // ─── Step 2 — Sign the EIP-712 typed-data payload ───────────────
+    //
+    // The smart account's `isValidSignature(delegationHash, sig)` in
+    // AgentAccount.sol tries raw-hash recovery first, then eth-signed
+    // wrap. Signing the typed-data structure produces an ECDSA sig
+    // over the EIP-712 hash (== `delegationHash`); recovery against
+    // the owner set succeeds. (Cf. _verifyEcdsa in AgentAccount.sol.)
+    const { domain, types, primaryType, message } = initJson.signingPayload
+    // viem's signTypedData accepts the EIP712Domain entry but doesn't
+    // require it — strip it to keep the structure minimal. The
+    // server-side EIP-712 hash (= delegationHash) is derived from the
+    // remaining type entries, which the smart account's ERC-1271
+    // verifier reproduces via raw ECDSA recovery on `delegationHash`.
+    const messageTypes: Record<string, ReadonlyArray<{ name: string; type: string }>> = {}
+    for (const [k, v] of Object.entries(types)) {
+      if (k !== 'EIP712Domain') messageTypes[k] = v
+    }
+    const signature = await signer.signTypedData({
+      domain: {
+        name: domain.name,
+        version: domain.version,
+        chainId: domain.chainId,
+        verifyingContract: domain.verifyingContract,
+      },
+      types: messageTypes,
+      primaryType,
+      message: {
+        delegator: message.delegator,
+        delegate: message.delegate,
+        authority: message.authority,
+        caveatsHash: message.caveatsHash,
+        salt: BigInt(message.salt),
+      },
+    })
+
+    // ─── Step 3 — POST /session/hybrid-finalize ─────────────────────
+    const finalizeRes = await a2aFetch(`${ep.endpoint}/session/hybrid-finalize`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Host': ep.hostHeader,
+      },
+      body: JSON.stringify({
+        sessionId: initJson.sessionId,
+        signature,
+      }),
+    })
+    if (!finalizeRes.ok) {
+      const err = await finalizeRes.json().catch(() => ({})) as { error?: string }
+      return { success: false, error: `hybrid-finalize: ${err.error ?? finalizeRes.statusText}` }
+    }
+    const finalJson = await finalizeRes.json() as { status?: string; sessionId?: string }
+    if (finalJson.status !== 'active' || !finalJson.sessionId) {
+      return {
+        success: false,
+        error: `hybrid-finalize returned unexpected response: ${JSON.stringify(finalJson)}`,
+      }
+    }
+
+    return { success: true, sessionId: finalJson.sessionId }
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : 'Bootstrap failed' }
   }
@@ -232,17 +283,25 @@ export async function bootstrapA2ASession(options?: { durationSeconds?: number }
     return { success: false, error: 'No wallet address' }
   }
 
-  // Passkey + SIWE: no `users` row — synthesise the minimal shape the
-  // bootstrap helper needs from the session. The deployer-fallback path
-  // signs the delegation (deployer is an initial owner of every freshly
-  // deployed AgentAccount, so ERC-1271 accepts the signature).
+  // Phase C K6 migration: passkey + SIWE users have no `users.privateKey`
+  // and CANNOT bootstrap server-side — they must run the hybrid flow
+  // client-side via the `useA2ASession` hook (passkey prompt or
+  // injected wallet signs the EIP-712 payload). This server-action is
+  // a no-op for them.
   const stateless = session.via === 'passkey' || session.via === 'siwe'
-  const user = stateless
-    ? { smartAccountAddress: session.smartAccountAddress, privateKey: null }
-    : await db.select().from(schema.localUserAccounts)
-        .where(eq(schema.localUserAccounts.walletAddress, session.walletAddress))
-        .limit(1)
-        .then(r => r[0] ?? null)
+  if (stateless) {
+    return {
+      success: false,
+      error:
+        'Passkey/SIWE users must bootstrap via the client-side useA2ASession hook ' +
+        '(no server-side private key available)',
+    }
+  }
+
+  const user = await db.select().from(schema.localUserAccounts)
+    .where(eq(schema.localUserAccounts.walletAddress, session.walletAddress))
+    .limit(1)
+    .then(r => r[0] ?? null)
   if (!user) return { success: false, error: 'User not found' }
 
   const durationSeconds = options?.durationSeconds ?? 86400

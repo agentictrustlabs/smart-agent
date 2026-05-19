@@ -87,11 +87,16 @@ test('hybrid-init — low-risk scope returns Variant A', async () => {
     (message.delegator as string).toLowerCase(),
     TEST_USER.toLowerCase(),
   )
-  // Delegate is the session key — NOT the smart account itself
-  // (this is the Phase B invariant).
+  // Option A invariant (Spec 007 Phase B+C): delegate == delegator ==
+  // user's AgentAccount. The session key derives authority from being a
+  // registered OWNER of the AgentAccount and signing the userOp; the
+  // delegation itself is self-issued. This is what `org-mcp` verifies at
+  // `verify-delegation.ts:111` and what `/redeem-via-account` relies on:
+  // the userOp goes `AgentAccount.execute(DM, redeemDelegation)`, so
+  // `msg.sender` at DM equals AgentAccount equals delegate.
   assert.equal(
     (message.delegate as string).toLowerCase(),
-    (body.sessionKeyAddress as string).toLowerCase(),
+    TEST_USER.toLowerCase(),
   )
 
   // Session row was persisted with variant='A'.

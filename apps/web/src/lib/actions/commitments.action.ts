@@ -468,6 +468,10 @@ export async function recordOutcome(input: RecordOutcomeInput): Promise<{ ok: bo
   }
 
   try {
+    // Route through the caller's person agent (not commitment.donor) — the
+    // donor is the pool, which has no primary name and therefore no
+    // resolvable A2A endpoint. The redeem inside org-mcp still uses the
+    // donor's delegation; the agentAddress here only routes the A2A call.
     const res = await callMcp<{ ok: true; txHash: Hex }>(
       'org',
       'commitment:record_outcome',
@@ -476,7 +480,7 @@ export async function recordOutcome(input: RecordOutcomeInput): Promise<{ ok: bo
         outcomeId: input.outcomeId,
         evidenceHash: input.evidenceHash,
       },
-      { agentAddress: commitment.donor },
+      { agentAddress: myAgent },
     )
     return { ok: true, txHash: res.txHash }
   } catch (e) {
@@ -499,11 +503,12 @@ export async function cancelCommitment(commitmentSubject: Hex, reason: string): 
   if (!canMng) return { ok: false, error: 'not-donor-owner' }
 
   try {
+    // Route through caller (not pool donor) — see recordOutcome rationale.
     const res = await callMcp<{ ok: true; txHash: Hex }>(
       'org',
       'commitment:cancel',
       { commitmentSubject, reason },
-      { agentAddress: commitment.donor },
+      { agentAddress: myAgent },
     )
     return { ok: true, txHash: res.txHash }
   } catch (e) {

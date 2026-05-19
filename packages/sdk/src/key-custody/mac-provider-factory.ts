@@ -1,7 +1,7 @@
 /**
  * KMS migration K3-extension — per-side MAC provider factory.
  *
- * The nine HMAC keys in the system today are static env secrets:
+ * The ten HMAC keys in the system today are static env secrets:
  *   - `WEB_TO_A2A_HMAC_KEY`              — web → a2a-agent
  *   - `A2A_INTERSERVICE_HMAC_KEY_PERSON` — person-mcp → a2a-agent
  *   - `A2A_INTERSERVICE_HMAC_KEY_ORG`    — org-mcp → a2a-agent
@@ -10,6 +10,8 @@
  *   - `A2A_INTERSERVICE_HMAC_KEY_VERIFIER`
  *   - `A2A_INTERSERVICE_HMAC_KEY_SKILL`
  *   - `A2A_INTERSERVICE_HMAC_KEY_GEO`
+ *   - `A2A_INTERSERVICE_HMAC_KEY_HUB`    — a2a-agent → hub-mcp (#132 bypass:
+ *                                          /mcp/hub/* gateway + KB sync)
  *   - `OAUTH_SALT_HMAC_KEY`              — google-oauth email → smart-account
  *                                          deterministic salt (Sprint S2.6;
  *                                          web-internal, no inter-service hop)
@@ -52,12 +54,13 @@ import { createLocalHmacProvider } from './local-hmac'
 import type { GcpAuthEnv } from './gcp-auth'
 
 /**
- * The nine MAC keys in the system. The string identifiers are stable —
+ * The ten MAC keys in the system. The string identifiers are stable —
  * they appear in env var names, IAM policy resource conditions, and logs.
  *
- * The first eight are the inter-service K3-extension keys. The ninth,
- * `oauth-salt`, is a web-internal MAC key introduced by Sprint S2.6:
- * it replaces the legacy `SERVER_PEPPER` symmetric env secret that
+ * The first nine are the inter-service K3-extension keys (the ninth,
+ * `a2a-to-hub`, was added by #132 — `/mcp/hub/*` bypass + KB sync). The
+ * tenth, `oauth-salt`, is a web-internal MAC key introduced by Sprint
+ * S2.6: it replaces the legacy `SERVER_PEPPER` symmetric env secret that
  * deterministically salted google-oauth email → smart-account derivation.
  * Same shape (HMAC_SHA_256, kms:GenerateMac / kms:VerifyMac), same env
  * conventions; not used for any inter-service hop.
@@ -71,12 +74,13 @@ export const MAC_KEY_IDS = [
   'a2a-to-verifier',
   'a2a-to-skill',
   'a2a-to-geo',
+  'a2a-to-hub',
   'oauth-salt',
 ] as const
 
 export type MacKeyId = (typeof MAC_KEY_IDS)[number]
 
-/** The seven MCP role names that talk to a2a-agent. */
+/** The eight MCP role names that talk to a2a-agent. */
 export type McpName =
   | 'person'
   | 'org'
@@ -85,6 +89,7 @@ export type McpName =
   | 'verifier'
   | 'skill'
   | 'geo'
+  | 'hub'
 
 /**
  * `McpName → MacKeyId`. The MCP knows its own role; the factory picks the
@@ -98,6 +103,7 @@ export const MCP_TO_MAC_KEY_ID: Record<McpName, MacKeyId> = {
   verifier: 'a2a-to-verifier',
   skill: 'a2a-to-skill',
   geo: 'a2a-to-geo',
+  hub: 'a2a-to-hub',
 }
 
 /**
@@ -165,6 +171,12 @@ export function envKeyForMacKeyId(macKeyId: MacKeyId): {
         legacy: 'A2A_INTERSERVICE_HMAC_KEY_GEO',
         awsKms: 'AWS_KMS_MAC_KEY_ID_A2A_TO_GEO',
         gcpKms: 'GCP_KMS_MAC_A2A_TO_GEO_VERSION',
+      }
+    case 'a2a-to-hub':
+      return {
+        legacy: 'A2A_INTERSERVICE_HMAC_KEY_HUB',
+        awsKms: 'AWS_KMS_MAC_KEY_ID_A2A_TO_HUB',
+        gcpKms: 'GCP_KMS_MAC_A2A_TO_HUB_VERSION',
       }
     case 'oauth-salt':
       // Sprint S2.6 — replaces the legacy `SERVER_PEPPER` symmetric env

@@ -359,21 +359,29 @@ sessionInit.post('/hybrid-init', async (c) => {
   const sessionAccount = privateKeyToAccount(sessionPrivateKey)
   const sessionId = `sa_${crypto.randomUUID().replace(/-/g, '')}`
 
-  // Build delegation struct (delegator=user, delegate=sessionKey,
-  // ROOT_AUTHORITY, caveats from scope, salt=hash(sessionId)).
-  // The delegate is the session key (NOT the smart account itself —
-  // this differs from the old `/session/package` flow). The
-  // DelegationManager's `_validateDelegation` will check that
-  // `msg.sender == leaf.delegate`, and msg.sender at action time
-  // is the session key (it calls `redeemDelegation` directly as
-  // the EVM tx sender per C2 Q1).
+  // Build delegation struct — Option A shape (Spec 007 Phase B + Phase C):
+  //   delegator = user's AgentAccount
+  //   delegate  = user's AgentAccount (self-delegation)
+  //
+  // The redemption path is the user's own AgentAccount: a userOp signed by
+  // the session signer (registered as an owner of the AgentAccount) calls
+  // AgentAccount.execute(DelegationManager, 0, redeemDelegation(...)). At
+  // DM, `msg.sender == AgentAccount == delegate`, so the
+  // `msg.sender == leaf.delegate` check passes. The session key never
+  // holds direct delegate authority on chain — it derives authority from
+  // being a registered owner of the AgentAccount and signing the userOp.
+  //
+  // The off-chain JWT verify (`apps/org-mcp/src/auth/verify-delegation.ts`
+  // L111) also enforces `delegation.delegate == claims.sub == userSmartAccount`,
+  // so producing the wrong shape here trips a 500 on every MCP write that
+  // routes through `/redeem-via-account`.
   const saltHex = keccak256(toBytes(`hybrid-salt:${sessionId}`))
   const salt = BigInt(saltHex).toString()
 
   const caveats = buildSessionCaveats(body.scope, validUntilFinal)
   const delegationDraft = {
     delegator: body.accountAddress.toLowerCase() as `0x${string}`,
-    delegate: sessionAccount.address.toLowerCase() as `0x${string}`,
+    delegate: body.accountAddress.toLowerCase() as `0x${string}`,
     authority: ROOT_AUTHORITY,
     caveats,
     salt,

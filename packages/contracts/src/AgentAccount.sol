@@ -780,7 +780,16 @@ contract AgentAccount is BaseAccount, Initializable, UUPSUpgradeable, Reentrancy
     ///      Inner calls run with `msg.sender == address(this)`.
     ///      All-or-nothing: any inner revert bubbles and reverts the batch.
     ///      Pre-hooks run once on the whole batch; post-hooks run on success.
-    function executeBatch(Call[] calldata calls) external override nonReentrant {
+    ///
+    ///      Spec 007 Phase A.5 — intentionally NOT `nonReentrant`. The
+    ///      DM redeem flow legitimately calls `account.execute(target=self,
+    ///      data=executeBatch_calldata)`, which then self-calls into
+    ///      `executeBatch`. If both functions held the guard, that
+    ///      pattern would revert with `ReentrancyGuardReentrantCall`. The
+    ///      OUTER `execute` already holds the guard, so external re-entry
+    ///      is blocked; `_requireForExecute` restricts entry to
+    ///      EntryPoint / self / DM (DM has its own `nonReentrant`).
+    function executeBatch(Call[] calldata calls) external override {
         _requireForExecute();
 
         ModulesStorage storage $ = _modulesStorage();
